@@ -12,9 +12,6 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { VIEW_ALL_RULE } from '../constant/permission';
-import { PolicyClass } from '../support/access-control/PoliciesClass';
-import { RolesClass } from '../support/access-control/RolesClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
@@ -26,10 +23,12 @@ import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { UserClass } from '../support/user/UserClass';
-import { getApiContext, redirectToHomePage } from './common';
+import { redirectToHomePage } from './common';
+import { addCustomPropertiesForEntity } from './customProperty';
+import { settingClick, SettingOptionsType } from './sidebar';
 
 // All operations across all entities
-const ALL_OPERATIONS = [
+export const ALL_OPERATIONS = [
   // Common operations
   'EditDescription',
   'EditOwners',
@@ -37,13 +36,16 @@ const ALL_OPERATIONS = [
   'EditDisplayName',
   'EditTags',
   'EditGlossaryTerms',
+  'EditCustomFields',
   'Delete',
+  'EditAll',
 
   // Entity specific operations
   'ViewQueries',
   'ViewSampleData',
   'ViewDataProfile',
   'ViewTests',
+  'ViewUsage',
   'ViewProfilerGlobalConfiguration',
   'EditQueries',
   'EditDataProfile',
@@ -51,64 +53,6 @@ const ALL_OPERATIONS = [
   'EditTests',
   'EditStatus',
 ];
-
-let policy: PolicyClass;
-let role: RolesClass;
-
-export const initializePermissions = async (
-  page: Page,
-  effect: 'allow' | 'deny'
-) => {
-  await redirectToHomePage(page);
-  const { apiContext } = await getApiContext(page);
-
-  policy = new PolicyClass();
-
-  const policyRules = [
-    ...VIEW_ALL_RULE,
-    {
-      name: `Global${effect}AllOperationsPolicy`,
-      resources: ['All'],
-      operations: ALL_OPERATIONS,
-      effect,
-    },
-  ];
-
-  await policy.create(apiContext, policyRules);
-
-  role = new RolesClass();
-  await role.create(apiContext, [policy.responseData.name]);
-
-  return { apiContext, policy, role };
-};
-
-export const assignRoleToUser = async (page: Page, testUser: UserClass) => {
-  const { apiContext } = await getApiContext(page);
-
-  await testUser.patch({
-    apiContext,
-    patchData: [
-      {
-        op: 'replace',
-        path: '/roles',
-        value: [
-          {
-            id: role.responseData.id,
-            type: 'role',
-            name: role.responseData.name,
-          },
-        ],
-      },
-    ],
-  });
-};
-
-export const cleanupPermissions = async (page: Page) => {
-  const { apiContext, afterAction } = await getApiContext(page);
-  await role.delete(apiContext);
-  await policy.delete(apiContext);
-  await afterAction();
-};
 
 // Helper function to check element visibility based on configuration
 const checkElementVisibility = async (
@@ -126,7 +70,7 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`)
+          testUserPage.locator(`[data-testid="${testId}"]`).first()
         ).toBeVisible();
 
         break;
@@ -167,6 +111,11 @@ const checkElementVisibility = async (
 
         break;
       }
+      case 'label': {
+        await expect(testUserPage.getByText(testId).first()).toBeVisible();
+
+        break;
+      }
 
       default: {
         await expect(
@@ -179,7 +128,7 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`)
+          testUserPage.locator(`[data-testid="${testId}"]`).first()
         ).not.toBeVisible();
 
         break;
@@ -217,6 +166,11 @@ const checkElementVisibility = async (
             testUserPage.locator(`[data-testid="${testId}"]`)
           ).not.toBeVisible();
         }
+
+        break;
+      }
+      case 'label': {
+        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
 
         break;
       }
@@ -260,6 +214,27 @@ export const testCommonOperations = async (
 
   for (const config of testIdsConfigs) {
     await checkElementVisibility(testUserPage, config, effect);
+  }
+
+  // Check custom properties
+  await testUserPage.locator('[data-testid="custom_properties"]').click();
+
+  if (effect === 'allow') {
+    await expect(
+      testUserPage
+        .locator('[data-testid="custom-properties-card"]')
+        .first()
+        .getByTestId('edit-icon')
+        .first()
+    ).toBeVisible();
+  } else {
+    await expect(
+      testUserPage
+        .locator('[data-testid="custom-properties-card"]')
+        .first()
+        .getByTestId('edit-icon')
+        .first()
+    ).not.toBeVisible();
   }
 };
 
@@ -368,6 +343,15 @@ export const testTableSpecificOperations = async (
     effect,
     "You don't have necessary permissions. Please check with the admin to get the View Data Observability permission."
   );
+
+  await checkElementVisibility(
+    testUserPage,
+    {
+      testId: 'Usage',
+      type: 'label',
+    },
+    effect
+  );
 };
 
 export const testTopicSpecificOperations = async (
@@ -450,6 +434,40 @@ export const testDashboardDataModelSpecificOperations = async (
   }
 };
 
+export const testDashboardSpecificOperations = async (
+  testUserPage: Page,
+  entity: DashboardClass,
+  effect: 'allow' | 'deny'
+) => {
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+
+  await checkElementVisibility(
+    testUserPage,
+    {
+      testId: 'Usage',
+      type: 'label',
+    },
+    effect
+  );
+};
+
+export const testMlModelSpecificOperations = async (
+  testUserPage: Page,
+  entity: MlModelClass,
+  effect: 'allow' | 'deny'
+) => {
+  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+
+  await checkElementVisibility(
+    testUserPage,
+    {
+      testId: 'Usage',
+      type: 'label',
+    },
+    effect
+  );
+};
+
 // Helper function to run common permission tests
 export const runCommonPermissionTests = async (
   testUserPage: Page,
@@ -480,6 +498,7 @@ export const entityConfig = {
   },
   Dashboard: {
     class: DashboardClass,
+    specificTest: testDashboardSpecificOperations,
   },
   Pipeline: {
     class: PipelineClass,
@@ -491,6 +510,7 @@ export const entityConfig = {
   },
   MlModel: {
     class: MlModelClass,
+    specificTest: testMlModelSpecificOperations,
   },
   Container: {
     class: ContainerClass,
@@ -507,3 +527,49 @@ export const entityConfig = {
     class: MetricClass,
   },
 } as const;
+
+// Function to create custom properties for different entity types
+export const createCustomPropertyForEntity = async (
+  browser: any,
+  entityType: string,
+  customPropertyName: string,
+  adminUser: UserClass
+) => {
+  const page = await browser.newPage();
+  await adminUser.login(page);
+
+  // Map entity types to their correct API types (same as used in working tests)
+  const entityTypeMapping: Record<string, string> = {
+    Table: 'tables',
+    Dashboard: 'dashboards',
+    Pipeline: 'pipelines',
+    Topic: 'topics',
+    MlModel: 'mlmodels',
+    Container: 'containers',
+    SearchIndex: 'searchIndexes',
+    DashboardDataModel: 'dashboardDataModels',
+    Metric: 'metrics',
+    Database: 'databases',
+    DatabaseSchema: 'databaseSchemas',
+    StoredProcedure: 'storedProcedures',
+    GlossaryTerm: 'glossaryTerm',
+    Domain: 'domains',
+    ApiCollection: 'apiCollections',
+    ApiEndpoint: 'apiEndpoints',
+    DataProduct: 'dataProducts',
+  };
+
+  const entityApiType =
+    entityTypeMapping[entityType] || entityType.toLowerCase();
+
+  await settingClick(page, entityApiType as SettingOptionsType, true);
+
+  await addCustomPropertiesForEntity({
+    page,
+    propertyName: customPropertyName,
+    customPropertyData: { description: `Test ${entityType} custom property` },
+    customType: 'String',
+  });
+
+  await page.close();
+};

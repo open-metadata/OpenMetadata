@@ -24,10 +24,13 @@ import { StorageServiceClass } from '../../../support/entity/service/StorageServ
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  assignRoleToUser,
-  initializePermissions,
+  ALL_OPERATIONS,
   runCommonPermissionTests,
 } from '../../../utils/entityPermissionUtils';
+import {
+  assignRoleToUser,
+  initializePermissions,
+} from '../../../utils/permission';
 
 const adminUser = new UserClass();
 const testUser = new UserClass();
@@ -86,7 +89,7 @@ serviceEntities.forEach((EntityClass) => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
         await adminUser.login(page);
-        await initializePermissions(page, 'allow');
+        await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
       });
@@ -104,7 +107,7 @@ serviceEntities.forEach((EntityClass) => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
         await adminUser.login(page);
-        await initializePermissions(page, 'deny');
+        await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
       });

@@ -16,13 +16,19 @@ import { EntityClass } from '../../../support/entity/EntityClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { uuid } from '../../../utils/common';
 import {
-  assignRoleToUser,
+  ALL_OPERATIONS,
+  createCustomPropertyForEntity,
   entityConfig,
-  initializePermissions,
   runCommonPermissionTests,
   runEntitySpecificPermissionTests,
 } from '../../../utils/entityPermissionUtils';
+import {
+  assignRoleToUser,
+  initializePermissions,
+} from '../../../utils/permission';
+
 const adminUser = new UserClass();
 const testUser = new UserClass();
 
@@ -57,10 +63,21 @@ Object.entries(entityConfig).forEach(([, config]) => {
   const entityType = entity.getType();
 
   test.describe(`${entityType} Permissions`, () => {
+    const customPropertyName = `pw${entityType}CustomProperty${uuid()}`;
+
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
+
+      // Create custom property for this entity type
+      await createCustomPropertyForEntity(
+        browser,
+        entityType,
+        customPropertyName,
+        adminUser
+      );
+
       await afterAction();
     });
 
@@ -69,7 +86,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
         await adminUser.login(page);
-        await initializePermissions(page, 'allow');
+        await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
       });
@@ -108,7 +125,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
         await adminUser.login(page);
-        await initializePermissions(page, 'deny');
+        await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
       });
