@@ -1,5 +1,6 @@
 ---
 title: Report Data Type Schema | OpenMetadata Report Data Types
+description: ReportDataType schema defines supported chart formats, aggregation methods, and report settings.
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype
 ---
 
