@@ -80,6 +80,10 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 
 **hostPort**: Host and port of the Alation instance.
 
+```bash
+host and port (https://xxxx.alationcloud.com:443)
+```
+
 **authType**: Following authentication types are supported:
 1. **Basic Authentication**:
 We'll use the user credentials to generate the access token required to authenticate Alation APIs
