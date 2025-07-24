@@ -1,5 +1,6 @@
 ---
 title: Create Query API | OpenMetadata Query API
+description: Define a new SQL query entity with metadata such as query text, owner, and associated data entities for better discoverability and lineage.
 slug: /main-concepts/metadata-standard/schemas/api/data/createquery
 ---
 

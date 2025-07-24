@@ -1,5 +1,6 @@
 ---
-title: databaseServiceProfilerPipeline
+title: databaseServiceProfilerPipeline | Official Documentation
+description: Connect Databaseserviceprofilerpipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseserviceprofilerpipeline
 ---
 

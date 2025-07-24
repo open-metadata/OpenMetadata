@@ -1,5 +1,6 @@
 ---
 title: jdbcConnection | OpenMetadata JDBC Connection
+description: JdbcConnection schema holds JDBC driver metadata and connection properties.
 slug: /main-concepts/metadata-standard/schemas/type/jdbcconnection
 ---
 

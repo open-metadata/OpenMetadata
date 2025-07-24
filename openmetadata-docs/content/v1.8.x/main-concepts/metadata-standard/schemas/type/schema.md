@@ -1,5 +1,6 @@
 ---
 title: Schema Details | OpenMetadata Schema Detailed Information
+description: Schema type schema defines data schemas used in metadata entities like tables or events.
 slug: /main-concepts/metadata-standard/schemas/type/schema
 ---
 

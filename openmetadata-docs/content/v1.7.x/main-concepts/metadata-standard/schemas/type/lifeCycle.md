@@ -1,5 +1,6 @@
 ---
 title: Life Cycle | OpenMetadata Life Cycle Details
+description: Lifecycle schema defines the state transitions and status tracking for metadata objects.
 slug: /main-concepts/metadata-standard/schemas/type/lifecycle
 ---
 

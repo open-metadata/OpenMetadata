@@ -1,5 +1,6 @@
 ---
 title: entityRelationship | OpenMetadata Entity Relationship
+description: EntityRelationship schema captures direct relationships between two metadata objects.
 slug: /main-concepts/metadata-standard/schemas/type/entityrelationship
 ---
 

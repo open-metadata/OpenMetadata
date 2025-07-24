@@ -1,5 +1,6 @@
 ---
 title: Create Table API | OpenMetadata Table API
+description: Define and create a new table entity with columns, constraints, relationships, and profiling metadata.
 slug: /main-concepts/metadata-standard/schemas/api/data/createtable
 ---
 

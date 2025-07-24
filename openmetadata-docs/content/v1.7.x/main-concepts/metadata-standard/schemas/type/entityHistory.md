@@ -1,5 +1,6 @@
 ---
 title: entityHistory | OpenMetadata Entity History
+description: EntityHistory schema tracks revisions, authorship, and version details for metadata items.
 slug: /main-concepts/metadata-standard/schemas/type/entityhistory
 ---
 

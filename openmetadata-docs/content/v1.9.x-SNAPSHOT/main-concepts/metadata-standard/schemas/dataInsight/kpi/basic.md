@@ -1,5 +1,6 @@
 ---
 title: Basic KPI Schema | OpenMetadata Basic KPI
+description: Connect Basic to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/kpi/basic
 ---
 

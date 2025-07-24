@@ -1,5 +1,6 @@
 ---
 title: Test Suite | OpenMetadata Test Suite Details
+description: Connect Testsuite to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/tests/testsuite
 ---
 

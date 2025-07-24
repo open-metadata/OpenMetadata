@@ -1,5 +1,6 @@
 ---
 title: Table Query | OpenMetadata Table Query Schema
+description: TableQuery schema captures historical query text, frequency, and performance insights.
 slug: /main-concepts/metadata-standard/schemas/type/tablequery
 ---
 

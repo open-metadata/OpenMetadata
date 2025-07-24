@@ -1,5 +1,6 @@
 ---
 title: Web Analytic Event Type | OpenMetadata Event Types
+description: WebAnalyticEventType schema describes event types tracked in web analytics, like clicks or visits.
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype
 ---
 

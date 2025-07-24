@@ -1,5 +1,6 @@
 ---
 title: Storage Ingestion | OpenMetadata Storage Ingestion Overview
+description: Connect Storageservicemetadatapipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storageservicemetadatapipeline
 ---
 

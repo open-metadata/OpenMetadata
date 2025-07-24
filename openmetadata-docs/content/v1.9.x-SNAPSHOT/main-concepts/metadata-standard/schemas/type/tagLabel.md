@@ -1,5 +1,6 @@
 ---
 title: Tag Label | OpenMetadata Tag Label Schema
+description: TagLabel schema tracks tag assignments, state (suggested/approved), and source system.
 slug: /main-concepts/metadata-standard/schemas/type/taglabel
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: aggregatedUsedVsUnusedAssetsCount
+title: aggregatedUsedVsUnusedAssetsCount | Official Documentation
+description: Connect Aggregatedusedvsunusedassetscount to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integration
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/aggregatedusedvsunusedassetscount
 ---
 

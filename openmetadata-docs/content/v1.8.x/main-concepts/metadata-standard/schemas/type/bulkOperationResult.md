@@ -1,5 +1,6 @@
 ---
 title: bulkOperationResult | OpenMetadata Bulk Operation Result
+description: BulkOperationResult schema records the result of bulk metadata operations like import or deletion.
 slug: /main-concepts/metadata-standard/schemas/type/bulkoperationresult
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Paging Schema | OpenMetadata Paging Schema Overview
+description: Paging schema is used to handle pagination metadata like limits, cursors, and total counts.
 slug: /main-concepts/metadata-standard/schemas/type/paging
 ---
 

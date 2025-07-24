@@ -1,5 +1,6 @@
 ---
-title: metadataToElasticSearchPipeline
+title: metadataToElasticSearchPipeline | Official Documentation
+description: Connect Metadatatoelasticsearchpipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/metadatatoelasticsearchpipeline
 ---
 

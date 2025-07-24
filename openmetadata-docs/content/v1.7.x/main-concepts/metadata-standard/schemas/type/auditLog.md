@@ -1,5 +1,6 @@
 ---
 title: Audit Log | OpenMetadata Audit Log Information
+description: AuditLog schema tracks system logs, user activity, and platform change history.
 slug: /main-concepts/metadata-standard/schemas/type/auditlog
 ---
 

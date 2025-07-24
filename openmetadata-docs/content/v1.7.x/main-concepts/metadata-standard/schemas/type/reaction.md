@@ -1,5 +1,6 @@
 ---
 title: Reaction Schema | OpenMetadata Reaction Schema Information
+description: Reaction schema tracks emoji reactions, likes, and interaction feedback in the platform.
 slug: /main-concepts/metadata-standard/schemas/type/reaction
 ---
 

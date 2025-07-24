@@ -1,5 +1,6 @@
 ---
-title: dataInsightCustomChartResultList
+title: dataInsightCustomChartResultList | Official Documentation
+description: Connect Datainsightcustomchartresultlist to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom/datainsightcustomchartresultlist
 ---
 

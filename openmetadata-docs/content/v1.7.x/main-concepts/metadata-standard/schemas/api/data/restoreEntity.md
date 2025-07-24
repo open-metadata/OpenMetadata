@@ -1,5 +1,6 @@
 ---
 title: Restore Entity API | OpenMetadata Entity Restore
+description: Restore a previously deleted entity in the system using detailed schema and associated identifiers for complete metadata recovery.
 slug: /main-concepts/metadata-standard/schemas/api/data/restoreentity
 ---
 

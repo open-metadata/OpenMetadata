@@ -1,5 +1,6 @@
 ---
 title: Summary Card Schema | OpenMetadata Summary Cards
+description: Connect Summarycard to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom/summarycard
 ---
 

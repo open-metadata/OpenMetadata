@@ -1,5 +1,6 @@
 ---
 title: entityLineage | OpenMetadata Entity Lineage
+description: EntityLineage schema models data flow between sources, tables, dashboards, and pipelines.
 slug: /main-concepts/metadata-standard/schemas/type/entitylineage
 ---
 

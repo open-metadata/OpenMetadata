@@ -1,5 +1,6 @@
 ---
 title: queryParserData | OpenMetadata Query Parser Data
+description: QueryParserData schema stores intermediate metadata parsed from SQL or query logs.
 slug: /main-concepts/metadata-standard/schemas/type/queryparserdata
 ---
 

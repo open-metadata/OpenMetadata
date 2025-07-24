@@ -1,5 +1,6 @@
 ---
 title: Create Classification | OpenMetadata Classification API
+description: Connect Createclassification to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/classification/createclassification
 ---
 

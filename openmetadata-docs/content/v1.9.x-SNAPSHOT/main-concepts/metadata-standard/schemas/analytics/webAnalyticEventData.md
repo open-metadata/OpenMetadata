@@ -1,5 +1,6 @@
 ---
-title: webAnalyticEventData
+title: webAnalyticEventData | Official Documentation
+description: WebAnalyticEventData schema includes enriched fields for session, user, and engagement analytics.
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventdata
 ---
 

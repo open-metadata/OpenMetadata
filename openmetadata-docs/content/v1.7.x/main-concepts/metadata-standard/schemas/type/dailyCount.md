@@ -1,5 +1,6 @@
 ---
 title: Daily Count | OpenMetadata Daily Count Details
+description: DailyCount schema stores metrics like usage, incidents, or profiling stats by date.
 slug: /main-concepts/metadata-standard/schemas/type/dailycount
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: databaseServiceAutoClassificationPipeline
+title: DatabaseServiceAutoClassificationPipeline | Official Documentation
+description: Connect Databaseserviceautoclassificationpipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseserviceautoclassificationpipeline
 ---
 

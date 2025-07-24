@@ -1,5 +1,6 @@
 ---
-title: createDatabaseSchema
+title: createDatabaseSchema | Official Documentation
+description: Create a database schema entity that structures and organizes related database objects like tables and views.
 slug: /main-concepts/metadata-standard/schemas/api/data/createdatabaseschema
 ---
 

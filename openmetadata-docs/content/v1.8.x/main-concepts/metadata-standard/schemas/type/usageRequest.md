@@ -1,5 +1,6 @@
 ---
 title: usageRequest | OpenMetadata Usage Request
+description: UsageRequest schema tracks user-initiated usage tracking queries for metadata analysis.
 slug: /main-concepts/metadata-standard/schemas/type/usagerequest
 ---
 

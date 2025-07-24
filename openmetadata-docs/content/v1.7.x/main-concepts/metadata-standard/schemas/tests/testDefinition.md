@@ -1,5 +1,6 @@
 ---
 title: testDefinition | OpenMetadata Test Definition
+description: Connect Testdefinition to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/tests/testdefinition
 ---
 

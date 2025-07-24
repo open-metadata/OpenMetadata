@@ -1,5 +1,6 @@
 ---
 title: csvErrorType | OpenMetadata CSV Error Type
+description: CsvErrorType schema captures structured errors encountered during CSV imports.
 slug: /main-concepts/metadata-standard/schemas/type/csverrortype
 noindex: true
 nofollow: true
