@@ -65,7 +65,7 @@ public class LogicOps {
           }
         });
 
-    // {"isReviewer": ["updatedBy"] }
+    // {"isReviewer": { var: "updatedBy"} }
     jsonLogic.addOperation(
         new JsonLogicExpression() {
           @Override
@@ -81,7 +81,7 @@ public class LogicOps {
           }
         });
 
-    // {"isOwner": ["updatedBy"] }
+    // {"isOwner": {var: "updatedBy"} }
     jsonLogic.addOperation(
         new JsonLogicExpression() {
           @Override

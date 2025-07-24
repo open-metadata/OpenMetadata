@@ -62,12 +62,11 @@
         "type": "string"
       },
       "default": [
-        "relatedEntity",
-        "updatedBy"
+        "relatedEntity"
       ],
       "additionalItems": false,
       "minItems": 1,
-      "maxItems": 2,
+      "maxItems": 1,
       "uniqueItems": true
     }
   },
