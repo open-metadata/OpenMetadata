@@ -19,6 +19,63 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+
+  // Carousel styles
+  .ant-carousel {
+    max-height: 125px;
+    width: 100%;
+    margin-bottom: @size-xl;
+    padding-bottom: @padding-xss;
+
+    .slick-slide {
+      vertical-align: top;
+      padding: 0 @padding-xs;
+    }
+
+    .slick-arrow {
+      color: @white;
+      font-size: @size-lg;
+      z-index: 10;
+      width: 32px;
+      height: 32px;
+      background-color: rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        color: @white;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      &.slick-prev {
+        left: -@size-lg;
+      }
+
+      &.slick-next {
+        right: -@size-lg;
+      }
+
+      &::before {
+        color: @white;
+        font-size: @size-lg;
+      }
+    }
+  }
+
+  .recently-viewed-data-carousel {
+    max-height: 125px;
+    .slick-dots {
+      bottom: -@size-sm !important;
+    }
+  }
+
+  .slick-list-center {
+    .slick-list {
+      max-height: 125px;
+    }
+  }
 }
 
 .landing-page-header-bg {
@@ -117,50 +174,6 @@
   }
 }
 
-// Carousel styles
-.ant-carousel {
-  max-height: 125px;
-  width: 100%;
-  margin-bottom: @size-xl;
-  padding-bottom: @padding-xss;
-
-  .slick-slide {
-    vertical-align: top;
-    padding: 0 @padding-xs;
-  }
-
-  .slick-arrow {
-    color: @white;
-    font-size: @size-lg;
-    z-index: 10;
-    width: 32px;
-    height: 32px;
-    background-color: rgba(0, 0, 0, 0.3);
-    border-radius: 50%;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      color: @white;
-      background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    &.slick-prev {
-      left: -@size-lg;
-    }
-
-    &.slick-next {
-      right: -@size-lg;
-    }
-
-    &::before {
-      color: @white;
-      font-size: @size-lg;
-    }
-  }
-}
-
 .custom-arrow {
   position: absolute;
   top: 50%;
@@ -189,19 +202,6 @@
 .left-arrow {
   left: -@size-xl;
   transform: translateY(-50%) rotate(180deg);
-}
-
-.recently-viewed-data-carousel {
-  max-height: 125px;
-  .slick-dots {
-    bottom: -@size-sm !important;
-  }
-}
-
-.slick-list-center {
-  .slick-list {
-    max-height: 125px;
-  }
 }
 
 .customise-recently-viewed-data {
