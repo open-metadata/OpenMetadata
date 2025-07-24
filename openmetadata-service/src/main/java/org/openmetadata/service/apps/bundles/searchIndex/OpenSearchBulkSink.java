@@ -203,7 +203,7 @@ public class OpenSearchBulkSink implements BulkSink {
       if (!entities.isEmpty() && entities.getFirst() instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
         for (EntityTimeSeriesInterface entity : tsEntities) {
-          addTimeSeriesEntity(entity, indexName);
+          addTimeSeriesEntity(entity, indexName, entityType);
         }
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
@@ -247,8 +247,10 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName) {
-    String json = JsonUtils.pojoToJson(entity);
+  private void addTimeSeriesEntity(
+      EntityTimeSeriesInterface entity, String indexName, String entityType) {
+    Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+    String json = JsonUtils.pojoToJson(searchIndexDoc);
     String docId = entity.getId().toString();
 
     IndexRequest indexRequest =
