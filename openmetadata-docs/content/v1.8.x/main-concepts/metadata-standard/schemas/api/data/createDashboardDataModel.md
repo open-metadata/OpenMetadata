@@ -1,5 +1,6 @@
 ---
-title: createDashboardDataModel
+title: createDashboardDataModel | Official Documentation
+description: Create a dashboard data model schema to map dashboard elements to data sources, metrics, and visualization configurations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createdashboarddatamodel
 ---
 

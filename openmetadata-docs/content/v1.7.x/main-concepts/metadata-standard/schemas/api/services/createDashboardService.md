@@ -1,5 +1,6 @@
 ---
-title: createDashboardService
+title: createDashboardService | Official Documentation
+description: Create a dashboard service entity to store metadata for dashboards and related visualization tools.
 slug: /main-concepts/metadata-standard/schemas/api/services/createdashboardservice
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Create API Service | OpenMetadata API Service Creation
+description: Register an API service with endpoints, status codes, and associated metadata for API lifecycle management.
 slug: /main-concepts/metadata-standard/schemas/api/services/createapiservice
 ---
 

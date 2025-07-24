@@ -1,5 +1,6 @@
 ---
 title: Resolve Task API | OpenMetadata Task Resolve API
+description: Resolve a task within a thread by submitting a response or taking an action that marks the issue as completed.
 slug: /main-concepts/metadata-standard/schemas/api/feed/resolvetask
 ---
 

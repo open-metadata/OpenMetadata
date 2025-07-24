@@ -1,5 +1,6 @@
 ---
-title: createMlModelService
+title: createMlModelService | Official Documentation
+description: Define an ML model service to manage metadata for machine learning workflows, model versions, and training data.
 slug: /main-concepts/metadata-standard/schemas/api/services/createmlmodelservice
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Create Storage Service | OpenMetadata Storage Service
+description: Create a storage service entity to manage metadata for cloud or on-premise storage systems like S3, ADLS, and GCS.
 slug: /main-concepts/metadata-standard/schemas/api/services/createstorageservice
 ---
 

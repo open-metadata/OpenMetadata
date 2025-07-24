@@ -1,5 +1,6 @@
 ---
 title: Create Container API | OpenMetadata Container API
+description: Create a container entity to logically group storage or table-related assets such as files, objects, or datasets.
 slug: /main-concepts/metadata-standard/schemas/api/data/createcontainer
 ---
 
