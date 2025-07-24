@@ -32,8 +32,8 @@ import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePag
 import '../../../../pages/MyDataPage/my-data.less';
 import {
   getAddWidgetHandler,
+  getLandingPageLayoutWithEmptyWidgetPlaceholder,
   getLayoutUpdateHandler,
-  getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
   getWidgetFromKey,
@@ -62,11 +62,9 @@ function CustomizeMyData({
   const { t } = useTranslation();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getLayoutWithEmptyWidgetPlaceholder(
+    getLandingPageLayoutWithEmptyWidgetPlaceholder(
       (initialPageData?.layout as WidgetConfig[]) ??
-        customizeMyDataPageClassBase.defaultLayout,
-      2,
-      4
+        customizeMyDataPageClassBase.defaultLayout
     )
   );
 
@@ -152,13 +150,14 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            widgetConfig: widget,
+            currentLayout: layout,
+            handleLayoutUpdate: handleLayoutUpdate,
             handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
-            handleLayoutUpdate: handleLayoutUpdate,
-            currentLayout: layout,
+            personaName: getEntityName(personaDetails),
+            widgetConfig: widget,
           })}
         </div>
       )),
@@ -187,10 +186,8 @@ function CustomizeMyData({
 
   const handleReset = useCallback(async () => {
     // Get default layout with the empty widget added at the end
-    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout,
-      2,
-      4
+    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
+      customizeMyDataPageClassBase.defaultLayout
     );
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
