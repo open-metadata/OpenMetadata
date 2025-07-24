@@ -791,6 +791,7 @@
     "invalid-condition": "เงื่อนไขไม่ถูกต้อง",
     "invalid-name": "ชื่อไม่ถูกต้อง",
     "is": "คือ",
+    "is-entity": "คือ {{entity}}",
     "is-not": "ไม่ใช่",
     "is-not-set": "ไม่ได้ตั้งค่า",
     "is-ready-for-preview": "พร้อมสำหรับการดูตัวอย่าง",

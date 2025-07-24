@@ -791,6 +791,7 @@
     "invalid-condition": "Ongeldige voorwaarde",
     "invalid-name": "Ongeldige naam",
     "is": "Is",
+    "is-entity": "Is {{entity}}",
     "is-not": "Is Niet",
     "is-not-set": "Is Niet Ingesteld",
     "is-ready-for-preview": "is gereed voor voorbeeldweergave",

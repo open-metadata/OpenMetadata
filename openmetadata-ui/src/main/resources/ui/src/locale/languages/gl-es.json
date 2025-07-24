@@ -791,6 +791,7 @@
     "invalid-condition": "Condición non válida",
     "invalid-name": "Nome non válido",
     "is": "É",
+    "is-entity": "É {{entity}}",
     "is-not": "Non É",
     "is-not-set": "Non está configurado",
     "is-ready-for-preview": "está listo para previsualización",

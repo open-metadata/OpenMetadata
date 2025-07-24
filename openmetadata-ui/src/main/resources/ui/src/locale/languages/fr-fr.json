@@ -791,6 +791,7 @@
     "invalid-condition": "Condition Invalide",
     "invalid-name": "Nom Invalide",
     "is": "Est",
+    "is-entity": "Est {{entity}}",
     "is-not": "N'est Pas",
     "is-not-set": "N'est Pas Défini",
     "is-ready-for-preview": "est prêt à être prévisualisé",

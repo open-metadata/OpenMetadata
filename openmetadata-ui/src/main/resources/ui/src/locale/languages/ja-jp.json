@@ -791,6 +791,7 @@
     "invalid-condition": "不正な条件",
     "invalid-name": "不正な名称",
     "is": "です",
+    "is-entity": "は{{entity}}です",
     "is-not": "ではない",
     "is-not-set": "設定されていない",
     "is-ready-for-preview": "はプレビューの準備ができました",

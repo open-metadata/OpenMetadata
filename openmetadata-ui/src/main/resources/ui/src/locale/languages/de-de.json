@@ -791,6 +791,7 @@
     "invalid-condition": "Ungültige Bedingung",
     "invalid-name": "Ungültiger Name",
     "is": "Ist",
+    "is-entity": "Ist {{entity}}",
     "is-not": "Ist Nicht",
     "is-not-set": "Ist Nicht Festgelegt",
     "is-ready-for-preview": "ist bereit zur Vorschau",
