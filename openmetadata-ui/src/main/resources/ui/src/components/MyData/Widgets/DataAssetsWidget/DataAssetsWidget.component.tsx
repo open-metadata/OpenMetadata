@@ -96,6 +96,18 @@ const DataAssetsWidget = ({
     [setSelectedSortBy]
   );
 
+  const sortedServices = useMemo(() => {
+    switch (selectedSortBy) {
+      case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
+        return [...services].sort((a, b) => a.key.localeCompare(b.key));
+      case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
+        return [...services].sort((a, b) => b.key.localeCompare(a.key));
+      case DATA_ASSETS_SORT_BY_KEYS.LATEST:
+      default:
+        return services;
+    }
+  }, [services, selectedSortBy]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
@@ -121,7 +133,7 @@ const DataAssetsWidget = ({
             'cards-scroll-container flex-1 overflow-y-auto',
             isFullSize ? 'justify-start' : 'justify-center'
           )}>
-          {services.map((service) => (
+          {sortedServices.map((service) => (
             <div
               className="card-wrapper"
               key={service.key}
@@ -134,7 +146,7 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
-    [services]
+    [sortedServices, isFullSize]
   );
 
   const showWidgetFooterMoreButton = useMemo(

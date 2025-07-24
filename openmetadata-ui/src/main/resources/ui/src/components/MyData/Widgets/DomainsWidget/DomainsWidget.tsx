@@ -203,9 +203,7 @@ const DomainsWidget = ({
   );
 
   return (
-    <WidgetWrapper
-      dataLength={domains.length !== 0 ? domains.length : 10}
-      loading={loading}>
+    <WidgetWrapper dataLength={10} loading={loading}>
       <div className="domains-widget-container">
         <WidgetHeader
           currentLayout={currentLayout}
