@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { isEmpty, orderBy, toLower } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
-} from '../../../../enums/common.enum';
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_LARGE,
+} from '../../../../constants/constants';
+import {
+  applySortToData,
+  getSortField,
+  getSortOrder,
+} from '../../../../constants/Widgets.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getDomainList } from '../../../../rest/domainAPI';
+import { searchData } from '../../../../rest/miscAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -53,18 +60,33 @@ const DomainsWidget = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDomains = async () => {
+  const fetchDomains = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getDomainList({ limit: 100, fields: ['assets'] });
-      setDomains(res.data || []);
+      const sortField = getSortField(selectedSortBy);
+      const sortOrder = getSortOrder(selectedSortBy);
+
+      const res = await searchData(
+        '',
+        INITIAL_PAGING_VALUE,
+        PAGE_SIZE_LARGE,
+        '',
+        sortField,
+        sortOrder,
+        SearchIndex.DOMAIN
+      );
+
+      const domains = res?.data?.hits?.hits.map((hit) => hit._source);
+      const sortedDomains = applySortToData(domains, selectedSortBy);
+      setDomains(sortedDomains as Domain[]);
     } catch {
       setError(t('message.fetch-domain-list-error'));
+      setDomains([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
 
   const domainsWidget = useMemo(() => {
     const widget = currentLayout?.find(
@@ -80,27 +102,7 @@ const DomainsWidget = ({
 
   useEffect(() => {
     fetchDomains();
-  }, []);
-
-  const sortedDomains = useMemo(() => {
-    if (selectedSortBy === DOMAIN_SORT_BY_KEYS.LATEST) {
-      return orderBy(domains, [(item) => item.updatedAt], [SORT_ORDER.DESC]);
-    } else if (selectedSortBy === DOMAIN_SORT_BY_KEYS.A_TO_Z) {
-      return orderBy(
-        domains,
-        [(item) => toLower(item.displayName || item.name)],
-        [SORT_ORDER.ASC]
-      );
-    } else if (selectedSortBy === DOMAIN_SORT_BY_KEYS.Z_TO_A) {
-      return orderBy(
-        domains,
-        [(item) => toLower(item.displayName || item.name)],
-        [SORT_ORDER.DESC]
-      );
-    }
-
-    return domains;
-  }, [domains, selectedSortBy]);
+  }, [fetchDomains]);
 
   const handleSortByClick = useCallback((key: string) => {
     setSelectedSortBy(key);
@@ -123,7 +125,7 @@ const DomainsWidget = ({
     () => (
       <div className="entity-list-body">
         <div className="domains-widget-grid">
-          {sortedDomains.map((domain) => (
+          {domains.map((domain) => (
             <div
               className={`domain-card${isFullSize ? ' domain-card-full' : ''}`}
               key={domain.id}>
@@ -179,12 +181,12 @@ const DomainsWidget = ({
         </div>
       </div>
     ),
-    [sortedDomains, isFullSize]
+    [domains, isFullSize]
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && sortedDomains.length > 10,
-    [sortedDomains, loading]
+    () => Boolean(!loading) && domains.length > 10,
+    [domains, loading]
   );
 
   const footer = useMemo(
@@ -192,13 +194,12 @@ const DomainsWidget = ({
       <WidgetFooter
         moreButtonLink="/domain"
         moreButtonText={t('label.view-more-count', {
-          countValue:
-            sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
+          countValue: domains.length > 10 ? domains.length - 10 : undefined,
         })}
         showMoreButton={showWidgetFooterMoreButton}
       />
     ),
-    [t, sortedDomains.length, loading]
+    [t, domains.length, loading]
   );
 
   return (
@@ -232,13 +233,13 @@ const DomainsWidget = ({
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               {error}
             </ErrorPlaceHolder>
-          ) : isEmpty(sortedDomains) ? (
+          ) : isEmpty(domains) ? (
             emptyState
           ) : (
             domainsList
           )}
         </div>
-        {!isEmpty(sortedDomains) && footer}
+        {!isEmpty(domains) && footer}
       </div>
     </WidgetWrapper>
   );
