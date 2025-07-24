@@ -127,9 +127,9 @@
       "description": "Followers of this entity.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain": {
-      "description": "Domain the Security service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the search service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name", "serviceType"],
