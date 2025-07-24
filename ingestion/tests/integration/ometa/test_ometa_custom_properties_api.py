@@ -52,6 +52,7 @@ from metadata.generated.schema.type.customProperties.enumConfig import EnumConfi
 from metadata.generated.schema.type.customProperty import (
     CustomPropertyConfig,
     EntityTypes,
+    Format,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_properties import (
@@ -448,6 +449,7 @@ class OMetaCustomAttributeTest(TestCase):
                 propertyType=self.metadata.get_property_type_ref(
                     CustomPropertyDataTypes.DATE
                 ),
+                customPropertyConfig=CustomPropertyConfig(config=Format("yyyy-MM-dd")),
             ),
         )
         self.metadata.create_or_update_custom_property(
@@ -462,6 +464,9 @@ class OMetaCustomAttributeTest(TestCase):
                 description="Date and time when the table was last modified",
                 propertyType=self.metadata.get_property_type_ref(
                     CustomPropertyDataTypes.DATETIME
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 ),
             ),
         )
@@ -478,6 +483,7 @@ class OMetaCustomAttributeTest(TestCase):
                 propertyType=self.metadata.get_property_type_ref(
                     CustomPropertyDataTypes.TIME
                 ),
+                customPropertyConfig=CustomPropertyConfig(config=Format("HH:mm:ss")),
             ),
         )
         self.metadata.create_or_update_custom_property(
@@ -514,53 +520,90 @@ class OMetaCustomAttributeTest(TestCase):
         Test creating custom properties for all available data types
         """
         test_cases = [
-            (CustomPropertyDataTypes.STRING, "TestString", "String test property"),
-            (CustomPropertyDataTypes.INTEGER, "TestInteger", "Integer test property"),
+            (
+                CustomPropertyDataTypes.STRING,
+                "TestString",
+                "String test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.INTEGER,
+                "TestInteger",
+                "Integer test property",
+                None,
+            ),
             (
                 CustomPropertyDataTypes.MARKDOWN,
                 "TestMarkdown",
                 "Markdown test property",
+                None,
             ),
-            (CustomPropertyDataTypes.DATE, "TestDate", "Date test property"),
+            (
+                CustomPropertyDataTypes.DATE,
+                "TestDate",
+                "Date test property",
+                "yyyy-MM-dd",
+            ),
             (
                 CustomPropertyDataTypes.DATETIME,
                 "TestDateTime",
                 "DateTime test property",
+                "yyyy-MM-dd HH:mm:ss",
             ),
-            (CustomPropertyDataTypes.TIME, "TestTime", "Time test property"),
+            (
+                CustomPropertyDataTypes.TIME,
+                "TestTime",
+                "Time test property",
+                "HH:mm:ss",
+            ),
             (
                 CustomPropertyDataTypes.DURATION,
                 "TestDuration",
                 "Duration test property",
+                None,
             ),
-            (CustomPropertyDataTypes.EMAIL, "TestEmail", "Email test property"),
-            (CustomPropertyDataTypes.NUMBER, "TestNumber", "Number test property"),
+            (CustomPropertyDataTypes.EMAIL, "TestEmail", "Email test property", None),
+            (
+                CustomPropertyDataTypes.NUMBER,
+                "TestNumber",
+                "Number test property",
+                None,
+            ),
             (
                 CustomPropertyDataTypes.SQLQUERY,
                 "TestSqlQuery",
                 "SQL Query test property",
+                None,
             ),
             (
                 CustomPropertyDataTypes.TIMEINTERVAL,
                 "TestTimeInterval",
                 "Time Interval test property",
+                None,
             ),
             (
                 CustomPropertyDataTypes.TIMESTAMP,
                 "TestTimestamp",
                 "Timestamp test property",
+                None,
             ),
         ]
 
-        for data_type, name, description in test_cases:
+        for data_type, name, description, custom_property_config in test_cases:
             with self.subTest(data_type=data_type):
+                create_custom_property_request = CreateCustomPropertyRequest(
+                    name=name,
+                    description=description,
+                    propertyType=self.metadata.get_property_type_ref(data_type),
+                )
+                # For date/time custom properties, we need to add the format to the custom property config
+                if custom_property_config:
+                    create_custom_property_request.customPropertyConfig = (
+                        CustomPropertyConfig(config=Format(custom_property_config))
+                    )
                 property_request = OMetaCustomProperties(
                     entity_type=Table,
-                    createCustomPropertyRequest=CreateCustomPropertyRequest(
-                        name=name,
-                        description=description,
-                        propertyType=self.metadata.get_property_type_ref(data_type),
-                    ),
+                    createCustomPropertyRequest=create_custom_property_request,
                 )
 
                 # This should not raise an exception
@@ -576,7 +619,7 @@ class OMetaCustomAttributeTest(TestCase):
 
         created_properties = {cp["name"]: cp for cp in custom_properties}
 
-        for data_type, name, description in test_cases:
+        for data_type, name, description, _ in test_cases:
             with self.subTest(data_type=data_type, name=name):
                 self.assertIn(name, created_properties)
                 prop = created_properties[name]
@@ -632,15 +675,18 @@ class OMetaCustomAttributeTest(TestCase):
             CustomPropertyDataTypes.TIME
         )
 
-        # These should not be None and should have the correct names
+        # These should not be None and should have the correct structure
         self.assertIsNotNone(date_type_ref)
         self.assertIsNotNone(datetime_type_ref)
         self.assertIsNotNone(time_type_ref)
 
-        # Verify the type names match the enum values
-        self.assertEqual(date_type_ref.name, "date-cp")
-        self.assertEqual(datetime_type_ref.name, "dateTime-cp")
-        self.assertEqual(time_type_ref.name, "time-cp")
+        # Verify the type references have the correct structure (EntityReference with id and type)
+        self.assertIsNotNone(date_type_ref.root.id)
+        self.assertEqual(date_type_ref.root.type, "type")
+        self.assertIsNotNone(datetime_type_ref.root.id)
+        self.assertEqual(datetime_type_ref.root.type, "type")
+        self.assertIsNotNone(time_type_ref.root.id)
+        self.assertEqual(time_type_ref.root.type, "type")
 
     def test_custom_property_data_types_completeness(self):
         """
@@ -697,13 +743,34 @@ class OMetaCustomAttributeTest(TestCase):
         ]
 
         for data_type, name, description in properties_to_create:
+            create_request = CreateCustomPropertyRequest(
+                name=name,
+                description=description,
+                propertyType=self.metadata.get_property_type_ref(data_type),
+            )
+
+            # Add format configuration for date/time properties
+            if data_type in [
+                CustomPropertyDataTypes.DATE,
+                CustomPropertyDataTypes.DATETIME,
+                CustomPropertyDataTypes.TIME,
+            ]:
+                if data_type == CustomPropertyDataTypes.DATE:
+                    create_request.customPropertyConfig = CustomPropertyConfig(
+                        config=Format("yyyy-MM-dd")
+                    )
+                elif data_type == CustomPropertyDataTypes.DATETIME:
+                    create_request.customPropertyConfig = CustomPropertyConfig(
+                        config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    )
+                elif data_type == CustomPropertyDataTypes.TIME:
+                    create_request.customPropertyConfig = CustomPropertyConfig(
+                        config=Format("HH:mm:ss")
+                    )
+
             property_request = OMetaCustomProperties(
                 entity_type=Table,
-                createCustomPropertyRequest=CreateCustomPropertyRequest(
-                    name=name,
-                    description=description,
-                    propertyType=self.metadata.get_property_type_ref(data_type),
-                ),
+                createCustomPropertyRequest=create_request,
             )
 
             self.metadata.create_or_update_custom_property(
@@ -741,4 +808,6 @@ class OMetaCustomAttributeTest(TestCase):
         for data_type in CustomPropertyDataTypes:
             type_ref = self.metadata.get_property_type_ref(data_type)
             self.assertIsNotNone(type_ref)
-            self.assertEqual(type_ref.name, data_type.value)
+            # Verify the type reference has the correct structure
+            self.assertIsNotNone(type_ref.root.id)
+            self.assertEqual(type_ref.root.type, "type")
