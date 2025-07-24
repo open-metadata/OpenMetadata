@@ -1,0 +1,115 @@
+source:
+  type: grafana
+  serviceName: local_grafana
+  serviceConnection:
+    config:
+      type: Grafana
+      # Grafana instance URL
+      hostPort: http://localhost:3000
+      # Service Account Token - requires Admin role for full access
+      # Create at: Configuration -> Service accounts -> Add service account
+      apiKey: ${GRAFANA_API_KEY}  # e.g., glsa_xxxxxxxxxxxxxxxxxxxx
+      # SSL verification for HTTPS connections
+      verifySSL: true
+      # Items per API page (for large instances)
+      pageSize: 100
+  sourceConfig:
+    config:
+      type: DashboardMetadata
+      # Optional: Filter dashboards by name pattern
+      # dashboardFilterPattern:
+      #   includes:
+      #     - ".*production.*"
+      #     - ".*analytics.*"
+      #   excludes:
+      #     - ".*test.*"
+      #     - ".*dev.*"
+      
+      # Optional: Filter charts/panels by name pattern
+      # chartFilterPattern:
+      #   excludes:
+      #     - ".*debug.*"
+      
+      # Include Grafana tags as OpenMetadata tags
+      includeTags: true
+      
+      # Optional: Database service name for lineage
+      # If panels contain SQL queries, this will create lineage to tables
+      # dbServiceName: my_postgres_service
+      
+      # Enable/disable specific metadata
+      includeOwners: true
+      includeDataModels: false
+      includeDraftDashboard: false
+      
+      # Limit the ingestion to specific projects/folders
+      # projectFilterPattern:
+      #   includes:
+      #     - ".*Marketing.*"
+      #     - ".*Sales.*"
+
+sink:
+  type: metadata-rest
+  config:
+    api_endpoint: http://localhost:8585/api
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ${OM_JWT_TOKEN}
+
+# Advanced Configuration Examples:
+
+# 1. Production Environment with Filters
+# source:
+#   type: grafana
+#   serviceName: grafana_prod
+#   serviceConnection:
+#     config:
+#       type: Grafana
+#       hostPort: https://grafana.company.com
+#       apiKey: ${GRAFANA_PROD_API_KEY}
+#       verifySSL: true
+#   sourceConfig:
+#     config:
+#       type: DashboardMetadata
+#       dashboardFilterPattern:
+#         includes:
+#           - "^(Production|Prod).*"
+#       includeTags: true
+#       dbServiceName: production_postgres
+
+# 2. Development Environment with Self-Signed Cert
+# source:
+#   type: grafana
+#   serviceName: grafana_dev
+#   serviceConnection:
+#     config:
+#       type: Grafana
+#       hostPort: https://grafana-dev.internal.com
+#       apiKey: ${GRAFANA_DEV_API_KEY}
+#       verifySSL: false  # For self-signed certificates
+#   sourceConfig:
+#     config:
+#       type: DashboardMetadata
+#       includeDraftDashboard: true
+
+# 3. Multi-Database Lineage Setup
+# source:
+#   type: grafana
+#   serviceName: grafana_analytics
+#   serviceConnection:
+#     config:
+#       type: Grafana
+#       hostPort: https://analytics.grafana.com
+#       apiKey: ${GRAFANA_ANALYTICS_KEY}
+#   sourceConfig:
+#     config:
+#       type: DashboardMetadata
+#       # Use dbServiceName pattern to map different folders to different databases
+#       # Folder "MySQL Dashboards" -> mysql_service
+#       # Folder "PostgreSQL Dashboards" -> postgres_service
+#       dbServiceName: "{folder_name}_service"
