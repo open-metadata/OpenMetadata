@@ -1,5 +1,6 @@
 ---
-title: testCaseResolutionStatus
+title: testCaseResolutionStatus | Official Documentation
+description: Track the resolution status of test cases to manage test progress and compliance reporting.
 slug: /main-concepts/metadata-standard/schemas/tests/testcaseresolutionstatus
 ---
 

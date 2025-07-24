@@ -1,5 +1,6 @@
 ---
 title: Create Table Profile | OpenMetadata Table Profile API
+description: Create a profile for a table including column-level metrics, data distributions, null counts, and profiling run details.
 slug: /main-concepts/metadata-standard/schemas/api/data/createtableprofile
 ---
 
