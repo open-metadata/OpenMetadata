@@ -15,20 +15,45 @@
 .customise-landing-page {
   margin: 0;
   padding: @padding-mlg;
-  border-radius: @border-radius-xl;
+  border-radius: @border-radius-lg;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.landing-page-header-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  opacity: 0.15;
+  pointer-events: none;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .header-container {
-  display: flex;
   align-items: flex-start;
+  display: flex;
   gap: @size-mlg;
+  justify-content: center;
   width: 100%;
 }
 
-.dashboardHeader {
+.dashboard-header {
+  max-width: 70%;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
   flex: 3.5;
   min-width: 0;
-  padding: 4.25rem 4.375rem 1.25rem 2.75rem;
+  padding: 1.75rem 4.375rem 1.25rem 2.75rem;
 
   .welcome-user {
     font-size: @size-xl;
@@ -46,6 +71,11 @@
   .customise-header-btn:focus {
     background-color: transparent;
     border: 1px solid @grey-25;
+  }
+
+  .disabled {
+    cursor: not-allowed;
+    pointer-events: none;
   }
 }
 
@@ -66,6 +96,8 @@
   flex-shrink: 0;
   white-space: nowrap;
   cursor: pointer;
+  padding-top: 17px;
+  padding-bottom: 17px;
 
   .domain-icon,
   .dropdown-icon {
@@ -85,30 +117,118 @@
   }
 }
 
+// Carousel styles
+.ant-carousel {
+  max-height: 125px;
+  width: 100%;
+  margin-bottom: @size-xl;
+  padding-bottom: @padding-xss;
+
+  .slick-slide {
+    vertical-align: top;
+    padding: 0 @padding-xs;
+  }
+
+  .slick-arrow {
+    color: @white;
+    font-size: @size-lg;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: @white;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    &.slick-prev {
+      left: -@size-lg;
+    }
+
+    &.slick-next {
+      right: -@size-lg;
+    }
+
+    &::before {
+      color: @white;
+      font-size: @size-lg;
+    }
+  }
+}
+
+.custom-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: @size-xl;
+  height: @size-xl;
+  background-color: @white-alpha-10;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: @white !important;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    fill: @white;
+  }
+}
+
+.right-arrow {
+  right: -42px;
+}
+
+.left-arrow {
+  left: -@size-xl;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.recently-viewed-data-carousel {
+  max-height: 125px;
+  .slick-dots {
+    bottom: -@size-sm !important;
+  }
+}
+
+.slick-list-center {
+  .slick-list {
+    max-height: 125px;
+  }
+}
+
 .customise-recently-viewed-data {
   width: 100%;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 50px;
-  overflow-x: auto;
-  white-space: nowrap;
-  padding-bottom: @padding-xss;
-  margin-bottom: @size-xl;
+  gap: @size-xl;
 
   .recent-item {
     flex-shrink: 0;
-    width: 85px;
+    width: 118px;
+    padding: @padding-sm;
+    border-radius: @border-radius-sm;
+
+    &:hover {
+      cursor: pointer;
+      background-color: #ffffff4d;
+    }
   }
 
   .entity-icon-container {
-    width: 56px;
-    height: 56px;
-    border-radius: 40px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
     background-color: @primary-button-background;
 
     .entity-icon {
-      width: 40px;
-      height: 40px;
+      width: @size-lg;
+      height: @size-lg;
       margin-right: inherit;
     }
   }

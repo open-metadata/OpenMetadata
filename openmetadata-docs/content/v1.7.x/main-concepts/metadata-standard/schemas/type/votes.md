@@ -1,5 +1,5 @@
 ---
-title: votes
+title: Votes | Official Documentation
 description: Explore OpenMetadata's voting schema types and data structures. Learn how to implement user feedback systems with comprehensive vote metadata standards.
 slug: /main-concepts/metadata-standard/schemas/type/votes
 ---
