@@ -109,9 +109,8 @@ for (const EntityClass of entities) {
           await rearrangeNodes(page);
         }
 
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
-        await visitLineageTab(page);
+        await page.reload();
+        await page.waitForLoadState('networkidle');
         await page.click('[data-testid="edit-lineage"]');
         await page.getByTestId('fit-screen').click();
 
@@ -149,9 +148,6 @@ for (const EntityClass of entities) {
       });
 
       await test.step('Should create pipeline between entities', async () => {
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
-        await visitLineageTab(page);
         await editLineage(page);
         await page.getByTestId('fit-screen').click();
 
@@ -161,25 +157,17 @@ for (const EntityClass of entities) {
       });
 
       await test.step('Verify Lineage Export CSV', async () => {
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
-        await visitLineageTab(page);
+        await page.click('[data-testid="edit-lineage"]');
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
       await test.step('Verify Lineage Export PNG', async () => {
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
-        await visitLineageTab(page);
         await verifyExportLineagePNG(page);
       });
 
       await test.step(
         'Remove lineage between nodes for the entity',
         async () => {
-          await redirectToHomePage(page);
-          await currentEntity.visitEntityPageWithCustomSearchBox(page);
-          await visitLineageTab(page);
           await editLineage(page);
           await performZoomOut(page);
 
@@ -190,9 +178,7 @@ for (const EntityClass of entities) {
       );
 
       await test.step('Verify Lineage Config', async () => {
-        await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
-        await visitLineageTab(page);
+        await page.click('[data-testid="edit-lineage"]');
         await verifyLineageConfig(page);
       });
     } finally {
