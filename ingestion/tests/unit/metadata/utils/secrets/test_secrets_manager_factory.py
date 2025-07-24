@@ -66,9 +66,15 @@ class TestSecretsManagerFactory(TestCase):
         )
 
     @patch.dict(os.environ, {"AZURE_KEY_VAULT_NAME": "test"})
+    @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
+    @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
     @patch("metadata.clients.aws_client.boto3")
-    def test_all_providers_has_implementation(self, mocked_boto3):
+    def test_all_providers_has_implementation(
+        self, mocked_boto3, mocked_k8s_client, mocked_k8s_config
+    ):
         mocked_boto3.s3_client.return_value = {}
+        # Mock Kubernetes client
+        mocked_k8s_client.CoreV1Api.return_value = None
         secret_manager_providers = [
             secret_manager_provider
             for secret_manager_provider in SecretsManagerProvider

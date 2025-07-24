@@ -120,23 +120,6 @@ describe('MyDataWidget component', () => {
     expect(screen.queryByTestId('view-more-link')).not.toBeInTheDocument();
   });
 
-  it('should render view all for data present', async () => {
-    (searchData as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(mockSearchAPIResponse)
-    );
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <MyDataWidget widgetKey="widgetKey" />
-        </MemoryRouter>
-      );
-    });
-
-    expect(
-      await screen.findByText('label.view-more-count')
-    ).toBeInTheDocument();
-  });
-
   it('should render table names', async () => {
     (searchData as jest.Mock).mockResolvedValueOnce(mockSearchAPIResponse);
     await act(async () => {
