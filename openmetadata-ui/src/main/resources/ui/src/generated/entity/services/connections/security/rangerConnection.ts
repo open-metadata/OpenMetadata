@@ -17,25 +17,15 @@ export interface RangerConnection {
     /**
      * Authentication type to connect to Apache Ranger.
      */
-    authType:             AuthenticationType;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    authType: AuthenticationType;
     /**
      * Apache Ranger Admin URL.
      */
     hostPort: string;
     /**
-     * SSL Configuration for Apache Ranger
-     */
-    sslConfig?: Config;
-    /**
      * Service Type
      */
     type?: RangerType;
-    /**
-     * Flag to verify SSL Certificate for Apache Ranger.
-     */
-    verifySSL?: VerifySSL;
 }
 
 /**
@@ -62,43 +52,10 @@ export interface AuthenticationType {
 }
 
 /**
- * SSL Configuration for Apache Ranger
- *
- * Client SSL configuration
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface Config {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Service Type
  *
  * Apache Ranger service type
  */
 export enum RangerType {
     Ranger = "Ranger",
-}
-
-/**
- * Flag to verify SSL Certificate for Apache Ranger.
- *
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
- */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
 }

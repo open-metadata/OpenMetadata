@@ -100,7 +100,6 @@ import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import securitySafe from '../assets/svg/security-safe.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
-import ranger from '../assets/svg/service-icon-ranger.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
@@ -212,7 +211,6 @@ export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
 export const COCKROACH = cockroach;
-export const RANGER = ranger;
 export const SECURITY_DEFAULT = securitySafe;
 export const excludedService = [
   MlModelServiceType.Sklearn,

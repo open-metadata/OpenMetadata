@@ -2689,8 +2689,6 @@ export interface ConfigClass {
      * SSL Configuration details.
      *
      * SSL Configuration for OpenMetadata Server
-     *
-     * SSL Configuration for Apache Ranger
      */
     sslConfig?: SSLConfigObject;
     /**
@@ -2698,8 +2696,6 @@ export interface ConfigClass {
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
-     *
-     * Flag to verify SSL Certificate for Apache Ranger.
      */
     verifySSL?: boolean | VerifySSL;
     /**
@@ -4219,8 +4215,6 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration for OpenMetadata Server
  *
- * SSL Configuration for Apache Ranger
- *
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface ConsumerConfigSSLClass {
@@ -4649,8 +4643,6 @@ export enum ConnectionScheme {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
- *
- * SSL Configuration for Apache Ranger
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4696,8 +4688,6 @@ export enum ConnectionType {
  * Client SSL verification. Make sure to configure the SSLConfig if enabled.
  *
  * Flag to verify SSL Certificate for OpenMetadata Server.
- *
- * Flag to verify SSL Certificate for Apache Ranger.
  */
 export enum VerifySSL {
     Ignore = "ignore",
@@ -5336,8 +5326,6 @@ export enum SpaceType {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
- *
- * SSL Configuration for Apache Ranger
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
