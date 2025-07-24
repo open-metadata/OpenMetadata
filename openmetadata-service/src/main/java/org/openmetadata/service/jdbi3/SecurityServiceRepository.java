@@ -193,7 +193,7 @@ public class SecurityServiceRepository
           .withTags(
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION))))
-          .withDomain(getEntityReference(printer, csvRecord, 6, Entity.DOMAIN));
+          .withDomains(getDomains(printer, csvRecord, 6));
 
       if (processRecord) {
         createEntity(printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
@@ -211,9 +211,9 @@ public class SecurityServiceRepository
       addTagLabels(recordList, entity.getTags());
       addField(
           recordList,
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+          entity.getDomains() == null || Boolean.TRUE.equals(entity.getDomains().get(0).getInherited())
               ? ""
-              : entity.getDomain().getFullyQualifiedName());
+              : entity.getDomains().get(0).getFullyQualifiedName());
       addField(recordList, ""); // dataProducts - placeholder for future use
       addRecord(csvFile, recordList);
     }

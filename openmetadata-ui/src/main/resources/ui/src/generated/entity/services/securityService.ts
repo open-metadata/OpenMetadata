@@ -37,9 +37,9 @@ export interface SecurityService {
      */
     displayName?: string;
     /**
-     * Domain the Security service belongs to.
+     * Domains the search service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Followers of this entity.
      */
@@ -238,8 +238,6 @@ export enum Type {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Security service belongs to.
  */
 export interface EntityReference {
     /**
