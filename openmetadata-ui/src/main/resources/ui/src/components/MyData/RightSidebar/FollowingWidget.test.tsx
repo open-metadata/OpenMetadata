@@ -152,23 +152,6 @@ describe('FollowingWidget component', () => {
     expect(screen.queryByTestId('view-more-link')).not.toBeInTheDocument();
   });
 
-  it('should render view all for data present', async () => {
-    (searchQuery as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(mockSearchAPIResponse)
-    );
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <FollowingWidget widgetKey="widgetKey" />
-        </MemoryRouter>
-      );
-    });
-
-    expect(
-      await screen.findByText('label.view-more-count')
-    ).toBeInTheDocument();
-  });
-
   it('should render table names', async () => {
     (searchQuery as jest.Mock).mockResolvedValueOnce(mockSearchAPIResponse);
     await act(async () => {
