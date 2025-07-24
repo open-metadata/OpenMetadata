@@ -328,6 +328,30 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                     ingestionPipeline.getFullyQualifiedName(),
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
+
+    // BEGIN added logging for debugging summary counts
+    if (pipelineStatus.getStatus() != null) {
+      pipelineStatus
+          .getStatus()
+          .forEach(
+              step ->
+                  log.info(
+                      "Received PipelineStatus for pipeline [{}] run [{}] step [{}] -> records: {}, errors: {}, warnings: {}",
+                      fqn,
+                      pipelineStatus.getRunId(),
+                      step.getName(),
+                      step.getRecords(),
+                      step.getErrors(),
+                      step.getWarnings()));
+    } else {
+      log.info(
+          "Received PipelineStatus for pipeline [{}] run [{}] with no step summaries. State: {}",
+          fqn,
+          pipelineStatus.getRunId(),
+          pipelineStatus.getPipelineState());
+    }
+    // END added logging
+
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()

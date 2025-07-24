@@ -275,6 +275,16 @@ function IngestionListTable({
     }
   }, [ingestionPagingInfo?.paging]);
 
+  useEffect(() => {
+    // Refresh recent run details (and status counts) whenever a pipeline run that
+    // belongs to this table finishes and we are asked to fetch its status.
+    // `pipelineIdToFetchStatus` is set by parent components (e.g. after deploy/trigger)
+    // and cleared again once the fetch is complete inside `IngestionRecentRuns`.
+    if (pipelineIdToFetchStatus) {
+      fetchIngestionPipelineExtraDetails();
+    }
+  }, [pipelineIdToFetchStatus]);
+
   const renderActionsField = useCallback(
     (_: string, record: IngestionPipeline) => {
       if (isFetchingStatus) {
