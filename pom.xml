@@ -947,9 +947,7 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
-              <include>org.openmetadata.service.resources.**.*.java</include>
-              <include>org.openmetadata.service.util.*.java</include>
-              <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
+              <include>org.openmetadata.service.**.java</include>
             </includes>
           </configuration>
         </plugin>
