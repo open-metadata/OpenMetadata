@@ -24,7 +24,6 @@ import {
 import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
-import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
 import {
@@ -236,16 +235,14 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <Widget
-        currentLayout={currentLayout}
-        handleLayoutUpdate={handleLayoutUpdate}
-        handleRemoveWidget={handleRemoveWidget}
-        isEditView={isEditView}
-        selectedGridSize={widgetConfig.w}
-        widgetKey={widgetConfig.i}
-      />
-    </AdvanceSearchProvider>
+    <Widget
+      currentLayout={currentLayout}
+      handleLayoutUpdate={handleLayoutUpdate}
+      handleRemoveWidget={handleRemoveWidget}
+      isEditView={isEditView}
+      selectedGridSize={widgetConfig.w}
+      widgetKey={widgetConfig.i}
+    />
   );
 };
 
