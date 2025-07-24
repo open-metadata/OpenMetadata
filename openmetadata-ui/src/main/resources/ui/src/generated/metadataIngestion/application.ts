@@ -22,7 +22,7 @@ export interface Application {
     /**
      * External Application Private configuration
      */
-    appPrivateConfig?: PrivateConfig;
+    appPrivateConfig?: CollateAIAppPrivateConfig | string;
     /**
      * Fully qualified name of ingestion pipeline, used to identify the current ingestion
      * pipeline
@@ -753,11 +753,9 @@ export enum Type {
 }
 
 /**
- * External Application Private configuration
- *
  * Private Configuration for the CollateAI External Application.
  */
-export interface PrivateConfig {
+export interface CollateAIAppPrivateConfig {
     /**
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
