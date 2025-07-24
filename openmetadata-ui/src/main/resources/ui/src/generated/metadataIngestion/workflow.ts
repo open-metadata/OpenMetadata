@@ -3647,6 +3647,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
