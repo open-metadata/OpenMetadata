@@ -82,7 +82,6 @@ import {
   PRESTO,
   QLIK_SENSE,
   QUICKSIGHT,
-  RANGER,
   REDASH,
   REDPANDA,
   REDSHIFT,
@@ -598,9 +597,6 @@ class ServiceUtilClassBase {
 
       case this.ApiServiceTypeSmallCase.REST:
         return REST_SERVICE;
-
-      case this.SecurityServiceTypeSmallCase.Ranger:
-        return RANGER;
 
       case this.DashboardServiceTypeSmallCase.MicroStrategy:
         return MICROSTRATEGY;

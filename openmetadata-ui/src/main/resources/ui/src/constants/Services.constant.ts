@@ -501,6 +501,8 @@ export const SERVICE_TYPES = [
   EntityType.SECURITY_SERVICE,
 ];
 
+export const EXCLUDE_AUTO_PILOT_SERVICE_TYPES = [EntityType.SECURITY_SERVICE];
+
 export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Metadata,
   PipelineType.Usage,

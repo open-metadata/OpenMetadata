@@ -211,7 +211,8 @@ public class SecurityServiceRepository
       addTagLabels(recordList, entity.getTags());
       addField(
           recordList,
-          entity.getDomains() == null || Boolean.TRUE.equals(entity.getDomains().get(0).getInherited())
+          entity.getDomains() == null
+                  || Boolean.TRUE.equals(entity.getDomains().get(0).getInherited())
               ? ""
               : entity.getDomains().get(0).getFullyQualifiedName());
       addField(recordList, ""); // dataProducts - placeholder for future use
