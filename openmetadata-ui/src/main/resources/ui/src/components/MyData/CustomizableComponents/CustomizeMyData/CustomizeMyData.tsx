@@ -200,7 +200,7 @@ function CustomizeMyData({
   return (
     <>
       <PageLayoutV1
-        className="p-t-box customise-my-data"
+        className="p-box customise-my-data"
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
