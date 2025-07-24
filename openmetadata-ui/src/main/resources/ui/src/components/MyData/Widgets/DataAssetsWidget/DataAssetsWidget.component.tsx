@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ROUTES } from '../../../../constants/constants';
@@ -48,7 +47,6 @@ const DataAssetsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
@@ -110,18 +108,13 @@ const DataAssetsWidget = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonText={t('label.add-entity', {
-          entity: t('label.data-asset-plural'),
-        })}
-        description={t('message.no-data-assets-message')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
         title={t('message.no-data-assets-yet')}
-        onActionClick={() => navigate(ROUTES.EXPLORE)}
       />
     ),
-    [t, navigate]
+    [t]
   );
 
   const dataAssetsContent = useMemo(

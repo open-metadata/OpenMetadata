@@ -26,7 +26,10 @@ import {
 } from 'recharts';
 import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
-import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
+import {
+  CHART_WIDGET_DAYS_DURATION,
+  ROUTES,
+} from '../../../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -183,8 +186,8 @@ const KPIWidget = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink="/data-insights/kpi"
-        actionButtonText={t('label.explore-metric-plural')}
+        actionButtonLink={ROUTES.KPI_LIST}
+        actionButtonText={t('label.set-up-kpi')}
         description={t('message.no-kpi')}
         icon={<KPINoDataPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />}
         title={t('label.no-kpis-yet')}

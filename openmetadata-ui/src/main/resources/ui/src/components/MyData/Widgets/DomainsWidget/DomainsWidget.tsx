@@ -19,6 +19,7 @@ import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_LARGE,
+  ROUTES,
 } from '../../../../constants/constants';
 import {
   applySortToData,
@@ -111,8 +112,8 @@ const DomainsWidget = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink="/domain"
-        actionButtonText="Explore Domain"
+        actionButtonLink={ROUTES.DOMAIN}
+        actionButtonText={t('label.explore-domain')}
         description={t('message.domains-no-data-message')}
         icon={<DomainNoDataPlaceholder />}
         title={t('label.no-domains-yet')}
