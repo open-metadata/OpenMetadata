@@ -1,5 +1,6 @@
 ---
 title: Test Resolved | OpenMetadata Test Resolved Details
+description: Resolved test schema provides full test results including success, failures, and detailed assertions.
 slug: /main-concepts/metadata-standard/schemas/tests/resolved
 ---
 
