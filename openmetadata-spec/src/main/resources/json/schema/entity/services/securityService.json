@@ -14,8 +14,12 @@
       "title": "Security Service Type",
       "description": "Type of security service - Apache Ranger, etc.",
       "type": "string",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Ranger"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "enum": [
+        "Ranger"
+      ],
       "javaEnums": [
         {
           "name": "Ranger"
@@ -130,8 +134,16 @@
     "domains": {
       "description": "Domains the search service belongs to.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner": {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": [
+    "id",
+    "name",
+    "serviceType"
+  ],
   "additionalProperties": false
 }
