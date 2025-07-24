@@ -12,6 +12,7 @@
  */
 import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
+import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
@@ -135,6 +136,34 @@ export const getRelativeTime = (timeStamp?: number): string => {
     : '';
 };
 
+/**
+ * Returns a relative time like "10 mins ago" by converting the long form from Luxon.
+ * Falls back to "" if timestamp is undefined or too recent.
+ */
+export const getShortRelativeTime = (timeStamp?: number): string => {
+  if (isNil(timeStamp)) {
+    return '';
+  }
+
+  const longForm = getRelativeTime(timeStamp); // e.g. "10 minutes ago"
+
+  if (!longForm) {
+    return '';
+  }
+
+  // Replace long time units with short ones
+  const shortForm = longForm
+    .split(' ')
+    .map(
+      (word) =>
+        DATE_TIME_SHORT_UNITS[
+          word.toUpperCase() as keyof typeof DATE_TIME_SHORT_UNITS
+        ] || word
+    )
+    .join(' ');
+
+  return shortForm;
+};
 /**
  *
  * @param timeStamp

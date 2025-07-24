@@ -44,6 +44,8 @@ export const CustomizablePageHeader = ({
     'reset' | 'close'
   >('close');
 
+  const isLandingPage = currentPageType === PageType.LandingPage;
+
   const handleCancel = () => {
     // Go back in history
     navigate(-1);
@@ -88,12 +90,11 @@ export const CustomizablePageHeader = ({
   const i18Values = useMemo(
     () => ({
       persona: personaName,
-      entity:
-        currentPageType === PageType.LandingPage
-          ? t('label.landing-page')
-          : t(`label.${kebabCase(currentPageType as string)}`),
+      entity: isLandingPage
+        ? t('label.homepage')
+        : t(`label.${kebabCase(currentPageType as string)}`),
     }),
-    [personaName]
+    [personaName, isLandingPage]
   );
 
   const handleClose = useCallback(() => {
@@ -112,12 +113,18 @@ export const CustomizablePageHeader = ({
             data-testid="customize-page-title"
             level={5}>
             {t('label.customize-entity', {
-              entity: t(`label.${kebabCase(currentPageType as string)}`),
+              entity: isLandingPage
+                ? t('label.homepage')
+                : t(`label.${kebabCase(currentPageType as string)}`),
             })}
           </Typography.Title>
           <Typography.Paragraph className="m-0">
             <Transi18next
-              i18nKey="message.customize-entity-landing-page-header-for-persona"
+              i18nKey={
+                isLandingPage
+                  ? 'message.customize-homepage-page-header-for-persona'
+                  : 'message.customize-entity-landing-page-header-for-persona'
+              }
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />

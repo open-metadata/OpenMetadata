@@ -27,7 +27,7 @@ jest.mock('react-i18next', () => ({
 
 // Mock utility functions
 jest.mock('../../../../../utils/date-time/DateTimeUtils', () => ({
-  getRelativeTime: jest.fn(() => '2022-08-03'),
+  getShortRelativeTime: jest.fn(() => '12 hrs ago'),
 }));
 
 jest.mock('../../../../../utils/EntityUtilClassBase', () => ({

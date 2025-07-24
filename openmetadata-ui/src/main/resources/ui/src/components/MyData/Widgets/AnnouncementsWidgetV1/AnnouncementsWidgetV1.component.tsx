@@ -29,15 +29,17 @@ import './announcements-widget-v1.less';
 
 export interface AnnouncementsWidgetV1Props {
   announcements?: Thread[];
-  loading?: boolean;
   currentBackgroundColor?: string;
+  disabled?: boolean;
+  loading?: boolean;
   onClose: () => void;
 }
 
 const AnnouncementsWidgetV1 = ({
   announcements = [],
-  loading = false,
   currentBackgroundColor,
+  disabled = false,
+  loading = false,
   onClose,
 }: AnnouncementsWidgetV1Props) => {
   const { t } = useTranslation();
@@ -89,6 +91,7 @@ const AnnouncementsWidgetV1 = ({
           <Button
             className="close-button"
             data-testid="announcements-widget-v1-close"
+            disabled={disabled}
             icon={<CloseOutlined />}
             type="text"
             onClick={handleClose}
@@ -101,6 +104,7 @@ const AnnouncementsWidgetV1 = ({
               <AnnouncementCardV1
                 announcement={announcement}
                 currentBackgroundColor={bgColor}
+                disabled={disabled}
                 key={announcement.id}
                 onClick={() => handleAnnouncementClick(announcement)}
               />

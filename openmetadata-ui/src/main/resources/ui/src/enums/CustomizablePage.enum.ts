@@ -19,6 +19,7 @@ export enum WidgetWidths {
 
 export enum LandingPageWidgetKeys {
   ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed',
+  ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   CURATED_ASSETS = 'KnowledgePanel.CuratedAssets',
   DATA_ASSETS = 'KnowledgePanel.DataAssets',
   DOMAINS = 'KnowledgePanel.Domains',
@@ -27,6 +28,7 @@ export enum LandingPageWidgetKeys {
   KPI = 'KnowledgePanel.KPI',
   MY_DATA = 'KnowledgePanel.MyData',
   MY_TASK = 'KnowledgePanel.MyTask',
+  PIPELINE = 'KnowledgePanel.Pipeline',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
 }

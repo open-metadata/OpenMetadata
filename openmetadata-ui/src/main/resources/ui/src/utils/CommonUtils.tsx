@@ -862,3 +862,12 @@ export const calculatePercentage = (
 
   return round((numerator / denominator) * 100, precision);
 };
+
+/**
+ * Check if the color is a linear gradient
+ * @param color - Color string
+ * @returns {boolean} - True if the color is a linear gradient, false otherwise
+ */
+export const isLinearGradient = (color: string) => {
+  return color.toLowerCase().includes('linear-gradient');
+};

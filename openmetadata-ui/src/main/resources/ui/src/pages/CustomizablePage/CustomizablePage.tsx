@@ -120,8 +120,7 @@ export const CustomizablePage = () => {
             : t('label.created-lowercase'),
         })
       );
-    } catch (error) {
-      // Error
+    } catch {
       showErrorToast(
         t('server.page-layout-operation-error', {
           operation: document.id
@@ -185,31 +184,32 @@ export const CustomizablePage = () => {
       let response: Document;
       const newDoc = cloneDeep(document);
 
-      newDoc.data.personPreferences = document.id
-        ? newDoc.data.personPreferences.map((persona: PersonaPreferences) => {
-            if (persona.personaId === personaDetails?.id) {
-              return {
-                ...persona,
+      newDoc.data.personPreferences =
+        document.id && document.data.personPreferences?.length
+          ? newDoc.data.personPreferences.map((persona: PersonaPreferences) => {
+              if (persona.personaId === personaDetails?.id) {
+                return {
+                  ...persona,
+                  landingPageSettings: {
+                    ...persona.landingPageSettings,
+                    headerColor: color,
+                  },
+                };
+              }
+
+              return persona;
+            })
+          : [
+              ...(newDoc.data.personPreferences ?? []),
+              {
+                personaName: personaDetails?.name,
+                personaId: personaDetails?.id,
                 landingPageSettings: {
-                  ...persona.landingPageSettings,
+                  ...newDoc.data.personPreferences?.landingPageSettings,
                   headerColor: color,
                 },
-              };
-            }
-
-            return persona;
-          })
-        : [
-            ...(newDoc.data.personPreferences ?? []),
-            {
-              personaName: personaDetails?.name,
-              personaId: personaDetails?.id,
-              landingPageSettings: {
-                ...newDoc.data.personPreferences?.landingPageSettings,
-                headerColor: color,
               },
-            },
-          ];
+            ];
 
       if (document.id) {
         const jsonPatch = compare(document, newDoc);

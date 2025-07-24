@@ -53,20 +53,20 @@ import {
 class CustomizeMyDataPageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
-  landingPageRowHeight = 100;
+  landingPageRowHeight = 133.33;
   landingPageMaxGridSize = 3;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
-    activityFeed: 4,
-    announcements: 4,
-    following: 4,
-    myData: 4,
-    kpi: 4,
-    totalAssets: 4,
-    DataAssets: 4,
-    curatedAssets: 4,
-    myTask: 4,
-    domains: 4,
+    activityFeed: 3,
+    announcements: 3,
+    following: 3,
+    myData: 3,
+    kpi: 3,
+    totalAssets: 3,
+    DataAssets: 3,
+    curatedAssets: 3,
+    myTask: 3,
+    domains: 3,
   };
 
   curatedAssetsWidgetDefaultValues: WidgetConfig = {
@@ -78,7 +78,7 @@ class CustomizeMyDataPageClassBase {
     static: false,
     w: 1,
     x: 2,
-    y: 12,
+    y: 0,
   };
 
   myTaskWidgetDefaultValues: WidgetConfig = {
@@ -87,7 +87,7 @@ class CustomizeMyDataPageClassBase {
     static: false,
     w: 1,
     x: 2,
-    y: 12,
+    y: 1,
   };
 
   domainsWidgetDefaultValues: WidgetConfig = {
@@ -96,7 +96,7 @@ class CustomizeMyDataPageClassBase {
     static: false,
     w: 1,
     x: 2,
-    y: 12,
+    y: 2,
   };
 
   defaultLayout: Array<WidgetConfig> = [

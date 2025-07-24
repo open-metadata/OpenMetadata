@@ -71,9 +71,13 @@ export const GenericTab = ({ type }: GenericTabProps) => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  // ReactGridLayout for non-edit mode with optimized layout behavior
+  // - preventCollision={false}: Enables proper widget positioning
+  // - useCSSTransforms: Uses CSS transforms for better performance
   return (
     <ReactGridLayout
       autoSize
+      useCSSTransforms
       verticalCompact
       className={classNames('grid-container bg-grey', {
         'custom-tab': !leftSideWidgetPresent,
@@ -83,6 +87,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       isDraggable={false}
       isResizable={false}
       margin={[16, 16]}
+      preventCollision={false}
       rowHeight={100}>
       {widgets}
     </ReactGridLayout>

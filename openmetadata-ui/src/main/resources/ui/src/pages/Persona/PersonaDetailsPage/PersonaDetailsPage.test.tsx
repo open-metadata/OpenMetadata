@@ -149,7 +149,10 @@ jest.mock(
 );
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest.fn().mockImplementation(() => ({ pathname: '', hash: '' }));
+  return jest.fn().mockImplementation(() => ({
+    pathname: '/persona/testPersona',
+    hash: '#users',
+  }));
 });
 
 describe('PersonaDetailsPage', () => {

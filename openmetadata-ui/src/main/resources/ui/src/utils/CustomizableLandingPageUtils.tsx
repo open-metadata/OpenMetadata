@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import i18next from 'i18next';
 import {
   capitalize,
@@ -20,7 +21,9 @@ import {
   uniqBy,
   uniqueId,
 } from 'lodash';
+import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
+import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
@@ -272,3 +275,19 @@ export const getUniqueFilteredLayout = (layout: WidgetConfig[]) =>
     ),
     'i'
   );
+
+export const CustomNextArrow = (props: DOMAttributes<HTMLDivElement>) => (
+  <Icon
+    className="custom-arrow right-arrow"
+    component={ArrowRightIcon}
+    onClick={props.onClick}
+  />
+);
+
+export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
+  <Icon
+    className="custom-arrow left-arrow"
+    component={ArrowRightIcon}
+    onClick={props.onClick}
+  />
+);
