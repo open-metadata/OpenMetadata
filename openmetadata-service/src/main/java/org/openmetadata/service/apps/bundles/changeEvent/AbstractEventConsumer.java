@@ -94,6 +94,12 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
+    if (ex.getChangeEventWithSubscription() == null) {
+      LOG.error(
+          "Change Event with Subscription is null in EventPublisherException: {}", ex.getMessage());
+      return;
+    }
+
     UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
     ChangeEvent changeEvent = ex.getChangeEventWithSubscription().getRight();
     LOG.debug(

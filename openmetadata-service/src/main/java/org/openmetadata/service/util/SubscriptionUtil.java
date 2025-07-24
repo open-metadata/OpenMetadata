@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -429,38 +428,17 @@ public class SubscriptionUtil {
   }
 
   public static List<Invocation.Builder> getTargetsForWebhookAlert(
-      SubscriptionAction action,
-      SubscriptionDestination.SubscriptionCategory category,
-      SubscriptionDestination.SubscriptionType type,
-      Client client,
-      ChangeEvent event) {
-    List<Invocation.Builder> targets = new ArrayList<>();
-    for (String url : getTargetsForAlert(action, category, type, event)) {
-      targets.add(appendHeadersToTarget(client, url));
-    }
-    return targets;
-  }
-
-  public static List<Invocation.Builder> getTargetsForWebhookAlert(
       Webhook webhook,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       Client client,
-      ChangeEvent event) {
+      ChangeEvent event,
+      String outgoingMessage) {
     List<Invocation.Builder> targets = new ArrayList<>();
     for (String url : getTargetsForAlert(webhook, category, type, event)) {
-      targets.add(
-          appendHeadersAndQueryParamsToTarget(client, url, webhook, JsonUtils.pojoToJson(event)));
+      targets.add(appendHeadersAndQueryParamsToTarget(client, url, webhook, outgoingMessage));
     }
     return targets;
-  }
-
-  public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
-    // Validate the URI to prevent SSRF attacks
-    URLValidator.validateURL(uri);
-
-    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    return SecurityUtil.addHeaders(client.target(uri), authHeaders);
   }
 
   public static Invocation.Builder appendHeadersAndQueryParamsToTarget(

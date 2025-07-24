@@ -65,7 +65,6 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      String eventJson = JsonUtils.pojoToJson(event);
       SlackMessage slackMessage =
           slackMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
 
@@ -73,8 +72,8 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       json = convertCamelCaseToSnakeCase(json);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), SLACK, client, event);
-      targets.add(getTarget(client, webhook, eventJson));
+              webhook, subscriptionDestination.getCategory(), SLACK, client, event, json);
+      targets.add(getTarget(client, webhook, json));
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, json);
       }

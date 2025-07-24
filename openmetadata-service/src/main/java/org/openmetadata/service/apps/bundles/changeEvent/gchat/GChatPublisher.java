@@ -67,14 +67,14 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
 
     try {
-      String eventJson = JsonUtils.pojoToJson(event);
       GChatMessage gchatMessage =
           gChatMessageMessageDecorator.buildOutgoingMessage(
               getDisplayNameOrFqn(eventSubscription), event);
+      String json = JsonUtils.pojoToJsonIgnoreNull(gchatMessage);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
-      targets.add(getTarget(client, webhook, eventJson));
+              webhook, subscriptionDestination.getCategory(), G_CHAT, client, event, json);
+      targets.add(getTarget(client, webhook, json));
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, gchatMessage);
       }

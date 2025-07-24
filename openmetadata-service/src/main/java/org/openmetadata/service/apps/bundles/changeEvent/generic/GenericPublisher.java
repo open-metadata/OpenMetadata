@@ -94,7 +94,12 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private void sendActionsToTargets(ChangeEvent event) throws EventPublisherException {
     List<Invocation.Builder> targets =
         getTargetsForWebhookAlert(
-            webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
+            webhook,
+            subscriptionDestination.getCategory(),
+            WEBHOOK,
+            client,
+            event,
+            JsonUtils.pojoToJson(event));
     String eventJson = JsonUtils.pojoToJson(event);
 
     for (Invocation.Builder actionTarget : targets) {
