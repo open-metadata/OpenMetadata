@@ -71,10 +71,47 @@
           color: @blue-9;
         }
       }
+
       .sidebar-widget-item {
+        align-items: flex-start;
         color: @grey-600;
         font-weight: @font-regular;
         padding: @padding-xs @padding-md @padding-xs @padding-lg;
+
+        &:hover {
+          background: @primary-50;
+        }
+
+        &.selected {
+          background: @primary-50;
+          color: @primary-7;
+        }
+      }
+
+      .sidebar-widget-icon {
+        padding: 2px;
+        margin-right: @padding-xs;
+
+        svg {
+          width: @size-mlg;
+          height: @size-mlg;
+          fill: none;
+        }
+      }
+
+      .sidebar-widget-item.selected .sidebar-widget-icon svg {
+        color: @primary-7;
+      }
+
+      .selected-widget-icon {
+        margin-left: @size-xxs;
+        padding: 0 2px 2px 2px;
+
+        svg {
+          width: 14px;
+          height: 14px;
+          fill: @primary-7;
+        }
       }
     }
 
