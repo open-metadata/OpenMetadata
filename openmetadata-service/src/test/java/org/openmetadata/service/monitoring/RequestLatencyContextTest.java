@@ -39,10 +39,11 @@ class RequestLatencyContextTest {
 
     simulateWork(20);
 
+    String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
     RequestLatencyContext.endRequest();
-    Timer totalTimer = Metrics.timer("request.latency.total", "endpoint", endpoint);
-    Timer dbTimer = Metrics.timer("request.latency.database", "endpoint", endpoint);
-    Timer internalTimer = Metrics.timer("request.latency.internal", "endpoint", endpoint);
+    Timer totalTimer = Metrics.timer("request.latency.total", "endpoint", normalizedEndpoint);
+    Timer dbTimer = Metrics.timer("request.latency.database", "endpoint", normalizedEndpoint);
+    Timer internalTimer = Metrics.timer("request.latency.internal", "endpoint", normalizedEndpoint);
 
     assertEquals(1, totalTimer.count(), "Should have recorded 1 request");
     assertEquals(1, dbTimer.count(), "Should have recorded 1 request with database operations");
