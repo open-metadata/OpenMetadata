@@ -48,6 +48,10 @@
         {
           "type": "object",
           "additionalProperties": true
+        },
+        {
+          "type": "string",
+          "description": "Used when private config is stored in secrets manager and secret key passed as a string"
         }
       ]
     }
