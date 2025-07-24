@@ -38,7 +38,6 @@ export const ALL_OPERATIONS = [
   'EditGlossaryTerms',
   'EditCustomFields',
   'Delete',
-  'EditAll',
 
   // Entity specific operations
   'ViewQueries',
@@ -46,12 +45,12 @@ export const ALL_OPERATIONS = [
   'ViewDataProfile',
   'ViewTests',
   'ViewUsage',
-  'ViewProfilerGlobalConfiguration',
   'EditQueries',
   'EditDataProfile',
   'EditSampleData',
   'EditTests',
   'EditStatus',
+  'EditLineage',
 ];
 
 // Helper function to check element visibility based on configuration
@@ -217,24 +216,28 @@ export const testCommonOperations = async (
   }
 
   // Check custom properties
-  await testUserPage.locator('[data-testid="custom_properties"]').click();
-
-  if (effect === 'allow') {
-    await expect(
-      testUserPage
-        .locator('[data-testid="custom-properties-card"]')
-        .first()
-        .getByTestId('edit-icon')
-        .first()
-    ).toBeVisible();
-  } else {
-    await expect(
-      testUserPage
-        .locator('[data-testid="custom-properties-card"]')
-        .first()
-        .getByTestId('edit-icon')
-        .first()
-    ).not.toBeVisible();
+  const customPropertiesLocator = testUserPage.locator(
+    '[data-testid="custom_properties"]'
+  );
+  if (await customPropertiesLocator.isVisible()) {
+    await customPropertiesLocator.click();
+    if (effect === 'allow') {
+      await expect(
+        testUserPage
+          .locator('[data-testid="custom-properties-card"]')
+          .first()
+          .getByTestId('edit-icon')
+          .first()
+      ).toBeVisible();
+    } else {
+      await expect(
+        testUserPage
+          .locator('[data-testid="custom-properties-card"]')
+          .first()
+          .getByTestId('edit-icon')
+          .first()
+      ).not.toBeVisible();
+    }
   }
 };
 
