@@ -25,7 +25,9 @@ import {
   EntityFields,
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getFieldsForEntity } from '../rest/metadataTypeAPI';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
@@ -125,7 +127,34 @@ class JSONLogicSearchClassBase {
       ...this.baseConfig.operators.is_not_null,
       label: t('label.is-set'),
     },
+    isChanged: {
+      label: t('label.is-entity', { entity: t('label.changed-fields') }),
+      labelForFormat: t('label.is-entity', {
+        entity: t('label.changed-fields'),
+      }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isChanged',
+      sqlOp: 'IS CHANGED',
+    },
+    isReviewer: {
+      label: t('label.is-entity', { entity: t('label.reviewer') }),
+      labelForFormat: t('label.is-entity', { entity: t('label.reviewer') }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isReviewer',
+      sqlOp: 'IS REVIEWER',
+    },
+    isOwner: {
+      label: t('label.is-entity', { entity: t('label.owner') }),
+      labelForFormat: t('label.is-entity', { entity: t('label.owner') }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isOwner',
+      sqlOp: 'IS OWNER',
+    },
   };
+
   defaultSelectOperators = [
     'select_equals',
     'select_not_equals',
@@ -133,6 +162,7 @@ class JSONLogicSearchClassBase {
     'select_not_any_in',
     'is_null',
     'is_not_null',
+    'isChanged',
   ];
 
   public searchAutocomplete: (args: {
@@ -178,14 +208,63 @@ class JSONLogicSearchClassBase {
   glossaryEntityFields: Fields = {
     [EntityReferenceFields.REVIEWERS]: {
       label: t('label.reviewer-plural'),
+      type: '!group',
+      mode: 'some',
+      defaultField: 'fullyQualifiedName',
+      subfields: {
+        fullyQualifiedName: {
+          label: 'Reviewers New',
+          type: 'select',
+          mainWidgetProps: this.mainWidgetProps,
+          operators: this.defaultSelectOperators,
+          fieldSettings: {
+            asyncFetch: advancedSearchClassBase.autocomplete({
+              searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+              entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+            }),
+            useAsyncSearch: true,
+          },
+        },
+      },
+    },
+    [EntityReferenceFields.UPDATED_BY]: {
+      label: t('label.updated-by'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
-      operators: this.defaultSelectOperators,
+      operators: [...this.defaultSelectOperators, 'isOwner', 'isReviewer'],
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
         }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityReferenceFields.CHANGE_DESCRIPTION]: {
+      label: 'Changed Fields',
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      operators: this.defaultSelectOperators,
+      fieldSettings: {
+        asyncFetch: (searchOrValues: string | (string | number)[] | null) => {
+          const searchTerm = Array.isArray(searchOrValues)
+            ? searchOrValues.join(',')
+            : searchOrValues ?? '';
+
+          return getFieldsForEntity(EntityType.GLOSSARY_TERM).then((fields) => {
+            const filteredFields = fields.filter((field) =>
+              field.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            return {
+              values: filteredFields.map((field) => ({
+                value: field.name,
+                title: field.name,
+              })),
+              hasMore: false,
+            };
+          });
+        },
         useAsyncSearch: true,
       },
     },
