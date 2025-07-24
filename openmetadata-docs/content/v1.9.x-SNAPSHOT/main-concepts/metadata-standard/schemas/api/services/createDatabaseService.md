@@ -1,5 +1,6 @@
 ---
-title: createDatabaseService
+title: createDatabaseService | Official Documentation
+description: Define a database service entity to manage database connections, schemas, and credential configuration.
 slug: /main-concepts/metadata-standard/schemas/api/services/createdatabaseservice
 ---
 
