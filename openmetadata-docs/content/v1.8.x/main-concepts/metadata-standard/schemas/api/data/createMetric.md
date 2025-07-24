@@ -1,5 +1,6 @@
 ---
 title: Create Metric API | OpenMetadata Metric API
+description: Connect Createmetric to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createmetric
 ---
 

@@ -268,7 +268,7 @@ const MyDataPage = () => {
             customizePageClassBase.landingPageWidgetMargin,
             customizePageClassBase.landingPageWidgetMargin,
           ]}
-          rowHeight={100}>
+          rowHeight={customizePageClassBase.landingPageRowHeight}>
           {widgets}
         </ReactGridLayout>
       </div>

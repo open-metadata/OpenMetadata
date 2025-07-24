@@ -345,6 +345,8 @@ public interface SearchClient {
       String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
 
+  Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
+
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
