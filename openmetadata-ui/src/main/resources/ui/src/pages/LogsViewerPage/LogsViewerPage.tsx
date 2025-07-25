@@ -22,6 +22,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,6 +78,7 @@ const LogsViewerPage = () => {
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
   const [isLogsLoading, setIsLogsLoading] = useState(true);
+  const lazyLogRef = useRef<LazyLog>(null);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -263,12 +265,11 @@ const LogsViewerPage = () => {
   });
 
   const handleJumpToEnd = () => {
-    const logsBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
+    if (lazyLogRef.current?.listRef.current) {
+      // Get the total number of lines
+      const totalLines = lazyLogRef.current.state.count;
+      // Scroll to the last line
+      lazyLogRef.current.listRef.current.scrollToIndex(totalLines - 1);
     }
   };
 
@@ -369,9 +370,7 @@ const LogsViewerPage = () => {
             className="p-md w-full border-top border-bottom"
             data-testid="summary-card"
             direction="vertical">
-            <Typography.Title level={5}>
-              {t('label.summary')}
-            </Typography.Title>
+            <Typography.Title level={5}>{t('label.summary')}</Typography.Title>
 
             <div>
               <Typography.Text type="secondary">
@@ -382,10 +381,15 @@ const LogsViewerPage = () => {
                 {Object.entries(logSummaries).map(([key, value]) => {
                   return (
                     <Fragment key={key}>
-                      <Col className="summary-key" xs={24} sm={12} md={8} lg={6}>
+                      <Col
+                        className="summary-key"
+                        lg={6}
+                        md={8}
+                        sm={12}
+                        xs={24}>
                         <strong>{key}:</strong>
                       </Col>
-                      <Col className="flex" xs={24} sm={12} md={16} lg={18}>
+                      <Col className="flex" lg={18} md={16} sm={12} xs={24}>
                         {value}
                       </Col>
                     </Fragment>
@@ -450,6 +454,7 @@ const LogsViewerPage = () => {
                     enableSearch
                     selectableLines
                     extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                    ref={lazyLogRef}
                     text={logs}
                   />
                 </Col>

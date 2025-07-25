@@ -1,5 +1,6 @@
 ---
 title: Create Topic API | OpenMetadata Topic API
+description: Connect Createtopic to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createtopic
 ---
 

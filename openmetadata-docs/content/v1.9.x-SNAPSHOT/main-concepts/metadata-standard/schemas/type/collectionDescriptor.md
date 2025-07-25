@@ -1,5 +1,6 @@
 ---
 title: collectionDescriptor | OpenMetadata Collection Descriptor
+description: CollectionDescriptor schema helps define named metadata groupings for UI or API access.
 slug: /main-concepts/metadata-standard/schemas/type/collectiondescriptor
 ---
 

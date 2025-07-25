@@ -19,6 +19,7 @@ import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
+import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -246,36 +247,38 @@ const MyDataPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      className="p-b-lg"
-      mainContainerClassName="p-t-0"
-      pageTitle={t('label.my-data')}>
-      <div className="grid-wrapper">
-        <CustomiseLandingPageHeader
-          overlappedContainer
-          backgroundColor={backgroundColor}
-          hideCustomiseButton={!selectedPersona}
-          onHomePage
-          onBackgroundColorUpdate={handleBackgroundColorUpdate}
-        />
-        <ReactGridLayout
-          className="grid-container p-x-box"
-          cols={customizePageClassBase.landingPageMaxGridSize}
-          containerPadding={[0, 0]}
-          isDraggable={false}
-          isResizable={false}
-          margin={[
-            customizePageClassBase.landingPageWidgetMargin,
-            customizePageClassBase.landingPageWidgetMargin,
-          ]}
-          rowHeight={100}>
-          {widgets}
-        </ReactGridLayout>
-      </div>
-      <LimitWrapper resource="dataAssets">
-        <br />
-      </LimitWrapper>
-    </PageLayoutV1>
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+      <PageLayoutV1
+        className="p-b-lg"
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
+        <div className="grid-wrapper">
+          <CustomiseLandingPageHeader
+            overlappedContainer
+            backgroundColor={backgroundColor}
+            hideCustomiseButton={!selectedPersona}
+            onHomePage
+            onBackgroundColorUpdate={handleBackgroundColorUpdate}
+          />
+          <ReactGridLayout
+            className="grid-container p-x-box"
+            cols={customizePageClassBase.landingPageMaxGridSize}
+            containerPadding={[0, 0]}
+            isDraggable={false}
+            isResizable={false}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizePageClassBase.landingPageRowHeight}>
+            {widgets}
+          </ReactGridLayout>
+        </div>
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
+      </PageLayoutV1>
+    </AdvanceSearchProvider>
   );
 };
 

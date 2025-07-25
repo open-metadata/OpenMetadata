@@ -155,5 +155,10 @@ export const BASE_COLORS = [
   '#F48FB1',
 ];
 
-export const KPI_WIDGET_GRAPH_COLORS = ['#5F5498', '#4E8C9C'];
+export const KPI_WIDGET_GRAPH_COLORS = [
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
+];
 export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];
