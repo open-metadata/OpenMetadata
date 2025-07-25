@@ -29,6 +29,7 @@ import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
+import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -113,8 +114,11 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.DASHBOARD:
-      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, { fields });
+
+        break;
+      case EntityType.CHART:
+        promise = getChartByFqn(entityFQN, { fields });
 
         break;
       case EntityType.PIPELINE:

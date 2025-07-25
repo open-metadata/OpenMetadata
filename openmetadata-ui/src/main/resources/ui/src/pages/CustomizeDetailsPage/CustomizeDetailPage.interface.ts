@@ -32,4 +32,5 @@ export const PageTypeToEntityTypeMap = {
   [PageType.StoredProcedure]: EntityType.STORED_PROCEDURE,
   [PageType.Table]: EntityType.TABLE,
   [PageType.LandingPage]: EntityType.ALL,
+  [PageType.Chart]: EntityType.CHART,
 };

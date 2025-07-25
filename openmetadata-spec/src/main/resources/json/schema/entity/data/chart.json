@@ -2,6 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/chart.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Chart",
+  "$comment": "@om-entity-type",
   "description": "A `Chart` presents data visually. Charts can be part of `Dashboards`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Chart",
@@ -167,6 +168,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
     "dashboards": {
       "description": "All the dashboards containing this chart.",
