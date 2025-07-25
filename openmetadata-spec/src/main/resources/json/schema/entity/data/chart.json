@@ -21,6 +21,11 @@
         "Scatter",
         "Text",
         "BoxPlot",
+        "Gauge",
+        "Map",
+        "Graph",
+        "Heatmap",
+        "Timeline",
         "Other"
       ],
       "javaEnums": [
@@ -50,6 +55,21 @@
         },
         {
           "name": "BoxPlot"
+        },
+        {
+          "name": "Gauge"
+        },
+        {
+          "name": "Map"
+        },
+        {
+          "name": "Graph"
+        },
+        {
+          "name": "Heatmap"
+        },
+        {
+          "name": "Timeline"
         },
         {
           "name": "Other"

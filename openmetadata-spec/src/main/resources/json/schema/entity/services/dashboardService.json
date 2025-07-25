@@ -31,7 +31,8 @@
         "MicroStrategy",
         "QlikCloud",
         "Sigma",
-        "ThoughtSpot"
+        "ThoughtSpot",
+        "Grafana"
       ],
       "javaEnums": [
         {
@@ -84,6 +85,9 @@
         },
         {
           "name": "ThoughtSpot"
+        },
+        {
+          "name": "Grafana"
         }
       ]
     },
@@ -148,6 +152,9 @@
             },
             {
               "$ref": "./connections/dashboard/thoughtSpotConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/grafanaConnection.json"
             }
           ]
         }
