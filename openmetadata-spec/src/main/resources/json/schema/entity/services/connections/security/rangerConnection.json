@@ -36,27 +36,6 @@
         "password"
       ],
       "additionalProperties": false
-    },
-    "kerberosAuth": {
-      "title": "Kerberos Auth",
-      "type": "object",
-      "properties": {
-        "keytabPath": {
-          "title": "Keytab Path",
-          "description": "Path to the keytab file for Kerberos authentication.",
-          "type": "string"
-        },
-        "principal": {
-          "title": "Principal",
-          "description": "Kerberos principal for authentication. Used with keytab file.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "keytabPath",
-        "principal"
-      ],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -79,9 +58,6 @@
       "oneOf": [
         {
           "$ref": "#/definitions/basicAuth"
-        },
-        {
-          "$ref": "#/definitions/kerberosAuth"
         }
       ]
     }

@@ -1,11 +1,12 @@
 ---
 title: Security Service Connectors
 slug: /connectors/security
+collate: true
 ---
 
 # Security Service Connectors
 
-OpenMetadata supports ingesting metadata from Security Services. These connectors allow you to extract and catalog security policies, access controls, and compliance information from your security infrastructure.
+OpenMetadata supports syncing metadata to Security Services. These connectors allow you to sync metadata from OpenMetadata to security services.
 
 ## Available Security Connectors
 
@@ -16,7 +17,5 @@ OpenMetadata supports ingesting metadata from Security Services. These connector
     bold="Apache Ranger"
     href="/connectors/security/ranger"
   %}
-    Ingest metadata from Apache Ranger security policies and access controls.
+    Sync metadata from OpenMetadata to Apache Ranger through reverse metadata ingestion. We do not support ingesting metadata from Apache Ranger into OpenMetadata.
   {% /inlineCallout %} 
-
-Ingest metadata from Apache Ranger security policies and access controls. 

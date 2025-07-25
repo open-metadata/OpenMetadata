@@ -583,8 +583,6 @@ site_menu:
     url: /connectors/security
   - category: Connectors / Security / Ranger
     url: /connectors/security/ranger
-  - category: Connectors / Security / Ranger / Run Externally
-    url: /connectors/security/ranger/yaml
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -621,6 +619,10 @@ site_menu:
     url: /connectors/search/opensearch/yaml
   - category: Connectors / Search / OpenSearch / Troubleshooting
     url: /connectors/search/opensearch/troubleshooting
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateSecurityService
+    url: /main-concepts/metadata-standard/schemas/api/services/createsecurityservice
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / SecurityService
+    url: /main-concepts/metadata-standard/schemas/entity/services/securityservice
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -1262,6 +1264,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/services/createpipelineservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateSearchService
     url: /main-concepts/metadata-standard/schemas/api/services/createsearchservice
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateSecurityService
+    url: /main-concepts/metadata-standard/schemas/api/services/createsecurityservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateStorageService
     url: /main-concepts/metadata-standard/schemas/api/services/createstorageservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services
@@ -1776,6 +1780,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / SearchService
     url: /main-concepts/metadata-standard/schemas/entity/services/searchservice
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / SecurityService
+    url: /main-concepts/metadata-standard/schemas/entity/services/securityservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / ServiceType
     url: /main-concepts/metadata-standard/schemas/entity/services/servicetype
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / StorageService
