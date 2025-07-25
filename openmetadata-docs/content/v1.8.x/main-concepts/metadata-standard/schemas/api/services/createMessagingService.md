@@ -1,5 +1,6 @@
 ---
-title: createMessagingService
+title: createMessagingService | Official Documentation
+description: Define and register a messaging service entity to manage message brokers and streaming systems with relevant connection metadata.
 slug: /main-concepts/metadata-standard/schemas/api/services/createmessagingservice
 ---
 

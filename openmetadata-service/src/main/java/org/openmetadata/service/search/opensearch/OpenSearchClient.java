@@ -224,7 +224,7 @@ import os.org.opensearch.search.sort.SortOrder;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
-public class OpenSearchClient implements SearchClient {
+public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Getter protected final RestHighLevelClient client;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
@@ -2591,6 +2591,11 @@ public class OpenSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  @Override
+  public RestHighLevelClient getHighLevelClient() {
+    return client;
   }
 
   private void buildSearchRBACQuery(

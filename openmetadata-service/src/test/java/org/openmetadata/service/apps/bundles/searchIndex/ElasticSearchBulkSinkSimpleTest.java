@@ -80,4 +80,24 @@ class ElasticSearchBulkSinkSimpleTest {
     recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     assertEquals(false, recreateIndex);
   }
+
+  @Test
+  void testIsVectorEmbeddingEnabledForEntity() {
+    // Test default implementation returns false
+    boolean result = elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("table");
+    assertEquals(false, result);
+
+    result = elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("user");
+    assertEquals(false, result);
+
+    result = elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard");
+    assertEquals(false, result);
+  }
+
+  @Test
+  void testAddEntityToVectorIndex() {
+    // Test default implementation does nothing (no exception thrown)
+    // This should not throw any exception as the default implementation is empty
+    elasticSearchBulkSink.addEntityToVectorIndex(null, null, true);
+  }
 }
