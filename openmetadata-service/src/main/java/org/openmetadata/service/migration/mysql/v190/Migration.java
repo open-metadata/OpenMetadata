@@ -17,4 +17,4 @@ public class Migration extends MigrationProcessImpl {
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.migrateAutomatorDomainToDomainsAction(handle);
   }
-} 
+}
