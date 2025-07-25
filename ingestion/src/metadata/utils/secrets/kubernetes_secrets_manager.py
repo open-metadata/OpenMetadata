@@ -146,7 +146,7 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             # Kubernetes stores secret data as base64 encoded
             if secret.data and "value" in secret.data:
                 secret_value = base64.b64decode(secret.data["value"]).decode("utf-8")
-                logger.debug(f"Got value for secret {secret_id}")
+                logger.info(f"Got value for secret {secret_id}")
                 return secret_value
             logger.warning(f"Secret {secret_id} exists but has no 'value' key")
             return None

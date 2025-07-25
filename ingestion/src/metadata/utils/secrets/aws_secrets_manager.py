@@ -53,7 +53,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
         try:
             kwargs = {"SecretId": secret_id}
             response = self.client.get_secret_value(**kwargs)
-            logger.debug("Got value for secret %s.", secret_id)
+            logger.info("Got value for secret %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
