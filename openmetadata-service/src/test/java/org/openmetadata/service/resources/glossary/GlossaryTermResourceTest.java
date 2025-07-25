@@ -50,6 +50,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
@@ -119,6 +120,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -2117,6 +2119,282 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertApprovalTask(term, TaskStatus.Open);
   }
 
+  @Test
+  void test_GlossaryTermWorkflow_ExistingSchema_UpdateReviewers_NoWorkflow(TestInfo test)
+      throws Exception {
+    // Test 1: Update reviewers -> No workflow triggered
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "updateReviewersTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Update only reviewers - should NOT trigger workflow due to exclude field
+    String json = JsonUtils.pojoToJson(term);
+    term.setReviewers(listOf(USER2.getEntityReference()));
+    patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
+
+    // Verify no workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 5000L);
+    assertFalse(
+        taskCreated, "No workflow should be triggered when only reviewers field is updated");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_ExistingSchema_UpdateByReviewer_NoWorkflow(TestInfo test)
+      throws Exception {
+    // Test 2: Update done by reviewers -> No workflow triggered
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference(), USER2.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "updateByReviewerTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Update by reviewer USER1 - should NOT trigger workflow (isReviewer = true)
+    String json = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by reviewer USER1");
+    patchEntity(term.getId(), json, term, authHeaders(USER1.getName()));
+
+    // Verify no workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 5000L);
+    assertFalse(taskCreated, "No workflow should be triggered when reviewer updates the term");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_ExistingSchema_UpdateReviewersAndDescription_WorkflowTriggered(
+      TestInfo test) throws Exception {
+    // Test 3: Update "reviewers" and description -> workflow triggered
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "updateBothFieldsTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Update both reviewers and description - should trigger workflow (not only excluded field)
+    String json = JsonUtils.pojoToJson(term);
+    term.setReviewers(listOf(USER2.getEntityReference()));
+    term.setDescription("Updated both reviewers and description");
+    patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
+
+    // Verify workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    assertTrue(
+        taskCreated,
+        "Workflow should be triggered when both reviewers and description are updated");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_ExistingSchema_UpdateByNonReviewer_WorkflowTriggered(TestInfo test)
+      throws Exception {
+    // Test 4: Update done by non reviewers -> workflow triggered
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "updateByNonReviewerTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Ensure DATA_CONSUMER has permission to update terms - add as owner
+    String json = JsonUtils.pojoToJson(term);
+    term.setOwners(listOf(DATA_CONSUMER.getEntityReference()));
+    term = patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
+
+    // Update by non-reviewer (DATA_CONSUMER) - should trigger workflow (isReviewer = false)
+    json = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by non-reviewer DATA_CONSUMER");
+    patchEntity(term.getId(), json, term, authHeaders(DATA_CONSUMER.getName()));
+
+    // Verify workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    assertTrue(taskCreated, "Workflow should be triggered when non-reviewer updates the term");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_PatchedSchema_IsOwnerFilter_NoWorkflow(TestInfo test)
+      throws Exception {
+    // Test 5: Include isOwner custom jsonLogic filter by patch, trigger an update by updating
+    // owners - no workflow
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()))
+            .withOwners(listOf(USER2.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term =
+        createTerm(
+            glossary,
+            null,
+            "isOwnerFilterTest",
+            listOf(USER1.getEntityReference()),
+            listOf(USER2.getEntityReference()),
+            ADMIN_AUTH_HEADERS);
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Patch workflow to include isOwner in OR condition
+    String patchJson =
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\"}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
+
+    // Update by owner USER2 - should NOT trigger workflow (isOwner = true in OR condition)
+    String json = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by owner USER2");
+    patchEntity(term.getId(), json, term, authHeaders(USER2.getName()));
+
+    // Verify no workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 5000L);
+    assertFalse(
+        taskCreated,
+        "No workflow should be triggered when owner updates the term with isOwner filter");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_PatchedSchema_DescriptionEqualsFilter_NoWorkflow(TestInfo test)
+      throws Exception {
+    // Test 6: Use basic jsonLogic operation, like description = 'UpdatedTerm'
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "descriptionEqualsTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Patch workflow to check if description equals 'UpdatedTerm'
+    String patchJson =
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"==\\\":[{\\\"var\\\":\\\"description\\\"},\\\"UpdatedTerm\\\"]}\"}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
+
+    // Update term description to exactly 'UpdatedTerm' - should NOT trigger workflow (equals
+    // condition true, negated = false)
+    String json = JsonUtils.pojoToJson(term);
+    term.setDescription("UpdatedTerm");
+    patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
+
+    // Verify no workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 5000L);
+    assertFalse(
+        taskCreated,
+        "No workflow should be triggered when description matches the filter condition");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_PatchedSchema_AndOperator_NoTrigger(TestInfo test)
+      throws Exception {
+    // Test 7: Instead of using OR, use AND - no trigger
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "andOperatorNoTriggerTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Patch workflow to use AND: isReviewer AND description exists
+    String patchJson =
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\"}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
+
+    // Update by reviewer USER1 with description - should NOT trigger (isReviewer=true AND
+    // description exists=true, result=true, negated=false)
+    String json = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by reviewer with description");
+    patchEntity(term.getId(), json, term, authHeaders(USER1.getName()));
+
+    // Verify no workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 5000L);
+    assertFalse(taskCreated, "No workflow should be triggered when AND condition is true");
+  }
+
+  @Test
+  void test_GlossaryTermWorkflow_PatchedSchema_AndOperator_Trigger(TestInfo test) throws Exception {
+    // Test 8: Instead of using OR, use AND - trigger
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest(getEntityName(test))
+            .withReviewers(listOf(USER1.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create and approve term first
+    GlossaryTerm term = createTerm(glossary, null, "andOperatorTriggerTest");
+    waitForTaskToBeCreated(term.getFullyQualifiedName(), 30000L);
+    Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+    taskTest.resolveTask(
+        approvalTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Patch workflow to use AND: isReviewer AND description exists
+    String patchJson =
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\"}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
+
+    // Update by non-reviewer (admin) with description - should trigger (isReviewer=false AND
+    // description exists=true, result=false, negated=true)
+    String json = JsonUtils.pojoToJson(term);
+    term.setDescription("Updated by non-reviewer admin");
+    patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
+
+    // Verify workflow task was created
+    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
+  }
+
   /**
    * Helper method to receive move entity message via WebSocket
    */
@@ -2225,5 +2503,43 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
     TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+  }
+
+  /**
+   * Helper method to get workflow definition by name
+   */
+  private WebTarget getWorkflowDefinitionByName(String name) {
+    return getResource("governance/workflowDefinitions/name/" + name);
+  }
+
+  /**
+   * Helper method to patch workflow definition
+   */
+  private void patchWorkflowDefinition(String name, String jsonPatchString) throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = mapper.readTree(jsonPatchString);
+
+    WebTarget target = getWorkflowDefinitionByName(name);
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+            .method(
+                "PATCH",
+                jakarta.ws.rs.client.Entity.entity(
+                    patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+
+    assertEquals(200, response.getStatus(), "Failed to patch workflow definition");
+    java.lang.Thread.sleep(1000); // Wait for change to take effect
+  }
+
+  /**
+   * Helper method to check if workflow task was created
+   */
+  private boolean wasWorkflowTaskCreated(String termFqn, long timeoutMs) {
+    try {
+      waitForTaskToBeCreated(termFqn, timeoutMs);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 }
