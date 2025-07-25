@@ -208,12 +208,12 @@ const GlossaryTermsV1 = ({
                     {getCountBadge(
                       childGlossaryTerms.length,
                       '',
-                      activeTab === EntityTabs.TERMS
+                      activeTab === EntityTabs.GLOSSARY_TERMS
                     )}
                   </span>
                 </div>
               ),
-              key: EntityTabs.TERMS,
+              key: EntityTabs.GLOSSARY_TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
