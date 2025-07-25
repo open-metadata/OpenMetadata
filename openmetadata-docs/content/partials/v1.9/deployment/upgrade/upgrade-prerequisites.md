@@ -2,7 +2,7 @@
 
 Everytime that you plan on upgrading OpenMetadata to a newer version, make sure to go over all these steps:
 
-### Backup your Metadata
+## Backup your Metadata
 
 Before upgrading your OpenMetadata version we strongly recommend backing up the metadata.
 
@@ -103,33 +103,7 @@ After the migration is finished, you can revert this changes.
 
 # Backward Incompatible Changes
 
-## 1.7.0
+## 1.9.0
 
-### Removing support for Python 3.8
-
-Python 3.8 was [officially EOL on 2024-10-07](https://devguide.python.org/versions/). Some of our dependencies have already
-started removing support for higher versions, and are following suit to ensure we are using the latest and most stable
-versions of our dependencies.
-
-This means that for Release 1.7, the supported Python versions for the Ingestion Framework are 3.9, 3.10 and 3.11.
-
-We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
-However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
-
-### OpenSearch Settings Update
-
-OpenSearch has a different default value of `max_clause_count` than Elasticsearch. This means that if you are using OpenSearch, 
-you will need to update the `max_clause_count` setting in your OpenSearch configuration:
-
-```shell
-indices.query.bool.max_clause_count: 4096
-```
-
-If you're using AWS, you can add this setting from the console as well
-
-![img.png](/images/v1.8/deployment/upgrade/opensearch-upgrade-170.png)
-
-{% image
-src="/images/v1.8/deployment/upgrade/opensearch-upgrade-170.png"
-alt="AWS OpenSearch Settings"
-caption="AWS OpenSearch Settings" /%}
+### Strong validation of test case parameters
+`parameterValues` name of a testCase will be strongly validated against the name of the `parameterDefinition` in the testDefinition. If both parameter names do not match an error will be thrown on testCase creation
