@@ -1124,6 +1124,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                     renderElement={<strong />}
                     values={{
                       entity: t('label.test-case-lowercase'),
+                      type: t('label.table-lowercase'),
                     }}
                   />
                 }

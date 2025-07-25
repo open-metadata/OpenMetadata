@@ -120,6 +120,8 @@ export const TestCases = () => {
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
     TEST_CASE_FILTERS.status,
     TEST_CASE_FILTERS.type,
+    TEST_CASE_FILTERS.table,
+    TEST_CASE_FILTERS.tags,
   ]);
 
   const {
@@ -478,7 +480,7 @@ export const TestCases = () => {
   );
 
   const getTestCases = () => {
-    if (!isEmpty(params)) {
+    if (!isEmpty(params) || !isEmpty(selectedFilter)) {
       const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
       for (const key of updatedValue) {
         getInitialOptions(key, true);

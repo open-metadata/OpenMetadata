@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
+import { TEST_SUITE_DOCS } from '../../../../constants/docs.constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -298,6 +299,26 @@ export const TestSuites = () => {
     ]
   );
 
+  const noDataPlaceholder = useMemo(() => {
+    if (
+      isEmpty(params) &&
+      isEmpty(testSuites) &&
+      subTab === DataQualitySubTabs.BUNDLE_SUITES
+    ) {
+      return (
+        <ErrorPlaceHolder
+          permission
+          className="border-none"
+          doc={TEST_SUITE_DOCS}
+          heading={t('label.bundle-suite')}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        />
+      );
+    }
+
+    return <FilterTablePlaceHolder />;
+  }, [params, testSuites, subTab]);
+
   useEffect(() => {
     if (
       getPrioritizedViewPermission(testSuitePermission, Operation.ViewBasic)
@@ -392,7 +413,7 @@ export const TestSuites = () => {
             dataSource={testSuites}
             loading={isLoading}
             locale={{
-              emptyText: <FilterTablePlaceHolder />,
+              emptyText: noDataPlaceholder,
             }}
             pagination={false}
             scroll={{
