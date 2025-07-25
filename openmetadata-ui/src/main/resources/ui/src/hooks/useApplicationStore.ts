@@ -13,12 +13,15 @@
 import { create } from 'zustand';
 import { AuthenticationConfigurationWithScope } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import { TabSpecificField } from '../enums/entity.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
+import { Include } from '../generated/type/include';
 import { ApplicationStore } from '../interface/store.interface';
+import { getUserById } from '../rest/userAPI';
 import { getOidcToken } from '../utils/LocalStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 
@@ -51,7 +54,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ inlineAlertDetails });
   },
 
-  setSelectedPersona: (persona: EntityReference) => {
+  setSelectedPersona: (persona: EntityReference | undefined) => {
     set({ selectedPersona: persona });
   },
 
@@ -152,5 +155,39 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setAppVersion: (version: string) => {
     set({ appVersion: version });
+  },
+  refetchCurrentUser: async (params?: {
+    fields?: TabSpecificField[];
+    include?: Include;
+  }) => {
+    try {
+      const { currentUser, selectedPersona } = get();
+      if (currentUser) {
+        const user = await getUserById(currentUser.id, {
+          fields: params?.fields ?? [
+            TabSpecificField.PROFILE,
+            TabSpecificField.ROLES,
+            TabSpecificField.TEAMS,
+            TabSpecificField.PERSONAS,
+            TabSpecificField.LAST_ACTIVITY_TIME,
+            TabSpecificField.LAST_LOGIN_TIME,
+            TabSpecificField.DEFAULT_PERSONA,
+            TabSpecificField.DOMAINS,
+          ],
+          include: params?.include ?? Include.All,
+        });
+
+        const updateSelectedPersona = user.personas?.find(
+          (p) => p.id === selectedPersona?.id
+        );
+
+        set({
+          currentUser: { ...currentUser, ...user },
+          selectedPersona: updateSelectedPersona,
+        });
+      }
+    } catch {
+      return;
+    }
   },
 }));

@@ -26,7 +26,6 @@ import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
@@ -34,8 +33,9 @@ import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.co
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
@@ -47,6 +47,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
   const navigate = useNavigate();
+  const { refetchCurrentUser } = useApplicationStore();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
@@ -105,38 +106,8 @@ export const PersonaDetailsPage = () => {
     }
   }, [fqn]);
 
-  const handleDescriptionUpdate = async (description: string) => {
-    if (!personaDetails) {
-      return;
-    }
-    const updatedData = { ...personaDetails, description };
-    const diff = compare(personaDetails, updatedData);
-
-    try {
-      const response = await updatePersona(personaDetails?.id, diff);
-      setPersonaDetails(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleDisplayNameUpdate = async (data: EntityName) => {
-    if (!personaDetails) {
-      return;
-    }
-    const updatedData = { ...personaDetails, ...data };
-    const diff = compare(personaDetails, updatedData);
-
-    try {
-      const response = await updatePersona(personaDetails?.id, diff);
-      setPersonaDetails(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handlePersonaUpdate = useCallback(
-    async (data: Partial<Persona>) => {
+    async (data: Partial<Persona>, shouldRefetch = false) => {
       if (!personaDetails) {
         return;
       }
@@ -145,6 +116,11 @@ export const PersonaDetailsPage = () => {
       try {
         const response = await updatePersona(personaDetails?.id, diff);
         setPersonaDetails(response);
+        if (shouldRefetch) {
+          refetchCurrentUser({
+            fields: [TabSpecificField.PERSONAS],
+          });
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -158,12 +134,15 @@ export const PersonaDetailsPage = () => {
         (user) => user.id !== userId
       );
 
-      handlePersonaUpdate({ users: updatedUsers });
+      handlePersonaUpdate({ users: updatedUsers }, true);
     },
     [personaDetails]
   );
 
   const handleAfterDeleteAction = () => {
+    refetchCurrentUser({
+      fields: [TabSpecificField.PERSONAS],
+    });
     navigate(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
@@ -239,7 +218,7 @@ export const PersonaDetailsPage = () => {
               entityId={personaDetails.id}
               entityName={personaDetails.name}
               entityType={EntityType.PERSONA}
-              onEditDisplayName={handleDisplayNameUpdate}
+              onEditDisplayName={(data) => handlePersonaUpdate(data, true)}
             />
           </div>
         </Col>
@@ -252,7 +231,9 @@ export const PersonaDetailsPage = () => {
               entityPermission.EditAll || entityPermission.EditDescription
             }
             showCommentsIcon={false}
-            onDescriptionUpdate={handleDescriptionUpdate}
+            onDescriptionUpdate={(description) =>
+              handlePersonaUpdate({ description })
+            }
           />
         </Col>
         <Col span={24}>
@@ -266,7 +247,7 @@ export const PersonaDetailsPage = () => {
                   hasPermission
                   multiSelect
                   selectedUsers={personaDetails.users ?? []}
-                  onUpdate={(users) => handlePersonaUpdate({ users })}>
+                  onUpdate={(users) => handlePersonaUpdate({ users }, true)}>
                   <Button
                     data-testid="add-persona-button"
                     size="small"
