@@ -38,7 +38,7 @@ import os.org.opensearch.common.xcontent.XContentType;
 public class OpenSearchBulkSink implements BulkSink {
 
   private final OpenSearchClient searchClient;
-  private final SearchRepository searchRepository;
+  protected final SearchRepository searchRepository;
   private final BulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
 
@@ -191,6 +191,9 @@ public class OpenSearchBulkSink implements BulkSink {
 
     Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
 
+    // Check if embeddings are enabled for this specific entity type
+    boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
+
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
@@ -208,7 +211,7 @@ public class OpenSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName, recreateIndex);
+          addEntity(entity, indexName, recreateIndex, embeddingsEnabled);
         }
       }
     } catch (Exception e) {
@@ -227,7 +230,8 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(EntityInterface entity, String indexName, boolean recreateIndex) {
+  private void addEntity(
+      EntityInterface entity, String indexName, boolean recreateIndex, boolean embeddingsEnabled) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
     Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -244,6 +248,11 @@ public class OpenSearchBulkSink implements BulkSink {
       updateRequest.doc(json, XContentType.JSON);
       updateRequest.docAsUpsert(true);
       bulkProcessor.add(updateRequest);
+    }
+
+    // If embeddings are enabled, also index to vector_search_index
+    if (embeddingsEnabled) {
+      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
     }
   }
 
@@ -324,4 +333,19 @@ public class OpenSearchBulkSink implements BulkSink {
     this.maxConcurrentRequests = concurrentRequests;
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
+
+  /**
+   * Checks if vector embeddings are enabled for a specific entity type.
+   * This combines SearchRepository capability check with job configuration.
+   */
+  protected boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+    return false;
+  }
+
+  /**
+   * Adds entity to vector_search_index for embedding search.
+   * This method will only be called when embeddings are enabled for the entity type.
+   */
+  protected void addEntityToVectorIndex(
+      BulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
 }

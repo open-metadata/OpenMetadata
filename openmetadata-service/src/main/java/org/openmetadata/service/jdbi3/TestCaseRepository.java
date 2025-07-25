@@ -26,12 +26,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -44,6 +47,7 @@ import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
@@ -427,7 +431,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         Entity.getEntity(test.getTestDefinition(), "", Include.NON_DELETED);
     test.setTestDefinition(testDefinition.getEntityReference());
 
-    validateTestParameters(test.getParameterValues(), testDefinition.getParameterDefinition());
+    validateTestParameters(
+        test.getParameterValues(),
+        testDefinition.getParameterDefinition(),
+        testDefinition.getTestPlatforms(),
+        testDefinition);
     validateColumnTestCase(entityLink, testDefinition.getEntityType());
   }
 
@@ -500,28 +508,55 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void validateTestParameters(
-      List<TestCaseParameterValue> parameterValues, List<TestCaseParameter> parameterDefinition) {
+      List<TestCaseParameterValue> parameterValues,
+      List<TestCaseParameter> parameterDefinition,
+      List<TestPlatform> testPlatforms,
+      TestDefinition testDefinition) {
     if (parameterValues != null) {
 
       if (parameterDefinition.isEmpty() && !parameterValues.isEmpty()) {
         throw new IllegalArgumentException(
             "Parameter Values doesn't match Test Definition Parameters");
       }
-      Map<String, Object> values = new HashMap<>();
 
-      for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
-        values.put(testCaseParameterValue.getName(), testCaseParameterValue.getValue());
-      }
-      for (TestCaseParameter parameter : parameterDefinition) {
-        if (Boolean.TRUE.equals(parameter.getRequired())
-            && (!values.containsKey(parameter.getName())
-                || values.get(parameter.getName()) == null)) {
-          throw new IllegalArgumentException(
-              "Required parameter " + parameter.getName() + " is not passed in parameterValues");
+      if (!testPlatforms.contains(TestPlatform.GREAT_EXPECTATIONS)
+          && !testDefinition.getName().equals("tableDiff")) {
+        Set<String> definedParameterNames =
+            parameterDefinition.stream()
+                .map(TestCaseParameter::getName)
+                .collect(Collectors.toSet());
+
+        Map<String, Object> values = getParameterValuesMap(parameterValues, definedParameterNames);
+        for (TestCaseParameter parameter : parameterDefinition) {
+          if (Boolean.TRUE.equals(parameter.getRequired())
+              && (!values.containsKey(parameter.getName())
+                  || values.get(parameter.getName()) == null)) {
+            throw new IllegalArgumentException(
+                "Required parameter " + parameter.getName() + " is not passed in parameterValues");
+          }
+          validateParameterRule(parameter, values);
         }
-        validateParameterRule(parameter, values);
       }
     }
+  }
+
+  private @NotNull Map<String, Object> getParameterValuesMap(
+      List<TestCaseParameterValue> parameterValues, Set<String> definedParameterNames) {
+    Map<String, Object> values = new HashMap<>();
+
+    for (TestCaseParameterValue testCaseParameterValue : parameterValues) {
+      String parameterName = testCaseParameterValue.getName();
+
+      if (!definedParameterNames.contains(parameterName)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Parameter '%s' is not defined in the test definition. Defined parameters are: %s",
+                parameterName, definedParameterNames));
+      }
+
+      values.put(parameterName, testCaseParameterValue.getValue());
+    }
+    return values;
   }
 
   private void validateColumnTestCase(
