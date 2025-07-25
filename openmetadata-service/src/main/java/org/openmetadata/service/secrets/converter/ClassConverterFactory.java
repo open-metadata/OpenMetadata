@@ -31,6 +31,7 @@ import org.openmetadata.schema.services.connections.database.CassandraConnection
 import org.openmetadata.schema.services.connections.database.CockroachConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.GoogleSheetsConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.IcebergConnection;
@@ -73,6 +74,7 @@ public final class ClassConverterFactory {
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(GoogleSheetsConnection.class, new GoogleSheetsConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
