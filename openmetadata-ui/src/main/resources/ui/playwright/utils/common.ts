@@ -194,7 +194,12 @@ export const assignDomain = async (
 
 export const updateDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  previousDomain: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -203,7 +208,36 @@ export const updateDomain = async (
     .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .clear();
+  // remove previous domain
 
+  const searchPreviousDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(previousDomain.name)}*`
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(previousDomain.name);
+  await searchPreviousDomain;
+
+  await page.getByTestId(`tag-${previousDomain.fullyQualifiedName}`).click();
+
+  const patchReqPreviousDomain = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReqPreviousDomain;
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // add new domain
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
@@ -309,7 +343,11 @@ export const removeDataProduct = async (
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
   await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
 
   await expect(
     page
