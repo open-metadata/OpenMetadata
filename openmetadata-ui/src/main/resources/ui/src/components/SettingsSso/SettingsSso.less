@@ -1,0 +1,124 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../styles/variables.less';
+.scim-token-card {
+  background-color: @white;
+  padding: @size-lg;
+  border-radius: @size-md;
+  border: 1px solid @grey-200;
+  .ant-card-body {
+    padding: @size-lg;
+  }
+  .card-title {
+    color: @grey-700;
+    font-size: @font-size-base;
+    font-style: normal;
+    font-weight: 600;
+    line-height: @size-lg;
+    margin-bottom: @size-md;
+  }
+  .card-description {
+    font-weight: 400;
+    color: @grey-700;
+  }
+  .read-docs-link {
+    color: @blue-12 !important;
+    margin-left: 8px;
+  }
+  .token-label {
+    color: @text-color-tertiary;
+    font-weight: 600;
+    margin-bottom: @size-md;
+  }
+  .created-by-label,
+  .created-on-label {
+    color: @grey-400;
+    font-weight: 500;
+    margin-right: @size-3xl;
+  }
+
+  .created-by-value,
+  .created-on-value {
+    font-weight: 500;
+  }
+  .generate-scim-token-btn {
+    width: 152px;
+  }
+  .scim-token-card .ant-divider.scim-divider {
+    margin: 0;
+    width: 100%;
+    min-width: 100%;
+  }
+}
+
+.scim-modal-delete {
+  .ant-modal-content {
+    width: 400px !important;
+    padding: 0px;
+  }
+
+  .scim-modal-delete-title {
+    font-weight: 600;
+  }
+
+  .scim-modal-delete-desc {
+    font-size: @size-sm;
+    font-weight: 400;
+    color: @grey-600;
+  }
+
+  .ant-modal-footer,
+  .ant-modal-footer .ant-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    border-top: none !important;
+  }
+  .ant-btn {
+    height: 44px;
+    font-weight: 600;
+    padding: 10px @size-xl;
+    border-radius: @size-md;
+  }
+  .ant-modal-header {
+    display: none !important;
+  }
+
+  .scim-modal-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: none !important;
+  }
+  .scim-modal-cancel-button {
+    background-color: @white;
+    color: @black;
+    border: 1px solid @grey-400;
+    padding: 10px @size-xl;
+    border-radius: @size-xs;
+    width: 170px;
+  }
+  .scim-modal-delete-button {
+    background-color: @red-14;
+    color: @white;
+    padding: 10px @size-xl;
+    border-radius: @size-xs;
+    width: 170px;
+  }
+}
+.card-container {
+  background-color: @white;
+  padding: @size-lg;
+  border-radius: @size-md;
+  border: 1px solid @grey-200;
+}
