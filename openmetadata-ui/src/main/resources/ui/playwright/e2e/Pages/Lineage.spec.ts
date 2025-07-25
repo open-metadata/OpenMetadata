@@ -69,13 +69,13 @@ const entities = [
 
 const pipeline = new PipelineClass();
 
-test.skip('Setup pre-requests', async ({ browser }) => {
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await pipeline.create(apiContext);
   await afterAction();
 });
 
-test.skip('Cleanup', async ({ browser }) => {
+test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await pipeline.delete(apiContext);
   await afterAction();
@@ -369,7 +369,7 @@ test.skip('Verify column lineage between table and api endpoint', async ({
   await afterAction();
 });
 
-test.skip('Verify function data in edge drawer', async ({ browser }) => {
+test('Verify function data in edge drawer', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);
