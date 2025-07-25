@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Azure SSO Configuration",
+  "description": "Azure SSO configuration schema for OpenMetadata",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "title": "SSO Provider",
+      "description": "Select the SSO provider to configure",
+      "type": "string",
+      "enum": [
+        "Google",
+        "Auth0",
+        "Azure",
+        "Okta",
+        "CustomOidc",
+        "Saml",
+        "Basic"
+      ],
+      "default": "Azure"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Azure SSO client secret key",
+      "type": "string",
+      "format": "password",
+      "minLength": 1
+    },
+    "authority": {
+      "title": "Authority",
+      "description": "Azure SSO Authority",
+      "type": "string",
+      "minLength": 1
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Azure Client ID",
+      "type": "string",
+      "minLength": 1
+    },
+    "scopes": {
+      "title": "Scopes",
+      "description": "Azure Client scopes",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["openid", "profile", "email"]
+    }
+  },
+  "required": ["provider", "clientSecret", "clientId", "authority", "scopes"],
+  "additionalProperties": false
+}

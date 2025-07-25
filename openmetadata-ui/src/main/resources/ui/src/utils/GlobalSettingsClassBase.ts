@@ -740,6 +740,13 @@ class GlobalSettingsClassBase {
         key: GlobalSettingOptions.PERSONA,
         icon: PersonasIcon,
       },
+      {
+        category: t('label.sso'),
+        isProtected: Boolean(isAdminUser),
+        key: GlobalSettingOptions.SSO,
+        icon: UsersIcon,
+        description: t('message.sso-configuration-description'),
+      },
     ];
   }
 }

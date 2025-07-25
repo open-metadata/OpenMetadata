@@ -298,6 +298,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {

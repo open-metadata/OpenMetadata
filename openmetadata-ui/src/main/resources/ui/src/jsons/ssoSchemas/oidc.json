@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OIDC SSO Configuration",
+  "description": "OIDC SSO configuration schema for OpenMetadata",
+  "type": "object",
+  "properties": {
+    "provider": {
+      "title": "SSO Provider",
+      "description": "Select the SSO provider to configure",
+      "type": "string",
+      "enum": [
+        "Google",
+        "Auth0",
+        "Azure",
+        "Okta",
+        "CustomOidc",
+        "Saml",
+        "Basic"
+      ],
+      "default": "CustomOidc"
+    },
+    "type": {
+      "title": "IDP Type",
+      "description": "IDP type (Example Google,Azure)",
+      "type": "string",
+      "minLength": 1
+    },
+    "id": {
+      "title": "Client ID",
+      "description": "Client ID",
+      "type": "string",
+      "minLength": 1
+    },
+    "secret": {
+      "title": "Client Secret",
+      "description": "Client Secret",
+      "type": "string",
+      "format": "password",
+      "minLength": 1
+    },
+    "scope": {
+      "title": "OIDC Request Scopes",
+      "description": "Oidc Request Scopes",
+      "type": "string",
+      "default": "openid email profile"
+    },
+    "discoveryUri": {
+      "title": "Discovery URI",
+      "description": "Discovery Uri for the Client",
+      "type": "string",
+      "format": "uri"
+    },
+    "useNonce": {
+      "title": "Use Nonce",
+      "description": "Use Nonce",
+      "type": "boolean",
+      "default": true
+    },
+    "preferredJwsAlgorithm": {
+      "title": "Preferred JWS Algorithm",
+      "description": "Preferred Jws Algorithm",
+      "type": "string",
+      "default": "RS256"
+    },
+    "responseType": {
+      "title": "Response Type",
+      "description": "Response Type",
+      "type": "string",
+      "default": "code"
+    },
+    "disablePkce": {
+      "title": "Disable PKCE",
+      "description": "Disable PKCE",
+      "type": "boolean",
+      "default": true
+    },
+    "maxClockSkew": {
+      "title": "Max Clock Skew",
+      "description": "Max Clock Skew",
+      "type": "string"
+    },
+    "clientAuthenticationMethod": {
+      "title": "Client Authentication Method",
+      "description": "Client Authentication Method",
+      "type": "string",
+      "enum": [
+        "client_secret_basic",
+        "client_secret_post",
+        "client_secret_jwt",
+        "private_key_jwt"
+      ]
+    },
+    "tokenValidity": {
+      "title": "Token Validity",
+      "description": "Validity for the JWT Token created from SAML Response",
+      "type": "integer",
+      "default": 3600
+    },
+    "tenant": {
+      "title": "Tenant",
+      "description": "Tenant in case of Azure",
+      "type": "string"
+    },
+    "serverUrl": {
+      "title": "Server URL",
+      "description": "Server Url",
+      "type": "string",
+      "format": "uri"
+    },
+    "callbackUrl": {
+      "title": "Callback URL",
+      "description": "Callback Url",
+      "type": "string",
+      "format": "uri"
+    },
+    "maxAge": {
+      "title": "Max Age",
+      "description": "Validity for the JWT Token created from SAML Response",
+      "type": "string"
+    },
+    "prompt": {
+      "title": "Prompt",
+      "description": "Prompt whether login/consent",
+      "type": "string"
+    },
+    "enableSelfSignup": {
+      "title": "Enable Self Signup",
+      "description": "Allow users to sign up automatically through SSO",
+      "type": "boolean",
+      "default": false
+    },
+    "publicKeyUrls": {
+      "title": "Public Key URLs",
+      "description": "URLs to fetch public keys for token validation",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "minItems": 1,
+      "default": ["http://localhost:8585/api/v1/system/config/jwks"]
+    }
+  },
+  "required": ["provider", "type", "id", "secret"],
+  "additionalProperties": false
+}
