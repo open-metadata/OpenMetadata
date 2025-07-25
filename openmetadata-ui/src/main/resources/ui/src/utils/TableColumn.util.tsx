@@ -56,16 +56,16 @@ export const ownerTableObject = <
 ];
 
 export const domainTableObject = <
-  T extends { domain?: EntityReference }
+  T extends { domains?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.domain').toString(),
-    dataIndex: TABLE_COLUMNS_KEYS.DOMAIN,
-    key: TABLE_COLUMNS_KEYS.DOMAIN,
+    title: i18n.t('label.domain-plural').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DOMAINS,
+    key: TABLE_COLUMNS_KEYS.DOMAINS,
     width: 200,
-    render: (domain: EntityReference) => (
+    render: (domains: EntityReference[]) => (
       <DomainLabel
-        domain={domain}
+        domains={domains}
         entityFqn=""
         entityId=""
         entityType={EntityType.TABLE}

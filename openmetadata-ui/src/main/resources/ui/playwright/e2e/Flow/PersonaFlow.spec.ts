@@ -119,6 +119,8 @@ test.describe.serial('Persona operations', () => {
 
     await personaResponse;
 
+    await page.getByRole('tab', { name: 'Users' }).click();
+
     await page.waitForSelector('[data-testid="entity-header-name"]', {
       state: 'visible',
     });
@@ -195,6 +197,9 @@ test.describe.serial('Persona operations', () => {
     await page
       .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
+
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Users' }).click();
 
     await page
       .locator(

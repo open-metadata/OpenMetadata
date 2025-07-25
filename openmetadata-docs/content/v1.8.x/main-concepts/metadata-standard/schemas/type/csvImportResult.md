@@ -1,5 +1,6 @@
 ---
 title: csvImportResult | OpenMetadata CSV Import Result
+description: CsvImportResult schema represents summary data for metadata imports from CSV files.
 slug: /main-concepts/metadata-standard/schemas/type/csvimportresult
 ---
 

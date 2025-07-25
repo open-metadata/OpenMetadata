@@ -34,6 +34,7 @@ export enum FieldTypes {
   SELECT = 'select',
   ASYNC_SELECT_LIST = 'async_select_list',
   NUMBER = 'number',
+  CHECK_BOX = 'check_box',
   SLIDER_INPUT = 'slider_input',
   DESCRIPTION = 'description',
   TAG_SUGGESTION = 'tag_suggestion',

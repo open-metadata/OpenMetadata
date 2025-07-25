@@ -11,30 +11,25 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import RGL, {
   Layout,
   ReactGridLayoutProps,
   WidthProvider,
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
 import {
   CustomiseHomeModalSelectedKey,
   LandingPageWidgetKeys,
 } from '../../../../enums/CustomizablePage.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
-import { searchQuery } from '../../../../rest/searchAPI';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
@@ -45,10 +40,9 @@ import {
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
@@ -67,7 +61,6 @@ function CustomizeMyData({
   onBackgroundColorUpdate,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
@@ -82,9 +75,6 @@ function CustomizeMyData({
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
-
-  const [followedData, setFollowedData] = useState<Array<SourceType>>([]);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
@@ -113,14 +103,21 @@ function CustomizeMyData({
     []
   );
 
-  const handleLayoutUpdate = useCallback(
-    (updatedLayout: Layout[]) => {
-      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout(getLayoutUpdateHandler(updatedLayout));
-      }
-    },
-    [layout]
-  );
+  /**
+   * Optimized layout update handler that prevents unnecessary re-renders during drag and drop
+   * Uses functional state updates to avoid stale closures and improve performance
+   */
+  const handleLayoutUpdate = useCallback((updatedLayout: Layout[]) => {
+    if (!isEmpty(updatedLayout)) {
+      setLayout((currentLayout) => {
+        if (!isEmpty(currentLayout)) {
+          return getLayoutUpdateHandler(updatedLayout)(currentLayout);
+        }
+
+        return currentLayout;
+      });
+    }
+  }, []);
 
   const handleOpenCustomiseHomeModal = useCallback(() => {
     setIsWidgetModalOpen(true);
@@ -129,27 +126,6 @@ function CustomizeMyData({
   const handleCloseCustomiseHomeModal = useCallback(() => {
     setIsWidgetModalOpen(false);
   }, []);
-
-  const fetchUserFollowedData = async () => {
-    if (!currentUser?.id) {
-      return;
-    }
-    setIsLoadingOwnedData(true);
-    try {
-      const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
-        searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
-      });
-
-      setFollowedData(res.hits.hits.map((hit) => hit._source));
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoadingOwnedData(false);
-    }
-  };
 
   const addedWidgetsList = useMemo(
     () =>
@@ -189,18 +165,12 @@ function CustomizeMyData({
       )),
     [
       layout,
-      followedData,
-      isLoadingOwnedData,
       handleOpenCustomiseHomeModal,
       handlePlaceholderWidgetKey,
       handleRemoveWidget,
       handleLayoutUpdate,
     ]
   );
-
-  useEffect(() => {
-    fetchUserFollowedData();
-  }, []);
 
   const handleSave = async () => {
     await onSaveLayout({
@@ -232,7 +202,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <>
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
         className="p-t-box customise-my-data"
         pageTitle={t('label.customize-entity', {
@@ -252,16 +222,24 @@ function CustomizeMyData({
             handleAddWidget={handleMainPanelAddWidget}
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
+          {/* 
+            ReactGridLayout with optimized drag and drop behavior
+            - verticalCompact: Packs widgets tightly without gaps
+            - preventCollision={false}: Enables automatic widget repositioning on collision
+            - useCSSTransforms: Uses CSS transforms for better performance during drag
+          */}
           <ReactGridLayout
+            useCSSTransforms
+            verticalCompact
             className="grid-container"
             cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
             draggableHandle=".drag-widget-icon"
             isResizable={false}
-            key={JSON.stringify(layout)}
             margin={[
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
+            preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
             {widgets}
@@ -282,7 +260,7 @@ function CustomizeMyData({
           onHomePage={false}
         />
       )}
-    </>
+    </AdvanceSearchProvider>
   );
 }
 

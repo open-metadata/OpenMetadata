@@ -279,12 +279,21 @@ export const CustomizeTabWidget = () => {
     });
   };
 
+  /**
+   * Memoized widgets array optimized for drag and drop performance
+   * Re-renders only when tabLayouts or leftPanelWidget changes, preventing unnecessary updates
+   * during drag operations
+   */
   const widgets = useMemo(
     // Re-render upon leftPanelWidget change
     () => getWidgetFromLayout(tabLayouts),
     [tabLayouts, leftPanelWidget]
   );
 
+  /**
+   * Layout update handler for drag and drop operations
+   * Updates the current page with the new layout while preserving left panel widget children
+   */
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
@@ -440,11 +449,20 @@ export const CustomizeTabWidget = () => {
               items.find((item) => item.id === activeKey) as Tab
             ),
           })}>
+          {/* 
+            ReactGridLayout with optimized drag and drop behavior for tab customization
+            - verticalCompact: Packs widgets tightly without gaps
+            - preventCollision={false}: Enables automatic widget repositioning on collision
+            - useCSSTransforms: Uses CSS transforms for better performance during drag
+          */}
           <ReactGridLayout
+            useCSSTransforms
+            verticalCompact
             className="grid-container"
             cols={TAB_GRID_MAX_COLUMNS}
             draggableHandle=".drag-widget-icon"
             margin={[16, 16]}
+            preventCollision={false}
             rowHeight={100}
             onLayoutChange={handleLayoutUpdate}>
             {widgets}
