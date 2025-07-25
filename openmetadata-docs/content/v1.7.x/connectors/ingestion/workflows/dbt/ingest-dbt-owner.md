@@ -67,7 +67,7 @@ models:
           'Test_Glossary.term_two.nested_term.more_nested_term',
         ]
         tier: 'Tier.Tier2'
-        owner: ['John Doe', 'jane@gmail.com']
+      owner: ['John Doe', 'jane@gmail.com']
     config:
       tags: ["model_tag_one", "model_tag_two"]
 ```
