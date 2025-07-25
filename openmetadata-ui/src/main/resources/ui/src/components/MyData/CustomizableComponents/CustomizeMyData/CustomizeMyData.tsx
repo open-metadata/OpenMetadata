@@ -41,6 +41,7 @@ import {
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -198,7 +199,7 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <>
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
         className="p-box customise-my-data"
         pageTitle={t('label.customize-entity', {
@@ -257,7 +258,7 @@ function CustomizeMyData({
           onHomePage={false}
         />
       )}
-    </>
+    </AdvanceSearchProvider>
   );
 }
 

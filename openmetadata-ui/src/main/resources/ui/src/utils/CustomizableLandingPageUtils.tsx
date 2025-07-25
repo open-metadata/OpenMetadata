@@ -18,6 +18,7 @@ import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
+import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
