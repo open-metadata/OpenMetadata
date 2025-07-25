@@ -2216,6 +2216,9 @@ public class EventSubscriptionResourceTest
     WebhookCallbackResource.EventDetails details =
         webhookCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2228,6 +2231,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredSlack(endpoint));
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("SlackCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2240,6 +2246,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredMSTeams(endpoint));
     MSTeamsCallbackResource.EventDetails details = teamsCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("MSTeamsCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
