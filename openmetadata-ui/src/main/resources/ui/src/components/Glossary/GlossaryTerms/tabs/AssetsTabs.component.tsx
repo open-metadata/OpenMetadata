@@ -434,7 +434,7 @@ const AssetsTabs = forwardRef(
     }, [entityFqn]);
 
     const assetErrorPlaceHolder = useMemo(() => {
-      if (isObject(noDataPlaceholder) || searchValue || !permissions.Create) {
+      if (isObject(noDataPlaceholder) || searchValue) {
         return (
           <ErrorPlaceHolderNew
             className="p-lg "
