@@ -45,6 +45,9 @@ import {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
 });
 
 const glossaryDetails = {

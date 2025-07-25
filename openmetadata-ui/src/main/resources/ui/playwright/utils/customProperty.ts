@@ -228,6 +228,9 @@ export const setValueForProperty = async (data: {
       const values = value.split(',');
       await page.locator('[data-testid="add-new-row"]').click();
 
+      // Editor grid to be visible
+      await page.waitForSelector('.om-rdg', { state: 'visible' });
+
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
       await fillTableColumnInputDetails(page, values[1], 'pw-column2');
