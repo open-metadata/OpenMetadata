@@ -33,9 +33,9 @@ export interface CreateDashboardDataModel {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Dashboard Data Model belongs to.
+     * Fully qualified names of the domains the Dashboard Data Model belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -613,6 +613,7 @@ export enum DataModelType {
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
     TableauPublishedDatasource = "TableauPublishedDatasource",
+    ThoughtSpotDataModel = "ThoughtSpotDataModel",
 }
 
 /**
@@ -682,4 +683,5 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }

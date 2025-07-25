@@ -1,5 +1,6 @@
 ---
-title: addGlossaryToAssetsRequest
+title: addGlossaryToAssetsRequest | Official Documentation
+description: Connect Addglossarytoassetsrequest to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/addglossarytoassetsrequest
 ---
 

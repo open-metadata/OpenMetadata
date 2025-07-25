@@ -1,5 +1,6 @@
 ---
 title: Type | OpenMetadata Entity Type Schema Details
+description: Metadata schema used to classify and define the type of each metadata entity within the catalog.
 slug: /main-concepts/metadata-standard/schemas/entity/type
 ---
 

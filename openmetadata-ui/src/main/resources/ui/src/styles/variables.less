@@ -21,17 +21,17 @@
 @link-color: ~'var(--ant-primary-color)';
 @radio-button-checked-bg: ~'var(--ant-primary-1)';
 @highlight-color: #f41111;
-@primary-25: ~'var(--ant-primary-25)';
-@primary-50: ~'var(--ant-primary-50)';
-@primary-1: ~'var(--ant-primary-1)';
-@primary-2: ~'var(--ant-primary-2)';
-@primary-3: ~'var(--ant-primary-3)';
-@primary-4: ~'var(--ant-primary-4)';
-@primary-5: ~'var(--ant-primary-5)';
-@primary-6: ~'var(--ant-primary-6)';
-@primary-7: ~'var(--ant-primary-7)';
-@primary-8: ~'var(--ant-primary-8)';
-@primary-9: ~'var(--ant-primary-9)';
+@primary-25: ~'var(--ant-primary-25)'; // #f5faff
+@primary-50: ~'var(--ant-primary-50)'; // #eff8ff
+@primary-1: ~'var(--ant-primary-1)'; // #d1e9ff
+@primary-2: ~'var(--ant-primary-2)'; // #b2ddff
+@primary-3: ~'var(--ant-primary-3)'; // #84caff
+@primary-4: ~'var(--ant-primary-4)'; // #53b1fd
+@primary-5: ~'var(--ant-primary-5)'; // #2e90fa
+@primary-6: ~'var(--ant-primary-6)'; // #1570ef
+@primary-7: ~'var(--ant-primary-7)'; // #175cd3
+@primary-8: ~'var(--ant-primary-8)'; // #1849a9
+@primary-9: ~'var(--ant-primary-9)'; // #194185
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -86,6 +86,7 @@
 @purple-1: #f2edfd;
 @purple-2: #7147e8;
 @purple-3: #a2a1ff;
+@purple-4: #efedfe80;
 @blue-1: #ebf6fe;
 @blue-2: #3ca2f4;
 @blue-3: #0950c5;
@@ -111,7 +112,17 @@
 @blue-26: @primary-8;
 @blue-27: #2196f3;
 @blue-28: #e3f2fd4d;
+@blue-29: #eff4fa;
+@blue-30: #d2dbeb;
+@blue-31: #3a86ff;
+@blue-32: #0057e2;
+@blue-33: #eff8ff;
+@blue-34: #175cd3;
 @grey-text: #2c2c2c;
+@blue-35: #3d3dd6;
+@blue-36: #1568da;
+@blue-37: #215df3e5;
+@blue-38: #d0e3fc;
 
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
@@ -138,6 +149,14 @@
 @grey-22: #d9d9d9;
 @grey-23: #f7f7f7;
 @grey-24: #979797;
+@grey-25: #dbe0e7;
+@grey-26: #fcfcfd;
+@grey-27: #0a0d120d;
+@grey-28: #00000040;
+@grey-29: #f9faff;
+@grey-30: #f4f6fb;
+@grey-31: #f1f3fc;
+@grey-32: #6b7f99;
 
 @text-grey-muted: @grey-4;
 @de-active-color: #6b7280;
@@ -149,8 +168,11 @@
 @button-box-shadow-disabled: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
 @button-box-shadow-grey: 0px 1px 2px 0px rgba(10, 13, 18, 0.05),
   0px 0px 0px 4px #f5f5f5;
+@box-shadow-surface-default: 0px 4px 6px -2px #0a0d1208,
+  0px 12px 16px -4px #0a0d1214;
 
 @white: #fff;
+@white-alpha-10: #ffffff1a;
 @checkbox-size: 14px;
 @switch-height: 16px;
 @switch-sm-height: 12px;
@@ -179,6 +201,7 @@
 @border-color-6: #dfdfdf;
 @global-border: 1px solid @border-color;
 @active-color: #e8f4ff;
+@rdg-cell-range-selections-background-color: #e9effd;
 @background-color: #ffffff;
 @announcement-background: @blue-28;
 @announcement-background-dark: #e1edff;
@@ -305,14 +328,15 @@
 @severity-3-background: rgba(255, 165, 33, 0.1);
 @severity-4-background: rgba(255, 206, 41, 0.1);
 @severity-5-background: rgba(181, 198, 33, 0.1);
+@severity-6-background: rgba(154, 154, 154, 0.2);
 
 // Border Radius
-@border-radius-base: @size-xxs;
-@border-radius-xs: @size-xs;
-@border-radius-sm: @size-sm;
-@border-radius-md: @size-md;
-@border-radius-lg: @size-mlg;
-@border-radius-xl: @size-lg;
+@border-rad-base: @size-xxs;
+@border-rad-xs: @size-xs;
+@border-rad-sm: @size-sm;
+@border-rad-md: @size-md;
+@border-rad-lg: @size-mlg;
+@border-rad-xl: @size-lg;
 
 // vertical paddings
 @padding-lg: @size-lg; // containers
@@ -335,8 +359,8 @@
 @warning-bg-color: rgb(from @warning-color r g b / 0.1);
 @info-bg-color: rgb(from @info-color r g b / 0.1);
 
-@card-radius: @border-radius-sm;
-@menu-radius: @border-radius-sm;
+@card-radius: @border-rad-sm;
+@menu-radius: @border-rad-sm;
 
 // Layout
 
@@ -349,8 +373,11 @@
 
 // Buttons
 
-@btn-border-radius-base: @border-radius-xs;
-@btn-border-radius-sm: @border-radius-xs;
+@btn-border-radius-base: @border-rad-xs;
+@btn-border-radius-sm: @border-rad-xs;
+
+// Checkbox
+@checkbox-border-radius: 4px; // to override ant design default 2px
 
 //grey colors
 @grey-25: #fdfdfd;
@@ -365,6 +392,13 @@
 @grey-800: #252b37;
 @grey-900: #181d27;
 @tag-text: #404040;
+
+//Blue colors (based on design system)
+@blue-500: #0ba5ec;
+
+//Green colors (based on design system)
+@green-500: #12b76a;
+
 //font weight
 @font-regular: 400;
 @font-medium: 500;
@@ -387,3 +421,5 @@
 @btn-height-lg: 44px;
 
 @focus-outline-color: #e6f4ff;
+@om-rdg-border-color: #e0e0e0;
+@om-rdg-header-color: #4a4a4a;

@@ -23,6 +23,7 @@ import {
   isNull,
   isString,
   isUndefined,
+  round,
   toLower,
   toNumber,
 } from 'lodash';
@@ -225,6 +226,18 @@ export const getCountBadge = (
       </span>
     </span>
   );
+};
+
+export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
+  const currentUser = useApplicationStore.getState().currentUser;
+  let recentlyViewed: RecentlyViewedData[] = [];
+
+  if (currentUser) {
+    const { preferences } = usePersistentStorage.getState();
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
+  }
+
+  return recentlyViewed;
 };
 
 export const setRecentlyViewedData = (
@@ -687,7 +700,7 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
       errorMessage = get(error, 'response.data.responseMessage', '');
     }
     if (!errorMessage) {
-      errorMessage = get(error, 'response.data', '');
+      errorMessage = get(error, 'response.data', '') as string;
       errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
     }
   }
@@ -825,4 +838,36 @@ export const calculatePercentageFromValue = (
   percentageValue: number
 ) => {
   return (value * percentageValue) / 100;
+};
+
+/**
+ * Calculates percentage from numerator and denominator with safe division
+ * @param numerator - The numerator value
+ * @param denominator - The denominator value
+ * @param precision - Number of decimal places to round to (default: 1)
+ * @returns Calculated percentage rounded to specified precision, or 0 if denominator is 0
+ * @example
+ * calculatePercentage(25, 100) // returns 25.0
+ * calculatePercentage(1, 3, 2) // returns 33.33
+ * calculatePercentage(5, 0) // returns 0 (safe division)
+ */
+export const calculatePercentage = (
+  numerator: number,
+  denominator: number,
+  precision = 1
+): number => {
+  if (denominator === 0) {
+    return 0;
+  }
+
+  return round((numerator / denominator) * 100, precision);
+};
+
+/**
+ * Check if the color is a linear gradient
+ * @param color - Color string
+ * @returns {boolean} - True if the color is a linear gradient, false otherwise
+ */
+export const isLinearGradient = (color: string) => {
+  return color.toLowerCase().includes('linear-gradient');
 };

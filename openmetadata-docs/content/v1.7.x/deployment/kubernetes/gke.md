@@ -1,5 +1,6 @@
 ---
-title: Kubernetes GKE Deployment
+title: Kubernetes GKE Deployment | Official Documentation
+description: Run your deployment on Google Kubernetes Engine (GKE) for a reliable, managed Kubernetes experience with secure configurations.
 slug: /deployment/kubernetes/gke
 collate: false
 ---

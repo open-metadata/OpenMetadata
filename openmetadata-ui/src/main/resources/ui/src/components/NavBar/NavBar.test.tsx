@@ -106,10 +106,14 @@ jest.mock(
       ),
   })
 );
+
+const mockUseCustomLocation = {
+  search: 'search',
+  pathname: '/my-data',
+};
+
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
+  return jest.fn().mockImplementation(() => mockUseCustomLocation);
 });
 jest.mock('../AppBar/SearchOptions', () => {
   return jest.fn().mockReturnValue(<div data-testid="cmd">SearchOptions</div>);
@@ -212,7 +216,7 @@ describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
 
-    expect(await screen.findByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
@@ -229,6 +233,50 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(getHelpDropdownItems).toHaveBeenCalled();
+  });
+
+  it('should hide global search bar and domain dropdown on my-data route', () => {
+    mockUseCustomLocation.pathname = '/my-data';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide global search bar and domain dropdown on customize-page route', () => {
+    mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show global search bar and domain dropdown on other routes', () => {
+    mockUseCustomLocation.pathname = '/explore';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+  });
+
+  it('should show global search bar and domain dropdown on settings route', () => {
+    mockUseCustomLocation.pathname = '/settings';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
   });
 });
 

@@ -74,7 +74,7 @@ public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   private final PipelineServiceMapper mapper = new PipelineServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  public static final String FIELDS = "pipelines,owners,domain,followers";
+  public static final String FIELDS = "pipelines,owners,domains,followers";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {

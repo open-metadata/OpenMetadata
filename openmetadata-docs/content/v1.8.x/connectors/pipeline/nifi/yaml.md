@@ -1,5 +1,6 @@
 ---
-title: Run the Nifi Connector Externally
+title: Run the Nifi Connector Externally | Official Documentation
+description: Configure NiFi ingestion using YAML to capture pipeline details, metadata flows, and event-based transformations.
 slug: /connectors/pipeline/nifi/yaml
 ---
 

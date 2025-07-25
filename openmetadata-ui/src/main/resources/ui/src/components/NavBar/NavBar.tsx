@@ -42,6 +42,7 @@ import {
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
+  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -117,6 +118,16 @@ const NavBar = () => {
     preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
+
+  // Check if current route should hide global search
+  const shouldHideGlobalSearchAndDomainDropdown = useMemo(() => {
+    const pathname = location.pathname;
+
+    return (
+      pathname === ROUTES.MY_DATA ||
+      pathname.startsWith(ROUTES.CUSTOMIZE_PAGE.replace('/:fqn/:pageFqn', ''))
+    );
+  }, [location.pathname]);
 
   const fetchOMVersion = async () => {
     try {
@@ -311,6 +322,7 @@ const NavBar = () => {
       }
 
       const newVersion = await getVersion();
+      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
 
       // Update the cache timestamp
       cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
@@ -318,7 +330,7 @@ const NavBar = () => {
       });
 
       // Compare version only if version is set previously to have fair comparison
-      if (version && version !== newVersion.version) {
+      if (version && version !== cleanedVersion) {
         setShowVersionMissMatchAlert(true);
       }
     };
@@ -451,43 +463,47 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            <GlobalSearchBar />
-            <DomainSelectableList
-              hasPermission
-              showAllDomains
-              popoverProps={{
-                open: isDomainDropdownOpen,
-                onOpenChange: (open) => {
-                  setIsDomainDropdownOpen(open);
-                },
-              }}
-              selectedDomain={activeDomainEntityRef}
-              wrapInButton={false}
-              onCancel={() => setIsDomainDropdownOpen(false)}
-              onUpdate={handleDomainChange}>
-              <Button
-                className={classNames(
-                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
-                  {
-                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                  }
-                )}
-                data-testid="domain-dropdown"
-                onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
-                <DomainIcon
-                  className="d-flex"
-                  height={20}
-                  name="domain"
-                  width={20}
-                />
-                <Typography.Text ellipsis className="domain-text">
-                  {activeDomainEntityRef
-                    ? getEntityName(activeDomainEntityRef)
-                    : activeDomain}
-                </Typography.Text>
-                <DropDownIcon width={12} />
-              </Button>
-            </DomainSelectableList>
+            {!shouldHideGlobalSearchAndDomainDropdown && <GlobalSearchBar />}
+            {!shouldHideGlobalSearchAndDomainDropdown && (
+              <DomainSelectableList
+                hasPermission
+                showAllDomains
+                popoverProps={{
+                  open: isDomainDropdownOpen,
+                  onOpenChange: (open) => {
+                    setIsDomainDropdownOpen(open);
+                  },
+                }}
+                selectedDomain={activeDomainEntityRef}
+                wrapInButton={false}
+                onCancel={() => setIsDomainDropdownOpen(false)}
+                onUpdate={handleDomainChange}>
+                <Button
+                  className={classNames(
+                    'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                    {
+                      'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                    }
+                  )}
+                  data-testid="domain-dropdown"
+                  onClick={() =>
+                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                  }>
+                  <DomainIcon
+                    className="d-flex"
+                    height={20}
+                    name="domain"
+                    width={20}
+                  />
+                  <Typography.Text ellipsis className="domain-text">
+                    {activeDomainEntityRef
+                      ? getEntityName(activeDomainEntityRef)
+                      : activeDomain}
+                  </Typography.Text>
+                  <DropDownIcon width={12} />
+                </Button>
+              </DomainSelectableList>
+            )}
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">

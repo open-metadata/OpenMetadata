@@ -24,6 +24,39 @@ CREATE TABLE IF NOT EXISTS directory_entity (
     PRIMARY KEY (id),
     UNIQUE KEY directory_entity_fqn_hash (fqnHash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- Migrate domain to domains in all entity tables that had singular domain
+-- Using the correct table names from existing migrations
+UPDATE api_collection_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE api_endpoint_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE api_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE chart_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE dashboard_data_model_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE dashboard_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE dashboard_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE database_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE database_schema_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE dbservice_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE glossary_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE glossary_term_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE ingestion_pipeline_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE messaging_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE metadata_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE metric_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE ml_model_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE mlmodel_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE persona_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE pipeline_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE pipeline_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE query_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE report_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE search_index_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE search_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE storage_container_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE storage_service_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE stored_procedure_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE table_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE topic_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+-- Note: user_entity and team_entity already had domains array, so they are not migrated
 
 -- File Entity
 CREATE TABLE IF NOT EXISTS file_entity (
@@ -71,3 +104,45 @@ CREATE TABLE IF NOT EXISTS worksheet_entity (
     UNIQUE KEY worksheet_entity_fqn_hash (fqnHash),
     KEY idx_worksheet_spreadsheet_fqn (spreadsheetFqn)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- Clean old test connections
+TRUNCATE automations_workflow;
+
+-- Performance optimization indexes for entity_relationship table
+-- These indexes improve cascade deletion performance
+CREATE INDEX idx_entity_rel_from_delete
+ON entity_relationship(fromId, fromEntity, toId, toEntity, relation);
+
+CREATE INDEX idx_entity_rel_to_delete 
+ON entity_relationship(toId, toEntity, fromId, fromEntity, relation);
+
+-- Index for cascade queries
+CREATE INDEX idx_entity_rel_cascade 
+ON entity_relationship(fromId, relation, toEntity, toId);
+
+-- Entity deletion lock table for preventing orphaned entities during cascade deletion
+CREATE TABLE IF NOT EXISTS entity_deletion_lock (
+    id VARCHAR(36) NOT NULL DEFAULT (UUID()),
+    entityId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(256) NOT NULL,
+    entityFqn VARCHAR(2048) NOT NULL,
+    lockType VARCHAR(50) NOT NULL, -- 'DELETE_IN_PROGRESS', 'DELETE_SCHEDULED'
+    lockedBy VARCHAR(256) NOT NULL,
+    lockedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expectedCompletion TIMESTAMP NULL,
+    deletionScope VARCHAR(50), -- 'ENTITY_ONLY', 'CASCADE'
+    metadata JSON,
+    PRIMARY KEY (id),
+    UNIQUE KEY entity_deletion_lock_unique (entityId, entityType),
+    INDEX idx_deletion_lock_fqn (entityFqn(255)),
+    INDEX idx_deletion_lock_time (lockedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- 1. Add generated classificationHash column to support fast lookup and grouping by classification fqnHash
+ALTER TABLE tag
+  ADD COLUMN classificationHash VARCHAR(255)
+  GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnhash, '.', 1)) STORED;
+
+-- 2. Create index on classificationHash + deleted
+CREATE INDEX idx_tag_classification_hash_deleted
+  ON tag (classificationHash, deleted);

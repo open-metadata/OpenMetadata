@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -89,17 +90,63 @@ public class TagRepository extends EntityRepository<Tag> {
 
     try {
       Classification parent =
-          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners", ALL);
+          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners,domains", ALL);
       if (parent.getDisabled() != null && parent.getDisabled()) {
         tag.setDisabled(true);
       }
       inheritOwners(tag, fields, parent);
+      inheritDomains(tag, fields, parent);
     } catch (Exception e) {
       LOG.debug(
           "Failed to get classification {} for tag {}: {}",
           tag.getClassification().getId(),
           tag.getId(),
           e.getMessage());
+    }
+  }
+
+  @Override
+  public void setInheritedFields(List<Tag> tags, Fields fields) {
+    if (tags == null || tags.isEmpty()) {
+      return;
+    }
+
+    Set<UUID> classificationIds =
+        tags.stream()
+            .map(Tag::getClassification)
+            .filter(Objects::nonNull)
+            .map(EntityReference::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    if (classificationIds.isEmpty()) {
+      return;
+    }
+
+    ClassificationRepository classificationRepository =
+        (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
+    List<Classification> classifications =
+        classificationRepository
+            .getDao()
+            .findEntitiesByIds(new ArrayList<>(classificationIds), ALL);
+
+    classificationRepository.setFieldsInBulk(
+        new Fields(Set.of("owners", "domains")), classifications);
+
+    Map<UUID, Classification> classificationMap =
+        classifications.stream().collect(Collectors.toMap(Classification::getId, c -> c));
+
+    for (Tag tag : tags) {
+      if (tag.getClassification() != null && tag.getClassification().getId() != null) {
+        Classification classification = classificationMap.get(tag.getClassification().getId());
+        if (classification != null) {
+          if (classification.getDisabled() != null && classification.getDisabled()) {
+            tag.setDisabled(true);
+          }
+          inheritOwners(tag, fields, classification);
+          inheritDomains(tag, fields, classification);
+        }
+      }
     }
   }
 
@@ -431,6 +478,7 @@ public class TagRepository extends EntityRepository<Tag> {
               .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
 
       return results.stream()
+          .filter(row -> row.get("tagFQN") != null)
           .collect(
               Collectors.toMap(
                   row -> (String) row.get("tagFQN"),

@@ -757,7 +757,6 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
-  viewProfilerPermission,
   editLineagePermission,
   fetchTableDetails,
   testCaseSummary,
@@ -874,22 +873,13 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
-      children:
-        !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-observability'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <TableProfiler
-            permissions={tablePermissions}
-            table={tableDetails}
-            testCaseSummary={testCaseSummary}
-          />
-        ),
+      children: (
+        <TableProfiler
+          permissions={tablePermissions}
+          table={tableDetails}
+          testCaseSummary={testCaseSummary}
+        />
+      ),
     },
     {
       label: (
@@ -968,6 +958,17 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
     },
+    // {
+    //   label: (
+    //     <TabsLabel
+    //       id={EntityTabs.CONTRACT}
+    //       isActive={activeTab === EntityTabs.CONTRACT}
+    //       name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+    //     />
+    //   ),
+    //   key: EntityTabs.CONTRACT,
+    //   children: <ContractTab />,
+    // },
     {
       label: (
         <TabsLabel
@@ -1259,5 +1260,27 @@ export const updateColumnInNestedStructure = (
     } else {
       return column;
     }
+  });
+};
+
+export const pruneEmptyChildren = (columns: Column[]): Column[] => {
+  return columns.map((column) => {
+    // If column has no children or empty children array, remove children property
+    if (!column.children || column.children.length === 0) {
+      return omit(column, 'children');
+    }
+
+    // If column has children, recursively prune them
+    const prunedChildren = pruneEmptyChildren(column.children);
+
+    // If after pruning, children array becomes empty, remove children property
+    if (prunedChildren.length === 0) {
+      return omit(column, 'children');
+    }
+
+    return {
+      ...column,
+      children: prunedChildren,
+    };
   });
 };

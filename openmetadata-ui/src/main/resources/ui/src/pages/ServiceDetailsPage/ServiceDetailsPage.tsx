@@ -45,7 +45,6 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
   pagingObject,
   ROUTES,
@@ -154,7 +153,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const airflowInformation = useAirflowStatus();
-  const { isAirflowAvailable, platform } = useMemo(
+  const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
@@ -758,7 +757,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
             TabSpecificField.FOLLOWERS
           },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
-            isMetadataService ? '' : TabSpecificField.DOMAIN
+            isMetadataService ? '' : TabSpecificField.DOMAINS
           }`,
           include: Include.All,
         }
@@ -1136,14 +1135,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
-  const disableRunAgentsButton = useMemo(
-    () =>
-      workflowStatesData?.mainInstanceState.status &&
-      ![WorkflowStatus.Exception, WorkflowStatus.Failure].includes(
-        workflowStatesData?.mainInstanceState.status
-      ),
-    [workflowStatesData?.mainInstanceState.status]
-  );
+  const disableRunAgentsButton = useMemo(() => {
+    if (isWorkflowStatusLoading) {
+      return true;
+    }
+
+    return isEmpty(workflowStatesData?.mainInstanceState.status)
+      ? false
+      : workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running;
+  }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
@@ -1479,9 +1479,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    if (platform === AIRFLOW_HYBRID) {
-      serviceUtilClassBase.getExtraInfo();
-    }
+    serviceUtilClassBase.getExtraInfo();
   }, []);
 
   if (isLoading) {

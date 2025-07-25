@@ -25,10 +25,7 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import {
-  getDomainFieldFromEntityType,
-  renderDomainLink,
-} from '../../../utils/DomainUtils';
+import { renderDomainLink } from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -39,7 +36,7 @@ import { DomainLabelProps } from './DomainLabel.interface';
 export const DomainLabel = ({
   afterDomainUpdateAction,
   hasPermission,
-  domain,
+  domains,
   domainDisplayName,
   entityType,
   entityFqn,
@@ -55,11 +52,9 @@ export const DomainLabel = ({
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      const fieldData = getDomainFieldFromEntityType(entityType);
-
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        { fields: fieldData }
+        { fields: 'domains' }
       );
 
       try {
@@ -67,13 +62,15 @@ export const DomainLabel = ({
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            [fieldData]: selectedDomain,
+            domains: Array.isArray(selectedDomain)
+              ? selectedDomain
+              : [selectedDomain],
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
           const res = await api(entityId, jsonPatch);
 
-          const entityDomains = get(res, fieldData, {});
+          const entityDomains = get(res, 'domains', {});
           if (Array.isArray(entityDomains)) {
             setActiveDomain(entityDomains);
           } else {
@@ -92,17 +89,17 @@ export const DomainLabel = ({
   );
 
   useEffect(() => {
-    if (domain) {
-      if (Array.isArray(domain)) {
-        setActiveDomain(domain);
+    if (domains) {
+      if (Array.isArray(domains)) {
+        setActiveDomain(domains);
       } else {
-        setActiveDomain([domain]);
+        setActiveDomain([domains]);
       }
     } else {
       // note: this is to handle the case where the domain is not set
       setActiveDomain([]);
     }
-  }, [domain]);
+  }, [domains]);
 
   const domainLink = useMemo(() => {
     if (
@@ -114,7 +111,7 @@ export const DomainLabel = ({
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain'),
+              entity: t('label.domain-plural'),
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -188,7 +185,7 @@ export const DomainLabel = ({
           textClassName
         )}
         data-testid="no-domain-text">
-        {t('label.no-entity', { entity: t('label.domain') })}
+        {t('label.no-entity', { entity: t('label.domain-plural') })}
       </Typography.Text>
     );
   }, [
@@ -212,7 +209,7 @@ export const DomainLabel = ({
         />
       )
     );
-  }, [hasPermission, activeDomain, handleDomainSave]);
+  }, [hasPermission, activeDomain, handleDomainSave, multiple, onUpdate]);
 
   const label = useMemo(() => {
     if (showDomainHeading) {
@@ -223,13 +220,13 @@ export const DomainLabel = ({
             data-testid="header-domain-container">
             {!headerLayout ? (
               <Typography.Text className="right-panel-label m-r-xss">
-                {t('label.domain')}
+                {t('label.domain-plural')}
               </Typography.Text>
             ) : (
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
-                  ? t('label.domain')
-                  : t('label.no-entity', { entity: t('label.domain') })}
+                  ? t('label.domain-plural')
+                  : t('label.no-entity', { entity: t('label.domain-plural') })}
               </Typography.Text>
             )}
             {selectableList}
@@ -249,7 +246,7 @@ export const DomainLabel = ({
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
             <Typography.Text className="domain-link right-panel-label m-r-xss">
-              {t('label.domain')}
+              {t('label.domain-plural')}
             </Typography.Text>
             {selectableList}
           </div>

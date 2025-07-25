@@ -1,5 +1,6 @@
 ---
 title: Workflow Settings | OpenMetadata Workflow Config
+description: Connect Workflowsettings to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/workflowsettings
 ---
 

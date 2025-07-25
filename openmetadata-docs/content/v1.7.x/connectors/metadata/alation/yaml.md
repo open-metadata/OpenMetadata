@@ -1,5 +1,6 @@
 ---
 title: Run the Alation Connector Externally
+description: Use YAML to configure Alation metadata integration and capture glossary terms, classifications, and asset links.
 slug: /connectors/metadata/alation/yaml
 collate: true
 ---
@@ -227,7 +228,7 @@ source:
       type: Alation
 ```
 ```yaml {% srNumber=12 %}
-      hostPort: http://localhost:21000
+      hostPort: https://xxxx.alationcloud.com:443
 ```
 ```yaml {% srNumber=13 %}
       # Select one authentication type from below

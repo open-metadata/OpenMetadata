@@ -14,7 +14,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -31,7 +31,10 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
-import { UICustomization } from '../../generated/system/ui/uiCustomization';
+import {
+  PersonaPreferences,
+  UICustomization,
+} from '../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -65,6 +68,15 @@ export const CustomizablePage = () => {
     setCurrentPageType,
   } = useCustomizeStore();
 
+  const backgroundColor = useMemo(
+    () =>
+      document?.data.personPreferences?.find(
+        (persona: PersonaPreferences) =>
+          persona.personaId === personaDetails?.id
+      )?.landingPageSettings?.headerColor,
+    [document, personaDetails]
+  );
+
   const handlePageCustomizeSave = async (newPage?: Page) => {
     if (!document) {
       return;
@@ -94,7 +106,9 @@ export const CustomizablePage = () => {
       } else {
         response = await createDocument({
           ...newDoc,
-          domain: newDoc.domain?.fullyQualifiedName,
+          domains: newDoc.domains
+            ?.map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[],
         });
       }
       setDocument(response);
@@ -106,8 +120,7 @@ export const CustomizablePage = () => {
             : t('label.created-lowercase'),
         })
       );
-    } catch (error) {
-      // Error
+    } catch {
       showErrorToast(
         t('server.page-layout-operation-error', {
           operation: document.id
@@ -137,7 +150,77 @@ export const CustomizablePage = () => {
       } else {
         response = await createDocument({
           ...newDoc,
-          domain: newDoc.domain?.fullyQualifiedName,
+          domains: newDoc.domains
+            ?.map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[],
+        });
+      }
+      setDocument(response);
+
+      showSuccessToast(
+        t('server.page-layout-operation-success', {
+          operation: document.id
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        })
+      );
+    } catch {
+      // Error
+      showErrorToast(
+        t('server.page-layout-operation-error', {
+          operation: document.id
+            ? t('label.updating-lowercase')
+            : t('label.creating-lowercase'),
+        })
+      );
+    }
+  };
+
+  const handleBackgroundColorUpdate = async (color?: string) => {
+    if (!document) {
+      return;
+    }
+    try {
+      let response: Document;
+      const newDoc = cloneDeep(document);
+
+      newDoc.data.personPreferences =
+        document.id && document.data.personPreferences?.length
+          ? newDoc.data.personPreferences.map((persona: PersonaPreferences) => {
+              if (persona.personaId === personaDetails?.id) {
+                return {
+                  ...persona,
+                  landingPageSettings: {
+                    ...persona.landingPageSettings,
+                    headerColor: color,
+                  },
+                };
+              }
+
+              return persona;
+            })
+          : [
+              ...(newDoc.data.personPreferences ?? []),
+              {
+                personaName: personaDetails?.name,
+                personaId: personaDetails?.id,
+                landingPageSettings: {
+                  ...newDoc.data.personPreferences?.landingPageSettings,
+                  headerColor: color,
+                },
+              },
+            ];
+
+      if (document.id) {
+        const jsonPatch = compare(document, newDoc);
+
+        response = await updateDocument(document.id ?? '', jsonPatch);
+      } else {
+        response = await createDocument({
+          ...newDoc,
+          domains: newDoc.domains
+            ?.map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[],
         });
       }
       setDocument(response);
@@ -251,8 +334,10 @@ export const CustomizablePage = () => {
     case 'homepage':
       return (
         <CustomizeMyData
+          backgroundColor={backgroundColor}
           initialPageData={currentPage}
           personaDetails={personaDetails}
+          onBackgroundColorUpdate={handleBackgroundColorUpdate}
           onSaveLayout={handlePageCustomizeSave}
         />
       );

@@ -97,8 +97,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owners,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
@@ -122,7 +123,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());
     Entity.withHref(uriInfo, entity.getChildren());
-    Entity.withHref(uriInfo, entity.getDomain());
+    Entity.withHref(uriInfo, entity.getDomains());
     Entity.withHref(uriInfo, entity.getDataProducts());
     return entity;
   }
@@ -555,7 +556,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+        repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(
@@ -699,10 +700,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     String jobId = UUID.randomUUID().toString();
+    CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
+    Response response =
+        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
           try {
+            WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
                 importCsvInternal(securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
@@ -713,8 +718,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, e.getMessage());
           }
         });
-    CSVImportResponse response = new CSVImportResponse(jobId, "Import is in progress.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+
+    return response;
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
@@ -791,7 +796,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owners,followers,votes,tags,extension,domain,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

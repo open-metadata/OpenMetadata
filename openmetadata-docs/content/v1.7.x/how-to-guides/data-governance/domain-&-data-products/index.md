@@ -1,5 +1,6 @@
 ---
-title:  Domains & Data Products
+title:  Domains & Data Products | Official Documentation
+description: Manage domains and data products to establish ownership, scope, and data product lineage within your ecosystem.
 slug: /how-to-guides/data-governance/domains-&-data-products
 ---
 

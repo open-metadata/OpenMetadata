@@ -87,7 +87,9 @@ const DataProductsSelectList = ({
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
             <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
-              {getEntityName(item.value.domain)}
+              {item.value.domains
+                ?.map((domain) => getEntityName(domain))
+                .join(', ')}
             </Typography.Paragraph>
             <Typography.Text ellipsis>
               {getEntityName(item.value)}

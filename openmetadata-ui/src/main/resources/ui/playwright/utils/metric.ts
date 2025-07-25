@@ -188,6 +188,9 @@ export const updateRelatedMetric = async (
     .getByRole('link', { name: dataAsset.entity.name, exact: true })
     .click();
 
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await page.getByRole('link', { name: title }).click();
 };
 

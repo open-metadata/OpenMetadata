@@ -15,11 +15,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.DIRECTORY;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 
@@ -129,14 +131,15 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   @Override
   public void setInheritedFields(Directory directory, EntityUtil.Fields fields) {
     // Inherit domain from parent or service if needed
-    if (directory.getDomain() == null) {
+    if (nullOrEmpty(directory.getDomains())) {
       if (directory.getParent() != null) {
-        Directory parent = Entity.getEntity(directory.getParent(), "domain", Include.NON_DELETED);
-        directory.withDomain(parent.getDomain());
+        Directory parent =
+            Entity.getEntity(directory.getParent(), FIELD_DOMAINS, Include.NON_DELETED);
+        inheritDomains(directory, fields, parent);
       } else {
         DriveService service =
-            Entity.getEntity(directory.getService(), "domain", Include.NON_DELETED);
-        directory.withDomain(service.getDomain());
+            Entity.getEntity(directory.getService(), FIELD_DOMAINS, Include.NON_DELETED);
+        inheritDomains(directory, fields, service);
       }
     }
   }
@@ -252,7 +255,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
               new CsvHeader().withName("owners"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
-              new CsvHeader().withName("domain"),
+              new CsvHeader().withName("domains"),
               new CsvHeader().withName("dataProducts"),
               new CsvHeader().withName("experts"),
               new CsvHeader().withName("reviewers"));
@@ -316,7 +319,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   List.of(
                       Pair.of(8, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(9, TagLabel.TagSource.GLOSSARY))))
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 10))
           .withDataProducts(getDataProducts(printer, csvRecord, 11));
 
       if (processRecord) {
@@ -340,11 +343,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
-      addField(
-          recordList,
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName());
+      addDomains(recordList, entity.getDomains());
       addField(
           recordList,
           entity.getDataProducts() != null

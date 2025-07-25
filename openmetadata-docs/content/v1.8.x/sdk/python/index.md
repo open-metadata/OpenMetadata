@@ -13,10 +13,10 @@ We are now going to present a high-level Python API as a type-safe and gentle wr
 The Python SDK is part of the `openmetadata-ingestion` base package. You can install it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
 
 Make sure to use the same `openmetadata-ingestion` version as your server version. For example, if you have the OpenMetadata
-server at version 1.8.3, you will need to install:
+server at version 1.8.7, you will need to install:
 
 ```python
-pip install "openmetadata-ingestion~=1.8.3.0"
+pip install "openmetadata-ingestion~=1.8.7.0"
 ```
 
 {% /note %}

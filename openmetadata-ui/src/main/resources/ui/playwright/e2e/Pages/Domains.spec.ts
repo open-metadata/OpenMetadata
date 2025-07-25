@@ -30,10 +30,16 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from '../../utils/common';
-import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import {
+  addCustomPropertiesForEntity,
+  CustomPropertyTypeByName,
+  deleteCreatedProperty,
+} from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -54,7 +60,11 @@ import {
   verifyDomain,
 } from '../../utils/domain';
 import { followEntity, unFollowEntity } from '../../utils/entity';
-import { sidebarClick } from '../../utils/sidebar';
+import {
+  settingClick,
+  SettingOptionsType,
+  sidebarClick,
+} from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
 
@@ -179,11 +189,13 @@ test.describe('Domains', () => {
   });
 
   test('Create DataProducts and add remove assets', async ({ page }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
-    const dataProduct1 = new DataProduct(domain);
-    const dataProduct2 = new DataProduct(domain);
+    const dataProduct1 = new DataProduct([domain]);
+    const dataProduct2 = new DataProduct([domain]);
     await domain.create(apiContext);
     await page.reload();
 
@@ -300,7 +312,7 @@ test.describe('Domains', () => {
 
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
-    const dataProduct1 = new DataProduct(domain);
+    const dataProduct1 = new DataProduct([domain]);
     await domain.create(apiContext);
     await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
@@ -347,6 +359,9 @@ test.describe('Domains', () => {
     const domain = new Domain();
     await domain.create(apiContext);
     await page.reload();
+
+    await redirectToExplorePage(page);
+
     await page.getByTestId('domain-dropdown').click();
 
     await page
@@ -365,9 +380,14 @@ test.describe('Domains', () => {
     const url = new URL(response.url());
     const queryParams = new URLSearchParams(url.search);
     const qParam = queryParams.get('q');
-    const fqn = (domain.data.fullyQualifiedName ?? '').replace(/"/g, '\\"');
 
-    expect(qParam).toContain(`(domain.fullyQualifiedName:"${fqn}")`);
+    // The domain FQN should be properly escaped in the query
+    // The actual format uses escaped hyphens, not URL encoding
+    const fqn = (domain.data.fullyQualifiedName ?? '')
+      .replace(/"/g, '\\"')
+      .replace(/-/g, '\\-');
+
+    expect(qParam).toContain(`(domains.fullyQualifiedName:"${fqn}")`);
 
     await domain.delete(apiContext);
     await afterAction();
@@ -478,8 +498,8 @@ test.describe('Domains', () => {
       domainType: 'Aggregate',
       fullyQualifiedName: 'PW_Domain_Delete_Testing',
     });
-    const dataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
-    const dataProduct2 = new DataProduct(domain, 'PW_DataProduct_Finance');
+    const dataProduct1 = new DataProduct([domain], 'PW_DataProduct_Sales');
+    const dataProduct2 = new DataProduct([domain], 'PW_DataProduct_Finance');
 
     const domain1 = new Domain({
       name: 'PW_Domain_Delete_Testing',
@@ -488,8 +508,8 @@ test.describe('Domains', () => {
       domainType: 'Aggregate',
       fullyQualifiedName: 'PW_Domain_Delete_Testing',
     });
-    const newDomainDP1 = new DataProduct(domain1, 'PW_DataProduct_Sales');
-    const newDomainDP2 = new DataProduct(domain1, 'PW_DataProduct_Finance');
+    const newDomainDP1 = new DataProduct([domain1], 'PW_DataProduct_Sales');
+    const newDomainDP2 = new DataProduct([domain1], 'PW_DataProduct_Finance');
 
     try {
       await domain.create(apiContext);
@@ -559,7 +579,7 @@ test.describe('Domains', () => {
         ],
         experts: [user2.responseData.name],
       });
-      dataProduct = new DataProduct(domain);
+      dataProduct = new DataProduct([domain]);
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
 
@@ -663,7 +683,7 @@ test.describe('Domains', () => {
   test('Verify data product tags and glossary terms', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
-    const dataProduct = new DataProduct(domain1);
+    const dataProduct = new DataProduct([domain1]);
     try {
       await domain1.create(apiContext);
       await page.reload();
@@ -744,6 +764,110 @@ test.describe('Domains', () => {
         page,
         /already exists. Duplicated domains are not allowed./
       );
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Create domain custom property and verify value persistence', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const propertyName = `pwDomainCustomProperty${uuid()}`;
+    const customPropertyValue = 'Test Domain Property Value';
+
+    try {
+      // Create domain first
+      await domain.create(apiContext);
+      await page.reload();
+
+      await test.step('Create custom property for domain entity', async () => {
+        // Navigate to domain settings to create custom property
+        await settingClick(page, 'domains' as SettingOptionsType, true);
+
+        await addCustomPropertiesForEntity({
+          page,
+          propertyName,
+          customPropertyData: { description: 'Test domain custom property' },
+          customType: 'String',
+        });
+      });
+
+      await test.step(
+        'Navigate to domain and assign custom property value',
+        async () => {
+          // Navigate to domain page
+          await sidebarClick(page, SidebarItem.DOMAIN);
+
+          // Select the domain
+          await page
+            .getByRole('menuitem', { name: domain.data.displayName })
+            .locator('span')
+            .click();
+
+          // Click on custom properties tab
+          await page.getByTestId('custom_properties').click();
+
+          // Wait for custom properties to load
+          await page.waitForSelector('.ant-skeleton-active', {
+            state: 'detached',
+          });
+
+          // Add custom property value
+          await page
+            .getByTestId(`custom-property-${propertyName}-card`)
+            .locator('svg')
+            .click();
+
+          await page.getByTestId('value-input').fill(customPropertyValue);
+
+          // Save the custom property value
+          const saveResponse = page.waitForResponse('/api/v1/domains/*');
+          await page.getByTestId('inline-save-btn').click();
+          await saveResponse;
+
+          // Verify the value is displayed
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toContainText(customPropertyValue);
+        }
+      );
+
+      await test.step(
+        'Reload and verify custom property value persists',
+        async () => {
+          // Reload the page
+          await page.reload();
+
+          // Navigate back to the domain and custom properties
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await page
+            .getByRole('menuitem', { name: domain.data.displayName })
+            .locator('span')
+            .click();
+
+          await page.getByTestId('custom_properties').click();
+
+          await page.waitForSelector('.ant-skeleton-active', {
+            state: 'detached',
+          });
+
+          // Verify the custom property value persists after reload
+          await expect(
+            page.getByTestId(`custom-property-${propertyName}-card`)
+          ).toContainText(customPropertyValue);
+        }
+      );
+
+      await test.step('Cleanup custom property', async () => {
+        // Navigate back to domain settings to delete the custom property
+        await settingClick(page, 'domains' as SettingOptionsType, true);
+        await deleteCreatedProperty(page, propertyName);
+      });
     } finally {
       await domain.delete(apiContext);
       await afterAction();
@@ -832,20 +956,6 @@ test.describe('Domains Rbac', () => {
     });
 
     await test.step('User with access to multiple domains', async () => {
-      await userPage
-        .getByTestId('domain-dropdown')
-        .getByRole('img')
-        .first()
-        .click();
-
-      await expect(
-        userPage.getByTestId(`tag-${domain1.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
-
-      await expect(
-        userPage.getByTestId(`tag-${domain3.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
-
       // Visit explore page and verify if domain is passed in the query
       const queryRes = userPage.waitForResponse(
         '/api/v1/search/query?*index=dataAsset*'

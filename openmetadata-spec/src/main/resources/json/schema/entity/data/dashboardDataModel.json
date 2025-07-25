@@ -29,7 +29,8 @@
         "QuickSightDataModel",
         "SigmaDataModel",
         "PowerBIDataFlow",
-        "MicroStrategyDataset"
+        "MicroStrategyDataset",
+        "ThoughtSpotDataModel"
       ],
       "javaEnums": [
         {
@@ -70,6 +71,9 @@
         },
         {
           "name": "MicroStrategyDataset"
+        },
+        {
+          "name": "ThoughtSpotDataModel"
         }
       ]
     }
@@ -173,9 +177,9 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain": {
-      "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
