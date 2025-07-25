@@ -407,8 +407,12 @@ class TestAirflow(TestCase):
         self.assertEqual("invalid_format", result)
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
-    def test_get_pipelines_list_with_is_paused_query(self, mock_session, mock_dag_model):
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
+    )
+    def test_get_pipelines_list_with_is_paused_query(
+        self, mock_session, mock_dag_model
+    ):
         """
         Test that the is_paused column is queried correctly instead of the entire DagModel
         """
@@ -417,16 +421,18 @@ class TestAirflow(TestCase):
         mock_query = mock_session_instance.query.return_value
         mock_filter = mock_query.filter.return_value
         mock_scalar = mock_filter.scalar.return_value
-        
+
         # Test case 1: DAG is not paused
         mock_scalar.return_value = False
-        
+
         # Create a mock serialized DAG result
         mock_serialized_dag = ("test_dag", {"dag": {"tasks": []}}, "/path/to/dag.py")
-        
+
         # Mock the session query for SerializedDagModel
-        mock_session_instance.query.return_value.select_from.return_value.filter.return_value.limit.return_value.offset.return_value.all.return_value = [mock_serialized_dag]
-        
+        mock_session_instance.query.return_value.select_from.return_value.filter.return_value.limit.return_value.offset.return_value.all.return_value = [
+            mock_serialized_dag
+        ]
+
         # This would normally be called in get_pipelines_list, but we're testing the specific query
         # Verify that the query is constructed correctly
         is_paused_result = (
@@ -434,12 +440,12 @@ class TestAirflow(TestCase):
             .filter(mock_dag_model.dag_id == "test_dag")
             .scalar()
         )
-        
+
         # Verify the query was called correctly
         mock_session_instance.query.assert_called_with(mock_dag_model.is_paused)
         mock_query.filter.assert_called()
         mock_filter.scalar.assert_called()
-        
+
         # Test case 2: DAG is paused
         mock_scalar.return_value = True
         is_paused_result = (
@@ -450,21 +456,29 @@ class TestAirflow(TestCase):
         self.assertTrue(is_paused_result)
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")
-    @patch("metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session")
-    def test_get_pipelines_list_with_is_paused_query_error(self, mock_session, mock_dag_model):
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.metadata.create_and_bind_session"
+    )
+    def test_get_pipelines_list_with_is_paused_query_error(
+        self, mock_session, mock_dag_model
+    ):
         """
         Test error handling when is_paused query fails
         """
         # Mock the session to raise an exception
         mock_session_instance = mock_session.return_value
-        mock_session_instance.query.return_value.filter.return_value.scalar.side_effect = Exception("Database error")
-        
+        mock_session_instance.query.return_value.filter.return_value.scalar.side_effect = Exception(
+            "Database error"
+        )
+
         # Create a mock serialized DAG result
         mock_serialized_dag = ("test_dag", {"dag": {"tasks": []}}, "/path/to/dag.py")
-        
+
         # Mock the session query for SerializedDagModel
-        mock_session_instance.query.return_value.select_from.return_value.filter.return_value.limit.return_value.offset.return_value.all.return_value = [mock_serialized_dag]
-        
+        mock_session_instance.query.return_value.select_from.return_value.filter.return_value.limit.return_value.offset.return_value.all.return_value = [
+            mock_serialized_dag
+        ]
+
         # This would normally be called in get_pipelines_list, but we're testing the error handling
         try:
             is_paused_result = (
@@ -475,6 +489,6 @@ class TestAirflow(TestCase):
         except Exception:
             # Expected to fail, but in the actual code this would be caught and default to Active
             pass
-        
+
         # Verify the query was attempted
         mock_session_instance.query.assert_called_with(mock_dag_model.is_paused)

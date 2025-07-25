@@ -397,7 +397,7 @@ class AirflowSource(PipelineServiceSource):
                         )
                         # If we can't query is_paused, assume the pipeline is active
                         pipeline_state = PipelineState.Active.value
-                    
+
                     data = serialized_dag[1]["dag"]
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],
