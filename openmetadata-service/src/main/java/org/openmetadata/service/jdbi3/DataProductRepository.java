@@ -14,13 +14,19 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,11 +67,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
+    fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
 
   @Override
   public void setFields(DataProduct entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<DataProduct> entities) {
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (DataProduct entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetAssets(List<DataProduct> dataProducts, Fields fields) {
+    if (!fields.contains(FIELD_ASSETS) || dataProducts == null || dataProducts.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, dataProducts, batchFetchAssets(dataProducts), DataProduct::setAssets);
+  }
+
+  private void fetchAndSetExperts(List<DataProduct> dataProducts, Fields fields) {
+    if (!fields.contains("experts") || dataProducts == null || dataProducts.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, dataProducts, batchFetchExperts(dataProducts), DataProduct::setExperts);
   }
 
   @Override
@@ -89,12 +123,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void storeRelationships(DataProduct entity) {
-    addRelationship(
-        entity.getDomain().getId(),
-        entity.getId(),
-        Entity.DOMAIN,
-        Entity.DATA_PRODUCT,
-        Relationship.CONTAINS);
+    for (EntityReference domain : listOrEmpty(entity.getDomains())) {
+      addRelationship(
+          domain.getId(),
+          entity.getId(),
+          Entity.DOMAIN,
+          Entity.DATA_PRODUCT,
+          Relationship.CONTAINS);
+    }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
       addRelationship(
           entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
@@ -111,13 +147,27 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void setInheritedFields(DataProduct dataProduct, Fields fields) {
-    // If dataProduct does not have owners and experts, inherit them from its domain
-    EntityReference parentRef =
-        dataProduct.getDomain() != null ? dataProduct.getDomain() : getDomain(dataProduct);
-    if (parentRef != null) {
-      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
-      inheritOwners(dataProduct, fields, parent);
-      inheritExperts(dataProduct, fields, parent);
+    // If dataProduct does not have owners and experts, inherit them from the domains
+    List<EntityReference> domains =
+        !nullOrEmpty(dataProduct.getDomains()) ? getDomains(dataProduct) : Collections.emptyList();
+    if (!nullOrEmpty(domains)
+        && (fields.contains(FIELD_EXPERTS) || fields.contains(FIELD_OWNERS))
+        && (nullOrEmpty(dataProduct.getOwners()) || nullOrEmpty(dataProduct.getExperts()))) {
+      List<EntityReference> owners = new ArrayList<>();
+      List<EntityReference> experts = new ArrayList<>();
+
+      for (EntityReference domainRef : domains) {
+        Domain domain = Entity.getEntity(DOMAIN, domainRef.getId(), "owners,experts", ALL);
+        owners = mergedInheritedEntityRefs(owners, domain.getOwners());
+        experts = mergedInheritedEntityRefs(experts, domain.getExperts());
+      }
+      // inherit only if applicable and empty
+      if (fields.contains(FIELD_OWNERS) && nullOrEmpty(dataProduct.getOwners())) {
+        dataProduct.setOwners(owners);
+      }
+      if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(dataProduct.getExperts())) {
+        dataProduct.setExperts(experts);
+      }
     }
   }
 
@@ -250,7 +300,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
     super.restorePatchAttributes(original, updated);
-    updated.withDomain(original.getDomain()); // Domain can't be changed
+    updated.withDomains(original.getDomains()); // Domain can't be changed
   }
 
   @Override
@@ -306,5 +356,65 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             false);
       }
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchAssets(List<DataProduct> dataProducts) {
+    Map<UUID, List<EntityReference>> assetsMap = new HashMap<>();
+    if (dataProducts == null || dataProducts.isEmpty()) {
+      return assetsMap;
+    }
+
+    // Initialize empty lists for all data products
+    for (DataProduct dataProduct : dataProducts) {
+      assetsMap.put(dataProduct.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all assets for all data products
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(
+                entityListToStrings(dataProducts), Relationship.HAS.ordinal(), Include.ALL);
+
+    // Group assets by data product ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID dataProductId = UUID.fromString(record.getFromId());
+      EntityReference assetRef =
+          Entity.getEntityReferenceById(
+              record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
+      assetsMap.get(dataProductId).add(assetRef);
+    }
+
+    return assetsMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {
+    Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
+    if (dataProducts == null || dataProducts.isEmpty()) {
+      return expertsMap;
+    }
+
+    // Initialize empty lists for all data products
+    for (DataProduct dataProduct : dataProducts) {
+      expertsMap.put(dataProduct.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all expert relationships
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(dataProducts), Relationship.EXPERT.ordinal(), Entity.USER);
+
+    // Group experts by data product ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID dataProductId = UUID.fromString(record.getFromId());
+      EntityReference expertRef =
+          Entity.getEntityReferenceById(
+              Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
+      expertsMap.get(dataProductId).add(expertRef);
+    }
+
+    return expertsMap;
   }
 }

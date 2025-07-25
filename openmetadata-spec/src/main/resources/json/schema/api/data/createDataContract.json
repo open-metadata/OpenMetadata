@@ -33,7 +33,7 @@
       "description": "Schema definition for the data contract.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/dataContract.json#/definitions/schemaField"
+        "$ref": "../../entity/data/table.json#/definitions/column"
       },
       "default": null
     },
@@ -41,7 +41,7 @@
       "description": "Semantics rules defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/dataContract.json#/definitions/semanticsRule"
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
       },
       "default": null
     },
@@ -58,6 +58,11 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "reviewers": {
+      "description": "User references of the reviewers for this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
     "effectiveFrom": {
       "description": "Date from which this data contract is effective.",
       "$ref": "../../type/basic.json#/definitions/dateTime",
@@ -71,6 +76,10 @@
     "sourceUrl": {
       "description": "Source URL of the data contract.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "scheduleConfig": {
+      "description": "Configuration for scheduling data contract validation checks.",
+      "$ref": "../../entity/data/dataContract.json#/properties/scheduleConfig"
     }
   },
   "required": [

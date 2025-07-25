@@ -63,8 +63,6 @@ import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
-const { Option } = Select;
-
 const CreateUser = ({
   roles,
   isLoading,
@@ -95,7 +93,7 @@ const CreateUser = ({
     name: 'domains',
     id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef
@@ -262,9 +260,7 @@ const CreateUser = ({
             className="w-full"
             data-testid="token-expiry"
             placeholder={t('message.select-token-expiration')}>
-            {getJWTTokenExpiryOptions().map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            {getJWTTokenExpiryOptions()}
           </Select>
         </Form.Item>
       )}
@@ -428,7 +424,7 @@ const CreateUser = ({
           {selectedDomain && selectedDomain.length > 0 && (
             <DomainLabel
               multiple
-              domain={selectedDomain}
+              domains={selectedDomain}
               entityFqn=""
               entityId=""
               entityType={EntityType.USER}

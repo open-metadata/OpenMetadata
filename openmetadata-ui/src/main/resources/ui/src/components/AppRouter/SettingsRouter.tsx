@@ -40,6 +40,7 @@ import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
 import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
+import OnlineUsersPage from '../../pages/OnlineUsersPage/OnlineUsersPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
 import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
@@ -64,7 +65,9 @@ import {
 } from '../../utils/RouterUtils';
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
+import AdminPermissionDebugger from '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
+
 const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
@@ -491,6 +494,17 @@ const SettingsRouter = () => {
       />
       <Route
         element={
+          <AdminProtectedRoute>
+            <AdminPermissionDebugger />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.ACCESS,
+          GlobalSettingOptions.PERMISSION_DEBUGGER
+        )}
+      />
+      <Route
+        element={
           <AdminProtectedRoute
             hasPermission={userPermissions.hasViewPermissions(
               ResourceEntity.USER,
@@ -500,6 +514,17 @@ const SettingsRouter = () => {
           </AdminProtectedRoute>
         }
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.MEMBERS)}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission>
+            <OnlineUsersPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.ONLINE_USERS
+        )}
       />
       <Route
         element={

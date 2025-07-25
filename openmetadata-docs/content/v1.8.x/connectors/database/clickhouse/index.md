@@ -1,5 +1,6 @@
 ---
 title: ClickHouse Connector | OpenMetadata Database Integration
+description: Learn how to connect ClickHouse databases to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration options, and trouble...
 slug: /connectors/database/clickhouse
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/clickhouse
 name="Clickhouse"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

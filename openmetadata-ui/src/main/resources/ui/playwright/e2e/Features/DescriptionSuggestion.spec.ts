@@ -22,6 +22,7 @@ const table = new TableClass();
 const table2 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 let entityLinkList: string[];
 
 test.describe('Description Suggestions Table Entity', () => {
@@ -38,6 +39,7 @@ test.describe('Description Suggestions Table Entity', () => {
     );
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
 
     // Create suggestions for both users
     for (const entityLink of entityLinkList) {
@@ -53,6 +55,7 @@ test.describe('Description Suggestions Table Entity', () => {
     await table2.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await user3.delete(apiContext);
     await afterAction();
   });
 
@@ -63,7 +66,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
     await test.step('View and Open the Suggestions', async () => {
       await redirectToHomePage(page);
-      await table.visitEntityPage(page);
+      await table.visitEntityPageWithCustomSearchBox(page);
 
       await expect(page.getByText('Suggested Descriptions')).toBeVisible();
 
@@ -85,7 +88,7 @@ test.describe('Description Suggestions Table Entity', () => {
       // All Column Suggestions Card should be visible
       await expect(
         page.getByTestId('suggested-SuggestDescription-card')
-      ).toHaveCount(6);
+      ).toHaveCount(8);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();
@@ -113,9 +116,54 @@ test.describe('Description Suggestions Table Entity', () => {
 
       await singleResolveResponse;
 
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(page.locator('.ant-badge [title="7"]')).toBeVisible();
+
       await expect(
         page.locator(
           `[data-row-key*=${table.columnsName[0]}] [data-testid="description"]`
+        )
+      ).toContainText('this is suggested data description');
+    });
+
+    await test.step('Accept Nested Suggestion', async () => {
+      const allAvatarSuggestion = page
+        .getByTestId('asset-description-container')
+        .getByTestId('profile-avatar');
+
+      // Click the first avatar
+      await allAvatarSuggestion.nth(0).click();
+
+      const singleResolveResponse = page.waitForResponse(
+        '/api/v1/suggestions/*/accept'
+      );
+
+      await page
+        .locator(
+          `[data-row-key*=${table.columnsName[5]}] [data-testid="accept-suggestion"]`
+        )
+        .click();
+
+      await singleResolveResponse;
+
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(page.locator('.ant-badge .ant-badge-count')).toContainText(
+        '6'
+      );
+
+      await expect(
+        page.locator(
+          `[data-row-key*=${table.columnsName[5]}] [data-testid="description"]`
         )
       ).toContainText('this is suggested data description');
     });
@@ -139,6 +187,8 @@ test.describe('Description Suggestions Table Entity', () => {
         .click();
 
       await singleResolveResponse;
+
+      await expect(page.locator('.ant-badge [title="5"]')).toBeVisible();
 
       await expect(
         page.locator(
@@ -187,7 +237,7 @@ test.describe('Description Suggestions Table Entity', () => {
     const { page, afterAction } = await performAdminLogin(browser);
 
     await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
 
     const allAvatarSuggestion = page
       .getByTestId('asset-description-container')
@@ -219,20 +269,36 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
   });
 
-  test('Fetch All Pending Suggestions', async ({ browser }) => {
+  test('Fetch on avatar click and then all Pending Suggestions button click', async ({
+    browser,
+  }) => {
     const { page, afterAction } = await performAdminLogin(browser);
     const { afterAction: afterAction2, apiContext: apiContext2 } =
       await performUserLogin(browser, user1);
     const { afterAction: afterAction3, apiContext: apiContext3 } =
       await performUserLogin(browser, user2);
+    const { afterAction: afterAction4, apiContext: apiContext4 } =
+      await performUserLogin(browser, user3);
 
     for (const entityLink of entityLinkList) {
       await createTableDescriptionSuggestions(apiContext2, entityLink);
       await createTableDescriptionSuggestions(apiContext3, entityLink);
+      await createTableDescriptionSuggestions(apiContext4, entityLink);
     }
 
     await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
+
+    const avatarSuggestion = page.waitForResponse(
+      `/api/v1/suggestions?entityFQN=*userId=*`
+    );
+    await page
+      .getByTestId('asset-description-container')
+      .getByTestId('profile-avatar')
+      .nth(0)
+      .click();
+
+    await avatarSuggestion;
 
     await expect(page.getByTestId('more-suggestion-button')).toBeVisible();
 
@@ -247,11 +313,78 @@ test.describe('Description Suggestions Table Entity', () => {
       .getByTestId('profile-avatar');
 
     // Click the first avatar
-    await expect(allAvatarSuggestion).toHaveCount(3);
+    await expect(allAvatarSuggestion).toHaveCount(4);
 
     await afterAction();
     await afterAction2();
     await afterAction3();
+    await afterAction4();
+  });
+
+  test('Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions', async ({
+    browser,
+  }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    const { afterAction: afterAction2, apiContext: apiContext2 } =
+      await performUserLogin(browser, user1);
+    const { afterAction: afterAction3, apiContext: apiContext3 } =
+      await performUserLogin(browser, user2);
+    const { afterAction: afterAction4, apiContext: apiContext4 } =
+      await performUserLogin(browser, user3);
+
+    for (const entityLink of entityLinkList) {
+      await createTableDescriptionSuggestions(apiContext2, entityLink);
+      await createTableDescriptionSuggestions(apiContext3, entityLink);
+      await createTableDescriptionSuggestions(apiContext4, entityLink);
+    }
+
+    await redirectToHomePage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
+
+    for (let index = 0; index < 3; index++) {
+      const avatarSuggestion = page.waitForResponse(
+        `/api/v1/suggestions?entityFQN=*userId=*`
+      );
+      await page
+        .getByTestId('asset-description-container')
+        .getByTestId('profile-avatar')
+        .nth(0)
+        .click();
+
+      await avatarSuggestion;
+
+      const fetchSuggestionResponse = page.waitForResponse(
+        '/api/v1/suggestions?entityFQN=*&limit=*'
+      );
+      const rejectAllSuggestionResponse = page.waitForResponse(
+        '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
+      );
+      await page.getByTestId('reject-all-suggestions').click();
+      await rejectAllSuggestionResponse;
+
+      const allAvatarSuggestion = page
+        .getByTestId('asset-description-container')
+        .getByTestId('profile-avatar');
+
+      // On last avatar accept/reject click, if there is still more suggestion pending. Then auto fetch them.
+      if (index !== 2) {
+        await expect(page.getByTestId('more-suggestion-button')).toBeVisible();
+        await expect(allAvatarSuggestion).toHaveCount(3 - (index + 1));
+      } else {
+        await fetchSuggestionResponse;
+
+        await expect(
+          page.getByTestId('more-suggestion-button')
+        ).not.toBeVisible();
+
+        await expect(allAvatarSuggestion).toHaveCount(1);
+      }
+    }
+
+    await afterAction();
+    await afterAction2();
+    await afterAction3();
+    await afterAction4();
   });
 
   test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
@@ -267,7 +400,7 @@ test.describe('Description Suggestions Table Entity', () => {
     const suggestionFetchCallResponse = page.waitForResponse(
       '/api/v1/suggestions?entityFQN=*&limit=10'
     );
-    await table2.visitEntityPage(page);
+    await table2.visitEntityPageWithCustomSearchBox(page);
     await suggestionFetchCallResponse;
 
     const suggestionFetchCallResponse2 = page.waitForResponse(

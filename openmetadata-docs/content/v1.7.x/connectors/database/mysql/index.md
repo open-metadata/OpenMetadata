@@ -1,5 +1,6 @@
 ---
 title: MySQL Connector | OpenMetadata Database Integration Guide
+description: Set up MySQL database connector for OpenMetadata to automatically discover, catalog, and manage your MySQL metadata. Step-by-step configuration guide.
 slug: /connectors/database/mysql
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mysql
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

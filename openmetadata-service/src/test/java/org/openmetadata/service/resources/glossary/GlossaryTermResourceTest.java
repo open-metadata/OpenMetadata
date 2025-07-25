@@ -47,6 +47,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.socket.client.IO;
+import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -62,6 +64,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
@@ -115,8 +119,11 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.MoveGlossaryTermMessage;
+import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.com.google.common.collect.Lists;
@@ -236,7 +243,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a glossary term, carry it forward from the glossary
     CreateGlossary createGlossary =
-        glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        glossaryTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     // Create term t1 in the glossary without domain
@@ -246,7 +253,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
 
-    GlossaryTerm t1 = assertDomainInheritance(create, DOMAIN.getEntityReference());
+    GlossaryTerm t1 = assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
 
     // Create terms t12 under t1 without reviewers and owner
     create =
@@ -254,7 +261,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withName("t12")
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(t1.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -1898,5 +1905,278 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     translations.add("Olá mundo");
     translations.add("Olá");
     return translations;
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_asyncMoveGlossaryTerm(TestInfo test) throws Exception {
+    // Create 2 glossaries with 2 terms each, add assets to them as well
+    Glossary glossary1 = createGlossary("AsyncMoveGlossary1", null, null);
+    Glossary glossary2 = createGlossary("AsyncMoveGlossary2", null, null);
+
+    // Create terms in glossary1
+    GlossaryTerm term1 = createTerm(glossary1, null, "term1");
+    GlossaryTerm term2 = createTerm(glossary1, null, "term2");
+
+    // Create terms in glossary2
+    GlossaryTerm term3 = createTerm(glossary2, null, "term3");
+    GlossaryTerm term4 = createTerm(glossary2, null, "term4");
+
+    // In Glossary1 and term1 in the glossary, add a child term as well, child term should have an
+    // asset
+    GlossaryTerm childTerm1 = createTerm(glossary1, term1, "childTerm1");
+    GlossaryTerm grandChildTerm1 = createTerm(glossary1, childTerm1, "grandChildTerm1");
+
+    // Create tables and add them as assets to the terms
+    TableResourceTest tableResourceTest = new TableResourceTest();
+
+    // Create table for term1
+    CreateTable createTable1 = tableResourceTest.createRequest(test, 1);
+    createTable1.setName("tableMove1");
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    // Create table for term2
+    CreateTable createTable2 = tableResourceTest.createRequest(test, 1);
+    createTable2.setName("tableMove2");
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Create table for childTerm1
+    CreateTable createTable3 = tableResourceTest.createRequest(test, 1);
+    createTable3.setName("tableMove3");
+    Table table3 = tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    // Create table for term3
+    CreateTable createTable4 = tableResourceTest.createRequest(test, 1);
+    createTable4.setName("tableMove4");
+    Table table4 = tableResourceTest.createEntity(createTable4, ADMIN_AUTH_HEADERS);
+
+    // Add assets to terms
+    addAssetsToGlossaryTerm(term1, List.of(table1));
+    addAssetsToGlossaryTerm(term2, List.of(table2));
+    addAssetsToGlossaryTerm(childTerm1, List.of(table3));
+    addAssetsToGlossaryTerm(term3, List.of(table4));
+
+    // Test Scenario 1: Move childTerm1 from term1 to term2 within the same glossary
+    EntityReference parentTerm2Ref =
+        new EntityReference().withId(term2.getId()).withType("glossaryTerm");
+    MoveGlossaryTermMessage moveMessage1 =
+        receiveMoveEntityMessage(childTerm1.getId(), parentTerm2Ref);
+    assertEquals("COMPLETED", moveMessage1.getStatus());
+    assertEquals(childTerm1.getName(), moveMessage1.getEntityName());
+    assertNull(moveMessage1.getError());
+
+    // Verify the move was successful
+    GlossaryTerm movedChildTerm1 = getEntity(childTerm1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(term2.getId(), movedChildTerm1.getParent().getId());
+    assertEquals(glossary1.getId(), movedChildTerm1.getGlossary().getId());
+    assertTrue(movedChildTerm1.getFullyQualifiedName().startsWith(term2.getFullyQualifiedName()));
+
+    // Verify grandChildTerm1 FQN was updated
+    GlossaryTerm updatedGrandChild = getEntity(grandChildTerm1.getId(), ADMIN_AUTH_HEADERS);
+    assertTrue(
+        updatedGrandChild
+            .getFullyQualifiedName()
+            .startsWith(movedChildTerm1.getFullyQualifiedName()));
+
+    // Test Scenario 2: Move childTerm1 to root of glossary1 (no parent)
+    EntityReference glossary1Ref =
+        new EntityReference().withId(glossary1.getId()).withType("glossary");
+    MoveGlossaryTermMessage moveMessage2 =
+        receiveMoveEntityMessage(childTerm1.getId(), glossary1Ref);
+    assertEquals("COMPLETED", moveMessage2.getStatus());
+    assertEquals(childTerm1.getName(), moveMessage2.getEntityName());
+    assertNull(moveMessage2.getError());
+
+    // Verify the move was successful
+    GlossaryTerm movedToRootChildTerm1 = getEntity(childTerm1.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(movedToRootChildTerm1.getParent());
+    assertEquals(glossary1.getId(), movedToRootChildTerm1.getGlossary().getId());
+    assertTrue(
+        movedToRootChildTerm1
+            .getFullyQualifiedName()
+            .startsWith(glossary1.getFullyQualifiedName()));
+
+    // Test Scenario 3: Move childTerm1 to a different glossary (glossary2) under term3
+    EntityReference parentTerm3Ref =
+        new EntityReference().withId(term3.getId()).withType("glossaryTerm");
+    MoveGlossaryTermMessage moveMessage3 =
+        receiveMoveEntityMessage(childTerm1.getId(), parentTerm3Ref);
+    assertEquals("COMPLETED", moveMessage3.getStatus());
+    assertEquals(childTerm1.getName(), moveMessage3.getEntityName());
+    assertNull(moveMessage3.getError());
+
+    // Verify the move was successful
+    GlossaryTerm movedToGlossary2ChildTerm1 = getEntity(childTerm1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(term3.getId(), movedToGlossary2ChildTerm1.getParent().getId());
+    assertEquals(glossary2.getId(), movedToGlossary2ChildTerm1.getGlossary().getId());
+    assertTrue(
+        movedToGlossary2ChildTerm1
+            .getFullyQualifiedName()
+            .startsWith(term3.getFullyQualifiedName()));
+
+    // Test Scenario 4: Move childTerm1 to root of glossary2 (no parent)
+    EntityReference glossary2Ref =
+        new EntityReference().withId(glossary2.getId()).withType("glossary");
+    MoveGlossaryTermMessage moveMessage4 =
+        receiveMoveEntityMessage(childTerm1.getId(), glossary2Ref);
+    assertEquals("COMPLETED", moveMessage4.getStatus());
+    assertEquals(childTerm1.getName(), moveMessage4.getEntityName());
+    assertNull(moveMessage4.getError());
+
+    // Verify the move was successful
+    GlossaryTerm movedToGlossary2RootChildTerm1 = getEntity(childTerm1.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(movedToGlossary2RootChildTerm1.getParent());
+    assertEquals(glossary2.getId(), movedToGlossary2RootChildTerm1.getGlossary().getId());
+    assertTrue(
+        movedToGlossary2RootChildTerm1
+            .getFullyQualifiedName()
+            .startsWith(glossary2.getFullyQualifiedName()));
+
+    // Test Scenario 5: Move back to glossary1 under term1
+    EntityReference parentTerm1Ref =
+        new EntityReference().withId(term1.getId()).withType("glossaryTerm");
+    MoveGlossaryTermMessage moveMessage5 =
+        receiveMoveEntityMessage(childTerm1.getId(), parentTerm1Ref);
+    assertEquals("COMPLETED", moveMessage5.getStatus());
+    assertEquals(childTerm1.getName(), moveMessage5.getEntityName());
+    assertNull(moveMessage5.getError());
+
+    // Verify the move was successful
+    GlossaryTerm movedBackChildTerm1 = getEntity(childTerm1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(term1.getId(), movedBackChildTerm1.getParent().getId());
+    assertEquals(glossary1.getId(), movedBackChildTerm1.getGlossary().getId());
+    assertTrue(
+        movedBackChildTerm1.getFullyQualifiedName().startsWith(term1.getFullyQualifiedName()));
+
+    // Test Scenario 6: Try to move a term to its own child (should fail)
+    EntityReference childTerm1Ref =
+        new EntityReference().withId(childTerm1.getId()).withType("glossaryTerm");
+    MoveGlossaryTermMessage failedMoveMessage =
+        receiveMoveEntityMessage(term1.getId(), childTerm1Ref);
+    assertEquals("FAILED", failedMoveMessage.getStatus());
+    assertEquals(term1.getName(), failedMoveMessage.getEntityName());
+    assertNotNull(failedMoveMessage.getError());
+    assertTrue(failedMoveMessage.getError().contains("Can't move Glossary term"));
+
+    // Verify the failed move didn't change the term
+    GlossaryTerm unchangedTerm1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(glossary1.getId(), unchangedTerm1.getGlossary().getId());
+    assertNull(unchangedTerm1.getParent()); // Should still be at root
+
+    // Clean up
+    tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table3.getId(), ADMIN_AUTH_HEADERS);
+    tableResourceTest.deleteEntity(table4.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  /**
+   * Helper method to receive move entity message via WebSocket
+   */
+  protected MoveGlossaryTermMessage receiveMoveEntityMessage(UUID id, EntityReference newParent)
+      throws Exception {
+    UUID userId = getAdminUserId();
+    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+
+    IO.Options options = new IO.Options();
+    options.path = "/api/v1/push/feed";
+    options.query = "userId=" + userId.toString();
+    options.transports = new String[] {"websocket"};
+    options.reconnection = false;
+    options.timeout = 10000; // 10 seconds
+
+    Socket socket = IO.socket(uri, options);
+
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    CountDownLatch messageLatch = new CountDownLatch(1);
+    final String[] receivedMessage = new String[1];
+
+    socket
+        .on(
+            Socket.EVENT_CONNECT,
+            args -> {
+              LOG.info("Connected to Socket.IO server");
+              connectLatch.countDown();
+            })
+        .on(
+            WebSocketManager.MOVE_GLOSSARY_TERM_CHANNEL,
+            args -> {
+              receivedMessage[0] = (String) args[0];
+              LOG.info("Received move message: {}", receivedMessage[0]);
+              messageLatch.countDown();
+              socket.disconnect();
+            })
+        .on(
+            Socket.EVENT_CONNECT_ERROR,
+            args -> {
+              LOG.error("Socket.IO connect error: {}", args[0]);
+              connectLatch.countDown();
+              messageLatch.countDown();
+            })
+        .on(Socket.EVENT_DISCONNECT, args -> LOG.info("Disconnected from Socket.IO server"));
+
+    socket.connect();
+    if (!connectLatch.await(10, TimeUnit.SECONDS)) {
+      fail("Could not connect to Socket.IO server");
+    }
+
+    // Initiate the move operation after connection is established
+    MoveGlossaryTermResponse moveResponse = moveEntityAsync(id, newParent);
+    assertNotNull(moveResponse.getJobId());
+    assertTrue(moveResponse.getMessage().contains("Move operation initiated"));
+
+    if (!messageLatch.await(30, TimeUnit.SECONDS)) {
+      fail("Did not receive move notification via Socket.IO within the expected time.");
+    }
+
+    String receivedJson = receivedMessage[0];
+    if (receivedJson == null) {
+      fail("Received message is null.");
+    }
+
+    return JsonUtils.readValue(receivedJson, MoveGlossaryTermMessage.class);
+  }
+
+  /**
+   * Helper method to initiate async move operation
+   */
+  protected MoveGlossaryTermResponse moveEntityAsync(UUID id, EntityReference newParent)
+      throws HttpResponseException {
+    try {
+      WebTarget target = getCollection().path(String.format("/%s/moveAsync", id));
+
+      // Create MoveGlossaryTermRequest
+      Map<String, Object> payload = new HashMap<>();
+      if (newParent != null) {
+        payload.put("parent", newParent);
+      }
+
+      LOG.info("Moving entity with id {}, target:{}", id, target);
+      return TestUtils.put(
+          target,
+          payload,
+          MoveGlossaryTermResponse.class,
+          Response.Status.ACCEPTED,
+          TestUtils.ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      LOG.error("Failed to move entity with id {}: {}", id, e.getMessage());
+      throw e;
+    }
+  }
+
+  /**
+   * Helper method to add assets to a glossary term
+   */
+  private void addAssetsToGlossaryTerm(GlossaryTerm term, List<Table> tables)
+      throws HttpResponseException {
+    List<EntityReference> assets =
+        tables.stream()
+            .map(table -> new EntityReference().withId(table.getId()).withType("table"))
+            .toList();
+
+    Map<String, Object> payload = Map.of("assets", assets, "dryRun", false);
+
+    WebTarget target = getCollection().path(String.format("/%s/assets/add", term.getId()));
+    TestUtils.put(target, payload, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
   }
 }

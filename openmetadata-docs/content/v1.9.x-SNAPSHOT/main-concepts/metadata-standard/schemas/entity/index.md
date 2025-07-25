@@ -1,5 +1,6 @@
 ---
 title: Entity Schemas | OpenMetadata Entity Models
+description: Metadata schema for entity structures that define core data asset types, relationships, ownership, and governance elements.
 slug: /main-concepts/metadata-standard/schemas/entity
 ---
 

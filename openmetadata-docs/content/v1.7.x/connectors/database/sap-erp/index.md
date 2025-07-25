@@ -1,5 +1,6 @@
 ---
 title: SAP ERP Connector | OpenMetadata Enterprise Integration
+description: Connect SAP ERP to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/sap-erp
 ---
 
@@ -8,7 +9,7 @@ name="SAP ERP"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags","Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags","Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 / %}
 
 

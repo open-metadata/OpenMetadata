@@ -1,5 +1,6 @@
 ---
 title: Run the MSSQL Connector Externally
+description: Configure MSSQL metadata ingestion using YAML for profiling, table structure extraction, and lineage syncing.
 slug: /connectors/database/mssql/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mssql/yaml
 name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 

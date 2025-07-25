@@ -84,7 +84,20 @@ public class SecretsManagerUpdateService {
         String.format(
             "Updating services in case of an update on the JSON schema: [%s]",
             secretManager.getSecretsManagerProvider().value()));
-    retrieveServices().forEach(this::updateService);
+    retrieveServices()
+        .forEach(
+            service -> {
+              try {
+                updateService(service);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update service [{}] with id [{}]: {}",
+                    service.getName(),
+                    service.getId(),
+                    e.getMessage());
+                // Continue processing other services instead of failing the entire migration
+              }
+            });
   }
 
   private void updateBotUsers() {
@@ -92,7 +105,20 @@ public class SecretsManagerUpdateService {
         String.format(
             "Updating bot users in case of an update on the JSON schema: [%s]",
             secretManager.getSecretsManagerProvider().value()));
-    retrieveBotUsers().forEach(this::updateBotUser);
+    retrieveBotUsers()
+        .forEach(
+            botUser -> {
+              try {
+                updateBotUser(botUser);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update bot user [{}] with id [{}]: {}",
+                    botUser.getName(),
+                    botUser.getId(),
+                    e.getMessage());
+                // Continue processing other bot users instead of failing the entire migration
+              }
+            });
   }
 
   private void updateIngestionPipelines() {
@@ -100,7 +126,20 @@ public class SecretsManagerUpdateService {
         String.format(
             "Updating ingestion pipelines in case of an update on the JSON schema: [%s]",
             secretManager.getSecretsManagerProvider().value()));
-    retrieveIngestionPipelines().forEach(this::updateIngestionPipeline);
+    retrieveIngestionPipelines()
+        .forEach(
+            ingestionPipeline -> {
+              try {
+                updateIngestionPipeline(ingestionPipeline);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update ingestion pipeline [{}] with id [{}]: {}",
+                    ingestionPipeline.getName(),
+                    ingestionPipeline.getId(),
+                    e.getMessage());
+                // Continue processing other pipelines instead of failing the entire migration
+              }
+            });
   }
 
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
@@ -231,10 +270,12 @@ public class SecretsManagerUpdateService {
 
   private List<IngestionPipeline> retrieveIngestionPipelines() {
     try {
+      // Need to fetch with service field to avoid NPE when accessing service.getId()
+      Fields fields = new Fields(Set.of("service"));
       return ingestionPipelineRepository
           .listAfter(
               null,
-              EntityUtil.Fields.EMPTY_FIELDS,
+              fields,
               new ListFilter(),
               ingestionPipelineRepository.getDao().listCount(new ListFilter()),
               null)
@@ -269,8 +310,8 @@ public class SecretsManagerUpdateService {
       IngestionPipeline ingestion =
           ingestionPipelineRepository.getDao().findEntityById(ingestionPipeline.getId());
       // we have to decrypt using the old secrets manager and encrypt again with the new one
-      oldSecretManager.decryptIngestionPipeline(ingestionPipeline);
-      secretManager.encryptIngestionPipeline(ingestionPipeline);
+      oldSecretManager.decryptIngestionPipeline(ingestion);
+      secretManager.encryptIngestionPipeline(ingestion);
       ingestionPipelineRepository.getDao().update(ingestion);
     } catch (EntityNotFoundException e) {
       LOG.warn(

@@ -1,5 +1,6 @@
 ---
 title: BigQuery | OpenMetadata Connector Setup & Integration Guide
+description: Connect BigQuery to OpenMetadata seamlessly with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extrac...
 slug: /connectors/database/bigquery
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/bigquery
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -54,6 +55,10 @@ link="/connectors/database/bigquery/create-credentials"
 - Go to [https://console.cloud.google.com/apis/library/datacatalog.googleapis.com](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com)
 - Select the `GCP Project ID` that you want to enable the `Data Catalog API` on.
 - Click on `Enable API` which will enable the data catalog api on the respective project.
+
+{% note %}
+Access to the Google Data Catalog API is optional and only required if you want to retrieve policy tags from BigQuery. The BigQuery connector does not require this permission for general metadata ingestion.
+{% /note %}
 
 ### GCP Permissions
 

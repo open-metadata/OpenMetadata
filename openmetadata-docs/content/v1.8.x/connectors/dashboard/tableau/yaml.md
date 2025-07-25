@@ -1,5 +1,6 @@
 ---
 title: Run the Tableau Connector Externally
+description: Configure Tableau dashboard connections in OpenMetadata using YAML. Step-by-step guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/dashboard/tableau/yaml
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-tableau-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -35,7 +36,7 @@ For more information on enabling the Tableau Metadata APIs follow the link [here
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.8/connectors/python-requirements.md" /%}
 
 To run the Tableau ingestion, you will need to install:
 
@@ -123,7 +124,7 @@ This is a sample config for Tableau:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- **dbServiceNames**: Database Service Names for ingesting lineage if the source supports it.
+- **dbServicePrefixes**: Database Service Prefixes for ingesting lineage if the source supports it.
 - **dashboardFilterPattern**, **chartFilterPattern**, **dataModelFilterPattern**: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
 - **projectFilterPattern**: Filter the tableau dashboards, charts and data sources by projects. Note that all of them support regex as include or exclude. E.g., "My project, My proj.*, .*Project".
 - **includeOwners**: Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.
@@ -143,7 +144,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 {% /codeInfo %}
 
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.8/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -199,11 +200,11 @@ source:
 ```
 
 
-{% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.8/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.8/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.8/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -241,9 +242,9 @@ source:
       includeTags: True
       includeDataModels: True
       # lineageInformation:
-      #   dbServiceNames:
+      #   dbServicePrefixes:
       #     - service1
-      #     - service2
+      #     - service2.database2.schema2
       # dashboardFilterPattern:
       #   includes:
       #     - dashboard1
@@ -298,7 +299,7 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
-      # dbServiceNames:
+      # dbServicePrefixes:
       #   - service1
       #   - service2
       # dashboardFilterPattern:
@@ -335,4 +336,4 @@ To establish secure connections between OpenMetadata and Tableau, in the `YAML` 
             sslKey: "/path/to/your/ssl_key"
 ```
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.8/connectors/yaml/ingestion-cli.md" /%}

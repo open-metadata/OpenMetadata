@@ -65,8 +65,8 @@ site_menu:
     url: /deployment/ingestion/external/airflow
   - category: Deployment / Ingestion / External / MWAA
     url: /deployment/ingestion/external/mwaa
-  - category: Deployment / Ingestion / External / GCS Composer
-    url: /deployment/ingestion/external/gcs-composer
+  - category: Deployment / Ingestion / External / GCP Composer 
+    url: /deployment/ingestion/external/gcp-composer
   - category: Deployment / Ingestion / External / GitHub Actions
     url: /deployment/ingestion/external/github-actions
   - category: Deployment / Ingestion / External / Credentials
@@ -150,6 +150,8 @@ site_menu:
     url: /deployment/security/keycloak/bare-metal
   - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
     url: /deployment/security/keycloak/kubernetes
+  - category: Deployment / Enable Security / Keycloak SSO / Troubleshooting
+    url: /deployment/security/keycloak/troubleshooting
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
   - category: Deployment / Enable Security / Saml / AWS
@@ -645,8 +647,8 @@ site_menu:
     url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airflow / MWAA
     url: /connectors/pipeline/airflow/mwaa
-  - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Airflow / GCP Composer 
+    url: /connectors/pipeline/airflow/gcp-composer
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
@@ -1092,6 +1094,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Import-Export Troubleshooting
+    url: /how-to-guides/data-governance/glossary/troubleshooting
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
     url: /how-to-guides/data-governance/glossary/styling
   - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
@@ -1139,6 +1143,16 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.8.6 Release
+    url: /releases/all-releases/#1.8.6-releases
+  - category: Releases / All Releases / 1.8.3 Release
+    url: /releases/all-releases/#1.8.3-releases
+  - category: Releases / All Releases / 1.8.2 Release
+    url: /releases/all-releases/#1.8.2-releases
+  - category: Releases / All Releases / 1.8.1 Release
+    url: /releases/all-releases/#1.8.1-releases
+  - category: Releases / All Releases / 1.8.0 Release
+    url: /releases/all-releases/#1.8.0-release
   - category: Releases / All Releases / 1.7.5 Release
     url: /releases/all-releases/#1.7.5-release
   - category: Releases / All Releases / 1.7.4 Release

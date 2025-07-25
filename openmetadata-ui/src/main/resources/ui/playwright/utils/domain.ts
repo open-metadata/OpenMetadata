@@ -51,6 +51,14 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
@@ -128,17 +136,13 @@ export const selectSubDomain = async (
   });
 
   if (!isSelected) {
-    const subDomainRes = page.waitForResponse(
-      '/api/v1/search/query?*&from=0&size=50&index=domain_search_index'
-    );
     await menuItem.click();
-    await subDomainRes;
+    await page.waitForLoadState('networkidle');
   }
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
   await page.getByTestId(subDomain.name).click();
   await page.waitForLoadState('networkidle');
-  await page.locator('[data-testid="loader"]').waitFor({ state: 'detached' });
 };
 
 export const selectDataProductFromTab = async (
@@ -202,7 +206,7 @@ const fillCommonFormItems = async (
   }
 };
 
-const fillDomainForm = async (
+export const fillDomainForm = async (
   page: Page,
   entity: Domain['data'] | SubDomain['data'],
   isDomain = true
@@ -224,6 +228,8 @@ export const checkDomainDisplayName = async (
   page: Page,
   displayName: string
 ) => {
+  await page.waitForLoadState('networkidle');
+
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
     displayName
   );
@@ -559,7 +565,7 @@ export const verifyDataProductAssetsAfterDelete = async (
   }
 ) => {
   const { apiContext } = await getApiContext(page);
-  const newDataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
+  const newDataProduct1 = new DataProduct([domain], 'PW_DataProduct_Sales');
 
   await test.step('Add assets to DataProduct Sales', async () => {
     await redirectToHomePage(page);
@@ -706,7 +712,7 @@ export const setupDomainOwnershipTest = async (apiContext: any) => {
     fullyQualifiedName: `PW_Domain_Owner_Rule_Testing-${id}`,
   });
   const dataProductForTest = new DataProduct(
-    domainForTest,
+    [domainForTest],
     `PW_DataProduct_Owner_Rule-${id}`
   );
 

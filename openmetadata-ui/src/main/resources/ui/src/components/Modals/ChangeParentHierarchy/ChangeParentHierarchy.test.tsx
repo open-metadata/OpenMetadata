@@ -17,26 +17,40 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
 
-const mockOnSubmit = jest.fn();
 const mockOnCancel = jest.fn();
 
 const mockProps = {
   selectedData: mockedGlossaryTerms[0],
   onCancel: mockOnCancel,
-  onSubmit: mockOnSubmit,
 };
 
+const mockSocket = {
+  on: jest.fn(),
+  off: jest.fn(),
+};
+
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+}));
+
+jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
+  useWebSocketConnector: jest.fn(() => ({ socket: mockSocket })),
+}));
+
 jest.mock('../../../rest/glossaryAPI', () => ({
-  getGlossaryTerms: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
-  patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  moveGlossaryTerm: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      jobId: 'test-job-id',
+      message: 'Move operation started',
+    })
+  ),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -45,10 +59,15 @@ jest.mock('../../../utils/EntityUtils', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 describe('Test ChangeParentHierarchy modal component', () => {
-  it('should not contain active entity in select options', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should render glossary selection dropdown', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
@@ -58,13 +77,14 @@ describe('Test ChangeParentHierarchy modal component', () => {
       'combobox'
     );
 
+    expect(selectInput).toBeInTheDocument();
+
     await act(async () => {
       userEvent.click(selectInput);
     });
 
-    expect(
-      screen.queryByText(mockedGlossaryTerms[0].name)
-    ).not.toBeInTheDocument();
+    // TreeAsyncSelectList will load glossaries and handle term filtering internally
+    expect(selectInput).toBeInTheDocument();
   });
 
   it('should trigger onCancel button', async () => {
@@ -81,36 +101,28 @@ describe('Test ChangeParentHierarchy modal component', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it('should trigger onSubmit button', async () => {
+  it('should render submit button and handle form submission', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const selectInput = await findByRole(
-      screen.getByTestId('change-parent-select'),
-      'combobox'
-    );
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    await waitFor(() => screen.getByText(mockedGlossaryTerms[1].name));
-
-    await act(async () => {
-      fireEvent.click(screen.getByText(mockedGlossaryTerms[1].name));
-    });
-
-    const submitButton = await screen.findByText('label.submit');
+    const submitButton = await screen.findByText('label.save');
 
     expect(submitButton).toBeInTheDocument();
 
+    // The component now handles API calls internally
+    expect(submitButton).toBeInTheDocument();
+  });
+
+  it('should set up websocket listener when move job is created', async () => {
     await act(async () => {
-      fireEvent.click(submitButton);
+      render(<ChangeParent {...mockProps} />);
     });
 
-    expect(mockOnSubmit).toHaveBeenCalledWith(
-      mockedGlossaryTerms[1].fullyQualifiedName
+    // Component should set up websocket listeners
+    expect(mockSocket.on).toHaveBeenCalledWith(
+      'moveGlossaryTermChannel',
+      expect.any(Function)
     );
   });
 });

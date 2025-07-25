@@ -1,5 +1,6 @@
 ---
-title: Ingest Owner from dbt
+title: Ingest Owner from dbt | Official Documentation
+description: Configure dbt workflows to ingest owner metadata from dbt models into your governance platform.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
 ---
 
@@ -66,7 +67,7 @@ models:
           'Test_Glossary.term_two.nested_term.more_nested_term',
         ]
         tier: 'Tier.Tier2'
-        owner: ['John Doe', 'jane@gmail.com']
+      owner: ['John Doe', 'jane@gmail.com']
     config:
       tags: ["model_tag_one", "model_tag_two"]
 ```
@@ -174,7 +175,7 @@ When the `Update Owners` toggle is enabled during the configuration of dbt inges
 If toggle is disabled during the configuration of dbt ingestion, dbt owners will only be updated for tables in OpenMetadata that currently have no owners. Existing owners will remain unchanged and will not be overwritten with dbt owners.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-update-owners.webp"
+  src="/images/v1.7/features/ingestion/workflows/dbt/dbt-features/dbt-update-owners.webp"
   alt="update-dbt-owners"
   caption="Update dbt Owners"
  /%}

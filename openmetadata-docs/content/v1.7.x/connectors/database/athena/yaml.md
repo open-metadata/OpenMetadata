@@ -1,5 +1,6 @@
 ---
 title: Run the Athena Connector Externally
+description: Configure OpenMetadata's Athena database connector with YAML - step-by-step setup guide, connection parameters, and configuration examples for seamless integration.
 slug: /connectors/database/athena/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/athena/yaml
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Auto-Classification", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 

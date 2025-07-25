@@ -1,5 +1,6 @@
 ---
 title: High Level Design | OpenMetadata Architecture Overview
+description: Explore high-level architectural design to understand how components interact across storage, processing, and access layers.
 slug: /main-concepts/high-level-design
 ---
 

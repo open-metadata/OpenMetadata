@@ -15,7 +15,6 @@ import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -56,6 +55,7 @@ export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
+export const MAX_NAME_LENGTH = 256;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -66,8 +66,9 @@ export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
+export const VERSION = 'VERSION';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -223,7 +224,6 @@ export const ROUTES = {
   BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/add-field`,
-  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
@@ -246,11 +246,11 @@ export const ROUTES = {
   TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
   TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/add-ingestion`,
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
-  ADD_TEST_SUITES: `/add-test-suites`,
 
   // data quality
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_QUALITY_WITH_SUB_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   INCIDENT_MANAGER: '/incident-manager',
 
@@ -312,6 +312,7 @@ export const SOCKET_EVENTS = {
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
+  MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

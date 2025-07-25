@@ -1,0 +1,162 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+
+.customise-home-modal {
+  position: relative;
+
+  .ant-modal-header {
+    padding: 0;
+    border-radius: @border-rad-sm @border-rad-sm 0 0;
+  }
+
+  .ant-modal-body {
+    padding: 0;
+  }
+
+  .ant-modal-content {
+    border-radius: @border-rad-sm;
+  }
+
+  .ant-modal-close-icon {
+    padding: @padding-xs;
+    color: @white;
+  }
+
+  .ant-modal-close-x {
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ant-modal-close {
+    margin-top: 16px;
+    margin-right: 24px;
+  }
+
+  .customise-home-modal-header {
+    border-radius: @border-rad-sm @border-rad-sm 0 0;
+    background: linear-gradient(91.17deg, @blue-31 0%, @blue-32 100%);
+
+    .add-icon {
+      font-size: 32px;
+    }
+  }
+
+  .customise-home-modal-body {
+    .sidebar {
+      flex: 1 1 250px;
+      min-width: 180px;
+      max-width: 250px;
+
+      .sidebar-option {
+        padding: 10px @padding-md;
+
+        &.active {
+          font-weight: @font-semibold;
+          background-color: @primary-button-background;
+          color: @blue-9;
+        }
+      }
+
+      .sidebar-widget-item {
+        align-items: flex-start;
+        color: @grey-600;
+        font-weight: @font-regular;
+        padding: @padding-xs @padding-md @padding-xs @padding-lg;
+
+        &:hover {
+          background: @primary-50;
+        }
+
+        &.selected {
+          background: @primary-50;
+          color: @primary-7;
+        }
+      }
+
+      .sidebar-widget-icon {
+        padding: 2px;
+        margin-right: @padding-xs;
+
+        svg {
+          width: @size-mlg;
+          height: @size-mlg;
+          fill: none;
+        }
+      }
+
+      .sidebar-widget-item.selected .sidebar-widget-icon svg {
+        color: @primary-7;
+      }
+
+      .selected-widget-icon {
+        margin-left: @size-xxs;
+        padding: 0 2px 2px 2px;
+
+        svg {
+          width: 14px;
+          height: 14px;
+          fill: @primary-7;
+        }
+      }
+    }
+
+    .ant-divider-vertical {
+      margin: 0;
+    }
+
+    .customise-home-modal-divider {
+      color: @grey-200;
+    }
+
+    .content {
+      flex: 3 1 600px;
+      min-width: 0;
+    }
+  }
+
+  .customise-home-modal-footer {
+    border-top: 1px solid @grey-200;
+    border-radius: 0 0 @border-rad-sm @border-rad-sm;
+
+    button {
+      padding: 1px 28px;
+    }
+
+    .ant-btn.ant-btn-default:not(:hover) {
+      border-color: @grey-300;
+    }
+
+    .cancel-btn {
+      color: @grey-700;
+      border: 1px solid @grey-300;
+      box-shadow: 0px 1px 2px 0px @grey-27;
+    }
+
+    .apply-btn {
+      background-color: @blue-12;
+      border: 1px solid @blue-12;
+      box-shadow: 0px 1px 2px 0px @grey-27;
+    }
+  }
+}
+
+.widget-count {
+  color: @blue-9;
+  background-color: @alert-info-icon-bg-1;
+  padding: 2px @padding-xs;
+}

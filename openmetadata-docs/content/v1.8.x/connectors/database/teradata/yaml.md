@@ -7,7 +7,7 @@ slug: /connectors/database/teradata/yaml
 name="Teradata"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "dbt"]
 / %}
 
@@ -113,7 +113,7 @@ source:
 
 {% partial file="/v1.8/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "teradata"} /%}
+{% partial file="/v1.8/connectors/yaml/lineage.md" variables={connector: "teradata"} /%}
 
 {% partial file="/v1.8/connectors/yaml/data-profiler.md" variables={connector: "teradata"} /%}
 

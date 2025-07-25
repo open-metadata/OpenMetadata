@@ -1,5 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
+description: Learn how to configure OpenMetadata's Bigtable database connector using YAML. Complete setup guide with examples, parameters, and best practices.
 slug: /connectors/database/bigtable/yaml
 ---
 
@@ -8,7 +9,7 @@ name="BigTable"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Owners", "dbt", "Tags", "Stored Procedures", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the BigTable connector.

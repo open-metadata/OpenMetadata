@@ -37,7 +37,7 @@ import {
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -57,9 +57,11 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -70,6 +72,7 @@ import {
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -78,20 +81,20 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
+import PageHeader from '../../PageHeader/PageHeader.component';
 import { TestCaseSearchParams } from '../DataQuality.interface';
-import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
+import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 
 export const TestCases = () => {
   const [form] = useForm();
+  const { tab = DataQualityClassBase.getDefaultActiveTab() } =
+    useParams<{ tab: DataQualityPageTabs }>();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const {
-    isTestCaseSummaryLoading,
-    testCaseSummary,
-    activeTab: tab,
-  } = useDataQualityProvider();
+  const { isTestCaseSummaryLoading, testCaseSummary } =
+    useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -134,7 +137,12 @@ export const TestCases = () => {
     value?: TestCaseSearchParams[K]
   ) => {
     navigate({
-      search: QueryString.stringify({ ...params, [key]: value || undefined }),
+      search: QueryString.stringify(
+        { ...params, [key]: value || undefined },
+        {
+          arrayFormat: 'brackets',
+        }
+      ),
     });
   };
 
@@ -150,44 +158,53 @@ export const TestCases = () => {
     }
   };
 
-  const fetchTestCases = async (
-    currentPage = INITIAL_PAGING_VALUE,
-    filters?: string[],
-    apiParams?: ListTestCaseParamsBySearch
-  ) => {
-    const updatedParams = getTestCaseFiltersValue(
-      params,
-      filters ?? selectedFilter
-    );
+  const fetchTestCases = useCallback(
+    async (
+      currentPage = INITIAL_PAGING_VALUE,
+      filters?: string[],
+      apiParams?: ListTestCaseParamsBySearch
+    ) => {
+      const updatedParams = getTestCaseFiltersValue(
+        params,
+        filters ?? selectedFilter
+      );
 
-    setIsLoading(true);
-    try {
-      const { data, paging } = await getListTestCaseBySearch({
-        ...updatedParams,
-        ...sortOptions,
-        ...apiParams,
-        testCaseStatus: isEmpty(params?.testCaseStatus)
-          ? undefined
-          : params?.testCaseStatus,
-        limit: pageSize,
-        includeAllTests: true,
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.TESTSUITE,
-          TabSpecificField.INCIDENT_ID,
-        ],
-        q: searchValue ? `*${searchValue}*` : undefined,
-        offset: (currentPage - 1) * pageSize,
-      });
-      setTestCase(data);
-      handlePagingChange(paging);
-      handlePageChange(currentPage);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      try {
+        const { data, paging } = await getListTestCaseBySearch({
+          ...updatedParams,
+          ...sortOptions,
+          ...apiParams,
+          testCaseStatus: isEmpty(params?.testCaseStatus)
+            ? undefined
+            : params?.testCaseStatus,
+          limit: pageSize,
+          includeAllTests: true,
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.TESTSUITE,
+            TabSpecificField.INCIDENT_ID,
+          ],
+          q: searchValue ? `*${searchValue}*` : undefined,
+          offset: (currentPage - 1) * pageSize,
+        });
+        setTestCase(data);
+        handlePagingChange(paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      params,
+      selectedFilter,
+      sortOptions,
+      pageSize,
+      searchValue,
+      handlePagingChange,
+    ]
+  );
 
   const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
     const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
@@ -213,9 +230,13 @@ export const TestCases = () => {
     });
   };
 
-  const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCases(currentPage);
-  };
+  const handlePagingClick = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      handlePageChange(currentPage);
+      fetchTestCases(currentPage);
+    },
+    [handlePageChange, fetchTestCases]
+  );
 
   const handleFilterChange: FormProps<TestCaseSearchParams>['onValuesChange'] =
     (value?: TestCaseSearchParams) => {
@@ -392,6 +413,31 @@ export const TestCases = () => {
     }
   };
 
+  const dqTableHeader = useMemo(() => {
+    return (
+      <Row gutter={[16, 16]}>
+        <Col span={16}>
+          <PageHeader
+            data={{
+              header: t('label.test-case-insight-plural'),
+              subHeader: t('message.test-case-insight-description'),
+            }}
+          />
+        </Col>
+        <Col span={8}>
+          <Searchbar
+            removeMargin
+            placeholder={t('label.search-entity', {
+              entity: t('label.test-case-lowercase'),
+            })}
+            searchValue={searchValue}
+            onSearch={(value) => handleSearchParam('searchValue', value)}
+          />
+        </Col>
+      </Row>
+    );
+  }, [searchValue, handleSearchParam]);
+
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => {
       if (prevSelected.includes(key)) {
@@ -438,23 +484,23 @@ export const TestCases = () => {
         getInitialOptions(key, true);
       }
       setSelectedFilter(updatedValue);
-      fetchTestCases(INITIAL_PAGING_VALUE, updatedValue);
+      fetchTestCases(currentPage, updatedValue);
       form.setFieldsValue(params);
     } else {
-      fetchTestCases(INITIAL_PAGING_VALUE);
+      fetchTestCases(currentPage);
     }
   };
 
   useEffect(() => {
     if (
-      (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) &&
+      getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic) &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
       getTestCases();
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params]);
+  }, [tab, testCasePermission, pageSize, params, currentPage]);
 
   const pagingData = useMemo(
     () => ({
@@ -488,16 +534,6 @@ export const TestCases = () => {
           layout="horizontal"
           onValuesChange={handleFilterChange}>
           <Space wrap align="center" className="w-full" size={16}>
-            <Form.Item className="m-0 w-80">
-              <Searchbar
-                removeMargin
-                placeholder={t('label.search-entity', {
-                  entity: t('label.test-case-lowercase'),
-                })}
-                searchValue={searchValue}
-                onSearch={(value) => handleSearchParam('searchValue', value)}
-              />
-            </Form.Item>
             <Form.Item noStyle name="selectedFilters">
               <Dropdown
                 menu={{
@@ -579,7 +615,7 @@ export const TestCases = () => {
                 name="lastRunRange"
                 trigger="handleDateRangeChange"
                 valuePropName="defaultDateRange">
-                <DatePickerMenu showSelectedCustomRange />
+                <DatePickerMenu showSelectedCustomRange size="small" />
               </Form.Item>
             )}
             {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
@@ -647,8 +683,7 @@ export const TestCases = () => {
         </Form>
       </Col>
       <Col span={24}>
-        <SummaryPanel
-          showAdditionalSummary
+        <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />
@@ -666,6 +701,7 @@ export const TestCases = () => {
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
+          tableHeader={dqTableHeader}
           testCases={testCase}
           onTestCaseResultUpdate={handleStatusSubmit}
           onTestUpdate={handleTestCaseUpdate}

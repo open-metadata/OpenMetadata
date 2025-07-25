@@ -743,66 +743,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
-export const getTableColumnConfigSelections = (
-  userFqn: string,
-  entityType: string | undefined,
-  isFullViewTable: boolean,
-  defaultColumns: string[] | undefined
-) => {
-  if (!userFqn) {
-    return [];
-  }
-
-  const storageKey = `selectedColumns-${userFqn}`;
-  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
-
-  if (entityType) {
-    if (selectedColumns[entityType]) {
-      return selectedColumns[entityType];
-    } else if (!isFullViewTable) {
-      localStorage.setItem(
-        storageKey,
-        JSON.stringify({
-          ...selectedColumns,
-          [entityType]: defaultColumns,
-        })
-      );
-
-      return defaultColumns;
-    }
-  }
-
-  return [];
-};
-
-export const handleUpdateTableColumnSelections = (
-  selected: boolean,
-  key: string,
-  columnDropdownSelections: string[],
-  userFqn: string,
-  entityType: string | undefined
-) => {
-  const updatedSelections = selected
-    ? [...columnDropdownSelections, key]
-    : columnDropdownSelections.filter((item) => item !== key);
-
-  // Updating localStorage
-  const selectedColumns = JSON.parse(
-    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
-  );
-  if (entityType) {
-    localStorage.setItem(
-      `selectedColumns-${userFqn}`,
-      JSON.stringify({
-        ...selectedColumns,
-        [entityType]: updatedSelections,
-      })
-    );
-  }
-
-  return updatedSelections;
-};
-
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isTourOpen,
@@ -817,7 +757,6 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
-  viewProfilerPermission,
   editLineagePermission,
   fetchTableDetails,
   testCaseSummary,
@@ -831,7 +770,7 @@ export const getTableDetailPageBaseTabs = ({
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
           isActive={activeTab === EntityTabs.SCHEMA}
-          name={get(labelMap, EntityTabs.SCHEMA, t('label.schema'))}
+          name={get(labelMap, EntityTabs.SCHEMA, t('label.column-plural'))}
         />
       ),
       key: EntityTabs.SCHEMA,
@@ -934,22 +873,13 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.PROFILER,
-      children:
-        !isTourOpen && !viewProfilerPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-observability'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <TableProfiler
-            permissions={tablePermissions}
-            table={tableDetails}
-            testCaseSummary={testCaseSummary}
-          />
-        ),
+      children: (
+        <TableProfiler
+          permissions={tablePermissions}
+          table={tableDetails}
+          testCaseSummary={testCaseSummary}
+        />
+      ),
     },
     {
       label: (
@@ -1028,6 +958,17 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
     },
+    // {
+    //   label: (
+    //     <TabsLabel
+    //       id={EntityTabs.CONTRACT}
+    //       isActive={activeTab === EntityTabs.CONTRACT}
+    //       name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+    //     />
+    //   ),
+    //   key: EntityTabs.CONTRACT,
+    //   children: <ContractTab />,
+    // },
     {
       label: (
         <TabsLabel
@@ -1319,5 +1260,27 @@ export const updateColumnInNestedStructure = (
     } else {
       return column;
     }
+  });
+};
+
+export const pruneEmptyChildren = (columns: Column[]): Column[] => {
+  return columns.map((column) => {
+    // If column has no children or empty children array, remove children property
+    if (!column.children || column.children.length === 0) {
+      return omit(column, 'children');
+    }
+
+    // If column has children, recursively prune them
+    const prunedChildren = pruneEmptyChildren(column.children);
+
+    // If after pruning, children array becomes empty, remove children property
+    if (prunedChildren.length === 0) {
+      return omit(column, 'children');
+    }
+
+    return {
+      ...column,
+      children: prunedChildren,
+    };
   });
 };

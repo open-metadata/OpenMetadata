@@ -1,0 +1,42 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../../styles/variables.less');
+
+.schedule-interval-v1 {
+  .cron-expression-card {
+    .ant-card-body {
+      padding: @padding-sm;
+      display: flex;
+      align-items: center;
+    }
+
+    .cron-expression-card-icon {
+      border: 2px solid fade(@grey-600, 10%);
+      border-radius: 50%;
+      padding: @padding-xss;
+      color: @grey-600;
+      font-size: 20px;
+      margin-right: @margin-md;
+
+      .anticon {
+        height: 32px;
+        width: 32px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 2px solid fade(@grey-600, 30%);
+        border-radius: 50%;
+      }
+    }
+  }
+}

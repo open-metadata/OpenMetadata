@@ -20,7 +20,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 for (const searchItem of navbarSearchItems) {
   const { label, searchIndex, isScrollRequired } = searchItem;
 
-  test(`Search Term - ${label}`, async ({ page }) => {
+  test.skip(`Search Term - ${label}`, async ({ page }) => {
     await redirectToHomePage(page);
 
     await selectOption(

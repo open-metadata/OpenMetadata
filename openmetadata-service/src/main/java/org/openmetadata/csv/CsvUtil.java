@@ -234,6 +234,7 @@ public final class CsvUtil {
             ? null
             : refs.stream()
                 .map(EntityReference::getFullyQualifiedName)
+                .sorted()
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
     return csvRecord;
   }
@@ -295,6 +296,15 @@ public final class CsvUtil {
             ? null
             : owners.stream()
                 .map(owner -> (owner.getType() + ENTITY_TYPE_SEPARATOR + owner.getName()))
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+  }
+
+  public static void addDomains(List<String> csvRecord, List<EntityReference> domains) {
+    csvRecord.add(
+        nullOrEmpty(domains)
+            ? null
+            : domains.stream()
+                .map(EntityReference::getFullyQualifiedName)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
 

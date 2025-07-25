@@ -41,10 +41,10 @@ export interface IngestionPipeline {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * True if the pipeline is ready to be run in the next schedule. False if it is paused.
      */
@@ -251,17 +251,15 @@ export interface FieldChange {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Followers of this entity.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -505,6 +503,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch tables or databases that matches the pattern.
  *
+ * Regex to only fetch stored procedures that matches the pattern.
+ *
  * Regex exclude tables or databases that matches the pattern.
  *
  * Regex exclude or include charts that matches the pattern.
@@ -579,6 +579,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -867,6 +868,18 @@ export interface Pipeline {
      */
     incremental?: IncrementalMetadataExtractionConfiguration;
     /**
+     * Optional configuration to soft delete databases in OpenMetadata if the source databases
+     * are deleted. Also, if the database is deleted, all the associated entities like schemas,
+     * tables, views, stored procedures, lineage, etc., with that database will be deleted
+     */
+    markDeletedDatabases?: boolean;
+    /**
+     * Optional configuration to soft delete schemas in OpenMetadata if the source schemas are
+     * deleted. Also, if the schema is deleted, all the associated entities like tables, views,
+     * stored procedures, lineage, etc., with that schema will be deleted
+     */
+    markDeletedSchemas?: boolean;
+    /**
      * Optional configuration to soft delete stored procedures in OpenMetadata if the source
      * stored procedures are deleted. Also, if the stored procedures is deleted, all the
      * associated entities like lineage, etc., with that stored procedures will be deleted
@@ -990,6 +1003,10 @@ export interface Pipeline {
      * Set the 'Process View Lineage' toggle to control whether to process view lineage.
      */
     processViewLineage?: boolean;
+    /**
+     * Regex to only fetch stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -1509,7 +1526,7 @@ export interface Action {
      *
      * Tags to remove
      */
-    tags?: TagLabel[];
+    tags?: TierElement[];
     /**
      * Application Type
      */
@@ -1541,7 +1558,7 @@ export interface Action {
     /**
      * tier to apply
      */
-    tier?: TagLabel;
+    tier?: TierElement;
     /**
      * Test Cases to apply
      */
@@ -1573,6 +1590,10 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
+     * Propagate domain from the parent through lineage
+     */
+    propagateDomain?: boolean;
+    /**
      * Propagate glossary terms through lineage
      */
     propagateGlossaryTerms?: boolean;
@@ -1592,6 +1613,14 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
+    /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
+    /**
+     * List of configurations to stop propagation based on conditions
+     */
+    propagationStopConfigs?: PropagationStopConfig[];
 }
 
 /**
@@ -1604,21 +1633,77 @@ export enum LabelElement {
 }
 
 /**
+ * Configuration to stop lineage propagation based on conditions
+ */
+export interface PropagationStopConfig {
+    /**
+     * The metadata attribute to check for stopping propagation
+     */
+    metadataAttribute: MetadataAttribute;
+    /**
+     * List of attribute values that will stop propagation when any of them is matched
+     */
+    value: Array<TagLabel | string>;
+}
+
+/**
+ * The metadata attribute to check for stopping propagation
+ */
+export enum MetadataAttribute {
+    Description = "description",
+    Domain = "domain",
+    GlossaryTerms = "glossaryTerms",
+    Owner = "owner",
+    Tags = "tags",
+    Tier = "tier",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
+ *
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
+ * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
+ *
+ * The processing engine responsible for executing the ingestion pipeline logic.
+ *
+ * Link to the service (such as database, messaging, storage services, etc. for which this
+ * ingestion pipeline ingests the metadata from.
+ *
+ * Domain to apply
+ *
+ * Service to be modified
  */
 export interface TagLabel {
     /**
      * Description for the tag label.
+     *
+     * Optional description of entity.
      */
     description?: string;
     /**
      * Display Name that identifies this tag.
+     *
+     * Display Name that identifies this entity.
      */
     displayName?: string;
     /**
      * Link to the tag resource.
+     *
+     * Link to the entity resource.
      */
     href?: string;
     /**
@@ -1628,22 +1713,48 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelTypeEnum;
+    labelType?: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
+     *
+     * Name of the entity instance.
      */
     name?: string;
     /**
      * Label is from Tags or Glossary.
      */
-    source: TagSource;
+    source?: TagSource;
     /**
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
+    state?:  State;
+    style?:  Style;
+    tagFQN?: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id?: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type?: string;
 }
 
 /**
@@ -1694,6 +1805,49 @@ export interface Style {
 }
 
 /**
+ * This schema defines the type for labeling an entity with a Tag.
+ *
+ * tier to apply
+ */
+export interface TierElement {
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelTypeEnum;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
  * Minimum set of requirements to get a Test Case request ready
  */
 export interface TestCaseDefinitions {
@@ -1705,7 +1859,7 @@ export interface TestCaseDefinitions {
     /**
      * Tags to apply
      */
-    tags?: TagLabel[];
+    tags?: TierElement[];
     /**
      * Fully qualified name of the test definition.
      */
@@ -1891,6 +2045,11 @@ export interface DataQualityConfig {
  * Entities selected to run the automation.
  */
 export interface Resource {
+    /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
@@ -2299,6 +2458,12 @@ export interface IncrementalMetadataExtractionConfiguration {
  */
 export interface LineageInformation {
     /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
+    /**
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
@@ -2365,11 +2530,11 @@ export interface ReverseIngestionConfig {
     /**
      * Added tags to be applied
      */
-    addedTags?: TagLabel[];
+    addedTags?: TierElement[];
     /**
      * Removed tags of the entity
      */
-    removedTags?: TagLabel[];
+    removedTags?: TierElement[];
 }
 
 /**
@@ -2499,6 +2664,8 @@ export interface ServiceConnection {
  * Qlik Cloud Connection Config
  *
  * Sigma Connection Config
+ *
+ * ThoughtSpot Connection Config
  *
  * Google BigQuery Connection Config
  *
@@ -2795,6 +2962,8 @@ export interface ConfigClass {
      *
      * Sigma API url.
      *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
      * BigQuery APIs URL.
      *
      * Host and port of the AzureSQL service.
@@ -3056,6 +3225,10 @@ export interface ConfigClass {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
@@ -3111,6 +3284,8 @@ export interface ConfigClass {
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
+     *
+     * ThoughtSpot API version to use
      *
      * OpenMetadata server API version to use.
      *
@@ -3252,6 +3427,15 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authenticationation;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
     /**
      * Billing Project ID
      */
@@ -4122,6 +4306,8 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  *
+ * ThoughtSpot authentication configuration
+ *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -4332,6 +4518,30 @@ export interface DataStaxAstraDBConfiguration {
  */
 export enum NoConfigAuthenticationTypes {
     OAuth2 = "OAuth2",
+}
+
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Types of methods used to authenticate to the alation instance
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authenticationation {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 export interface AuthenticationModeObject {
@@ -5753,6 +5963,8 @@ export enum TransactionMode {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -5891,6 +6103,7 @@ export enum RESTType {
     Synapse = "Synapse",
     Tableau = "Tableau",
     Teradata = "Teradata",
+    ThoughtSpot = "ThoughtSpot",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",

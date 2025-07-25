@@ -24,6 +24,8 @@ import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
+import io.dropwizard.jetty.ConnectorFactory;
+import io.dropwizard.jetty.HttpsConnectorFactory;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
@@ -37,10 +39,10 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
+import jakarta.servlet.SessionCookieConfig;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -51,6 +53,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
@@ -75,7 +78,11 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedCollectionDAO;
+import org.openmetadata.service.cache.RedisCacheBundle;
+import org.openmetadata.service.cache.RelationshipCache;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -99,9 +106,6 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.mcp.McpServer;
-import org.openmetadata.service.mcp.prompts.DefaultPromptsContext;
-import org.openmetadata.service.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -111,6 +115,8 @@ import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.filters.ETagRequestFilter;
+import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -127,6 +133,8 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
+import org.openmetadata.service.security.auth.UserActivityFilter;
+import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
@@ -140,7 +148,6 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CustomParameterNameProvider;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
@@ -165,13 +172,11 @@ import org.quartz.SchedulerException;
       @Server(url = "http://localhost:8585/api", description = "Endpoint URL")
     },
     security = @SecurityRequirement(name = "BearerAuth"))
-@SecuritySchemes({
-  @SecurityScheme(
-      name = "BearerAuth",
-      type = SecuritySchemeType.HTTP,
-      scheme = "bearer",
-      bearerFormat = "JWT")
-})
+@SecurityScheme(
+    name = "BearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT")
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
@@ -202,8 +207,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
-    // Initialize HTTP and JDBI timers
-    MicrometerBundleSingleton.initLatencyEvents();
+    // Metrics initialization now handled by MicrometerBundle
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
@@ -224,6 +228,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
+
+    // Initialize Redis Cache if enabled
+    initializeCache(catalogConfig, environment);
 
     initializeWebsockets(catalogConfig, environment);
 
@@ -289,6 +296,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
+
+    // Register ETag Filters for optimistic concurrency control
+    environment.jersey().register(ETagRequestFilter.class);
+    environment.jersey().register(ETagResponseFilter.class);
+
+    // Register User Activity Tracking
+    registerUserActivityTracking(environment);
+
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -328,9 +343,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     try {
       if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
-        McpServer mcpServer = new McpServer(new DefaultToolContext(), new DefaultPromptsContext());
+        Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
+        McpServerProvider mcpServer =
+            (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+        LOG.info("MCP Server registered successfully");
       }
+    } catch (ClassNotFoundException ex) {
+      LOG.info("MCP module not found in classpath, skipping MCP server initialization");
     } catch (Exception ex) {
       LOG.error("Error initializing MCP server", ex);
     }
@@ -363,9 +383,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Set up a Session Manager
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      if (contextHandler.getSessionHandler() == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
+      SessionHandler sessionHandler = contextHandler.getSessionHandler();
+      if (sessionHandler == null) {
+        sessionHandler = new SessionHandler();
+        contextHandler.setSessionHandler(sessionHandler);
       }
+
+      SessionCookieConfig cookieConfig =
+          Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
+      cookieConfig.setHttpOnly(true);
+      cookieConfig.setSecure(isHttps(config));
+      cookieConfig.setMaxAge(
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+      cookieConfig.setPath("/");
+      sessionHandler.setMaxInactiveInterval(
+          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
 
       AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
           new AuthenticationCodeFlowHandler(
@@ -394,9 +426,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  public static boolean isHttps(OpenMetadataApplicationConfig configuration) {
+    if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
+      ConnectorFactory connector = serverFactory.getApplicationConnectors().getFirst();
+      return connector instanceof HttpsConnectorFactory;
+    }
+    return false;
+  }
+
   protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
+    Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
+    LOG.info(
+        "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
+        databaseMaxSize);
     SearchRepository searchRepository =
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
@@ -442,7 +486,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
-    return jdbi.onDemand(CollectionDAO.class);
+    CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
+
+    // Wrap with caching decorator if cache is available
+    if (RelationshipCache.isAvailable()) {
+      LOG.info("Wrapping CollectionDAO with caching support");
+      return new CachedCollectionDAO(originalDAO);
+    }
+
+    LOG.info("Using original CollectionDAO without caching");
+    return originalDAO;
   }
 
   private void registerSamlServlets(
@@ -509,6 +562,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return configuration.getWebConfiguration();
           }
         });
+
+    // Add Micrometer bundle for Prometheus metrics
+    bootstrap.addBundle(new org.openmetadata.service.monitoring.MicrometerBundle());
+
     super.initialize(bootstrap);
   }
 
@@ -631,6 +688,30 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
     }
+
+    // Register metrics request filter for tracking request latencies
+    environment.jersey().register(org.openmetadata.service.monitoring.MetricsRequestFilter.class);
+  }
+
+  private void registerUserActivityTracking(Environment environment) {
+    // Register the activity tracking filter
+    environment.jersey().register(UserActivityFilter.class);
+
+    // Register lifecycle management for UserActivityTracker
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // UserActivityTracker starts automatically on first use
+              }
+
+              @Override
+              public void stop() {
+                UserActivityTracker.getInstance().shutdown();
+              }
+            });
   }
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
@@ -698,6 +779,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  private void initializeCache(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    if (catalogConfig.getCacheConfiguration() != null
+        && catalogConfig.getCacheConfiguration().isEnabled()) {
+      LOG.info("Initializing Redis cache");
+      try {
+        RedisCacheBundle cacheBundle = new RedisCacheBundle();
+        cacheBundle.run(catalogConfig, environment);
+        LOG.info("Redis cache initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize Redis cache", e);
+        throw new RuntimeException("Failed to initialize Redis cache", e);
+      }
+    } else {
+      LOG.info("Redis cache is disabled");
     }
   }
 

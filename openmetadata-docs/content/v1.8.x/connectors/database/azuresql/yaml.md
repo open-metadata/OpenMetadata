@@ -1,5 +1,6 @@
 ---
 title: Run the AzureSQL Connector Externally
+description: Configure Azure SQL database connections in OpenMetadata with our comprehensive YAML setup guide. Step-by-step instructions for seamless data integration.
 slug: /connectors/database/azuresql/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/azuresql/yaml
 name="AzureSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
 / %}
 

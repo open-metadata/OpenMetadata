@@ -37,6 +37,7 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import {
   EntityAction,
@@ -112,45 +113,37 @@ const GlossaryPage = () => {
     return true;
   }, [glossaryFqn]);
 
-  const createGlossaryPermission = useMemo(
-    () =>
-      checkPermission(
+  const {
+    createGlossaryPermission,
+    viewBasicGlossaryPermission,
+    viewAllGlossaryPermission,
+  } = useMemo(() => {
+    const resourceType = isGlossaryActive
+      ? ResourceEntity.GLOSSARY
+      : ResourceEntity.GLOSSARY_TERM;
+
+    return {
+      createGlossaryPermission: checkPermission(
         Operation.Create,
-        isGlossaryActive
-          ? ResourceEntity.GLOSSARY
-          : ResourceEntity.GLOSSARY_TERM,
+        resourceType,
         permissions
       ),
-    [permissions, isGlossaryActive]
-  );
-
-  const viewBasicGlossaryPermission = useMemo(
-    () =>
-      checkPermission(
+      viewBasicGlossaryPermission: checkPermission(
         Operation.ViewBasic,
-        isGlossaryActive
-          ? ResourceEntity.GLOSSARY
-          : ResourceEntity.GLOSSARY_TERM,
+        resourceType,
         permissions
       ),
-    [permissions, isGlossaryActive]
-  );
-
-  const viewAllGlossaryPermission = useMemo(
-    () =>
-      checkPermission(
+      viewAllGlossaryPermission: checkPermission(
         Operation.ViewAll,
-        isGlossaryActive
-          ? ResourceEntity.GLOSSARY
-          : ResourceEntity.GLOSSARY_TERM,
+        resourceType,
         permissions
       ),
-    [permissions, isGlossaryActive]
-  );
+    };
+  }, [permissions, isGlossaryActive]);
 
   const handleAddGlossaryClick = useCallback(() => {
     navigate(ROUTES.ADD_GLOSSARY);
-  }, [history]);
+  }, [navigate]);
 
   const fetchGlossaryList = useCallback(async () => {
     try {
@@ -167,7 +160,7 @@ const GlossaryPage = () => {
             TabSpecificField.TAGS,
             TabSpecificField.REVIEWERS,
             TabSpecificField.VOTES,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
             TabSpecificField.TERM_COUNT,
           ],
           limit: PAGE_SIZE_LARGE,
@@ -210,7 +203,7 @@ const GlossaryPage = () => {
           TabSpecificField.TAGS,
           TabSpecificField.REVIEWERS,
           TabSpecificField.VOTES,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
         ],
         limit: PAGE_SIZE_LARGE,
         after: after,
@@ -250,17 +243,20 @@ const GlossaryPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.CHILDREN,
           TabSpecificField.VOTES,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.EXTENSION,
         ],
       });
       setActiveGlossary(response as ModifiedGlossary);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        navigate(ROUTES.FORBIDDEN, { replace: true });
+      }
     } finally {
       setIsRightPanelLoading(false);
     }
   }, [glossaryFqn]);
+
   useEffect(() => {
     setIsRightPanelLoading(true);
     if (glossaries.length) {
@@ -299,7 +295,7 @@ const GlossaryPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
-    [activeGlossary, updateActiveGlossary, history, fetchGlossaryList]
+    [activeGlossary, updateActiveGlossary, navigate, fetchGlossaryList]
   );
 
   const updateVote = useCallback(
@@ -439,7 +435,7 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="d-flex justify-center items-center full-height">
+      <div className="full-height">
         <ErrorPlaceHolder
           buttonId="add-glossary"
           className="mt-0-important border-none"

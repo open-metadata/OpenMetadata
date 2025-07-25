@@ -43,6 +43,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
+import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -108,13 +109,13 @@ const ModelTab = () => {
               fields: TabSpecificField.TAGS,
             });
 
-        setPaginatedColumns(response.data || []);
+        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
       } catch (error) {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
-          limit: PAGE_SIZE_LARGE,
+          limit: pageSize,
           total: 0,
         });
       }

@@ -1,5 +1,6 @@
 ---
-title: index
+title: KPI Metrics Schema Overview | OpenMetadata Data Insights
+description: Connect Kpi to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/kpi
 ---
 

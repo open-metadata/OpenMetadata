@@ -1,5 +1,6 @@
 ---
-title: GCP Secret Manager Parameter Store
+title: GCP Secret Manager Parameter Store | Official Documentation
+description: Connect Gcp Secret Manager to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/secrets-manager/supported-implementations/gcp-secret-manager
 collate: false
 ---

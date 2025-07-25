@@ -1,5 +1,6 @@
 ---
 title: All Releases | OpenMetadata All Releases
+description: Explore all OpenMetadata releases with detailed changelogs, new features, bug fixes, and upgrade guides. Stay updated with the latest versions and improvements.
 slug: /releases/all-releases
 ---
 
@@ -13,6 +14,16 @@ version. To see what's coming in next releases, please check our {% collateConte
 {% /note %}
 
 {% partial file="/v1.9/releases/latest.md" /%}
+
+{% partial file="/v1.9/releases/1.8.6.md" /%}
+
+{% partial file="/v1.9/releases/1.8.3.md" /%}
+
+{% partial file="/v1.9/releases/1.8.2.md" /%}
+
+{% partial file="/v1.9/releases/1.8.1.md" /%}
+
+{% partial file="/v1.9/releases/1.8.0.md" /%}
 
 {% partial file="/v1.9/releases/1.7.5.md" /%}
 

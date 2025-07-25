@@ -300,6 +300,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
             icon: AdminIcon,
           },
+          {
+            label: t('label.online-user-plural'),
+            description: t('message.page-sub-header-for-online-users'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ONLINE_USERS}`,
+            icon: UsersIcon,
+          },
         ],
       },
       {
@@ -321,6 +328,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
             icon: PoliciesIcon,
+          },
+          {
+            label: t('label.permission-debugger'),
+            description: t('message.page-sub-header-for-permission-debugger'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
+            icon: AccessControlIcon,
           },
         ],
       },

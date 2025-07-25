@@ -1,5 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
+description: Configure BigQuery database connections in OpenMetadata using YAML. Complete setup guide with authentication, SSL, and connection parameters.
 slug: /connectors/database/bigquery/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/bigquery/yaml
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners"]
 / %}
 

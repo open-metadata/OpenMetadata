@@ -1,5 +1,6 @@
 ---
 title: Run the Tableau Connector Externally
+description: Configure Tableau dashboard connections in OpenMetadata using YAML. Step-by-step guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/dashboard/tableau/yaml
 ---
 
@@ -19,7 +20,7 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-tableau-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.9/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -33,9 +34,15 @@ For more information on enabling the Tableau Metadata APIs follow the link [here
 - Ensure that the **Metadata API** is enabled for the user performing the ingestion. If it is not enabled, ingestion may fail. Follow the official Tableau documentation to [enable the Metadata API](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html#enable-the-tableau-metadata-api-for-tableau-server).  
 {% /note %}
 
+{% note %}
+- As of OpenMetadata versions `1.7.4` and `1.7.5`, the `siteUrl` field has been removed from the Tableau connector configuration. This change was intentional, as confirmed in the release commit.  
+- To connect to a non-default Tableau site, use the `siteName` field instead. The Tableau Python SDK does not require `siteUrl` for authentication.  
+- Ensure the `siteName` field is correctly populated (do not use `*`) to enable successful metadata ingestion for multi-site Tableau environments.
+{% /note %}
+
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.9/connectors/python-requirements.md" /%}
 
 To run the Tableau ingestion, you will need to install:
 
@@ -143,7 +150,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 {% /codeInfo %}
 
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -199,11 +206,11 @@ source:
 ```
 
 
-{% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.9/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -335,4 +342,4 @@ To establish secure connections between OpenMetadata and Tableau, in the `YAML` 
             sslKey: "/path/to/your/ssl_key"
 ```
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.9/connectors/yaml/ingestion-cli.md" /%}

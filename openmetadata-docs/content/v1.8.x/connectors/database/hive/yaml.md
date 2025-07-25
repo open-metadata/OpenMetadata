@@ -1,5 +1,6 @@
 ---
 title: Run the Hive Connector Externally
+description: Use YAML to ingest metadata from Hive including tables, partitions, and schema structure for governance and discovery.
 slug: /connectors/database/hive/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/hive/yaml
 name="Hive"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
