@@ -1,0 +1,25 @@
+{
+    "$id": "https://open-metadata.org/schema/metadataIngestion/securityServiceMetadataPipeline.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SecurityServiceMetadataPipeline",
+    "description": "SecurityService Metadata Pipeline Configuration.",
+    "type": "object",
+    "definitions": {
+        "securityMetadataConfigType": {
+            "description": "Security Source Config Metadata Pipeline type",
+            "type": "string",
+            "enum": [
+                "SecurityMetadata"
+            ],
+            "default": "SecurityMetadata"
+        }
+    },
+    "properties": {
+        "type": {
+            "description": "Pipeline type",
+            "$ref": "#/definitions/securityMetadataConfigType",
+            "default": "SecurityMetadata"
+        }
+    },
+    "additionalProperties": false
+}

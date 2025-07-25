@@ -89,6 +89,9 @@ from metadata.generated.schema.api.services.createPipelineService import (
 from metadata.generated.schema.api.services.createSearchService import (
     CreateSearchServiceRequest,
 )
+from metadata.generated.schema.api.services.createSecurityService import (
+    CreateSecurityServiceRequest,
+)
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
@@ -161,6 +164,7 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
+from metadata.generated.schema.entity.services.securityService import SecurityService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.persona import Persona
 from metadata.generated.schema.entity.teams.role import Role
@@ -256,6 +260,8 @@ ROUTES = {
     CreateMetadataServiceRequest.__name__: "/services/metadataServices",
     SearchService.__name__: "/services/searchServices",
     CreateSearchServiceRequest.__name__: "/services/searchServices",
+    SecurityService.__name__: "/services/securityServices",
+    CreateSecurityServiceRequest.__name__: "/services/securityServices",
     IngestionPipeline.__name__: "/services/ingestionPipelines",
     CreateIngestionPipelineRequest.__name__: "/services/ingestionPipelines",
     TestConnectionDefinition.__name__: "/services/testConnectionDefinitions",

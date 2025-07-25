@@ -50,8 +50,8 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
-  ConfigType,
   CreateIngestionPipeline,
+  FluffyType as ConfigType,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';

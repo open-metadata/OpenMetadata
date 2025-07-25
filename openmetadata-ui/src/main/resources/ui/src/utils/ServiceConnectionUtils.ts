@@ -26,6 +26,7 @@ import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ConfigData, ServicesType } from '../interface/service.interface';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
@@ -116,6 +117,14 @@ export const getConnectionSchemas = ({
     case ServiceCategory.API_SERVICES: {
       connSch = serviceUtilClassBase.getAPIServiceConfig(
         serviceType as APIServiceType
+      );
+
+      break;
+    }
+
+    case ServiceCategory.SECURITY_SERVICES: {
+      connSch = serviceUtilClassBase.getSecurityServiceConfig(
+        serviceType as SecurityServiceType
       );
 
       break;

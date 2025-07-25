@@ -38,6 +38,7 @@ import { MessagingService } from '../../../generated/entity/services/messagingSe
 import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { SearchService } from '../../../generated/entity/services/searchService';
+import { SecurityService } from '../../../generated/entity/services/securityService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { Team } from '../../../generated/entity/teams/team';
 import { User } from '../../../generated/entity/teams/user';
@@ -74,6 +75,7 @@ export type AssetsUnion =
   | EntityType.STORAGE_SERVICE
   | EntityType.DATABASE_SERVICE
   | EntityType.SEARCH_SERVICE
+  | EntityType.SECURITY_SERVICE
   | EntityType.API_SERVICE
   | EntityType.API_COLLECTION
   | EntityType.API_ENDPOINT
@@ -110,4 +112,5 @@ export type MapPatchAPIResponse = {
   [EntityType.DOMAIN]: Domain;
   [EntityType.CLASSIFICATION]: Classification;
   [EntityType.CHART]: Chart;
+  [EntityType.SECURITY_SERVICE]: SecurityService;
 };

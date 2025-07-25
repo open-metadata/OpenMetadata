@@ -55,6 +55,7 @@ import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
+import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import {
   getBreadcrumbForContainer,
@@ -577,6 +578,17 @@ export const getDataAssetsHeaderInfo = (
       );
 
       break;
+
+    case EntityType.SECURITY_SERVICE:
+      const securityServiceDetails = dataAsset as SecurityService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        securityServiceDetails,
+        EntityType.SECURITY_SERVICE
+      );
+
+      break;
+
     case EntityType.STORED_PROCEDURE:
       const storedProcedureDetails = dataAsset as StoredProcedure;
 

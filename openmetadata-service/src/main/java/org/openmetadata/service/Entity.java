@@ -154,7 +154,7 @@ public final class Entity {
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
   public static final String SEARCH_SERVICE = "searchService";
-
+  public static final String SECURITY_SERVICE = "securityService";
   public static final String API_SERVICE = "apiService";
   public static final String DRIVE_SERVICE = "driveService";
   //
@@ -280,6 +280,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SECURITY, SECURITY_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
 
@@ -316,6 +317,7 @@ public final class Entity {
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
+            SECURITY_SERVICE,
             DRIVE_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,

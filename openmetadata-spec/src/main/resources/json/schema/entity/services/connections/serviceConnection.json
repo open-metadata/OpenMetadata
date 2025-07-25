@@ -34,6 +34,9 @@
         },
         {
           "$ref": "../searchService.json#/definitions/searchConnection"
+        },
+        {
+          "$ref": "../securityService.json#/definitions/securityConnection"
         }
       ]
     }

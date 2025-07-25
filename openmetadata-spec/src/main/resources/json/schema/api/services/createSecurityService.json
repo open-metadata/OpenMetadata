@@ -1,0 +1,67 @@
+{
+    "$id": "https://open-metadata.org/schema/api/services/createSecurityService.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CreateSecurityServiceRequest",
+    "description": "Create Security Service entity request",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.api.services.CreateSecurityService",
+    "javaInterfaces": [
+        "org.openmetadata.schema.CreateEntity"
+    ],
+    "properties": {
+        "name": {
+            "description": "Name that identifies the this entity instance uniquely",
+            "$ref": "../../type/basic.json#/definitions/entityName"
+        },
+        "displayName": {
+            "description": "Display Name that identifies this security service. It could be title or label from the source services.",
+            "type": "string"
+        },
+        "description": {
+            "description": "Description of security service entity.",
+            "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "serviceType": {
+            "$ref": "../../entity/services/securityService.json#/definitions/securityServiceType"
+        },
+        "connection": {
+            "$ref": "../../entity/services/securityService.json#/definitions/securityConnection"
+        },
+        "tags": {
+            "description": "Tags for this Security Service.",
+            "type": "array",
+            "items": {
+                "$ref": "../../type/tagLabel.json"
+            },
+            "default": null
+        },
+        "owners": {
+            "description": "Owners of this security service.",
+            "$ref": "../../type/entityReferenceList.json",
+            "default": null
+        },
+        "dataProducts": {
+            "description": "List of fully qualified names of data products this entity is part of.",
+            "type": "array",
+            "items": {
+                "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+            }
+        },
+        "domains": {
+            "description": "Fully qualified names of the domains the Search Service belongs to.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ingestionRunner": {
+            "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+            "$ref": "../../type/entityReference.json"
+        }
+    },
+    "required": [
+        "name",
+        "serviceType"
+    ],
+    "additionalProperties": false
+}

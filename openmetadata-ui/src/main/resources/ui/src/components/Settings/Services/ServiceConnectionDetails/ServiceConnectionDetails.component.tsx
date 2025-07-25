@@ -24,6 +24,7 @@ import { MetadataServiceType } from '../../../../generated/entity/services/metad
 import { MlModelServiceType } from '../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../../../../generated/entity/services/securityService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
 import {
   ConfigData,
@@ -120,6 +121,14 @@ const ServiceConnectionDetails = ({
         setSchema(
           serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType)
             .schema
+        );
+
+        break;
+      case EntityType.SECURITY_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getSecurityServiceConfig(
+            serviceFQN as SecurityServiceType
+          ).schema
         );
 
         break;

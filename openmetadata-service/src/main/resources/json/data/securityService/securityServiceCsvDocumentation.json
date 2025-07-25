@@ -1,0 +1,79 @@
+{
+    "summary": "Security Service CSV file is used for importing and exporting security service metadata. The CSV file can be used to create new security services or update existing ones. Security services like Apache Ranger provide policy and access management capabilities.",
+    "headers": [
+        {
+            "name": "name",
+            "required": true,
+            "description": "Name that identifies the security service uniquely.",
+            "examples": [
+                "ranger-prod",
+                "ranger-dev",
+                "security-service-1"
+            ]
+        },
+        {
+            "name": "displayName",
+            "required": false,
+            "description": "Display name that identifies this security service. It could be title or label from the source services.",
+            "examples": [
+                "Production Ranger",
+                "Development Security Service",
+                "Corporate Security Manager"
+            ]
+        },
+        {
+            "name": "description",
+            "required": false,
+            "description": "Description of the security service in Markdown format.",
+            "examples": [
+                "Production Apache Ranger service for access control and policy management",
+                "Development environment security service for testing policies"
+            ]
+        },
+        {
+            "name": "serviceType",
+            "required": true,
+            "description": "Type of security service. Currently supported: Ranger.",
+            "examples": [
+                "Ranger"
+            ]
+        },
+        {
+            "name": "owners",
+            "required": false,
+            "description": "Owners of the security service. Multiple owners are separated by ';'. Each owner is specified as 'type:name' format.",
+            "examples": [
+                "user:admin.user",
+                "team:security-team;user:john.doe"
+            ]
+        },
+        {
+            "name": "tags",
+            "required": false,
+            "description": "Fully qualified classification tag names associated with the security service separated by ';'.",
+            "examples": [
+                "Security.Critical",
+                "Security.Critical;Infrastructure.Production"
+            ]
+        },
+        {
+            "name": "domain",
+            "required": false,
+            "description": "Fully qualified name of the domain the security service belongs to.",
+            "examples": [
+                "Security",
+                "Infrastructure",
+                "DataGovernance"
+            ]
+        },
+        {
+            "name": "dataProducts",
+            "required": false,
+            "description": "List of fully qualified names of data products this security service is part of, separated by ';'.",
+            "examples": [
+                "DataProduct1",
+                "DataProduct1;DataProduct2"
+            ]
+        }
+    ]
+}

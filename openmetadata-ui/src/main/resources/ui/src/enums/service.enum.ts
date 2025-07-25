@@ -19,6 +19,7 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
 
 export enum ServiceCategory {
@@ -31,6 +32,7 @@ export enum ServiceCategory {
   STORAGE_SERVICES = 'storageServices',
   SEARCH_SERVICES = 'searchServices',
   API_SERVICES = 'apiServices',
+  SECURITY_SERVICES = 'securityServices',
 }
 
 export enum ServiceCategoryPlural {
@@ -43,6 +45,7 @@ export enum ServiceCategoryPlural {
   storageService = 'storageServices',
   searchService = 'searchServices',
   apiService = 'apiServices',
+  securityService = 'securityServices',
 }
 
 export type DatabaseServiceTypeSmallCaseType = {
@@ -93,6 +96,12 @@ export type SearchServiceTypeSmallCaseType = {
 
 export type ApiServiceTypeSmallCaseType = {
   [K in keyof typeof APIServiceType]: Lowercase<typeof APIServiceType[K]>;
+};
+
+export type SecurityServiceTypeSmallCaseType = {
+  [K in keyof typeof SecurityServiceType]: Lowercase<
+    typeof SecurityServiceType[K]
+  >;
 };
 
 export enum ServiceAgentSubTabs {

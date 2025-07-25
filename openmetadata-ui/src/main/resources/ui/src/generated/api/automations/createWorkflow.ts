@@ -4185,6 +4185,7 @@ export enum ServiceType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     Search = "Search",
+    Security = "Security",
     Storage = "Storage",
 }
 
