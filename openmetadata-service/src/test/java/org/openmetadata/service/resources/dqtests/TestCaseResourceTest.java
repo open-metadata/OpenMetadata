@@ -516,6 +516,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Required parameter missingCountValue is not passed in parameterValues");
+
+    CreateTestCase create2 = createRequest(test);
+    create2
+        .withEntityLink(TABLE_LINK)
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(
+                new TestCaseParameterValue().withName("missingCountValue").withValue("10"),
+                new TestCaseParameterValue().withName("invalidParameter").withValue("20")));
+    assertResponseContains(
+        () -> createAndCheckEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Parameter 'invalidParameter' is not defined in the test definition. Defined parameters are: [missingValueMatch, missingCountValue]");
   }
 
   @Test
@@ -526,7 +539,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         .withEntityLink(TABLE_LINK)
         .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
         .withParameterValues(
-            List.of(new TestCaseParameterValue().withValue("100").withName("min")));
+            List.of(new TestCaseParameterValue().withValue("100").withName("minValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Change the test with PUT request
@@ -555,7 +568,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         .withEntityLink(TABLE_LINK)
         .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
         .withParameterValues(
-            List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     CreateTestCaseResult createTestCaseResult =
         new CreateTestCaseResult()
@@ -694,7 +707,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK_2)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create);
     CreateTestCase create1 =
@@ -702,7 +715,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK_2)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("20").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("20").withName("maxValue")));
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
     expectedTestCaseList.add(create1);
     Map<String, Object> queryParams = new HashMap<>();
@@ -816,7 +829,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withEntityLink(String.format("<#E::table::%s>", tableFQN))
                 .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
                 .withParameterValues(
-                    List.of(new TestCaseParameterValue().withValue("20").withName("min")));
+                    List.of(new TestCaseParameterValue().withValue("20").withName("minValue")));
         TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
         testCaseCount++;
         CreateTestCaseResult createTestCaseResult =
@@ -902,7 +915,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               .withEntityLink(String.format("<#E::table::%s>", tableFQN))
               .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
               .withParameterValues(
-                  List.of(new TestCaseParameterValue().withValue("20").withName("max")));
+                  List.of(new TestCaseParameterValue().withValue("20").withName("maxValue")));
       if (i == 2) {
         // create 1 test cases with USER21_TEAM as owner
         create.withOwners(List.of(teamRef));
@@ -1133,7 +1146,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("20").withName("min")));
+                List.of(new TestCaseParameterValue().withValue("20").withName("minValue")));
     createEntity(create, ADMIN_AUTH_HEADERS);
     create =
         createRequest(testInfo)
@@ -2086,13 +2099,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     validTestCase
         .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
         .withParameterValues(
-            List.of(new TestCaseParameterValue().withName("minLength").withValue("10")));
+            List.of(new TestCaseParameterValue().withName("minValue").withValue("10")));
     createEntity(validTestCase, ADMIN_AUTH_HEADERS);
 
     validTestCase = createRequest(test, 1);
     validTestCase
         .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
-        .withParameterValues(List.of(new TestCaseParameterValue().withName("max").withValue("10")));
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("maxValue").withValue("10")));
     createEntity(validTestCase, ADMIN_AUTH_HEADERS);
 
     CreateTestCase invalidTestCase = createRequest(test, 2);
@@ -2104,7 +2118,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
     assertResponseContains(
-        () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+        () -> createEntity(invalidTestCase, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Parameter");
 
     CreateTestCase invalidTestCaseMixedTypes = createRequest(test, 3);
     invalidTestCaseMixedTypes
@@ -2115,7 +2129,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 new TestCaseParameterValue().withName("maxLength").withValue("5")));
 
     assertResponseContains(
-        () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+        () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Parameter");
   }
 
   @Test
@@ -2155,7 +2171,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList(C1, C2, C3);
 
@@ -2209,7 +2225,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList("NOT_A_COLUMN", C1, C2, C3);
 
@@ -2248,7 +2264,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList(C1, C2, C3);
 
@@ -2338,7 +2354,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     String inspectionQuery = "SELECT * FROM test_table WHERE column1 = 'value1'";
     putInspectionQuery(testCase, inspectionQuery);
@@ -2765,7 +2781,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withEntityLink(TABLE_LINK_2)
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withParameterValues(
-                List.of(new TestCaseParameterValue().withValue("100").withName("max")));
+                List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     CreateTestCaseResult createTestCaseResult =
