@@ -1,5 +1,6 @@
 ---
 title: KPI Data Insight | OpenMetadata KPI Schemas
+description: Access KPIs and metrics for metadata usage, quality, and activity through the data insights interface.
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/kpi
 ---
 

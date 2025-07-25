@@ -1,5 +1,6 @@
 ---
 title: Create Test Definition | OpenMetadata Test Definition
+description: Define a test definition to establish the logic and rules used in test cases across datasets and pipelines.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestdefinition
 ---
 
