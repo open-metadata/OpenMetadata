@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { ListProps } from 'antd';
-import { EntityData, EntityTableType } from '../EntityTable.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Domain } from '../../../../generated/entity/domains/domain';
 
-export interface GridViewProps<T> extends ListProps<T> {
-  data: EntityData[];
-  loading: boolean;
-  type?: EntityTableType;
-  onCardClick?: (record: EntityData) => void;
+export interface SubDomainsTableV2Props {
+  subDomains?: Domain[];
+  isLoading?: boolean;
+  permissions: OperationPermission;
+  onAddSubDomain: () => void;
 }

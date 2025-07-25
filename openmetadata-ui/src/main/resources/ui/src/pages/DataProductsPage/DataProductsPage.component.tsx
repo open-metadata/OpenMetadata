@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,128 +14,155 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import EntityTable from '../../components/common/EntityTable/EntityTable.component';
+import { EntityTableFilters } from '../../components/common/EntityTable/EntityTable.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
+import HeaderCard from '../../components/common/HeaderCard/HeaderCard.component';
+import AddEntityFormV2 from '../../components/Domains/AddEntityForm/AddEntityForm.component';
+import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-
-import Loader from '../../components/common/Loader/Loader';
-import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
-import DomainDetailsPage from '../../components/Domain/DomainDetailsPage/DomainDetailsPage.component';
-import DomainsLeftPanel from '../../components/Domain/DomainLeftPanel/DomainLeftPanel.component';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { Domain } from '../../generated/entity/domains/domain';
+import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useDomainStore } from '../../hooks/useDomainStore';
+import { useDynamicEntitySearch } from '../../hooks/useDynamicEntitySearch';
 import { useFqn } from '../../hooks/useFqn';
 import {
+  addDataProducts,
   addFollower,
-  getDomainByName,
-  patchDomains,
+  deleteDataProduct,
+  getDataProductByName,
+  patchDataProduct,
   removeFollower,
-} from '../../rest/domainAPI';
-import { searchQuery } from '../../rest/searchAPI';
+} from '../../rest/dataProductAPI';
+import { createFormConfig } from '../../utils/AddEntityFormUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
-import { getDomainPath } from '../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './domain.less';
 
-const DomainPage = () => {
-  const { fqn: domainFqn } = useFqn();
+import './data-products-page.less';
+
+const DataProductsPage = () => {
+  const { fqn: dataProductFqn } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
-  const { domains, updateDomains, domainLoading, updateDomainLoading } =
-    useDomainStore();
   const [isMainContentLoading, setIsMainContentLoading] = useState(false);
-  const [activeDomain, setActiveDomain] = useState<Domain>();
+  const [activeDataProduct, setActiveDataProduct] = useState<DataProduct>();
   const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
+  const [isAddDataProductPanelOpen, setIsAddDataProductPanelOpen] =
+    useState(false);
+  const [isDataProductFormLoading, setIsDataProductFormLoading] =
+    useState(false);
+
+  // Use dynamic search hook for handling search and filtering
+  const {
+    data: searchResults,
+    loading: searchLoading,
+    total,
+    searchTerm,
+    filters,
+    setSearchTerm,
+    setFilters,
+    refetch,
+  } = useDynamicEntitySearch<DataProduct>({
+    searchIndex: SearchIndex.DATA_PRODUCT,
+    pageSize: ES_MAX_PAGE_SIZE,
+    enableFilters: true,
+    enableSearch: true,
+  });
 
   const { isFollowing } = useMemo(() => {
     return {
-      isFollowing: activeDomain?.followers?.some(
+      isFollowing: activeDataProduct?.followers?.some(
         ({ id }) => id === currentUserId
       ),
     };
-  }, [activeDomain?.followers, currentUserId]);
-
-  const rootDomains = useMemo(() => {
-    return domains.filter((domain) => domain.parent == null);
-  }, [domains]);
-
-  const refreshDomains = useCallback(async () => {
-    try {
-      updateDomainLoading(true);
-
-      const response = await searchQuery({
-        query: '',
-        pageNumber: 1,
-        pageSize: ES_MAX_PAGE_SIZE,
-        searchIndex: SearchIndex.DOMAIN,
-        includeDeleted: false,
-        trackTotalHits: true,
-        fetchSource: true,
-      });
-
-      const domainsFromSearch = response.hits.hits.map(
-        (hit: { _source: Domain }) => hit._source
-      );
-
-      updateDomains(domainsFromSearch);
-    } catch {
-      // silent fail
-    } finally {
-      updateDomainLoading(false);
-    }
-  }, []);
+  }, [activeDataProduct?.followers, currentUserId]);
 
   const [
-    createDomainPermission,
-    viewBasicDomainPermission,
-    viewAllDomainPermission,
+    createDataProductPermission,
+    viewBasicDataProductPermission,
+    viewAllDataProductPermission,
   ] = useMemo(() => {
     return [
-      checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
-      checkPermission(Operation.ViewBasic, ResourceEntity.DOMAIN, permissions),
-      checkPermission(Operation.ViewAll, ResourceEntity.DOMAIN, permissions),
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.DATA_PRODUCT,
+        permissions
+      ),
+      checkPermission(
+        Operation.ViewBasic,
+        ResourceEntity.DATA_PRODUCT,
+        permissions
+      ),
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.DATA_PRODUCT,
+        permissions
+      ),
     ];
   }, [permissions]);
 
-  const handleAddDomainClick = useCallback(() => {
-    navigate(ROUTES.ADD_DOMAIN);
-  }, [navigate]);
+  const handleAddDataProductClick = useCallback(() => {
+    setIsAddDataProductPanelOpen(true);
+  }, []);
 
-  const handleDomainUpdate = async (updatedData: Domain) => {
-    if (activeDomain) {
-      const jsonPatch = compare(activeDomain, updatedData);
+  const handleAddDataProductPanelClose = useCallback(() => {
+    setIsAddDataProductPanelOpen(false);
+  }, []);
+
+  const handleDataProductSave = useCallback(
+    async (values: CreateDataProduct) => {
+      setIsDataProductFormLoading(true);
       try {
-        const response = await patchDomains(activeDomain.id, jsonPatch);
+        // Create new data product using addDataProducts API
+        await addDataProducts(values);
 
-        setActiveDomain(response);
+        // Close the panel after successful creation
+        setIsAddDataProductPanelOpen(false);
 
-        const updatedDomains = rootDomains.map((item: Domain) => {
-          if (item.name === response.name) {
-            return response;
-          } else {
-            return item;
-          }
-        });
+        // Refresh data products list to show the new data product
+        await refetch();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsDataProductFormLoading(false);
+      }
+    },
+    [refetch]
+  );
 
-        updateDomains(updatedDomains, false);
+  const handleDataProductUpdate = async (updatedData: DataProduct) => {
+    if (activeDataProduct) {
+      const jsonPatch = compare(activeDataProduct, updatedData);
+      try {
+        const response = await patchDataProduct(
+          activeDataProduct.id,
+          jsonPatch
+        );
 
-        if (activeDomain?.name !== updatedData.name) {
-          navigate(getDomainPath(response.fullyQualifiedName));
-          refreshDomains();
+        setActiveDataProduct(response);
+
+        if (activeDataProduct?.name !== updatedData.name) {
+          navigate(
+            getEntityDetailsPath(
+              EntityType.DATA_PRODUCT,
+              response.fullyQualifiedName ?? ''
+            )
+          );
+          refetch();
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -143,35 +170,59 @@ const DomainPage = () => {
     }
   };
 
-  const handleDomainDelete = (id: string) => {
-    const updatedDomains = rootDomains.find((item) => item.id !== id);
-    const domainPath = updatedDomains
-      ? getDomainPath(updatedDomains.fullyQualifiedName)
-      : getDomainPath();
-
-    refreshDomains();
-    navigate(domainPath);
+  const handleDataProductDelete = async (id: string) => {
+    try {
+      await deleteDataProduct(id);
+      await refetch();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
-  const fetchDomainByName = async (domainFqn: string) => {
+  const handleBulkDataProductDelete = async (ids: Key[]) => {
+    try {
+      // Execute delete operations in parallel
+      await Promise.all(ids.map((id) => deleteDataProduct(id as string)));
+      await refetch();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  // Handle search term changes from EntityTable
+  const handleSearchChange = useCallback(
+    (newSearchTerm: string) => {
+      setSearchTerm(newSearchTerm);
+    },
+    [setSearchTerm]
+  );
+
+  // Handle filter changes from EntityTable
+  const handleFiltersUpdate = useCallback(
+    (newFilters: EntityTableFilters) => {
+      setFilters(newFilters);
+    },
+    [setFilters]
+  );
+
+  const fetchDataProductByName = async (dataProductFqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(domainFqn, {
+      const data = await getDataProductByName(dataProductFqn, {
         fields: [
-          TabSpecificField.CHILDREN,
+          TabSpecificField.DOMAIN,
           TabSpecificField.OWNERS,
-          TabSpecificField.PARENT,
           TabSpecificField.EXPERTS,
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
         ],
       });
-      setActiveDomain(data);
+      setActiveDataProduct(data);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
-          entity: t('label.domain-lowercase'),
+          entity: t('label.data-product-lowercase'),
         })
       );
     } finally {
@@ -179,109 +230,72 @@ const DomainPage = () => {
     }
   };
 
-  const followDomain = async () => {
+  const followDataProduct = async () => {
     try {
-      if (!activeDomain?.id) {
+      if (!activeDataProduct?.id) {
         return;
       }
-      const res = await addFollower(activeDomain.id, currentUserId);
+      const res = await addFollower(activeDataProduct.id, currentUserId);
       const { newValue } = res.changeDescription.fieldsAdded[0];
-      setActiveDomain(
+      setActiveDataProduct(
         (prev) =>
           ({
             ...prev,
             followers: [...(prev?.followers ?? []), ...newValue],
-          } as Domain)
+          } as DataProduct)
       );
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-follow-error', {
-          entity: getEntityName(activeDomain),
+          entity: getEntityName(activeDataProduct),
         })
       );
     }
   };
 
-  const unFollowDomain = async () => {
+  const unFollowDataProduct = async () => {
     try {
-      if (!activeDomain?.id) {
+      if (!activeDataProduct?.id) {
         return;
       }
-      const res = await removeFollower(activeDomain.id, currentUserId);
+      const res = await removeFollower(activeDataProduct.id, currentUserId);
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-      const filteredFollowers = activeDomain.followers?.filter(
+      const filteredFollowers = activeDataProduct.followers?.filter(
         (follower) => follower.id !== oldValue[0].id
       );
 
-      setActiveDomain(
+      setActiveDataProduct(
         (prev) =>
           ({
             ...prev,
             followers: filteredFollowers ?? [],
-          } as Domain)
+          } as DataProduct)
       );
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.entity-unfollow-error', {
-          entity: getEntityName(activeDomain),
+          entity: getEntityName(activeDataProduct),
         })
       );
     }
   };
 
-  const handleFollowingClick = useCallback(async () => {
-    setIsFollowingLoading(true);
-    isFollowing ? await unFollowDomain() : await followDomain();
-    setIsFollowingLoading(false);
-  }, [isFollowing, unFollowDomain, followDomain]);
-
-  const domainPageRender = useMemo(() => {
-    if (isMainContentLoading) {
-      return <Loader />;
-    } else if (!activeDomain) {
-      return <ErrorPlaceHolder />;
-    } else {
-      return (
-        <DomainDetailsPage
-          domain={activeDomain}
-          handleFollowingClick={handleFollowingClick}
-          isFollowing={isFollowing}
-          isFollowingLoading={isFollowingLoading}
-          onDelete={handleDomainDelete}
-          onUpdate={handleDomainUpdate}
-        />
-      );
-    }
-  }, [
-    isMainContentLoading,
-    activeDomain,
-    handleDomainUpdate,
-    handleDomainDelete,
-    isFollowing,
-    isFollowingLoading,
-    handleFollowingClick,
-  ]);
-
   useEffect(() => {
-    if (domainFqn) {
-      fetchDomainByName(domainFqn);
+    if (dataProductFqn) {
+      fetchDataProductByName(dataProductFqn);
     }
-  }, [domainFqn]);
+  }, [dataProductFqn]);
 
-  if (domainLoading) {
-    return <Loader />;
-  }
-
-  if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
+  if (!(viewBasicDataProductPermission || viewAllDataProductPermission)) {
     return (
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           className="mt-0-important border-none"
           permissionValue={t('label.view-entity', {
-            entity: t('label.domain'),
+            entity: t('label.data-product'),
           })}
           size={SIZE.X_LARGE}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
@@ -290,53 +304,68 @@ const DomainPage = () => {
     );
   }
 
-  if (isEmpty(rootDomains)) {
+  if (isEmpty(searchResults) && !searchLoading) {
     return (
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
-          buttonId="add-domain"
+          buttonId="add-data-product"
           className="mt-0-important border-none"
-          heading={t('label.domain')}
-          permission={createDomainPermission}
+          heading={t('label.data-product')}
+          permission={createDataProductPermission}
           permissionValue={
-            createDomainPermission
+            createDataProductPermission
               ? t('label.create-entity', {
-                  entity: t('label.domain'),
+                  entity: t('label.data-product'),
                 })
               : ''
           }
           size={SIZE.X_LARGE}
           type={
-            createDomainPermission
+            createDataProductPermission
               ? ERROR_PLACEHOLDER_TYPE.CREATE
               : ERROR_PLACEHOLDER_TYPE.CUSTOM
           }
-          onClick={handleAddDomainClick}>
-          {t('message.domains-not-configured')}
+          onClick={handleAddDataProductClick}>
+          {t('message.data-products-not-configured')}
         </ErrorPlaceHolder>
       </div>
     );
   }
 
   return (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        title: t('label.domain-plural'),
-        children: <DomainsLeftPanel domains={rootDomains} />,
-      }}
-      pageTitle={t('label.domain')}
-      secondPanel={{
-        children: domainPageRender,
-        className: 'content-resizable-panel-container',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
+    <div className="data-products-page-container">
+      <HeaderCard
+        addLabel={t('label.add-entity', {
+          entity: t('label.data-product'),
+        })}
+        description="Test description"
+        disabled={!createDataProductPermission}
+        title={t('label.data-product-plural')}
+        onAdd={handleAddDataProductClick}
+      />
+      <EntityTable
+        data={searchResults}
+        filters={filters}
+        loading={searchLoading}
+        searchIndex={SearchIndex.DATA_PRODUCT}
+        searchTerm={searchTerm}
+        total={total}
+        type="data-products"
+        onBulkDelete={handleBulkDataProductDelete}
+        onDelete={handleDataProductDelete}
+        onFiltersUpdate={handleFiltersUpdate}
+        onSearchChange={handleSearchChange}
+      />
+      <AddEntityFormV2<CreateDataProduct>
+        config={createFormConfig.dataProduct({
+          onSubmit: handleDataProductSave,
+        })}
+        loading={isDataProductFormLoading}
+        open={isAddDataProductPanelOpen}
+        onClose={handleAddDataProductPanelClose}
+      />
+    </div>
   );
 };
 
-export default withPageLayout(DomainPage);
+export default withPageLayout(DataProductsPage);

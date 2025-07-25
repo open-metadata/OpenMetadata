@@ -17,13 +17,11 @@ import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import EntityTable, {
-  EntityTableFilters,
-} from '../../components/common/EntityTable/EntityTable.component';
+import EntityTable from '../../components/common/EntityTable/EntityTable.component';
+import { EntityTableFilters } from '../../components/common/EntityTable/EntityTable.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderCard from '../../components/common/HeaderCard/HeaderCard.component';
 import AddEntityFormV2 from '../../components/Domains/AddEntityForm/AddEntityForm.component';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -375,40 +373,38 @@ const DomainPage = () => {
   ];
 
   return (
-    <PageLayoutV1 pageTitle={t('label.domain-plural')}>
-      <div className="domains-page-container">
-        <HeaderCard
-          addLabel={t('label.add-entity', {
-            entity: t('label.domain'),
-          })}
-          description="Test description"
-          disabled={!createDomainPermission}
-          title={t('label.domain-plural')}
-          onAdd={handleAddDomainClick}
-        />
-        <EntityTable
-          data={searchResults}
-          filters={filters}
-          loading={searchLoading || domainLoading}
-          searchIndex={SearchIndex.DOMAIN}
-          searchTerm={searchTerm}
-          total={total}
-          type="domains"
-          onBulkDelete={handleBulkDomainDelete}
-          onDelete={handleDomainDelete}
-          onFiltersUpdate={handleFiltersUpdate}
-          onSearchChange={handleSearchChange}
-        />
-        <AddEntityFormV2<CreateDomain>
-          config={createFormConfig.domain({
-            onSubmit: handleDomainSave,
-          })}
-          loading={isDomainFormLoading}
-          open={isAddDomainPanelOpen}
-          onClose={handleAddDomainPanelClose}
-        />
-      </div>
-    </PageLayoutV1>
+    <div className="domains-page-container">
+      <HeaderCard
+        addLabel={t('label.add-entity', {
+          entity: t('label.domain'),
+        })}
+        description="Test description"
+        disabled={!createDomainPermission}
+        title={t('label.domain-plural')}
+        onAdd={handleAddDomainClick}
+      />
+      <EntityTable
+        data={searchResults}
+        filters={filters}
+        loading={searchLoading || domainLoading}
+        searchIndex={SearchIndex.DOMAIN}
+        searchTerm={searchTerm}
+        total={total}
+        type="domains"
+        onBulkDelete={handleBulkDomainDelete}
+        onDelete={handleDomainDelete}
+        onFiltersUpdate={handleFiltersUpdate}
+        onSearchChange={handleSearchChange}
+      />
+      <AddEntityFormV2<CreateDomain>
+        config={createFormConfig.domain({
+          onSubmit: handleDomainSave,
+        })}
+        loading={isDomainFormLoading}
+        open={isAddDomainPanelOpen}
+        onClose={handleAddDomainPanelClose}
+      />
+    </div>
   );
 };
 

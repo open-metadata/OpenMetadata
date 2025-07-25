@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SearchIndex } from '../enums/search.enum';
@@ -161,10 +162,7 @@ export function useDynamicEntitySearch<T = Domain>({
         setData(hits);
         setTotal(response.hits.total.value || 0);
       } catch (error) {
-        showErrorToast(
-          error as unknown as string,
-          'Error fetching entity data'
-        );
+        showErrorToast(error as AxiosError, 'Error fetching entity data');
         setData([]);
         setTotal(0);
       } finally {
@@ -206,10 +204,7 @@ export function useDynamicEntitySearch<T = Domain>({
         setData(hits);
         setTotal(response.hits.total.value || 0);
       } catch (error) {
-        showErrorToast(
-          error as unknown as string,
-          'Error fetching entity data'
-        );
+        showErrorToast(error as AxiosError, 'Error fetching entity data');
         setData([]);
         setTotal(0);
       } finally {

@@ -25,6 +25,7 @@ export interface EntityTableFilters {
   glossaryTerms: string[];
   domainTypes: string[];
   tags: string[];
+  [key: string]: string | boolean | string[] | null | undefined;
 }
 
 export interface EntityTableColumn {

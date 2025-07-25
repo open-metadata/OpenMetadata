@@ -42,6 +42,7 @@ export interface Props {
   isFollowingLoading?: boolean;
   isFollowing?: boolean;
   showOnlyDisplayName?: boolean;
+  hideBreadcrumb?: boolean;
 }
 
 export const EntityHeader = ({
@@ -62,17 +63,20 @@ export const EntityHeader = ({
   handleFollowingClick,
   isFollowing,
   showOnlyDisplayName = false,
+  hideBreadcrumb = false,
 }: Props) => {
   return (
     <div className="w-full">
-      <div
-        className={classNames(
-          'entity-breadcrumb',
-          gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
-        )}
-        data-testid="category-name">
-        <TitleBreadcrumb titleLinks={breadcrumb} />
-      </div>
+      {!hideBreadcrumb && (
+        <div
+          className={classNames(
+            'entity-breadcrumb',
+            gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
+          )}
+          data-testid="category-name">
+          <TitleBreadcrumb titleLinks={breadcrumb} />
+        </div>
+      )}
 
       <EntityHeaderTitle
         badge={badge}

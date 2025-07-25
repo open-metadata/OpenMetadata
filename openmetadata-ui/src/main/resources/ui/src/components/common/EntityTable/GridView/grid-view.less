@@ -138,8 +138,55 @@
 
               .entity-card-value {
                 display: flex;
-                flex-direction: column;
-                gap: 4px;
+                align-items: center;
+                min-height: 20px;
+
+                .entity-card-no-data {
+                  line-height: 20px;
+                  color: #9ca3af;
+                  font-weight: 400;
+                }
+              }
+
+              // Tags-specific styles only (domain types now handled by DomainTypeTag component)
+              .entity-card-single-tag,
+              .entity-card-tag-count {
+                &.tags-badge {
+                  background-color: #f0f5fa;
+                  border: 1px solid #d2dbec;
+                  border-radius: 8px;
+                  color: #404040;
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 4px;
+                  height: 22px;
+                  padding: 4px 8px;
+                  font-size: 12px;
+                  font-weight: 500;
+                  line-height: 16px;
+                  white-space: nowrap;
+
+                  .tag-icon {
+                    width: 12px;
+                    height: 12px;
+                    flex-shrink: 0;
+                    color: #404040;
+                  }
+
+                  .tag-text {
+                    font-size: 12px;
+                    font-weight: 500;
+                    line-height: 16px;
+                    color: #404040;
+                  }
+                }
+
+                .badge-icon {
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 4px;
+                }
               }
             }
           }

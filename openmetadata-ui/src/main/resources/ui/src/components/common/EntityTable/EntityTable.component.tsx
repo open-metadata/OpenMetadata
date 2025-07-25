@@ -11,35 +11,27 @@
  *  limitations under the License.
  */
 
-import {
-  Avatar,
-  Button,
-  Col,
-  Modal,
-  Popover,
-  Row,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Avatar, Button, Col, Modal, Row, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
-import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DeleteIconColored from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as GridViewIcon } from '../../../assets/svg/ic-grid-view.svg';
 import { ReactComponent as LayersIcon } from '../../../assets/svg/ic-layers-white.svg';
 import { ReactComponent as ListViewIcon } from '../../../assets/svg/ic-list-view.svg';
 import { ReactComponent as TagIcon } from '../../../assets/svg/ic-tag-gray.svg';
-import { ReactComponent as AggregateIcon } from '../../../assets/svg/tags/ic-aggregate.svg';
-import { ReactComponent as ConsumerAlignedIcon } from '../../../assets/svg/tags/ic-consumer-aligned.svg';
-import { ReactComponent as SourceAlignedIcon } from '../../../assets/svg/tags/ic-source-aligned.svg';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getDomainsPath } from '../../../utils/RouterUtils';
+import {
+  getDomainsPath,
+  getEntityDetailsPath,
+} from '../../../utils/RouterUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import DomainTypeTag from '../../Domains/DomainTypeTag/DomainTypeTag.component';
 import AppBadge from '../Badge/Badge.component';
 import FilterTablePlaceHolder from '../ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../Table/Table';
@@ -58,20 +50,6 @@ import TableFilters from './TableFilters/TableFilters.component';
 import './entity-table.less';
 
 const { Title, Text } = Typography;
-
-const SearchLoadingIndicator = ({
-  isVisible,
-  t,
-}: {
-  isVisible: boolean;
-  t: any;
-}) => {
-  if (!isVisible) {
-    return null;
-  }
-
-  return <Text className="search-loading-text">{t('label.searching')}...</Text>;
-};
 
 const getRowKeyValue = (record: EntityData, rowKey: string): string => {
   return (record as unknown as Record<string, string>)[rowKey] || '';
@@ -119,20 +97,33 @@ const EntityTable = ({
     }
   }, [type, searchIndex]);
 
+  // Helper function to get the correct navigation path based on entity type
+  const getEntityNavigationPath = useCallback(
+    (record: EntityData) => {
+      switch (type) {
+        case 'data-products':
+          return getEntityDetailsPath(
+            EntityType.DATA_PRODUCT,
+            record.fullyQualifiedName || ''
+          );
+        case 'domains':
+        case 'sub-domains':
+        default:
+          return getDomainsPath(record.fullyQualifiedName);
+      }
+    },
+    [type]
+  );
+
   const [selectedRows, setSelectedRows] = useState<Key[]>([]);
   const [deleteModal, setDeleteModal] = useState<{
     visible: boolean;
     entity?: EntityData;
   }>({ visible: false });
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isPopoverVisible, setIsPopoverVisible] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<{
-    recordId: string;
-    domainType: string;
-  } | null>(null);
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
   const [view, setView] = useState<EntityListViewOptions>(
-    EntityListViewOptions.GRID
+    EntityListViewOptions.LIST
   );
 
   // Update local search term when prop changes
@@ -202,106 +193,12 @@ const EntityTable = ({
     [type]
   );
 
-  const getDomainTypeClass = useCallback((domainType: string) => {
-    switch (domainType) {
-      case 'Aggregate':
-        return 'aggregate-domain-type';
-      case 'Consumer-aligned':
-        return 'consumer-aligned-domain-type';
-      case 'Source-aligned':
-        return 'source-aligned-domain-type';
-      case 'Data Product':
-        return 'badge-secondary';
-      default:
-        return 'badge-secondary';
-    }
-  }, []);
-
-  const getDomainTypeIcon = useCallback((domainType: string) => {
-    switch (domainType) {
-      case 'Aggregate':
-        return <AggregateIcon />;
-      case 'Consumer-aligned':
-        return <ConsumerAlignedIcon />;
-      case 'Source-aligned':
-        return <SourceAlignedIcon />;
-      default:
-        return null;
-    }
-  }, []);
-
-  const handlePopoverVisibility = useCallback(
-    (recordId: string, domainType: string, visible: boolean) => {
-      setIsPopoverVisible(visible);
-      if (visible) {
-        setSelectedRecord({ recordId, domainType });
-      } else {
-        setSelectedRecord(null);
-      }
-    },
-    []
-  );
-
   const handleDomainTypeSelection = useCallback(
     (recordId: string, newDomainType: string) => {
-      setIsPopoverVisible(false);
-      setSelectedRecord(null);
       onDomainTypeChange?.(recordId, newDomainType);
     },
     [onDomainTypeChange]
   );
-
-  const renderDomainTypePopover = useCallback(() => {
-    if (!selectedRecord) {
-      return null;
-    }
-
-    const domainTypes = [
-      {
-        key: 'Aggregate',
-        label: 'Aggregate',
-        icon: <AggregateIcon height={16} width={16} />,
-      },
-      {
-        key: 'Consumer-aligned',
-        label: 'Consumer-aligned',
-        icon: <ConsumerAlignedIcon height={16} width={16} />,
-      },
-      {
-        key: 'Source-aligned',
-        label: 'Source-aligned',
-        icon: <SourceAlignedIcon height={16} width={16} />,
-      },
-    ];
-
-    return (
-      <div className="entity-type-popover">
-        <div className="popover-options">
-          {domainTypes.map((domainType) => {
-            const isSelected = selectedRecord.domainType === domainType.key;
-            const domainTypeClass = getDomainTypeClass(domainType.key);
-
-            return (
-              <div
-                className={`popover-option ${
-                  isSelected ? 'selected' : ''
-                } ${domainTypeClass}`}
-                key={domainType.key}
-                onClick={() =>
-                  handleDomainTypeSelection(
-                    selectedRecord.recordId,
-                    domainType.key
-                  )
-                }>
-                <span className="option-icon">{domainType.icon}</span>
-                <span className="option-label">{domainType.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }, [selectedRecord, t, handleDomainTypeSelection, getDomainTypeClass]);
 
   const getEntityDisplayName = (entityType: EntityTableType): string => {
     switch (entityType) {
@@ -332,7 +229,7 @@ const EntityTable = ({
                   style={{ cursor: 'pointer', color: '#1890ff' }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(getDomainsPath(record.fullyQualifiedName));
+                    navigate(getEntityNavigationPath(record));
                   }}>
                   {record.displayName || record.name}
                 </span>
@@ -402,41 +299,20 @@ const EntityTable = ({
         key: 'domainType',
         title: t('label.domain-type'),
         dataIndex: 'domainType',
-        render: (_, record: EntityData) => {
+        render: (_value: unknown, record: EntityData) => {
           const domainType = getDomainTypeForDisplay(record);
           const recordId = getRowKeyValue(record, rowKey);
-          const icon = getDomainTypeIcon(domainType);
 
           return (
-            <div className={`entity-badge ${getDomainTypeClass(domainType)}`}>
-              <div className="d-flex badge-icon">
-                {icon}
-                {domainType}
-              </div>
-
-              {onDomainTypeChange && (
-                <Popover
-                  destroyTooltipOnHide
-                  content={renderDomainTypePopover()}
-                  open={
-                    isPopoverVisible && selectedRecord?.recordId === recordId
-                  }
-                  overlayClassName="entity-type-popover"
-                  placement="bottom"
-                  trigger="click"
-                  onOpenChange={(visible) =>
-                    handlePopoverVisibility(recordId, domainType, visible)
-                  }>
-                  <DropDownIcon
-                    className="entity-type-dropdown-icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePopoverVisibility(recordId, domainType, true);
-                    }}
-                  />
-                </Popover>
-              )}
-            </div>
+            <DomainTypeTag
+              showModal
+              domainType={domainType}
+              onDomainTypeSelect={(newType: string) => {
+                if (onDomainTypeChange) {
+                  handleDomainTypeSelection(recordId, newType);
+                }
+              }}
+            />
           );
         },
         width: 150,
@@ -479,13 +355,10 @@ const EntityTable = ({
     t,
     generateEntityIcon,
     getDomainTypeForDisplay,
-    getDomainTypeClass,
     navigate,
-    isPopoverVisible,
-    handlePopoverVisibility,
-    renderDomainTypePopover,
+    getEntityNavigationPath,
+    handleDomainTypeSelection,
     rowKey,
-    getDomainTypeIcon,
     onDomainTypeChange,
   ]);
 
@@ -576,7 +449,6 @@ const EntityTable = ({
               variant="header"
               onChange={handleSearchChange}
             />
-            <SearchLoadingIndicator isVisible={loading} t={t} />
           </Col>
           <Col className="header-filters">
             {/* Filter Section */}
@@ -644,10 +516,12 @@ const EntityTable = ({
     switch (view) {
       case EntityListViewOptions.GRID:
         return (
-          <GridView<EntityData[]>
+          <GridView<EntityData>
             data={data}
             header={renderHeader()}
             loading={loading}
+            type={type}
+            onCardClick={(record) => navigate(getEntityNavigationPath(record))}
           />
         );
 
@@ -688,10 +562,12 @@ const EntityTable = ({
 
       default:
         return (
-          <GridView<EntityData[]>
+          <GridView<EntityData>
             data={data}
             header={renderHeader()}
             loading={loading}
+            type={type}
+            onCardClick={(record) => navigate(getEntityNavigationPath(record))}
           />
         );
     }
@@ -739,23 +615,25 @@ const EntityTable = ({
                 })}
           </div>
           <div className="modal-actions">
-            <button
-              className="btn btn-secondary"
-              disabled={isDeleting}
+            <Button
+              className="cancel-button"
               onClick={() => setDeleteModal({ visible: false })}>
               {t('label.cancel')}
-            </button>
-            <button
-              className="btn btn-danger"
-              data-testid="confirm-delete-btn"
-              disabled={isDeleting}
-              onClick={() =>
-                deleteModal.entity
-                  ? handleDelete(deleteModal.entity)
-                  : handleBulkDelete()
-              }>
-              {isDeleting ? t('label.deleting') : t('label.delete')}
-            </button>
+            </Button>
+            <Button
+              danger
+              className="delete-button"
+              loading={isDeleting}
+              type="primary"
+              onClick={() => {
+                if (deleteModal.entity) {
+                  handleDelete(deleteModal.entity);
+                } else {
+                  handleBulkDelete();
+                }
+              }}>
+              {t('label.delete')}
+            </Button>
           </div>
         </div>
       </Modal>

@@ -194,7 +194,7 @@ export const AssetSelectionModal = ({
 
       case AssetsOfEntity.DATA_PRODUCT:
         data = await getDataProductByName(entityFqn, {
-          fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
+          fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
         });
 
         break;

@@ -13,25 +13,22 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Input, Popover, Row, Select, Space } from 'antd';
-import { omit } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { cloneDeep } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
 import { ReactComponent as LayersIcon } from '../../../assets/svg/ic-layers-white.svg';
 import { COLOR_PALETTE } from '../../../constants/AddEntityForm.constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  CreateDataProduct,
-  TagSource,
-} from '../../../generated/api/domains/createDataProduct';
-import {
-  CreateDomain,
-  DomainType,
-} from '../../../generated/api/domains/createDomain';
+import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { DomainType } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
+import { TagSource } from '../../../generated/type/tagLabel';
 import {
   FieldProp,
   FieldTypes,
@@ -57,6 +54,7 @@ function AddEntityForm<T extends CreateEntityType>({
   config,
 }: AddEntityFormProps<T>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const { permissions } = usePermissionProvider();
   const [coverImageUrl, setCoverImageUrl] = useState<string>('');
@@ -81,19 +79,37 @@ function AddEntityForm<T extends CreateEntityType>({
 
   const defaultColor = COLOR_PALETTE[0];
 
-  // Set default values
+  // Clear form when opening/closing
   useEffect(() => {
-    const initialValues: Partial<FormValues> = {
-      color: defaultColor,
-      ...defaultValues,
-    };
+    if (open) {
+      // Set default values when opening
+      const initialValues: Partial<FormValues> = {
+        color: defaultColor,
+        ...defaultValues,
+      };
 
-    if (parentDomain) {
-      initialValues.parent = parentDomain;
+      if (parentDomain) {
+        initialValues.parent = parentDomain;
+      }
+
+      form.setFieldsValue(initialValues);
+    } else {
+      // Clear form when closing
+      form.resetFields();
+      setCoverImageUrl('');
+      setIconUrlInput('');
+      setIsIconModalOpen(false);
     }
+  }, [open, form, defaultColor, defaultValues, parentDomain]);
 
-    form.setFieldsValue(initialValues);
-  }, [form, defaultColor, defaultValues, parentDomain]);
+  // Enhanced onClose to clear form state
+  const handleClose = useCallback(() => {
+    form.resetFields();
+    setCoverImageUrl('');
+    setIconUrlInput('');
+    setIsIconModalOpen(false);
+    onClose();
+  }, [form, onClose]);
 
   const handleIconUrlSubmit = () => {
     if (iconUrlInput.trim()) {
@@ -290,27 +306,30 @@ function AddEntityForm<T extends CreateEntityType>({
   };
 
   const handleFormSubmit = async (formData: FormValues): Promise<void> => {
-    const updatedData = omit(
-      formData,
-      'color',
-      'iconURL',
-      'glossaryTerms',
-      'coverImageURL'
-    );
-
     const style = {
-      color: formData.color,
-      iconURL: formData.iconURL || '',
+      color: formData.color || defaultColor,
+      iconURL: formData.iconURL,
     };
 
-    // Store cover image and other extension data
-    // Note: coverImageURL is stored in extension field until API schema supports it directly
-    const extension = {
-      ...(formData.extension || {}),
-      ...(formData.coverImageURL && { coverImageURL: formData.coverImageURL }),
+    const extension = cloneDeep(formData.extension) ?? {};
+
+    // Clean up extension if needed
+    // Object.keys(extension).forEach((key) => {
+    //   if (CUSTOM_PROPERTY_INVALID_NAMES.includes(key)) {
+    //     delete extension[key];
+    //   }
+    // });
+
+    const updatedData = {
+      name: formData.name?.trim(),
+      displayName: formData.displayName?.trim(),
+      description: formData.description,
+      style,
     };
 
     const expertsArray = Array.isArray(expertsList) ? expertsList : [];
+
+    let result: any;
 
     // Type-specific processing
     if (entityType === DomainFormType.DATA_PRODUCT) {
@@ -323,7 +342,7 @@ function AddEntityForm<T extends CreateEntityType>({
       const dataProductData: CreateDataProduct = {
         ...updatedData,
         style,
-        domain,
+        domains: [domain],
         experts: expertsArray.map((item) => item.name ?? ''),
         owners: ownersList ?? [],
         tags: [
@@ -335,7 +354,7 @@ function AddEntityForm<T extends CreateEntityType>({
         ...(Object.keys(extension).length > 0 && { extension }),
       };
 
-      await onSubmit(dataProductData as T);
+      result = await onSubmit(dataProductData as T);
     } else {
       // For domains and subdomains
       const domainData: CreateDomain = {
@@ -354,7 +373,24 @@ function AddEntityForm<T extends CreateEntityType>({
         ...(Object.keys(extension).length > 0 && { extension }),
       };
 
-      await onSubmit(domainData as T);
+      result = await onSubmit(domainData as T);
+    }
+
+    // Clear form and close on successful submission
+    form.resetFields();
+    setCoverImageUrl('');
+    setIconUrlInput('');
+    setIsIconModalOpen(false);
+    onClose();
+
+    // Redirect after successful creation
+    if (result && result.fullyQualifiedName) {
+      if (entityType === DomainFormType.DATA_PRODUCT) {
+        navigate(`/data-products/${result.fullyQualifiedName}`);
+      } else {
+        // For domains and subdomains, go to domain page
+        navigate(`/domain/${result.fullyQualifiedName}`);
+      }
     }
   };
 
@@ -400,7 +436,7 @@ function AddEntityForm<T extends CreateEntityType>({
       saveLoading={loading}
       size={670}
       title={getEntityTitle()}
-      onClose={onClose}
+      onClose={handleClose}
       onSave={() => form.submit()}>
       <Form
         className="add-entity-form-v2"

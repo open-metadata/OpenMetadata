@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 
-import { ListProps } from 'antd';
-import { EntityData, EntityTableType } from '../EntityTable.interface';
+import { ReactNode } from 'react';
 
-export interface GridViewProps<T> extends ListProps<T> {
-  data: EntityData[];
-  loading: boolean;
-  type?: EntityTableType;
-  onCardClick?: (record: EntityData) => void;
+export interface DomainTypeConfig {
+  label: string;
+  icon: ReactNode;
+  className: string;
+  description?: string;
+}
+
+export interface DomainTypeTagProps {
+  domainType: string;
+  className?: string;
+  disabled?: boolean;
+  showModal?: boolean;
+  size?: 'small' | 'default' | 'large';
+  onDomainTypeSelect?: (domainType: string) => void;
 }

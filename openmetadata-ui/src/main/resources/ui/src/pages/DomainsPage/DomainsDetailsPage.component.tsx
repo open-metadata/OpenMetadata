@@ -206,9 +206,7 @@ const DomainsDetailsPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      // breadcrumbs={breadcrumbs}
-      pageTitle={activeDomain.displayName || activeDomain.name}>
+    <PageLayoutV1 pageTitle={activeDomain.displayName || activeDomain.name}>
       <DomainsDetailsPageComponent
         domain={activeDomain}
         handleFollowingClick={handleFollowingClick}

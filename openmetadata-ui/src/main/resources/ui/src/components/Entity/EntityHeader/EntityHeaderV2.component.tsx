@@ -41,6 +41,7 @@ export function EntityHeaderV2(props: EntityHeaderV2Props) {
         <div className="entity-v2-title-row">
           <EntityHeader
             {...entityHeaderProps}
+            hideBreadcrumb
             breadcrumb={[]}
             icon={<div className="entity-details-icon">{icon}</div>}
           />

@@ -120,4 +120,10 @@ export interface PanelProps {
    * @default false
    */
   saveDisabled?: boolean;
+
+  /**
+   * Whether pressing ESC key can close the panel
+   * @default true
+   */
+  allowCloseOnEsc?: boolean;
 }

@@ -32,7 +32,7 @@ export function Panel({
   footer,
   closable = true,
   mask = true,
-  maskClosable = true,
+  maskClosable = false, // Changed from true to false
   className,
   'data-testid': dataTestId = 'panel',
   cancelLabel,
@@ -41,6 +41,7 @@ export function Panel({
   onSave,
   saveLoading = false,
   saveDisabled = false,
+  allowCloseOnEsc = false,
 }: PanelProps) {
   const { t } = useTranslation();
 
@@ -112,6 +113,7 @@ export function Panel({
       data-testid={dataTestId}
       footer={footerContent}
       height={placement === 'top' || placement === 'bottom' ? size : undefined}
+      keyboard={allowCloseOnEsc}
       mask={mask}
       maskClosable={maskClosable}
       open={open}
