@@ -2,9 +2,14 @@ package org.openmetadata.service.rules;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.rules.JsonLogicUtils.evaluateUserInRole;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.github.jamsesso.jsonlogic.JsonLogic;
+import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluator;
+import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.common.utils.CommonUtil;
@@ -15,7 +20,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 public class LogicOps {
 
   public enum CustomLogicOps {
-    LENGTH("length");
+    LENGTH("length"),
+    IS_REVIEWER("isReviewer"),
+    IS_OWNER("isOwner");
 
     public final String key;
 
@@ -39,6 +46,38 @@ public class LogicOps {
             return 0;
           }
           return args.length;
+        });
+
+    // {"isReviewer": { var: "updatedBy"} }
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_REVIEWER.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return evaluateUserInRole(evaluator, arguments, data, "reviewers");
+          }
+        });
+
+    // {"isOwner": {var: "updatedBy"} }
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_OWNER.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return evaluateUserInRole(evaluator, arguments, data, "owners");
+          }
         });
   }
 
