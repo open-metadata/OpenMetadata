@@ -17,3 +17,11 @@ DELETE from doc_store where name = 'reset-link' and entityType = 'EmailTemplate'
 
 -- In case 1.7.3 migrations executed , with --force , remove it from server_logs as it is covered in this migration
 DELETE FROM SERVER_CHANGE_LOG WHERE version = '1.7.3';
+
+-- Update ingestion pipeline configurations to set markDeletedSchemas and markDeletedDatabases to false
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+    jsonb_set(json::jsonb, '{sourceConfig,config,markDeletedSchemas}', 'false'::jsonb),
+    '{sourceConfig,config,markDeletedDatabases}', 'false'::jsonb
+)::json
+WHERE json::jsonb -> 'sourceConfig' -> 'config' ->> 'type' = 'DatabaseMetadata';

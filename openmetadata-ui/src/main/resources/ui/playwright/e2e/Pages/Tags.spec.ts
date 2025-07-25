@@ -289,6 +289,35 @@ test.fixme('Classification Page', async ({ page }) => {
     );
   });
 
+  await test.step('Verify classification term count', async () => {
+    // Navigate back to classifications list
+    await sidebarClick(page, SidebarItem.TAGS);
+
+    // Wait for classifications to load with termCount field
+    const classificationsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/classifications') &&
+        response.url().includes('fields=termCount')
+    );
+    await classificationsResponse;
+
+    // Find the classification in the left panel and verify term count
+    const classificationElement = page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: NEW_CLASSIFICATION.displayName });
+
+    // Check if term count is displayed as (1) since we created one tag
+    await expect(classificationElement).toContainText('(1)');
+
+    // Click on the classification to verify
+    await classificationElement.click();
+
+    // Verify the tag is listed
+    await expect(page.locator('[data-testid="table"]')).toContainText(
+      NEW_TAG.name
+    );
+  });
+
   await test.step(`Assign tag to table`, async () => {
     await table.visitEntityPage(page);
     const { name, displayName } = NEW_TAG;
@@ -423,6 +452,25 @@ test.fixme('Classification Page', async ({ page }) => {
     await expect(page.locator('[data-testid="table"]')).not.toContainText(
       NEW_TAG.name
     );
+
+    // Verify term count is now 0 after deleting the tag
+    await sidebarClick(page, SidebarItem.TAGS);
+
+    // Wait for classifications to reload with updated termCount
+    const classificationsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/classifications') &&
+        response.url().includes('fields=termCount')
+    );
+    await classificationsResponse;
+
+    // Find the classification and verify term count is 0
+    const classificationElement = page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: NEW_CLASSIFICATION.displayName });
+
+    // Check if term count is displayed as (0) since we deleted the tag
+    await expect(classificationElement).toContainText('(0)');
   });
 
   await test.step('Remove classification', async () => {
@@ -503,6 +551,57 @@ test('Search tag using classification display name should work', async ({
   await expect(
     page.getByTestId(`tag-${tag.responseData.fullyQualifiedName}`)
   ).toBeVisible();
+});
+
+test('Verify system classification term counts', async ({ page }) => {
+  // Navigate to tags page
+  await sidebarClick(page, SidebarItem.TAGS);
+
+  // Wait for classifications to load with termCount field
+  const classificationsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/classifications') &&
+      response.url().includes('fields=termCount')
+  );
+  await classificationsResponse;
+
+  // Wait a bit for the UI to update
+  await page.waitForTimeout(1000);
+
+  // Get all classification elements
+  const classificationElements = await page
+    .locator('[data-testid="side-panel-classification"]')
+    .all();
+
+  // Find and verify Tier classification
+  let tierFound = false;
+  let piiFound = false;
+
+  for (const element of classificationElements) {
+    const text = await element.textContent();
+    if (text?.includes('Tier') && text?.includes('5')) {
+      tierFound = true;
+    }
+    if (text?.includes('PII') && text?.includes('3')) {
+      piiFound = true;
+    }
+  }
+
+  expect(tierFound).toBeTruthy();
+  expect(piiFound).toBeTruthy();
+
+  // Alternative: verify specific classifications have the expected count
+  const tierElement = page
+    .locator('[data-testid="side-panel-classification"]')
+    .filter({ hasText: 'Tier' });
+
+  await expect(tierElement).toContainText('5');
+
+  const piiElement = page
+    .locator('[data-testid="side-panel-classification"]')
+    .filter({ hasText: 'PII' });
+
+  await expect(piiElement).toContainText('3');
 });
 
 test('Verify Owner Add Delete', async ({ page }) => {
