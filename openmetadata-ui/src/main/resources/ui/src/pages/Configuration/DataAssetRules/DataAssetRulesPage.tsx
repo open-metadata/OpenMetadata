@@ -24,7 +24,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { SemanticsRule } from '../../../generated/configuration/entityRulesSettings';
+import { SemanticsRule } from '../../../generated/settings/settings';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import './DataAssetRulesPage.less';
 
