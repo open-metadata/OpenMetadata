@@ -25,6 +25,7 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -90,6 +91,8 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
       return t('label.entity-coverage', {
         entity: t('label.tier'),
       });
+    case SystemChartType.HealthyDataAssets:
+      return t('label.healthy-data-asset-plural');
     default:
       return '';
   }
@@ -99,13 +102,13 @@ export const getPlatformInsightsChartDataFormattingMethod =
   (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
   (chartType: SystemChartType) => {
     const summaryChartData = chartsData[chartType];
-    const lastDay = last(summaryChartData.results)?.day ?? 1;
+    const lastDay = last(summaryChartData?.results)?.day ?? 1;
 
-    const sortedResults = sortBy(summaryChartData.results, 'day');
+    const sortedResults = sortBy(summaryChartData?.results, 'day');
 
     let data = sortedResults.length >= 2 ? sortedResults : [];
 
-    if (summaryChartData.results.length === 1) {
+    if (summaryChartData?.results.length === 1) {
       const previousDay = sortedResults[0].day - 86400000; // 1 day in milliseconds
 
       data = [
@@ -140,12 +143,11 @@ export const getPlatformInsightsChartDataFormattingMethod =
 
     return {
       chartType,
-      data,
       isIncreased,
       percentageChange: percentageChangeOverall,
       currentPercentage: round(lastDayData ?? 0, 2),
-      noRecords: summaryChartData.results.every((item) => isEmpty(item)),
-      numberOfDays: data.length - 1,
+      noRecords: summaryChartData?.results.every((item) => isEmpty(item)),
+      numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
   };
 
@@ -349,4 +351,20 @@ export const checkIfAutoPilotStatusIsDismissed = (
     (status) =>
       status.serviceFQN === serviceFQN && status.status === workflowStatus
   );
+};
+
+export const getChartsDataFromWidgetName = (
+  widgetName: string,
+  chartsResults?: ChartsResults
+) => {
+  switch (widgetName) {
+    case 'PlatformInsightsWidget':
+      return chartsResults?.platformInsightsChart ?? [];
+    case 'PIIDistributionWidget':
+      return chartsResults?.piiDistributionChart ?? [];
+    case 'TierDistributionWidget':
+      return chartsResults?.tierDistributionChart ?? [];
+    default:
+      return [];
+  }
 };

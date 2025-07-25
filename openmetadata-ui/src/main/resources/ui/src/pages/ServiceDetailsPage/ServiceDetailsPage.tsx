@@ -1375,6 +1375,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           key: EntityTabs.INSIGHTS,
           children: (
             <ServiceInsightsTab
+              collateAIagentsList={collateAgentsList}
               isWorkflowStatusLoading={isWorkflowStatusLoading}
               serviceDetails={serviceDetails}
               workflowStatesData={workflowStatesData}
@@ -1471,6 +1472,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     isMetadataService,
     workflowStatesData,
     isWorkflowStatusLoading,
+    collateAgentsList,
   ]);
 
   const afterAutoPilotAppTrigger = useCallback(() => {
