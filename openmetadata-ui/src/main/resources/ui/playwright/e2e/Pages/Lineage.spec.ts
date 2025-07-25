@@ -69,13 +69,13 @@ const entities = [
 
 const pipeline = new PipelineClass();
 
-test.skip('Setup pre-requests', async ({ browser }) => {
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await pipeline.create(apiContext);
   await afterAction();
 });
 
-test.skip('Cleanup', async ({ browser }) => {
+test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await pipeline.delete(apiContext);
   await afterAction();
@@ -187,7 +187,7 @@ for (const EntityClass of entities) {
   });
 }
 
-test.skip('Verify column lineage between tables', async ({ browser }) => {
+test('Verify column lineage between tables', async ({ browser }) => {
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -224,9 +224,7 @@ test.skip('Verify column lineage between tables', async ({ browser }) => {
   await afterAction();
 });
 
-test.skip('Verify column lineage between table and topic', async ({
-  browser,
-}) => {
+test('Verify column lineage between table and topic', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);
@@ -297,7 +295,7 @@ test.skip('Verify column lineage between table and topic', async ({
   await afterAction();
 });
 
-test.skip('Verify column lineage between topic and api endpoint', async ({
+test('Verify column lineage between topic and api endpoint', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);
@@ -334,7 +332,7 @@ test.skip('Verify column lineage between topic and api endpoint', async ({
   await afterAction();
 });
 
-test.skip('Verify column lineage between table and api endpoint', async ({
+test('Verify column lineage between table and api endpoint', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);
@@ -369,7 +367,7 @@ test.skip('Verify column lineage between table and api endpoint', async ({
   await afterAction();
 });
 
-test.skip('Verify function data in edge drawer', async ({ browser }) => {
+test('Verify function data in edge drawer', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);
@@ -447,7 +445,7 @@ test.skip('Verify function data in edge drawer', async ({ browser }) => {
   }
 });
 
-test.skip('Verify table search with special characters as handledd', async ({
+test('Verify table search with special characters as handledd', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);
