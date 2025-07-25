@@ -1190,6 +1190,7 @@
     "query-log-duration": "쿼리 로그 기간",
     "query-lowercase": "쿼리",
     "query-lowercase-plural": "쿼리들",
+    "query-parameter-plural": "쿼리 매개변수",
     "query-plural": "쿼리들",
     "query-used-in": "사용된 쿼리",
     "queued": "대기열에 추가됨",

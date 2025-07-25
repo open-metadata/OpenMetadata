@@ -1190,6 +1190,7 @@
     "query-log-duration": "Durée du Journal de Requête",
     "query-lowercase": "requête",
     "query-lowercase-plural": "requêtes",
+    "query-parameter-plural": "Paramètres de Requête",
     "query-plural": "Requêtes",
     "query-used-in": "Requêtes Utilisées dans",
     "queued": "Queued",

@@ -1190,6 +1190,7 @@
     "query-log-duration": "مدت زمان لاگ پرس و جو",
     "query-lowercase": "پرس و جو",
     "query-lowercase-plural": "پرس و جوها",
+    "query-parameter-plural": "پارامترهای کوئری",
     "query-plural": "پرس و جوها",
     "query-used-in": "پرس و جو استفاده شده در",
     "queued": "Queued",

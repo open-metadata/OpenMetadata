@@ -106,6 +106,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -225,9 +228,8 @@ public class SearchRepository {
   }
 
   public void createIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      createIndex(indexMapping);
-    }
+    RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
+    recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
   }
 
   public void updateIndexes() {
@@ -1419,5 +1421,41 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.error("Failed to initialize NLQ service", e);
     }
+  }
+
+  /**
+   * Creates a BulkSink instance with vector embedding configuration.
+   * This method can be overridden in subclasses to provide different implementations.
+   */
+  public BulkSink createBulkSink(
+      int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
+    ElasticSearchConfiguration.SearchType searchType = getSearchType();
+    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    } else {
+      return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    }
+  }
+
+  /**
+   * Creates a ReindexHandler instance for recreate operations during reindexing.
+   * This method can be overridden in subclasses to provide different implementations.
+   */
+  public RecreateIndexHandler createReindexHandler() {
+    return new DefaultRecreateHandler();
+  }
+
+  /**
+   * Checks if vector embedding is enabled.
+   * This method can be overridden in subclasses to provide different configurations.
+   */
+  @SuppressWarnings("unused")
+  public boolean isVectorEmbeddingEnabled() {
+    return false;
+  }
+
+  @SuppressWarnings("unused")
+  public <T> T getHighLevelClient() {
+    return (T) searchClient.getHighLevelClient();
   }
 }

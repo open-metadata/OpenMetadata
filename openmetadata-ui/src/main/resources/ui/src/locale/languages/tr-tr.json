@@ -1190,6 +1190,7 @@
     "query-log-duration": "Sorgu Günlüğü Süresi",
     "query-lowercase": "sorgu",
     "query-lowercase-plural": "sorgular",
+    "query-parameter-plural": "Sorgu Parametreleri",
     "query-plural": "Sorgular",
     "query-used-in": "Sorgunun Kullanıldığı Yer",
     "queued": "Sırada",

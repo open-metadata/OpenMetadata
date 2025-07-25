@@ -1190,6 +1190,7 @@
     "query-log-duration": "משך לוג שאילתה",
     "query-lowercase": "שאילתה",
     "query-lowercase-plural": "שאילתות",
+    "query-parameter-plural": "פרמטרי שאילתה",
     "query-plural": "שאילתות",
     "query-used-in": "שאילתה שמשמשת ב",
     "queued": "Queued",

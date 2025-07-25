@@ -1190,6 +1190,7 @@
     "query-log-duration": "Abfrageprotokolldauer",
     "query-lowercase": "abfrage",
     "query-lowercase-plural": "abfragen",
+    "query-parameter-plural": "Abfrageparameter",
     "query-plural": "Abfragen",
     "query-used-in": "Verwendete Abfragen in",
     "queued": "Eingereiht",

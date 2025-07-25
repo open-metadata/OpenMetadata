@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AIRFLOW_HYBRID } from '../../constants/constants';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../enums/service.enum';
 import { postService } from '../../rest/serviceAPI';
@@ -403,10 +402,9 @@ describe('AddServicePage', () => {
     expect(mockSetInlineAlertDetails).toHaveBeenCalled();
   });
 
-  it('calls getExtraInfo when platform is Hybrid', () => {
+  it('calls getExtraInfo', () => {
     (useAirflowStatus as jest.Mock).mockReturnValue({
       ...baseAirflowMock,
-      platform: AIRFLOW_HYBRID,
     });
 
     const mockGetExtraInfo = serviceUtilClassBaseModule.default
@@ -414,18 +412,5 @@ describe('AddServicePage', () => {
     render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).toHaveBeenCalled();
-  });
-
-  it('does not call getExtraInfo when platform is not Hybrid', () => {
-    (useAirflowStatus as jest.Mock).mockReturnValue({
-      ...baseAirflowMock,
-      platform: 'Argo',
-    });
-
-    const mockGetExtraInfo = serviceUtilClassBaseModule.default
-      .getExtraInfo as jest.Mock;
-    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
-
-    expect(mockGetExtraInfo).not.toHaveBeenCalled();
   });
 });
