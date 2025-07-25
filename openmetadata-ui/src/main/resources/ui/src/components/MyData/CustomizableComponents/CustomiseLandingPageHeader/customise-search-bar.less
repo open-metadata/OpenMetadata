@@ -27,19 +27,30 @@
   }
 
   .nlp-search-button {
-    background: transparent;
-    border: none;
-    color: @grey-4;
-    transition: all 0.3s ease;
+    border: 0.5px solid @nlp-border-color !important;
+    border-radius: @border-rad-xs;
+    padding: 0 4px;
+    transition: none;
+    background-color: @primary-button-background !important;
 
-    &.active {
-      color: @primary-color;
-      background: @primary-1;
+    svg {
+      width: 14px;
+      height: 14px;
+      fill: transparent;
     }
 
-    &:hover {
-      color: @primary-color;
-      background: @primary-1;
+    &.active {
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none !important;
+
+      svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+      }
     }
   }
 
@@ -59,18 +70,22 @@
       box-shadow: none;
     }
   }
-}
 
-.customise-search-overlay {
-  .ant-popover-inner-content {
-    border-radius: @size-xs;
-    box-shadow: @box-shadow-base;
-    max-height: 400px;
-    width: auto;
-    overflow-y: auto;
+  .customise-search-overlay {
+    .ant-popover-inner-content {
+      border-radius: @size-xs;
+      box-shadow: @box-shadow-base;
+      max-height: 400px;
+      width: auto;
+      overflow-y: auto;
+    }
+
+    .ant-popover-arrow {
+      display: none;
+    }
   }
 
-  .ant-popover-arrow {
-    display: none;
+  .ant-popover {
+    left: 0 !important;
   }
 }

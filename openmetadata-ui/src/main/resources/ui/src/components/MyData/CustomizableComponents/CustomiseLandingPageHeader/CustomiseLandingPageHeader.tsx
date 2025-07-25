@@ -108,8 +108,10 @@ const CustomiseLandingPageHeader = ({
       const response = await getActiveAnnouncement();
 
       setAnnouncements(response.data);
+      setShowAnnouncements(response.data.length > 0);
     } catch (error) {
       showErrorToast(error as AxiosError);
+      setShowAnnouncements(false);
     } finally {
       setIsAnnouncementLoading(false);
     }
