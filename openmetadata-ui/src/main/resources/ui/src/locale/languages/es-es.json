@@ -1191,6 +1191,7 @@
     "query-log-duration": "Duración del registro de consultas",
     "query-lowercase": "consulta",
     "query-lowercase-plural": "consultas",
+    "query-parameter-plural": "Parámetros de Consulta",
     "query-plural": "Consultas",
     "query-used-in": "Consulta usada en",
     "queued": "Queued",

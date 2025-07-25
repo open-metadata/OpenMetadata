@@ -1191,6 +1191,7 @@
     "query-log-duration": "クエリログの時間",
     "query-lowercase": "クエリ",
     "query-lowercase-plural": "queries",
+    "query-parameter-plural": "クエリパラメータ",
     "query-plural": "クエリ",
     "query-used-in": "Query Used In",
     "queued": "Queued",
