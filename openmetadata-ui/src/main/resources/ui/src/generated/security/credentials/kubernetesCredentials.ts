@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 /**
- * Remove domains from the selected assets.
+ * Credentials for a Kubernetes cluster
  */
-export interface RemoveDomainAction {
+export interface KubernetesCredentials {
     /**
-     * Application Type
+     * Whether the Kubernetes secrets manager is running in the same cluster where the
+     * OpenMetadata services are running
      */
-    type: RemoveDomainActionType;
-}
-
-/**
- * Application Type
- *
- * Remove Domain Action Type
- */
-export enum RemoveDomainActionType {
-    RemoveDomainAction = "RemoveDomainAction",
+    inCluster?: boolean;
+    /**
+     * The path to the kubeconfig file
+     */
+    kubeconfigPath?: string;
+    /**
+     * The namespace of the Kubernetes cluster
+     */
+    namespace?: string;
 }
