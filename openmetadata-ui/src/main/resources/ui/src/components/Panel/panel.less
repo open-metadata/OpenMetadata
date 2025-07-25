@@ -1,0 +1,113 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../styles/variables.less');
+
+.panel-container {
+  .ant-drawer-header {
+    padding: 0;
+    border-bottom: 1px solid @border-color;
+  }
+
+  .ant-drawer-body {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: @white;
+    padding: 19px 24px;
+
+    .panel-header-content {
+      position: relative;
+      flex: 1;
+      margin-right: 16px;
+      display: flex;
+      align-items: center;
+
+      .panel-title {
+        margin-bottom: 0px !important;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 28px;
+        color: @text-color;
+      }
+
+      .panel-description {
+        display: block;
+        font-size: 14px;
+        line-height: 20px;
+        color: @text-color-tertiary;
+        margin-bottom: 0;
+      }
+    }
+
+    .panel-close-button {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: none;
+      background-color: transparent;
+      color: @text-color-tertiary;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background-color: @grey-1;
+        color: @text-color;
+      }
+
+      &:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px @primary-1;
+      }
+
+      .anticon {
+        font-size: 16px;
+      }
+    }
+  }
+
+  .panel-content {
+    padding: 8px 24px 24px;
+    height: 100%;
+    overflow-y: auto;
+    background-color: @white;
+  }
+
+  .ant-drawer-footer {
+    box-shadow: 0px -13px 16px -4px #0a0d1214;
+    padding: 20px 24px;
+  }
+
+  .panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+
+    .panel-footer-btn {
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+}

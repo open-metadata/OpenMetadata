@@ -36,6 +36,19 @@ const DomainRouter = withSuspenseFallback(
     () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
   )
 );
+const DomainsRouter = withSuspenseFallback(
+  React.lazy(
+    () => import(/* webpackChunkName: "DomainsRouter" */ './DomainsRouter')
+  )
+);
+const DomainsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/DomainsPage/DomainsPage.component'))
+);
+const DataProductsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/DataProductsPage/DataProductsPage.component')
+  )
+);
 const SettingsRouter = withSuspenseFallback(
   React.lazy(
     () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
@@ -702,6 +715,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
+      <Route element={<DomainsRouter />} path="/domains/*" />
+
+      <Route
+        element={<DomainsPage pageTitle={t('label.domain-plural')} />}
+        path={ROUTES.DOMAINS}
+      />
+      <Route
+        element={
+          <DataProductsPage pageTitle={t('label.data-product-plural')} />
+        }
+        path={ROUTES.DATA_PRODUCTS}
+      />
+
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
       <Route
         element={

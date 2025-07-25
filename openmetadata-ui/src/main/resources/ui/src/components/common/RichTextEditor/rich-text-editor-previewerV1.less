@@ -55,6 +55,7 @@
     }
   }
 }
+
 .text-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -62,4 +63,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: normal;
+}
+
+.rich-text-tooltip {
+  .ant-tooltip-inner {
+    max-width: 400px;
+    padding: @size-sm @size-md;
+  }
+
+  .rich-text-tooltip-content {
+    font-size: 14px;
+    line-height: 1.5;
+    color: @white;
+
+    p {
+      margin: 0;
+    }
+
+    .block-editor {
+      background: transparent;
+      border: none;
+    }
+  }
 }

@@ -28,7 +28,7 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import { DomainExpertWidget } from '../components/Domain/DomainExpertsWidget/DomainExpertWidget';
 import DataProductsTab from '../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.component';
 import { DomainTypeWidget } from '../components/Domain/DomainTypeWidget/DomainTypeWidget';
-import SubDomainsTable from '../components/Domain/SubDomainsTable/SubDomainsTable.component';
+import SubDomainsTableV2 from '../components/Domain/SubDomainsTable/SubDomainsTableV2/SubDomainsTableV2.component';
 import EntitySummaryPanel from '../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import AssetsTabs from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -397,7 +397,7 @@ export const getDomainDetailTabs = ({
             ),
             key: EntityTabs.SUBDOMAINS,
             children: (
-              <SubDomainsTable
+              <SubDomainsTableV2
                 isLoading={isSubDomainsLoading}
                 permissions={domainPermission}
                 subDomains={subDomains}
