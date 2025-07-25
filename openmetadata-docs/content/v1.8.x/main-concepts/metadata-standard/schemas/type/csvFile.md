@@ -1,5 +1,6 @@
 ---
 title: CSV File Schema | OpenMetadata CSV File Details
+description: CsvFile schema describes metadata imported from CSV format including column mappings and errors.
 slug: /main-concepts/metadata-standard/schemas/type/csvfile
 ---
 
