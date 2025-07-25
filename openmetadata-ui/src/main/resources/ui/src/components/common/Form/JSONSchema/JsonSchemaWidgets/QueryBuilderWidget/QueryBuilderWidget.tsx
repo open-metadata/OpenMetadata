@@ -203,10 +203,13 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           ? EntityReferenceFields.OWNERS
           : EntityFields.OWNERS
       );
-      onTreeUpdate(
-        QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+
+      const tree = QbUtils.Validation.sanitizeTree(
+        QbUtils.loadTree(emptyJsonTree),
         config
-      );
+      ).fixedTree;
+
+      onTreeUpdate(tree, config);
     }
     setInitDone(true);
   }, [config, value, outputType]);
@@ -312,5 +315,4 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
 export default withAdvanceSearch(QueryBuilderWidget, {
   isExplorePage: false,
-  fieldOverrides: [{ field: 'extension', type: '!struct' }],
 });

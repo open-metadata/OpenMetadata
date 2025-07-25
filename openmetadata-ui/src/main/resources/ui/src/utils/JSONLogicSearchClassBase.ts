@@ -406,7 +406,6 @@ class JSONLogicSearchClassBase {
         type: '!struct',
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
-        operators: TEXT_FIELD_OPERATORS,
       },
     };
   };
