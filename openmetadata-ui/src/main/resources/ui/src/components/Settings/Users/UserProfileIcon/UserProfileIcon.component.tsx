@@ -120,7 +120,10 @@ export const UserProfileIcon = () => {
     if (!currentUser) {
       return;
     }
-    updateSelectedPersona(persona);
+
+    const isAlreadySelected = selectedPersona?.id === persona.id;
+
+    updateSelectedPersona(isAlreadySelected ? undefined : persona);
   };
 
   useEffect(() => {

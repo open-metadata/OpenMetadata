@@ -21,8 +21,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../generated/entity/type';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   FieldTypes,
   FormItemLayout,
@@ -42,6 +44,7 @@ export const AddEditPersonaForm = ({
 }: AddPersonaFormProps) => {
   const [form] = useForm();
   const [isSaving, setIsSaving] = useState(false);
+  const { refetchCurrentUser } = useApplicationStore();
   const { t } = useTranslation();
 
   const usersList =
@@ -65,6 +68,9 @@ export const AddEditPersonaForm = ({
         } else {
           await createPersona({ ...data, users: usersList, domains });
         }
+        refetchCurrentUser({
+          fields: [TabSpecificField.PERSONAS],
+        });
         onSave();
       } catch (error) {
         showErrorToast(error as AxiosError);
