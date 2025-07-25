@@ -13,16 +13,12 @@
 
 import Icon from '@ant-design/icons';
 import i18next from 'i18next';
-import { capitalize, isUndefined, max, uniqBy, uniqueId } from 'lodash';
+import { capitalize, isUndefined, uniqBy, uniqueId } from 'lodash';
 import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
 import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
-import { SIZE } from '../enums/common.enum';
-import {
-  LandingPageWidgetKeys,
-  WidgetWidths,
-} from '../enums/CustomizablePage.enum';
+import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
@@ -96,7 +92,69 @@ const separateWidgets = (layout: WidgetConfig[]) => {
 };
 
 /**
- * Ensures the placeholder widget is always at the end
+ * Packs widgets tightly without gaps
+ * - Widgets are arranged left to right, top to bottom
+ * - No empty spaces between widgets
+ * - Ensures tight coupling
+ * - Excludes placeholder widgets from packing
+ */
+const packWidgetsTightly = (widgets: WidgetConfig[]): WidgetConfig[] => {
+  if (widgets.length === 0) {
+    return [];
+  }
+
+  // Filter out placeholder widgets and sort by current position
+  const regularWidgets = widgets.filter(
+    (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+  );
+  const sortedWidgets = [...regularWidgets].sort((a, b) => {
+    if (a.y !== b.y) {
+      return a.y - b.y;
+    }
+
+    return a.x - b.x;
+  });
+
+  const packedWidgets: WidgetConfig[] = [];
+  let currentX = 0;
+  let currentY = 0;
+  let maxHeightInRow = 0;
+
+  sortedWidgets.forEach((widget) => {
+    // Check if widget fits in current row
+    if (
+      currentX + widget.w >
+      customizeMyDataPageClassBase.landingPageMaxGridSize
+    ) {
+      // Move to next row
+      currentX = 0;
+      currentY += maxHeightInRow;
+      maxHeightInRow = 0;
+    }
+
+    // Position the widget
+    const positionedWidget = {
+      ...widget,
+      x: currentX,
+      y: currentY,
+      static: false,
+    };
+
+    packedWidgets.push(positionedWidget);
+
+    // Update position for next widget
+    currentX += widget.w;
+    maxHeightInRow = Math.max(maxHeightInRow, widget.h);
+  });
+
+  return packedWidgets;
+};
+
+/**
+ * Ensures the placeholder widget is always at the end with tight coupling
+ * - Widgets are packed tightly without gaps
+ * - Placeholder is positioned after the last widget
+ * - No widgets can be placed after the placeholder
  */
 export const ensurePlaceholderAtEnd = (
   layout: WidgetConfig[]
@@ -111,26 +169,53 @@ export const ensurePlaceholderAtEnd = (
     return [createPlaceholderWidget()];
   }
 
-  // Find the widget with the maximum bottom edge (y + h)
-  const last = regularWidgets.reduce((acc, curr) =>
-    curr.y + curr.h > acc.y + acc.h ? curr : acc
+  // Pack widgets tightly first
+  const packedWidgets = packWidgetsTightly(regularWidgets);
+
+  // Find the rightmost and bottommost position after packing
+  let maxX = 0;
+  let maxY = 0;
+
+  packedWidgets.forEach((widget) => {
+    const widgetEndX = widget.x + widget.w;
+    const widgetEndY = widget.y + widget.h;
+    maxX = Math.max(maxX, widgetEndX);
+    maxY = Math.max(maxY, widgetEndY);
+  });
+
+  // Find available space in the last row
+  const widgetsInLastRow = packedWidgets.filter(
+    (widget) =>
+      widget.y === maxY - customizeMyDataPageClassBase.defaultWidgetHeight
   );
 
-  // Try to place in the same row if space exists
-  const nextX = last.x + last.w;
-  const canFitInSameRow =
-    nextX + 1 <= customizeMyDataPageClassBase.landingPageMaxGridSize;
+  // Calculate the rightmost position in the last row
+  let rightmostInLastRow = 0;
+  widgetsInLastRow.forEach((widget) => {
+    const widgetEndX = widget.x + widget.w;
+    rightmostInLastRow = Math.max(rightmostInLastRow, widgetEndX);
+  });
+
+  // Check if there's space in the last row
+  const canFitInLastRow =
+    rightmostInLastRow + 1 <=
+    customizeMyDataPageClassBase.landingPageMaxGridSize;
 
   const placeholderWidget = createPlaceholderWidget(
-    canFitInSameRow ? nextX : 0,
-    canFitInSameRow ? last.y : last.y + last.h
+    canFitInLastRow ? rightmostInLastRow : 0,
+    canFitInLastRow
+      ? maxY - customizeMyDataPageClassBase.defaultWidgetHeight
+      : maxY
   );
 
-  return [...regularWidgets, placeholderWidget];
+  return [...packedWidgets, placeholderWidget];
 };
 
 /**
- * Layout update handler
+ * Layout update handler with tight coupling
+ * - Ensures widgets are packed tightly after drag operations
+ * - Placeholder is always positioned correctly
+ * - No gaps between widgets
  */
 export const getLayoutUpdateHandler =
   (updatedLayout: Layout[]) => (currentLayout: Array<WidgetConfig>) => {
@@ -151,6 +236,14 @@ export const getLayoutUpdateHandler =
       };
     });
 
+    // Separate regular widgets and pack them tightly
+    const { regularWidgets } = separateWidgets(basicUpdatedLayout);
+
+    if (regularWidgets.length === 0) {
+      return [createPlaceholderWidget()];
+    }
+
+    // Pack widgets tightly and ensure placeholder at end
     return ensurePlaceholderAtEnd(basicUpdatedLayout);
   };
 
@@ -242,23 +335,6 @@ export const getRemoveWidgetHandler =
 
     return ensurePlaceholderAtEnd(filteredLayout);
   };
-
-/**
- * Gets widget width from document configuration
- */
-export const getWidgetWidth = (widget: Document): number => {
-  if (!widget?.data?.gridSizes || !Array.isArray(widget.data.gridSizes)) {
-    return 1;
-  }
-
-  const widgetSize = max(
-    widget.data.gridSizes.map((size: string) =>
-      size in WidgetWidths ? WidgetWidths[size as keyof typeof WidgetWidths] : 1
-    )
-  );
-
-  return widgetSize as number;
-};
 
 /**
  * Gets human-readable widget width label

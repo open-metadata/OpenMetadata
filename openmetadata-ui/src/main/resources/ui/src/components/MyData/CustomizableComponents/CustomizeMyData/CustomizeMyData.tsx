@@ -133,6 +133,11 @@ function CustomizeMyData({
     [layout]
   );
 
+  const emptyWidgetPlaceholder = useMemo(
+    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
+    [layout]
+  );
+
   const disableSave = useMemo(() => {
     const filteredLayout = layout.filter((widget) =>
       widget.i.startsWith('KnowledgePanel')
@@ -229,14 +234,16 @@ function CustomizeMyData({
           <ReactGridLayout
             useCSSTransforms
             verticalCompact
-            className="grid-container"
+            className="grid-container layout"
             cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
+            compactType="horizontal"
             draggableHandle=".drag-widget-icon"
             isResizable={false}
             margin={[
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
+            maxRows={emptyWidgetPlaceholder?.y}
             preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
