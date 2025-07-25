@@ -135,4 +135,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
             .getEntityReference();
     return workflowDefinitionReference.getId();
   }
+
+  /**
+   * Efficiently retrieves WorkflowDefinition with minimal fields for stage processing.
+   * This returns the full object so callers can extract both ID and stage displayName without additional DB calls.
+   */
+  public WorkflowDefinition getByNameForStageProcessing(String workflowDefinitionName) {
+    return getByName(null, workflowDefinitionName, EntityUtil.Fields.EMPTY_FIELDS);
+  }
 }

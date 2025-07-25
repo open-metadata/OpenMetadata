@@ -216,6 +216,15 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             "ApprovedEnd");
     assertWorkflowStatesSequence(states, expectedStages);
 
+    // Assert specific displayNames for known stages based on the actual workflow definition
+    Map<String, String> expectedDisplayNames =
+        Map.of(
+            "GlossaryTermCreated", "Glossary Term Created or Updated",
+            "CheckGlossaryTermHasReviewers", "Check if Glossary Term has Reviewers",
+            "SetGlossaryTermStatusToApproved", "Set Status to 'Approved'",
+            "ApprovedEnd", "Glossary Term Status: Approved");
+    assertStageDisplayNames(states, expectedDisplayNames);
+
     // Assert that the workflow instance is finished
     assertEquals(
         WorkflowInstance.WorkflowStatus.FINISHED,
@@ -335,6 +344,19 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             "SetGlossaryTermStatusToApprovedAfterApproval",
             "ApprovedEndAfterApproval");
     assertWorkflowStatesSequence(states, expectedStages);
+
+    // Assert specific displayNames for known stages based on the actual workflow definition
+    Map<String, String> expectedDisplayNames =
+        Map.of(
+            "GlossaryTermCreated", "Glossary Term Created or Updated",
+            "CheckGlossaryTermHasReviewers", "Check if Glossary Term has Reviewers",
+            "CheckGlossaryTermIsReadyToBeReviewed",
+                "Check if Glossary Term is Ready to be Reviewed",
+            "SetGlossaryTermStatusToInReview", "Set Status to 'In Review'",
+            "ApproveGlossaryTerm", "Create User Approval Task",
+            "SetGlossaryTermStatusToApprovedAfterApproval", "Set Status to 'Approved'",
+            "ApprovedEndAfterApproval", "Glossary Term Status: Approved");
+    assertStageDisplayNames(states, expectedDisplayNames);
 
     // Assert that the workflow instance is finished
     assertEquals(
@@ -463,27 +485,47 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
 
     while (retries-- > 0) {
       try {
-        String url =
+        // First get the latest workflow instance for this entity
+        String instanceUrl =
             String.format(
-                "governance/workflowInstanceStates?startTs=%d&endTs=%d&limit=100&entityLink=%s&workflowDefinitionName=%s",
-                oneHourAgo,
-                now,
-                URLEncoder.encode(entityLink, StandardCharsets.UTF_8),
-                URLEncoder.encode(workflowDefinitionName, StandardCharsets.UTF_8));
-        WebTarget target = getResource(url);
-        Invocation.Builder builder = target.request();
+                "governance/workflowInstances?startTs=%d&endTs=%d&limit=100&entityLink=%s&latest=true",
+                oneHourAgo, now, URLEncoder.encode(entityLink, StandardCharsets.UTF_8));
+        WebTarget instanceTarget = getResource(instanceUrl);
+        Invocation.Builder instanceBuilder = instanceTarget.request();
         for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
-          builder = builder.header(entry.getKey(), entry.getValue());
+          instanceBuilder = instanceBuilder.header(entry.getKey(), entry.getValue());
         }
-        String rawJson = builder.get(String.class);
-        ResultList<WorkflowInstanceState> result =
+        String instanceRawJson = instanceBuilder.get(String.class);
+        ResultList<WorkflowInstance> instanceResult =
             JsonUtils.readValue(
-                rawJson,
+                instanceRawJson,
                 new com.fasterxml.jackson.core.type.TypeReference<
-                    ResultList<WorkflowInstanceState>>() {});
+                    ResultList<WorkflowInstance>>() {});
 
-        if (!result.getData().isEmpty()) {
-          return result.getData();
+        if (!instanceResult.getData().isEmpty()) {
+          // Get the latest workflow instance
+          WorkflowInstance latestInstance = instanceResult.getData().get(0);
+
+          // Now get states for this specific instance
+          String url =
+              String.format(
+                  "governance/workflowInstanceStates/%s/%s?startTs=%d&endTs=%d&limit=100",
+                  workflowDefinitionName, latestInstance.getId(), oneHourAgo, now);
+          WebTarget target = getResource(url);
+          Invocation.Builder builder = target.request();
+          for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
+            builder = builder.header(entry.getKey(), entry.getValue());
+          }
+          String rawJson = builder.get(String.class);
+          ResultList<WorkflowInstanceState> result =
+              JsonUtils.readValue(
+                  rawJson,
+                  new com.fasterxml.jackson.core.type.TypeReference<
+                      ResultList<WorkflowInstanceState>>() {});
+
+          if (!result.getData().isEmpty()) {
+            return result.getData();
+          }
         }
         java.lang.Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -507,12 +549,45 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     // Also check that each state has required fields
     for (WorkflowInstanceState state : states) {
       assertNotNull(state.getStage(), "Stage should not be null");
+      assertNotNull(state.getStage().getName(), "Stage name should not be null");
+      assertNotNull(state.getStage().getDisplayName(), "Stage displayName should not be null");
       assertNotNull(state.getStatus(), "Status should not be null");
       assertNotNull(state.getTimestamp(), "Timestamp should not be null");
+
+      // Verify displayName is either the same as name (fallback) or a meaningful display name
+      String stageName = state.getStage().getName();
+      String displayName = state.getStage().getDisplayName();
+      assertTrue(
+          displayName.equals(stageName) || !displayName.trim().isEmpty(),
+          "DisplayName should either be the stage name or a non-empty string");
+
       if (state.getStage().getVariables() != null) {
         assertFalse(
             state.getStage().getVariables().isEmpty(),
             "Stage variables should not be empty if present");
+      }
+    }
+  }
+
+  private void assertStageDisplayNames(
+      List<WorkflowInstanceState> states, Map<String, String> expectedDisplayNames) {
+    for (WorkflowInstanceState state : states) {
+      String stageName = state.getStage().getName();
+      String actualDisplayName = state.getStage().getDisplayName();
+      String expectedDisplayName = expectedDisplayNames.get(stageName);
+
+      if (expectedDisplayName != null) {
+        // We now expect the exact display name from the workflow definition
+        assertEquals(
+            expectedDisplayName,
+            actualDisplayName,
+            String.format(
+                "Stage '%s' displayName mismatch. Expected: '%s', Actual: '%s'",
+                stageName, expectedDisplayName, actualDisplayName));
+      } else {
+        // For stages not in our expected map, they should at least have the stage name as fallback
+        assertNotNull(actualDisplayName, "DisplayName should not be null");
+        assertFalse(actualDisplayName.trim().isEmpty(), "DisplayName should not be empty");
       }
     }
   }
