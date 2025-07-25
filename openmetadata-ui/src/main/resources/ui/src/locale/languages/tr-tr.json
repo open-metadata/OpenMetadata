@@ -2068,6 +2068,7 @@
     "most-viewed-data-assets": "En çok görüntülenen veri varlıklarını gösterir.",
     "mutually-exclusive-alert": "Bir {{entity}} için 'Karşılıklı Dışlayan' seçeneğini etkinleştirirseniz, kullanıcılar bir veri varlığına uygulamak için yalnızca bir {{child-entity}} kullanmakla sınırlandırılacaktır. Bu seçenek etkinleştirildikten sonra devre dışı bırakılamaz.",
     "my-task-no-data-placeholder": "Her şey net — şu anda bekleyen bir göreviniz yok.",
+    "name-already-exists": "Name already exists",
     "name-of-the-bucket-dbt-files-stored": "dbt dosyalarının saklandığı kovanın adı.",
     "natural-language-search-active": "Doğal dil araması aktif. Basit ifadeler kullanarak varlıkları arayın. Arama modunu sıfırlamak için tekrar tıklayın.",
     "need-help-message": "Yardıma mı ihtiyacınız var? <0>{{doc}}</0>.",

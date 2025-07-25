@@ -2068,6 +2068,7 @@
     "most-viewed-data-assets": "Affiche les actifs de données les plus consultés.",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.”",
     "my-task-no-data-placeholder": "Vous êtes à jour — aucune tâche ne vous attend pour le moment.",
+    "name-already-exists": "Name already exists",
     "name-of-the-bucket-dbt-files-stored": "Nom du bucket où sont stockés les fichiers dbt.",
     "natural-language-search-active": "La recherche en langage naturel est activée. Recherchez des actifs avec des phrases simples. Cliquez à nouveau pour réinitialiser le mode de recherche.",
     "need-help-message": "Besoin d'aide ? <0>{{doc}}</0>.",

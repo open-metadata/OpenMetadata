@@ -2068,6 +2068,7 @@
     "most-viewed-data-assets": "Mostra os activos de datos máis vistos.",
     "mutually-exclusive-alert": "Se activas 'Mutuamente Exclusivo' para un {{entity}}, os usuarios estarán restrinxidos a usar só un {{child-entity}} para aplicar a un activo de datos. Unha vez activada esta opción, non se poderá desactivar.",
     "my-task-no-data-placeholder": "Estás ao día — non hai tarefas pendentes para ti neste momento.",
+    "name-already-exists": "Name already exists",
     "name-of-the-bucket-dbt-files-stored": "Nome do depósito onde se almacenan os ficheiros dbt.",
     "natural-language-search-active": "A busca en linguaxe natural está activa. Busca activos usando frases sinxelas. Fai clic de novo para restablecer o modo de busca.",
     "need-help-message": "¿Necesitas ayuda? <0>{{doc}}</0>.",

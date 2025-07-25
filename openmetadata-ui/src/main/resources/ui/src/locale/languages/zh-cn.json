@@ -2068,6 +2068,7 @@
     "most-viewed-data-assets": "显示查看最多的数据资产",
     "mutually-exclusive-alert": "如果为{{entity}}启用'互斥的', 用户将被限制只能使用一个{{child-entity}}来应用于数据资产。此选项一旦激活, 将无法停用。",
     "my-task-no-data-placeholder": "所有事项已清空，目前没有待办任务。",
+    "name-already-exists": "Name already exists",
     "name-of-the-bucket-dbt-files-stored": "存储 dbt 文件的存储桶的名称",
     "natural-language-search-active": "自然语言搜索已启用。使用简单短语搜索资产。再次点击以重置搜索模式。",
     "need-help-message": "需要帮助吗？<0>{{doc}}</0>.",

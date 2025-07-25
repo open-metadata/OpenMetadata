@@ -15,7 +15,6 @@ import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import {
   Button,
-  Card,
   Col,
   Form,
   Input,
@@ -23,6 +22,7 @@ import {
   Row,
   Space,
   Switch,
+  Table,
   Typography,
 } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
@@ -34,8 +34,11 @@ import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { SIZE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { SemanticsRule } from '../../generated/configuration/entityRulesSettings';
-import { Settings, SettingType } from '../../generated/settings/settings';
+import {
+  SemanticsRule,
+  Settings,
+  SettingType,
+} from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -44,7 +47,7 @@ import { getTreeConfig } from '../../utils/AdvancedSearchUtils';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
-import Loader from '../common/Loader/Loader';
+import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './DataAssetRules.less';
 
@@ -62,7 +65,7 @@ export const useSemanticsRulesState = () => {
         SettingType.EntityRulesSettings
       );
 
-      setSemanticsRules(data?.config_value?.entitySemantics);
+      setSemanticsRules(data?.config_value?.entitySemantics || []);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -126,8 +129,9 @@ export const useSemanticsRulesState = () => {
 
 export const SemanticsRuleForm: React.FC<{
   semanticsRule: SemanticsRule;
+  otherSemanticsRules: SemanticsRule[];
   form: FormInstance<SemanticsRule>;
-}> = ({ semanticsRule, form }) => {
+}> = ({ semanticsRule, otherSemanticsRules, form }) => {
   useEffect(() => {
     form.setFieldsValue(semanticsRule);
   }, [semanticsRule]);
@@ -140,6 +144,16 @@ export const SemanticsRuleForm: React.FC<{
         rules={[
           {
             required: true,
+            // Do not allow name if already exists
+            validator: (_, value) => {
+              if (otherSemanticsRules.some((rule) => rule.name === value)) {
+                return Promise.reject(
+                  new Error(t('message.name-already-exists'))
+                );
+              }
+
+              return Promise.resolve();
+            },
           },
         ]}>
         <Input placeholder={t('label.name')} />
@@ -162,6 +176,7 @@ export const SemanticsRuleForm: React.FC<{
             required: true,
           },
         ]}>
+        {/* @ts-expect-error because Form.Item will provide value and onChange */}
         <QueryBuilderWidget
           schema={{
             outputType: SearchOutputType.JSONLogic,
@@ -177,7 +192,14 @@ export const AddEditSemanticsRuleModal: React.FC<{
   onSave: (semanticsRule: SemanticsRule, previousName?: string) => void;
   onCancel: () => void;
   isSaveLoading?: boolean;
-}> = ({ semanticsRule, onSave, onCancel, isSaveLoading }) => {
+  otherSemanticsRules: SemanticsRule[];
+}> = ({
+  semanticsRule,
+  onSave,
+  onCancel,
+  isSaveLoading,
+  otherSemanticsRules,
+}) => {
   const [form] = Form.useForm();
 
   const handleSave = () => {
@@ -198,7 +220,11 @@ export const AddEditSemanticsRuleModal: React.FC<{
       }
       onCancel={onCancel}
       onOk={handleSave}>
-      <SemanticsRuleForm form={form} semanticsRule={semanticsRule} />
+      <SemanticsRuleForm
+        form={form}
+        otherSemanticsRules={otherSemanticsRules}
+        semanticsRule={semanticsRule}
+      />
     </Modal>
   );
 };
@@ -223,73 +249,6 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
         })}
       </p>
     </Modal>
-  );
-};
-
-const { Text } = Typography;
-
-export const SemanticsRuleCard: React.FC<{
-  semanticsRule: SemanticsRule;
-  onEdit: (semanticsRule: SemanticsRule) => void;
-  onSave: (semanticsRule: SemanticsRule, previousName?: string) => void;
-  onDelete: (semanticsRule: SemanticsRule) => void;
-}> = ({ semanticsRule, onEdit, onSave, onDelete }) => {
-  const cartTitle = useMemo(() => {
-    return (
-      <div className="d-flex items-center">
-        <div>{semanticsRule.name}</div>
-        <div className="m-l-auto">
-          <Switch
-            defaultChecked={semanticsRule.enabled}
-            onChange={() =>
-              onSave({ ...semanticsRule, enabled: !semanticsRule.enabled })
-            }
-          />
-          <Button
-            className="text-primary p-0 remove-button-background-hover"
-            icon={<Icon component={IconEdit} />}
-            type="text"
-            onClick={() => onEdit(semanticsRule)}
-          />
-          <Button
-            className="text-primary p-0 remove-button-background-hover"
-            icon={<Icon component={IconDelete} />}
-            type="text"
-            onClick={() => onDelete(semanticsRule)}
-          />
-        </div>
-      </div>
-    );
-  }, [semanticsRule]);
-
-  const config = getTreeConfig({
-    searchIndex: SearchIndex.DATA_ASSET,
-    searchOutputType: SearchOutputType.JSONLogic,
-    isExplorePage: false,
-    tierOptions: Promise.resolve([]),
-  });
-  const humanStringRule = useMemo(() => {
-    const logic = JSON.parse(semanticsRule.rule);
-
-    const tree = QbUtils.loadFromJsonLogic(logic, config);
-    const humanString = tree ? QbUtils.queryString(tree, config) : '';
-
-    // remove .fullyQualifiedName from the humanString
-    return humanString
-      ?.replace('.fullyQualifiedName', '')
-      ?.replace('.name', '')
-      ?.replace('.tagFQN', '');
-  }, [semanticsRule.rule]);
-
-  return (
-    <Card className="data-asset-rules-card" size="small" title={cartTitle}>
-      <Text type="secondary">{t('label.description')}</Text>
-      <Text className="sematic-value-text d-block m-b-md">
-        {semanticsRule.description}
-      </Text>
-      <Text type="secondary">{t('label.rule')}</Text>
-      <Text className="sematic-value-text d-block">{humanStringRule}</Text>
-    </Card>
   );
 };
 
@@ -365,25 +324,100 @@ export const useSemanticsRuleList = ({
     setDeleteSemanticsRule(null);
   };
 
+  const config = getTreeConfig({
+    searchIndex: SearchIndex.DATA_ASSET,
+    searchOutputType: SearchOutputType.JSONLogic,
+    isExplorePage: false,
+    tierOptions: Promise.resolve([]),
+  });
+  const getHumanStringRule = useCallback(
+    (semanticsRule: SemanticsRule) => {
+      const logic = JSON.parse(semanticsRule.rule);
+
+      const tree = QbUtils.loadFromJsonLogic(logic, config);
+      const humanString = tree ? QbUtils.queryString(tree, config) : '';
+
+      // remove all the .fullyQualifiedName, .name, .tagFQN from the humanString
+      return humanString?.replaceAll(
+        /\.fullyQualifiedName|\.name|\.tagFQN/g,
+        ''
+      );
+    },
+    [config]
+  );
+
+  const columns = [
+    {
+      title: t('label.name'),
+      dataIndex: 'name',
+      className: 'col-name',
+    },
+    {
+      title: t('label.description'),
+      dataIndex: 'description',
+      className: 'col-description',
+      render: (description: string) => (
+        <RichTextEditorPreviewerNew markdown={description} />
+      ),
+    },
+    {
+      title: t('label.rule'),
+      className: 'col-rule',
+      render: (_: string, record: SemanticsRule) => (
+        <RichTextEditorPreviewerNew
+          markdown={getHumanStringRule(record) || ''}
+        />
+      ),
+    },
+    {
+      title: t('label.enabled'),
+      dataIndex: 'enabled',
+      render: (enabled: boolean, record: SemanticsRule) => (
+        <Switch
+          checked={enabled}
+          onChange={() => {
+            handleSave({ ...record, enabled: !enabled });
+          }}
+        />
+      ),
+    },
+    {
+      title: t('label.action'),
+      dataIndex: 'actions',
+      render: (_: unknown, record: SemanticsRule) => (
+        <Space>
+          <Button
+            className="text-secondary p-0 remove-button-background-hover"
+            icon={<Icon component={IconEdit} />}
+            type="text"
+            onClick={() => handleEditSemanticsRule(record)}
+          />
+          <Button
+            className="text-secondary p-0 remove-button-background-hover"
+            icon={<Icon component={IconDelete} />}
+            type="text"
+            onClick={() => handleDelete(record)}
+          />
+        </Space>
+      ),
+    },
+  ];
+
   const dataAssetRuleList = useMemo(() => {
     return (
-      <Row className="m-t-md" gutter={[16, 16]}>
-        {semanticsRules?.map((semanticsRule) => (
-          <Col
-            className="data-asset-rules-col"
-            key={semanticsRule.name}
-            span={8}>
-            <SemanticsRuleCard
-              semanticsRule={semanticsRule}
-              onDelete={handleDelete}
-              onEdit={handleEditSemanticsRule}
-              onSave={handleSave}
-            />
-          </Col>
-        ))}
+      <Row className="m-t-md table-container">
+        <Col span={24}>
+          <Table
+            columns={columns}
+            dataSource={semanticsRules}
+            loading={isLoading || isSaveLoading}
+            pagination={false}
+            rowKey="name"
+          />
+        </Col>
       </Row>
     );
-  }, [semanticsRules]);
+  }, [semanticsRules, isLoading, isSaveLoading, columns]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
     <Row align="middle" className="h-full" justify="center">
@@ -421,10 +455,13 @@ export const useSemanticsRuleList = ({
     ),
     semanticsRuleList: (
       <>
-        {isLoading ? <Loader /> : quickAddSemanticsRule || dataAssetRuleList}
+        {quickAddSemanticsRule || dataAssetRuleList}
         {addEditSemanticsRule && (
           <AddEditSemanticsRuleModal
             isSaveLoading={isSaveLoading}
+            otherSemanticsRules={semanticsRules.filter(
+              (rule) => rule.name !== addEditSemanticsRule?.name
+            )}
             semanticsRule={addEditSemanticsRule}
             onCancel={() => setAddEditSemanticsRule(null)}
             onSave={handleSave}

@@ -2068,6 +2068,7 @@
     "most-viewed-data-assets": "Displays the most viewed feed-field-action-entity-headerdata assets.",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "my-task-no-data-placeholder": "You're all clear, No tasks are waiting on you right now.",
+    "name-already-exists": "Name already exists",
     "name-of-the-bucket-dbt-files-stored": "Name of the bucket where the dbt files are stored.",
     "natural-language-search-active": "Natural language search is active. Search for assets using simple phrases. Click again to reset the search mode.",
     "need-help-message": "Need help? <0>{{doc}}</0>.",
