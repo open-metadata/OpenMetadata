@@ -31,6 +31,7 @@ import {
 } from '../generated/tests/testDefinition';
 import { TestSuite, TestSummary } from '../generated/tests/testSuite';
 import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -334,6 +335,32 @@ export const getDataQualityReport = async (
   const response = await APIClient.get<DataQualityReport>(
     `${testSuiteUrl}/dataQualityReport`,
     { params }
+  );
+
+  return response.data;
+};
+
+interface ListTestCasesParams {
+  includeAllTests?: boolean;
+  limit?: number;
+  fields?: string[];
+  before?: string;
+  after?: string;
+  entityFQN?: string;
+  entityLink?: string;
+  testSuiteId?: string;
+  include?: Include;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
+  createdBy?: string;
+}
+
+export const listTestCases = async (params: ListTestCasesParams) => {
+  const response = await APIClient.get<PagingResponse<TestCase[]>>(
+    testCaseUrl,
+    {
+      params,
+    }
   );
 
   return response.data;
