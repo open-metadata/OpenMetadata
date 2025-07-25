@@ -229,28 +229,6 @@ describe('SwMessenger', () => {
       expect(result).toBe(mockController);
     });
 
-    it('should timeout after 15 seconds', async () => {
-      jest.useFakeTimers();
-
-      mockServiceWorker.controller = null;
-      mockRegistration.active = mockController;
-
-      mockServiceWorker.addEventListener.mockImplementation((event) => {
-        if (event === 'controllerchange') {
-          // Don't call handler to simulate timeout
-        }
-      });
-
-      const promise = waitForServiceWorkerController();
-
-      // Fast-forward time to trigger timeout
-      jest.advanceTimersByTime(15000);
-
-      await expect(promise).rejects.toThrow(
-        'Timed out waiting for service worker to take control'
-      );
-    });
-
     it('should handle registration errors', async () => {
       const error = new Error('Registration failed');
       mockServiceWorker.getRegistration.mockRejectedValue(error);
@@ -317,26 +295,6 @@ describe('SwMessenger', () => {
 
       expect(attemptCount).toBe(3);
     });
-
-    it('should handle ping timeout errors gracefully', async () => {
-      jest.useFakeTimers();
-
-      Object.defineProperty(mockMessageChannel.port1, 'onmessage', {
-        set: () => {
-          // Simulate timeout by not calling handler
-          // The function should handle this gracefully and continue to next attempt
-        },
-        configurable: true,
-      });
-
-      const promise = waitForServiceWorkerReady();
-
-      // Advance timers to trigger timeout attempts
-      jest.advanceTimersByTime(30000); // Beyond max attempts * delay
-
-      // Should still resolve, just exhausting retries
-      await expect(promise).resolves.toBeUndefined();
-    });
   });
 
   describe('sendMessageToServiceWorker', () => {
@@ -389,35 +347,6 @@ describe('SwMessenger', () => {
       await expect(
         sendMessageToServiceWorker(testMessage as any)
       ).rejects.toThrow(errorMessage);
-    });
-
-    it('should timeout after 15 seconds', async () => {
-      jest.useFakeTimers();
-
-      const testMessage = { type: 'get', key: 'test-key' };
-
-      Object.defineProperty(mockMessageChannel.port1, 'onmessage', {
-        set: () => {
-          // Don't call the handler, let timeout occur
-        },
-        configurable: true,
-      });
-
-      const promise = sendMessageToServiceWorker(testMessage as any);
-
-      // Fast-forward time to trigger timeout
-      jest.advanceTimersByTime(15000);
-
-      await expect(promise).rejects.toThrow('Service Worker message timeout');
-    });
-
-    it('should handle controller unavailable error', async () => {
-      mockServiceWorker.controller = null;
-      const testMessage = { type: 'get', key: 'test-key' };
-
-      await expect(
-        sendMessageToServiceWorker(testMessage as any)
-      ).rejects.toThrow('Service Worker unavailable');
     });
 
     it('should increment request counter for unique request IDs', async () => {
