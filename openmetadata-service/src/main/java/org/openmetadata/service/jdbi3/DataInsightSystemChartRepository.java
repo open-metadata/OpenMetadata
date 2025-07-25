@@ -260,6 +260,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           userId,
           existingSession.getSessionId(),
           "JOINED",
+          serviceName,
           null,
           null,
           existingSession.getRemainingTime(),
@@ -278,6 +279,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       response.put("startTime", existingSession.getDataStartTime());
       response.put("endTime", existingSession.getDataEndTime());
       response.put("totalUsers", existingSession.getUserCount());
+      response.put("serviceName", existingSession.getServiceName());
 
       return response;
     }
@@ -315,6 +317,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       response.put("startTime", startTime);
       response.put("endTime", endTime);
       response.put("totalUsers", 1);
+      response.put("serviceName", serviceName);
 
       return response;
 
@@ -390,6 +393,63 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   /**
+   * Stop a streaming session with user validation
+   * @param sessionId Session ID to stop
+   * @param userId User ID requesting the stop
+   * @return Map containing response details
+   */
+  public Map<String, Object> stopChartDataStreaming(String sessionId, UUID userId) {
+    Map<String, Object> response = new HashMap<>();
+
+    StreamingSession session = activeSessions.get(sessionId);
+    if (session == null) {
+      response.put("error", "Streaming session not found");
+      response.put("notFound", true);
+      return response;
+    }
+
+    // Check if the user is part of this session
+    if (!session.getUserIds().contains(userId)) {
+      response.put("error", "User is not authorized to stop this streaming session");
+      return response;
+    }
+
+    LOG.info(
+        "User {} stopping chart data streaming session {} with {} users",
+        userId,
+        sessionId,
+        session.getUserCount());
+
+    // Remove the user from the session
+    session.removeUser(userId);
+
+    // If no users left, stop the entire session
+    if (session.getUserCount() == 0) {
+      if (session.getFuture() != null) {
+        session.getFuture().cancel(true);
+      }
+      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L);
+      activeSessions.remove(sessionId);
+
+      response.put("status", "stopped");
+      response.put("message", "Streaming session stopped successfully");
+      response.put("sessionId", sessionId);
+    } else {
+      // Send message to remaining users that one user left
+      sendMessageToAllUsers(
+          session, "USER_LEFT", null, null, session.getRemainingTime(), UPDATE_INTERVAL_MS);
+
+      response.put("status", "user_removed");
+      response.put("message", "User removed from streaming session");
+      response.put("sessionId", sessionId);
+      response.put("remainingUsers", session.getUserCount());
+      response.put("serviceName", session.getServiceName());
+    }
+
+    return response;
+  }
+
+  /**
    * Stream chart data for a session
    */
   private void streamChartData(StreamingSession session) {
@@ -431,13 +491,21 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       UUID userId,
       String sessionId,
       String status,
+      String serviceName,
       Map<String, DataInsightCustomChartResultList> data,
       String error,
       Long remainingTime,
       Long nextUpdate) {
     ChartDataStreamMessage message =
         new ChartDataStreamMessage(
-            sessionId, status, System.currentTimeMillis(), data, error, remainingTime, nextUpdate);
+            sessionId,
+            status,
+            serviceName,
+            System.currentTimeMillis(),
+            data,
+            error,
+            remainingTime,
+            nextUpdate);
 
     String messageJson = JsonUtils.pojoToJson(message);
 
@@ -458,7 +526,14 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       Long nextUpdate) {
     for (UUID userId : session.getUserIds()) {
       sendMessageToUser(
-          userId, session.getSessionId(), status, data, error, remainingTime, nextUpdate);
+          userId,
+          session.getSessionId(),
+          status,
+          session.getServiceName(),
+          data,
+          error,
+          remainingTime,
+          nextUpdate);
     }
   }
 

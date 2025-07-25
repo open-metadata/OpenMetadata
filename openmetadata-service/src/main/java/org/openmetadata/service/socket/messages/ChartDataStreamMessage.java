@@ -13,6 +13,7 @@ public class ChartDataStreamMessage {
   public ChartDataStreamMessage(
       String sessionId,
       String status,
+      String serviceName,
       Long timestamp,
       Map<String, DataInsightCustomChartResultList> data,
       String error,
@@ -20,6 +21,7 @@ public class ChartDataStreamMessage {
       Long nextUpdate) {
     this.sessionId = sessionId;
     this.status = status;
+    this.serviceName = serviceName;
     this.timestamp = timestamp;
     this.data = data;
     this.error = error;
@@ -44,6 +46,9 @@ public class ChartDataStreamMessage {
 
   @JsonProperty("remainingTime")
   private Long remainingTime; // milliseconds remaining
+
+  @JsonProperty("serviceName")
+  private String serviceName;
 
   @JsonProperty("nextUpdate")
   private Long nextUpdate; // milliseconds until next update

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -34,7 +35,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,10 +217,7 @@ public class DataInsightSystemChartResource
     try {
       // Get the current user
       String username = securityContext.getUserPrincipal().getName();
-      User user =
-          Entity.getCollectionDAO()
-              .userDAO()
-              .findEntityByName(FullyQualifiedName.quoteName(username));
+      User user = Entity.getUserRepository().getByName(null, username, null);
 
       // Call repository method to handle streaming
       Map<String, Object> response =
@@ -238,6 +235,60 @@ public class DataInsightSystemChartResource
       LOG.error("Error starting chart data streaming", e);
       Map<String, Object> errorResponse = new HashMap<>();
       errorResponse.put("error", "Failed to start streaming: " + e.getMessage());
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
+    }
+  }
+
+  @DELETE
+  @Path("/stream/{sessionId}")
+  @Operation(
+      operationId = "stopChartDataStreaming",
+      summary = "Stop streaming chart data",
+      description = "Stops an active WebSocket streaming session for chart data",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Streaming session stopped successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "404", description = "Session not found")
+      })
+  public Response stopChartDataStreaming(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Session ID of the streaming session to stop",
+              required = true,
+              schema = @Schema(type = "String", example = "abc123-def456-ghi789"))
+          @PathParam("sessionId")
+          String sessionId) {
+
+    try {
+      // Get the current user
+      String username = securityContext.getUserPrincipal().getName();
+      User user = Entity.getUserRepository().getByName(null, username, null);
+
+      // Call repository method to stop streaming
+      Map<String, Object> response = repository.stopChartDataStreaming(sessionId, user.getId());
+
+      // Check if there's an error in the response
+      if (response.containsKey("error")) {
+        if (response.containsKey("notFound") && (Boolean) response.get("notFound")) {
+          return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+        }
+        return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+      }
+
+      return Response.status(Response.Status.OK).entity(response).build();
+
+    } catch (Exception e) {
+      LOG.error("Error stopping chart data streaming", e);
+      Map<String, Object> errorResponse = new HashMap<>();
+      errorResponse.put("error", "Failed to stop streaming: " + e.getMessage());
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(errorResponse).build();
     }
   }
