@@ -207,6 +207,7 @@ function CustomizeMyData({
         <CustomizablePageHeader
           disableSave={disableSave}
           personaName={getEntityName(personaDetails)}
+          onAddWidget={handleOpenCustomiseHomeModal}
           onReset={handleReset}
           onSave={handleSave}
         />

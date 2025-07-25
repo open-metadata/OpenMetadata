@@ -13,20 +13,11 @@
 
 import Icon from '@ant-design/icons';
 import i18next from 'i18next';
-import {
-  capitalize,
-  isEmpty,
-  isUndefined,
-  max,
-  uniqBy,
-  uniqueId,
-} from 'lodash';
+import { capitalize, isUndefined, max, uniqBy, uniqueId } from 'lodash';
 import { DOMAttributes } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
-import { AdvanceSearchProvider } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
-import { SIZE } from '../enums/common.enum';
+import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
@@ -76,6 +67,95 @@ export const getNewWidgetPlacement = (
   };
 };
 
+/**
+ * Creates a placeholder widget
+ */
+const createPlaceholderWidget = (x = 0, y = 0) => ({
+  h: customizeMyDataPageClassBase.defaultWidgetHeight,
+  i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+  w: 1,
+  x,
+  y,
+  static: false,
+  isDraggable: false,
+});
+
+/**
+ * Separates regular widgets from placeholder widgets
+ */
+const separateWidgets = (layout: WidgetConfig[]) => {
+  const regularWidgets = layout.filter(
+    (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+  );
+  const placeholderWidget = layout.find((widget) =>
+    widget.i.endsWith('.EmptyWidgetPlaceholder')
+  );
+
+  return { regularWidgets, placeholderWidget };
+};
+
+/**
+ * Ensures the placeholder widget is always at the end
+ */
+export const ensurePlaceholderAtEnd = (
+  layout: WidgetConfig[]
+): WidgetConfig[] => {
+  if (!layout || layout.length === 0) {
+    return [createPlaceholderWidget()];
+  }
+
+  const { regularWidgets } = separateWidgets(layout);
+
+  if (regularWidgets.length === 0) {
+    return [createPlaceholderWidget()];
+  }
+
+  // Find the widget with the maximum bottom edge (y + h)
+  const last = regularWidgets.reduce((acc, curr) =>
+    curr.y + curr.h > acc.y + acc.h ? curr : acc
+  );
+
+  // Try to place in the same row if space exists
+  const nextX = last.x + last.w;
+  const canFitInSameRow =
+    nextX + 1 <= customizeMyDataPageClassBase.landingPageMaxGridSize;
+
+  const placeholderWidget = createPlaceholderWidget(
+    canFitInSameRow ? nextX : 0,
+    canFitInSameRow ? last.y : last.y + last.h
+  );
+
+  return [...regularWidgets, placeholderWidget];
+};
+
+/**
+ * Layout update handler
+ */
+export const getLayoutUpdateHandler =
+  (updatedLayout: Layout[]) => (currentLayout: Array<WidgetConfig>) => {
+    if (!updatedLayout || updatedLayout.length === 0) {
+      return [createPlaceholderWidget()];
+    }
+
+    // Apply basic layout update from React Grid Layout
+    const basicUpdatedLayout = updatedLayout.map((widget) => {
+      const widgetData = currentLayout.find(
+        (a: WidgetConfig) => a.i === widget.i
+      );
+
+      return {
+        ...(!widgetData ? {} : widgetData),
+        ...widget,
+        static: false,
+      };
+    });
+
+    return ensurePlaceholderAtEnd(basicUpdatedLayout);
+  };
+
+/**
+ * Adds a new widget to the layout
+ */
 export const getAddWidgetHandler =
   (
     newWidgetData: Document,
@@ -84,87 +164,105 @@ export const getAddWidgetHandler =
     maxGridSize: number
   ) =>
   (currentLayout: Array<WidgetConfig>) => {
-    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
+    if (!newWidgetData) {
+      return [createPlaceholderWidget()];
+    }
+
+    const widgetFQN = uniqueId(
+      `${newWidgetData.fullyQualifiedName || 'widget'}-`
+    );
     const widgetHeight = customizeMyDataPageClassBase.getWidgetHeight(
       newWidgetData.name
     );
 
-    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
-    // and is not meant to be replaced hence
-    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
-    // append the new widget in the array
-    // else replace the new widget with other placeholder widgets
-    if (
-      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-    ) {
+    if (!currentLayout || currentLayout.length === 0) {
       return [
-        ...moveEmptyWidgetToTheEnd(currentLayout),
         {
           w: widgetWidth,
           h: widgetHeight,
           i: widgetFQN,
           static: false,
-          ...getNewWidgetPlacement(currentLayout, widgetWidth),
+          x: 0,
+          y: 0,
         },
+        createPlaceholderWidget(widgetWidth, 0),
       ];
-    } else {
-      return currentLayout.map((widget: WidgetConfig) => {
-        const widgetX =
-          widget.x + widgetWidth <= maxGridSize
-            ? widget.x
-            : maxGridSize - widgetWidth;
-
-        return widget.i === placeholderWidgetKey
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-              x: widgetX,
-            }
-          : widget;
-      });
     }
+
+    const { regularWidgets } = separateWidgets(currentLayout);
+
+    // If adding to placeholder, append and repack
+    if (
+      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    ) {
+      const newWidget = {
+        w: widgetWidth,
+        h: widgetHeight,
+        i: widgetFQN,
+        static: false,
+        x: 0,
+        y: 0,
+      };
+
+      return ensurePlaceholderAtEnd([...regularWidgets, newWidget]);
+    }
+
+    // Replace specific placeholder
+    const updatedWidgets = currentLayout.map((widget: WidgetConfig) => {
+      if (widget.i === placeholderWidgetKey) {
+        return {
+          ...widget,
+          i: widgetFQN,
+          h: widgetHeight,
+          w: widgetWidth,
+          x: Math.min(widget.x, maxGridSize - widgetWidth),
+          static: false,
+        };
+      }
+
+      return widget;
+    });
+
+    return ensurePlaceholderAtEnd(updatedWidgets);
   };
 
-export const moveEmptyWidgetToTheEnd = (layout: Array<WidgetConfig>) =>
-  layout.map((widget) =>
-    widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-      ? { ...widget, y: 100 }
-      : widget
-  );
-
+/**
+ * Removes a widget and repacks the layout
+ */
 export const getRemoveWidgetHandler =
   (widgetKey: string) => (currentLayout: Array<WidgetConfig>) => {
-    return currentLayout.filter(
+    if (!currentLayout || currentLayout.length === 0) {
+      return [createPlaceholderWidget()];
+    }
+
+    const filteredLayout = currentLayout.filter(
       (widget: WidgetConfig) => widget.i !== widgetKey
     );
+
+    return ensurePlaceholderAtEnd(filteredLayout);
   };
 
-export const getLayoutUpdateHandler =
-  (updatedLayout: Layout[]) => (currentLayout: Array<WidgetConfig>) => {
-    return updatedLayout.map((widget) => {
-      const widgetData = currentLayout.find(
-        (a: WidgetConfig) => a.i === widget.i
-      );
+/**
+ * Gets widget width from document configuration
+ */
+export const getWidgetWidth = (widget: Document): number => {
+  if (!widget?.data?.gridSizes || !Array.isArray(widget.data.gridSizes)) {
+    return 1;
+  }
 
-      return {
-        ...(!isEmpty(widgetData) ? widgetData : {}),
-        ...widget,
-      };
-    });
-  };
-
-export const getWidgetWidth = (widget: Document) => {
-  const gridSizes = widget.data.gridSizes;
   const widgetSize = max(
-    gridSizes.map((size: WidgetWidths) => WidgetWidths[size])
+    widget.data.gridSizes.map((size: string) =>
+      size in WidgetWidths ? WidgetWidths[size as keyof typeof WidgetWidths] : 1
+    )
   );
 
   return widgetSize as number;
 };
 
-export const getWidgetWidthLabelFromKey = (widgetKey: string) => {
+/**
+ * Gets human-readable widget width label
+ */
+export const getWidgetWidthLabelFromKey = (widgetKey: string): string => {
   switch (widgetKey) {
     case 'large':
       return i18next.t('label.large');
@@ -177,31 +275,17 @@ export const getWidgetWidthLabelFromKey = (widgetKey: string) => {
   }
 };
 
-const getAllWidgetsArray = (layout: WidgetConfig[]) => {
-  const widgetsArray: WidgetConfig[] = [];
-
-  layout.forEach((widget) => {
-    if (widget.i.startsWith('KnowledgePanel.')) {
-      widgetsArray.push(widget);
-    }
-    const childLayout = widget.data?.page.layout;
-    if (!isUndefined(childLayout)) {
-      widgetsArray.push(...getAllWidgetsArray(childLayout));
-    }
-  });
-
-  return widgetsArray;
-};
-
+/**
+ * Renders widget component based on configuration
+ */
 export const getWidgetFromKey = ({
   currentLayout,
   handleLayoutUpdate,
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
   handleRemoveWidget,
-  iconHeight,
-  iconWidth,
   isEditView,
+  personaName,
   widgetConfig,
 }: {
   currentLayout?: Array<WidgetConfig>;
@@ -209,25 +293,20 @@ export const getWidgetFromKey = ({
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (key: string) => void;
   handleRemoveWidget?: (key: string) => void;
-  iconHeight?: SIZE;
-  iconWidth?: SIZE;
   isEditView?: boolean;
+  personaName?: string;
   widgetConfig: WidgetConfig;
 }) => {
   if (
     widgetConfig.i.endsWith('.EmptyWidgetPlaceholder') &&
     !isUndefined(handleOpenAddWidgetModal) &&
-    !isUndefined(handlePlaceholderWidgetKey) &&
-    !isUndefined(handleRemoveWidget)
+    !isUndefined(handlePlaceholderWidgetKey)
   ) {
     return (
-      <EmptyWidgetPlaceholder
+      <EmptyWidgetPlaceholderV1
         handleOpenAddWidgetModal={handleOpenAddWidgetModal}
         handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-        handleRemoveWidget={handleRemoveWidget}
-        iconHeight={iconHeight}
-        iconWidth={iconWidth}
-        isEditable={widgetConfig.isDraggable}
+        personaName={personaName}
         widgetKey={widgetConfig.i}
       />
     );
@@ -236,46 +315,20 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <Widget
-        currentLayout={currentLayout}
-        handleLayoutUpdate={handleLayoutUpdate}
-        handleRemoveWidget={handleRemoveWidget}
-        isEditView={isEditView}
-        selectedGridSize={widgetConfig.w}
-        widgetKey={widgetConfig.i}
-      />
-    </AdvanceSearchProvider>
+    <Widget
+      currentLayout={currentLayout}
+      handleLayoutUpdate={handleLayoutUpdate}
+      handleRemoveWidget={handleRemoveWidget}
+      isEditView={isEditView}
+      selectedGridSize={widgetConfig.w}
+      widgetKey={widgetConfig.i}
+    />
   );
 };
 
-export const getLayoutWithEmptyWidgetPlaceholder = (
-  layout: WidgetConfig[],
-  emptyWidgetHeight = 2,
-  emptyWidgetWidth = 1
-) => [
-  ...layout,
-  {
-    h: emptyWidgetHeight,
-    i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-    w: emptyWidgetWidth,
-    x: 0,
-    y: 1000,
-    isDraggable: false,
-  },
-];
-
-// Function to filter out empty widget placeholders and only keep knowledge panels
-export const getUniqueFilteredLayout = (layout: WidgetConfig[]) =>
-  uniqBy(
-    layout.filter(
-      (widget) =>
-        widget.i.startsWith('KnowledgePanel') &&
-        !widget.i.endsWith('.EmptyWidgetPlaceholder')
-    ),
-    'i'
-  );
-
+/**
+ * Custom arrow components for carousel navigation
+ */
 export const CustomNextArrow = (props: DOMAttributes<HTMLDivElement>) => (
   <Icon
     className="custom-arrow right-arrow"
@@ -291,3 +344,71 @@ export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
     onClick={props.onClick}
   />
 );
+
+/**
+ * Creates a layout with empty widget placeholder at the end
+ */
+export const getLayoutWithEmptyWidgetPlaceholder = (
+  layout: WidgetConfig[],
+  emptyWidgetHeight = 4,
+  emptyWidgetWidth = 1
+) => {
+  // Handle empty or null layout
+  if (!layout || layout.length === 0) {
+    return [
+      {
+        h: emptyWidgetHeight,
+        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+        w: emptyWidgetWidth,
+        x: 0,
+        y: 0,
+        isDraggable: false,
+      },
+    ];
+  }
+
+  return ensurePlaceholderAtEnd(layout);
+};
+
+/**
+ * Creates a landing page layout with empty widget placeholder
+ */
+export const getLandingPageLayoutWithEmptyWidgetPlaceholder = (
+  layout: WidgetConfig[],
+  emptyWidgetHeight = 3,
+  emptyWidgetWidth = 1
+) => {
+  if (!layout || layout.length === 0) {
+    return [
+      {
+        h: emptyWidgetHeight,
+        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+        w: emptyWidgetWidth,
+        x: 0,
+        y: 0,
+        isDraggable: false,
+      },
+    ];
+  }
+
+  return ensurePlaceholderAtEnd(layout);
+};
+
+/**
+ * Filters out empty widget placeholders and only keeps knowledge panels
+ */
+export const getUniqueFilteredLayout = (layout: WidgetConfig[]) => {
+  // Handle empty or null layout
+  if (!layout || layout.length === 0) {
+    return [];
+  }
+
+  return uniqBy(
+    layout.filter(
+      (widget) =>
+        widget.i.startsWith('KnowledgePanel') &&
+        !widget.i.endsWith('.EmptyWidgetPlaceholder')
+    ),
+    'i'
+  );
+};
