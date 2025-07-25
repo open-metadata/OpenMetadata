@@ -35,6 +35,14 @@
           },
           "uniqueItems": true
         },
+        "exclude": {
+          "title": "Exclude Fields",
+          "description": "Select fields that should not trigger the workflow if only them are modified.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "filter": {
           "title": "Filter Condition",
           "description": "JSON Logic expression to determine if the workflow should be triggered. The expression has access to: entity (current entity), changeDescription (what changed), updatedBy (user who made the change), changedFields (array of field names that changed).",

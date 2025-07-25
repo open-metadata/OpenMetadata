@@ -2,7 +2,6 @@ package org.openmetadata.service.rules;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.rules.JsonLogicUtils.evaluateExcludeFields;
 import static org.openmetadata.service.rules.JsonLogicUtils.evaluateUserInRole;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,8 +22,7 @@ public class LogicOps {
   public enum CustomLogicOps {
     LENGTH("length"),
     IS_REVIEWER("isReviewer"),
-    IS_OWNER("isOwner"),
-    IS_CHANGED("isChanged");
+    IS_OWNER("isOwner");
 
     public final String key;
 
@@ -48,21 +46,6 @@ public class LogicOps {
             return 0;
           }
           return args.length;
-        });
-
-    // Example: {"isChanged": {var: "reviewers"} }
-    jsonLogic.addOperation(
-        new JsonLogicExpression() {
-          @Override
-          public String key() {
-            return CustomLogicOps.IS_CHANGED.key;
-          }
-
-          @Override
-          public Object evaluate(
-              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data) {
-            return evaluateExcludeFields(arguments, data);
-          }
         });
 
     // {"isReviewer": { var: "updatedBy"} }

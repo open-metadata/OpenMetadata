@@ -178,6 +178,14 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     Config triggerConfig = triggerDefinition.getConfig();
 
     if (triggerConfig != null) {
+      if (triggerConfig.getExclude() != null && !triggerConfig.getExclude().isEmpty()) {
+        FieldExtension excludedFilterExpr =
+            new FieldExtensionBuilder()
+                .fieldName("excludedFieldsExpr")
+                .fieldValue(JsonUtils.pojoToJson(triggerDefinition.getConfig().getExclude()))
+                .build();
+        serviceTask.getFieldExtensions().add(excludedFilterExpr);
+      }
       if (triggerConfig.getFilter() != null && !triggerConfig.getFilter().trim().isEmpty()) {
         // Use JSON Logic path
         FieldExtension filterExpr =

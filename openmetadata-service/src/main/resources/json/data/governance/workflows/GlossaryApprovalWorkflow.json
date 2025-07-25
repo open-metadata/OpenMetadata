@@ -11,7 +11,8 @@
     "config": {
       "entityType": "glossaryTerm",
       "events": ["Created", "Updated"],
-      "filter": "{\"or\":[{\"isReviewer\":{\"var\":\"updatedBy\"}},{\"isChanged\":{\"var\":\"reviewers\"}}]}"
+      "exclude": ["reviewers"],
+      "filter": "{\"or\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
     }
   },
   "nodes": [
