@@ -478,6 +478,7 @@ public class TagRepository extends EntityRepository<Tag> {
               .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
 
       return results.stream()
+          .filter(row -> row.get("tagFQN") != null)
           .collect(
               Collectors.toMap(
                   row -> (String) row.get("tagFQN"),
