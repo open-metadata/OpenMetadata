@@ -1,5 +1,6 @@
 ---
 title: Run the OpenSearch Connector Externally
+description: Use YAML to configure OpenSearch ingestion and enable search index metadata extraction and lineage tracking.
 slug: /connectors/search/opensearch/yaml
 ---
 

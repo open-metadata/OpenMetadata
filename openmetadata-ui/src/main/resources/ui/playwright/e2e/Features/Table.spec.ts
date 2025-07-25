@@ -112,7 +112,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table page should show schema tab with count', async ({
     dataConsumerPage: page,
   }) => {
-    await table1.visitEntityPage(page);
+    await table1.visitEntityPageWithCustomSearchBox(page);
 
     await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });
@@ -362,5 +362,76 @@ test.describe('Table & Data Model columns table pagination', () => {
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
     ).toHaveCount(26);
+  });
+
+  test('expand collapse should only visible for nested columns', async ({
+    page,
+  }) => {
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Should show expand icon for nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shipping_address"]'
+        )
+        .getByTestId('expand-icon')
+    ).toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page
+        .locator(
+          '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"]'
+        )
+        .getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // verify column profile table
+    await page.getByRole('tab', { name: 'Data Observability' }).click();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    const colsResponse = page.waitForResponse(
+      '/api/v1/tables/name/*/columns?*'
+    );
+    await page.getByRole('menuitem', { name: 'Column Profile' }).click();
+
+    await colsResponse;
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    // Should show expand icon for nested columns
+    expect(
+      page
+        .locator('[data-row-key="shipping_address"]')
+        .getByTestId('expand-icon')
+    ).toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page.locator('[data-row-key="customer_id"]').getByTestId('expand-icon')
+    ).not.toBeVisible();
+
+    // Should not show expand icon for non-nested columns
+    expect(
+      page.locator('[data-row-key="shop_id"]').getByTestId('expand-icon')
+    ).not.toBeVisible();
   });
 });

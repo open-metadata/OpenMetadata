@@ -228,6 +228,18 @@ export const getCountBadge = (
   );
 };
 
+export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
+  const currentUser = useApplicationStore.getState().currentUser;
+  let recentlyViewed: RecentlyViewedData[] = [];
+
+  if (currentUser) {
+    const { preferences } = usePersistentStorage.getState();
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
+  }
+
+  return recentlyViewed;
+};
+
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
@@ -688,7 +700,7 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
       errorMessage = get(error, 'response.data.responseMessage', '');
     }
     if (!errorMessage) {
-      errorMessage = get(error, 'response.data', '');
+      errorMessage = get(error, 'response.data', '') as string;
       errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
     }
   }
@@ -849,4 +861,13 @@ export const calculatePercentage = (
   }
 
   return round((numerator / denominator) * 100, precision);
+};
+
+/**
+ * Check if the color is a linear gradient
+ * @param color - Color string
+ * @returns {boolean} - True if the color is a linear gradient, false otherwise
+ */
+export const isLinearGradient = (color: string) => {
+  return color.toLowerCase().includes('linear-gradient');
 };

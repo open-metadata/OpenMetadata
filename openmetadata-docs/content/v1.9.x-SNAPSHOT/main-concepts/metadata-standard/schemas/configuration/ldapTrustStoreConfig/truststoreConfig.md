@@ -1,5 +1,6 @@
 ---
 title: Trust Store Config | OpenMetadata Trust Store
+description: Connect Truststoreconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/truststoreconfig
 ---
 

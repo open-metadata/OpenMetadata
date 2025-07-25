@@ -24,6 +24,7 @@ import {
   MOCK_TEST_CASE,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
 } from '../../../mocks/TestSuite.mock';
+import { getTestDefinitionById } from '../../../rest/testAPI';
 import { EditTestCaseModalProps } from './AddDataQualityTest.interface';
 import EditTestCaseModal from './EditTestCaseModal';
 
@@ -272,6 +273,132 @@ describe('EditTestCaseModal Component', () => {
     expect(
       screen.queryByTestId('glossary-terms-selector')
     ).not.toBeInTheDocument();
+  });
+
+  it('should render compute row count field in parameter-only mode when test definition supports it', async () => {
+    // Mock a test definition that supports row-level passed/failed counting
+    const mockTestDefinitionWithRowSupport = {
+      ...MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
+      supportsRowLevelPassedFailed: true,
+    };
+
+    // Mock the API to return the test definition with row support
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      mockTestDefinitionWithRowSupport
+    );
+
+    const parameterOnlyProps = {
+      ...mockProps,
+      showOnlyParameter: true,
+    };
+
+    render(<EditTestCaseModal {...parameterOnlyProps} />);
+
+    // Wait for the form to load
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    // Should render compute row count field even in parameter-only mode
+    expect(
+      screen.getByTestId('compute-passed-failed-row-count')
+    ).toBeInTheDocument();
+  });
+
+  it('should not render compute row count field when test definition does not support it', async () => {
+    // Mock a test definition that does not support row-level passed/failed counting
+    const mockTestDefinitionWithoutRowSupport = {
+      ...MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
+      supportsRowLevelPassedFailed: false,
+    };
+
+    // Mock the API to return the test definition without row support
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      mockTestDefinitionWithoutRowSupport
+    );
+
+    const parameterOnlyProps = {
+      ...mockProps,
+      showOnlyParameter: true,
+    };
+
+    render(<EditTestCaseModal {...parameterOnlyProps} />);
+
+    // Wait for the form to load
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    // Should not render compute row count field when not supported
+    expect(
+      screen.queryByTestId('compute-passed-failed-row-count')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render compute row count field in full mode when test definition supports it', async () => {
+    // Mock a test definition that supports row-level passed/failed counting
+    const mockTestDefinitionWithRowSupport = {
+      ...MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
+      supportsRowLevelPassedFailed: true,
+    };
+
+    // Mock the API to return the test definition with row support
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      mockTestDefinitionWithRowSupport
+    );
+
+    render(<EditTestCaseModal {...mockProps} />);
+
+    // Wait for the form to load
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    // Should render compute row count field in full mode
+    expect(
+      screen.getByTestId('compute-passed-failed-row-count')
+    ).toBeInTheDocument();
+  });
+
+  it('should preserve compute row count value when updating in parameter-only mode', async () => {
+    // Mock a test definition that supports row-level passed/failed counting
+    const mockTestDefinitionWithRowSupport = {
+      ...MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
+      supportsRowLevelPassedFailed: true,
+    };
+
+    // Mock the API to return the test definition with row support
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      mockTestDefinitionWithRowSupport
+    );
+
+    const testCaseWithComputeRowCount = {
+      ...MOCK_TEST_CASE[0],
+      computePassedFailedRowCount: true,
+    };
+
+    const parameterOnlyProps = {
+      ...mockProps,
+      testCase: testCaseWithComputeRowCount,
+      showOnlyParameter: true,
+    };
+
+    render(<EditTestCaseModal {...parameterOnlyProps} />);
+
+    // Wait for the form to load
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    // Submit the form
+    const submitBtn = await screen.findByText('label.save');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    // Verify that onUpdate was called (indicating form submission with compute row count preserved)
+    expect(mockProps.onUpdate).toHaveBeenCalled();
   });
 
   it('should include tags and glossary terms in form submission', async () => {

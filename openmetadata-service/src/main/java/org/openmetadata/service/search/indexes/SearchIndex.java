@@ -41,6 +41,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -99,7 +100,7 @@ public interface SearchIndex {
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
     map.put("entityType", entityType);
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
-    map.put("domain", getEntityWithDisplayName(entity.getDomain()));
+    map.put("domains", getEntitiesWithDisplayName(entity.getDomains()));
     map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
     int totalVotes =
         nullOrEmpty(entity.getVotes())
@@ -147,7 +148,6 @@ public interface SearchIndex {
           nullOrEmpty(cloneEntity.getDisplayName())
               ? cloneEntity.getName()
               : cloneEntity.getDisplayName());
-      cloneEntity.setFullyQualifiedName(cloneEntity.getFullyQualifiedName().replace("\"", "\\'"));
       clone.add(cloneEntity);
     }
     return clone;
@@ -381,25 +381,8 @@ public interface SearchIndex {
   }
 
   static Map<String, Float> getAllFields() {
-    Map<String, Float> fields = getDefaultFields();
-    fields.putAll(TableIndex.getFields());
-    fields.putAll(StoredProcedureIndex.getFields());
-    fields.putAll(DashboardIndex.getFields());
-    fields.putAll(DashboardDataModelIndex.getFields());
-    fields.putAll(PipelineIndex.getFields());
-    fields.putAll(TopicIndex.getFields());
-    fields.putAll(MlModelIndex.getFields());
-    fields.putAll(ContainerIndex.getFields());
-    fields.putAll(SearchEntityIndex.getFields());
-    fields.putAll(GlossaryTermIndex.getFields());
-    fields.putAll(TagIndex.getFields());
-    fields.putAll(DataProductIndex.getFields());
-    fields.putAll(APIEndpointIndex.getFields());
-    fields.putAll(DirectoryIndex.getFields());
-    fields.putAll(FileIndex.getFields());
-    fields.putAll(SpreadsheetIndex.getFields());
-    fields.putAll(WorksheetIndex.getFields());
-    fields.putAll(DriveServiceIndex.getFields());
-    return fields;
+    // Use SettingsCache to get the aggregated search fields
+    // This is automatically cached and invalidated when searchSettings change
+    return SettingsCache.getAggregatedSearchFields();
   }
 }

@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
@@ -127,10 +128,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   @Override
   public void setInheritedFields(Worksheet worksheet, EntityUtil.Fields fields) {
     // Inherit domain from spreadsheet if not set
-    if (worksheet.getDomain() == null) {
+    if (nullOrEmpty(worksheet.getDomains())) {
       Spreadsheet spreadsheet =
-          Entity.getEntity(worksheet.getSpreadsheet(), "domain", Include.NON_DELETED);
-      worksheet.withDomain(spreadsheet.getDomain());
+          Entity.getEntity(worksheet.getSpreadsheet(), "domains", Include.NON_DELETED);
+      inheritDomains(worksheet, fields, spreadsheet);
     }
   }
 
@@ -265,7 +266,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                   List.of(
                       Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(12, TagLabel.TagSource.GLOSSARY))))
-          .withDomain(getEntityReference(printer, csvRecord, 13, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 13))
           .withDataProducts(getDataProducts(printer, csvRecord, 14));
 
       if (processRecord) {
@@ -290,11 +291,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
-      addField(
-          recordList,
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName());
+      addDomains(recordList, entity.getDomains());
       addField(
           recordList,
           entity.getDataProducts() != null

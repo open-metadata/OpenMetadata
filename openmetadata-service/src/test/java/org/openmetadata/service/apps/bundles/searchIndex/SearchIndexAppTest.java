@@ -27,6 +27,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -154,6 +156,7 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
     Map<String, Object> contextData = new HashMap<>();
     contextData.put("entityType", "table");
+    contextData.put("recreateIndex", false);
 
     lenient().doNothing().when(mockSink).write(eq(entities), eq(contextData));
 
@@ -209,6 +212,7 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
     Map<String, Object> contextData = new HashMap<>();
     contextData.put("entityType", "table");
+    contextData.put("recreateIndex", false);
 
     lenient().doThrow(searchIndexException).when(mockSink).write(eq(entities), eq(contextData));
 
@@ -256,6 +260,7 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
     Map<String, Object> contextData = new HashMap<>();
     contextData.put("entityType", "user");
+    contextData.put("recreateIndex", false);
 
     lenient().doNothing().when(mockSink).write(eq(entities), eq(contextData));
 
@@ -467,6 +472,55 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void testProcessingWithRecreateIndexTrue() throws Exception {
+    // Create job data with recreateIndex = true
+    EventPublisherJob recreateIndexJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table"))
+            .withBatchSize(5)
+            .withPayLoadSize(1000000L)
+            .withMaxConcurrentRequests(10)
+            .withRecreateIndex(true) // Set recreateIndex to true
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(recreateIndexJobData, Object.class));
+    searchIndexApp.init(testApp);
+    injectMockSink();
+
+    EntityInterface mockEntity = mock(EntityInterface.class);
+    lenient().when(mockEntity.getId()).thenReturn(UUID.randomUUID());
+
+    List<EntityInterface> entities = List.of(mockEntity, mockEntity);
+    ResultList<EntityInterface> resultList = new ResultList<>(entities, null, null, 2);
+
+    // Capture the context data passed to the sink
+    ArgumentCaptor<Map<String, Object>> contextCaptor = ArgumentCaptor.forClass(Map.class);
+
+    lenient().doNothing().when(mockSink).write(eq(entities), contextCaptor.capture());
+
+    SearchIndexApp.IndexingTask<EntityInterface> task =
+        new SearchIndexApp.IndexingTask<>("table", resultList, 0);
+
+    assertDoesNotThrow(
+        () -> {
+          var method =
+              SearchIndexApp.class.getDeclaredMethod(
+                  "processTask", SearchIndexApp.IndexingTask.class, JobExecutionContext.class);
+          method.setAccessible(true);
+          method.invoke(searchIndexApp, task, jobExecutionContext);
+        });
+
+    // Verify that recreateIndex was passed in context data
+    Map<String, Object> capturedContext = contextCaptor.getValue();
+    assertNotNull(capturedContext);
+    assertEquals("table", capturedContext.get("entityType"));
+    assertEquals(true, capturedContext.get("recreateIndex"));
+  }
+
+  @Test
   void testAutoTuneConfiguration() {
     EventPublisherJob autoTuneJobData =
         new EventPublisherJob()
@@ -502,5 +556,49 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertTrue(
         resultJobData.getMaxConcurrentRequests() > 0, "Concurrent requests should be positive");
     assertTrue(resultJobData.getProducerThreads() > 0, "Producer threads should be positive");
+  }
+
+  @Test
+  void testSearchIndexSinkInitializationWithElasticSearch() {
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+
+    lenient().when(searchRepository.createBulkSink(5, 10, 1000000L)).thenReturn(mockSink);
+
+    assertDoesNotThrow(() -> searchIndexApp.init(testApp));
+
+    EventPublisherJob jobData = searchIndexApp.getJobData();
+    assertNotNull(jobData);
+    assertEquals(5, jobData.getBatchSize());
+    assertEquals(10, jobData.getMaxConcurrentRequests());
+    assertEquals(1000000L, jobData.getPayLoadSize());
+  }
+
+  @Test
+  void testSearchIndexSinkInitializationWithOpenSearch() {
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+
+    lenient().when(searchRepository.createBulkSink(5, 10, 1000000L)).thenReturn(mockSink);
+
+    assertDoesNotThrow(() -> searchIndexApp.init(testApp));
+
+    EventPublisherJob jobData = searchIndexApp.getJobData();
+    assertNotNull(jobData);
+    assertEquals(5, jobData.getBatchSize());
+    assertEquals(10, jobData.getMaxConcurrentRequests());
+    assertEquals(1000000L, jobData.getPayLoadSize());
   }
 }
