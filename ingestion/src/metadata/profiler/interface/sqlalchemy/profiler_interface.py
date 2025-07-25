@@ -16,6 +16,7 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
+import gc
 import math
 import threading
 import time
@@ -26,7 +27,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
@@ -461,6 +462,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     logger.error(error)
                     self.status.failed_profiler(error, traceback.format_exc())
                     break
+                finally:
+                    # Force garbage collection to help with memory management
+                    gc.collect()
 
         # If we've exhausted all retries without success, return a tuple of None values
         return None, None, None
