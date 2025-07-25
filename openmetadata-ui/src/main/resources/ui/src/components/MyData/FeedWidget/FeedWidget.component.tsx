@@ -103,7 +103,7 @@ const MyFeedWidgetInternal = ({
     return (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.get-started')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.activity-feed-no-data-placeholder')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />

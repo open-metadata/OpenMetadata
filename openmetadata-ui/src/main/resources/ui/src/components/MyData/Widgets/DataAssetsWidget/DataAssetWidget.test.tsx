@@ -79,16 +79,24 @@ describe('DataAssetsWidget', () => {
   it('should fetch dataAssets initially', () => {
     renderDataAssetsWidget();
 
-    expect(searchData).toHaveBeenCalledWith('', 0, 0, '', 'updatedAt', 'desc', [
-      SearchIndex.TABLE,
-      SearchIndex.TOPIC,
-      SearchIndex.DASHBOARD,
-      SearchIndex.PIPELINE,
-      SearchIndex.MLMODEL,
-      SearchIndex.CONTAINER,
-      SearchIndex.SEARCH_INDEX,
-      SearchIndex.API_ENDPOINT_INDEX,
-    ]);
+    expect(searchData).toHaveBeenCalledWith(
+      '',
+      0,
+      0,
+      '',
+      'name.keyword',
+      'asc',
+      [
+        SearchIndex.TABLE,
+        SearchIndex.TOPIC,
+        SearchIndex.DASHBOARD,
+        SearchIndex.PIPELINE,
+        SearchIndex.MLMODEL,
+        SearchIndex.CONTAINER,
+        SearchIndex.SEARCH_INDEX,
+        SearchIndex.API_ENDPOINT_INDEX,
+      ]
+    );
   });
 
   it('should render DataAssetsWidget with widget wrapper', async () => {

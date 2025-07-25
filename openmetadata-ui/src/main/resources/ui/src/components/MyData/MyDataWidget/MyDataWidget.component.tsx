@@ -19,7 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   applySortToData,
   getSortField,
@@ -182,18 +186,13 @@ const MyDataWidgetInternal = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={getUserPath(
-          currentUser?.name ?? '',
-          UserPageTabs.MY_DATA
-        )}
-        actionButtonText={t('label.get-started')}
-        description={`${t('message.nothing-saved-yet')} ${t(
-          'message.no-owned-data'
-        )}`}
+        actionButtonLink={ROUTES.EXPLORE}
+        actionButtonText={t('label.explore-assets')}
+        description={t('message.no-owned-data')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
-        title={t('message.curate-your-data-view')}
+        title={t('label.no-records')}
       />
     ),
     []
