@@ -83,6 +83,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -1401,7 +1403,7 @@ public class SearchRepository {
     String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>("entityRelationship.docId.keyword", relationDocId),
+        new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
         new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
   }
 
@@ -1457,5 +1459,30 @@ public class SearchRepository {
   @SuppressWarnings("unused")
   public <T> T getHighLevelClient() {
     return (T) searchClient.getHighLevelClient();
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationshipWithDirection(entityRelationshipRequest);
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationship(entityRelationshipRequest);
+  }
+
+  public org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
+      getSchemaEntityRelationship(
+          String schemaFqn,
+          String queryFilter,
+          String includeSourceFields,
+          int offset,
+          int limit,
+          int from,
+          int size,
+          boolean deleted)
+          throws IOException {
+    return searchClient.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
 }
