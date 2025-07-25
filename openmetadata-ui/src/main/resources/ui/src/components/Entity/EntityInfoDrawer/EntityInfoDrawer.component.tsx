@@ -13,7 +13,7 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
-import { cloneDeep, get, isEmpty } from 'lodash';
+import { cloneDeep, get } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
@@ -110,14 +110,12 @@ const EntityInfoDrawer = ({
           </Col>
         </Row>
       }>
-      {!isEmpty(entityDetail) && (
-        <DataAssetSummaryPanel
-          isDomainVisible
-          isLineageView
-          dataAsset={entityDetail}
-          entityType={selectedNode.entityType as EntityType}
-        />
-      )}
+      <DataAssetSummaryPanel
+        isDomainVisible
+        isLineageView
+        dataAsset={entityDetail}
+        entityType={selectedNode.entityType as EntityType}
+      />
     </Drawer>
   );
 };

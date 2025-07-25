@@ -1799,11 +1799,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               onEdgeDetailsUpdate={onEdgeDetailsUpdate}
             />
           ) : (
-            <EntityInfoDrawer
-              selectedNode={selectedNode}
-              show={isDrawerOpen}
-              onCancel={() => setIsDrawerOpen(false)}
-            />
+            !isEmpty(selectedNode) && (
+              <EntityInfoDrawer
+                selectedNode={selectedNode}
+                show={isDrawerOpen}
+                onCancel={() => setIsDrawerOpen(false)}
+              />
+            )
           ))}
 
         {showDeleteModal && (

@@ -85,7 +85,7 @@ export const visitEntityPageWithCustomSearchBox = async (data: {
   const isWelcomeScreenVisible = await page
     .waitForSelector('[data-testid="welcome-screen-img"]', {
       state: 'visible',
-      timeout: 5000,
+      timeout: 1000,
     })
     .catch(() => false);
 
