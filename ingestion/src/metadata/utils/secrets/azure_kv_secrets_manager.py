@@ -114,7 +114,7 @@ class AzureKVSecretsManager(ExternalSecretsManager, ABC):
         """
         try:
             secret: KeyVaultSecret = self.client.get_secret(secret_id)
-            logger.info(f"Got value for secret {secret_id}")
+            logger.debug(f"Got value for secret {secret_id}")
             return secret.value
         except Exception as exc:
             logger.debug(traceback.format_exc())
