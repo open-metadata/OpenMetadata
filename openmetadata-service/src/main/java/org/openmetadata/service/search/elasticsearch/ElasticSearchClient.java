@@ -193,7 +193,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
-public class ElasticSearchClient implements SearchClient {
+public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @SuppressWarnings("deprecated")
   @Getter
@@ -2452,6 +2452,11 @@ public class ElasticSearchClient implements SearchClient {
 
   public Object getLowLevelClient() {
     return client.getLowLevelClient();
+  }
+
+  @Override
+  public RestHighLevelClient getHighLevelClient() {
+    return client;
   }
 
   @Override

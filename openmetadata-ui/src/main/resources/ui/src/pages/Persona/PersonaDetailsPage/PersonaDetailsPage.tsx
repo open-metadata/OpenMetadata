@@ -55,7 +55,7 @@ export const PersonaDetailsPage = () => {
   );
   const location = useCustomLocation();
   const { activeKey, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'users').split(
+    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
       '.'
     )[0];
 
@@ -183,6 +183,11 @@ export const PersonaDetailsPage = () => {
   const tabItems = useMemo(() => {
     return [
       {
+        label: t('label.customize-ui'),
+        key: 'customize-ui',
+        children: <CustomizeUI />,
+      },
+      {
         label: t('label.user-plural'),
         key: 'users',
         children: (
@@ -191,11 +196,6 @@ export const PersonaDetailsPage = () => {
             onRemoveUser={handleRemoveUser}
           />
         ),
-      },
-      {
-        label: t('label.customize-ui'),
-        key: 'customize-ui',
-        children: <CustomizeUI />,
       },
     ];
   }, [personaDetails]);

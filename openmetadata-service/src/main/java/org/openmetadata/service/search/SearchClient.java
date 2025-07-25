@@ -34,7 +34,7 @@ import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient {
+public interface SearchClient<T> {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String FQN_FIELD = "fullyQualifiedName";
   ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
@@ -451,6 +451,8 @@ public interface SearchClient {
   Object getLowLevelClient();
 
   Object getClient();
+
+  T getHighLevelClient();
 
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 

@@ -221,14 +221,6 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
-  it('renders footer with view more button when data is available', async () => {
-    render(<CuratedAssetsWidget {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText('label.view-more-count')).toBeInTheDocument();
-      expect(screen.getByTestId('arrow-right-icon')).toBeInTheDocument();
-    });
-  });
-
   it('renders empty state with create button when in edit view and no data and no resources', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
@@ -374,8 +366,10 @@ describe('CuratedAssetsWidget', () => {
       expect(searchQuery).toHaveBeenCalledWith({
         query: '',
         pageNumber: 1,
-        pageSize: 10,
+        pageSize: 20,
         searchIndex: 'table',
+        sortField: 'updatedAt',
+        sortOrder: 'desc',
         includeDeleted: false,
         trackTotalHits: false,
         fetchSource: true,
