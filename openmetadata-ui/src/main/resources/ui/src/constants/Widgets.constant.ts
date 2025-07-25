@@ -209,6 +209,6 @@ export const applySortToData = (
 export const KPI_WIDGET_GRAPH_COLORS = [
   '#7262F6',
   '#6AD2FF',
-  '#E7B85D',
-  '#416BB3',
+  '#2ED3B7',
+  '#E478FA',
 ];
