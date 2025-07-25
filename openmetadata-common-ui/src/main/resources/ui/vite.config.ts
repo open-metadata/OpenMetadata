@@ -2,11 +2,18 @@ import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import svgr from "vite-plugin-svgr";
 
 export default defineConfig({
   mode: "production",
   plugins: [
     react(),
+    svgr({
+      svgrOptions: {
+        icon: true,
+      },
+      include: "**/*.svg",
+    }),
     dts({
       exclude: ["**/*.stories.tsx"],
     }),

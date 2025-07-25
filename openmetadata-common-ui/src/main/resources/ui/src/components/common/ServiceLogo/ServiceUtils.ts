@@ -1,8 +1,10 @@
 import { toLower } from "lodash";
 import {
+  ADLS_ICON,
   AIRBYTE,
   AIRFLOW,
   ALATIONSINK,
+  ALATION_ICON,
   AMAZON_S3,
   AMUNDSEN,
   ATHENA,
@@ -20,6 +22,7 @@ import {
   DASHBOARD_DEFAULT,
   DATABASE_DEFAULT,
   DATABRICK,
+  DATAFACTORY_ICON,
   DATALAKE,
   DBT,
   DEFAULT_SERVICE,
@@ -45,6 +48,7 @@ import {
   LOGO,
   LOOKER,
   MARIADB,
+  MATILLION_ICON,
   METABASE,
   MICROSTRATEGY,
   MLFLOW,
@@ -61,6 +65,7 @@ import {
   PIPELINE_DEFAULT,
   POSTGRES,
   POWERBI,
+  POWERBI_RS_ICON,
   PRESTO,
   QLIK_SENSE,
   QUICKSIGHT,
@@ -80,33 +85,21 @@ import {
   SPARK,
   SPLINE,
   SQLITE,
+  SSAS_ICON,
+  SSIS_ICON,
+  STITCH_ICON,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
   TERADATA,
+  THOUGHTSPOT_ICON,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
+  VERTEXAI_ICON,
   VERTICA,
+  WHERESCAPE_ICON,
 } from "../../../constants/Services.constant";
-
-// Import additional icons for Collate services
-import SsasIcon from "../../assets/services/service-icon-ssas.png";
-import ADLSIcon from "../../assets/services/service-logo-adls.png";
-import AlationIcon from "../../assets/services/service-logo-alation.png";
-import DatafactoryIcon from "../../assets/services/service-logo-datafactory.png";
-import GCSIcon from "../../assets/services/service-logo-gcs.png";
-import MatillionIcon from "../../assets/services/service-logo-matillion.png";
-import PowerBIRSIcon from "../../assets/services/service-logo-powerbi-rs.png";
-import SsisIcon from "../../assets/services/service-logo-ssis.png";
-import StitchIcon from "../../assets/services/service-logo-stitch.png";
-import SynapseIcon from "../../assets/services/service-logo-synapse.png";
-import ThoughtSpotIcon from "../../assets/services/service-logo-thoughtspot.png";
-import VertexaiIcon from "../../assets/services/service-logo-vertexai.png";
-import WherescapeIcon from "../../assets/services/service-logo-wherescape.png";
-import CustomDashboardIcon from "../../assets/services/ic-custom-dashboard.svg";
-import IconArticle from "../../assets/services/ic-articles.svg";
-import LinkIcon from "../../assets/services/ic-link.svg";
 
 // Service type enums (simplified versions for the common-ui)
 export enum DatabaseServiceType {
@@ -424,7 +417,7 @@ export const getServiceTypeLogo = (serviceType: string) => {
     case DatabaseServiceTypeSmallCase.Synapse:
       return SYNAPSE;
     case DatabaseServiceTypeSmallCase.Ssas:
-      return SsasIcon;
+      return SSAS_ICON;
 
     case MessagingServiceTypeSmallCase.CustomMessaging:
       return TOPIC_DEFAULT;
@@ -466,9 +459,9 @@ export const getServiceTypeLogo = (serviceType: string) => {
     case DashboardServiceTypeSmallCase.MicroStrategy:
       return MICROSTRATEGY;
     case DashboardServiceTypeSmallCase.PowerBIReportServer:
-      return PowerBIRSIcon;
+      return POWERBI_RS_ICON;
     case DashboardServiceTypeSmallCase.ThoughtSpot:
-      return ThoughtSpotIcon;
+      return THOUGHTSPOT_ICON;
 
     case PipelineServiceTypeSmallCase.CustomPipeline:
       return PIPELINE_DEFAULT;
@@ -501,15 +494,15 @@ export const getServiceTypeLogo = (serviceType: string) => {
     case PipelineServiceTypeSmallCase.Flink:
       return FLINK;
     case PipelineServiceTypeSmallCase.Matillion:
-      return MatillionIcon;
+      return MATILLION_ICON;
     case PipelineServiceTypeSmallCase.Wherescape:
-      return WherescapeIcon;
+      return WHERESCAPE_ICON;
     case PipelineServiceTypeSmallCase.Ssis:
-      return SsisIcon;
+      return SSIS_ICON;
     case PipelineServiceTypeSmallCase.Stitch:
-      return StitchIcon;
+      return STITCH_ICON;
     case PipelineServiceTypeSmallCase.DataFactory:
-      return DatafactoryIcon;
+      return DATAFACTORY_ICON;
 
     case MlModelServiceTypeSmallCase.CustomMlModel:
       return ML_MODEL_DEFAULT;
@@ -520,7 +513,7 @@ export const getServiceTypeLogo = (serviceType: string) => {
     case MlModelServiceTypeSmallCase.SageMaker:
       return SAGEMAKER;
     case MlModelServiceTypeSmallCase.VertexAI:
-      return VertexaiIcon;
+      return VERTEXAI_ICON;
 
     case MetadataServiceTypeSmallCase.Amundsen:
       return AMUNDSEN;
@@ -529,7 +522,7 @@ export const getServiceTypeLogo = (serviceType: string) => {
     case MetadataServiceTypeSmallCase.AlationSink:
       return ALATIONSINK;
     case MetadataServiceTypeSmallCase.Alation:
-      return AlationIcon;
+      return ALATION_ICON;
     case MetadataServiceTypeSmallCase.OpenMetadata:
       return LOGO;
 
@@ -540,7 +533,7 @@ export const getServiceTypeLogo = (serviceType: string) => {
     case StorageServiceTypeSmallCase.Gcs:
       return GCS;
     case StorageServiceTypeSmallCase.Adls:
-      return ADLSIcon;
+      return ADLS_ICON;
 
     case SearchServiceTypeSmallCase.CustomSearch:
       return CUSTOM_SEARCH_DEFAULT;

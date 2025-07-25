@@ -4,7 +4,11 @@ declare module "*.png" {
 }
 
 declare module "*.svg" {
+  const ReactComponent: React.FunctionComponent<
+    React.SVGAttributes<SVGElement>
+  >;
   const content: string;
+  export { ReactComponent };
   export default content;
 }
 

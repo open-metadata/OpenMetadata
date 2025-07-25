@@ -17,3 +17,4 @@ export {
   ServiceLogo,
   getServiceTypeLogo,
 } from "./components/common/ServiceLogo";
+export { EntityLogo, getEntityTypeIcon } from "./components/common/EntityLogo";

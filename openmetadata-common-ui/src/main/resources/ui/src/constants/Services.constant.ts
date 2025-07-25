@@ -87,6 +87,24 @@ import trino from "../assets/services/service-icon-trino.png";
 import unitycatalog from "../assets/services/service-icon-unitycatalog.svg";
 import vertica from "../assets/services/service-icon-vertica.png";
 
+// Import additional icons for Collate services
+import ssasIcon from "../assets/services/service-icon-ssas.png";
+import adlsIcon from "../assets/services/service-logo-adls.png";
+import alationIcon from "../assets/services/service-logo-alation.png";
+import datafactoryIcon from "../assets/services/service-logo-datafactory.png";
+import gcsIcon from "../assets/services/service-logo-gcs.png";
+import matillionIcon from "../assets/services/service-logo-matillion.png";
+import powerBIRSIcon from "../assets/services/service-logo-powerbi-rs.png";
+import ssisIcon from "../assets/services/service-logo-ssis.png";
+import stitchIcon from "../assets/services/service-logo-stitch.png";
+import synapseIcon from "../assets/services/service-logo-synapse.png";
+import thoughtSpotIcon from "../assets/services/service-logo-thoughtspot.png";
+import vertexaiIcon from "../assets/services/service-logo-vertexai.png";
+import wherescapeIcon from "../assets/services/service-logo-wherescape.png";
+import customDashboardIcon from "../assets/services/ic-custom-dashboard.svg";
+import iconArticle from "../assets/services/ic-articles.svg";
+import linkIcon from "../assets/services/ic-link.svg";
+
 // Import default service icons
 import dashboardDefault from "../assets/services/dashboard.svg";
 import iconDefaultService from "../assets/services/default-service-icon.svg";
@@ -192,3 +210,21 @@ export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
 export const REST_SERVICE = restService;
 export const LIGHT_DASH = lightDash;
+
+// Export additional Collate service constants
+export const SSAS_ICON = ssasIcon;
+export const ADLS_ICON = adlsIcon;
+export const ALATION_ICON = alationIcon;
+export const DATAFACTORY_ICON = datafactoryIcon;
+export const GCS_ICON = gcsIcon;
+export const MATILLION_ICON = matillionIcon;
+export const POWERBI_RS_ICON = powerBIRSIcon;
+export const SSIS_ICON = ssisIcon;
+export const STITCH_ICON = stitchIcon;
+export const SYNAPSE_ICON = synapseIcon;
+export const THOUGHTSPOT_ICON = thoughtSpotIcon;
+export const VERTEXAI_ICON = vertexaiIcon;
+export const WHERESCAPE_ICON = wherescapeIcon;
+export const CUSTOM_DASHBOARD_ICON = customDashboardIcon;
+export const ICON_ARTICLE = iconArticle;
+export const LINK_ICON = linkIcon;
