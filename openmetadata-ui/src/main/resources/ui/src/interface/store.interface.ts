@@ -74,6 +74,7 @@ export interface ApplicationStore
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   setApplicationsName: (applications: string[]) => void;
   setAppVersion: (version: string) => void;
+  initializeAuthState: () => void;
 }
 
 export interface DomainStore {

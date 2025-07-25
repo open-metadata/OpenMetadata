@@ -27,3 +27,9 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+if ('serviceWorker' in navigator && 'indexedDB' in window) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/app-worker.js');
+  });
+}

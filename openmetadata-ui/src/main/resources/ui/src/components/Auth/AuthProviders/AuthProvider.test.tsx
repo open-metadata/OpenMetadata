@@ -98,6 +98,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
     setJwtPrincipalClaimsMapping: jest.fn(),
     isApplicationLoading: false,
     setApplicationLoading: jest.fn(),
+    initializeAuthState: jest.fn(),
     authConfig: {
       provider: AuthProviderProps.Basic,
       providerName: 'Basic',
