@@ -40,7 +40,43 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
 
             expression_class = timetable.get("__type")
             if expression_class:
-                return import_from_module(expression_class)().summary
+                try:
+                    # Try to instantiate the timetable class safely
+                    timetable_class = import_from_module(expression_class)
+                    
+                    # Handle special cases for classes that require arguments
+                    if "DatasetTriggeredTimetable" in expression_class:
+                        # DatasetTriggeredTimetable requires datasets argument
+                        # For now, return a descriptive string since we can't instantiate it properly
+                        return "Dataset Triggered"
+                    elif "CronDataIntervalTimetable" in expression_class:
+                        # Handle cron-based timetables
+                        try:
+                            return timetable_class().summary
+                        except (TypeError, AttributeError):
+                            return "Cron Based"
+                    else:
+                        # Try to instantiate with no arguments
+                        try:
+                            return timetable_class().summary
+                        except (TypeError, AttributeError):
+                            # If summary attribute doesn't exist, try to get a string representation
+                            try:
+                                instance = timetable_class()
+                                return str(instance)
+                            except TypeError:
+                                # If instantiation fails, return the class name
+                                return f"Custom Timetable ({expression_class.split('.')[-1]})"
+                except ImportError as import_error:
+                    logger.debug(f"Could not import timetable class {expression_class}: {import_error}")
+                    return f"Custom Timetable ({expression_class.split('.')[-1]})"
+                except TypeError as type_error:
+                    # If instantiation fails due to missing arguments, log and continue
+                    logger.debug(f"Could not instantiate timetable class {expression_class}: {type_error}")
+                    return f"Custom Timetable ({expression_class.split('.')[-1]})"
+                except Exception as inst_error:
+                    logger.debug(f"Error instantiating timetable class {expression_class}: {inst_error}")
+                    return f"Custom Timetable ({expression_class.split('.')[-1]})"
 
         if schedule:
             if isinstance(schedule, str):
@@ -57,7 +93,8 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
+        dag_id = pipeline_data.get('_dag_id', 'unknown')
         logger.warning(
-            f"Couldn't fetch schedule interval for dag {pipeline_data.get('_dag_id'): [{exc}]}"
+            f"Couldn't fetch schedule interval for dag {dag_id}: {exc}"
         )
     return None
