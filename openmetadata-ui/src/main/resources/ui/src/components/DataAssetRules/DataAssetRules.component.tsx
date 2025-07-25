@@ -93,7 +93,7 @@ export const useSemanticsRulesState = () => {
           },
         };
         await updateSettingsConfig(settingsConfigData);
-        await fetchSemanticsRules();
+        fetchSemanticsRules();
 
         showSuccessToast(
           t('server.update-entity-success', {
