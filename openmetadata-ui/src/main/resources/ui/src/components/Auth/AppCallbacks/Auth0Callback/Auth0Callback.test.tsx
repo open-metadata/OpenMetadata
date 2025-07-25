@@ -62,7 +62,7 @@ jest.mock('../../AuthProviders/AuthProvider', () => ({
 }));
 
 jest.mock('../../../../utils/SwTokenStorageUtils', () => ({
-  setOidcToken: jest.fn(),
+  setOidcToken: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('Test Auth0Callback component', () => {

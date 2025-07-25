@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
   TEXT_BODY_COLOR,
@@ -23,11 +23,11 @@ import './swagger.less';
 
 const SwaggerPage = () => {
   const { theme } = useApplicationStore();
-  const idTokenRef = useRef<string>('');
+  const [idToken, setIdToken] = useState<string>('');
 
   const fetchIdToken = async () => {
-    const idToken = await getOidcToken();
-    idTokenRef.current = idToken;
+    const token = await getOidcToken();
+    setIdToken(token);
   };
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const SwaggerPage = () => {
         allow-spec-file-download
         api-key-location="header"
         api-key-name="Authorization"
-        api-key-value={`Bearer ${idTokenRef.current}`}
+        api-key-value={`Bearer ${idToken}`}
         font-size="large"
         nav-bg-color={GRAPH_BACKGROUND_COLOR}
         nav-item-spacing="compact"
