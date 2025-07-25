@@ -35,6 +35,9 @@ public class OpenTermsAggregations implements OpenAggregations {
       IncludeExclude includeExclude = new IncludeExclude(includes, null);
       termsAggregationBuilder.includeExclude(includeExclude);
     }
+    if (params.get("missing") != null) {
+      termsAggregationBuilder.missing(params.get("missing"));
+    }
     setElasticAggregationBuilder(termsAggregationBuilder);
   }
 
