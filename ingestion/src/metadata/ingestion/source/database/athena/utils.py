@@ -20,9 +20,12 @@ from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
 
+logger = utils_logger()
 
+# pylint: disable=protected-access
 @reflection.cache
 def _get_column_type(self, type_):
     """
@@ -30,7 +33,7 @@ def _get_column_type(self, type_):
     to add custom SQA typing.
     """
     type_ = type_.replace(" ", "").lower()
-    match = self._pattern_column_type.match(type_)  # pylint: disable=protected-access
+    match = self._pattern_column_type.match(type_)
     if match:
         name = match.group(1).lower()
         length = match.group(2)
@@ -113,18 +116,17 @@ def _get_projection_details(
     return columns
 
 
+# pylint: disable=too-many-locals
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Method to handle table columns
     """
-    metadata = self._get_table(  # pylint: disable=protected-access
-        connection, table_name, schema=schema, **kw
-    )
+    metadata = self._get_table(connection, table_name, schema=schema, **kw)
     columns = [
         {
             "name": c.name,
-            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
+            "type": self._get_column_type(c.type),
             "nullable": True,
             "default": None,
             "autoincrement": False,
@@ -147,10 +149,65 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         columns = _get_projection_details(columns, projection_parameters)
         return columns
 
+    # Check if this is an Iceberg table
+    if metadata.parameters.get("table_type") == "ICEBERG":
+        # For Iceberg tables, get the full table metadata from Glue to access column parameters
+        try:
+            # Get the raw connection to access schema information
+            raw_connection = self._raw_connection(connection)
+            schema = schema if schema else raw_connection.schema_name
+
+            # Use the provided Glue client or create one with default credentials
+            glue_client = kw.get("glue_client")
+
+            # Get full table metadata from Glue
+            response = glue_client.get_table(DatabaseName=schema, Name=table_name)
+
+            table_info = response["Table"]
+
+            # Filter out non-current Iceberg columns
+            current_columns = []
+            storage_descriptor = table_info.get("StorageDescriptor", {})
+            glue_columns = storage_descriptor.get("Columns", [])
+
+            for glue_col in glue_columns:
+                col_name = glue_col["Name"]
+                col_type = glue_col["Type"]
+                col_comment = glue_col.get("Comment", "")
+                col_parameters = glue_col.get("Parameters", {})
+
+                # Check if this is a non-current Iceberg column
+                iceberg_current = col_parameters.get("iceberg.field.current", "true")
+                is_current = iceberg_current != "false"
+
+                if is_current:
+                    current_columns.append(
+                        {
+                            "name": col_name,
+                            "type": self._get_column_type(col_type),
+                            "nullable": True,
+                            "default": None,
+                            "autoincrement": False,
+                            "comment": col_comment,
+                            "system_data_type": col_type,
+                            "is_complex": is_complex_type(col_type),
+                            "dialect_options": {"awsathena_partition": None},
+                        }
+                    )
+
+            columns += current_columns
+            return columns
+
+        except Exception as e:
+            # If we can't get Glue metadata, fall back to the original method
+            # This ensures backward compatibility
+            logger.warning(f"Error getting Glue metadata for table {table_name}: {e}")
+
+    # For non-Iceberg tables or if Glue access fails, use the original method
     columns += [
         {
             "name": c.name,
-            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
+            "type": self._get_column_type(c.type),
             "nullable": True,
             "default": None,
             "autoincrement": False,
