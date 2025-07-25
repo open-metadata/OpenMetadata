@@ -132,7 +132,7 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "domains": {
-      "description": "Domains the search service belongs to.",
+      "description": "Domains the security service belongs to.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner": {

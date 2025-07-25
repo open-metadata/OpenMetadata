@@ -37,7 +37,7 @@ export interface SecurityService {
      */
     displayName?: string;
     /**
-     * Domains the search service belongs to.
+     * Domains the security service belongs to.
      */
     domains?: EntityReference[];
     /**
