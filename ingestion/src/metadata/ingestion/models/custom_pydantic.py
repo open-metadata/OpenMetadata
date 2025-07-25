@@ -199,6 +199,7 @@ class _CustomSecretStr(SecretStr):
             and SecretsManagerFactory().get_secrets_manager()
         ):
             secret_id = self._secret_value.replace(SECRET, "")
+            logger.info(f"Getting secret value for {secret_id}")
             try:
                 return (
                     SecretsManagerFactory()

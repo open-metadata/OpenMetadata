@@ -59,7 +59,12 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
-from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
+from metadata.ingestion.ometa.utils import (
+    decode_jwt_token,
+    get_entity_type,
+    model_str,
+    quote,
+)
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -156,6 +161,7 @@ class OpenMetadata(
         ).get_secrets_manager()
 
         self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
+        self.log_user_name_from_jwt_token()
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
@@ -177,6 +183,29 @@ class OpenMetadata(
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
+
+    def log_user_name_from_jwt_token(self) -> None:
+        """
+        Log user name from JWT token.
+        """
+        # Log user name from JWT token if authProvider is openmetadata
+        if (
+            self.config.authProvider
+            and self.config.authProvider.value == "openmetadata"
+        ):
+            try:
+                # Get the JWT token from the auth provider
+                jwt_token, _ = self._auth_provider.get_access_token()
+                if jwt_token:
+                    # Decode the JWT token to extract user information
+                    payload = decode_jwt_token(jwt_token)
+                    if payload:
+                        if payload.get("sub"):
+                            logger.debug(f"Authenticated user: {payload.get('sub')}")
+                        else:
+                            logger.debug("Could not extract user name from JWT token")
+            except Exception as e:
+                logger.debug(f"Error processing JWT token: {e}")
 
     @classmethod
     def from_env(cls) -> "OpenMetadata":
