@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-export interface EmptyWidgetPlaceholderV1Props {
-  personaName?: string;
-  widgetKey: string;
-  handleOpenAddWidgetModal: () => void;
-  handlePlaceholderWidgetKey: (key: string) => void;
-}
+import { TreeDataNode } from 'antd';
+import { NavigationItem } from '../generated/system/ui/uiCustomization';
+
+export const getNavigationItems = (
+  treeData: TreeDataNode[],
+  hiddenKeys: string[]
+): NavigationItem[] => {
+  return treeData.map((item) => {
+    return {
+      id: item.key,
+      title: item.title,
+      isHidden: hiddenKeys.includes(item.key as string),
+      children: getNavigationItems(item.children ?? [], hiddenKeys),
+    } as NavigationItem;
+  });
+};
