@@ -36,6 +36,12 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
+from metadata.generated.schema.entity.datacontract.qualityValidation import (
+    QualityValidation,
+)
+from metadata.generated.schema.entity.datacontract.schemaValidation import (
+    SchemaValidation,
+)
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -60,6 +66,7 @@ from metadata.generated.schema.type.contractExecutionStatus import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from src._openmetadata_testutils.ometa import OM_JWT
 
 
 class OMetaDataContractTest(TestCase):
@@ -74,7 +81,7 @@ class OMetaDataContractTest(TestCase):
         hostPort="http://localhost:8585/api",
         authProvider="openmetadata",
         securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            jwtToken=OM_JWT,
         ),
     )
     metadata = OpenMetadata(server_config)
@@ -82,7 +89,9 @@ class OMetaDataContractTest(TestCase):
     assert metadata.health_check()
 
     user = metadata.create_or_update(
-        data=CreateUserRequest(name="data-contract-user", email="datacontract@user.com"),
+        data=CreateUserRequest(
+            name="data-contract-user", email="datacontract@user.com"
+        ),
     )
     owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
@@ -96,27 +105,6 @@ class OMetaDataContractTest(TestCase):
                 hostPort="http://localhost:3306",
             )
         ),
-    )
-
-    create_data_contract = CreateDataContractRequest(
-        name=EntityName(root="TestDataContract"),
-        description="Test data contract for validation",
-        entity=EntityReference(id=None, type="table"),  # Will be set in setUpClass
-        status=ContractStatus.Draft,
-        dataContractSchema=[
-            {
-                "name": "id",
-                "dataType": "BIGINT",
-                "required": True,
-                "description": "Primary key identifier",
-            },
-            {
-                "name": "name",
-                "dataType": "STRING",
-                "required": True,
-                "description": "Entity name",
-            },
-        ],
     )
 
     @classmethod
@@ -142,7 +130,7 @@ class OMetaDataContractTest(TestCase):
         cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         # Create Table
-        cls.table_entity = cls.metadata.create_or_update(
+        cls.table_entity: Table = cls.metadata.create_or_update(
             CreateTableRequest(
                 name="test-table-datacontract",
                 databaseSchema=cls.create_schema_entity.fullyQualifiedName,
@@ -153,9 +141,14 @@ class OMetaDataContractTest(TestCase):
             )
         )
 
-        # Update the data contract request with the actual table reference
-        cls.create_data_contract.entity = EntityReference(
-            id=cls.table_entity.id, type="table"
+        cls.create_data_contract = CreateDataContractRequest(
+            name=EntityName(root="TestDataContract"),
+            description="Test data contract for validation",
+            entity=EntityReference(
+                id=cls.table_entity.id, type="table"
+            ),  # Will be set in setUpClass
+            status=ContractStatus.Draft,
+            schema=cls.table_entity.columns[:2],
         )
 
     @classmethod
@@ -180,20 +173,24 @@ class OMetaDataContractTest(TestCase):
         """
         We can create a DataContract and we receive it back as Entity
         """
-        res: DataContract = self.metadata.create_or_update(data=self.create_data_contract)
+        res: DataContract = self.metadata.create_or_update(
+            data=self.create_data_contract
+        )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.description, self.create_data_contract.description)
         self.assertEqual(res.status, self.create_data_contract.status)
         self.assertEqual(res.entity.id, self.table_entity.id)
         self.assertEqual(res.entity.type, "table")
-        self.assertEqual(len(res.dataContractSchema), 2)
+        self.assertEqual(len(res.schema_), 2)
 
     def test_get_data_contract_by_name(self):
         """We can fetch DataContract by name"""
-        self.metadata.create_or_update(data=self.create_data_contract)
+        contract: DataContract = self.metadata.create_or_update(
+            data=self.create_data_contract
+        )
 
         res: DataContract = self.metadata.get_by_name(
-            entity=DataContract, fqn=self.create_data_contract.name.root
+            entity=DataContract, fqn=contract.fullyQualifiedName.root
         )
         self.assertEqual(res.name, self.create_data_contract.name)
         self.assertEqual(res.description, self.create_data_contract.description)
@@ -222,41 +219,39 @@ class OMetaDataContractTest(TestCase):
         # Create a data contract result
         contract_result = DataContractResult(
             id=Uuid(root=uuid.uuid4()),
+            dataContractFQN=created_contract.fullyQualifiedName,
             timestamp=int(datetime.now().timestamp() * 1000),
-            dataContract=EntityReference(id=created_contract.id, type="dataContract"),
-            status=ContractExecutionStatus.Success,
-            executedBy="test-user",
-            validationResults={
-                "schemaValidation": {
-                    "status": "Success",
-                    "passedCount": 2,
-                    "failedCount": 0,
-                    "totalCount": 2,
-                },
-                "qualityValidation": {
-                    "status": "Success", 
-                    "passedCount": 0,
-                    "failedCount": 0,
-                    "totalCount": 0,
-                },
-            },
+            contractExecutionStatus=ContractExecutionStatus.Success,
+            schemaValidation=SchemaValidation(
+                passed=2,
+                failed=0,
+                total=2,
+            ),
+            qualityValidation=QualityValidation(
+                passed=0,
+                failed=0,
+                total=0,
+            ),
         )
 
         # Store the result using the mixin method
         result = self.metadata.put_data_contract_result(
-            contract_result.dataContract.id, contract_result
+            created_contract.id, contract_result
         )
-        
+
         self.assertIsNotNone(result)
-        self.assertEqual(result.status, ContractExecutionStatus.Success)
-        self.assertEqual(result.executedBy, "test-user")
+        self.assertEqual(
+            result.contractExecutionStatus, ContractExecutionStatus.Success
+        )
 
         # Verify we can get the latest result
         latest_result = self.metadata.get_latest_data_contract_result(
             created_contract.id
         )
         self.assertIsNotNone(latest_result)
-        self.assertEqual(latest_result.status, ContractExecutionStatus.Success)
+        self.assertEqual(
+            latest_result.contractExecutionStatus, ContractExecutionStatus.Success
+        )
 
         # Verify we can get all results
         all_results = self.metadata.get_data_contract_results(created_contract.id)
@@ -277,7 +272,7 @@ class OMetaDataContractTest(TestCase):
             description=self.create_data_contract.description,
             entity=self.create_data_contract.entity,
             status=ContractStatus.Active,
-            dataContractSchema=self.create_data_contract.dataContractSchema,
+            schema=self.create_data_contract.schema_,
         )
 
         updated_contract: DataContract = self.metadata.create_or_update(

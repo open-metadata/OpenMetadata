@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.datacontract.dataContractResult import (
 )
 from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -50,7 +51,7 @@ class OMetaDataContractMixin:
         """
         try:
             resp = self.client.put(
-                f"{self.get_suffix(DataContract)}/{data_contract_id.root}/results",
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results",
                 data=result.model_dump_json(),
             )
             if resp:
@@ -58,7 +59,7 @@ class OMetaDataContractMixin:
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error creating data contract result for {data_contract_id}: {err}"
+                f"Error creating data contract result for {model_str(data_contract_id)}: {err}"
             )
         return None
 
@@ -82,22 +83,23 @@ class OMetaDataContractMixin:
             List of DataContractResult objects if successful, None otherwise
         """
         try:
-            params = {"limit": limit}
+            # Build query parameters
+            query_params = [f"limit={limit}"]
             if start_ts:
-                params["startTs"] = start_ts
+                query_params.append(f"startTs={start_ts}")
             if end_ts:
-                params["endTs"] = end_ts
+                query_params.append(f"endTs={end_ts}")
 
-            resp = self.client.get(
-                f"{self.get_suffix(DataContract)}/{data_contract_id}/results",
-                params=params,
-            )
+            query_string = "&".join(query_params)
+            url = f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results?{query_string}"
+
+            resp = self.client.get(url)
             if resp:
                 return [DataContractResult(**result) for result in resp.get("data", [])]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error getting data contract results for {data_contract_id}: {err}"
+                f"Error getting data contract results for {model_str(data_contract_id)}: {err}"
             )
         return None
 
@@ -115,14 +117,14 @@ class OMetaDataContractMixin:
         """
         try:
             resp = self.client.get(
-                f"{self.get_suffix(DataContract)}/{data_contract_id}/results/latest"
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results/latest"
             )
             if resp:
                 return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error getting latest data contract result for {data_contract_id}: {err}"
+                f"Error getting latest data contract result for {model_str(data_contract_id)}: {err}"
             )
         return None
 
@@ -141,14 +143,14 @@ class OMetaDataContractMixin:
         """
         try:
             resp = self.client.get(
-                f"{self.get_suffix(DataContract)}/{data_contract_id}/results/{result_id}"
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results/{model_str(result_id)}"
             )
             if resp:
                 return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error getting data contract result {result_id} for {data_contract_id}: {err}"
+                f"Error getting data contract result {model_str(result_id)} for {model_str(data_contract_id)}: {err}"
             )
         return None
 
@@ -167,13 +169,13 @@ class OMetaDataContractMixin:
         """
         try:
             self.client.delete(
-                f"{self.get_suffix(DataContract)}/{data_contract_id}/results/{timestamp}"
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/results/{timestamp}"
             )
             return True
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error deleting data contract result at {timestamp} for {data_contract_id}: {err}"
+                f"Error deleting data contract result at {timestamp} for {model_str(data_contract_id)}: {err}"
             )
         return False
 
@@ -191,11 +193,13 @@ class OMetaDataContractMixin:
         """
         try:
             resp = self.client.post(
-                f"{self.get_suffix(DataContract)}/{data_contract_id}/validate"
+                f"{self.get_suffix(DataContract)}/{model_str(data_contract_id)}/validate"
             )
             if resp:
                 return DataContractResult(**resp)
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error validating data contract {data_contract_id}: {err}")
+            logger.warning(
+                f"Error validating data contract {model_str(data_contract_id)}: {err}"
+            )
         return None
