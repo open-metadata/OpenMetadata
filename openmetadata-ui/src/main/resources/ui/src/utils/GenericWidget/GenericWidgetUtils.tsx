@@ -78,9 +78,9 @@ export const WIDGET_COMPONENTS = {
     domainClassBase.getDummyData().domainType,
   [DetailPageWidgetKeys.DOMAIN]: () => (
     <DomainLabel
-      domain={
-        { type: EntityType.DOMAIN, name: 'Engineering' } as EntityReference
-      }
+      domains={[
+        { type: EntityType.DOMAIN, name: 'Engineering' } as EntityReference,
+      ]}
       entityFqn="Engineering"
       entityId="123"
       entityType={EntityType.DOMAIN}

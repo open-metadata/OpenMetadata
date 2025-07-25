@@ -121,7 +121,7 @@ const DataProductsPage = () => {
     try {
       const data = await getDataProductByName(fqn, {
         fields: [
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.OWNERS,
           TabSpecificField.EXPERTS,
           TabSpecificField.ASSETS,

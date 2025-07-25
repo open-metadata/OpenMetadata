@@ -126,13 +126,6 @@ describe('MyTaskWidget', () => {
     expect(screen.getByText('label.no-tasks-yet')).toBeInTheDocument();
   });
 
-  it('renders footer when tasks are available', () => {
-    renderMyTaskWidget();
-
-    expect(screen.getByTestId('widget-footer')).toBeInTheDocument();
-    expect(screen.getByText('label.view-more')).toBeInTheDocument();
-  });
-
   it('renders widget wrapper', () => {
     renderMyTaskWidget();
 

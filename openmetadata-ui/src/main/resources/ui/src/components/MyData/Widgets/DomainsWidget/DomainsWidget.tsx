@@ -161,13 +161,12 @@ const DomainsWidget = ({
                       <div className="domain-card-icon">
                         {getDomainIcon(domain.style?.iconURL)}
                       </div>
-                      <span className="domain-card-name">
-                        <Typography.Paragraph
-                          ellipsis={{ tooltip: true }}
-                          style={{ marginBottom: 0 }}>
-                          {domain.displayName || domain.name}
-                        </Typography.Paragraph>
-                      </span>
+                      <Typography.Text
+                        className="domain-card-name"
+                        ellipsis={{ tooltip: true }}
+                        style={{ marginBottom: 0 }}>
+                        {domain.displayName || domain.name}
+                      </Typography.Text>
                     </span>
                     <span className="domain-card-count">
                       {domain.assets?.length || 0}
@@ -183,6 +182,11 @@ const DomainsWidget = ({
     [sortedDomains, isFullSize]
   );
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && sortedDomains.length > 10,
+    [sortedDomains, loading]
+  );
+
   const footer = useMemo(
     () => (
       <WidgetFooter
@@ -191,7 +195,7 @@ const DomainsWidget = ({
           countValue:
             sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
         })}
-        showMoreButton={Boolean(!loading)}
+        showMoreButton={showWidgetFooterMoreButton}
       />
     ),
     [t, sortedDomains.length, loading]
