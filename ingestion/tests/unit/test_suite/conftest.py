@@ -45,6 +45,8 @@ ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 ENTITY_LINK_USER = "<#E::table::service.db.users>"
 ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
 ENTITY_LINK_EXPECTED_LOCATION = "<#E::table::service.db.users::columns::postal_code>"
+ENTITY_LINK_IS_ACTIVE = "<#E::table::service.db.users::columns::is_active>"
+
 
 TABLE = Table(
     id=uuid4(),
@@ -61,6 +63,7 @@ TABLE = Table(
         Column(name="postal_code", dataType=DataType.INT),  # type: ignore
         Column(name="lat", dataType=DataType.DECIMAL),  # type: ignore
         Column(name="lon", dataType=DataType.DECIMAL),  # type: ignore
+        Column(name="is_active", dataType=DataType.BOOLEAN),  # type: ignore
     ],
     database=EntityReference(id=uuid4(), name="db", type="database"),  # type: ignore
 )  # type: ignore
@@ -78,6 +81,7 @@ class User(Base):
     postal_code = sqa.Column(sqa.INT)
     lat = sqa.Column(sqa.DECIMAL)
     lon = sqa.Column(sqa.DECIMAL)
+    is_active = sqa.Column(sqa.BOOLEAN)
 
 
 @pytest.fixture
@@ -122,6 +126,7 @@ def create_sqlite_table():
                 postal_code=60001,
                 lat=49.6852237,
                 lon=1.7743058,
+                is_active=True,
             ),
             User(
                 name="Jane",
@@ -133,6 +138,7 @@ def create_sqlite_table():
                 postal_code=19005,
                 lat=45.2589385,
                 lon=1.4731471,
+                is_active=False,
             ),
             User(
                 name="John",
@@ -144,6 +150,7 @@ def create_sqlite_table():
                 postal_code=11008,
                 lat=42.9974445,
                 lon=2.2518325,
+                is_active=None,
             ),
         ]
         session.add_all(data)
@@ -746,3 +753,17 @@ def test_case_column_values_to_be_at_expected_location():
         ],
         computePassedFailedRowCount=True,
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_in_set_boolean():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value="[True, False]"),
+        ],
+        computePassedFailedRowCount=True,
+    )

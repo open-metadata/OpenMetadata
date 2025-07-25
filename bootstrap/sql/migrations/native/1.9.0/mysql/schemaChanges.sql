@@ -137,6 +137,10 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
     INDEX idx_deletion_lock_time (lockedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Update columnValuesToBeInSet test definition to include BOOLEAN in supportedDataTypes and update parameterDefinition
+UPDATE test_definition
+  SET json = JSON_SET(json, '$.supportedDataTypes', JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'BOOLEAN'))
+WHERE name in ('columnValuesToBeInSet', 'columnValuesToBeNotInSet');
 
 -- 1. Add generated classificationHash column to support fast lookup and grouping by classification fqnHash
 ALTER TABLE tag

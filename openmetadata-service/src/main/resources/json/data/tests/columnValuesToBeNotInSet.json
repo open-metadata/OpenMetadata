@@ -5,7 +5,7 @@
   "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
   "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata"],
-  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR"],
+  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN"],
   "parameterDefinition": [
     {
       "name": "forbiddenValues",
