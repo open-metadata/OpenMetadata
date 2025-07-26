@@ -2943,6 +2943,9 @@
     "@babel/runtime" "^7.11.2"
     compare-versions "^4.1.2"
 
+"@openmetadata/common-ui@file:../../../../../openmetadata-common-ui/src/main/resources/ui/dist":
+  version "0.0.0"
+
 "@peculiar/asn1-schema@^2.3.6":
   version "2.3.8"
   resolved "https://registry.npmjs.org/@peculiar/asn1-schema/-/asn1-schema-2.3.8.tgz"
@@ -12605,6 +12608,13 @@ react-papaparse@^4.1.0:
   dependencies:
     "@types/papaparse" "^5.3.1"
     papaparse "^5.3.1"
+
+react-pluggable@^0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/react-pluggable/-/react-pluggable-0.4.3.tgz#84e1cb5f403b31dbfd0d1c228fa129dd6c1b153b"
+  integrity sha512-hWBAVWrhyYPrnSbDFSay2KMJ4TCkOdumdjsyTX/PTZcMwufxJydEZ7yB73pevTRDA6/jEb0kmblvwUXsbC2IlQ==
+  dependencies:
+    semver "^7.3.2"
 
 react-property@2.0.0:
   version "2.0.0"

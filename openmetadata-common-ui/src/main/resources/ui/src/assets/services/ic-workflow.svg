@@ -1,0 +1,19 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="6.76602" y="2.6" width="10.4667" height="7.13333" rx="1.4" stroke="currentColor" stroke-width="1.2"/>
+<mask id="path-2-inside-1_9060_155230" fill="white">
+<rect x="2" y="17" width="5.83333" height="5" rx="1"/>
+</mask>
+<rect x="2" y="17" width="5.83333" height="5" rx="1" stroke="currentColor" stroke-width="2.4" mask="url(#path-2-inside-1_9060_155230)"/>
+<mask id="path-3-inside-2_9060_155230" fill="white">
+<rect x="8.66602" y="17" width="5.83333" height="5" rx="1"/>
+</mask>
+<rect x="8.66602" y="17" width="5.83333" height="5" rx="1" stroke="currentColor" stroke-width="2.4" mask="url(#path-3-inside-2_9060_155230)"/>
+<path d="M9.5 5.33337H14.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M9.5 7H13.6667" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<mask id="path-6-inside-3_9060_155230" fill="white">
+<rect x="15.334" y="17" width="5.83333" height="5" rx="1"/>
+</mask>
+<rect x="15.334" y="17" width="5.83333" height="5" rx="1" stroke="currentColor" stroke-width="2.4" mask="url(#path-6-inside-3_9060_155230)"/>
+<path d="M12 17.4166L12 9.91663" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M4.5 17.4167V14.0834H18.6667V17.4167" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
