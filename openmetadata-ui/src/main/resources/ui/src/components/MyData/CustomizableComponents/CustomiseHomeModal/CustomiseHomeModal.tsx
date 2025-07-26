@@ -26,7 +26,6 @@ import {
 } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import HeaderTheme from '../../HeaderTheme/HeaderTheme';
@@ -211,10 +210,6 @@ const CustomiseHomeModal = ({
               (widget) => widget.startsWith(item.key) || widget === item.id
             );
 
-          const widgetIcon = customizeMyDataPageClassBase.getWidgetIconFromKey(
-            item.key
-          );
-
           return (
             <div
               className={classNames(
@@ -228,11 +223,6 @@ const CustomiseHomeModal = ({
               role="button"
               tabIndex={0}
               onClick={() => handleSidebarClick(item.key)}>
-              {isWidgetItem && widgetIcon && (
-                <span className="sidebar-widget-icon">
-                  <Icon component={widgetIcon} />
-                </span>
-              )}
               <span>{startCase(item.label)}</span>
               {isAllWidgetsTab && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">
