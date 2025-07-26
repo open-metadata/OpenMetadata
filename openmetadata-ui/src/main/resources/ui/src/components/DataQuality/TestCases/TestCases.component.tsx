@@ -72,6 +72,7 @@ import {
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -532,6 +533,7 @@ export const TestCases = () => {
     <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
+          className="new-form-style"
           form={form}
           layout="horizontal"
           onValuesChange={handleFilterChange}>
@@ -563,6 +565,7 @@ export const TestCases = () => {
                   allowClear
                   showSearch
                   data-testid="table-select-filter"
+                  getPopupContainer={getPopupContainer}
                   loading={isOptionsLoading}
                   options={tableOptions}
                   placeholder={t('label.table')}
@@ -578,6 +581,7 @@ export const TestCases = () => {
                 <Select
                   allowClear
                   data-testid="platform-select-filter"
+                  getPopupContainer={getPopupContainer}
                   mode="multiple"
                   options={TEST_CASE_PLATFORM_OPTION}
                   placeholder={t('label.platform')}
@@ -592,6 +596,7 @@ export const TestCases = () => {
                 <Select
                   allowClear
                   data-testid="test-case-type-select-filter"
+                  getPopupContainer={getPopupContainer}
                   options={TEST_CASE_TYPE_OPTION}
                   placeholder={t('label.type')}
                 />
@@ -605,6 +610,7 @@ export const TestCases = () => {
                 <Select
                   allowClear
                   data-testid="status-select-filter"
+                  getPopupContainer={getPopupContainer}
                   options={TEST_CASE_STATUS_OPTION}
                   placeholder={t('label.status')}
                 />
@@ -629,6 +635,7 @@ export const TestCases = () => {
                   allowClear
                   showSearch
                   data-testid="tags-select-filter"
+                  getPopupContainer={getPopupContainer}
                   loading={isOptionsLoading}
                   mode="multiple"
                   options={tagOptions}
@@ -646,6 +653,7 @@ export const TestCases = () => {
                   allowClear
                   showSearch
                   data-testid="tier-select-filter"
+                  getPopupContainer={getPopupContainer}
                   options={tierOptions}
                   placeholder={t('label.tier')}
                 />
@@ -660,6 +668,7 @@ export const TestCases = () => {
                   allowClear
                   showSearch
                   data-testid="service-select-filter"
+                  getPopupContainer={getPopupContainer}
                   loading={isOptionsLoading}
                   options={serviceOptions}
                   placeholder={t('label.service')}
@@ -676,6 +685,7 @@ export const TestCases = () => {
                   allowClear
                   showSearch
                   data-testid="dimension-select-filter"
+                  getPopupContainer={getPopupContainer}
                   options={TEST_CASE_DIMENSIONS_OPTION}
                   placeholder={t('label.dimension')}
                 />

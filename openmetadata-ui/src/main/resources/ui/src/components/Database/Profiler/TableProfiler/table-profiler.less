@@ -27,18 +27,6 @@
     padding-left: 16px;
   }
 
-  .success {
-    color: @green-10;
-  }
-
-  .failed {
-    color: @red-10;
-  }
-
-  .aborted {
-    color: @aborted-color;
-  }
-
   .ant-table-row .ant-table-cell:first-child,
   .ant-table-thead .ant-table-cell:first-child {
     padding-left: 16px;
@@ -55,6 +43,12 @@
     overflow-y: scroll;
     margin-left: @margin-mlg;
     background-color: @white;
+  }
+
+  .quality-tab-container {
+    .ant-tabs.tabs-new .ant-tabs-tabpane {
+      background-color: @white;
+    }
   }
 }
 
