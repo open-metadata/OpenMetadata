@@ -614,4 +614,90 @@ public class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertEquals("", searchRepository.getClusterAlias());
     assertEquals("table_search_index", searchRepository.getIndexOrAliasName("table_search_index"));
   }
+
+  @Test
+  void testBulkSinkWithNullIndexMapping() throws Exception {
+    // Test scenario where getIndexMapping returns null - should skip indexing without throwing
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+    searchIndexApp.init(testApp);
+    injectMockSink();
+
+    // Mock entity
+    EntityInterface mockEntity = mock(EntityInterface.class);
+    lenient().when(mockEntity.getId()).thenReturn(UUID.randomUUID());
+
+    List<EntityInterface> entities = List.of(mockEntity);
+    ResultList<EntityInterface> resultList = new ResultList<>(entities, null, null, 1);
+
+    // Set up context data with an entity type that has no index mapping
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put("entityType", "unknownEntity");
+
+    // Mock searchRepository to return null for unknown entity type
+    lenient().when(searchRepository.getIndexMapping("unknownEntity")).thenReturn(null);
+
+    // Should not throw exception - should skip gracefully
+    lenient().doNothing().when(mockSink).write(eq(entities), eq(contextData));
+
+    SearchIndexApp.IndexingTask<EntityInterface> task =
+        new SearchIndexApp.IndexingTask<>("unknownEntity", resultList, 0);
+
+    assertDoesNotThrow(
+        () -> {
+          var method =
+              SearchIndexApp.class.getDeclaredMethod(
+                  "processTask", SearchIndexApp.IndexingTask.class, JobExecutionContext.class);
+          method.setAccessible(true);
+          method.invoke(searchIndexApp, task, jobExecutionContext);
+        });
+  }
+
+  @Test
+  void testIndexMappingWithClusterAliasInBulkSink() throws Exception {
+    // Test that ensures cluster alias is properly used when getting index name
+    String clusterAlias = "test_cluster";
+    lenient().when(searchRepository.getClusterAlias()).thenReturn(clusterAlias);
+
+    // Create index mapping
+    IndexMapping indexMapping =
+        IndexMapping.builder().indexName("dashboard_search_index").alias("dashboard").build();
+    lenient().when(searchRepository.getIndexMapping("dashboard")).thenReturn(indexMapping);
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+    searchIndexApp.init(testApp);
+    injectMockSink();
+
+    EntityInterface mockEntity = mock(EntityInterface.class);
+    lenient().when(mockEntity.getId()).thenReturn(UUID.randomUUID());
+
+    List<EntityInterface> entities = List.of(mockEntity);
+    ResultList<EntityInterface> resultList = new ResultList<>(entities, null, null, 1);
+
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put("entityType", "dashboard");
+
+    // Verify that the correct index name with cluster alias is used
+    String expectedIndexName = clusterAlias + "_dashboard_search_index";
+    assertEquals(expectedIndexName, indexMapping.getIndexName(clusterAlias));
+
+    lenient().doNothing().when(mockSink).write(eq(entities), eq(contextData));
+
+    SearchIndexApp.IndexingTask<EntityInterface> task =
+        new SearchIndexApp.IndexingTask<>("dashboard", resultList, 0);
+
+    assertDoesNotThrow(
+        () -> {
+          var method =
+              SearchIndexApp.class.getDeclaredMethod(
+                  "processTask", SearchIndexApp.IndexingTask.class, JobExecutionContext.class);
+          method.setAccessible(true);
+          method.invoke(searchIndexApp, task, jobExecutionContext);
+        });
+  }
 }
