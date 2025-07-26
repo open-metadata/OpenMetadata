@@ -13,12 +13,10 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetHeader from './WidgetHeader';
 
 const mockProps = {
   title: 'Test Widget',
-  icon: <TaskIcon data-testid="widget-icon" />,
   isEditView: false,
   widgetWidth: 2,
   sortOptions: [
@@ -52,7 +50,6 @@ describe('WidgetHeader', () => {
     renderWidgetHeader();
 
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
-    expect(screen.getByTestId('widget-icon')).toBeInTheDocument();
   });
 
   it('renders sort dropdown when not in edit view', () => {
@@ -104,7 +101,6 @@ describe('WidgetHeader', () => {
 
   it('handles missing optional props gracefully', () => {
     renderWidgetHeader({
-      icon: undefined,
       sortOptions: undefined,
       selectedSortBy: undefined,
       onSortChange: undefined,
