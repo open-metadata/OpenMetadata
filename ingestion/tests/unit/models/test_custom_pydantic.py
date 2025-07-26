@@ -80,7 +80,7 @@ class CustomPydanticValidationTest(TestCase):
         name=EntityName('test"dashboarddatamodel"'),
         displayName='test"dashboarddatamodel"',
         description=Markdown(
-            root="test__reserved__quote__dashboarddatamodel__reserved__quote__"
+            root='test"dashboarddatamodel"'
         ),
         dataModelType=DataModelType.PowerBIDataModel,
         service=FullyQualifiedEntityName(
@@ -114,12 +114,12 @@ class CustomPydanticValidationTest(TestCase):
 
         assert (
             self.create_request_dashboard_datamodel.name.root
-            == "test__reserved__quote__dashboarddatamodel__reserved__quote__"
+            == 'test"dashboarddatamodel"'
         )
 
         assert (
             self.create_request_dashboard_datamodel.columns[0].children[0].name.root
-            == "test __reserved__quote__struct_children__reserved__quote__"
+            == 'test "struct_children"'
         )
 
     def test_revert_separator(self):
@@ -140,8 +140,8 @@ class CustomPydanticValidationTest(TestCase):
 
         fetch_response_revert_separator_3 = DashboardDataModel(
             id=uuid.uuid4(),
-            name="test__reserved__quote__dashboarddatamodel__reserved__quote__",
-            fullyQualifiedName="test-service-table.test-db.test-schema.test__reserved__quote__dashboarddatamodel__reserved__quote__",
+            name='test"dashboarddatamodel"',
+            fullyQualifiedName='test-service-table.test-db.test-schema.test"dashboarddatamodel"',
             dataModelType=DataModelType.PowerBIDataModel,
             columns=[
                 Column(
