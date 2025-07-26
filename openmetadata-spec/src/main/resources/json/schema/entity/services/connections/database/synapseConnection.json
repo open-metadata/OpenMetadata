@@ -59,9 +59,25 @@
       "type": "string",
       "default": "ODBC Driver 18 for SQL Server"
     },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Azure Application (client) ID for service principal authentication.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Azure Application client secret for service principal authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "tenantId": {
+      "title": "Tenant ID", 
+      "description": "Azure Directory (tenant) ID for service principal authentication.",
+      "type": "string"
+    },
     "authenticationMode": {
       "title": "Authentication Mode",
-      "description": "This parameter determines the mode of authentication for connecting to Azure Synapse using ODBC. If 'Active Directory Password' is selected, you need to provide the password. If 'Active Directory Integrated' is selected, password is not required as it uses the logged-in user's credentials. This mode is useful for establishing secure and seamless connections with Azure Synapse.",
+      "description": "This parameter determines the mode of authentication for connecting to Azure Synapse using ODBC. If 'Active Directory Password' is selected, you need to provide the password. If 'Active Directory Integrated' is selected, password is not required as it uses the logged-in user's credentials. If 'Active Directory Service Principal' is selected, you need to provide clientId, clientSecret and tenantId. This mode is useful for establishing secure and seamless connections with Azure Synapse.",
       "properties": {
         "authentication": {
           "title": "Authentication",
@@ -69,7 +85,8 @@
           "type": "string",
           "enum": [
             "ActiveDirectoryIntegrated",
-            "ActiveDirectoryPassword"
+            "ActiveDirectoryPassword",
+            "ActiveDirectoryServicePrincipal"
           ]
         },
         "encrypt": {
