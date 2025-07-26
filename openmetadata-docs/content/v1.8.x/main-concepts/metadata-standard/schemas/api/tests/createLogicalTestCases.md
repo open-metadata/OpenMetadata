@@ -1,5 +1,6 @@
 ---
-title: createLogicalTestCases
+title: createLogicalTestCases | Official Documentation
+description: Create a logical test case based on conditions, expected results, and relationships between data entities.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createlogicaltestcases
 ---
 

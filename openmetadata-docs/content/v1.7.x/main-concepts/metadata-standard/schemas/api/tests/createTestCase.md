@@ -1,5 +1,6 @@
 ---
 title: Create Test Case | OpenMetadata Test Case API
+description: Create a test case to validate specific data quality conditions using defined rules and associated metadata.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestcase
 ---
 

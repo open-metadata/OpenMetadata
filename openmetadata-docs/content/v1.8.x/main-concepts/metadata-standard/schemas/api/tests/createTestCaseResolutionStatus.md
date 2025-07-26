@@ -1,5 +1,6 @@
 ---
 title: createTestCaseResolutionStatus
+description: Set or update the resolution status of a test case to indicate success, failure, or other outcomes.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestcaseresolutionstatus
 ---
 

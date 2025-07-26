@@ -1,5 +1,6 @@
 ---
 title: Close Task API | OpenMetadata Close Task API
+description: Close a completed or irrelevant task to finalize the discussion and archive it from the active task list.
 slug: /main-concepts/metadata-standard/schemas/api/feed/closetask
 ---
 

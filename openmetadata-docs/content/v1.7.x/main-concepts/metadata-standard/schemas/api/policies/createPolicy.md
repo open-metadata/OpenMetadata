@@ -1,5 +1,6 @@
 ---
 title: Create Policy API | OpenMetadata Policy Creation
+description: Create a policy that defines access rules, resource conditions, and enforcement actions across metadata assets.
 slug: /main-concepts/metadata-standard/schemas/api/policies/createpolicy
 ---
 

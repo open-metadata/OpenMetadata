@@ -1,5 +1,6 @@
 ---
 title: Create Document API | OpenMetadata Document API
+description: Create a document entity in the doc store with title, content, owner, and associated metadata.
 slug: /main-concepts/metadata-standard/schemas/api/docstore/createdocument
 ---
 
