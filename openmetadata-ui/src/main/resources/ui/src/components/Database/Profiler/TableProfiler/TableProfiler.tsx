@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Menu, MenuProps, Space } from 'antd';
+import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
 import { useMemo } from 'react';
@@ -62,7 +62,7 @@ const TableProfiler = (props: TableProfilerProps) => {
 
       return {
         ...tab,
-        icon: <SvgIcon height={18} width={18} />,
+        icon: <SvgIcon height={20} width={20} />,
       };
     });
   }, [viewTest, viewProfiler]);
@@ -90,19 +90,14 @@ const TableProfiler = (props: TableProfilerProps) => {
         data-testid="table-profiler-container"
         id="profilerDetails">
         <Menu
-          className="data-quality-left-panel custom-menu"
+          className="data-quality-left-panel custom-menu-v1"
           data-testid="profiler-tab-left-panel"
           items={tabOptions}
           mode="inline"
           selectedKeys={[activeTab ?? TableProfilerTab.TABLE_PROFILE]}
           onClick={handleTabChange}
         />
-        <Space
-          className="data-quality-content-panel"
-          direction="vertical"
-          size={16}>
-          {activeTabComponent}
-        </Space>
+        <div className="data-quality-content-panel">{activeTabComponent}</div>
       </div>
     </TableProfilerProvider>
   );

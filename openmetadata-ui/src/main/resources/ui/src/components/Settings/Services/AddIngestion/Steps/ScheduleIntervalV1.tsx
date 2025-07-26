@@ -25,6 +25,7 @@ import {
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
+import { getPopupContainer } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   getCron,
@@ -234,6 +235,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                   className="w-full m-t-xs"
                   data-testid="cron-type"
                   disabled={disabled}
+                  getPopupContainer={getPopupContainer}
                   options={filteredPeriodOptions.map(
                     ({ label, value: optionValue }) => ({
                       label,
@@ -272,6 +274,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                   <Select
                     className="w-full m-t-xs"
                     disabled={disabled}
+                    getPopupContainer={getPopupContainer}
                     options={Array.from({ length: 24 }, (_, i) => ({
                       label: i.toString().padStart(2, '0'),
                       value: i,
@@ -288,6 +291,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                   <Select
                     className="w-full m-t-xs"
                     disabled={disabled}
+                    getPopupContainer={getPopupContainer}
                     options={Array.from({ length: 60 }, (_, i) => ({
                       label: i.toString().padStart(2, '0'),
                       value: i,

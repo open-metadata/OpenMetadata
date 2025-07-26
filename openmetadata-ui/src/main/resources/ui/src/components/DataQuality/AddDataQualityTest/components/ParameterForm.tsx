@@ -46,6 +46,7 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../../utils/formUtils';
 import {
   validateEquals,
   validateGreaterThanOrEquals,
@@ -100,6 +101,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     if (data.optionValues?.length) {
       Field = (
         <Select
+          getPopupContainer={getPopupContainer}
           placeholder={`${t('label.please-select-entity', {
             entity: label,
           })}`}>
@@ -138,6 +140,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             );
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={partitionColumnOptions}
                 placeholder={t('message.select-column-name')}
               />
@@ -153,6 +156,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           } else if (data.name === 'column') {
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={table?.columns.map((column) => ({
                   label: getEntityName(column),
                   value: column.name,
@@ -351,6 +355,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               allowClear
               showSearch
               data-testid="table2"
+              getPopupContainer={getPopupContainer}
               loading={isOptionsLoading}
               options={tableOptions}
               placeholder={t('label.table')}
@@ -394,6 +399,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   <Select
                     allowClear
                     showSearch
+                    getPopupContainer={getPopupContainer}
                     options={columns}
                     placeholder={t('label.column')}
                   />

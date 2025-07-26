@@ -44,7 +44,10 @@ import {
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
-import { generateFormFields } from '../../../../utils/formUtils';
+import {
+  generateFormFields,
+  getPopupContainer,
+} from '../../../../utils/formUtils';
 import { isValidJSONString } from '../../../../utils/StringsUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
@@ -169,6 +172,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         props: {
           selectProps: {
             'data-testid': 'tags-selector',
+            getPopupContainer,
           },
           newLook: true,
           initialValue: tags,
@@ -183,6 +187,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         props: {
           selectProps: {
             'data-testid': 'glossary-terms-selector',
+            getPopupContainer,
           },
           newLook: true,
           initialValue: glossaryTerms,

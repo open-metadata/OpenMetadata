@@ -22,8 +22,14 @@ import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/comp
 import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { TestCase } from '../../generated/tests/testCase';
+import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import {
+  getDataQualityPagePath,
+  getTestCaseDetailPagePath,
+  getTestSuitePath,
+} from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -57,6 +63,12 @@ const DataQualityPage = () => {
 
   const handleCloseBundleSuiteModal = () => {
     setIsBundleSuiteModalOpen(false);
+  };
+
+  const handleBundleSuiteSuccess = (testSuite: TestSuite) => {
+    if (testSuite.fullyQualifiedName) {
+      navigate(getTestSuitePath(testSuite.fullyQualifiedName));
+    }
   };
 
   const addButtonContent = useMemo(() => {
@@ -106,10 +118,16 @@ const DataQualityPage = () => {
     }
   };
 
+  const handleFormSubmit = (testCase: TestCase) => {
+    if (testCase.fullyQualifiedName) {
+      navigate(getTestCaseDetailPagePath(testCase.fullyQualifiedName));
+    }
+  };
+
   return (
     <DataQualityProvider>
       <Row
-        className="data-quality-page"
+        className="data-quality-page m-b-md"
         data-testid="data-insight-container"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -131,7 +149,7 @@ const DataQualityPage = () => {
                       data-testid="add-test-suite-btn"
                       type="primary"
                       onClick={handleOpenBundleSuiteModal}>
-                      {t('label.add-entity', {
+                      {t('label.add-a-entity', {
                         entity: t('label.bundle-suite'),
                       })}
                     </Button>
@@ -141,7 +159,7 @@ const DataQualityPage = () => {
                     data-testid="add-test-case-btn"
                     type="primary"
                     onClick={handleOpenTestCaseModal}>
-                    {t('label.add-entity', {
+                    {t('label.add-a-entity', {
                       entity: t('label.test-case'),
                     })}
                   </Button>
@@ -190,6 +208,7 @@ const DataQualityPage = () => {
             open: isTestCaseModalOpen,
           }}
           onCancel={handleCloseTestCaseModal}
+          onFormSubmit={handleFormSubmit}
         />
       )}
       {isBundleSuiteModalOpen && (
@@ -198,7 +217,7 @@ const DataQualityPage = () => {
             open: isBundleSuiteModalOpen,
           }}
           onCancel={handleCloseBundleSuiteModal}
-          onSuccess={handleCloseBundleSuiteModal}
+          onSuccess={handleBundleSuiteSuccess}
         />
       )}
     </DataQualityProvider>
