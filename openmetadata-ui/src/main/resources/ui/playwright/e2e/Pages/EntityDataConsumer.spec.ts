@@ -140,7 +140,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName edit for child entities should not be allowed', async ({
           page,
         }) => {

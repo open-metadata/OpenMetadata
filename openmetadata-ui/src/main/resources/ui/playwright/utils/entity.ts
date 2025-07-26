@@ -1873,7 +1873,7 @@ export const checkExploreSearchFilterWithCustomSearchBox = async (
 export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
   switch (entity.getType()) {
     case 'Table':
-    case 'Dashboard Data Model':
+    case 'DashboardDataModel':
       return '/columns/0/dataTypeDisplay';
     case 'ApiEndpoint':
       return '/requestSchema/schemaFields/0/dataTypeDisplay';
