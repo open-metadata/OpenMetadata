@@ -22,9 +22,9 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
+import { GRAY_600 } from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
@@ -229,20 +229,18 @@ const TotalDataAssetsWidget = ({
                   ]}
                   separator={' '}
                 />
+                <text
+                  dy={8}
+                  fill={GRAY_600}
+                  fontSize={28}
+                  fontWeight={600}
+                  textAnchor="middle"
+                  x="50%"
+                  y="50%">
+                  {totalDatAssets.toLocaleString()}
+                </text>
               </PieChart>
             </ResponsiveContainer>
-            <div
-              className="donut-center-value"
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-              }}>
-              <Typography.Title level={3} style={{ margin: 0 }}>
-                {totalDatAssets.toLocaleString()}
-              </Typography.Title>
-            </div>
           </div>
 
           {/* Right-side Legend */}
@@ -317,7 +315,6 @@ const TotalDataAssetsWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<TotalAssetsWidgetIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}

@@ -38,3 +38,4 @@ export const PINK_SALMON = '#FF92AE';
 export const ELECTRIC_VIOLET = '#9747FF';
 export const LEMON_ZEST = '#FFD700';
 export const GREY_200 = '#E9EAEB';
+export const GRAY_600 = '#535862';

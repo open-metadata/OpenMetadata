@@ -98,6 +98,7 @@ const CustomiseLandingPageHeader = ({
         ),
         name: entity.displayName,
         entityType: entity.entityType,
+        fullyQualifiedName: entity.fqn,
       };
     });
   }, []);
@@ -236,7 +237,9 @@ const CustomiseLandingPageHeader = ({
                     role="button"
                     tabIndex={0}
                     onClick={() => {
-                      navigate(`/${data.entityType}/${data.name}`);
+                      navigate(
+                        `/${data.entityType}/${data.fullyQualifiedName}`
+                      );
                     }}>
                     <div
                       className="recent-item d-flex flex-col items-center gap-3"

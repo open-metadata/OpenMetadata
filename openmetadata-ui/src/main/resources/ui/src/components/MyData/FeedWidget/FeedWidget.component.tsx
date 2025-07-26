@@ -13,7 +13,6 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
@@ -49,14 +48,14 @@ const MyFeedWidgetInternal = ({
     FeedFilter.ALL
   );
 
-  const getFeeds = useCallback(async (filter: FeedFilter) => {
+  const getFeeds = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await getAllFeeds(
         undefined,
         undefined,
         ThreadType.Conversation,
-        filter,
+        selectedFilter,
         undefined,
         undefined,
         10
@@ -68,7 +67,7 @@ const MyFeedWidgetInternal = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedFilter]);
 
   const handleFilterChange = useCallback(
     (key: string) => {
@@ -86,8 +85,8 @@ const MyFeedWidgetInternal = ({
   }, [getAllFeeds]);
 
   useEffect(() => {
-    getFeeds(selectedFilter);
-  }, [selectedFilter]);
+    getFeeds();
+  }, [getFeeds]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
@@ -158,7 +157,6 @@ const MyFeedWidgetInternal = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedFilter}
           sortOptions={FEED_WIDGET_FILTER_OPTIONS}

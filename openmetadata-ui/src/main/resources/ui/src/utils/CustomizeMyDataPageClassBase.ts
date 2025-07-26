@@ -23,15 +23,6 @@ import MyDataImg from '../assets/img/my-data-widget.png';
 import MyTaskImg from '../assets/img/my-task-widget.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets-widget.png';
-import { ReactComponent as ActivityFeedIcon } from '../assets/svg/ic-activity-feed.svg';
-import { ReactComponent as CuratedAssetsIcon } from '../assets/svg/ic-curated-assets.svg';
-import { ReactComponent as DataAssetsIcon } from '../assets/svg/ic-data-assets.svg';
-import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as FollowingIcon } from '../assets/svg/ic-following-assets.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/ic-kpi-widget.svg';
-import { ReactComponent as MyDataIcon } from '../assets/svg/ic-my-data.svg';
-import { ReactComponent as MyTaskIcon } from '../assets/svg/ic-my-task.svg';
-import { ReactComponent as TotalAssetsIcon } from '../assets/svg/ic-total-data-assets.svg';
 import { MyFeedWidget } from '../components/MyData/FeedWidget/FeedWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import FollowingWidget from '../components/MyData/RightSidebar/FollowingWidget';
@@ -243,41 +234,6 @@ class CustomizeMyDataPageClassBase {
       }
       default: {
         return '';
-      }
-    }
-  }
-
-  public getWidgetIconFromKey(widgetKey: string) {
-    switch (widgetKey) {
-      case LandingPageWidgetKeys.ACTIVITY_FEED: {
-        return ActivityFeedIcon;
-      }
-      case LandingPageWidgetKeys.DATA_ASSETS: {
-        return DataAssetsIcon;
-      }
-      case LandingPageWidgetKeys.MY_DATA: {
-        return MyDataIcon;
-      }
-      case LandingPageWidgetKeys.KPI: {
-        return KPIIcon;
-      }
-      case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
-        return TotalAssetsIcon;
-      }
-      case LandingPageWidgetKeys.FOLLOWING: {
-        return FollowingIcon;
-      }
-      case LandingPageWidgetKeys.CURATED_ASSETS: {
-        return CuratedAssetsIcon;
-      }
-      case LandingPageWidgetKeys.MY_TASK: {
-        return MyTaskIcon;
-      }
-      case LandingPageWidgetKeys.DOMAINS: {
-        return DomainsIcon;
-      }
-      default: {
-        return null;
       }
     }
   }
