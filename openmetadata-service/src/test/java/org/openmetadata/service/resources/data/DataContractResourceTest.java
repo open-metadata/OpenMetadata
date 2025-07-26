@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -29,6 +30,7 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,35 +39,42 @@ import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDataContract;
-import org.openmetadata.schema.api.data.CreateDataContractResult;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.ContractStatus;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.QualityExpectation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
+import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -84,6 +93,17 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private final List<Table> createdTables = new ArrayList<>();
 
   private static String testDatabaseSchemaFQN = null;
+
+  private static TestCaseResourceTest testCaseResourceTest;
+  private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
+
+  @BeforeAll
+  public static void setup(TestInfo test) throws URISyntaxException, IOException {
+    testCaseResourceTest = new TestCaseResourceTest();
+    // testCaseResourceTest.setup(test);
+    ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
+    ingestionPipelineResourceTest.setup(test);
+  }
 
   @AfterEach
   void cleanup() {
@@ -342,6 +362,27 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     return String.format("http://localhost:%s/api/v1/tables", APP.getLocalPort());
   }
 
+  private DataContractResult getLatestResult(DataContract dataContract)
+      throws HttpResponseException {
+    WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
+    Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(
+        latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+  }
+
+  private DataContractResult runValidate(DataContract dataContract) throws HttpResponseException {
+    WebTarget validateTarget = getResource(dataContract.getId()).path("/validate");
+    Response validateResponse =
+        SecurityUtil.addHeaders(validateTarget, ADMIN_AUTH_HEADERS).post(null);
+    return TestUtils.readResponse(
+        validateResponse, DataContractResult.class, Status.OK.getStatusCode());
+  }
+
+  private Response getResultById(UUID dataContractId, UUID resultId) {
+    WebTarget resultTarget = getResource(dataContractId).path("/results").path(resultId.toString());
+    return SecurityUtil.addHeaders(resultTarget, ADMIN_AUTH_HEADERS).get();
+  }
+
   // ===================== CRUD Tests =====================
 
   @Test
@@ -502,26 +543,35 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     String originalJson = JsonUtils.pojoToJson(created);
 
-    // Add quality expectations via patch
-    List<QualityExpectation> qualityExpectations = new ArrayList<>();
-    qualityExpectations.add(
-        new QualityExpectation()
-            .withName("DataIntegrity")
-            .withDescription("Data must be consistent and valid")
-            .withDefinition("All records must pass validation rules"));
-    qualityExpectations.add(
-        new QualityExpectation()
-            .withName("Completeness")
-            .withDescription("All required fields must be populated")
-            .withDefinition("No null values in required columns"));
+    // Create test cases first for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_data_integrity_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+    
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    // Add quality expectations as EntityReferences to TestCases
+    List<EntityReference> qualityExpectations = new ArrayList<>();
+    qualityExpectations.add(testCase1.getEntityReference());
+    qualityExpectations.add(testCase2.getEntityReference());
     created.setQualityExpectations(qualityExpectations);
 
     DataContract patched = patchDataContract(created.getId(), originalJson, created);
 
     assertNotNull(patched.getQualityExpectations());
     assertEquals(2, patched.getQualityExpectations().size());
-    assertEquals("DataIntegrity", patched.getQualityExpectations().get(0).getName());
-    assertEquals("Completeness", patched.getQualityExpectations().get(1).getName());
+    assertEquals(testCase1.getId(), patched.getQualityExpectations().get(0).getId());
+    assertEquals(testCase2.getId(), patched.getQualityExpectations().get(1).getId());
   }
 
   @Test
@@ -603,12 +653,17 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   void testDataContractWithQualityExpectations(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
-    List<QualityExpectation> qualityExpectations = new ArrayList<>();
-    qualityExpectations.add(
-        new QualityExpectation()
-            .withName("Completeness")
-            .withDescription("Data should be complete")
-            .withDefinition("All required fields should have values"));
+    // Create test case first for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations = new ArrayList<>();
+    qualityExpectations.add(testCase.getEntityReference());
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table)
@@ -618,7 +673,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(dataContract.getQualityExpectations());
     assertEquals(1, dataContract.getQualityExpectations().size());
-    assertEquals("Completeness", dataContract.getQualityExpectations().getFirst().getName());
+    assertEquals(testCase.getId(), dataContract.getQualityExpectations().getFirst().getId());
   }
 
   @Test
@@ -719,6 +774,16 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   @Execution(ExecutionMode.CONCURRENT)
   void testDataContractYAMLAPI(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
+    
+    // Create test case first for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest("test_case_email_format_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+    
     String yamlContent =
         String.format(
             "name: %s\n"
@@ -734,10 +799,9 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
                 + "    description: Email field with format constraints\n"
                 + "    dataType: STRING\n"
                 + "qualityExpectations:\n"
-                + "  - name: EmailFormat\n"
-                + "    description: Email must be properly formatted\n"
-                + "    definition: Email must contain @ and valid domain",
-            "contract_" + test.getDisplayName(), table.getId(), C1, EMAIL_COL);
+                + "  - id: %s\n"
+                + "    type: testCase",
+            "contract_" + test.getDisplayName(), table.getId(), C1, EMAIL_COL, testCase.getId());
 
     DataContract dataContract = postYaml(yamlContent);
 
@@ -745,7 +809,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(ContractStatus.Active, dataContract.getStatus());
     assertEquals(2, dataContract.getSchema().size());
     assertEquals(1, dataContract.getQualityExpectations().size());
-    assertEquals("EmailFormat", dataContract.getQualityExpectations().getFirst().getName());
+    assertEquals(testCase.getId(), dataContract.getQualityExpectations().getFirst().getId());
   }
 
   @Test
@@ -1186,32 +1250,66 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testCreateDataContractResult(TestInfo test) throws IOException {
+  void testCreateOrUpdateDataContractResult(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
     CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
     DataContract dataContract = createDataContract(create);
 
+    // no result yet
+    assertNull(dataContract.getLatestResult());
+
     // Create a contract result
-    CreateDataContractResult createResult =
-        new CreateDataContractResult()
+    DataContractResult createResult =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(System.currentTimeMillis())
-            .withContractExecutionStatus(ContractExecutionStatus.Success)
-            .withResult("All validations passed")
+            .withContractExecutionStatus(ContractExecutionStatus.Running)
+            .withResult("Triggering...")
             .withExecutionTime(1234L);
 
     WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
     Response response =
-        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createResult));
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
     DataContractResult result =
         TestUtils.readResponse(response, DataContractResult.class, Status.OK.getStatusCode());
 
     assertNotNull(result);
     assertNotNull(result.getId());
     assertEquals(dataContract.getFullyQualifiedName(), result.getDataContractFQN());
-    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
-    assertEquals("All validations passed", result.getResult());
+    assertEquals(ContractExecutionStatus.Running, result.getContractExecutionStatus());
+    assertEquals("Triggering...", result.getResult());
     assertEquals(1234L, result.getExecutionTime());
+
+    // Get latest result
+    DataContractResult latest = getLatestResult(dataContract);
+
+    assertNotNull(latest);
+    assertEquals(result.getId(), latest.getId());
+
+    latest
+        .withContractExecutionStatus(ContractExecutionStatus.Success)
+        .withResult("Success result")
+        .withExecutionTime(2000L);
+
+    // Update the same result
+    SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(latest));
+    // Check the result was properly updated in the db
+    WebTarget getResultTarget =
+        getResource(dataContract.getId()).path("/results").path(result.getId().toString());
+    Response getResponse = SecurityUtil.addHeaders(getResultTarget, ADMIN_AUTH_HEADERS).get();
+    DataContractResult updatedResult =
+        TestUtils.readResponse(getResponse, DataContractResult.class, Status.OK.getStatusCode());
+
+    assertNotNull(updatedResult);
+    assertEquals(dataContract.getFullyQualifiedName(), updatedResult.getDataContractFQN());
+    assertEquals(ContractExecutionStatus.Success, updatedResult.getContractExecutionStatus());
+    assertEquals("Success result", updatedResult.getResult());
+    assertEquals(2000L, updatedResult.getExecutionTime());
+
+    // Ensure the latestResult is updated properly in the DataContract
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(updatedResult.getId(), updatedContract.getLatestResult().getResultId());
   }
 
   @Test
@@ -1221,11 +1319,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
     DataContract dataContract = createDataContract(create);
 
-    // Create multiple contract results with different dates
+    // Create multiple contract results with different dates and ids
     String dateStr = "2024-01-";
     for (int i = 1; i <= 5; i++) {
-      CreateDataContractResult createResult =
-          new CreateDataContractResult()
+      DataContractResult createResult =
+          new DataContractResult()
               .withDataContractFQN(dataContract.getFullyQualifiedName())
               .withTimestamp(TestUtils.dateToTimestamp(dateStr + String.format("%02d", i)))
               .withContractExecutionStatus(
@@ -1236,7 +1334,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
       Response response =
           SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS)
-              .post(Entity.json(createResult));
+              .put(Entity.json(createResult));
       assertEquals(Status.OK.getStatusCode(), response.getStatus());
       response.readEntity(String.class); // Consume response
     }
@@ -1274,8 +1372,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Create multiple results with different dates
     String[] dates = {"2024-01-01", "2024-01-02", "2024-01-03"};
     for (int i = 0; i < dates.length; i++) {
-      CreateDataContractResult createResult =
-          new CreateDataContractResult()
+      DataContractResult createResult =
+          new DataContractResult()
               .withDataContractFQN(dataContract.getFullyQualifiedName())
               .withTimestamp(TestUtils.dateToTimestamp(dates[i]))
               .withContractExecutionStatus(ContractExecutionStatus.Success)
@@ -1285,16 +1383,13 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
       Response response =
           SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS)
-              .post(Entity.json(createResult));
+              .put(Entity.json(createResult));
       assertEquals(Status.OK.getStatusCode(), response.getStatus());
       response.readEntity(String.class); // Consume response
     }
 
     // Get latest result
-    WebTarget latestTarget = getResource(dataContract.getId()).path("/results/latest");
-    Response latestResponse = SecurityUtil.addHeaders(latestTarget, ADMIN_AUTH_HEADERS).get();
-    DataContractResult latest =
-        TestUtils.readResponse(latestResponse, DataContractResult.class, Status.OK.getStatusCode());
+    DataContractResult latest = getLatestResult(dataContract);
 
     assertNotNull(latest);
     assertEquals("Result 2", latest.getResult()); // Latest is from January 3rd (index 2)
@@ -1310,8 +1405,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Create a result with a specific date
     long timestamp = TestUtils.dateToTimestamp("2024-01-15");
-    CreateDataContractResult createResult =
-        new CreateDataContractResult()
+    DataContractResult createResult =
+        new DataContractResult()
             .withDataContractFQN(dataContract.getFullyQualifiedName())
             .withTimestamp(timestamp)
             .withContractExecutionStatus(ContractExecutionStatus.Success)
@@ -1320,7 +1415,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
     Response createResponse =
-        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).post(Entity.json(createResult));
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult));
     assertEquals(Status.OK.getStatusCode(), createResponse.getStatus());
     createResponse.readEntity(String.class); // Consume response
 
@@ -1349,5 +1444,381 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
             jsonResponse2,
             new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContractResult>>() {});
     assertEquals(0, results2.getData().size());
+  }
+
+  // ===================== Test Suite Creation Tests =====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateDataContractWithoutQualityExpectations_NoTestSuiteCreated(TestInfo test)
+      throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+
+    // Create data contract without quality expectations
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract was created
+    assertNotNull(dataContract);
+    assertEquals(create.getName(), dataContract.getName());
+
+    // Verify no test suite was created for this data contract
+    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+
+    // Try to get test suite - it should not exist
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateDataContractWithQualityExpectations_TestSuiteCreated(TestInfo test)
+      throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create real test case first
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest("test_case_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations = List.of(testCase.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(qualityExpectations);
+
+    // Create data contract with quality expectations
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract was created with quality expectations
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getQualityExpectations());
+    assertEquals(1, dataContract.getQualityExpectations().size());
+
+    // Verify test suite was created using TestSuiteResourceTest
+    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuite);
+    assertEquals(expectedTestSuiteName, testSuite.getName());
+    assertEquals(
+        "Logical test suite for Data Contract: " + dataContract.getName(),
+        testSuite.getDescription());
+    assertNotNull(testSuite.getTests());
+    assertEquals(1, testSuite.getTests().size());
+    assertEquals(testCase.getId(), testSuite.getTests().get(0).getId());
+
+    // Verify the Data Contract has the pointer to the test suite
+    assertNotNull(dataContract.getTestSuite());
+    assertEquals(testSuite.getId(), dataContract.getTestSuite().getId());
+
+    // Verify ingestion pipeline was created for the test suite
+    IngestionPipeline pipeline =
+        ingestionPipelineResourceTest.getEntity(
+            testSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(pipeline);
+    assertEquals(expectedTestSuiteName, pipeline.getName());
+    assertEquals(PipelineType.TEST_SUITE, pipeline.getPipelineType());
+    assertEquals(testSuite.getId(), pipeline.getService().getId());
+    assertEquals("testSuite", pipeline.getService().getType());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testUpdateDataContractQualityExpectations_TestSuiteUpdated(TestInfo test)
+      throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create first real test case
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_1_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> initialExpectations = List.of(testCase1.getEntityReference());
+
+    // Create data contract with initial quality expectations
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(initialExpectations);
+    DataContract dataContract = createDataContract(create);
+
+    // Verify initial test suite was created with 1 test
+    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TestSuite initialTestSuite =
+        testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
+    assertEquals(1, initialTestSuite.getTests().size());
+
+    // Create second real test case
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_2_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    // Update quality expectations with additional test case
+    List<EntityReference> updatedExpectations = 
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    // Update the data contract with new quality expectations
+    String originalJson = JsonUtils.pojoToJson(dataContract);
+    dataContract.setQualityExpectations(updatedExpectations);
+    DataContract updatedContract =
+        patchDataContract(dataContract.getId(), originalJson, dataContract);
+
+    // Verify the contract was updated
+    assertEquals(2, updatedContract.getQualityExpectations().size());
+
+    // Verify test suite was updated with new test cases
+    TestSuite updatedTestSuite =
+        testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedTestSuite.getTests());
+    assertEquals(2, updatedTestSuite.getTests().size());
+
+    // Verify both test cases are in the test suite
+    List<UUID> testCaseIds =
+        updatedTestSuite.getTests().stream().map(EntityReference::getId).toList();
+    assertTrue(testCaseIds.contains(testCase1.getId()));
+    assertTrue(testCaseIds.contains(testCase2.getId()));
+
+    // Verify ingestion pipeline still exists and is properly configured
+    IngestionPipeline updatedPipeline =
+        ingestionPipelineResourceTest.getEntity(
+            updatedTestSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(updatedPipeline);
+    assertEquals(expectedTestSuiteName, updatedPipeline.getName());
+    assertEquals(PipelineType.TEST_SUITE, updatedPipeline.getPipelineType());
+    assertEquals(updatedTestSuite.getId(), updatedPipeline.getService().getId());
+    assertEquals("testSuite", updatedPipeline.getService().getType());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateDataContractWithFailingSemantics(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create semantics rules that will fail - checking for a field that doesn't exist
+    List<SemanticsRule> failingSemantics =
+        List.of(
+            new SemanticsRule()
+                .withName("Required Field Check")
+                .withDescription("Checks for presence of a description")
+                .withRule("{\"!!\": {\"var\": \"description\"}}"));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSemantics(failingSemantics);
+
+    // Create data contract with failing semantics
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract was created
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getSemantics());
+    assertEquals(1, dataContract.getSemantics().size());
+
+    // Call the validate endpoint
+    DataContractResult result = runValidate(dataContract);
+
+    // Verify the validation result shows failure
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+    assertTrue(result.getResult().contains("Semantics validation failed"));
+
+    // Verify semantics validation details
+    assertNotNull(result.getSemanticsValidation());
+    assertEquals(0, result.getSemanticsValidation().getPassed().intValue());
+    assertEquals(1, result.getSemanticsValidation().getFailed().intValue());
+    assertEquals(1, result.getSemanticsValidation().getTotal().intValue());
+    assertNotNull(result.getSemanticsValidation().getFailedRules());
+    assertEquals(1, result.getSemanticsValidation().getFailedRules().size());
+    assertEquals(
+        "Required Field Check",
+        result.getSemanticsValidation().getFailedRules().get(0).getRuleName());
+
+    // Verify the DataContract latestResult reflects the failed validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    DataContractResult latest = getLatestResult(dataContract);
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
+    assertTrue(
+        updatedContract.getLatestResult().getMessage().contains("Semantics validation failed"));
+    assertEquals(
+        result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateDataContractWithPassingSemantics(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create semantics rules that will pass - checking for fields that exist in the table
+    List<SemanticsRule> passingSemantics =
+        List.of(
+            new SemanticsRule()
+                .withName("ID Field Exists")
+                .withDescription("Checks that the ID field exists")
+                .withRule("{\"!!\": {\"var\": \"id\"}}"),
+            new SemanticsRule()
+                .withName("Name Field Exists")
+                .withDescription("Checks that the name field exists")
+                .withRule("{\"!!\": {\"var\": \"name\"}}"));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSemantics(passingSemantics);
+
+    // Create data contract with passing semantics
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract was created
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getSemantics());
+    assertEquals(2, dataContract.getSemantics().size());
+
+    // Call the validate endpoint
+    DataContractResult result = runValidate(dataContract);
+
+    // Verify the validation result shows success
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+
+    // Verify semantics validation details
+    assertNotNull(result.getSemanticsValidation());
+    assertEquals(2, result.getSemanticsValidation().getPassed().intValue());
+    assertEquals(0, result.getSemanticsValidation().getFailed().intValue());
+    assertEquals(2, result.getSemanticsValidation().getTotal().intValue());
+    assertTrue(
+        result.getSemanticsValidation().getFailedRules() == null
+            || result.getSemanticsValidation().getFailedRules().isEmpty());
+
+    // Verify the DataContract latestResult reflects the successful validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Success, updatedContract.getLatestResult().getStatus());
+    assertEquals(
+        result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testLatestResultOnlyUpdatedForNewerResults(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Initially no latest result
+    assertNull(dataContract.getLatestResult());
+
+    // Create first result with timestamp T1
+    long timestamp1 = System.currentTimeMillis();
+    DataContractResult createResult1 =
+        new DataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp1)
+            .withContractExecutionStatus(ContractExecutionStatus.Success)
+            .withResult("First result")
+            .withExecutionTime(1000L);
+
+    WebTarget resultsTarget = getResource(dataContract.getId()).path("/results");
+    Response response1 =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult1));
+    DataContractResult result1 =
+        TestUtils.readResponse(response1, DataContractResult.class, Status.OK.getStatusCode());
+
+    // Verify first result becomes latestResult
+    DataContract contractAfterFirst = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterFirst.getLatestResult());
+    assertEquals(timestamp1, contractAfterFirst.getLatestResult().getTimestamp().longValue());
+    assertEquals("First result", contractAfterFirst.getLatestResult().getMessage());
+    assertEquals(result1.getId(), contractAfterFirst.getLatestResult().getResultId());
+
+    // Create second result with OLDER timestamp T2 < T1 (should NOT update latestResult)
+    long timestamp2 = timestamp1 - 10000; // 10 seconds earlier
+    DataContractResult createResult2 =
+        new DataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp2)
+            .withContractExecutionStatus(ContractExecutionStatus.Failed)
+            .withResult("Older result")
+            .withExecutionTime(2000L);
+
+    Response response2 =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult2));
+    DataContractResult result2 =
+        TestUtils.readResponse(response2, DataContractResult.class, Status.OK.getStatusCode());
+
+    // Verify latestResult is NOT updated (should still be first result)
+    DataContract contractAfterSecond = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterSecond.getLatestResult());
+    assertEquals(
+        timestamp1,
+        contractAfterSecond.getLatestResult().getTimestamp().longValue()); // Still first timestamp
+    assertEquals(
+        "First result", contractAfterSecond.getLatestResult().getMessage()); // Still first message
+    assertEquals(
+        result1.getId(),
+        contractAfterSecond.getLatestResult().getResultId()); // Still first result ID
+
+    // Create third result with NEWER timestamp T3 > T1 (should update latestResult)
+    long timestamp3 = timestamp1 + 10000; // 10 seconds later
+    DataContractResult createResult3 =
+        new DataContractResult()
+            .withDataContractFQN(dataContract.getFullyQualifiedName())
+            .withTimestamp(timestamp3)
+            .withContractExecutionStatus(ContractExecutionStatus.Running)
+            .withResult("Newest result")
+            .withExecutionTime(3000L);
+
+    Response response3 =
+        SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult3));
+    DataContractResult result3 =
+        TestUtils.readResponse(response3, DataContractResult.class, Status.OK.getStatusCode());
+
+    // Verify latestResult IS updated to the newest result
+    DataContract contractAfterThird = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterThird.getLatestResult());
+    assertEquals(
+        timestamp3,
+        contractAfterThird.getLatestResult().getTimestamp().longValue()); // Now third timestamp
+    assertEquals(
+        "Newest result", contractAfterThird.getLatestResult().getMessage()); // Now third message
+    assertEquals(
+        result3.getId(), contractAfterThird.getLatestResult().getResultId()); // Now third result ID
+  }
+
+  @Test
+  void testGetDataContractResultByIdWithNoResults(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract has no results initially
+    assertNull(dataContract.getLatestResult());
+
+    // Try to get a result by ID when no results exist
+    UUID randomResultId = UUID.randomUUID();
+    Response response = getResultById(dataContract.getId(), randomResultId);
+
+    // Expecting BadRequestException (400) when trying to get result from contract with no results
+    assertEquals(
+        Status.BAD_REQUEST.getStatusCode(),
+        response.getStatus(),
+        "Expected 400 Bad Request when getting result from contract with no results");
   }
 }

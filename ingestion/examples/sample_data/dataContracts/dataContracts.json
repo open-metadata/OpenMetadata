@@ -1,0 +1,155 @@
+{
+  "dataContracts": [
+    {
+      "tableFQN": "sample_data.ecommerce_db.shopify.dim_customer",
+      "name": "dim_customer_schema_contract",
+      "displayName": "Customer Dimension Schema Contract",
+      "description": "Data contract ensuring the customer dimension table maintains its required schema structure",
+      "status": "Active",
+      "schema": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC"
+        },
+        {
+          "name": "email",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "first_name",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "last_name",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "created_at",
+          "dataType": "TIMESTAMP"
+        }
+      ],
+      "effectiveFrom": "2024-01-01T00:00:00Z"
+    },
+    {
+      "tableFQN": "sample_data.ecommerce_db.shopify.dim_location",
+      "name": "dim_location_semantics_contract",
+      "displayName": "Location Dimension Semantics Contract",
+      "description": "Contract defining semantic rules for the location dimension table to ensure data quality and business logic compliance",
+      "status": "Active",
+      "schema": [
+        {
+          "name": "location_id",
+          "dataType": "NUMERIC"
+        },
+        {
+          "name": "shop_id",
+          "dataType": "NUMERIC"
+        },
+        {
+          "name": "name",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "address",
+          "dataType": "STRUCT"
+        }
+      ],
+      "semantics": [
+        {
+          "name": "description_exists",
+          "description": "Checks that the description field exists",
+          "rule": "{\"!!\": {\"var\": \"description\"}}",
+          "enabled": true
+        },
+        {
+          "name": "owners_field_exists",
+          "description": "Checks that the owners field exists",
+          "rule": "{\"!!\": {\"var\": \"owners\"}}",
+          "enabled": true
+        },
+        {
+          "name": "domains_field_exists",
+          "description": "Checks that the domains field exists",
+          "rule": "{\"!!\": {\"var\": \"domains\"}}",
+          "enabled": true
+        }
+      ],
+      "effectiveFrom": "2024-01-15T00:00:00Z"
+    },
+    {
+      "tableFQN": "sample_data.ecommerce_db.shopify.dim_address",
+      "name": "dim_address_comprehensive_contract",
+      "displayName": "Address Dimension Comprehensive Contract",
+      "description": "Complete data contract covering schema validation, semantic rules, and data quality expectations for the address dimension table",
+      "status": "Active",
+      "schema": [
+        {
+          "name": "address_id",
+          "dataType": "NUMERIC"
+        },
+        {
+          "name": "shop_id",
+          "dataType": "NUMERIC"
+        },
+        {
+          "name": "first_name",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "last_name",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "address1",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "city",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "region",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "zip",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "country",
+          "dataType": "VARCHAR"
+        },
+        {
+          "name": "phone",
+          "dataType": "VARCHAR"
+        }
+      ],
+      "semantics": [
+        {
+          "name": "description_exists",
+          "description": "Checks that the description field exists",
+          "rule": "{\"!!\": {\"var\": \"description\"}}",
+          "enabled": true
+        },
+        {
+          "name": "owners_field_exists",
+          "description": "Checks that the owners field exists",
+          "rule": "{\"!!\": {\"var\": \"owners\"}}",
+          "enabled": true
+        },
+        {
+          "name": "domains_field_exists",
+          "description": "Checks that the domains field exists",
+          "rule": "{\"!!\": {\"var\": \"domains\"}}",
+          "enabled": true
+        }
+      ],
+      "qualityExpectations": [
+        "sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals",
+        "sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between",
+        "sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between_with_sample_rows"
+      ],
+      "effectiveFrom": "2024-02-01T00:00:00Z"
+    }
+  ]
+}
