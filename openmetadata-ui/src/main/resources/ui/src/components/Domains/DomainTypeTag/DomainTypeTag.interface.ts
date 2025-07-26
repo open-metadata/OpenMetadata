@@ -17,7 +17,7 @@ export interface DomainTypeConfig {
   label: string;
   icon: ReactNode;
   className: string;
-  description?: string;
+  coloredIcon: ReactNode;
 }
 
 export interface DomainTypeTagProps {

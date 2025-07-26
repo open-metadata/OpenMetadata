@@ -36,7 +36,7 @@ const GridView = <T extends EntityData>({
 }: GridViewProps<T>) => {
   const { t } = useTranslation();
 
-  const generateEntityIcon = useCallback((record: EntityData) => {
+  const generateEntityIcon = useCallback((record: T) => {
     const style = record.style;
 
     if (style?.iconURL) {
@@ -72,7 +72,7 @@ const GridView = <T extends EntityData>({
   );
 
   const handleCardClick = useCallback(
-    (record: EntityData) => {
+    (record: T) => {
       if (onCardClick) {
         onCardClick(record);
       }
@@ -210,7 +210,7 @@ const GridView = <T extends EntityData>({
   );
 
   const renderCard = useCallback(
-    (record: EntityData) => {
+    (record: T) => {
       const owners = (record.owners as EntityReference[]) || [];
       const tags = (record.tags as TagLabel[]) || [];
       const glossaryTerms = tags.filter((tag) => tag.source === 'Glossary');

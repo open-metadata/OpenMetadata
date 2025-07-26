@@ -12,11 +12,11 @@
  */
 
 import { ListProps } from 'antd';
-import { EntityData, EntityTableType } from '../EntityTable.interface';
+import { EntityTableType } from '../EntityTable.interface';
 
 export interface GridViewProps<T> extends ListProps<T> {
-  data: EntityData[];
+  data: T[];
   loading: boolean;
   type?: EntityTableType;
-  onCardClick?: (record: EntityData) => void;
+  onCardClick?: (record: T) => void;
 }

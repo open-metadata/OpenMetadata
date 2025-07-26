@@ -535,59 +535,6 @@
   gap: 4px;
 }
 
-.entity-type-popover {
-  max-width: 184px;
-  .popover-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #262626;
-  }
-
-  .popover-options {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .popover-option {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 8px;
-    transition: all 0.2s ease;
-    color: @grey-500;
-
-    svg path {
-      stroke-width: 0.5px;
-    }
-
-    &.selected,
-    &:hover {
-      background-color: #f5faff;
-      color: @blue-600;
-      font-weight: 500;
-      svg path {
-        stroke: @blue-600;
-      }
-    }
-
-    .option-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      color: @grey-500;
-    }
-
-    .option-label {
-      font-size: 12px;
-      font-weight: 500;
-      color: inherit;
-    }
-  }
-}
-
 .entity-badge {
   display: inline-flex;
   align-items: center;
@@ -596,50 +543,6 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-
-  // Domain type styles removed - now handled by DomainTypeTag component
-
-  &.badge-secondary {
-    background-color: #f6f6f6;
-    color: @tag-text;
-    border: 1px solid #e0e0e0;
-  }
-
-  &.tags-badge {
-    background-color: #f0f5fa;
-    border: 1px solid #d2dbec;
-    border-radius: 8px;
-    color: #404040;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 30px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 16px;
-    white-space: nowrap;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background-color: #e8f0f7;
-      border-color: #c5d1e3;
-    }
-
-    .tag-icon {
-      width: 12px;
-      height: 12px;
-      flex-shrink: 0;
-      color: #404040;
-    }
-
-    .tag-text {
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 16px;
-      color: #404040;
-    }
-  }
 }
 
 // Entity Grid Layout Styles

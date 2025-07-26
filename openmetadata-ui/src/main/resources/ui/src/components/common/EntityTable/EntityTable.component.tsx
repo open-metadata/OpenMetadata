@@ -13,7 +13,7 @@
 
 import { Avatar, Button, Col, Modal, Row, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DeleteIconColored from '../../../assets/svg/delete-colored.svg';
@@ -49,13 +49,13 @@ import TableFilters from './TableFilters/TableFilters.component';
 
 import './entity-table.less';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const getRowKeyValue = (record: EntityData, rowKey: string): string => {
   return (record as unknown as Record<string, string>)[rowKey] || '';
 };
 
-const EntityTable = ({
+const EntityTable = <T extends EntityData>({
   type,
   data = [],
   loading = false,
@@ -77,7 +77,7 @@ const EntityTable = ({
   onDomainTypeChange,
   rowKey = 'id',
   showPagination = true,
-}: EntityTableProps) => {
+}: EntityTableProps<T>) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -99,7 +99,7 @@ const EntityTable = ({
 
   // Helper function to get the correct navigation path based on entity type
   const getEntityNavigationPath = useCallback(
-    (record: EntityData) => {
+    (record: T) => {
       switch (type) {
         case 'data-products':
           return getEntityDetailsPath(
@@ -118,7 +118,7 @@ const EntityTable = ({
   const [selectedRows, setSelectedRows] = useState<Key[]>([]);
   const [deleteModal, setDeleteModal] = useState<{
     visible: boolean;
-    entity?: EntityData;
+    entity?: T;
   }>({ visible: false });
   const [isDeleting, setIsDeleting] = useState(false);
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
@@ -160,7 +160,7 @@ const EntityTable = ({
     [onSearchChange]
   );
 
-  const generateEntityIcon = useCallback((record: EntityData) => {
+  const generateEntityIcon = useCallback((record: T) => {
     const style = record.style;
 
     if (style?.iconURL) {
@@ -181,11 +181,7 @@ const EntityTable = ({
   }, []);
 
   const getDomainTypeForDisplay = useCallback(
-    (record: EntityData): string => {
-      if (type === 'data-products') {
-        return 'Data Product';
-      }
-
+    (record: T): string => {
       const domain = record as Domain;
 
       return domain.domainType || DomainType.Aggregate;
@@ -194,10 +190,19 @@ const EntityTable = ({
   );
 
   const handleDomainTypeSelection = useCallback(
-    (recordId: string, newDomainType: string) => {
-      onDomainTypeChange?.(recordId, newDomainType);
+    (_recordId: string, newDomainType: string) => {
+      const currentDomainTypes = filters.domainTypes || [];
+
+      if (!currentDomainTypes.includes(newDomainType)) {
+        const updatedFilters: EntityTableFilters = {
+          ...filters,
+          domainTypes: [...currentDomainTypes, newDomainType],
+        };
+
+        onFiltersUpdate?.(updatedFilters);
+      }
     },
-    [onDomainTypeChange]
+    [filters, onFiltersUpdate]
   );
 
   const getEntityDisplayName = (entityType: EntityTableType): string => {
@@ -213,13 +218,13 @@ const EntityTable = ({
     }
   };
 
-  const generateColumns = useCallback((): EntityTableColumn[] => {
-    const baseColumns: EntityTableColumn[] = [
+  const generateColumns = useCallback((): EntityTableColumn<T>[] => {
+    const baseColumns: EntityTableColumn<T>[] = [
       {
         key: 'name',
         title: getEntityDisplayName(type),
         dataIndex: 'name',
-        render: (value: unknown, record: EntityData) => (
+        render: (_value: unknown, record: T) => (
           <div className="entity-name-cell">
             {generateEntityIcon(record)}
             <div className="entity-info">
@@ -299,7 +304,7 @@ const EntityTable = ({
         key: 'domainType',
         title: t('label.domain-type'),
         dataIndex: 'domainType',
-        render: (_value: unknown, record: EntityData) => {
+        render: (_value: unknown, record: T) => {
           const domainType = getDomainTypeForDisplay(record);
           const recordId = getRowKeyValue(record, rowKey);
 
@@ -308,9 +313,7 @@ const EntityTable = ({
               showModal
               domainType={domainType}
               onDomainTypeSelect={(newType: string) => {
-                if (onDomainTypeChange) {
-                  handleDomainTypeSelection(recordId, newType);
-                }
+                handleDomainTypeSelection(recordId, newType);
               }}
             />
           );
@@ -359,13 +362,12 @@ const EntityTable = ({
     getEntityNavigationPath,
     handleDomainTypeSelection,
     rowKey,
-    onDomainTypeChange,
   ]);
 
-  const antdColumns: ColumnsType<EntityData> = useMemo(() => {
+  const antdColumns: ColumnsType<T> = useMemo(() => {
     const columns = generateColumns();
 
-    const baseColumns = columns.map((column: EntityTableColumn) => {
+    const baseColumns = columns.map((column: EntityTableColumn<T>) => {
       return {
         key: column.key,
         title: column.title,
@@ -382,7 +384,7 @@ const EntityTable = ({
   }, [generateColumns, selectedRows, data, rowKey]);
 
   const handleRowClick = useCallback(
-    (record: EntityData) => {
+    (record: T) => {
       if (onRowClick) {
         onRowClick(record);
       }
@@ -390,7 +392,7 @@ const EntityTable = ({
     [onRowClick]
   );
 
-  const handleDelete = async (entity: EntityData) => {
+  const handleDelete = async (entity: T) => {
     if (!onDelete) {
       return;
     }
@@ -516,12 +518,14 @@ const EntityTable = ({
     switch (view) {
       case EntityListViewOptions.GRID:
         return (
-          <GridView<EntityData>
+          <GridView<T>
             data={data}
             header={renderHeader()}
             loading={loading}
             type={type}
-            onCardClick={(record) => navigate(getEntityNavigationPath(record))}
+            onCardClick={(record) =>
+              navigate(getEntityNavigationPath(record as T))
+            }
           />
         );
 
@@ -562,12 +566,14 @@ const EntityTable = ({
 
       default:
         return (
-          <GridView<EntityData>
+          <GridView<T>
             data={data}
             header={renderHeader()}
             loading={loading}
             type={type}
-            onCardClick={(record) => navigate(getEntityNavigationPath(record))}
+            onCardClick={(record) =>
+              navigate(getEntityNavigationPath(record as T))
+            }
           />
         );
     }

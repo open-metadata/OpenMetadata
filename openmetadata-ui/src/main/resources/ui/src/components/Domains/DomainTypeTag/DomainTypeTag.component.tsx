@@ -15,8 +15,11 @@ import { Popover, Typography } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.svg';
+import { ReactComponent as AggregateIconColored } from '../../../assets/svg/tags/ic-aggregate-colored.svg';
 import { ReactComponent as AggregateIcon } from '../../../assets/svg/tags/ic-aggregate.svg';
+import { ReactComponent as ConsumerAlignedIconColored } from '../../../assets/svg/tags/ic-consumer-aligned-colored.svg';
 import { ReactComponent as ConsumerAlignedIcon } from '../../../assets/svg/tags/ic-consumer-aligned.svg';
+import { ReactComponent as SourceAlignedIconColored } from '../../../assets/svg/tags/ic-source-aligned-colored.svg';
 import { ReactComponent as SourceAlignedIcon } from '../../../assets/svg/tags/ic-source-aligned.svg';
 import { DomainType } from '../../../generated/entity/domains/domain';
 import {
@@ -46,11 +49,13 @@ export const DomainTypeTag = ({
         className: 'aggregate-domain-type',
         description: t('message.aggregate-domain-description'),
         icon: <AggregateIcon />,
+        coloredIcon: <AggregateIconColored />,
         label: t('label.aggregate'),
       },
       [DomainType.ConsumerAligned]: {
         className: 'consumer-aligned-domain-type',
         description: t('message.consumer-aligned-domain-description'),
+        coloredIcon: <ConsumerAlignedIconColored />,
         icon: <ConsumerAlignedIcon />,
         label: t('label.consumer-aligned'),
       },
@@ -58,6 +63,7 @@ export const DomainTypeTag = ({
         className: 'source-aligned-domain-type',
         description: t('message.source-aligned-domain-description'),
         icon: <SourceAlignedIcon />,
+        coloredIcon: <SourceAlignedIconColored />,
         label: t('label.source-aligned'),
       },
     }),
@@ -87,7 +93,10 @@ export const DomainTypeTag = ({
         onClick={() => handleDomainTypeClick(type)}>
         <div className="domain-type-option-content">
           {config.icon && (
-            <span className="domain-type-option-icon">{config.icon}</span>
+            <span
+              className={`${config.className}-icon domain-type-option-icon`}>
+              {config.icon}
+            </span>
           )}
           <div className="domain-type-option-text">
             <Text className="domain-type-option-label">{config.label}</Text>
@@ -121,8 +130,10 @@ export const DomainTypeTag = ({
         showModal && !disabled ? 'interactive' : ''
       }`}>
       <div className="domain-type-tag-content">
-        {currentConfig.icon && (
-          <span className="domain-type-tag-icon">{currentConfig.icon}</span>
+        {currentConfig.coloredIcon && (
+          <span className="domain-type-tag-icon">
+            {currentConfig.coloredIcon}
+          </span>
         )}
         <Text className="domain-type-tag-label">{currentConfig.label}</Text>
         {shouldShowModal && (

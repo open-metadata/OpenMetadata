@@ -13,18 +13,17 @@
 
 @import (reference) '../../../styles/variables.less';
 
-// Base domain type tag styles
 .domain-type-tag {
   display: inline-flex;
   align-items: center;
   height: 23px;
   padding: 2.5px 6px;
-  border-radius: 4px;
+  border-radius: @size-xxs;
   border: 1px solid;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 16px;
+  gap: @size-xxs;
+  font-size: @size-sm;
+  font-weight: @font-medium;
+  line-height: @size-md;
   white-space: nowrap;
   width: fit-content;
   transition: all 0.2s ease;
@@ -32,7 +31,7 @@
   .domain-type-tag-content {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: @size-xxs;
   }
 
   .domain-type-tag-icon {
@@ -46,7 +45,7 @@
 
   .domain-type-tag-label {
     font-size: @size-sm;
-    font-weight: 500;
+    font-weight: @font-medium;
     line-height: @size-md;
     margin: 0;
   }
@@ -57,7 +56,7 @@
     &:hover {
       opacity: 0.8;
       transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: @box-shadow-default;
     }
   }
 
@@ -74,10 +73,6 @@
     .domain-type-tag-label {
       color: @violet-600;
     }
-
-    svg path {
-      stroke: @violet-600;
-    }
   }
 
   &.consumer-aligned-domain-type {
@@ -87,10 +82,6 @@
 
     .domain-type-tag-label {
       color: @blue-700;
-    }
-
-    svg path {
-      stroke: @blue-700;
     }
   }
 
@@ -102,10 +93,6 @@
     .domain-type-tag-label {
       color: @indigo-600;
     }
-
-    svg path {
-      stroke: @indigo-600;
-    }
   }
 
   .domain-type-tag-dropdown-icon {
@@ -116,53 +103,81 @@
 }
 
 .domain-type-tag-popover {
-  max-width: 184px;
+  max-width: 184px !important;
 
-  .ant-popover-inner-content {
-    padding: @size-sm;
-    .domain-type-options {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+  .ant-popover-arrow {
+    display: none;
+  }
 
-    .domain-type-option-content {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 8px;
-      transition: all 0.2s ease;
-      color: @grey-500;
-      padding-left: 14px;
+  .ant-popover-inner {
+    border-radius: @size-sm;
+    border: 1px solid @border-color-5;
+    box-shadow: @box-shadow-default;
 
-      svg path {
-        stroke-width: 0.5px;
+    .ant-popover-inner-content {
+      padding: @size-sm;
+      .domain-type-options {
+        display: flex;
+        flex-direction: column;
+        gap: @size-xs;
       }
 
-      &.selected,
-      &:hover {
-        background-color: #f5faff;
-        color: @blue-600;
-        font-weight: 500;
-        svg path {
-          stroke: @blue-600;
+      .domain-type-option {
+        color: @grey-500;
+
+        // Default selected styles (when no hover is happening)
+        &.selected,
+        &:hover {
+          background-color: @primary-25;
+          color: @blue-600;
+          font-weight: @font-medium;
+          svg path {
+            stroke: @blue-600;
+          }
+
+          .consumer-aligned-domain-type-icon {
+            stroke-width: 0.5px;
+          }
+          cursor: default;
         }
-      }
 
-      .domain-type-option-content {
-        max-height: 24px;
-        .domain-type-option-icon {
+        .domain-type-option-content {
           display: flex;
           align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          color: @grey-500;
+          gap: @size-xxs;
+          padding: 2px 2px 2px 14px;
+          padding-left: @size-smd;
+          max-height: @size-lg;
+
+          .domain-type-option-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: @grey-500;
+            height: @size-md;
+            width: @size-md;
+          }
+
+          .domain-type-option-label {
+            font-size: @size-sm !important;
+            font-weight: @font-medium !important;
+            color: inherit !important;
+          }
+        }
+      }
+
+      // When any option is being hovered, remove selected styles from all selected items
+      &:hover .domain-type-option.selected:not(:hover) {
+        background-color: transparent;
+        color: @grey-500;
+        font-weight: normal;
+        svg path {
+          stroke: @grey-500;
         }
 
-        .domain-type-option-label {
-          font-size: 12px;
-          font-weight: 500;
-          color: inherit;
+        .consumer-aligned-domain-type-icon {
+          stroke-width: normal;
         }
       }
     }

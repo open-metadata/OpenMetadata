@@ -28,20 +28,20 @@ export interface EntityTableFilters {
   [key: string]: string | boolean | string[] | null | undefined;
 }
 
-export interface EntityTableColumn {
+export interface EntityTableColumn<T = EntityData> {
   key: string;
   title: string | ReactNode;
   dataIndex?: string;
-  render?: (value: unknown, record: EntityData) => ReactNode;
-  sorter?: boolean | ((a: EntityData, b: EntityData) => number);
+  render?: (value: unknown, record: T) => ReactNode;
+  sorter?: boolean | ((a: T, b: T) => number);
   width?: number;
   fixed?: 'left' | 'right';
   ellipsis?: boolean;
 }
 
-export interface EntityTableProps {
+export interface EntityTableProps<T = EntityData> {
   type: EntityTableType;
-  data: EntityData[];
+  data: T[];
   loading?: boolean;
   total?: number;
   searchTerm?: string;
@@ -52,7 +52,7 @@ export interface EntityTableProps {
   onFiltersUpdate?: (filters: EntityTableFilters) => void;
   onDelete?: (id: string) => Promise<void>;
   onBulkDelete?: (ids: string[]) => Promise<void>;
-  onRowClick?: (record: EntityData) => void;
+  onRowClick?: (record: T) => void;
   onDomainTypeChange?: (recordId: string, newDomainType: string) => void;
   rowKey?: string;
   showPagination?: boolean;
