@@ -445,3 +445,31 @@ export const getEmptyJsonTree = (
     },
   };
 };
+
+/**
+ * Creates an empty JSON tree structure specifically optimized for QueryBuilderWidget
+ * This structure allows easy addition of groups and rules
+ */
+export const getEmptyJsonTreeForQueryBuilder = (
+  defaultField: string = EntityFields.OWNERS
+): OldJsonTree => {
+  return {
+    id: QbUtils.uuid(),
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [QbUtils.uuid()]: {
+        type: 'rule',
+        properties: {
+          field: defaultField,
+          operator: null,
+          value: [],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  };
+};
