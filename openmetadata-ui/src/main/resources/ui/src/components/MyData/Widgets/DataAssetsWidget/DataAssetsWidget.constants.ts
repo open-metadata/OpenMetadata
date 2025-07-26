@@ -13,16 +13,11 @@
 import { t } from '../../../../utils/i18next/LocalUtil';
 
 export const DATA_ASSETS_SORT_BY_KEYS = {
-  LATEST: 'latest',
   A_TO_Z: 'a-to-z',
   Z_TO_A: 'z-to-a',
 };
 
 export const DATA_ASSETS_SORT_BY_OPTIONS = [
-  {
-    key: DATA_ASSETS_SORT_BY_KEYS.LATEST,
-    label: t('label.latest'),
-  },
   {
     key: DATA_ASSETS_SORT_BY_KEYS.A_TO_Z,
     label: t('label.a-to-z'),

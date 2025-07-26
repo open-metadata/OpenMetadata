@@ -50,7 +50,6 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.AppException;
@@ -60,6 +59,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -129,6 +129,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           QUERY_COST_RECORD);
 
   private BulkSink searchIndexSink;
+  private RecreateIndexHandler recreateIndexHandler;
 
   @Getter private EventPublisherJob jobData;
   private ExecutorService producerExecutor;
@@ -494,23 +495,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
     jobLogger.addInitDetail(SEARCH_TYPE, searchType);
 
-    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      this.searchIndexSink =
-          new OpenSearchBulkSink(
-              searchRepository,
-              jobData.getBatchSize(),
-              jobData.getMaxConcurrentRequests(),
-              jobData.getPayLoadSize());
-      LOG.debug("Initialized OpenSearchBulkSink with batch size: {}", jobData.getBatchSize());
-    } else {
-      this.searchIndexSink =
-          new ElasticSearchBulkSink(
-              searchRepository,
-              jobData.getBatchSize(),
-              jobData.getMaxConcurrentRequests(),
-              jobData.getPayLoadSize());
-      LOG.debug("Initialized ElasticSearchBulkSink with batch size: {}", jobData.getBatchSize());
-    }
+    this.searchIndexSink =
+        searchRepository.createBulkSink(
+            jobData.getBatchSize(), jobData.getMaxConcurrentRequests(), jobData.getPayLoadSize());
+    LOG.debug(
+        "Initialized {} with batch size: {}",
+        searchIndexSink.getClass().getSimpleName(),
+        jobData.getBatchSize());
+
+    this.recreateIndexHandler = searchRepository.createReindexHandler();
+    LOG.debug(
+        "Initialized {} for reindex cleanup", recreateIndexHandler.getClass().getSimpleName());
 
     return clusterMetrics;
   }
@@ -1283,21 +1278,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void reCreateIndexes(Set<String> entities) {
-    for (String entityType : entities) {
-      if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
-        LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
-        return;
-      }
-      IndexMapping indexType = searchRepository.getIndexMapping(entityType);
-      if (indexType == null) {
-        LOG.warn(
-            "No index mapping found for entityType '{}'. Skipping index recreation.", entityType);
-        continue;
-      }
-      searchRepository.deleteIndex(indexType);
-      searchRepository.createIndex(indexType);
-      LOG.debug("Recreated index for entityType '{}'.", entityType);
-    }
+    recreateIndexHandler.reCreateIndexes(entities);
   }
 
   private Source<?> createSource(String entityType) {

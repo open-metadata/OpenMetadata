@@ -108,8 +108,6 @@ const MyTaskWidget = ({
       <div className="widget-content flex-1">
         {isEmpty(entityThread) ? (
           <WidgetEmptyState
-            actionButtonLink={`users/${currentUser?.name}/task`}
-            actionButtonText={t('label.view-all-task-plural')}
             dataTestId="my-task-empty-state"
             description={t('message.my-task-no-data-placeholder')}
             icon={

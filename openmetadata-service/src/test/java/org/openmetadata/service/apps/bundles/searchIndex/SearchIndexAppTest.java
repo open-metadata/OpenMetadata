@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -858,5 +859,49 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     AtomicLong totalEntitiesProcessed =
         (AtomicLong) totalEntitiesProcessedField.get(searchIndexApp);
     assertEquals(2, totalEntitiesProcessed.get(), "Should track 2 processed entities");
+  }
+
+  @Test
+  void testSearchIndexSinkInitializationWithElasticSearch() {
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+
+    lenient().when(searchRepository.createBulkSink(5, 10, 1000000L)).thenReturn(mockSink);
+
+    assertDoesNotThrow(() -> searchIndexApp.init(testApp));
+
+    EventPublisherJob jobData = searchIndexApp.getJobData();
+    assertNotNull(jobData);
+    assertEquals(5, jobData.getBatchSize());
+    assertEquals(10, jobData.getMaxConcurrentRequests());
+    assertEquals(1000000L, jobData.getPayLoadSize());
+  }
+
+  @Test
+  void testSearchIndexSinkInitializationWithOpenSearch() {
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(testJobData, Object.class));
+
+    lenient()
+        .when(searchRepository.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+
+    lenient().when(searchRepository.createBulkSink(5, 10, 1000000L)).thenReturn(mockSink);
+
+    assertDoesNotThrow(() -> searchIndexApp.init(testApp));
+
+    EventPublisherJob jobData = searchIndexApp.getJobData();
+    assertNotNull(jobData);
+    assertEquals(5, jobData.getBatchSize());
+    assertEquals(10, jobData.getMaxConcurrentRequests());
+    assertEquals(1000000L, jobData.getPayLoadSize());
   }
 }
