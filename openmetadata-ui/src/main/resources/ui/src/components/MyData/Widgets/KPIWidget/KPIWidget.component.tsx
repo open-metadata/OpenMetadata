@@ -26,7 +26,10 @@ import {
 } from 'recharts';
 import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
-import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
+import {
+  CHART_WIDGET_DAYS_DURATION,
+  ROUTES,
+} from '../../../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -43,6 +46,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getYAxisTicks } from '../../../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -169,13 +173,21 @@ const KPIWidget = ({
     }
   };
 
+  const { domain, ticks } = useMemo(() => {
+    if (kpiResults) {
+      return getYAxisTicks(kpiResults, 10);
+    }
+
+    return { domain: [0, 60], ticks: [0, 15, 30, 45, 60] };
+  }, [kpiResults]);
+
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
 
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink="/data-insights/kpi"
-        actionButtonText={t('label.explore-metric-plural')}
+        actionButtonLink={ROUTES.KPI_LIST}
+        actionButtonText={t('label.set-up-kpi')}
         description={t('message.no-kpi')}
         icon={<KPINoDataPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />}
         title={t('label.no-kpis-yet')}
@@ -197,7 +209,7 @@ const KPIWidget = ({
         )}
 
         <Col span={24}>
-          <ResponsiveContainer debounce={1} height={280} width="100%">
+          <ResponsiveContainer debounce={1} height={270} width="100%">
             <AreaChart
               margin={{
                 top: 10,
@@ -254,7 +266,7 @@ const KPIWidget = ({
                   strokeDasharray: '3 3',
                 }}
                 dataKey="count"
-                domain={[0, 60]}
+                domain={domain}
                 padding={{ top: 0, bottom: 0 }}
                 tick={{ fill: '#888', fontSize: 12 }}
                 tickLine={{
@@ -262,7 +274,7 @@ const KPIWidget = ({
                   strokeWidth: 1,
                   strokeDasharray: '3 3',
                 }}
-                ticks={[0, 15, 30, 45, 60]}
+                ticks={ticks}
               />
 
               {kpiNames.map((key, i) => (
@@ -293,7 +305,7 @@ const KPIWidget = ({
         </Col>
       </Row>
     );
-  }, [kpiResults, kpiLatestResults, kpiNames]);
+  }, [kpiResults, kpiLatestResults, kpiNames, isFullSizeWidget]);
 
   useEffect(() => {
     fetchKpiList().catch(() => {
