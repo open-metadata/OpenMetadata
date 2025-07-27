@@ -12,6 +12,7 @@
  */
 
 export interface EmptyWidgetPlaceholderV1Props {
+  personaName?: string;
   widgetKey: string;
   handleOpenAddWidgetModal: () => void;
   handlePlaceholderWidgetKey: (key: string) => void;
