@@ -12,13 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { useParams } from 'react-router-dom';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
-import { PageType } from '../../generated/system/ui/page';
+import { Page, PageType } from '../../generated/system/ui/page';
 import {
-  mockCustomizePageClassBase,
   mockDocumentData,
   mockPersonaDetails,
   mockPersonaName,
@@ -60,10 +56,6 @@ jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-jest.mock('../../utils/CustomizePageClassBase', () => {
-  return mockCustomizePageClassBase;
-});
-
 jest.mock('../../rest/DocStoreAPI', () => ({
   createDocument: jest
     .fn()
@@ -93,7 +85,35 @@ jest.mock('react-router-dom', () => ({
     pageFqn: PageType.LandingPage,
   })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn(),
 }));
+
+jest.mock('./CustomizeStore', () => ({
+  useCustomizeStore: jest.fn().mockImplementation(() => ({
+    document: mockDocumentData,
+    setDocument: jest.fn(),
+    getNavigation: jest.fn(),
+    currentPage: {} as Page,
+    getPage: jest.fn(),
+    setCurrentPageType: jest.fn(),
+  })),
+}));
+
+jest.mock(
+  '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData',
+  () => {
+    return jest.fn().mockImplementation(() => <div>CustomizeMyData</div>);
+  }
+);
+
+jest.mock(
+  '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>CustomizeGlossaryTermDetailPage</div>);
+  }
+);
 
 describe('CustomizablePage component', () => {
   it('CustomizablePage should show ErrorPlaceholder if the API to fetch the persona details fails', async () => {
@@ -109,13 +129,11 @@ describe('CustomizablePage component', () => {
   });
 
   it('CustomizablePage should show Loader while the layout is being fetched', async () => {
-    await act(async () => {
-      render(<CustomizablePage />);
+    render(<CustomizablePage />);
 
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-      expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
-      expect(screen.queryByTestId('customize-my-data')).toBeNull();
-    });
+    expect(await screen.findByText('Loader')).toBeInTheDocument();
+    expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+    expect(screen.queryByTestId('CustomizeMyData')).toBeNull();
   });
 
   it('CustomizablePage should pass the correct page layout data for the persona', async () => {
@@ -123,22 +141,8 @@ describe('CustomizablePage component', () => {
       render(<CustomizablePage />);
     });
 
-    expect(screen.getByTestId('customize-my-data')).toBeInTheDocument();
+    expect(screen.getByText('CustomizeMyData')).toBeInTheDocument();
     expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.ACTIVITY_FEED)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.FOLLOWING)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.RECENTLY_VIEWED)
-    ).toBeInTheDocument();
-    expect(screen.queryByText(LandingPageWidgetKeys.MY_DATA)).toBeNull();
-    expect(screen.queryByText(LandingPageWidgetKeys.KPI)).toBeNull();
-    expect(
-      screen.queryByText(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)
-    ).toBeNull();
   });
 
   it('CustomizablePage should pass the default layout data when no layout is present for the persona', async () => {
@@ -153,68 +157,11 @@ describe('CustomizablePage component', () => {
       render(<CustomizablePage />);
     });
 
-    expect(screen.getByTestId('customize-my-data')).toBeInTheDocument();
+    expect(screen.queryByText('CustomizeMyData')).toBeInTheDocument();
     expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.ACTIVITY_FEED)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.FOLLOWING)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.RECENTLY_VIEWED)
-    ).toBeInTheDocument();
-    expect(screen.getByText(LandingPageWidgetKeys.MY_DATA)).toBeInTheDocument();
-    expect(screen.getByText(LandingPageWidgetKeys.KPI)).toBeInTheDocument();
-    expect(
-      screen.getByText(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)
-    ).toBeInTheDocument();
   });
 
-  it('CustomizablePage should update the layout when layout data is present for persona', async () => {
-    await act(async () => {
-      render(<CustomizablePage />);
-    });
-
-    const saveCurrentPageLayoutBtn = screen.getByText(
-      'handleSaveCurrentPageLayout'
-    );
-
-    await act(async () => {
-      userEvent.click(saveCurrentPageLayoutBtn);
-    });
-
-    expect(mockShowSuccessToast).toHaveBeenCalledWith(
-      'server.page-layout-operation-success'
-    );
-  });
-
-  it('CustomizablePage should save the layout when no layout data present for persona', async () => {
-    (getDocumentByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({
-        response: {
-          status: 404,
-        },
-      })
-    );
-    await act(async () => {
-      render(<CustomizablePage />);
-    });
-
-    const saveCurrentPageLayoutBtn = screen.getByText(
-      'handleSaveCurrentPageLayout'
-    );
-
-    await act(async () => {
-      userEvent.click(saveCurrentPageLayoutBtn);
-    });
-
-    expect(mockShowSuccessToast).toHaveBeenCalledWith(
-      'server.page-layout-operation-success'
-    );
-  });
-
-  it('CustomizablePage should return null for invalid page FQN', async () => {
+  it('CustomizablePage should return ErrorPlaceHolder for invalid page FQN', async () => {
     (useParams as jest.Mock).mockImplementation(() => ({
       fqn: mockPersonaName,
       pageFqn: 'invalidName',
@@ -224,7 +171,7 @@ describe('CustomizablePage component', () => {
       render(<CustomizablePage />);
     });
 
-    expect(screen.queryByText('ErrorPlaceHolder')).toBeNull();
+    expect(screen.queryByText('ErrorPlaceHolder')).toBeInTheDocument();
     expect(screen.queryByText('Loader')).toBeNull();
     expect(screen.queryByTestId('customize-my-data')).toBeNull();
   });

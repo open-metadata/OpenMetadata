@@ -11,23 +11,17 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Dropdown,
-  Space,
-  Table as AntdTable,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
-import { WORKFLOWS_PROFILER_DOCS } from '../../../constants/docs.constants';
+import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -46,6 +40,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import TableComponent from '../../common/Table/Table';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { RowData } from './RowData';
 import './sample-data-table.less';
@@ -55,15 +50,15 @@ import {
   SampleDataType,
 } from './SampleData.interface';
 
-const SampleDataTable = ({
+const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
   owners,
   permissions,
-}: SampleDataProps) => {
+}) => {
   const { isTourPage } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
-
+  const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -106,8 +101,7 @@ const SampleDataTable = ({
         ),
         dataIndex: column,
         key: column,
-        accessor: column,
-        width: 210,
+        width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
@@ -203,14 +197,14 @@ const SampleDataTable = ({
             i18nKey="message.view-sample-data-entity"
             renderElement={
               <a
-                href={WORKFLOWS_PROFILER_DOCS}
+                href={AUTO_CLASSIFICATION_DOCS}
                 rel="noreferrer"
                 style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }
             values={{
-              entity: t('label.profiler-ingestion'),
+              entity: t('label.auto-classification'),
             }}
           />
         </Typography.Paragraph>
@@ -220,12 +214,12 @@ const SampleDataTable = ({
 
   return (
     <div
-      className={classNames('m-md', {
+      className={classNames('p-md border-default border-radius-sm bg-white', {
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-b-md justify-end w-full">
+      <Space className="m-y-xss justify-end w-full">
         {hasPermission && (
           <Dropdown
             menu={{
@@ -253,8 +247,7 @@ const SampleDataTable = ({
         )}
       </Space>
 
-      <AntdTable
-        bordered
+      <TableComponent
         columns={sampleData?.columns}
         data-testid="sample-data-table"
         dataSource={sampleData?.rows}
@@ -278,4 +271,4 @@ const SampleDataTable = ({
   );
 };
 
-export default withLoader<SampleDataProps>(SampleDataTable);
+export default withLoader(SampleDataTable);

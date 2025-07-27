@@ -13,19 +13,8 @@
 @import (reference) url('../../../styles/variables.less');
 
 .data-product-details {
-  .domain-content-container {
-    padding: 12px 20px;
-  }
-  .assets-tab-container {
-    .ant-tabs-nav {
-      margin-bottom: 0;
-    }
-    .ant-tabs-tab {
-      margin-left: 24px;
-    }
-    .page-layout-v1-vertical-scroll,
-    .page-layout-leftpanel {
-      height: @domain-page-height;
-    }
+  .ant-tabs-tabpane {
+    height: @domain-page-height;
+    overflow-y: auto;
   }
 }

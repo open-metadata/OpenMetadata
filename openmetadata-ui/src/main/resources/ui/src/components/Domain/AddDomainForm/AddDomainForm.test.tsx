@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm from './AddDomainForm.component';
 
@@ -80,7 +79,7 @@ describe('Test Add Domain component', () => {
     expect(screen.getByTestId('color-color-input')).toBeInTheDocument();
     expect(screen.getByText('label.domain-type')).toBeInTheDocument();
     expect(screen.getAllByTestId('helper-icon')).toHaveLength(2);
-    expect(screen.getByText('label.owner')).toBeInTheDocument();
+    expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
     expect(screen.getByTestId('add-owner')).toBeInTheDocument();
     expect(screen.getByText('label.expert-plural')).toBeInTheDocument();
     expect(screen.getByTestId('add-experts')).toBeInTheDocument();

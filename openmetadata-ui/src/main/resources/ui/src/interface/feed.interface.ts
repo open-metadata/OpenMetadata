@@ -37,18 +37,3 @@ export interface FeedCounts {
   totalCount: number;
   mentionCount: number;
 }
-
-export type EntityThreadField =
-  | 'description'
-  | 'columns'
-  | 'tags'
-  | 'tasks'
-  | 'charts'
-  | 'dataModel'
-  | 'mlFeatures'
-  | 'messageSchema';
-export interface EntityFieldThreads {
-  entityLink: string;
-  count: number;
-  entityField: string;
-}

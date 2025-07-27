@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { first, last } from 'lodash';
-import React, { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -20,7 +20,8 @@ import {
 } from '../../../constants/regex.constants';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import { SupportedLocales } from '../../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import './service-doc-panel.less';
@@ -83,14 +84,16 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const fetchRequirement = async () => {
     setIsLoading(true);
     try {
+      const supportedServiceType =
+        serviceType === 'Api' ? 'ApiEntity' : serviceType;
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      let filePath = `${i18n.language}/${serviceType}/${serviceName}.md`;
-      let fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}.md`;
+      let filePath = `${i18n.language}/${supportedServiceType}/${serviceName}.md`;
+      let fallbackFilePath = `${SupportedLocales.English}/${supportedServiceType}/${serviceName}.md`;
 
       if (isWorkflow && workflowType) {
-        filePath = `${i18n.language}/${serviceType}/workflows/${workflowType}.md`;
-        fallbackFilePath = `${SupportedLocales.English}/${serviceType}/workflows/${workflowType}.md`;
+        filePath = `${i18n.language}/${supportedServiceType}/workflows/${workflowType}.md`;
+        fallbackFilePath = `${SupportedLocales.English}/${supportedServiceType}/workflows/${workflowType}.md`;
       }
 
       const [translation, fallbackTranslation] = await Promise.allSettled([
@@ -102,10 +105,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
       if (translation.status === 'fulfilled') {
         response = translation.value;
-      }
-
-      if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
-        response = fallbackTranslation.value;
+      } else {
+        if (fallbackTranslation.status === 'fulfilled') {
+          response = fallbackTranslation.value;
+        }
       }
 
       setMarkdownContent(response);
@@ -121,7 +124,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }, [serviceName, serviceType]);
 
   useEffect(() => {
-    const fieldName = getActiveFieldName(activeField);
+    const fieldName =
+      serviceType === 'Applications'
+        ? getActiveFieldNameForAppDocs(activeField)
+        : getActiveFieldName(activeField);
     if (fieldName) {
       const element = document.querySelector(`[data-id="${fieldName}"]`);
       if (element) {
@@ -133,7 +139,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         element.setAttribute('data-highlighted', 'true');
       }
     }
-  }, [activeField, getActiveFieldName]);
+  }, [activeField, getActiveFieldName, serviceType]);
 
   if (isLoading) {
     return <Loader />;

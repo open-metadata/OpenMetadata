@@ -10,13 +10,14 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TestCaseResultIndex(TestCaseResult testCaseResult) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("changeDescription", "failedRowsSample");
+  private static final Set<String> excludeFields =
+      Set.of("changeDescription", "failedRowsSample", "incrementalChangeDescription");
 
   @Override
   public Object getEntity() {
@@ -41,14 +42,25 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
+    // Load TestCase with minimal fields - only what we need for the index
     TestCase testCase =
-        Entity.getEntityByName(Entity.TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
-    TestDefinition testDefinition =
         Entity.getEntityByName(
-            Entity.TEST_DEFINITION,
-            testCase.getTestDefinition().getFullyQualifiedName(),
-            "*",
+            Entity.TEST_CASE,
+            testCaseResult.getTestCaseFQN(),
+            "testSuites,testSuite,testDefinition,entityLink",
             Include.ALL);
+
+    // Load TestDefinition with only required fields
+    TestDefinition testDefinition = null;
+    if (testCase.getTestDefinition() != null) {
+      testDefinition =
+          Entity.getEntity(
+              Entity.TEST_DEFINITION,
+              testCase.getTestDefinition().getId(),
+              "testPlatforms,dataQualityDimension,entityType",
+              Include.ALL);
+    }
+
     // we set testSuites and testSuite at the root for cascade deletion purposes
     Map<String, Object> testCaseMap = JsonUtils.getMap(testCase);
     esDoc.put("testSuites", testCaseMap.get("testSuites"));
@@ -63,7 +75,9 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
                 "testDefinition")); // remove testCase fields not needed
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
-    esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+    if (testDefinition != null) {
+      esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+    }
     setParentRelationships(testCase, esDoc);
     return esDoc;
   }
@@ -80,7 +94,13 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
 
   private void setTableEntityParentRelations(
       MessageParser.EntityLink entityLink, Map<String, Object> esDoc) {
-    Table table = Entity.getEntityByName(Entity.TABLE, entityLink.getEntityFQN(), "*", Include.ALL);
+    // Only load the references we need for search indexing
+    Table table =
+        Entity.getEntityByName(
+            Entity.TABLE,
+            entityLink.getEntityFQN(),
+            "database,databaseSchema,service",
+            Include.ALL);
     EntityReference databaseSchemaReference = table.getDatabaseSchema();
     EntityReference databaseReference = table.getDatabase();
     EntityReference serviceReference = table.getService();

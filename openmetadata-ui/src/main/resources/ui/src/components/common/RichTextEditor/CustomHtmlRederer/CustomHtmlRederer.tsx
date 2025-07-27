@@ -23,7 +23,14 @@ import {
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
-import { t } from 'i18next';
+import CodeMirror from 'codemirror';
+import 'codemirror/addon/runmode/runmode';
+import 'codemirror/mode/clike/clike';
+import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/python/python';
+import 'codemirror/mode/sql/sql';
+import 'codemirror/mode/yaml/yaml';
+
 import katex from 'katex';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -33,6 +40,7 @@ import {
   MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   HTMLToken,
   OpenTagToken,
@@ -59,6 +67,22 @@ const getHTMLTokens = (node: MdNode): HTMLToken[] => {
     },
     { type: 'closeTag', tagName: 'div', outerNewLine: true },
   ];
+};
+
+export const CodeMirrorLanguageAliases: Readonly<Record<string, string>> = {
+  // Mappings for C-like languages https://codemirror.net/5/mode/clike/index.html
+  c: 'text/x-csrc',
+  'c++': 'text/x-c++src',
+  java: 'text/x-java',
+  csharp: 'text/x-csharp',
+  scala: 'text/x-scala',
+  kotlin: 'text/x-kotlin',
+  objectivec: 'text/x-objectivec',
+  'objectivec++': 'text/x-objectivec++',
+  // Aliases for convenience
+  js: 'javascript',
+  py: 'python',
+  cpp: 'text/x-c++src',
 };
 
 export const customHTMLRenderer: CustomHTMLRenderer = {
@@ -92,11 +116,31 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     if (fenceLength > 3) {
       codeAttrs['data-backticks'] = fenceLength;
     }
-    if (infoWords.length > 0 && infoWords[0].length > 0) {
-      const [lang] = infoWords;
+    const lang = (infoWords?.[0] && infoWords[0]) || null;
+    const codeFragments: React.ReactElement[] = [];
+    if (codeText && lang) {
+      // normalize CodeMirror language (mode) specifier
+      const cmLang = CodeMirrorLanguageAliases[lang] || lang;
 
-      preClasses.push(`lang-${lang}`);
-      codeAttrs['data-language'] = lang;
+      // set attributes
+      preClasses.push('cm-s-default', `lang-${cmLang}`);
+      codeAttrs['data-language'] = cmLang;
+
+      // apply highlight
+      CodeMirror.runMode(codeText, cmLang, (text, style) => {
+        if (style) {
+          const className = style
+            .split(/\s+/g)
+            .map((s) => `cm-${s}`)
+            .join(' ');
+          codeFragments.push(<span className={className}>{text}</span>);
+        } else {
+          codeFragments.push(<React.Fragment>{text}</React.Fragment>);
+        }
+      });
+    } else {
+      // plain code block
+      codeFragments.push(<React.Fragment>{codeText}</React.Fragment>);
     }
 
     return [
@@ -109,12 +153,12 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
         type: 'html',
         content: ReactDOMServer.renderToString(
           <>
-            <code {...codeAttrs}>{codeText}</code>
+            <code {...codeAttrs}>{...codeFragments}</code>
             <span
               className="code-copy-message"
               data-copied="false"
               data-testid="copied-message">
-              {t('label.copied')}
+              {i18n.t('label.copied').toString()}
             </span>
             <img
               className="code-copy-button"

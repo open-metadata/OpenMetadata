@@ -11,27 +11,13 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { isNil } from 'lodash';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
 import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
-import {
-  EntityReference,
-  Team,
-  TeamType,
-} from '../generated/entity/teams/team';
+import { Team, TeamType } from '../generated/entity/teams/team';
 import { getEntityName } from './EntityUtils';
-
-/**
- * To get filtered list of non-deleted(active) users
- * @param users List of users
- * @returns List of non-deleted(active) users
- */
-export const getActiveUsers = (users?: Array<EntityReference>) => {
-  return !isNil(users) ? users.filter((item) => !item.deleted) : [];
-};
+import { t } from './i18next/LocalUtil';
 
 export const filterChildTeams = (
   teamsList: Team[],

@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.services;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -30,13 +30,13 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -56,10 +56,11 @@ import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -71,7 +72,7 @@ public class PipelineServiceResourceTest
         PipelineService.class,
         PipelineServiceList.class,
         "services/pipelineServices",
-        "owners");
+        PipelineServiceResource.FIELDS);
     this.supportsPatch = false;
   }
 
@@ -102,7 +103,7 @@ public class PipelineServiceResourceTest
     assertResponse(
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[serviceType must not be null]");
+        "[query param serviceType must not be null]");
   }
 
   @Test
@@ -123,7 +124,8 @@ public class PipelineServiceResourceTest
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update pipeline description and ingestion service that are null
-    CreatePipelineService update = createRequest(test).withDescription("description1");
+    CreatePipelineService update =
+        createRequest(test).withDescription("description1").withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -156,15 +158,12 @@ public class PipelineServiceResourceTest
   void post_put_invalidConnection_as_admin_4xx(TestInfo test) {
     RedshiftConnection redshiftConnection = new RedshiftConnection();
     PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);
+    CreatePipelineService create = createRequest(test).withConnection(pipelineConnection);
     assertResponseContains(
-        () ->
-            createEntity(
-                createRequest(test).withDescription(null).withConnection(pipelineConnection),
-                ADMIN_AUTH_HEADERS),
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
-            "Failed to convert [%s] to type [Airflow]. Review the connection.",
-            getEntityName(test)));
+            "Failed to convert [%s] to type [Airflow]. Review the connection.", create.getName()));
   }
 
   @Test
@@ -263,7 +262,7 @@ public class PipelineServiceResourceTest
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwners());
 
-    fields = "owners,tags";
+    fields = "owners,tags,followers";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -12,6 +12,122 @@
  */
 
 @import (reference) url('./../../styles/variables.less');
+@import (reference) url('./../../styles/fonts.less');
+
+.login-form-container {
+  padding-left: 0;
+  height: calc(100vh - 32px);
+  display: flex;
+  align-items: center;
+
+  &.signup-page {
+    .login-box {
+      padding: @size-md @size-2xl;
+      .header-text {
+        margin-top: @size-md;
+      }
+
+      .login-form {
+        margin-top: @size-md;
+      }
+      .ant-form-item {
+        margin-bottom: @size-md;
+      }
+    }
+  }
+
+  .login-box {
+    background-color: @white;
+    border-radius: @border-rad-lg;
+    box-shadow: 0px 24px 48px -12px rgba(10, 13, 18, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    padding: @size-2xl;
+    text-align: center;
+    height: auto;
+
+    @media screen and (min-width: 1200px) {
+      padding: @size-xl;
+    }
+
+    .header-text {
+      margin-top: @size-2xl;
+      color: @grey-800;
+
+      @media screen and (max-width: 670px) {
+        margin-top: @size-lg;
+      }
+    }
+
+    .login-alert {
+      width: 412px;
+      @media screen and (max-width: 1200px) {
+        width: 380px;
+      }
+    }
+
+    .login-form {
+      margin-top: @size-xl;
+      width: 412px;
+
+      @media screen and (max-width: 1200px) {
+        width: 380px;
+        margin-top: @size-sm;
+      }
+
+      .error-alert {
+        border-color: #fbb4ae;
+      }
+    }
+
+    label {
+      color: @grey-text;
+      font-weight: 600;
+      width: 100%;
+
+      .forgot-password-link {
+        text-align: right;
+        flex: 1;
+      }
+    }
+
+    .input-field {
+      padding: @size-sm @size-md;
+      border-radius: @border-rad-xs;
+      border: 1px solid @grey-22;
+      background-color: @grey-23 !important;
+    }
+
+    .input-field::placeholder {
+      color: @grey-24;
+    }
+
+    #password,
+    #confirmPassword,
+    .input-field:focus {
+      background-color: @grey-23;
+    }
+
+    .ant-btn-link.link-btn {
+      padding: @size-xs;
+    }
+
+    .signup-text,
+    .ant-btn-link.link-btn {
+      @media screen and (min-width: 1650px) {
+        padding: 0 @size-xs;
+      }
+    }
+
+    .sso-signup {
+      margin-top: @size-xl;
+      margin-bottom: @size-lg;
+    }
+  }
+}
 
 .ant-form-item-explain-error {
   text-align: left;
@@ -26,18 +142,39 @@
     }
   }
 }
-.login-form {
-  margin-top: 5rem;
-  width: 334px;
-  .error-alert {
-    border-color: #fbb4ae;
+.login-alert {
+  margin-top: 1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
-.carousal-description {
-  width: 750px;
-  text-align: center;
-  margin: 16px auto;
-  padding: 0 48px;
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .carousal-container {
@@ -48,21 +185,39 @@
   left: 50%;
   transform: translate(-50%, -50%);
 
-  .slick-dots.slick-dots-bottom {
-    position: initial;
-    .slick-active {
-      button {
-        background-color: @primary-color;
-        width: inherit;
-        border-radius: 5px;
+  h1 {
+    margin-bottom: 36px;
+  }
+}
+
+.login-carousel {
+  .slick-slide {
+    > div {
+      height: 80vh !important;
+
+      .slider-container {
+        max-width: 100%;
+        text-align: center;
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
+
+        .text-container {
+          max-width: 80%;
+          margin: 0 auto;
+          padding-bottom: 2rem;
+        }
       }
-    }
-    button {
-      background-color: @primary-color;
-      opacity: 0.7;
-      height: 10px;
-      width: 10px;
-      border-radius: 50%;
+
+      .main-image {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: 18px;
+        overflow: hidden;
+      }
     }
   }
 }

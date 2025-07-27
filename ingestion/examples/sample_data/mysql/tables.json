@@ -1,0 +1,1273 @@
+{
+  "tables": [
+    {
+      "name": "Tags",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Tags",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "tag_id",
+          "dataType": "INT",
+          "dataLength": 1,
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "name3094163198113948825877815619",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name34276180133870265105954391099",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2441499925237597726956298255",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2814684936150693784793040409",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1869763170455684210434861925",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name4124554307345419454558400303",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name75886882051625377936942795",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3409393152543106078206012715",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name421540831829594310801570407",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name4003031190279759257319330017",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name19012108203374193108287426115",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1770970018265244420187761576",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name476611616299383227079413588",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name70351798697260971769351375",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name350991760359413296741413974",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name4283862931579085177262724176",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3310958237961866523190661681",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1224596797714534121096587485",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1562876223209206861552514105",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name31647922762300013113413673700",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1912481498589517113047727841",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1659673305932008675691605693",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2637822360235572072870003055",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name238208342434987831873855377",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name420155849991603272613408515",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name15972886689246181101772939375",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name688709923919816581184215225",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1022463067852712999242878794",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name330760591968592581255523907",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1708392467761475191722765562",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1658376835960305241667488302",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name4033359328214956553789157088",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name369833371654718386723959022",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name465018259538438139805269650",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2715371926906221316791802831",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3050180292855408514040736054",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name21470057371546281110932736285",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3099415666579376924925889636",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name36479174507575420980893515",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1207048522823275573719023148",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name261354207560879241822950667",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name507404839708785849834908578",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name356041519142674587045794893",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name78165181278611542418646526",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2775847881247922277830021562",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1541992313919189715096513442",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name220762524955213653585049171",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2005519742774849749874303433",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name610458044848431891871396915",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name365734778477526611223173154",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name425938918137801643639056704",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name2215010653706834389772240463",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1440186534886048547958401836",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name209335940254166988617840543",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name316094430102183377084650459",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3667341401377478345026497716",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name17305634904498865857107781",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3417999330399761618045671580",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name211106106691877115087937883",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1613143231282999794497573691",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1870108582286596771842692713",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name351950139162348739508882307",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name43901162779529439302557163",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3955992500845922464654446333",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1568787278694331673878407012",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name6696584825684261105918556418",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1812534224752309820163311130",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1121161899474705257732444063",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name82060473660912990517778068",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name19803974379854754106168362272",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name4176943752701696279633522269",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name1220833521817492666534807653",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name21443710083362718103903214900",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name961635519888549358895807149",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3442749814965486110711153157",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name3896612358229893411062789826",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name301734380196122686062074610",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "name497182842769943118714958952",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "id": "5f40fbdc-7652-4bb5-8dd8-5834c382b8cf",
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "id": "9ec40d31-2cc3-434b-b79e-93a22ffb695b",
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "id": "93fd8fbb-cecd-46b5-ae9a-0f6cda13a923",
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "Users",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Users",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "user_id",
+          "dataType": "INT",
+          "dataLength": 1,
+          "dataTypeDisplay": "int",
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "username",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar(50)",
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "email",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "created_at",
+          "dataType": "TIMESTAMP",
+          "dataLength": 1,
+          "dataTypeDisplay": "timestamp",
+          "constraint": "NULL",
+          "ordinalPosition": 4
+        }
+      ],
+      "databaseSchema": {
+        "id": "5f40fbdc-7652-4bb5-8dd8-5834c382b8cf",
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "id": "9ec40d31-2cc3-434b-b79e-93a22ffb695b",
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "id": "93fd8fbb-cecd-46b5-ae9a-0f6cda13a923",
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "Categories",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Categories",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "category_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataLength": 100,
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "name2507782527390313519868558824",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar(100)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 2
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "Posts",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Posts",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "post_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "user_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "category_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "title",
+          "displayName": null,
+          "dataType": "VARCHAR",
+          "arrayDataType": null,
+          "dataLength": 255,
+          "precision": null,
+          "scale": null,
+          "dataTypeDisplay": "varchar(255)",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 4
+        },
+        {
+          "name": "content",
+          "displayName": null,
+          "dataType": "TEXT",
+          "dataTypeDisplay": "text",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 5
+        },
+        {
+          "name": "created_at",
+          "displayName": null,
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 6
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "user_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Users.user_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        },
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "category_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Categories.category_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        }
+      ],
+      "databaseSchema": {
+        "id": "3b2c045a-03ea-4303-abf3-082ac4e73804",
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "id": "c1a9f3bf-8bb8-43e3-beeb-e4c2293b977a",
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "id": "c0382692-7cf3-40b7-9aa7-b14bf2cbecdd",
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "Comments",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Comments",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "comment_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "post_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "user_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 3
+        },
+        {
+          "name": "comment",
+          "displayName": null,
+          "dataType": "TEXT",
+          "dataTypeDisplay": "text",
+          "description": null,
+          "constraint": "NOT_NULL",
+          "ordinalPosition": 4
+        },
+        {
+          "name": "created_at",
+          "displayName": null,
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 5
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "post_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Posts.post_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        },
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "user_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Users.user_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "PostTags",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.PostTags",
+      "description": "testdesc2",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "post_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": null,
+          "ordinalPosition": 1
+        },
+        {
+          "name": "tag_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": null,
+          "ordinalPosition": 2
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "post_id",
+            "tag_id"
+          ],
+          "referredColumns": null,
+          "relationshipType": null
+        },
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "post_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Posts.post_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        },
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "tag_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Tags.tag_id"
+          ],
+          "relationshipType": "MANY_TO_ONE"
+        }
+      ],
+      "databaseSchema": {
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "id": "c1a9f3bf-8bb8-43e3-beeb-e4c2293b977a",
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "id": "c0382692-7cf3-40b7-9aa7-b14bf2cbecdd",
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    },
+    {
+      "name": "Profiles",
+      "displayName": null,
+      "fullyQualifiedName": "mysql_sample.default.posts_db.Profiles",
+      "description": null,
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "profile_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "user_id",
+          "displayName": null,
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": null,
+          "constraint": "UNIQUE",
+          "ordinalPosition": 2
+        },
+        {
+          "name": "bio",
+          "displayName": null,
+          "dataType": "TEXT",
+          "dataTypeDisplay": "text",
+          "description": null,
+          "constraint": "NULL",
+          "ordinalPosition": 3
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "FOREIGN_KEY",
+          "columns": [
+            "user_id"
+          ],
+          "referredColumns": [
+            "mysql_sample.default.posts_db.Users.user_id"
+          ],
+          "relationshipType": "ONE_TO_ONE"
+        }
+      ],
+      "databaseSchema": {
+        "id": "3b2c045a-03ea-4303-abf3-082ac4e73804",
+        "type": "databaseSchema",
+        "name": "posts_db",
+        "fullyQualifiedName": "mysql_sample.default.posts_db",
+        "description": null,
+        "displayName": "posts_db",
+        "deleted": false,
+        "inherited": null
+      },
+      "database": {
+        "id": "c1a9f3bf-8bb8-43e3-beeb-e4c2293b977a",
+        "type": "database",
+        "name": "default",
+        "fullyQualifiedName": "mysql_sample.default",
+        "description": null,
+        "displayName": "default",
+        "deleted": false,
+        "inherited": null
+      },
+      "service": {
+        "id": "c0382692-7cf3-40b7-9aa7-b14bf2cbecdd",
+        "type": "databaseService",
+        "name": "mysql_sample",
+        "fullyQualifiedName": "mysql_sample",
+        "description": null,
+        "displayName": "mysql_sample",
+        "deleted": false,
+        "inherited": null
+      },
+      "sourceUrl": "https://localhost:3306/posts_db"
+    }
+  ]
+}

@@ -79,28 +79,38 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
     "disabled": {
       "description": "System tags can't be deleted. Use this flag to disable them.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "mutuallyExclusive": {
       "description": "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
       "type": "boolean",
       "default": "false"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
+    },
+    "owners": {
+      "description": "Owners of this glossary term.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": [
+    "id",
     "name",
     "description"
   ],

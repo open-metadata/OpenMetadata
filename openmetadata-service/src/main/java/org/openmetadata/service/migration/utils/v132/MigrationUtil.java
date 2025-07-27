@@ -5,14 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.json.JSONObject;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtAzureConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
-import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
@@ -55,7 +55,7 @@ public class MigrationUtil {
       DbtS3Config dbtS3Config = JsonUtils.readValue(jsonString, DbtS3Config.class);
       dbtS3Config.setDbtConfigType(DbtS3Config.DbtConfigType.S_3);
       return dbtS3Config;
-    } catch (UnhandledServerException ex) {
+    } catch (JsonParsingException ex) {
     }
 
     // For adding GCS type
@@ -63,7 +63,7 @@ public class MigrationUtil {
       DbtGCSConfig dbtGCSConfig = JsonUtils.readValue(jsonString, DbtGCSConfig.class);
       dbtGCSConfig.setDbtConfigType(DbtGCSConfig.DbtConfigType.GCS);
       return dbtGCSConfig;
-    } catch (UnhandledServerException ex) {
+    } catch (JsonParsingException ex) {
     }
 
     // For adding Azure type
@@ -71,7 +71,7 @@ public class MigrationUtil {
       DbtAzureConfig dbtAzureConfig = JsonUtils.readValue(jsonString, DbtAzureConfig.class);
       dbtAzureConfig.setDbtConfigType(DbtAzureConfig.DbtConfigType.AZURE);
       return dbtAzureConfig;
-    } catch (UnhandledServerException ex) {
+    } catch (JsonParsingException ex) {
     }
 
     // For adding cloud type
@@ -79,7 +79,7 @@ public class MigrationUtil {
       DbtCloudConfig dbtCloudConfig = JsonUtils.readValue(jsonString, DbtCloudConfig.class);
       dbtCloudConfig.setDbtConfigType(DbtCloudConfig.DbtConfigType.CLOUD);
       return dbtCloudConfig;
-    } catch (UnhandledServerException ex) {
+    } catch (JsonParsingException ex) {
     }
 
     // For adding local type
@@ -87,7 +87,7 @@ public class MigrationUtil {
       DbtLocalConfig dbtLocalConfig = JsonUtils.readValue(jsonString, DbtLocalConfig.class);
       dbtLocalConfig.setDbtConfigType(DbtLocalConfig.DbtConfigType.LOCAL);
       return dbtLocalConfig;
-    } catch (UnhandledServerException ex) {
+    } catch (JsonParsingException ex) {
     }
 
     // For adding http type
@@ -95,7 +95,7 @@ public class MigrationUtil {
       DbtHttpConfig dbtHttpConfig = JsonUtils.readValue(jsonString, DbtHttpConfig.class);
       dbtHttpConfig.setDbtConfigType(DbtHttpConfig.DbtConfigType.HTTP);
       return dbtHttpConfig;
-    } catch (UnhandledServerException ex) {
+    } catch (JsonParsingException ex) {
     }
     return null;
   }

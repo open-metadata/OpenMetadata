@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { mockWidgetsData } from '../../../../mocks/AddWidgetModal.mock';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
@@ -27,6 +25,7 @@ const mockProps: AddWidgetModalProps = {
   handleAddWidget: jest.fn(),
   maxGridSizeSupport: 4,
   placeholderWidgetKey: 'placeholderKey',
+  handleLayoutUpdate: jest.fn(),
 };
 
 jest.mock('../../../common/Loader/Loader', () =>
@@ -138,17 +137,13 @@ describe('AddWidgetModal component', () => {
   });
 
   it('AddWidgetModal should call handleAddWidget when clicked on add widget button', async () => {
-    await act(async () => {
-      render(<AddWidgetModal {...mockProps} />);
-    });
+    render(<AddWidgetModal {...mockProps} />);
 
-    expect(mockProps.handleAddWidget).toHaveBeenCalledTimes(0);
-
-    const addWidgetButton = screen.getByText('getAddWidgetHandler');
+    const addWidgetButton = await screen.findByText('getAddWidgetHandler');
 
     expect(addWidgetButton).toBeInTheDocument();
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
     expect(mockProps.handleAddWidget).toHaveBeenCalledTimes(1);
     expect(mockProps.handleAddWidget).toHaveBeenCalledWith(
@@ -170,11 +165,5 @@ describe('AddWidgetModal component', () => {
     });
 
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-  });
-
-  it('AddWidgetModal should', async () => {
-    await act(async () => {
-      render(<AddWidgetModal {...mockProps} />);
-    });
   });
 });

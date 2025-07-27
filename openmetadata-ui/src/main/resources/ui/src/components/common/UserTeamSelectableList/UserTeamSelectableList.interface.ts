@@ -23,6 +23,7 @@ export interface UserSelectDropdownProps {
   hasPermission: boolean;
   owner?: EntityReference[];
   onUpdate: (updatedUser?: EntityReference[]) => void | Promise<void>;
+  onClose?: () => void;
   children?: ReactNode;
   popoverProps?: PopoverProps;
   multiple?: MultipleUserTeam;

@@ -38,6 +38,14 @@ public class Utilities {
     return getFormattedDateFromEpoch(epochTimestampInMilli, "d");
   }
 
+  public static String cleanUpDoubleQuotes(String input) {
+    return input.replaceAll("\"", "");
+  }
+
+  public static String doubleQuoteRegexEscape(String input) {
+    return String.format("%s(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", input);
+  }
+
   private static String getFormattedDateFromEpoch(long epochTimestamp, String format) {
     Instant instant = Instant.ofEpochMilli(epochTimestamp);
     LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());

@@ -11,98 +11,109 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+@import (reference) url('../../styles/variables.less');
 
-.quick-filter-dropdown-trigger-btn {
-  .ant-typography {
-    color: @text-grey-muted;
-  }
-}
+@quick-filters-container-height: 86px;
 
 .explore-page {
-  .explore-data-header {
-    padding: 13px 14px;
-    color: @text-grey-muted;
-    margin-bottom: 0 !important;
-  }
-
-  .searched-data-container {
-    padding: 8px 12px 8px 36px;
-  }
-  .explore-page-tabs {
-    .ant-tabs-nav {
-      margin-bottom: 8px;
-      width: 100%;
-      padding: 0 1rem;
-    }
-  }
-  .summary-panel-container {
-    overflow: hidden;
-    height: @explore-page-height;
-    .ant-drawer-header {
-      border-bottom: none;
-    }
-  }
   .sorting-dropdown-container {
-    line-height: 24px;
-  }
-  .filters-row {
-    border-bottom: 1px solid @border-color;
-  }
+    .ant-typography {
+      color: @grey-700;
+      font-weight: 500;
+    }
 
-  a.alert-link {
-    font-size: inherit;
-  }
-  .ant-tree {
-    .ant-tree-iconEle {
-      height: 20px;
-      width: 20px;
+    svg {
+      color: @grey-700;
     }
   }
-}
 
-.explore-page {
-  overflow-x: hidden;
-  .custom-menu.ant-menu-root.ant-menu-inline {
-    .ant-menu-item {
-      height: 40px;
-      width: 100%;
+  .explore-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .explore-tab-label {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .explore-left-panel {
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+
+    .custom-menu {
+      .ant-menu-item {
+        height: 36px;
+        line-height: 36px;
+      }
+    }
+
+    .ant-card {
+      flex: 1;
     }
   }
-}
 
-.explore-icon svg {
-  width: 16px;
-  height: 16px;
-  color: @text-color;
-}
-
-.ant-menu-item-selected {
-  .explore-icon svg {
-    color: @primary-color;
+  .explore-right-panel {
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
   }
-}
 
-.explore-page {
+  .explore-main-container {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .explore-data-container {
+    height: calc(
+      100vh - @om-navbar-height - @quick-filters-container-height - @size-mlg
+    );
+    overflow-y: auto;
+  }
+
+  .explore-main-card {
+    .ant-card-body {
+      height: 100%;
+      overflow-y: auto;
+    }
+  }
+
+  .quick-filters-container {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
   .explore-tree {
-    height: @explore-page-height;
     overflow: auto;
+
     .ant-tree-switcher-icon {
       width: 12px;
       height: 12px;
       color: @grey-4;
     }
+
     .ant-tree-switcher_open:hover,
     .ant-tree-switcher_close:hover {
       background-color: @grey-2;
     }
+
     .ant-tree-title {
       width: 100%;
       padding: 4px;
     }
+
     .ant-tree-node-selected {
       background-color: @radio-button-checked-bg !important;
     }
+
     .ant-tree-treenode {
       padding: 0;
     }

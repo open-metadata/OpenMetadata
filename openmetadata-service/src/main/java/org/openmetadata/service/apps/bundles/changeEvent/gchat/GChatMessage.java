@@ -3,39 +3,75 @@ package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class GChatMessage {
 
-  @Getter @Setter private String text;
-  @Getter @Setter private List<CardsV2> cardsV2;
+  private List<GChatMessage.Card> cards;
 
-  public static class CardsV2 {
-    @Getter @Setter private String cardId;
-    @Getter @Setter private Card card;
-  }
-
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
   public static class Card {
-
-    @Getter @Setter private CardHeader header;
-    @Getter @Setter private List<Section> sections;
+    private GChatMessage.Header header;
+    private List<GChatMessage.Section> sections;
   }
 
-  public static class CardHeader {
-    @Getter @Setter private String title;
-    @Getter @Setter private String subtitle;
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class Header {
+    private String title;
+    private String imageUrl;
+    private String imageStyle;
   }
 
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
   public static class Section {
-    @Getter @Setter private List<Widget> widgets;
+    private List<GChatMessage.Widget> widgets;
   }
 
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
   public static class Widget {
-    @Getter @Setter private TextParagraph textParagraph;
+    private GChatMessage.KeyValue keyValue;
+    private GChatMessage.TextParagraph textParagraph;
+
+    public Widget(GChatMessage.KeyValue keyValue) {
+      this.keyValue = keyValue;
+    }
+
+    public Widget(GChatMessage.TextParagraph textParagraph) {
+      this.textParagraph = textParagraph;
+    }
   }
 
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class KeyValue {
+    private String topLabel;
+    private String content;
+  }
+
+  @Getter
+  @Setter
+  @NoArgsConstructor
   @AllArgsConstructor
   public static class TextParagraph {
-    @Getter @Setter private String text;
+    private String text;
   }
 }

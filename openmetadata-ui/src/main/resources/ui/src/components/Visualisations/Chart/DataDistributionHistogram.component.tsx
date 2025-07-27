@@ -13,7 +13,6 @@
 
 import { Col, Row, Tag } from 'antd';
 import { isUndefined, map } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -35,6 +34,7 @@ import { DataDistributionHistogramProps } from './Chart.interface';
 
 const DataDistributionHistogram = ({
   data,
+  noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
   const showSingleGraph =
@@ -48,7 +48,7 @@ const DataDistributionHistogram = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder />
+          <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
         </Col>
       </Row>
     );

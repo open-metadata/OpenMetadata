@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,8 +12,10 @@
 """
 Source connection helper
 """
+import re
 import traceback
-from typing import Any
+from copy import deepcopy
+from typing import Any, List, Tuple
 
 from pydantic import BaseModel
 from sqlalchemy import inspect
@@ -53,24 +55,27 @@ def get_inspector_details(
     """
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
+    new_service_connection = deepcopy(service_connection)
     kwargs = {}
-    if isinstance(service_connection.credentials.gcpConfig, GcpCredentialsValues):
-        service_connection.credentials.gcpConfig.projectId = SingleProjectId(
+    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(
             database_name
         )
-        if service_connection.credentials.gcpImpersonateServiceAccount:
+        if new_service_connection.credentials.gcpImpersonateServiceAccount:
             kwargs[
                 "impersonate_service_account"
             ] = (
-                service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+                new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
             )
 
             kwargs[
                 "lifetime"
-            ] = service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+            ] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
-    client = get_bigquery_client(project_id=database_name, **kwargs)
-    engine = get_connection(service_connection)
+    client = get_bigquery_client(
+        project_id=new_service_connection.billingProjectId or database_name, **kwargs
+    )
+    engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 
     return InspectorWrapper(client=client, engine=engine, inspector=inspector)
@@ -83,15 +88,15 @@ def get_pk_constraint(
     This function overrides to get primary key constraint
     """
     try:
-        constraints = PK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        project, schema = schema.split(".")
+        constraints = PK_CACHE.get(f"{project}.{schema}")
         if constraints is None:
             constraints = connection.engine.execute(
                 BIGQUERY_TABLE_CONSTRAINTS.format(
-                    project_id=connection.engine.url.host,
-                    schema_name=schema,
+                    project_id=project, schema_name=schema
                 )
             )
-            PK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+            PK_CACHE[f"{project}.{schema}"] = constraints.fetchall()
 
         col_name = []
         table_constraints = [row for row in constraints if row.table_name == table_name]
@@ -113,15 +118,15 @@ def get_foreign_keys(
     This function overrides to get foreign key constraint
     """
     try:
-        constraints = FK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        project, schema = schema.split(".")
+        constraints = FK_CACHE.get(f"{project}.{schema}")
         if constraints is None:
             constraints = connection.engine.execute(
                 BIGQUERY_FOREIGN_CONSTRAINTS.format(
-                    project_id=connection.engine.url.host,
-                    schema_name=schema,
+                    project_id=project, schema_name=schema
                 )
             )
-            FK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+            FK_CACHE[f"{project}.{schema}"] = constraints.fetchall()
 
         col_name = []
         table_constraints = [row for row in constraints if row.table_name == table_name]
@@ -142,3 +147,10 @@ def get_foreign_keys(
             f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
         )
         return []
+
+
+def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:
+    """
+    This function is used to parse BigQuery label string into a list of tuples.
+    """
+    return re.findall(r'STRUCT\("([^"]+)",\s*"([^"]+)"\)', labels)

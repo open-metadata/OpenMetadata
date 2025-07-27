@@ -16,10 +16,14 @@ package org.openmetadata.service.formatter.util;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
 
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -27,21 +31,24 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.factory.ParserFactory;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -237,11 +244,16 @@ public class FormatterUtil {
       return createChangeEventForThread(updateBy, eventType, thread);
     }
 
+    // if the response entity is an EntityTimeseriesInterface, then create a ChangeEvent from it
+    if (responseContext.getEntity() instanceof EntityTimeSeriesInterface entityTimeSeries) {
+      return createChangeEventForEntity(updateBy, eventType, entityTimeSeries);
+    }
+
     LOG.debug("Unknown event type in Change Event :  {}", eventType.value());
     return null;
   }
 
-  private static ChangeEvent createChangeEventForEntity(
+  public static ChangeEvent createChangeEventForEntity(
       String updateBy, EventType eventType, EntityInterface entityInterface) {
     return getChangeEvent(
             updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
@@ -251,6 +263,12 @@ public class FormatterUtil {
                 : entityInterface.getVersion())
         .withEntity(entityInterface)
         .withEntityFullyQualifiedName(entityInterface.getEntityReference().getFullyQualifiedName());
+  }
+
+  private static ChangeEvent createChangeEventForEntity(
+      String updateBy, EventType eventType, EntityTimeSeriesInterface entityTimeSeries) {
+    return getChangeEventForEntityTimeSeries(
+        updateBy, eventType, entityTimeSeries.getEntityReference().getType(), entityTimeSeries);
   }
 
   private static ChangeEvent createChangeEventForThread(
@@ -277,12 +295,48 @@ public class FormatterUtil {
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
-        .withDomain(
-            nullOrEmpty(entityInterface.getDomain()) ? null : entityInterface.getDomain().getId())
+        .withDomains(entityInterface.getDomains())
         .withUserName(updateBy)
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
+  }
+
+  private static ChangeEvent getChangeEventForEntityTimeSeries(
+      String updateBy,
+      EventType eventType,
+      String entityType,
+      EntityTimeSeriesInterface entityTimeSeries) {
+    if (entityTimeSeries instanceof TestCaseResult) {
+      eventType =
+          EventType
+              .ENTITY_UPDATED; // workaround as adding a test case result is sent as a POST request
+      TestCaseResult testCaseResult =
+          JsonUtils.readOrConvertValue(entityTimeSeries, TestCaseResult.class);
+      TestCase testCase =
+          Entity.getEntityByName(
+              TEST_CASE,
+              testCaseResult.getTestCaseFQN(),
+              TEST_CASE_RESULT + ",testSuites",
+              Include.ALL);
+      ChangeEvent changeEvent =
+          getChangeEvent(
+              updateBy,
+              eventType,
+              testCase.getEntityReference().getType(),
+              testCase.withUpdatedAt(testCaseResult.getTimestamp()));
+      return changeEvent
+          .withChangeDescription(
+              new ChangeDescription()
+                  .withFieldsUpdated(
+                      List.of(
+                          new FieldChange()
+                              .withName(TEST_CASE_RESULT)
+                              .withNewValue(testCase.getTestCaseResult()))))
+          .withEntity(testCase)
+          .withEntityFullyQualifiedName(testCase.getFullyQualifiedName());
+    }
+    return null;
   }
 
   private static ChangeEvent getChangeEventForThread(
@@ -291,7 +345,7 @@ public class FormatterUtil {
         .withId(UUID.randomUUID())
         .withEventType(eventType)
         .withEntityId(thread.getId())
-        .withDomain(thread.getDomain())
+        .withDomains(thread.getDomains())
         .withEntityType(entityType)
         .withUserName(updateBy)
         .withTimestamp(thread.getUpdatedAt());

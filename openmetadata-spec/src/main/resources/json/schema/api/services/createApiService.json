@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/services/createAPIService.json",
+  "$id": "https://open-metadata.org/schema/api/services/createApiService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateApiServiceRequest",
   "description": "Create API Service entity request",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.services.CreateAPIService",
+  "javaType": "org.openmetadata.schema.api.services.CreateApiService",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
@@ -21,10 +21,10 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
-      "$ref": "../../entity/services/apiService.json#/definitions/APIServiceType"
+      "$ref": "../../entity/services/apiService.json#/definitions/apiServiceType"
     },
     "connection": {
-      "$ref": "../../entity/services/apiService.json#/definitions/apiServiceConnection"
+      "$ref": "../../entity/services/apiService.json#/definitions/apiConnection"
     },
     "tags": {
       "description": "Tags for this API Service.",
@@ -46,9 +46,16 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the API Service belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the API Service belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "serviceType"],

@@ -25,3 +25,115 @@
     background-color: @grey-1;
   }
 }
+.activity-feed-card-new {
+  border-radius: 12px;
+  background: @grey-9;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  width: inherit;
+
+  &.ant-card {
+    background: @grey-9;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 0.5px solid @grey-15;
+  }
+
+  .ant-card-body {
+    width: inherit;
+    padding: 20px;
+
+    .ant-space-item {
+      width: inherit;
+    }
+  }
+  .header-link {
+    word-wrap: break-word;
+    white-space: normal;
+    font-weight: 600;
+  }
+}
+.activity-feed-card-new-right-panel {
+  &.ant-card {
+    border: 1px solid @white;
+    .ant-card-body {
+      background-color: @white;
+      border: 1px solid @white;
+    }
+  }
+}
+.task-feed-card-v1-new {
+  .header-link {
+    word-wrap: break-word;
+    color: @primary-heading-color;
+    font-weight: 600;
+    display: inline;
+  }
+}
+.feeds-widget-container {
+  .ant-tabs.ant-tabs-top.h-full
+    .ant-tabs-content.ant-tabs-content-top
+    .ant-tabs-tabpane {
+    display: flex;
+    flex-direction: column;
+  }
+}
+.feed-card-header-v2-timestamp.ant-typography {
+  color: @grey-500;
+}
+.seperator.ant-typography {
+  vertical-align: middle;
+  font-size: 18px;
+  font-weight: 800;
+  color: @grey-500;
+  padding-bottom: 2px;
+}
+
+.feed-widget-padding {
+  padding: 20px 20px 0px 20px;
+}
+.activity-feed-tab-padding {
+  padding: 20px 20px 20px 20px;
+}
+
+.activity-feed-comments-container {
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0px 0px 0px;
+  background: @grey-9;
+  border: 0.5px solid @grey-15;
+  input.ant-input,
+  textarea.ant-input {
+    border-radius: 20px;
+    background-color: @grey-16;
+    border: 1px solid @grey-15;
+  }
+}
+
+.activity-feed-reply-button {
+  border-radius: 24px;
+  border: 1px solid #d4d4d8;
+  color: #52525b;
+  font-size: 12px;
+}
+.comments-input-field {
+  background-color: @grey-16;
+  border-radius: 20px;
+  border: 1px solid @grey-15;
+  height: 36px;
+  font-size: 12px;
+  line-height: 14.52px;
+  &::placeholder {
+    color: @grey-400;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: normal;
+  }
+  input.ant-input,
+  textarea.ant-input {
+    border-radius: 20px;
+    background-color: @grey-16;
+  }
+}

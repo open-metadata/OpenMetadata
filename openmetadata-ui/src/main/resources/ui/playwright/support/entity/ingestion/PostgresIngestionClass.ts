@@ -23,7 +23,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -32,16 +32,29 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class PostgresIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
   queryLogFilePath: string;
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       POSTGRES.serviceName,
       POSTGRES.serviceType,
-      POSTGRES.tableName
+      POSTGRES.tableName,
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     this.filterPattern = 'sales';
@@ -99,12 +112,20 @@ class PostgresIngestionClass extends ServiceBaseClass {
           true
         );
 
-        await page.click('[data-testid="ingestions"]');
+        await page.click('[data-testid="agents"]');
         await page.waitForSelector(
           '[data-testid="ingestion-details-container"]'
         );
+
+        const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab.isVisible()) {
+          await metadataTab.click();
+        }
+        await page.waitForLoadState('networkidle');
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page.waitForTimeout(1000);
+        await page.waitForSelector(
+          '.ant-dropdown:visible [data-menu-id*="usage"]'
+        );
         await page.click('[data-menu-id*="usage"]');
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
@@ -117,9 +138,14 @@ class PostgresIngestionClass extends ServiceBaseClass {
         // Header available once page loads
         await page.waitForSelector('[data-testid="data-assets-header"]');
         await page.getByTestId('loader').waitFor({ state: 'detached' });
-        await page.getByTestId('ingestions').click();
+        await page.getByTestId('agents').click();
+        const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+        if (await metadataTab2.isVisible()) {
+          await metadataTab2.click();
+        }
+        await page.waitForLoadState('networkidle');
         await page
-          .getByLabel('Ingestions')
+          .getByLabel('agents')
           .getByTestId('loader')
           .waitFor({ state: 'detached' });
 
@@ -155,7 +181,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           `/api/v1/tables/name/*.order_items?**`
         );
 
-        await visitEntityPage({
+        await visitEntityPageWithCustomSearchBox({
           page,
           searchTerm: this.entityName,
           dataTestId: `${this.serviceName}-${this.entityName}`,

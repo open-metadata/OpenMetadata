@@ -13,6 +13,7 @@ import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -20,14 +21,18 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.util.JsonUtils;
 
 public class ElasticSearchSummaryCardAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
 
   public SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart, long start, long end, List<FormulaHolder> formulas)
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricFormulaMap)
       throws IOException {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
@@ -36,10 +41,10 @@ public class ElasticSearchSummaryCardAggregator
             .field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
             .calendarInterval(DateHistogramInterval.DAY);
     populateDateHistogram(
-        summaryCard.getFunction(),
-        summaryCard.getFormula(),
-        summaryCard.getField(),
-        summaryCard.getFilter(),
+        summaryCard.getMetrics().get(0).getFunction(),
+        summaryCard.getMetrics().get(0).getFormula(),
+        summaryCard.getMetrics().get(0).getField(),
+        summaryCard.getMetrics().get(0).getFilter(),
         dateHistogramAggregationBuilder,
         formulas);
 
@@ -51,7 +56,7 @@ public class ElasticSearchSummaryCardAggregator
     searchSourceBuilder.size(0);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
@@ -59,7 +64,8 @@ public class ElasticSearchSummaryCardAggregator
   public DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
       SearchResponse searchResponse,
-      List<FormulaHolder> formulas) {
+      List<FormulaHolder> formulas,
+      Map metricFormulaMap) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
     List<Aggregation> aggregationList =
@@ -67,7 +73,8 @@ public class ElasticSearchSummaryCardAggregator
             .orElse(new Aggregations(new ArrayList<>()))
             .asList();
     List<DataInsightCustomChartResult> results =
-        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas);
+        processAggregations(
+            aggregationList, summaryCard.getMetrics().get(0).getFormula(), null, formulas, null);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
     for (int i = results.size() - 1; i >= 0; i--) {

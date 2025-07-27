@@ -13,12 +13,15 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isEmpty, isString } from 'lodash';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityReference } from '../../../generated/entity/type';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   FieldProp,
   FieldTypes,
@@ -27,9 +30,6 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 
@@ -42,6 +42,7 @@ const AddGlossaryTermForm = ({
   const { currentUser } = useApplicationStore();
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+  const { t } = useTranslation();
 
   const ownersList = Array.isArray(selectedOwners)
     ? selectedOwners
@@ -157,10 +158,10 @@ const AddGlossaryTermForm = ({
         form.setFieldValue('reviewers', reviewers);
       }
       if (style?.color) {
-        form.setFieldValue('color', style.color);
+        form.setFieldValue('style.color', style.color);
       }
       if (style?.iconURL) {
-        form.setFieldValue('iconURL', style.iconURL);
+        form.setFieldValue('style.iconURL', style.iconURL);
       }
 
       if (owners) {
@@ -201,7 +202,7 @@ const AddGlossaryTermForm = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
+        initialValue: glossaryTerm?.description,
         height: 'auto',
       },
       rules: [
@@ -248,7 +249,7 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.ASYNC_SELECT_LIST,
+      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
       props: {
         className: 'glossary-select',
         'data-testid': 'related-terms',
@@ -256,6 +257,8 @@ const AddGlossaryTermForm = ({
         placeholder: t('label.add-entity', {
           entity: t('label.related-term-plural'),
         }),
+        open: false,
+        hasNoActionButtons: true,
         fetchOptions: fetchGlossaryList,
         initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
           label: data.fullyQualifiedName,
@@ -314,9 +317,10 @@ const AddGlossaryTermForm = ({
     name: 'owners',
     id: 'root/owner',
     required: false,
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
+      owner: ownersList,
       hasPermission: true,
       children: (
         <Button
@@ -342,6 +346,7 @@ const AddGlossaryTermForm = ({
     label: t('label.reviewer-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
+      owner: reviewersList,
       hasPermission: true,
       filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },

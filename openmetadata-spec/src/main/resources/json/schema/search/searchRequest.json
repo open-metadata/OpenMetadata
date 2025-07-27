@@ -1,0 +1,110 @@
+{
+  "$id": "https://open-metadata.org/schema/search/searchRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchRequest",
+  "description": "Search Request to find entities from Elastic Search based on different parameters.",
+  "javaType": "org.openmetadata.schema.search.SearchRequest",
+  "type": "object",
+  "properties": {
+    "query": {
+      "description": "Query to be send to Search Engine.",
+      "type": "string",
+      "default": "*"
+    },
+    "index": {
+      "description": "Index Name.",
+      "type": "string",
+      "default": "table_search_index"
+    },
+    "fieldName": {
+      "description": "Field Name to match.",
+      "type": "string",
+      "default": "suggest"
+    },
+    "from": {
+      "description": "Start Index for the req.",
+      "type": "integer",
+      "default": 0
+    },
+    "size": {
+      "description": "Size to limit the no.of results returned.",
+      "type": "integer",
+      "default": 10
+    },
+    "queryFilter": {
+      "description": "Elasticsearch query that will be combined with the query_string query generator from the `query` arg",
+      "type": "string"
+    },
+    "postFilter": {
+      "description": "Elasticsearch query that will be used as a post_filter",
+      "type": "string"
+    },
+    "fetchSource": {
+      "description": "Get document body for each hit",
+      "type": "boolean",
+      "default": true
+    },
+    "trackTotalHits": {
+      "description": "Track Total Hits.",
+      "type": "boolean",
+      "default": false
+    },
+    "explain": {
+      "description": "Explain the results of the query. Defaults to false. Only for debugging purposes.",
+      "type": "boolean",
+      "default": false
+    },
+    "deleted": {
+      "description": "Filter documents by deleted param.",
+      "type": "boolean",
+      "default": null,
+      "existingJavaType": "java.lang.Boolean"
+    },
+    "sortFieldParam": {
+      "description": "Sort the search results by field, available fields to sort weekly_stats daily_stats, monthly_stats, last_updated_timestamp.",
+      "type": "string",
+      "default": "_score"
+    },
+    "sortOrder": {
+      "description": "Sort order asc for ascending or desc for descending, defaults to desc.",
+      "type": "string",
+      "default": "desc"
+    },
+    "includeSourceFields": {
+      "description": "Get only selected fields of the document body for each hit. Empty value will return all fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excludeSourceFields": {
+      "description": "Exclude specified fields from the document body for each hit. Use this to exclude heavy fields like 'columns' for better performance",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "searchAfter": {
+      "description": "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...",
+      "existingJavaType": "java.util.List<java.lang.Object>"
+    },
+    "domains": {
+      "description": "Internal Object to filter by Domains.",
+      "existingJavaType": "java.util.List<org.openmetadata.schema.type.EntityReference>"
+    },
+    "applyDomainFilter": {
+      "description": "If Need to apply the domain filter.",
+      "type": "boolean"
+    },
+    "isHierarchy": {
+      "description": "If true it will try to get the hierarchy of the entity.",
+      "type": "boolean",
+      "default": false
+    },
+    "fieldValue": {
+      "description": "Field Value in case of Aggregations.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

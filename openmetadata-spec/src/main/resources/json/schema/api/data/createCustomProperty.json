@@ -9,6 +9,10 @@
       "description": "Name that identifies this Custom Property model.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "displayName": {
+      "description": "Display Name that identifies the custom property.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the Container instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"

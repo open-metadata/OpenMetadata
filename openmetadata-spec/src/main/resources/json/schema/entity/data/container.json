@@ -146,9 +146,13 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -173,9 +177,9 @@
       "description": "Full path of the container/file.",
       "type": "string"
     },
-    "domain" : {
-      "description": "Domain the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
@@ -188,6 +192,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,10 +44,8 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.metabase import metadata as MetabaseMetadata
 from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
 from metadata.ingestion.source.dashboard.metabase.models import (
-    DashCard,
     DatasetQuery,
     MetabaseChart,
     MetabaseDashboardDetails,
@@ -125,35 +123,31 @@ mock_config = {
     },
 }
 
-
 MOCK_CHARTS = [
-    DashCard(
-        card=MetabaseChart(
-            description="Test Chart",
-            table_id="1",
-            database_id=1,
-            name="chart1",
-            id="1",
-            dataset_query=DatasetQuery(type="query"),
-            display="chart1",
-        )
+    MetabaseChart(
+        description="Test Chart",
+        table_id="1",
+        database_id=1,
+        name="chart1",
+        id="1",
+        dataset_query=DatasetQuery(type="query"),
+        display="chart1",
+        dashboard_ids=[],
     ),
-    DashCard(
-        card=MetabaseChart(
-            description="Test Chart",
-            table_id="1",
-            database_id=1,
-            name="chart2",
-            id="2",
-            dataset_query=DatasetQuery(
-                type="native", native=Native(query="select * from test_table")
-            ),
-            display="chart2",
-        )
+    MetabaseChart(
+        description="Test Chart",
+        table_id="1",
+        database_id=1,
+        name="chart2",
+        id="2",
+        dataset_query=DatasetQuery(
+            type="native", native=Native(query="select * from test_table")
+        ),
+        display="chart2",
+        dashboard_ids=[],
     ),
-    DashCard(card=MetabaseChart(name="chart3", id="3")),
+    MetabaseChart(name="chart3", id="3", dashboard_ids=[]),
 ]
-
 
 EXPECTED_LINEAGE = AddLineageRequest(
     edge=EntitiesEdge(
@@ -170,7 +164,7 @@ EXPECTED_LINEAGE = AddLineageRequest(
 )
 
 MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
-    description="SAMPLE DESCRIPTION", name="test_db", id="1", dashcards=MOCK_CHARTS
+    description="SAMPLE DESCRIPTION", name="test_db", id="1", card_ids=["1", "2", "3"]
 )
 
 
@@ -244,6 +238,7 @@ class MetabaseUnitTest(TestCase):
             "dashboard_service"
         ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         self.metabase.context.get().__dict__["project_name"] = "Test Collection"
+        self.metabase.charts_dict = {str(chart.id): chart for chart in MOCK_CHARTS}
 
     def test_dashboard_name(self):
         assert (
@@ -281,7 +276,7 @@ class MetabaseUnitTest(TestCase):
 
     @patch.object(fqn, "build", return_value=None)
     @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
-    @patch.object(MetabaseMetadata, "search_table_entities", return_value=EXAMPLE_TABLE)
+    @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
     @patch.object(
         MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE
     )
@@ -296,28 +291,30 @@ class MetabaseUnitTest(TestCase):
 
         # if no db service name then no lineage generated
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_name=None
+            dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_prefix=None
         )
-        self.assertEqual(list(result), [])
+        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_api
         mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
-        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[0]]
+        mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[0]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+            dashboard_details=mock_dashboard,
+            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_query
-        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[1]]
+        mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[1]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+            dashboard_details=mock_dashboard,
+            db_service_prefix=f"{MOCK_DATABASE_SERVICE.name}",
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out if no query type
-        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[2]]
+        mock_dashboard.card_ids = [MOCK_DASHBOARD_DETAILS.card_ids[2]]
         result = self.metabase.yield_dashboard_lineage_details(
-            dashboard_details=mock_dashboard, db_service_name="db.service.name"
+            dashboard_details=mock_dashboard, db_service_prefix="db.service.name"
         )
         self.assertEqual(list(result), [])

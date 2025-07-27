@@ -12,28 +12,27 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import { getVersionPath, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { updateChart } from '../../rest/chartAPI';
 import {
   addFollower,
   getDashboardByFqn,
@@ -41,19 +40,17 @@ import {
   removeFollower,
   updateDashboardVotes,
 } from '../../rest/dashboardAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import {
-  defaultFields,
-  fetchCharts,
-  sortTagsForCharts,
-} from '../../utils/DashboardDetailsUtils';
+import { defaultFields } from '../../utils/DashboardDetailsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
+import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 export type ChartType = {
@@ -64,21 +61,20 @@ const DashboardDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: dashboardFQN } = useFqn();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
   const [isLoading, setLoading] = useState<boolean>(false);
-  const [charts, setCharts] = useState<ChartType[]>([]);
   const [isError, setIsError] = useState(false);
 
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const { id: dashboardId, version } = dashboardDetails;
+  const { id: dashboardId, version, charts } = dashboardDetails;
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setLoading(true);
@@ -88,7 +84,7 @@ const DashboardDetailsPage = () => {
         entityFqn
       );
       setDashboardPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -109,7 +105,11 @@ const DashboardDetailsPage = () => {
   };
 
   const viewUsagePermission = useMemo(
-    () => dashboardPermissions.ViewAll || dashboardPermissions.ViewUsage,
+    () =>
+      getPrioritizedViewPermission(
+        dashboardPermissions,
+        PermissionOperation.ViewUsage
+      ),
     [dashboardPermissions]
   );
 
@@ -123,7 +123,7 @@ const DashboardDetailsPage = () => {
       }
       const res = await getDashboardByFqn(dashboardFQN, { fields });
 
-      const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
+      const { id, fullyQualifiedName, serviceType } = res;
       setDashboardDetails(res);
 
       addToRecentViewed({
@@ -135,19 +135,6 @@ const DashboardDetailsPage = () => {
         id: id,
       });
 
-      fetchCharts(ChartIds)
-        .then((chart) => {
-          setCharts(chart);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-fetch-error', {
-              entity: t('label.chart-plural'),
-            })
-          );
-        });
-
       setLoading(false);
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
@@ -155,7 +142,7 @@ const DashboardDetailsPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,
@@ -172,7 +159,7 @@ const DashboardDetailsPage = () => {
 
   const onDashboardUpdate = async (
     updatedDashboard: Dashboard,
-    key: keyof Dashboard
+    key?: keyof Dashboard
   ) => {
     try {
       const response = await saveUpdatedDashboardData(updatedDashboard);
@@ -180,10 +167,7 @@ const DashboardDetailsPage = () => {
         return {
           ...previous,
           version: response.version,
-          [key]:
-            key === 'tags'
-              ? sortTagsCaseInsensitive(response[key] ?? [])
-              : response[key],
+          ...(key ? { [key]: response[key] } : response),
         };
       });
     } catch (error) {
@@ -231,68 +215,11 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const onChartUpdate = async (
-    index: number,
-    chartId: string,
-    patch: Array<Operation>
-  ) => {
-    try {
-      const response = await updateChart(chartId, patch);
-      setCharts((prevCharts) => {
-        const charts = [...prevCharts];
-        charts[index] = response;
-
-        return charts;
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-  const handleChartTagSelection = async (
-    chartId: string,
-    patch: Array<Operation>
-  ) => {
-    try {
-      const res = await updateChart(chartId, patch);
-
-      setCharts((prevCharts) => {
-        const charts = [...prevCharts].map((chart) =>
-          chart.id === chartId ? res : chart
-        );
-
-        // Sorting tags as the response of PATCH request does not return the sorted order
-        // of tags, but is stored in sorted manner in the database
-        // which leads to wrong PATCH payload sent after further tags removal
-        return sortTagsForCharts(charts);
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.chart-plural'),
-        })
-      );
-    }
-  };
-
   const versionHandler = () => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(EntityType.DASHBOARD, dashboardFQN, toString(version))
       );
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
   };
 
   const handleToggleDelete = (version?: number) => {
@@ -321,17 +248,25 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const updateDashboardDetailsState = useCallback((data) => {
-    const updatedData = data as Dashboard;
+  const updateDashboardDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Dashboard;
 
-    setDashboardDetails((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setDashboardDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   useEffect(() => {
-    if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
+    if (
+      getPrioritizedViewPermission(
+        dashboardPermissions,
+        PermissionOperation.ViewBasic
+      )
+    ) {
       fetchDashboardDetail(dashboardFQN);
     }
   }, [dashboardFQN, dashboardPermissions]);
@@ -351,15 +286,20 @@ const DashboardDetailsPage = () => {
     );
   }
   if (!dashboardPermissions.ViewAll && !dashboardPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.dashboard-detail-plural-lowercase'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
     <DashboardDetails
-      chartDescriptionUpdateHandler={onChartUpdate}
-      chartTagUpdateHandler={handleChartTagSelection}
-      charts={charts}
-      createThread={createThread}
+      charts={charts ?? []}
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}

@@ -1,5 +1,7 @@
 package org.openmetadata.service.formatter.field;
 
+import java.util.Optional;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.TestCaseResultFeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -9,12 +11,13 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResultFormatter extends DefaultFieldFormatter {
@@ -55,8 +58,8 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
   private void populateTestResultFeedInfo(Thread.FieldOperation operation, String threadMessage) {
     long currentTime = System.currentTimeMillis();
     long lastWeekTime = currentTime - 7 * 24 * 60 * 60 * 1000;
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TestCaseResultRepository testCaseResultRepository =
+        (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
     TestCase testCaseEntity =
         Entity.getEntity(
             thread.getEntityRef().getType(),
@@ -65,7 +68,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
             Include.ALL);
     TestSuite testSuiteEntity = Entity.getEntity(testCaseEntity.getTestSuite(), "id", Include.ALL);
     ResultList<TestCaseResult> testCaseResultResultList =
-        testCaseRepository.getTestCaseResults(
+        testCaseResultRepository.getTestCaseResults(
             testCaseEntity.getFullyQualifiedName(), lastWeekTime, currentTime);
     TestCaseResultFeedInfo testCaseResultFeedInfo =
         new TestCaseResultFeedInfo()
@@ -90,17 +93,36 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
     TestCase testCaseEntity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
-    String testCaseName = testCaseEntity.getName();
+    String testCaseName =
+        CommonUtil.nullOrEmpty(testCaseEntity.getDisplayName())
+            ? testCaseEntity.getName()
+            : testCaseEntity.getDisplayName();
+
+    String testCaseDescription = Optional.ofNullable(testCaseEntity.getDescription()).orElse("");
+    boolean hasDescription =
+        (messageFormatter instanceof EmailMessageDecorator)
+            && !CommonUtil.nullOrEmpty(testCaseDescription);
+
     TestCaseResult result = JsonUtils.convertValue(fieldChange.getNewValue(), TestCaseResult.class);
     if (result != null) {
       String format =
           String.format(
-              "Test Case %s is %s in %s",
+              "Test Case %s is %s in %s %s%s",
               messageFormatter.getBold(),
               messageFormatter.getBold(),
-              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
-      return String.format(
-          format, testCaseName, getStatusMessage(messageFormatter, result.getTestCaseStatus()));
+              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              hasDescription
+                  ? messageFormatter.getLineBreak() + messageFormatter.getLineBreak()
+                  : "",
+              hasDescription ? "Test Case Description: %s" : "");
+      return hasDescription
+          ? String.format(
+              format,
+              testCaseName,
+              getStatusMessage(messageFormatter, result.getTestCaseStatus()),
+              testCaseDescription)
+          : String.format(
+              format, testCaseName, getStatusMessage(messageFormatter, result.getTestCaseStatus()));
     }
     String format =
         String.format(

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,14 @@ SQL Queries used during ingestion
 """
 
 import textwrap
+from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, TypeAdapter
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 
 BIGQUERY_STATEMENT = textwrap.dedent(
     """
@@ -24,7 +32,8 @@ BIGQUERY_STATEMENT = textwrap.dedent(
    end_time,
    query as query_text,
    null as schema_name,
-   total_slot_ms as duration
+   total_slot_ms as duration,
+   (total_bytes_billed / POWER(2, 40)) * {cost_per_tib} as cost
 FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
 WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   {filters}
@@ -54,7 +63,7 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
+    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')
     """
 )
 
@@ -87,7 +96,7 @@ SELECT
   routine_name as name,
   routine_definition as definition,
   external_language as language
-FROM `{schema_name}`.INFORMATION_SCHEMA.ROUTINES
+FROM `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.ROUTINES
 WHERE routine_type in ('PROCEDURE', 'TABLE FUNCTION')
   AND routine_catalog = '{database_name}'
   AND routine_schema = '{schema_name}'
@@ -108,7 +117,7 @@ WITH SP_HISTORY AS (
     AND job_type = "QUERY"
     AND state = "DONE"
     AND error_result is NULL
-    AND query LIKE 'CALL%%'
+    AND UPPER(query) LIKE 'CALL%%'
 ),
 Q_HISTORY AS (
   SELECT
@@ -155,7 +164,7 @@ BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
 select
 table_name as table_name,
 creation_time as created_at
-from `{schema_name}`.INFORMATION_SCHEMA.TABLES
+from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
 where table_schema = '{schema_name}'
 and table_catalog = '{database_name}'
 """
@@ -171,4 +180,76 @@ AND (
 AND resource.labels.project_id = "{project}"
 AND resource.labels.dataset_id = "{dataset}"
 AND timestamp >= "{start_date}"
+"""
+
+BIGQUERY_GET_SCHEMA_NAMES = """
+SELECT schema_name FROM `{project}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA;
+"""
+
+BIGQUERY_GET_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.VIEWS;
+"""
+
+BIGQUERY_GET_MATERIALIZED_VIEW_NAMES = """
+SELECT table_name FROM `{project}`.`{dataset}`.INFORMATION_SCHEMA.MATERIALIZED_VIEWS;
+"""
+
+
+class BigQueryQueryResult(BaseModel):
+    project_id: str
+    dataset_id: str
+    table_name: str
+    inserted_row_count: Optional[int] = None
+    deleted_row_count: Optional[int] = None
+    updated_row_count: Optional[int] = None
+    start_time: datetime
+    statement_type: str
+
+    @staticmethod
+    def get_for_table(
+        session: Session,
+        usage_location: str,
+        dataset_id: str,
+        project_id: str,
+    ):
+        rows = session.execute(
+            text(
+                JOBS.format(
+                    usage_location=usage_location,
+                    dataset_id=dataset_id,
+                    project_id=project_id,
+                    insert=DatabaseDMLOperations.INSERT.value,
+                    update=DatabaseDMLOperations.UPDATE.value,
+                    delete=DatabaseDMLOperations.DELETE.value,
+                    merge=DatabaseDMLOperations.MERGE.value,
+                )
+            )
+        )
+
+        return TypeAdapter(List[BigQueryQueryResult]).validate_python(map(dict, rows))
+
+
+JOBS = """
+    SELECT
+        statement_type,
+        start_time,
+        destination_table.project_id as project_id,
+        destination_table.dataset_id as dataset_id,
+        destination_table.table_id as table_name,
+        dml_statistics.inserted_row_count as inserted_row_count,
+        dml_statistics.deleted_row_count as deleted_row_count,
+        dml_statistics.updated_row_count as updated_row_count
+    FROM
+        `region-{usage_location}`.INFORMATION_SCHEMA.JOBS
+    WHERE
+        DATE(creation_time) >= CURRENT_DATE() - 1 AND
+        destination_table.dataset_id = '{dataset_id}' AND
+        destination_table.project_id = '{project_id}' AND
+        statement_type IN (
+            '{insert}',
+            '{update}',
+            '{delete}',
+            '{merge}'
+        )
+    ORDER BY creation_time DESC;
 """

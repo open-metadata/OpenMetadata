@@ -14,13 +14,14 @@
 import { Tabs } from 'antd';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
-import { DiffView } from './DiffView';
+import DiffView from './DiffView/DiffView';
 
 interface Props {
   value: string;
@@ -40,15 +41,19 @@ export const DescriptionTabs = ({
   const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
   const onTabChange = useCallback(
     (key: string) => {
       setActiveTab(key);
       if (isEqual(key, '2')) {
-        const newDescription = markdownRef.current?.getEditorContent();
+        const newDescription = markdownRef.current?.getEditorContent?.();
+        const isEmptyDescription = isDescriptionContentEmpty(newDescription);
         if (newDescription) {
-          const diff = getDescriptionDiff(description, newDescription);
+          const diff = getDescriptionDiff(
+            description,
+            isEmptyDescription ? '' : newDescription
+          );
           setDiffs(diff);
         }
       } else {
@@ -69,7 +74,7 @@ export const DescriptionTabs = ({
       <TabPane data-testid="current-tab" key="1" tab="Current">
         <div className="border border-main rounded-4 p-sm m-t-sm">
           {description.trim() ? (
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={description}
             />
@@ -89,7 +94,6 @@ export const DescriptionTabs = ({
       <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor
           className="m-t-sm"
-          height="208px"
           initialValue={suggestion}
           placeHolder={placeHolder ?? t('label.update-description')}
           ref={markdownRef}

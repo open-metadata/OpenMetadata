@@ -22,7 +22,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -36,10 +36,10 @@ import {
 } from 'recharts';
 import { ReactComponent as IconDropdown } from '../../../../../assets/svg/menu.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
-import { TOTAL_ENTITY_CHART_COLOR } from '../../../../../constants/DataInsight.constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import {
   deleteCustomMetric,
   putCustomMetric,
@@ -48,11 +48,13 @@ import {
   axisTickFormatter,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
+import { entityChartColor } from '../../../../../utils/CommonUtils';
 import {
   CustomTooltip,
   getRandomHexColor,
 } from '../../../../../utils/DataInsightUtils';
-import { formatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -82,7 +84,8 @@ const CustomMetricGraphs = ({
     onCustomMetricUpdate,
   } = useTableProfiler();
   const editPermission =
-    permissions?.EditAll || permissions?.EditDataProfile || false;
+    permissions &&
+    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
@@ -190,7 +193,7 @@ const CustomMetricGraphs = ({
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
         );
-        const color = TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor();
+        const color = entityChartColor(i) ?? getRandomHexColor();
 
         return isUndefined(metricDetails) ? null : (
           <Col key={key} span={24}>
@@ -268,7 +271,7 @@ const CustomMetricGraphs = ({
                         <Tooltip
                           content={
                             <CustomTooltip
-                              dateTimeFormatter={formatDateTime}
+                              dateTimeFormatter={formatDateTimeLong}
                               timeStampKey="timestamp"
                               valueFormatter={(value) =>
                                 tooltipFormatter(value)

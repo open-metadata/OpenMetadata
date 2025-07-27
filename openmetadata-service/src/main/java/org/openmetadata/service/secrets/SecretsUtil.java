@@ -78,17 +78,20 @@ public final class SecretsUtil {
       return ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
     } catch (Exception e) {
       // If we have the name we are trying to encrypt a connection
+      String message = e.getMessage();
       if (connectionName != null) {
         throw new InvalidServiceConnectionException(
             String.format(
-                "Failed to convert [%s] to type [%s]. Review the connection.",
-                connectionName, connectionType));
+                "Failed to convert [%s] to type [%s]. Review the connection.\n%s",
+                connectionName, connectionType, message),
+            e);
       }
       // If we don't have the name, we are decrypting from the db
       throw new InvalidServiceConnectionException(
           String.format(
-              "Failed to load the connection of type [%s]. Did migrations run properly?",
-              connectionType));
+              "Failed to load the connection of type [%s]. Did migrations run properly?\n%s",
+              connectionType, message),
+          e);
     }
   }
 }

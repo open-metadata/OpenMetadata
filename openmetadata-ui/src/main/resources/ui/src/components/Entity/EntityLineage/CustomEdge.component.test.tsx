@@ -12,11 +12,10 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { LineageLayer } from '../../../generated/settings/settings';
 import { CustomEdge } from './CustomEdge.component';
 
 jest.mock('../../../constants/Lineage.constants', () => ({
@@ -46,12 +45,12 @@ const mockCustomEdgeProp = {
     edge: {
       fromEntity: {
         id: '1',
-        fqn: 'table1',
+        fullyQualifiedName: 'table1',
         type: 'table',
       },
       toEntity: {
         id: '2',
-        fqn: 'table2',
+        fullyQualifiedName: 'table2',
         type: 'table',
       },
       pipeline: {
@@ -71,7 +70,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     tracedNodes: [],
     tracedColumns: [],
     pipelineStatus: {},
-    activeLayer: [LineageLayerView.COLUMN],
+    activeLayer: [LineageLayer.ColumnLevelLineage],
     fetchPipelineStatus: jest.fn(),
   })),
 }));
@@ -82,14 +81,9 @@ describe('Test CustomEdge Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const edgePathElement = await screen.findAllByTestId(
-      'react-flow-edge-path'
-    );
-
     const deleteButton = screen.queryByTestId('delete-button');
 
     expect(deleteButton).not.toBeInTheDocument();
-    expect(edgePathElement).toHaveLength(edgePathElement.length);
   });
 
   it('Pipeline as edge should be visible', async () => {

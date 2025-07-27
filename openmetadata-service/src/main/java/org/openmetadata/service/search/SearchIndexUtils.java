@@ -1,27 +1,43 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
+import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
+
+import jakarta.json.JsonArray;
+import jakarta.json.JsonNumber;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonNumber;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
+import lombok.Getter;
+import org.openmetadata.schema.ColumnsEntityInterface;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeSummaryMap;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.Utilities;
 
 public final class SearchIndexUtils {
+
+  // Keeping the bots list static so we can call this from anywhere in the codebase
+  public static final List<String> AI_BOTS =
+      List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
 
@@ -58,8 +74,9 @@ public final class SearchIndexUtils {
     if (value instanceof Map) {
       currentMap = (Map<String, Object>) value;
     } else if (value instanceof List) {
-      List<Map<String, Object>> list = (List<Map<String, Object>>) value;
-      for (Map<String, Object> item : list) {
+      List<?> list = (List<Map<String, Object>>) value;
+      for (Object obj : list) {
+        Map<String, Object> item = JsonUtils.getMap(obj);
         removeFieldByPath(
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
@@ -93,60 +110,21 @@ public final class SearchIndexUtils {
       List<Datum> reportData,
       Map<String, String> nodeData,
       String metric) {
-    Optional<String> val = Optional.ofNullable(aggregationResults.getString("value_as_string"));
-    val.ifPresentOrElse(s -> nodeData.put(metric, s), () -> nodeData.put(metric, null));
+    String valueStr = null;
+    if (aggregationResults.containsKey("value")) {
+      JsonNumber value = aggregationResults.getJsonNumber("value");
+      if (value != null) valueStr = value.toString();
+    } else {
+      valueStr = aggregationResults.getString("value_as_string", null);
+    }
 
+    nodeData.put(metric, valueStr);
     Datum datum = new Datum();
     for (Map.Entry<String, String> entry : nodeData.entrySet()) {
       datum.withAdditionalProperty(entry.getKey(), entry.getValue());
     }
 
     reportData.add(datum);
-  }
-
-  /*
-   * Get the metadata for the aggregation results. We'll use the metadata to build the report and
-   * to traverse the aggregation tree. 3 types of metadata are returned:
-   *   1. dimensions: the list of dimensions
-   *   2. metrics: the list of metrics
-   *   3. keys: the list of keys to traverse the aggregation tree
-   *
-   * @param aggregationMapList the list of aggregations
-   * @return the metadata
-   */
-  private static DataQualityReportMetadata getAggregationMetadata(
-      List<List<Map<String, String>>> aggregationMapList) {
-    DataQualityReportMetadata metadata = new DataQualityReportMetadata();
-    List<String> dimensions = new ArrayList<>();
-    List<String> metrics = new ArrayList<>();
-    List<String> keys = new ArrayList<>();
-
-    for (List<Map<String, String>> aggregationsMap : aggregationMapList) {
-      for (int j = 0; j < aggregationsMap.size(); j++) {
-        Map<String, String> aggregationMap = aggregationsMap.get(j);
-        String aggType = aggregationMap.get("aggType");
-        String field = aggregationMap.get("field");
-
-        boolean isLeaf = j == aggregationsMap.size() - 1;
-        if (isLeaf) {
-          // leaf aggregation
-          if (!aggType.contains("term")) {
-            metrics.add(field);
-          } else {
-            dimensions.add(field);
-            metrics.add("document_count");
-          }
-        } else {
-          dimensions.add(field);
-        }
-        String formattedAggType = aggType.contains("term") ? "s%s".formatted(aggType) : aggType;
-        keys.add("%s#%s".formatted(formattedAggType, aggregationMap.get("bucketName")));
-      }
-    }
-
-    metadata.withKeys(keys).withDimensions(dimensions).withMetrics(metrics);
-
-    return metadata;
   }
 
   /*
@@ -175,17 +153,27 @@ public final class SearchIndexUtils {
       return;
     }
 
-    String currentKey =
-        keys.get(0); // The current key represent the node in the aggregation tree (i.e. the current
-    // bucket)
+    // The current key represent the node in the aggregation tree (i.e. the current bucket)
+    String currentKey = keys.get(0);
     Optional<JsonObject> aggregation =
-        Optional.ofNullable(SearchClient.getAggregationObject(aggregationResults, currentKey));
+        Optional.ofNullable(getAggregationObject(aggregationResults, currentKey));
 
     aggregation.ifPresent(
         agg -> {
-          Optional<JsonArray> buckets =
-              Optional.ofNullable(SearchClient.getAggregationBuckets(agg));
+          Optional<JsonArray> buckets = Optional.ofNullable(getAggregationBuckets(agg));
           if (buckets.isEmpty()) {
+            if ((keys.size() > 1) && (agg.containsKey(keys.get(1)))) {
+              // If the current node in the aggregation tree does not have further buckets
+              // but contains the next level of aggregation, it means we are in the nested
+              // aggregation
+              traverseAggregationResults(
+                  agg,
+                  reportData,
+                  nodeData,
+                  keys.subList(1, keys.size()),
+                  metric,
+                  dimensions.subList(1, dimensions.size()));
+            }
             // If the current node in the aggregation tree does not have further bucket
             // it means we are in the leaf of the metric aggregation. We'll add the metric
             handleLeafMetricsAggregation(agg, reportData, nodeData, metric);
@@ -226,8 +214,7 @@ public final class SearchIndexUtils {
   }
 
   public static DataQualityReport parseAggregationResults(
-      Optional<JsonObject> aggregationResults, List<List<Map<String, String>>> aggregationMapList) {
-    DataQualityReportMetadata metadata = getAggregationMetadata(aggregationMapList);
+      Optional<JsonObject> aggregationResults, DataQualityReportMetadata metadata) {
     List<Datum> reportData = new ArrayList<>();
 
     aggregationResults.ifPresent(
@@ -244,78 +231,200 @@ public final class SearchIndexUtils {
     return report.withMetadata(metadata).withData(reportData);
   }
 
-  /*
-   * Build the aggregation string for the given aggregation
-   *
-   * @param aggregation the aggregation to build the string for.
-   *   The aggregation string is in the form
-   * `bucketName:aggType:key=value,bucketName:aggType:key=value;bucketName:aggType:key=value`
-   * where `,` represents a nested aggregation and `;` represents a sibling aggregation
-   * NOTE: As of 07/25/2024 sibling aggregation parsing and processing has not been added
-   * @return the aggregation string
-   */
-  public static Map<String, Object> buildAggregationString(String aggregation) {
-    Map<String, Object> metadata = new HashMap<>();
-
-    StringBuilder aggregationString = new StringBuilder();
-    String[] siblings = aggregation.split(";");
-    List<List<Map<String, String>>> aggregationsMapList = new ArrayList<>();
-
-    for (String sibling : siblings) {
-      List<Map<String, String>> aggregationsMap = new ArrayList<>();
-      String[] nested = sibling.split(",");
-      for (int i = 0; i < nested.length; i++) {
-        Map<String, String> aggregationMap = new HashMap<>();
-        String[] parts = nested[i].split(":");
-
-        Iterator<String> partsIterator = Arrays.stream(parts).iterator();
-
-        while (partsIterator.hasNext()) {
-          String part = partsIterator.next();
-          if (!partsIterator.hasNext()) {
-            // last element = key=value pairs of the aggregation
-            String[] subParts = part.split("&");
-            Arrays.stream(subParts)
-                .forEach(
-                    subPart -> {
-                      String[] kvPairs = subPart.split("=");
-                      aggregationString
-                          .append("\"")
-                          .append(kvPairs[0])
-                          .append("\":\"")
-                          .append(kvPairs[1])
-                          .append("\"");
-                      aggregationMap.put(kvPairs[0], kvPairs[1]);
-                      // add comma if not the last element
-                      if (Arrays.asList(subParts).indexOf(subPart) < subParts.length - 1)
-                        aggregationString.append(",");
-                    });
-            aggregationString.append("}");
-          } else {
-            String[] kvPairs = part.split("=");
-            aggregationString.append("\"").append(kvPairs[1]).append("\":{");
-            aggregationMap.put(kvPairs[0], kvPairs[1]);
-          }
-        }
-
-        if (i < nested.length - 1) {
-          aggregationString.append(",\"aggs\":{");
-        }
-        aggregationsMap.add(aggregationMap);
-      }
-      // nested aggregations will add the "aggs" key if nested.length > 1, hence *2
-      aggregationString.append("}".repeat(((nested.length - 1) * 2) + 1));
-      aggregationsMapList.add(aggregationsMap);
-    }
-    metadata.put("aggregationStr", aggregationString.toString());
-    metadata.put("aggregationMapList", aggregationsMapList);
-    return metadata;
-  }
-
   public static List<TagLabel> parseTags(List<TagLabel> tags) {
     if (tags == null) {
       return Collections.emptyList();
     }
     return tags;
+  }
+
+  public static SearchAggregation buildAggregationTree(String aggregationString) {
+    List<List<Map<String, String>>> aggregationsMetadata = new ArrayList<>();
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+    String[] siblings = aggregationString.split(";");
+    for (String sibling : siblings) {
+      List<Map<String, String>> siblingAggregationsMetadata = new ArrayList<>();
+      SearchAggregationNode currentNode = root;
+      String[] nestedAggregations = sibling.split(Utilities.doubleQuoteRegexEscape(","), -1);
+      for (String aggregation : nestedAggregations) {
+        SearchAggregationNode bucketNode = new SearchAggregationNode();
+        String[] nestedAggregationSiblings = aggregation.split("::");
+        for (int j = 0; j < nestedAggregationSiblings.length; j++) {
+          Map<String, String> nestedAggregationMetadata = new HashMap<>();
+
+          String nestedAggregationSibling = nestedAggregationSiblings[j];
+          String[] parts = nestedAggregationSibling.split(":(?!:)");
+          for (String part : parts) {
+            if (part.contains("&")) {
+              String[] subParts = part.split("&");
+              Map<String, String> params = new HashMap<>();
+              for (String subPart : subParts) {
+                String[] kvPairs = subPart.split(Utilities.doubleQuoteRegexEscape("="), -1);
+                params.put(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                nestedAggregationMetadata.put(
+                    kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+              }
+              bucketNode.setValue(params);
+            } else {
+              String[] kvPairs = part.split(Utilities.doubleQuoteRegexEscape("="), -1);
+              switch (kvPairs[0]) {
+                case "aggType":
+                  bucketNode.setType(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  nestedAggregationMetadata.put(
+                      kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  break;
+                case "bucketName":
+                  bucketNode.setName(Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  nestedAggregationMetadata.put(
+                      kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  break;
+                default:
+                  nestedAggregationMetadata.put(
+                      kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1]));
+                  bucketNode.setValue(
+                      Map.of(kvPairs[0], Utilities.cleanUpDoubleQuotes(kvPairs[1])));
+              }
+            }
+          }
+          currentNode.addChild(bucketNode);
+          if (j < nestedAggregationSiblings.length - 1) {
+            bucketNode = new SearchAggregationNode();
+          }
+          siblingAggregationsMetadata.add(nestedAggregationMetadata);
+        }
+        currentNode = bucketNode;
+      }
+      aggregationsMetadata.add(siblingAggregationsMetadata);
+    }
+    return new SearchAggregation(root, aggregationsMetadata);
+  }
+
+  public static String getDescriptionSource(
+      String description, Map<String, ChangeSummary> changeSummaryMap, String changeSummaryKey) {
+    if (description == null) {
+      return null;
+    }
+
+    String descriptionSource = ChangeSource.INGESTED.value();
+
+    if (changeSummaryMap != null) {
+      if (changeSummaryMap.containsKey(changeSummaryKey)
+          && changeSummaryMap.get(changeSummaryKey).getChangeSource() != null) {
+        if (AI_BOTS.contains(changeSummaryMap.get(changeSummaryKey).getChangedBy())) {
+          // If bot is directly PATCHing and not suggesting, we need to still consider it's a
+          // suggested change
+          descriptionSource = ChangeSource.SUGGESTED.value();
+        } else {
+          // Otherwise, use the change summary source
+          descriptionSource = changeSummaryMap.get(changeSummaryKey).getChangeSource().value();
+        }
+      }
+    }
+    return descriptionSource;
+  }
+
+  private static void processTagAndTierSources(
+      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
+    Optional.ofNullable(tagList)
+        .ifPresent(
+            tags ->
+                tags.forEach(
+                    tag -> {
+                      String tagSource = tag.getLabelType().value();
+                      if (tag.getTagFQN().startsWith("Tier.")) {
+                        tagAndTierSources
+                            .getTierSources()
+                            .put(
+                                tagSource,
+                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
+                      } else {
+                        tagAndTierSources
+                            .getTagSources()
+                            .put(
+                                tagSource,
+                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
+                      }
+                    }));
+  }
+
+  private static void processEntityTagSources(
+      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+    processTagAndTierSources(entity.getTags(), tagAndTierSources);
+  }
+
+  private static void processColumnTagSources(
+      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
+    for (Column column : entity.getColumns()) {
+      processTagAndTierSources(column.getTags(), tagAndTierSources);
+    }
+  }
+
+  public static TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+    TagAndTierSources tagAndTierSources = new TagAndTierSources();
+    processEntityTagSources(entity, tagAndTierSources);
+    if (SearchIndexUtils.hasColumns(entity)) {
+      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
+    }
+    return tagAndTierSources;
+  }
+
+  public static void processDescriptionSource(
+      EntityInterface entity,
+      Map<String, ChangeSummary> changeSummaryMap,
+      Map<String, Integer> descriptionSources) {
+    Optional.ofNullable(
+            getDescriptionSource(entity.getDescription(), changeSummaryMap, "description"))
+        .ifPresent(
+            source ->
+                descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
+  }
+
+  public static void processColumnDescriptionSources(
+      ColumnsEntityInterface entity,
+      Map<String, ChangeSummary> changeSummaryMap,
+      Map<String, Integer> descriptionSources) {
+    for (Column column : entity.getColumns()) {
+      Optional.ofNullable(
+              getDescriptionSource(
+                  column.getDescription(),
+                  changeSummaryMap,
+                  String.format("columns.%s.description", column.getName())))
+          .ifPresent(
+              source ->
+                  descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
+    }
+  }
+
+  public static boolean hasColumns(EntityInterface entity) {
+    return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
+  }
+
+  public static Map<String, Integer> processDescriptionSources(
+      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
+    Map<String, Integer> descriptionSources = new HashMap<>();
+    processDescriptionSource(entity, changeSummaryMap, descriptionSources);
+    if (hasColumns(entity)) {
+      processColumnDescriptionSources(
+          (ColumnsEntityInterface) entity, changeSummaryMap, descriptionSources);
+    }
+    return descriptionSources;
+  }
+
+  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface entity) {
+    return Optional.ofNullable(entity.getChangeDescription())
+        .map(ChangeDescription::getChangeSummary)
+        .map(ChangeSummaryMap::getAdditionalProperties)
+        .orElse(null);
+  }
+
+  @Getter
+  public static class TagAndTierSources {
+    private final Map<String, Integer> tagSources;
+    private final Map<String, Integer> tierSources;
+
+    public TagAndTierSources() {
+      this.tagSources = new HashMap<>();
+      this.tierSources = new HashMap<>();
+    }
   }
 }

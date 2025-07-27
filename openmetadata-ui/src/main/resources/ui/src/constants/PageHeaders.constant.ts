@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import brandClassBase from '../utils/BrandData/BrandClassBase';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const PAGE_HEADERS = {
@@ -37,6 +38,10 @@ export const PAGE_HEADERS = {
   USERS: {
     header: i18n.t('label.user-plural'),
     subHeader: i18n.t('message.page-sub-header-for-users'),
+  },
+  ONLINE_USERS: {
+    header: i18n.t('label.online-user-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-online-users'),
   },
   PERSONAS: {
     header: i18n.t('label.persona-plural'),
@@ -148,6 +153,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.stored-procedure-plural'),
     }),
   },
+  DOMAIN_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.domain-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.domain-plural'),
+    }),
+  },
   SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.search-index-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
@@ -192,11 +203,31 @@ export const PAGE_HEADERS = {
   },
   SETTING: {
     header: i18n.t('label.setting-plural'),
-    subHeader: i18n.t('message.page-sub-header-for-setting'),
+    subHeader: i18n.t('message.page-sub-header-for-setting', {
+      brandName: brandClassBase.getPageTitle(),
+    }),
   },
   LOGIN_CONFIGURATION: {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
+  },
+  SEARCH_RBAC: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search-setting'),
+  },
+  SEARCH_SETTINGS: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search-setting'),
+  },
+  LINEAGE_CONFIG: {
+    header: i18n.t('label.lineage-config'),
+    subHeader: i18n.t('message.page-sub-header-for-lineage-config-setting'),
+  },
+  OM_URL_CONFIG: {
+    header: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.open-metadata-url'),
+    }),
+    subHeader: i18n.t('message.om-url-configuration-message'),
   },
   OM_HEALTH: {
     header: i18n.t('label.health-check'),
@@ -228,5 +259,9 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.define-custom-property-for-entity', {
       entity: i18n.t('label.metric-plural'),
     }),
+  },
+  PLATFORM_LINEAGE: {
+    header: i18n.t('label.lineage'),
+    subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
   },
 };

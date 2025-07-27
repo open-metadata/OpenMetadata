@@ -14,6 +14,7 @@
 package org.openmetadata.service.clients.pipeline.airflow;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -27,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONObject;
@@ -39,10 +39,10 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j
@@ -63,6 +63,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   protected final URL serviceURL;
   private static final List<String> API_ENDPOINT_SEGMENTS = List.of("api", "v1", "openmetadata");
   private static final String DAG_ID = "dag_id";
+  private static final String CONF = "conf";
+  private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
 
   public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
 
@@ -172,12 +174,23 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return runPipeline(ingestionPipeline, service, null);
+  }
+
+  @Override
+  public PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      Map<String, Object> config) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
+      if (config != null) {
+        requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
+      }
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return getResponse(200, response.body());
@@ -287,27 +300,30 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 401 || response.statusCode() == 403) {
         return buildUnhealthyStatus(
             String.format(
-                "Authentication failed for user [%s] trying to access the Airflow APIs.",
-                this.username));
+                "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
+                this.username, serviceURL.toString()));
       }
 
       // APIs URL not found
       if (response.statusCode() == 404) {
         return buildUnhealthyStatus(
             String.format(
-                "Airflow APIs not found. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
-                DOCS_LINK));
+                "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
+                serviceURL.toString(), DOCS_LINK));
       }
 
       return buildUnhealthyStatus(
           String.format(
-              "Unexpected status response: code [%s] - [%s]",
-              response.statusCode(), response.body()));
+              "Unexpected status response at [%s]: code [%s] - [%s]",
+              serviceURL.toString(), response.statusCode(), response.body()));
 
     } catch (IOException | URISyntaxException e) {
       String exceptionMsg;
       if (e.getMessage() != null) {
-        exceptionMsg = String.format("Failed to get Airflow status due to [%s].", e.getMessage());
+        exceptionMsg =
+            String.format(
+                "Failed to get Airflow status at [%s] due to [%s].",
+                serviceURL.toString(), e.getMessage());
       } else {
         exceptionMsg =
             String.format(

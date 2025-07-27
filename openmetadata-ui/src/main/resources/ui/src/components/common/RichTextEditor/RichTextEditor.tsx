@@ -13,147 +13,68 @@
 
 /* eslint-disable */
 
-import { Editor, Viewer } from '@toast-ui/react-editor';
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
-import React, {
-  createRef,
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import i18n from '../../../utils/i18next/LocalUtil';
-import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
-import { EDITOR_TOOLBAR_ITEMS } from './EditorToolBar';
-import './rich-text-editor.less';
-import { editorRef, RichTextEditorProp } from './RichTextEditor.interface';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+import {
+  formatContent,
+  formatValueBasedOnContent,
+  setEditorContent,
+} from '../../../utils/BlockEditorUtils';
+import BlockEditor from '../../BlockEditor/BlockEditor';
+import { BlockEditorRef } from '../../BlockEditor/BlockEditor.interface';
+import {
+  EditorContentRef,
+  RichTextEditorProp,
+} from './RichTextEditor.interface';
 
-const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
+const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
   (
     {
-      placeHolder = 'Write your description',
-      previewStyle = 'tab',
-      editorType = 'markdown',
-      previewHighlight = false,
-      useCommandShortcut = true,
-      extendedAutolinks = true,
-      hideModeSwitch = true,
       autofocus = false,
       initialValue = '',
       readonly,
-      height,
       className,
       style,
+      placeHolder,
       onTextChange,
     }: RichTextEditorProp,
     ref
   ) => {
-    const { t } = useTranslation();
-    const richTextEditorRef = createRef<Editor>();
+    const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
 
-    const [editorValue, setEditorValue] = useState(initialValue);
-    const [imageBlobError, setImageBlobError] = useState<string | null>(null);
-
-    const onChangeHandler = () => {
-      const value = richTextEditorRef.current
-        ?.getInstance()
-        .getMarkdown() as string;
-      setEditorValue(value);
-      onTextChange && onTextChange(value);
+    const onChangeHandler = (backendFormatHtmlContent: string) => {
+      onTextChange &&
+        onTextChange(formatValueBasedOnContent(backendFormatHtmlContent));
     };
 
     useImperativeHandle(ref, () => ({
       getEditorContent() {
-        return editorValue;
+        const htmlContent = editorRef.current?.editor?.getHTML() ?? '';
+        const backendFormat = formatContent(htmlContent, 'server');
+
+        return formatValueBasedOnContent(backendFormat);
       },
       clearEditorContent() {
-        richTextEditorRef.current?.getInstance().setMarkdown('');
+        editorRef.current?.editor &&
+          setEditorContent(editorRef.current.editor, '');
+      },
+      setEditorContent(_content: string) {
+        editorRef.current?.editor &&
+          setEditorContent(editorRef.current.editor, _content);
       },
     }));
 
-    useEffect(() => {
-      setEditorValue(initialValue);
-    }, [initialValue]);
-
-    // handle the direction of the editor
-    useEffect(() => {
-      const dir = i18n.dir();
-      const editorElement = document.querySelector('.toastui-editor.md-mode');
-      const previewElement = document.querySelector(
-        '.toastui-editor-md-preview'
-      );
-      const textAlign = dir === 'rtl' ? 'right' : 'left';
-      if (editorElement) {
-        editorElement.setAttribute('dir', dir);
-        editorElement.setAttribute('style', `text-align: ${textAlign};`);
-      }
-
-      if (previewElement) {
-        previewElement.setAttribute('dir', dir);
-        previewElement.setAttribute('style', `text-align: ${textAlign};`);
-      }
-    }, []);
-
     return (
-      <div className={classNames(className)} style={style}>
-        {readonly ? (
-          <div
-            className={classNames('border p-xs rounded-4', {
-              'text-right': i18n.dir() === 'rtl',
-            })}
-            data-testid="viewer"
-            dir={i18n.dir()}>
-            <Viewer
-              extendedAutolinks={extendedAutolinks}
-              customHTMLRenderer={customHTMLRenderer}
-              initialValue={editorValue}
-              key={uniqueId()}
-              ref={richTextEditorRef}
-            />
-          </div>
-        ) : (
-          <div data-testid="editor">
-            <Editor
-              hooks={{
-                addImageBlobHook() {
-                  setImageBlobError(t('message.image-upload-error'));
-
-                  setTimeout(() => {
-                    setImageBlobError(null);
-                  }, 3000);
-                },
-              }}
-              autofocus={autofocus}
-              extendedAutolinks={extendedAutolinks}
-              height={height ?? '320px'}
-              hideModeSwitch={hideModeSwitch}
-              initialEditType={editorType}
-              initialValue={editorValue}
-              placeholder={placeHolder}
-              previewHighlight={previewHighlight}
-              previewStyle={previewStyle}
-              ref={richTextEditorRef}
-              customHTMLRenderer={customHTMLRenderer}
-              toolbarItems={[EDITOR_TOOLBAR_ITEMS]}
-              useCommandShortcut={useCommandShortcut}
-              onChange={onChangeHandler}
-            />
-            {imageBlobError && (
-              <div style={{ display: 'flex', flexWrap: 'nowrap' }}>
-                <div
-                  className="ant-form-item-explain ant-form-item-explain-connected"
-                  role="alert">
-                  <div className="ant-form-item-explain-error">
-                    {imageBlobError}
-                  </div>
-                </div>
-                <div style={{ width: '0px', height: '24px' }}></div>
-              </div>
-            )}
-          </div>
-        )}
+      <div className={classNames(className)} style={style} data-testid="editor">
+        <BlockEditor
+          placeholder={placeHolder}
+          ref={editorRef}
+          autoFocus={autofocus}
+          content={initialValue}
+          menuType="bar"
+          editable={!readonly}
+          onChange={onChangeHandler}
+        />
       </div>
     );
   }

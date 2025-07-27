@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,6 +52,7 @@ from metadata.generated.schema.type.customProperties.enumConfig import EnumConfi
 from metadata.generated.schema.type.customProperty import (
     CustomPropertyConfig,
     EntityTypes,
+    Format,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_properties import (
@@ -93,7 +94,7 @@ EXPECTED_CUSTOM_PROPERTIES = [
         "description": "Rating of a table",
         "propertyType": {"name": "enum"},
         "customPropertyConfig": {
-            "config": {"values": ["Good", "Average", "Bad"], "multiSelect": False},
+            "config": {"values": ["Average", "Bad", "Good"], "multiSelect": False},
         },
     },
     {
@@ -333,24 +334,22 @@ class OMetaCustomAttributeTest(TestCase):
             for custom_property in custom_properties:
                 if expected_custom_property["name"] == custom_property["name"]:
                     actual_custom_properties.append(custom_property)
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property["name"], expected_custom_property["name"]
                     )
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property["description"],
                         expected_custom_property["description"],
                     )
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property.get("customPropertyConfig"),
                         expected_custom_property.get("customPropertyConfig"),
                     )
-                    self.assertEquals(
+                    self.assertEqual(
                         custom_property["propertyType"]["name"],
                         expected_custom_property["propertyType"]["name"],
                     )
-        self.assertEquals(
-            len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES)
-        )
+        self.assertEqual(len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES))
 
     def test_add_custom_property_table(self):
         """
@@ -411,3 +410,404 @@ class OMetaCustomAttributeTest(TestCase):
             fields=["*"],
         )
         self.assertEqual(res.extension.root["SchemaAge"], extensions["SchemaAge"])
+
+    def test_custom_property_data_types_enum_values(self):
+        """
+        Test that CustomPropertyDataTypes enum has correct values, especially for date/time types
+        """
+        # Test that the enum values are correct
+        self.assertEqual(CustomPropertyDataTypes.STRING.value, "string")
+        self.assertEqual(CustomPropertyDataTypes.INTEGER.value, "integer")
+        self.assertEqual(CustomPropertyDataTypes.MARKDOWN.value, "markdown")
+        self.assertEqual(CustomPropertyDataTypes.DATE.value, "date-cp")
+        self.assertEqual(CustomPropertyDataTypes.DATETIME.value, "dateTime-cp")
+        self.assertEqual(CustomPropertyDataTypes.TIME.value, "time-cp")
+        self.assertEqual(CustomPropertyDataTypes.DURATION.value, "duration")
+        self.assertEqual(CustomPropertyDataTypes.EMAIL.value, "email")
+        self.assertEqual(CustomPropertyDataTypes.NUMBER.value, "number")
+        self.assertEqual(CustomPropertyDataTypes.SQLQUERY.value, "sqlQuery")
+        self.assertEqual(CustomPropertyDataTypes.TIMEINTERVAL.value, "timeInterval")
+        self.assertEqual(CustomPropertyDataTypes.TIMESTAMP.value, "timestamp")
+        self.assertEqual(CustomPropertyDataTypes.ENUM.value, "enum")
+        self.assertEqual(
+            CustomPropertyDataTypes.ENTITY_REFERENCE.value, "entityReference"
+        )
+        self.assertEqual(
+            CustomPropertyDataTypes.ENTITY_REFERENCE_LIST.value, "entityReferenceList"
+        )
+
+    def test_date_time_custom_properties(self):
+        """
+        Test creating custom properties with date/time types using the updated enum values
+        """
+        # Test DATE custom property
+        date_property = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="CreationDate",
+                description="Date when the table was created",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.DATE
+                ),
+                customPropertyConfig=CustomPropertyConfig(config=Format("yyyy-MM-dd")),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=date_property
+        )
+
+        # Test DATETIME custom property
+        datetime_property = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="LastModifiedDateTime",
+                description="Date and time when the table was last modified",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.DATETIME
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=datetime_property
+        )
+
+        # Test TIME custom property
+        time_property = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="DailyBackupTime",
+                description="Time when daily backup occurs",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.TIME
+                ),
+                customPropertyConfig=CustomPropertyConfig(config=Format("HH:mm:ss")),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=time_property
+        )
+
+        # Verify the properties were created
+        custom_properties = self.metadata.get_entity_custom_properties(
+            entity_type=Table
+        )
+
+        date_prop = next(
+            (cp for cp in custom_properties if cp["name"] == "CreationDate"), None
+        )
+        datetime_prop = next(
+            (cp for cp in custom_properties if cp["name"] == "LastModifiedDateTime"),
+            None,
+        )
+        time_prop = next(
+            (cp for cp in custom_properties if cp["name"] == "DailyBackupTime"), None
+        )
+
+        self.assertIsNotNone(date_prop)
+        self.assertIsNotNone(datetime_prop)
+        self.assertIsNotNone(time_prop)
+
+        # Verify the property types are correct
+        self.assertEqual(date_prop["propertyType"]["name"], "date-cp")
+        self.assertEqual(datetime_prop["propertyType"]["name"], "dateTime-cp")
+        self.assertEqual(time_prop["propertyType"]["name"], "time-cp")
+
+    def test_all_custom_property_data_types(self):
+        """
+        Test creating custom properties for all available data types
+        """
+        test_cases = [
+            (
+                CustomPropertyDataTypes.STRING,
+                "TestString",
+                "String test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.INTEGER,
+                "TestInteger",
+                "Integer test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.MARKDOWN,
+                "TestMarkdown",
+                "Markdown test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.DATE,
+                "TestDate",
+                "Date test property",
+                "yyyy-MM-dd",
+            ),
+            (
+                CustomPropertyDataTypes.DATETIME,
+                "TestDateTime",
+                "DateTime test property",
+                "yyyy-MM-dd HH:mm:ss",
+            ),
+            (
+                CustomPropertyDataTypes.TIME,
+                "TestTime",
+                "Time test property",
+                "HH:mm:ss",
+            ),
+            (
+                CustomPropertyDataTypes.DURATION,
+                "TestDuration",
+                "Duration test property",
+                None,
+            ),
+            (CustomPropertyDataTypes.EMAIL, "TestEmail", "Email test property", None),
+            (
+                CustomPropertyDataTypes.NUMBER,
+                "TestNumber",
+                "Number test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.SQLQUERY,
+                "TestSqlQuery",
+                "SQL Query test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.TIMEINTERVAL,
+                "TestTimeInterval",
+                "Time Interval test property",
+                None,
+            ),
+            (
+                CustomPropertyDataTypes.TIMESTAMP,
+                "TestTimestamp",
+                "Timestamp test property",
+                None,
+            ),
+        ]
+
+        for data_type, name, description, custom_property_config in test_cases:
+            with self.subTest(data_type=data_type):
+                create_custom_property_request = CreateCustomPropertyRequest(
+                    name=name,
+                    description=description,
+                    propertyType=self.metadata.get_property_type_ref(data_type),
+                )
+                # For date/time custom properties, we need to add the format to the custom property config
+                if custom_property_config:
+                    create_custom_property_request.customPropertyConfig = (
+                        CustomPropertyConfig(config=Format(custom_property_config))
+                    )
+                property_request = OMetaCustomProperties(
+                    entity_type=Table,
+                    createCustomPropertyRequest=create_custom_property_request,
+                )
+
+                # This should not raise an exception
+                result = self.metadata.create_or_update_custom_property(
+                    ometa_custom_property=property_request
+                )
+                self.assertIsNotNone(result)
+
+        # Verify all properties were created
+        custom_properties = self.metadata.get_entity_custom_properties(
+            entity_type=Table
+        )
+
+        created_properties = {cp["name"]: cp for cp in custom_properties}
+
+        for data_type, name, description, _ in test_cases:
+            with self.subTest(data_type=data_type, name=name):
+                self.assertIn(name, created_properties)
+                prop = created_properties[name]
+                self.assertEqual(prop["description"], description)
+                self.assertEqual(prop["propertyType"]["name"], data_type.value)
+
+    def test_custom_property_with_date_time_values(self):
+        """
+        Test adding actual date/time values to custom properties
+        """
+        # Create date/time custom properties
+        self.test_date_time_custom_properties()
+
+        # Test data for date/time properties
+        extensions = {
+            "CreationDate": "2023-12-01",
+            "LastModifiedDateTime": "2023-12-01T10:30:00Z",
+            "DailyBackupTime": "02:00:00",
+        }
+
+        table = self.create_table(
+            name="test_datetime_properties", extensions=extensions
+        )
+
+        # Verify the table was created with the date/time extensions
+        res = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test-service-custom-properties.test-db.test-schema.test_datetime_properties",
+            fields=["*"],
+        )
+
+        self.assertEqual(res.extension.root["CreationDate"], extensions["CreationDate"])
+        self.assertEqual(
+            res.extension.root["LastModifiedDateTime"],
+            extensions["LastModifiedDateTime"],
+        )
+        self.assertEqual(
+            res.extension.root["DailyBackupTime"], extensions["DailyBackupTime"]
+        )
+
+    def test_custom_property_enum_backwards_compatibility(self):
+        """
+        Test that the enum values work correctly with property type references
+        """
+        # Test that get_property_type_ref works with the new enum values
+        date_type_ref = self.metadata.get_property_type_ref(
+            CustomPropertyDataTypes.DATE
+        )
+        datetime_type_ref = self.metadata.get_property_type_ref(
+            CustomPropertyDataTypes.DATETIME
+        )
+        time_type_ref = self.metadata.get_property_type_ref(
+            CustomPropertyDataTypes.TIME
+        )
+
+        # These should not be None and should have the correct structure
+        self.assertIsNotNone(date_type_ref)
+        self.assertIsNotNone(datetime_type_ref)
+        self.assertIsNotNone(time_type_ref)
+
+        # Verify the type references have the correct structure (EntityReference with id and type)
+        self.assertIsNotNone(date_type_ref.root.id)
+        self.assertEqual(date_type_ref.root.type, "type")
+        self.assertIsNotNone(datetime_type_ref.root.id)
+        self.assertEqual(datetime_type_ref.root.type, "type")
+        self.assertIsNotNone(time_type_ref.root.id)
+        self.assertEqual(time_type_ref.root.type, "type")
+
+    def test_custom_property_data_types_completeness(self):
+        """
+        Test that all CustomPropertyDataTypes enum members are properly defined
+        """
+        # Test that all enum members have string values
+        for data_type in CustomPropertyDataTypes:
+            self.assertIsInstance(data_type.value, str)
+            self.assertGreater(len(data_type.value), 0)
+
+        # Test specific enum members that were changed
+        date_time_types = [
+            CustomPropertyDataTypes.DATE,
+            CustomPropertyDataTypes.DATETIME,
+            CustomPropertyDataTypes.TIME,
+        ]
+
+        for data_type in date_time_types:
+            # These should all have the -cp suffix
+            self.assertTrue(data_type.value.endswith("-cp"))
+
+        # Test that other types don't have the -cp suffix
+        non_cp_types = [
+            CustomPropertyDataTypes.STRING,
+            CustomPropertyDataTypes.INTEGER,
+            CustomPropertyDataTypes.MARKDOWN,
+            CustomPropertyDataTypes.DURATION,
+            CustomPropertyDataTypes.EMAIL,
+            CustomPropertyDataTypes.NUMBER,
+            CustomPropertyDataTypes.SQLQUERY,
+            CustomPropertyDataTypes.TIMEINTERVAL,
+            CustomPropertyDataTypes.TIMESTAMP,
+            CustomPropertyDataTypes.ENUM,
+            CustomPropertyDataTypes.ENTITY_REFERENCE,
+            CustomPropertyDataTypes.ENTITY_REFERENCE_LIST,
+        ]
+
+        for data_type in non_cp_types:
+            self.assertFalse(data_type.value.endswith("-cp"))
+
+    def test_custom_property_mixed_data_types(self):
+        """
+        Test creating a table with mixed custom property data types
+        """
+        # Create various custom properties
+        properties_to_create = [
+            (CustomPropertyDataTypes.STRING, "Description", "Table description"),
+            (CustomPropertyDataTypes.INTEGER, "RowCount", "Number of rows"),
+            (CustomPropertyDataTypes.DATE, "CreatedDate", "Creation date"),
+            (CustomPropertyDataTypes.DATETIME, "LastUpdated", "Last update timestamp"),
+            (CustomPropertyDataTypes.TIME, "BackupTime", "Backup time"),
+            (CustomPropertyDataTypes.EMAIL, "Owner", "Owner email"),
+            (CustomPropertyDataTypes.NUMBER, "SizeGB", "Size in GB"),
+        ]
+
+        for data_type, name, description in properties_to_create:
+            create_request = CreateCustomPropertyRequest(
+                name=name,
+                description=description,
+                propertyType=self.metadata.get_property_type_ref(data_type),
+            )
+
+            # Add format configuration for date/time properties
+            if data_type in [
+                CustomPropertyDataTypes.DATE,
+                CustomPropertyDataTypes.DATETIME,
+                CustomPropertyDataTypes.TIME,
+            ]:
+                if data_type == CustomPropertyDataTypes.DATE:
+                    create_request.customPropertyConfig = CustomPropertyConfig(
+                        config=Format("yyyy-MM-dd")
+                    )
+                elif data_type == CustomPropertyDataTypes.DATETIME:
+                    create_request.customPropertyConfig = CustomPropertyConfig(
+                        config=Format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    )
+                elif data_type == CustomPropertyDataTypes.TIME:
+                    create_request.customPropertyConfig = CustomPropertyConfig(
+                        config=Format("HH:mm:ss")
+                    )
+
+            property_request = OMetaCustomProperties(
+                entity_type=Table,
+                createCustomPropertyRequest=create_request,
+            )
+
+            self.metadata.create_or_update_custom_property(
+                ometa_custom_property=property_request
+            )
+
+        # Create a table with all these properties
+        extensions = {
+            "Description": "This is a test table",
+            "RowCount": 1000,
+            "CreatedDate": "2023-01-01",
+            "LastUpdated": "2023-12-01T15:30:00Z",
+            "BackupTime": "03:00:00",
+            "Owner": "test@example.com",
+            "SizeGB": 2.5,
+        }
+
+        table = self.create_table(name="test_mixed_types", extensions=extensions)
+
+        # Verify the table was created with all extensions
+        res = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test-service-custom-properties.test-db.test-schema.test_mixed_types",
+            fields=["*"],
+        )
+
+        for key, expected_value in extensions.items():
+            self.assertEqual(res.extension.root[key], expected_value)
+
+    def test_custom_property_type_ref_error_handling(self):
+        """
+        Test error handling when using invalid custom property types
+        """
+        # Test that valid enum values work
+        for data_type in CustomPropertyDataTypes:
+            type_ref = self.metadata.get_property_type_ref(data_type)
+            self.assertIsNotNone(type_ref)
+            # Verify the type reference has the correct structure
+            self.assertIsNotNone(type_ref.root.id)
+            self.assertEqual(type_ref.root.type, "type")

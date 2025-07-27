@@ -3,8 +3,8 @@ package org.openmetadata.service.resources.services.connections;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
@@ -26,13 +26,13 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
     TestConnectionDefinition mysqlTest =
         TestUtils.get(target, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
     assertEquals("Mysql", mysqlTest.getName());
-    assertEquals(4, mysqlTest.getSteps().size());
+    assertEquals(5, mysqlTest.getSteps().size());
 
     WebTarget idTarget = getResourceById(mysqlTest.getId());
     TestConnectionDefinition mysqlTestById =
         TestUtils.get(idTarget, TestConnectionDefinition.class, ADMIN_AUTH_HEADERS);
     assertEquals("Mysql", mysqlTestById.getName());
-    assertEquals(4, mysqlTestById.getSteps().size());
+    assertEquals(5, mysqlTestById.getSteps().size());
   }
 
   @Test

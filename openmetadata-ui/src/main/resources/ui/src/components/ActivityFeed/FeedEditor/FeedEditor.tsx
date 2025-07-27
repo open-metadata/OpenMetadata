@@ -12,12 +12,13 @@
  */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
+import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
-import React, {
+import {
   forwardRef,
   KeyboardEvent,
   useCallback,
@@ -49,12 +50,14 @@ import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
+import './quill-emoji.css';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
+Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
@@ -65,7 +68,7 @@ const strikethrough = (_node: any, delta: typeof Delta) => {
     : null;
 };
 
-export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
+export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
   (
     {
       className,
@@ -87,6 +90,31 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
 
     const { userProfilePics } = useApplicationStore();
 
+    const handleClickOutside = useCallback((event: MouseEvent) => {
+      const emojiContainer = document.querySelector(
+        '#om-quill-editor #textarea-emoji'
+      ) as HTMLElement;
+      const emojiToggleButton = document.querySelector(
+        '#om-quill-editor .textarea-emoji-control.ql-list'
+      ) as HTMLElement;
+
+      if (
+        emojiContainer &&
+        !emojiContainer.contains(event.target as Node) &&
+        emojiToggleButton &&
+        !emojiToggleButton.contains(event.target as Node)
+      ) {
+        emojiToggleButton.click(); // Simulates a click to close the emoji container
+      }
+    }, []);
+
+    useEffect(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [handleClickOutside]);
     const userSuggestionRenderer = async (
       searchTerm: string,
       renderList: (matches: MentionSuggestionsItem[], search: string) => void,
@@ -172,7 +200,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       },
       [userProfilePics]
     );
-
     /**
      * Prepare modules for editor
      */
@@ -185,7 +212,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             insertRef: insertRef,
           },
         },
-        'emoji-toolbar': false,
+        'emoji-textarea': true,
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
@@ -282,14 +309,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
      * Handle forward ref logic and provide method access to parent component
      */
     useImperativeHandle(ref, () => ({
-      getEditorValue() {
+      getEditorContent() {
         setValue('');
 
         // sanitize the content before sending it to the parent component
         return HTMLToMarkdown.turndown(getSanitizeContent(value));
       },
-      clearEditorValue() {
+      clearEditorContent() {
         setValue('');
+      },
+      setEditorContent(content: string) {
+        setValue(content);
       },
     }));
 

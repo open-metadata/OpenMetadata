@@ -115,5 +115,14 @@
     "effect" : "include",
     "condition": "matchAnyFieldChange({'description', 'tags'})",
     "inputType": "none"
+  },
+  {
+    "name": "filterByUpdaterIsBot",
+    "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+    "displayName": "Filter By Updater Is Bot",
+    "description" : "Event Filtering when Updater is a Bot",
+    "effect" : "include",
+    "condition": "isBot()",
+    "inputType": "none"
   }
 ]

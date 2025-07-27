@@ -19,16 +19,18 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { FeedFilter } from '../../../enums/mydata.enum';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getFeedFilterWidgets } from '../../../utils/LandingPageWidget/WidgetsUtils';
 import './feeds-filter-popover.less';
 import { FeedsFilterPopoverProps } from './FeedsFilterPopover.interface';
 
 const FeedsFilterPopover = ({
+  feedTab,
   defaultFilter,
   onUpdate,
 }: FeedsFilterPopoverProps) => {
@@ -39,26 +41,8 @@ const FeedsFilterPopover = ({
     useState<FeedFilter>(defaultFilter);
 
   const items = useMemo(
-    () => [
-      {
-        title: t('label.all'),
-        key: currentUser?.isAdmin
-          ? FeedFilter.ALL
-          : FeedFilter.OWNER_OR_FOLLOWS,
-        description: t('message.feed-filter-all'),
-      },
-      {
-        title: t('label.my-data'),
-        key: FeedFilter.OWNER,
-        description: t('message.feed-filter-owner'),
-      },
-      {
-        title: t('label.following'),
-        key: FeedFilter.FOLLOWS,
-        description: t('message.feed-filter-following'),
-      },
-    ],
-    [currentUser]
+    () => getFeedFilterWidgets(feedTab, currentUser?.isAdmin),
+    [currentUser?.isAdmin, feedTab]
   );
 
   const onFilterUpdate = useCallback(() => {
@@ -134,7 +118,7 @@ const FeedsFilterPopover = ({
       onOpenChange={setPopupVisible}>
       <Tooltip title={t('label.feed-filter-plural')}>
         <Button
-          className="flex-center"
+          className="feed-filter-icon"
           data-testid="filter-button"
           icon={<FilterIcon height={16} />}
         />

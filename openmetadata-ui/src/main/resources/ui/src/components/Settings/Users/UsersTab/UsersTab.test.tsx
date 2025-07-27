@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getUserById } from '../../../../rest/userAPI';
@@ -30,7 +29,6 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: jest.fn(),
 }));
 
 const mockUsers = [
@@ -72,7 +70,7 @@ describe('UsersTab', () => {
       });
     });
 
-    expect(await screen.findByText('Aaron Johnson')).toBeInTheDocument();
+    expect(await screen.findAllByText('Aaron Johnson')).toHaveLength(2);
     expect(await screen.findByText('Sales')).toBeInTheDocument();
     expect(await screen.findByText('Data Steward')).toBeInTheDocument();
   });
@@ -111,12 +109,8 @@ describe('UsersTab', () => {
         wrapper: MemoryRouter,
       });
     });
-    await act(async () => {
-      userEvent.click(screen.getByTestId('remove-user-btn'));
-    });
-    await act(async () => {
-      userEvent.click(screen.getByText('label.cancel'));
-    });
+    fireEvent.click(screen.getByTestId('remove-user-btn'));
+    fireEvent.click(screen.getByText('label.cancel'));
 
     expect(
       screen.queryByTestId('remove-confirmation-modal')

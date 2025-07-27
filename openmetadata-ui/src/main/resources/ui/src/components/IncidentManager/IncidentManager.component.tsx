@@ -10,24 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Space } from 'antd';
+import { Col, Row, Select, Skeleton, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, pick, startCase } from 'lodash';
+import { isEqual, isUndefined, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -38,7 +35,9 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../generated/tests/testCaseResolutionStatus';
+import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -53,31 +52,34 @@ import {
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getUsers } from '../../rest/userAPI';
 import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
-  formatDateTime,
+  formatDateTimeLong,
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../utils/EntityUtils';
-import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
+  getEntityDetailsPath,
+  getTestCaseDetailPagePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
-import { TableProfilerTab } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import {
+  TableProfilerTab,
+  TestCasePermission,
+} from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
@@ -86,6 +88,19 @@ const IncidentManager = ({
   isIncidentPage = true,
   tableDetails,
 }: IncidentManagerProps) => {
+  const location = useCustomLocation();
+  const navigate = useNavigate();
+
+  const searchParams = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+    const data = isUndefined(searchData) ? {} : searchData;
+
+    return data as Partial<TestCaseIncidentStatusParams>;
+  }, [location.search]);
+
   const defaultRange = useMemo(
     () => ({
       key: 'last30days',
@@ -99,8 +114,11 @@ const IncidentManager = ({
       isLoading: true,
     });
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    startTs: getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days),
-    endTs: getCurrentMillis(),
+    startTs: getStartOfDayInMillis(
+      getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
+    ),
+    endTs: getEndOfDayInMillis(getCurrentMillis()),
+    ...searchParams,
   });
   const [users, setUsers] = useState<{
     options: Option[];
@@ -110,14 +128,15 @@ const IncidentManager = ({
     selected: [],
   });
 
-  const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
-    []
-  );
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
+  const { testCase: commonTestCasePermission } = permissions;
+
+  const [isPermissionLoading, setIsPermissionLoading] = useState(true);
+  const [testCasePermissions, setTestCasePermissions] = useState<
+    TestCasePermission[]
+  >([]);
 
   const { t } = useTranslation();
-
-  const { permissions } = usePermissionProvider();
-  const { testCase: testCasePermission } = permissions;
 
   const {
     paging,
@@ -136,17 +155,18 @@ const IncidentManager = ({
         const { data, paging } = await getListTestCaseIncidentStatus({
           limit: pageSize,
           latest: true,
+          include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
           const assignee = curr.testCaseResolutionStatusDetails?.assignee;
-          const isExist = acc.some((item) => item.value === assignee?.id);
+          const isExist = acc.some((item) => item.value === assignee?.name);
 
           if (assignee && !isExist) {
             acc.push({
               label: getEntityName(assignee),
-              value: assignee.id,
+              value: assignee.name ?? assignee.fullyQualifiedName ?? '',
               type: assignee.type,
               name: assignee.name,
             });
@@ -154,6 +174,7 @@ const IncidentManager = ({
 
           return acc;
         }, [] as Option[]);
+
         setUsers((pre) => ({
           ...pre,
           options: assigneeOptions,
@@ -168,6 +189,40 @@ const IncidentManager = ({
     },
     [pageSize, setTestCaseListData]
   );
+
+  const fetchTestCasePermissions = async () => {
+    const { data: incident } = testCaseListData;
+    try {
+      setIsPermissionLoading(true);
+      const promises = incident.map((testCase) => {
+        return getEntityPermissionByFqn(
+          ResourceEntity.TEST_CASE,
+          testCase.testCaseReference?.fullyQualifiedName ?? ''
+        );
+      });
+      const testCasePermission = await Promise.allSettled(promises);
+      const data = testCasePermission.reduce((acc, status, i) => {
+        if (status.status === 'fulfilled') {
+          return [
+            ...acc,
+            {
+              ...status.value,
+              fullyQualifiedName:
+                incident[i].testCaseReference?.fullyQualifiedName ?? '',
+            },
+          ];
+        }
+
+        return acc;
+      }, [] as TestCasePermission[]);
+
+      setTestCasePermissions(data);
+    } catch {
+      // do nothing
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
 
   const handlePagingClick = ({
     cursorType,
@@ -231,13 +286,13 @@ const IncidentManager = ({
       const hits = res.data.hits.hits;
       const suggestOptions = hits.map((hit) => ({
         label: getEntityName(hit._source),
-        value: hit._id ?? '',
+        value: hit._source.name,
         type: hit._source.entityType,
         name: hit._source.name,
       }));
 
       setUsers((pre) => ({ ...pre, options: suggestOptions }));
-    } catch (error) {
+    } catch {
       setUsers((pre) => ({ ...pre, options: [] }));
     }
   };
@@ -296,40 +351,37 @@ const IncidentManager = ({
         label: getEntityName(hit._source),
         value: hit._source.fullyQualifiedName,
       }));
-    } catch (error) {
+    } catch {
       return [];
     }
   };
 
-  const fetchInitialAssign = useCallback(async () => {
-    try {
-      const { data } = await getUsers({
-        limit: PAGE_SIZE_MEDIUM,
-
-        isBot: false,
-      });
-      const filterData = getEntityReferenceListFromEntities(
-        data,
-        EntityType.USER
-      );
-      setInitialAssignees(filterData);
-    } catch (error) {
-      setInitialAssignees([]);
-    }
-  }, []);
-
   useEffect(() => {
-    // fetch users once and store in state
-    fetchInitialAssign();
-  }, []);
-
-  useEffect(() => {
-    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
+    if (
+      commonTestCasePermission?.ViewAll ||
+      commonTestCasePermission?.ViewBasic
+    ) {
       fetchTestCaseIncidents(filters);
+      if (searchParams) {
+        navigate(
+          {
+            search: QueryString.stringify(filters),
+          },
+          {
+            replace: true,
+          }
+        );
+      }
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [testCasePermission, pageSize, filters]);
+  }, [commonTestCasePermission, pageSize, filters]);
+
+  useEffect(() => {
+    if (testCaseListData.data.length > 0) {
+      fetchTestCasePermissions();
+    }
+  }, [testCaseListData.data]);
 
   const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
     () => [
@@ -344,8 +396,7 @@ const IncidentManager = ({
             <Link
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
-              style={{ maxWidth: 280 }}
-              to={getIncidentManagerDetailPagePath(
+              to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record.testCaseReference)}
@@ -394,33 +445,55 @@ const IncidentManager = ({
           ]
         : []),
       {
-        title: t('label.execution-time'),
+        title: t('label.last-updated'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        width: 150,
-        render: (value: number) => (value ? formatDateTime(value) : '--'),
+        width: 200,
+        render: (value: number) => (value ? formatDateTimeLong(value) : '--'),
       },
       {
         title: t('label.status'),
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
-        width: 100,
-        render: (_, record: TestCaseResolutionStatus) => (
-          <TestCaseIncidentManagerStatus
-            data={record}
-            usersList={initialAssignees}
-            onSubmit={handleStatusSubmit}
-          />
-        ),
+        width: 120,
+        render: (_, record: TestCaseResolutionStatus) => {
+          if (isPermissionLoading) {
+            return <Skeleton.Input size="small" />;
+          }
+          const hasPermission = testCasePermissions.find(
+            (item) =>
+              item.fullyQualifiedName ===
+              record.testCaseReference?.fullyQualifiedName
+          );
+
+          return (
+            <TestCaseIncidentManagerStatus
+              data={record}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              onSubmit={handleStatusSubmit}
+            />
+          );
+        },
       },
       {
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 150,
+        width: 120,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
+          if (isPermissionLoading) {
+            return <Skeleton.Input size="small" />;
+          }
+
+          const hasPermission = testCasePermissions.find(
+            (item) =>
+              item.fullyQualifiedName ===
+              record.testCaseReference?.fullyQualifiedName
+          );
+
           return (
             <Severity
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               severity={value}
               onSubmit={(severity) => handleSeveritySubmit(severity, record)}
             />
@@ -440,11 +513,27 @@ const IncidentManager = ({
         ),
       },
     ],
-    [testCaseListData.data, initialAssignees]
+    [
+      tableDetails?.deleted,
+      testCaseListData.data,
+      testCasePermissions,
+      isPermissionLoading,
+    ]
   );
 
-  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  if (
+    !commonTestCasePermission?.ViewAll &&
+    !commonTestCasePermission?.ViewBasic
+  ) {
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-case'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
@@ -467,6 +556,7 @@ const IncidentManager = ({
             className="w-min-10"
             data-testid="status-select"
             placeholder={t('label.status')}
+            value={filters.testCaseResolutionStatusType}
             onChange={(value) =>
               setFilters((pre) => ({
                 ...pre,
@@ -486,6 +576,7 @@ const IncidentManager = ({
             data-testid="test-case-select"
             placeholder={t('label.test-case')}
             suffixIcon={undefined}
+            value={filters.testCaseFQN}
             onChange={(value) =>
               setFilters((pre) => ({
                 ...pre,
@@ -503,12 +594,19 @@ const IncidentManager = ({
 
       <Col span={24}>
         <Table
-          bordered
-          className="test-case-table-container"
           columns={columns}
+          containerClassName="test-case-table-container"
           data-testid="test-case-incident-manager-table"
           dataSource={testCaseListData.data}
           loading={testCaseListData.isLoading}
+          {...(pagingData && showPagination
+            ? {
+                customPaginationProps: {
+                  ...pagingData,
+                  showPagination,
+                },
+              }
+            : {})}
           locale={{
             emptyText: (
               <FilterTablePlaceHolder
@@ -518,15 +616,12 @@ const IncidentManager = ({
           }}
           pagination={false}
           rowKey="id"
+          scroll={{
+            x: '100%',
+          }}
           size="small"
         />
       </Col>
-
-      {pagingData && showPagination && (
-        <Col span={24}>
-          <NextPrevious {...pagingData} />
-        </Col>
-      )}
     </Row>
   );
 };

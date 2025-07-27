@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Form, Input, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import loginBG from '../../assets/img/login-bg.png';
+import { useNavigate } from 'react-router-dom';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import LoginCarousel from '../LoginPage/LoginCarousel';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
@@ -38,10 +40,13 @@ const BasicSignUp = () => {
   const { t } = useTranslation();
   const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
-  const history = useHistory();
+  const { alert, resetAlert } = useAlertStore();
+  const navigate = useNavigate();
 
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
+
+  const brandName = brandClassBase.getPageTitle();
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -63,19 +68,36 @@ const BasicSignUp = () => {
     }
   };
 
-  const handleLogin = () => history.push(ROUTES.SIGNIN);
+  const handleLogin = () => {
+    navigate(ROUTES.SIGNIN);
+    resetAlert();
+  };
 
   return (
-    <Row className="h-full" data-testid="signin-page">
-      <Col className="bg-white" span={10}>
-        <div className="mt-4 text-center flex-center flex-col">
-          <BrandImage height="auto" width={200} />
-          <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-            {t('message.om-description')}
-          </Typography.Text>
+    <CarouselLayout
+      carouselClassName="signup-page"
+      pageTitle={t('label.sign-up')}>
+      <div
+        className="login-form-container signup-page"
+        data-testid="signin-page">
+        <div className="login-box">
+          <BrandImage isMonoGram height="auto" width={50} />
+          <Typography.Title className="header-text display-sm" level={3}>
+            {t('label.welcome-to')} {brandName}
+          </Typography.Title>
+
+          {alert && (
+            <div className="login-alert">
+              <AlertBar
+                defafultExpand
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </div>
+          )}
 
           {isAuthProviderBasic ? (
-            <div className="m-t-lg" style={{ width: '334px' }}>
+            <div className="login-form">
               <Form
                 autoComplete="off"
                 form={form}
@@ -90,6 +112,7 @@ const BasicSignUp = () => {
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
                     autoFocus
+                    className="input-field"
                     placeholder={t('label.enter-entity-name', {
                       entity: t('label.first-lowercase'),
                     })}
@@ -102,6 +125,7 @@ const BasicSignUp = () => {
                   name="lastName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
+                    className="input-field"
                     placeholder={t('label.enter-entity', {
                       entity: t('label.last-name-lowercase'),
                     })}
@@ -112,6 +136,7 @@ const BasicSignUp = () => {
                   name="email"
                   rules={[{ type: 'email', required: true }]}>
                   <Input
+                    className="input-field"
                     placeholder={t('label.enter-entity', {
                       entity: t('label.email-lowercase'),
                     })}
@@ -131,6 +156,7 @@ const BasicSignUp = () => {
                   ]}>
                   <Input.Password
                     autoComplete="off"
+                    className="input-field"
                     placeholder={t('label.enter-entity', {
                       entity: t('label.password-lowercase'),
                     })}
@@ -145,12 +171,14 @@ const BasicSignUp = () => {
                     {
                       validator: (_, value) => {
                         if (isEmpty(password)) {
-                          return Promise.reject(
-                            t('label.please-password-type-first')
-                          );
+                          return Promise.reject({
+                            message: t('label.please-password-type-first'),
+                          });
                         }
                         if (value !== password) {
-                          return Promise.reject(t('label.password-not-match'));
+                          return Promise.reject({
+                            message: t('label.password-not-match'),
+                          });
                         }
 
                         return Promise.resolve();
@@ -159,28 +187,29 @@ const BasicSignUp = () => {
                   ]}>
                   <Input.Password
                     autoComplete="off"
+                    className="input-field"
                     placeholder={t('label.confirm-password')}
                   />
                 </Form.Item>
 
-                <Button className="w-full" htmlType="submit" type="primary">
+                <Button
+                  block
+                  className="login-btn"
+                  htmlType="submit"
+                  size="large"
+                  type="primary">
                   {t('label.create-entity', {
                     entity: t('label.account'),
                   })}
                 </Button>
 
-                <Divider className="w-min-0  mt-8 mb-12 justify-center">
-                  <Typography.Text type="secondary">
-                    {t('label.or-lowercase')}
-                  </Typography.Text>
-                </Divider>
-
-                <div className="mt-4 d-flex flex-center">
-                  <Typography.Text className="mr-4">
+                <div className="mt-4 d-flex flex-center signup-text">
+                  <Typography.Text>
                     {t('message.already-a-user')}
                   </Typography.Text>
                   <Button
                     ghost
+                    className="link-btn"
                     data-testid="login"
                     type="link"
                     onClick={handleLogin}>
@@ -191,21 +220,8 @@ const BasicSignUp = () => {
             </div>
           ) : null}
         </div>
-      </Col>
-
-      <Col className="relative" span={14}>
-        <div className="absolute inset-0">
-          <img
-            alt="bg-image"
-            className="w-full h-full"
-            data-testid="bg-image"
-            src={loginBG}
-          />
-        </div>
-
-        <LoginCarousel />
-      </Col>
-    </Row>
+      </div>
+    </CarouselLayout>
   );
 };
 

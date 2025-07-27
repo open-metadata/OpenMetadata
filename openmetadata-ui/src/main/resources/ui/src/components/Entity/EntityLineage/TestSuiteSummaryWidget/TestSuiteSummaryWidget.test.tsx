@@ -11,85 +11,50 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
-import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
+import { render, screen } from '@testing-library/react';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget.component';
 
-const mockTestSuite = { id: 'example', type: 'testSuite' };
+const mockSummary = {
+  success: 5,
+  aborted: 1,
+  failed: 2,
+};
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Skeleton: {
-    Input: jest.fn().mockImplementation(() => <div>Skeleton.Input</div>),
+    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
   },
 }));
 
-jest.mock('../../../../rest/testAPI', () => ({
-  getTestCaseExecutionSummary: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      success: 5,
-      aborted: 1,
-      failed: 2,
-    })
-  ),
-}));
-
 describe('TestSuiteSummaryWidget', () => {
-  it('should show loader when fetching test suite summary', async () => {
-    await act(async () => {
-      render(<TestSuiteSummaryWidget testSuite={mockTestSuite} />);
+  it('should show loader when isLoading is true', () => {
+    render(<TestSuiteSummaryWidget isLoading />);
 
-      expect(screen.getByText('Skeleton.Input')).toBeInTheDocument();
-
-      expect(screen.queryByTestId('test-passed-value')).toBeNull();
-      expect(screen.queryByTestId('test-aborted-value')).toBeNull();
-      expect(screen.queryByTestId('test-failed-value')).toBeNull();
-    });
+    expect(screen.getByText('Skeleton.Button')).toBeInTheDocument();
+    expect(screen.queryByTestId('test-passed-value')).toBeNull();
+    expect(screen.queryByTestId('test-aborted-value')).toBeNull();
+    expect(screen.queryByTestId('test-failed-value')).toBeNull();
   });
 
-  it('should render correct status counts', async () => {
-    await act(async () => {
-      render(<TestSuiteSummaryWidget testSuite={mockTestSuite} />);
-    });
+  it('should render correct status counts when summary is provided', () => {
+    render(<TestSuiteSummaryWidget summary={mockSummary} />);
 
     expect(screen.getByTestId('test-passed-value')).toHaveTextContent('5');
     expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('1');
     expect(screen.getByTestId('test-failed-value')).toHaveTextContent('2');
   });
 
-  it('should render 0 count if no testSuite is passed in prop', async () => {
-    await act(async () => {
-      render(<TestSuiteSummaryWidget />);
-    });
+  it('should render 0 count if no summary is provided', () => {
+    render(<TestSuiteSummaryWidget />);
 
     expect(screen.getByTestId('test-passed-value')).toHaveTextContent('0');
     expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('0');
     expect(screen.getByTestId('test-failed-value')).toHaveTextContent('0');
   });
 
-  it('should render 0 count if no value is returned for respective count', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({})
-    );
-
-    await act(async () => {
-      render(<TestSuiteSummaryWidget testSuite={mockTestSuite} />);
-    });
-
-    expect(screen.getByTestId('test-passed-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('test-failed-value')).toHaveTextContent('0');
-  });
-
-  it('should render 0 count if getTestCaseExecutionSummary fails', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({})
-    );
-
-    await act(async () => {
-      render(<TestSuiteSummaryWidget testSuite={mockTestSuite} />);
-    });
+  it('should render 0 count if summary values are undefined', () => {
+    render(<TestSuiteSummaryWidget summary={{}} />);
 
     expect(screen.getByTestId('test-passed-value')).toHaveTextContent('0');
     expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('0');

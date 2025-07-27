@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
-import { EntityTypeEndpoint } from '../Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
 
 export class MlmodelServiceClass extends EntityClass {
@@ -32,7 +32,7 @@ export class MlmodelServiceClass extends EntityClass {
     },
   };
 
-  entityResponseData: unknown;
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.MlModelService);
@@ -78,6 +78,17 @@ export class MlmodelServiceClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.MLModels,
+      },
+      false
+    );
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
     await visitServiceDetailsPage(
       page,
       {

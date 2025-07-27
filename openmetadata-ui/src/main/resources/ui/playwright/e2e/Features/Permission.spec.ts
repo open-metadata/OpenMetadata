@@ -149,7 +149,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
   await redirectToHomePage(userPage);
 
   await test.step('ViewBasic permission', async () => {
-    await table.visitEntityPage(userPage);
+    await table.visitEntityPageWithCustomSearchBox(userPage);
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -168,7 +168,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
           table.entityResponseData?.['fullyQualifiedName']
         )}`
       );
-      await table.visitEntityPage(userPage);
+      await table.visitEntityPageWithCustomSearchBox(userPage);
       await permissionResponse;
       await userPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -200,7 +200,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
         table.entityResponseData?.['fullyQualifiedName']
       )}`
     );
-    await table.visitEntityPage(userPage);
+    await table.visitEntityPageWithCustomSearchBox(userPage);
     await permissionResponse;
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -243,7 +243,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
         table.entityResponseData?.['fullyQualifiedName']
       )}`
     );
-    await table.visitEntityPage(userPage);
+    await table.visitEntityPageWithCustomSearchBox(userPage);
     await permissionResponse;
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -261,13 +261,17 @@ test('Permissions', async ({ userPage, adminPage }) => {
       .click();
     await testCaseResponse;
 
+    const testDefinitionResponse = userPage.waitForResponse(
+      '/api/v1/dataQuality/testDefinitions/*'
+    );
     await userPage.getByTestId(`edit-${testCaseName}`).click();
+    await testDefinitionResponse;
     await userPage.locator('#tableTestForm_displayName').clear();
     await userPage.fill('#tableTestForm_displayName', 'Update_display_name');
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await userPage.locator('.ant-modal-footer').getByText('Submit').click();
+    await userPage.getByTestId('update-btn').click();
     await saveTestResponse;
   });
 });

@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/api/createBot.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddTagToAssetsRequest",
+  "description": "Create Request for adding a tag to assets",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.AddTagToAssetsRequest",
+  "javaInterfaces": ["org.openmetadata.schema.BulkAssetsRequestInterface"],
+  "properties": {
+    "dryRun": {
+      "description": "If true, the request will be validated but no changes will be made",
+      "type": "boolean",
+      "default": true
+    },
+    "assets": {
+      "description": "List of assets to be created against which the tag needs to be added.",
+      "$ref": "../type/entityReferenceList.json"
+    }
+  },
+  "additionalProperties": false
+}

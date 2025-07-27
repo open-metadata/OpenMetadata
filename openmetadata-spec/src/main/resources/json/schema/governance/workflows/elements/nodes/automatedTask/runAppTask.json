@@ -1,0 +1,87 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/runAppTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RunAppTaskDefinition",
+  "description": "Runs an App based on its name.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "runAppTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "appName": {
+          "title": "App Name",
+          "description": "Set which App should Run",
+          "type": "string"
+        },
+        "waitForCompletion": {
+          "title": "Wait for Completion",
+          "description": "Set if this step should wait until the App finishes running",
+          "type": "boolean",
+          "default": true
+        },
+        "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Set the amount of seconds to wait before defining the App has timed out.",
+          "type": "integer",
+          "default": 3600
+        }
+      },
+      "additionalProperties": false,
+      "required": ["appName", "waitForCompletion", "timeoutSeconds"]
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["success", "failure"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

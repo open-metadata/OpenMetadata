@@ -14,11 +14,13 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { PAGE_SIZE } from '../constants/constants';
+import { AddTagToAssetsRequest } from '../generated/api/addTagToAssetsRequest';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
-import { Tag } from '../generated/entity/classification/tag';
+import { EntityReference, Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -52,6 +54,41 @@ export const getAllClassifications = async (params?: ListParams) => {
       },
     }
   );
+
+  return response.data;
+};
+
+export const addAssetsToTags = async (
+  tagId: string,
+  assets: EntityReference[],
+  dryRun = false
+) => {
+  const data = {
+    assets: assets,
+    dryRun: dryRun,
+  };
+
+  const response = await APIClient.put<
+    AddTagToAssetsRequest,
+    AxiosResponse<CSVExportResponse>
+  >(`/tags/${tagId}/assets/add`, data);
+
+  return response.data;
+};
+
+export const removeAssetsFromTags = async (
+  tagId: string,
+  assets: EntityReference[]
+) => {
+  const data = {
+    assets: assets,
+    dryRun: false,
+  };
+
+  const response = await APIClient.put<
+    AddTagToAssetsRequest,
+    AxiosResponse<Tag>
+  >(`/tags/${tagId}/assets/remove`, data);
 
   return response.data;
 };

@@ -16,9 +16,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
@@ -39,10 +39,12 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { EntityReference } from '../../../generated/tests/testCase';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -58,19 +60,20 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
 import '../task-page.style.less';
 import { EntityData } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
+  const { t } = useTranslation();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -105,7 +108,7 @@ const UpdateDescription = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
     const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
@@ -144,7 +147,9 @@ const UpdateDescription = () => {
           id: assignee.id,
           type: assignee.type,
         })),
-        suggestion: value.description,
+        suggestion: isDescriptionContentEmpty(value.description)
+          ? ''
+          : value.description,
         type: TaskType.UpdateDescription,
         oldValue: currentDescription,
       },
@@ -157,7 +162,7 @@ const UpdateDescription = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
             entityType,
             entityFQN,
@@ -195,10 +200,12 @@ const UpdateDescription = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         minWidth: 700,
         flex: 0.6,
         children: (
-          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+          <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
@@ -301,7 +308,7 @@ const UpdateDescription = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {t('label.submit')}
+                      {t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -310,7 +317,7 @@ const UpdateDescription = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.update-description')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -333,4 +340,4 @@ const UpdateDescription = () => {
   );
 };
 
-export default UpdateDescription;
+export default withPageLayout(UpdateDescription);

@@ -15,11 +15,9 @@ import { Col, Row, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useMemo } from 'react';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import Table from '../../components/common/Table/Table';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -29,7 +27,8 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
-import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({
@@ -43,7 +42,7 @@ function ServiceVersionMainTabContent({
   entityType,
   changeDescription,
 }: ServiceVersionMainTabContentProps) {
-  const { serviceCategory } = useParams<{
+  const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceTypes;
   }>();
 
@@ -60,13 +59,12 @@ function ServiceVersionMainTabContent({
   );
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="h-full" gutter={[0, 16]} wrap={false}>
       <Col className="p-t-sm m-x-lg" flex="auto">
         <Row gutter={[16, 16]}>
           <Col data-testid="description-container" span={24}>
             <DescriptionV1
               description={description}
-              entityFqn={serviceFQN}
               entityName={serviceName}
               entityType={entityType}
               showActions={false}
@@ -76,10 +74,20 @@ function ServiceVersionMainTabContent({
           <Col data-testid="table-container" span={24}>
             <Space className="w-full m-b-md" direction="vertical" size="middle">
               <Table
-                bordered
                 columns={tableColumn}
+                customPaginationProps={{
+                  currentPage,
+                  isLoading: isServiceLoading,
+                  showPagination:
+                    Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
+                    !isEmpty(data),
+                  pageSize: PAGE_SIZE,
+                  paging,
+                  pagingHandler,
+                }}
                 data-testid="service-children-table"
                 dataSource={data}
+                entityType={entityType}
                 loading={isServiceLoading}
                 locale={{
                   emptyText: <ErrorPlaceHolder className="m-y-md" />,
@@ -89,16 +97,6 @@ function ServiceVersionMainTabContent({
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
-
-              {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                !isEmpty(data) && (
-                  <NextPrevious
-                    currentPage={currentPage}
-                    pageSize={PAGE_SIZE}
-                    paging={paging}
-                    pagingHandler={pagingHandler}
-                  />
-                )}
             </Space>
           </Col>
         </Row>
@@ -110,6 +108,7 @@ function ServiceVersionMainTabContent({
         <Space className="w-full" direction="vertical" size="large">
           {Object.keys(TagSource).map((tagType) => (
             <TagsContainerV2
+              newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={serviceFQN}
               entityType={entityType}

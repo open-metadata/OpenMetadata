@@ -13,9 +13,9 @@
 
 import { Button, Dropdown, DropdownProps } from 'antd';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
 import { ReactComponent as EditIcon } from '../../../../../../assets/svg/edit-new.svg';
@@ -50,8 +50,9 @@ function PipelineActionsDropdown({
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
   ingestionPipelinePermissions,
+  moreActionButtonProps,
 }: Readonly<PipelineActionsDropdownProps>) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
@@ -107,7 +108,7 @@ function PipelineActionsDropdown({
         : ingestion.fullyQualifiedName;
 
       if (ingestion.pipelineType === PipelineType.TestSuite) {
-        history.push(
+        navigate(
           getTestSuiteIngestionPath(
             getTestSuiteFQN(fullyQualifiedName),
             fullyQualifiedName
@@ -118,7 +119,7 @@ function PipelineActionsDropdown({
       }
 
       if (isUndefined(handleEditClick)) {
-        history.push(
+        navigate(
           getEditIngestionPath(
             serviceCategory ?? '',
             serviceName ?? '',
@@ -135,7 +136,7 @@ function PipelineActionsDropdown({
 
   const handleConfirmDelete = useCallback(
     (id: string, name: string, displayName?: string) => {
-      handleDeleteSelection({
+      handleDeleteSelection?.({
         id,
         name,
         displayName,
@@ -147,7 +148,7 @@ function PipelineActionsDropdown({
   );
 
   const handleRenderDropdown: DropdownProps['dropdownRender'] = useCallback(
-    (originNode) => {
+    (originNode: ReactNode) => {
       return <div data-testid="actions-dropdown">{originNode}</div>;
     },
     []
@@ -266,10 +267,12 @@ function PipelineActionsDropdown({
         trigger={['click']}
         onOpenChange={(value) => setIsOpen(value)}>
         <Button
+          className="pipeline-actions-dropdown-button"
           data-testid="more-actions"
           icon={<MoreIcon />}
           type="link"
           onClick={() => setIsOpen((value) => !value)}
+          {...moreActionButtonProps}
         />
       </Dropdown>
       {isKillModalOpen && selectedPipeline && id === selectedPipeline?.id && (

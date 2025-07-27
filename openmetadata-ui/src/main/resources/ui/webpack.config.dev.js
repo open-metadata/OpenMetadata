@@ -18,7 +18,8 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
-const subPath = process.env.APP_SUB_PATH ?? '';
+const devServerTarget =
+  process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode
@@ -35,7 +36,7 @@ module.exports = {
     // Clean the output directory before emit.
     clean: true,
     // Ensures bundle is served from absolute path as opposed to relative
-    publicPath: `${subPath}/`,
+    publicPath: `/`,
   },
 
   // Loaders
@@ -115,6 +116,7 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
+      Quill: path.resolve(__dirname, 'node_modules/quill'), // Alias for the 'quill' library in node_modules
     },
   },
 
@@ -153,6 +155,18 @@ module.exports = {
           to: outputPath,
         },
         {
+          from: path.join(__dirname, 'public/BronzeCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/SilverCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/GoldCertification.svg'),
+          to: outputPath,
+        },
+        {
           from: path.join(__dirname, 'public/manifest.json'),
           to: outputPath,
         },
@@ -184,17 +198,12 @@ module.exports = {
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
       disableDotRule: true,
-      ...(subPath
-        ? {
-            index: `${subPath}/index.html`,
-          }
-        : {}),
     },
     // Proxy configuration
     proxy: [
       {
         context: '/api/',
-        target: 'http://localhost:8585/',
+        target: devServerTarget,
         changeOrigin: true,
       },
     ],

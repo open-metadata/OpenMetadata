@@ -13,11 +13,8 @@
 
 import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
-import React, { FC } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
-import Loader from '../../common/Loader/Loader';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import { FC } from 'react';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -32,63 +29,43 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   open,
   className,
 }) => {
-  const { t } = useTranslation();
-  const {
-    focusReplyEditor,
-    isDrawerLoading,
-    hideDrawer,
-    postFeed,
-    selectedThread,
-  } = useActivityFeedProvider();
+  const { hideDrawer, selectedThread } = useActivityFeedProvider();
 
-  const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
-  };
+  if (!selectedThread) {
+    return null;
+  }
 
   return (
     <Drawer
-      className={classNames('feed-drawer', className)}
+      className={classNames('activity-feed-drawer', className)}
       closable={false}
       open={open}
       title={
-        isDrawerLoading ? (
-          <div className="p-x-md p-y-sm">{t('label.activity-feed')}</div>
-        ) : (
-          <FeedPanelHeader
-            className="p-x-md"
-            entityLink={selectedThread?.about ?? ''}
-            feed={selectedThread}
-            threadType={selectedThread?.type ?? ThreadType.Conversation}
-            onCancel={hideDrawer}
-          />
-        )
+        <FeedPanelHeader
+          className="p-x-md"
+          entityLink={selectedThread?.about ?? ''}
+          feed={selectedThread}
+          threadType={selectedThread?.type ?? ThreadType.Conversation}
+          onCancel={hideDrawer}
+        />
       }
       width={576}
       onClose={hideDrawer}>
-      {isDrawerLoading ? (
-        <Loader />
-      ) : (
-        <Row gutter={[0, 16]} id="feed-panel">
-          <Col span={24}>
-            <FeedPanelBodyV1
-              isOpenInDrawer
-              showThread
-              componentsVisibility={{
-                showThreadIcon: false,
-                showRepliesContainer: false,
-              }}
-              feed={selectedThread as Thread}
-              hidePopover={false}
-            />
-          </Col>
-          <Col span={24}>
-            <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
-          </Col>
-        </Row>
-      )}
+      <Row gutter={[0, 16]} id="feed-panel">
+        <Col span={24}>
+          <FeedPanelBodyV1
+            isForFeedTab
+            isOpenInDrawer
+            showThread
+            componentsVisibility={{
+              showThreadIcon: false,
+              showRepliesContainer: false,
+            }}
+            feed={selectedThread}
+            hidePopover={false}
+          />
+        </Col>
+      </Row>
     </Drawer>
   );
 };

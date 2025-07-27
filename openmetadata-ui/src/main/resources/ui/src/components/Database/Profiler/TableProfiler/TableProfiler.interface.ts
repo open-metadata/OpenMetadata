@@ -14,19 +14,18 @@
 import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { SystemProfile } from '../../../../generated/api/data/createTableProfile';
 import {
   Column,
   ColumnProfilerConfig,
   PartitionProfilerConfig,
   ProfileSampleType,
   Table,
-  TableProfile,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
 import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
+import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 
 export interface TableProfilerProps {
   permissions: OperationPermission;
@@ -57,6 +56,8 @@ export interface TableProfilerContextInterface {
   onDateRangeChange: (dateRange: DateRangeObject) => void;
   testCasePaging: UsePagingInterface;
   table?: Table;
+  isTestCaseDrawerOpen: boolean;
+  onTestCaseDrawerOpen: (type: TestLevel) => void;
 }
 
 export type TableTestsType = {
@@ -72,13 +73,10 @@ export type ModifiedColumn = Column & {
   testCount?: number;
 };
 
-export type columnTestResultType = {
-  [key: string]: { results: TableTestsType['results']; count: number };
-};
-
 export interface ProfilerProgressWidgetProps {
   value: number;
   strokeColor?: string;
+  direction?: 'left' | 'right';
 }
 
 export interface ProfilerSettingsModalProps {
@@ -97,11 +95,7 @@ export type OverallTableSummaryType = {
   title: string;
   value: number | string;
   className?: string;
-};
-
-export type TableProfilerData = {
-  tableProfilerData: TableProfile[];
-  systemProfilerData: SystemProfile[];
+  key: string;
 };
 
 export type TableProfilerChartProps = {

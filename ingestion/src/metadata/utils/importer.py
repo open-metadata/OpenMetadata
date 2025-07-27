@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
+from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.client_version import get_client_version
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
@@ -126,37 +126,21 @@ def import_from_module(key: str) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
-
+    logger.debug("Importing: %s", key)
     module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
-    except Exception as err:
+    except (ModuleNotFoundError, ImportError) as err:
         logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
-
-
-# module building strings read better with .format instead of f-strings
-# pylint: disable=consider-using-f-string
-def import_source_class(
-    service_type: ServiceType, source_type: str, from_: str = "ingestion"
-) -> Type[Source]:
-    return import_from_module(
-        "metadata.{}.source.{}.{}.{}.{}Source".format(
-            from_,
-            service_type.name.lower(),
-            get_module_dir(source_type),
-            get_source_module_name(source_type),
-            get_class_name_root(source_type),
-        )
-    )
 
 
 def import_processor_class(
     processor_type: str, from_: str = "ingestion"
 ) -> Type[Processor]:
     return import_from_module(
-        "metadata.{}.processor.{}.{}Processor".format(
+        "metadata.{}.processor.{}.{}Processor".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(processor_type),
             get_class_name_root(processor_type),
@@ -166,7 +150,7 @@ def import_processor_class(
 
 def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]:
     return import_from_module(
-        "metadata.{}.stage.{}.{}Stage".format(
+        "metadata.{}.stage.{}.{}Stage".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(stage_type),
             get_class_name_root(stage_type),
@@ -176,7 +160,7 @@ def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]
 
 def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
     return import_from_module(
-        "metadata.{}.sink.{}.{}Sink".format(
+        "metadata.{}.sink.{}.{}Sink".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(sink_type),
             get_class_name_root(sink_type),
@@ -188,7 +172,7 @@ def import_bulk_sink_type(
     bulk_sink_type: str, from_: str = "ingestion"
 ) -> Type[BulkSink]:
     return import_from_module(
-        "metadata.{}.bulksink.{}.{}BulkSink".format(
+        "metadata.{}.bulksink.{}.{}BulkSink".format(  # pylint: disable=consider-using-f-string
             from_,
             get_module_name(bulk_sink_type),
             get_class_name_root(bulk_sink_type),
@@ -273,7 +257,7 @@ def import_test_case_class(
         test_definition[0].upper() + test_definition[1:]
     )  # change test names to camel case
     return import_from_module(
-        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(
+        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(  # pylint: disable=consider-using-f-string
             test_type.lower(),
             runner_type,
             test_definition,
@@ -302,3 +286,7 @@ class SideEffectsLoader(metaclass=Singleton):
 
 def import_side_effects(*modules):
     SideEffectsLoader().import_side_effects(*modules)
+
+
+def get_class_path(module):
+    return module.__module__ + "." + module.__name__

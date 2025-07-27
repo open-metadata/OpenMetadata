@@ -1,0 +1,551 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/searchSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchSettings",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.search.SearchSettings",
+  "properties": {
+    "globalSettings": {
+      "type": "object",
+      "properties": {
+        "enableAccessControl": {
+          "type": "boolean",
+          "description": "Flag to enable or disable RBAC Search Configuration globally.",
+          "default": false
+        },
+        "maxAggregateSize": {
+          "type": "integer",
+          "default": 10000
+        },
+        "maxResultHits": {
+          "type": "integer",
+          "default": 10000
+        },
+        "maxAnalyzedOffset": {
+          "type": "integer",
+          "default": 1000
+        },
+        "aggregations": {
+          "type": "array",
+          "description": "List of global aggregations to include in the search query.",
+          "items": {
+            "$ref": "#/definitions/aggregation"
+          }
+        },
+        "highlightFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Which fields to highlight by default."
+        },
+        "termBoosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/termBoost"
+          },
+          "description": "List of field=value term-boost rules that apply only to this asset."
+        },
+        "fieldValueBoosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldValueBoost"
+          },
+          "description": "Optional list of numeric field-based boosts applied globally."
+        }
+      },
+      "additionalProperties": false
+    },
+    "assetTypeConfigurations": {
+      "type": "array",
+      "description": "List of per-asset search configurations that override the global settings.",
+      "items": {
+        "$ref": "#/definitions/assetTypeConfiguration"
+      }
+    },
+    "defaultConfiguration": {
+      "$ref": "#/definitions/assetTypeConfiguration",
+      "description": "Fallback configuration for any entity/asset not matched in assetTypeConfigurations."
+    },
+    "allowedFields": {
+      "type": "array",
+      "description": "Configurations of allowed searchable fields for each entity type",
+      "items": {
+        "$ref": "#/definitions/allowedSearchFields"
+      }
+    },
+    "allowedFieldValueBoosts": {
+      "type": "array",
+      "description": "Configurations of allowed field value boost fields for each entity type",
+      "items": {
+        "$ref": "#/definitions/allowedFieldValueBoostFields"
+      }
+    },
+    "nlqConfiguration": {
+      "description": "Configuration for Natural Language Query capabilities",
+      "javaType": "org.openmetadata.schema.api.search.NLQConfiguration",
+      "type": "object",
+      "properties": {
+        "promptTemplate": {
+          "type": "string",
+          "description": "Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific instructions should appear."
+        },
+        "globalInstructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/promptSection"
+          }
+        },
+        "entitySpecificInstructions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entityType": {
+                "type": "string",
+                "description": "Entity type this instruction applies to (e.g., 'table', 'dashboard')"
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/promptSection"
+                }
+              }
+            },
+            "required": [
+              "entityType",
+              "sections"
+            ]
+          }
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/queryExample"
+          }
+        },
+        "mappingConfiguration": {
+          "description": "Configuration for including Elasticsearch mapping information in prompts",
+          "javaType": "org.openmetadata.schema.api.search.MappingConfiguration",
+          "type": "object",
+          "properties": {
+            "includeMappings": {
+              "type": "boolean",
+              "description": "Whether to include mapping information in the prompts",
+              "default": true
+            },
+            "mappingSection": {
+              "$ref": "#/definitions/titleSection"
+            },
+            "fieldInterpretations": {
+              "type": "array",
+              "description": "Specific guidance for interpreting field patterns in the mapping",
+              "items": {
+                "$ref": "#/definitions/fieldInterpretation"
+              }
+            }
+          }
+        },
+        "extensionFieldGuidelines": {
+          "description": "Guidelines for querying custom properties in extension fields",
+          "javaType": "org.openmetadata.schema.api.search.ExtensionFieldGuidelines",
+          "type": "object",
+          "properties": {
+            "header": {
+              "type": "string",
+              "description": "Title for the extension field guidelines section"
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/guidelineSection"
+              }
+            },
+            "examples": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/queryExample"
+              }
+            }
+          },
+          "required": ["header", "sections"]
+        }
+      }
+    }
+  },
+  "definitions": {
+    "assetTypeConfiguration": {
+      "type": "object",
+      "properties": {
+        "assetType": {
+          "type": "string",
+          "description": "Name or type of the asset to which this configuration applies."
+        },
+        "searchFields": {
+          "type": "array",
+          "description": "Which fields to search for this asset, with their boost values.",
+          "items": {
+            "$ref": "#/definitions/fieldBoost"
+          }
+        },
+        "highlightFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Which fields to highlight for this asset."
+        },
+        "aggregations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/aggregation" },
+          "description": "List of additional aggregations for this asset type."
+        },
+        "termBoosts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/termBoost" },
+          "description": "List of field=value term-boost rules that apply only to this asset."
+        },
+        "fieldValueBoosts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fieldValueBoost" },
+          "description": "List of numeric field-based boosts that apply only to this asset."
+        },
+        "scoreMode": {
+          "type": "string",
+          "enum": ["multiply", "sum", "avg", "first", "max", "min"],
+          "description": "How to combine function scores if multiple boosts are applied."
+        },
+        "boostMode": {
+          "type": "string",
+          "enum": ["multiply", "replace", "sum", "avg", "max", "min"],
+          "description": "How the function score is combined with the main query score."
+        },
+        "additionalSettings": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Catch-all for any advanced or asset-specific search settings."
+        },
+        "matchTypeBoostMultipliers": {
+          "type": "object",
+          "description": "Multipliers applied to different match types to control their relative importance.",
+          "properties": {
+            "exactMatchMultiplier": {
+              "type": "number",
+              "description": "Multiplier for exact match queries (term queries on .keyword fields)",
+              "default": 2.0
+            },
+            "phraseMatchMultiplier": {
+              "type": "number",
+              "description": "Multiplier for phrase match queries",
+              "default": 1.5
+            },
+            "fuzzyMatchMultiplier": {
+              "type": "number",
+              "description": "Multiplier for fuzzy match queries",
+              "default": 1.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["assetType"],
+      "additionalProperties": false
+    },
+    "fieldBoost": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Field name to search/boost."
+        },
+        "boost": {
+          "type": "number",
+          "description": "Relative boost factor for the above field.",
+          "default": 1.0
+        },
+        "matchType": {
+          "type": "string",
+          "enum": ["exact", "phrase", "fuzzy", "standard"],
+          "description": "Type of matching to use for this field. 'exact' uses term query for .keyword fields, 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default behavior.",
+          "default": "standard"
+        }
+      },
+      "required": ["field"],
+      "additionalProperties": false
+    },
+    "termBoost": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "The keyword field to match, e.g. tier.tagFQN, tags.tagFQN, certification.tagLabel.tagFQN, etc."
+        },
+        "value": {
+          "type": "string",
+          "description": "The exact keyword value to match in the above field."
+        },
+        "boost": {
+          "type": "number",
+          "description": "Numeric boost factor to apply if a document has field==value."
+        }
+      },
+      "required": ["field", "value", "boost"],
+      "additionalProperties": false
+    },
+    "fieldValueBoost": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": "Numeric field name whose value will affect the score."
+        },
+        "factor": {
+          "type": "number",
+          "description": "Multiplier factor for the field value."
+        },
+        "modifier": {
+          "type": "string",
+          "enum": [
+            "none",
+            "log",
+            "log1p",
+            "log2p",
+            "ln",
+            "ln1p",
+            "ln2p",
+            "square",
+            "sqrt",
+            "reciprocal"
+          ],
+          "description": "Optional mathematical transformation to apply to the field value."
+        },
+        "missing": {
+          "type": "number",
+          "description": "Value to use if the field is missing on a document."
+        },
+        "condition": {
+          "type": "object",
+          "description": "Conditional logic (e.g., range constraints) to apply the boost only for certain values.",
+          "properties": {
+            "range": {
+              "type": "object",
+              "properties": {
+                "gt": {
+                  "type": "number"
+                },
+                "gte": {
+                  "type": "number"
+                },
+                "lt": {
+                  "type": "number"
+                },
+                "lte": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["field", "factor"],
+      "additionalProperties": false
+    },
+    "aggregation": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A descriptive name for the aggregation."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "terms",
+            "range",
+            "histogram",
+            "date_histogram",
+            "filters",
+            "missing",
+            "nested",
+            "reverse_nested",
+            "top_hits",
+            "max",
+            "min",
+            "avg",
+            "sum",
+            "stats"
+          ],
+          "description": "The type of aggregation to perform."
+        },
+        "field": {
+          "type": "string",
+          "description": "The field on which this aggregation is performed."
+        }
+      },
+      "required": ["name", "type", "field"],
+      "additionalProperties": false
+    },
+    "allowedSearchFields": {
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Entity type this field configuration applies to"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Field name that can be used in searchFields"
+              },
+              "description": {
+                "type": "string", 
+                "description": "Detailed explanation of what this field represents and how it affects search behavior"
+              }
+            },
+            "required": ["name", "description"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entityType", "fields"],
+      "additionalProperties": false
+    },
+    "allowedFieldValueBoostFields": {
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Entity type this field value boost configuration applies to"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Field name that can be used in fieldValueBoosts"
+              },
+              "description": {
+                "type": "string", 
+                "description": "Detailed explanation of what this numeric field represents and how it can be used for boosting relevance"
+              }
+            },
+            "required": ["name", "description"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entityType", "fields"],
+      "additionalProperties": false
+    },
+    "promptSection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.PromptSection",
+      "properties": {
+        "section": {
+          "type": "string",
+          "description": "Section name (e.g., 'CRITICAL FIELD CORRECTIONS', 'QUERY PATTERNS')"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content for this section of the prompt"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order for this section (lower numbers appear first)",
+          "default": 100
+        }
+      },
+      "required": ["section", "content"]
+    },
+    "titleSection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.TitleSection",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title for the section",
+          "default": "INDEX MAPPINGS"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description text for the section",
+          "default": "Below are the Elasticsearch mappings for the relevant indices. Use these to understand the document structure:"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Position of this section in the prompt (lower numbers appear first)",
+          "default": 5
+        }
+      }
+    },
+
+    "fieldInterpretation": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.FieldInterpretation",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Field pattern to match (e.g., 'tags.tagFQN')"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "How to interpret and query this field pattern"
+        }
+      },
+      "required": ["pattern", "explanation"]
+    },
+
+    "guidelineSection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.GuidelineSection",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Section title (e.g., 'For EntityReference type custom properties')"
+        },
+        "guidelines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Individual guideline or rule for this section"
+          }
+        }
+      },
+      "required": ["title", "guidelines"]
+    },
+
+    "queryExample": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.QueryExample",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the example query"
+        },
+        "query": {
+          "type": "string",
+          "description": "Natural language query example"
+        },
+        "esQuery": {
+          "type": "string",
+          "description": "The corresponding Elasticsearch query"
+        },
+        "entityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Entity types this example applies to (empty array = all types)"
+        }
+      },
+      "required": ["query", "esQuery"]
+    }
+  },
+  "additionalProperties": false
+}

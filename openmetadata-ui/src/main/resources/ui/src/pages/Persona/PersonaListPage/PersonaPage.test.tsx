@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { PersonaPage } from './PersonaPage';
-jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
+
 jest.mock('../../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
 });
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
@@ -87,30 +87,43 @@ jest.mock('../../../rest/PersonaAPI', () => {
   };
 });
 
+const mockProps = {
+  pageTitle: 'personas',
+};
+
 describe('PersonaPage', () => {
   it('Component should render', async () => {
-    act(() => {
-      render(<PersonaPage />);
-    });
+    render(<PersonaPage {...mockProps} />);
 
-    expect(
-      await screen.findByTestId('user-list-v1-component')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('add-persona-button')).toBeInTheDocument();
-    expect(
-      await screen.findByText('TitleBreadcrumb.component')
-    ).toBeInTheDocument();
-    expect(await screen.findByText('PageHeader.component')).toBeInTheDocument();
     expect(
       await screen.findByText('ErrorPlaceHolder.component')
     ).toBeInTheDocument();
   });
 
   it('AddEditPersonaForm should render onclick of add persona', async () => {
+    (getAllPersonas as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          {
+            id: 'id1',
+            name: 'sales',
+            fullyQualifiedName: 'sales',
+            displayName: 'Sales',
+          },
+          {
+            id: 'id2',
+            name: 'purchase',
+            fullyQualifiedName: 'purchase',
+            displayName: 'purchase',
+          },
+        ],
+      })
+    );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
     const addPersonaButton = await screen.findByTestId('add-persona-button');
+
     await act(async () => {
       fireEvent.click(addPersonaButton);
     });
@@ -122,8 +135,26 @@ describe('PersonaPage', () => {
 
   it('handlePersonaAddEditSave should be called onClick of save button', async () => {
     const mockGetAllPersonas = getAllPersonas as jest.Mock;
+    (getAllPersonas as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          {
+            id: 'id1',
+            name: 'sales',
+            fullyQualifiedName: 'sales',
+            displayName: 'Sales',
+          },
+          {
+            id: 'id2',
+            name: 'purchase',
+            fullyQualifiedName: 'purchase',
+            displayName: 'purchase',
+          },
+        ],
+      })
+    );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
     const addPersonaButton = await screen.findByTestId('add-persona-button');
     fireEvent.click(addPersonaButton);
@@ -165,7 +196,7 @@ describe('PersonaPage', () => {
       })
     );
     act(() => {
-      render(<PersonaPage />);
+      render(<PersonaPage {...mockProps} />);
     });
 
     expect(

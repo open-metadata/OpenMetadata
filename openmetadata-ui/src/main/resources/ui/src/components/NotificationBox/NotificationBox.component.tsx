@@ -15,15 +15,12 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import {
-  getUserPath,
-  NOTIFICATION_READ_TIMER,
-} from '../../constants/constants';
+import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
@@ -32,6 +29,7 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './notification-box.less';
@@ -198,6 +196,7 @@ const NotificationBox = ({
         {t('label.notification-plural')}
       </Typography.Title>
       <Tabs
+        className="tabs-new"
         defaultActiveKey="Task"
         size="small"
         tabBarGutter={24}

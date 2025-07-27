@@ -169,9 +169,13 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -180,9 +184,9 @@
       "type": "boolean",
       "default": false
     },
-    "domain": {
-      "description": "Domain the Glossary belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Glossary belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
@@ -195,6 +199,9 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     }
   },
   "required": ["id", "name"],

@@ -81,6 +81,10 @@ export const getCombinedQueryFilterObject = (
     advancesSearchFilter,
   ]);
 
+  if (isEmpty(mustField) && isEmpty(mustNotField) && isEmpty(shouldField)) {
+    return undefined;
+  }
+
   return {
     query: {
       bool: {

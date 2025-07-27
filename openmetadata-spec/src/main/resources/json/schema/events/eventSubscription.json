@@ -53,11 +53,11 @@
       "type": "object",
       "properties": {
         "filters": {
-            "description": "List of filters for the event subscription.",
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/argumentsInput"
-            }
+          "description": "List of filters for the event subscription.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/argumentsInput"
+          }
         },
         "actions": {
           "description": "List of filters for the event subscription.",
@@ -78,7 +78,7 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["Notification", "Observability", "ActivityFeed"],
+      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent", "Custom"],
       "default": "Notification"
     },
     "subscriptionCategory": {
@@ -104,7 +104,8 @@
         "MsTeams",
         "GChat",
         "Email",
-        "ActivityFeed"
+        "ActivityFeed",
+        "GovernanceWorkflowChangeEvent"
       ]
     },
     "destination": {
@@ -123,7 +124,14 @@
           "$ref": "#/definitions/subscriptionType"
         },
         "statusDetails": {
-          "$ref": "#/definitions/subscriptionStatus"
+          "oneOf": [
+            {
+              "$ref": "../events/subscriptionStatus.json"
+            },
+            {
+              "$ref": "../events/testDestinationStatus.json"
+            }
+          ]
         },
         "timeout": {
           "description": "Connection timeout in seconds. (Default 10s).",
@@ -147,6 +155,9 @@
             },
             {
               "$ref": "./emailAlertConfig.json"
+            },
+            {
+              "$ref": "../type/basic.json#/definitions/map"
             }
           ]
         }
@@ -164,40 +175,6 @@
         "awaitingRetry",
         "active"
       ]
-    },
-    "subscriptionStatus": {
-      "description": "Subscription Current Status",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.SubscriptionStatus",
-      "properties": {
-        "status": {
-          "$ref": "#/definitions/status"
-        },
-        "lastSuccessfulAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "lastFailedAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "lastFailedStatusCode": {
-          "description": "Last non-successful activity response code received during callback.",
-          "type": "integer"
-        },
-        "lastFailedReason": {
-          "description": "Last non-successful activity response reason received during callback.",
-          "type": "string"
-        },
-        "nextAttempt": {
-          "description": "Next retry will be done at this time in Unix epoch time milliseconds. Only valid is `status` is `awaitingRetry`.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "timestamp": {
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        }
-      },
-      "additionalProperties": false
     },
     "filteringRules": {
       "description": "Filtering Rules for Event Subscription.",
@@ -257,6 +234,10 @@
       "description": "Unique identifier that identifies this Event Subscription.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
+    "className": {
+      "description": "Java class for the Event Subscription.",
+      "type": "string"
+    },
     "name": {
       "description": "Name that uniquely identifies this Event Subscription.",
       "$ref": "../type/basic.json#/definitions/entityName"
@@ -298,13 +279,17 @@
       "description": "Change that led to this version of the Event Subscription.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
     "alertType": {
       "description": "Type of Alert",
       "$ref": "#/definitions/alertType"
     },
     "trigger": {
       "description": "Trigger information for Alert.",
-      "$ref": "#/definitions/trigger" 
+      "$ref": "#/definitions/trigger"
     },
     "filteringRules": {
       "description": "Set of rules that the Event Subscription Contains to allow conditional control for alerting.",
@@ -331,9 +316,9 @@
       "$ref": "../type/basic.json#/definitions/providerType"
     },
     "retries": {
-        "description": "Number of times to retry callback on failure. (Default 3).",
-        "type": "integer",
-        "default": 3
+      "description": "Number of times to retry callback on failure. (Default 3).",
+      "type": "integer",
+      "default": 3
     },
     "pollInterval": {
       "description": "Poll Interval in seconds.",
@@ -344,9 +329,12 @@
       "description": "Input for the Filters.",
       "$ref": "#/definitions/alertFilteringInput"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
+    },
+    "config": {
+      "$ref": "../type/basic.json#/definitions/map"
     }
   },
   "required": ["id", "name", "alertType", "destinations"],

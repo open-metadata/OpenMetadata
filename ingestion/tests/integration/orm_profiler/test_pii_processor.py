@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,9 +20,6 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.data.createTableProfile import (
-    CreateTableProfileRequest,
-)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -31,7 +28,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
     TableData,
-    TableProfile,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -47,8 +43,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -59,12 +55,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from metadata.profiler.api.models import ProfilerResponse, SampleData
+from metadata.profiler.api.models import ProfilerResponse
+from metadata.sampler.models import SampleData, SamplerResponse
 
 table_data = TableData(
     columns=[
@@ -172,9 +168,9 @@ class PiiProcessorTest(TestCase):
             type="mysql",
             serviceName="test",
             sourceConfig=SourceConfig(
-                config=DatabaseServiceProfilerPipeline(
+                config=DatabaseServiceAutoClassificationPipeline(
                     confidence=85,
-                    processPiiSensitive=True,
+                    enableAutoClassification=True,
                 )
             ),
         ),
@@ -305,20 +301,12 @@ class PiiProcessorTest(TestCase):
         test function for ner Scanner
         """
 
-        record = ProfilerResponse(
+        record = SamplerResponse(
             table=self.table_entity,
-            profile=CreateTableProfileRequest(
-                tableProfile=TableProfile(
-                    timestamp=Timestamp(
-                        root=int(datetime.datetime.now().timestamp() * 1000)
-                    )
-                )
-            ),
             sample_data=SampleData(data=table_data),
         )
 
         updated_record: ProfilerResponse = self.pii_processor.run(record)
-
         for expected, updated in zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags):
             self.assertEqual(expected.column_fqn, updated.column_fqn)
             self.assertEqual(expected.tag_label.tagFQN, updated.tag_label.tagFQN)

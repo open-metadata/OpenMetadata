@@ -17,7 +17,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -27,6 +31,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -48,6 +53,10 @@ public class ChartRepository extends EntityRepository<Chart> {
         CHART_PATCH_FIELDS,
         CHART_UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put("dashboards", this::fetchAndSetDashboards);
+    fieldFetchers.put("service", this::fetchAndSetServices);
   }
 
   @Override
@@ -93,6 +102,35 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<Chart> entities) {
+    fetchAndSetDefaultService(entities);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Chart entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetDashboards(List<Chart> charts, Fields fields) {
+    if (!fields.contains("dashboards") || charts == null || charts.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, charts, batchFetchDashboards(charts), Chart::setDashboards);
+  }
+
+  private void fetchAndSetServices(List<Chart> charts, Fields fields) {
+    if (!fields.contains("service") || charts == null || charts.isEmpty()) {
+      return;
+    }
+    // For charts, all should have the same service (dashboard service)
+    EntityReference service = getContainer(charts.get(0).getId());
+    for (Chart chart : charts) {
+      chart.setService(service);
+    }
+  }
+
+  @Override
   public void clearFields(Chart chart, Fields fields) {
     /* Nothing to do */
   }
@@ -105,12 +143,16 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Chart original, Chart updated, Operation operation) {
+  public EntityRepository<Chart>.EntityUpdater getUpdater(
+      Chart original, Chart updated, Operation operation, ChangeSource changeSource) {
     return new ChartUpdater(original, updated, operation);
   }
 
   @Override
   public EntityInterface getParentEntity(Chart entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -127,7 +169,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
@@ -158,5 +200,109 @@ public class ChartRepository extends EntityRepository<Chart> {
       recordListChange(
           field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchDashboards(List<Chart> charts) {
+    var dashboardsMap = new HashMap<UUID, List<EntityReference>>();
+    if (charts == null || charts.isEmpty()) {
+      return dashboardsMap;
+    }
+
+    // Initialize empty lists for all charts
+    charts.forEach(chart -> dashboardsMap.put(chart.getId(), new ArrayList<>()));
+
+    // Single batch query to get all dashboards for all charts
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(charts), Relationship.HAS.ordinal(), Include.ALL);
+
+    // Collect all unique dashboard IDs first
+    var dashboardIds =
+        records.stream()
+            .filter(rec -> Entity.DASHBOARD.equals(rec.getFromEntity()))
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .distinct()
+            .toList();
+
+    // Batch fetch all dashboard entity references
+    var dashboardRefs =
+        Entity.getEntityReferencesByIds(Entity.DASHBOARD, dashboardIds, Include.ALL);
+    var dashboardRefMap =
+        dashboardRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Group dashboards by chart ID
+    records.forEach(
+        record -> {
+          if (Entity.DASHBOARD.equals(record.getFromEntity())) {
+            var chartId = UUID.fromString(record.getToId());
+            var dashboardId = UUID.fromString(record.getFromId());
+            var dashboardRef = dashboardRefMap.get(dashboardId);
+            if (dashboardRef != null) {
+              dashboardsMap.get(chartId).add(dashboardRef);
+            }
+          }
+        });
+
+    return dashboardsMap;
+  }
+
+  private void fetchAndSetDefaultService(List<Chart> charts) {
+    if (charts == null || charts.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all charts
+    Map<UUID, EntityReference> serviceMap = batchFetchServices(charts);
+
+    // Set service for all charts
+    for (Chart chart : charts) {
+      chart.setService(serviceMap.get(chart.getId()));
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<Chart> charts) {
+    var serviceMap = new HashMap<UUID, EntityReference>();
+    if (charts == null || charts.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all charts
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(charts), Relationship.CONTAINS.ordinal(), Include.ALL);
+
+    // Collect all unique service IDs first
+    var serviceIds =
+        records.stream()
+            .filter(rec -> Entity.DASHBOARD_SERVICE.equals(rec.getFromEntity()))
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .distinct()
+            .toList();
+
+    // Batch fetch all service entity references
+    var serviceRefs =
+        Entity.getEntityReferencesByIds(Entity.DASHBOARD_SERVICE, serviceIds, Include.ALL);
+    var serviceRefMap =
+        serviceRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map charts to their services
+    records.forEach(
+        record -> {
+          if (Entity.DASHBOARD_SERVICE.equals(record.getFromEntity())) {
+            var chartId = UUID.fromString(record.getToId());
+            var serviceId = UUID.fromString(record.getFromId());
+            var serviceRef = serviceRefMap.get(serviceId);
+            if (serviceRef != null) {
+              serviceMap.put(chartId, serviceRef);
+            }
+          }
+        });
+
+    return serviceMap;
   }
 }

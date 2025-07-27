@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Classification } from '../../../generated/entity/classification/classification';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -27,6 +30,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
@@ -102,4 +106,8 @@ export type MapPatchAPIResponse = {
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
   [EntityType.METRIC]: Metric;
+  [EntityType.TAG]: Tag;
+  [EntityType.DOMAIN]: Domain;
+  [EntityType.CLASSIFICATION]: Classification;
+  [EntityType.CHART]: Chart;
 };

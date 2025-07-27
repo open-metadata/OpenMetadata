@@ -13,7 +13,6 @@
 import { FieldProps } from '@rjsf/utils';
 import { Form, Switch } from 'antd';
 import { startCase } from 'lodash';
-import React from 'react';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
   return (
@@ -22,7 +21,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
       colon={false}
       label={startCase(props.name)}
       labelAlign="left"
-      labelCol={{ span: 8 }}>
+      labelCol={{ span: 10 }}>
       <Switch
         checked={props.formData}
         id={props.idSchema.$id}

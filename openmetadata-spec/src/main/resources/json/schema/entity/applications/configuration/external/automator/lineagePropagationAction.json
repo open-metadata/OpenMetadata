@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/lineagePropagationAction.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LineagePropagationAction",
-  "description": "Propagate description and tags via lineage",
+  "description": "Propagate description, tags and glossary terms via lineage",
   "type": "object",
   "definitions": {
     "lineagePropagationActionType": {
@@ -19,11 +19,74 @@
       "$ref": "#/definitions/lineagePropagationActionType",
       "default": "LineagePropagationAction"
     },
-    "overwriteMetadata": {
-      "title": "Overwrite Metadata",
-      "description": "Update descriptions and tags via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
+    "propagateDescription": {
+      "title": "Propagate Description",
+      "description": "Propagate description through lineage",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateTags": {
+      "title": "Propagate Tags",
+      "description": "Propagate tags through lineage",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateGlossaryTerms": {
+      "title": "Propagate Glossary Terms",
+      "description": "Propagate glossary terms through lineage",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateTier": {
+      "title": "Propagate Tier",
+      "description": "Propagate tier from the parent",
       "type": "boolean",
       "default": false
+    },
+    "propagateDomains": {
+      "title": "Propagate Domains",
+      "description": "Propagate domains from the parent through lineage",
+      "type": "boolean",
+      "default": false
+    },
+    "propagateOwner": {
+      "title": "Propagate Owner",
+      "description": "Propagate owner from the parent",
+      "type": "boolean",
+      "default": false
+    },
+    "propagateColumnLevel": {
+      "title": "Propagate Column Level",
+      "description": "Propagate the metadata to columns via column-level lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "propagateParent": {
+      "title": "Propagate Parent",
+      "description": "Propagate the metadata to the parents (e.g., tables) via lineage.",
+      "type": "boolean",
+      "default": false
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update descriptions, tags and Glossary Terms via lineage even if they are already defined in the asset. By default, descriptions are only updated if they are not already defined in the asset, and incoming tags are merged with the existing ones.",
+      "type": "boolean",
+      "default": false
+    },
+    "propagationDepth": {
+      "title": "Propagation Depth",
+      "description": "Number of levels to propagate lineage. If not set, it will propagate to all levels.",
+      "type": "integer",
+      "default": null
+    },
+    "propagationStopConfigs": {
+      "title": "Propagation Stop Configurations",
+      "description": "List of configurations to stop propagation based on conditions",
+      "type": "array",
+      "default": null,
+      "items": {
+        "$ref": "propagationStopConfig.json"
+      }
     }
   },
   "required": ["type"],

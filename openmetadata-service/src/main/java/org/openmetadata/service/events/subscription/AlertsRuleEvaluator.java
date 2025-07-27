@@ -3,10 +3,10 @@ package org.openmetadata.service.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
-import static org.openmetadata.schema.type.ThreadType.Conversation;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -15,6 +15,7 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -36,10 +38,10 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -97,27 +99,24 @@ public class AlertsRuleEvaluator {
     if (nullOrEmpty(ownerReferences)) {
       entity =
           Entity.getEntity(
-              changeEvent.getEntityType(), entity.getId(), "owner", Include.NON_DELETED);
+              changeEvent.getEntityType(), entity.getId(), "owners", Include.NON_DELETED);
       ownerReferences = entity.getOwners();
     }
     if (!nullOrEmpty(ownerReferences)) {
-      for (EntityReference owner : ownerReferences) {
-        if (USER.equals(owner.getType())) {
-          User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
-          for (String name : ownerNameList) {
-            if (user.getName().equals(name)) {
-              return true;
-            }
-          }
-        } else if (TEAM.equals(owner.getType())) {
-          Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-          for (String name : ownerNameList) {
-            if (team.getName().equals(name)) {
-              return true;
-            }
-          }
-        }
-      }
+      return matchOwners(ownerReferences, ownerNameList);
+    }
+
+    if (changeEvent.getEntityType().equals(TEST_CASE)) {
+      // If we did not match on the owner name and are dealing with a test case,
+      // check if the match happens on the test suite owner name
+      TestCase testCase =
+          Entity.getEntity(
+              changeEvent.getEntityType(),
+              entity.getId(),
+              "testSuites,owners",
+              Include.NON_DELETED);
+      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
+      return testSuites.filter(suites -> testSuiteOwnerMatcher(suites, ownerNameList)).isPresent();
     }
     return false;
   }
@@ -147,6 +146,15 @@ public class AlertsRuleEvaluator {
         return true;
       }
     }
+
+    if (changeEvent.getEntityType().equals(TEST_CASE)) {
+      // If we did not match on the entity FQN and are dealing with a test case,
+      // check if the match happens on the test suite FQN
+      TestCase testCase = ((TestCase) entity);
+      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
+      return testSuites.filter(suites -> testSuiteMatcher(suites, entityNames)).isPresent();
+    }
+
     return false;
   }
 
@@ -334,6 +342,21 @@ public class AlertsRuleEvaluator {
   }
 
   @Function(
+      name = "isBot",
+      input = "Check if the updating user is a bot",
+      description = "Returns true if the change event entity is updated by a bot",
+      examples = {"isBot()"},
+      paramInputType = NOT_REQUIRED)
+  public boolean isBot() {
+    if (changeEvent == null || changeEvent.getUserName() == null) {
+      return false;
+    }
+    String entityUpdatedBy = changeEvent.getUserName();
+    User user = Entity.getEntityByName(Entity.USER, entityUpdatedBy, "id", Include.NON_DELETED);
+    return user.getIsBot();
+  }
+
+  @Function(
       name = "matchIngestionPipelineState",
       input = "List of comma separated ingestion pipeline states",
       description =
@@ -447,13 +470,23 @@ public class AlertsRuleEvaluator {
     EntityInterface entity = getEntity(changeEvent);
     EntityInterface entityWithDomainData =
         Entity.getEntity(
-            changeEvent.getEntityType(), entity.getId(), "domain", Include.NON_DELETED);
-    if (entityWithDomainData.getDomain() != null) {
+            changeEvent.getEntityType(), entity.getId(), "domains", Include.NON_DELETED);
+    if (!nullOrEmpty(entityWithDomainData.getDomains())) {
       for (String name : fieldChangeUpdate) {
-        if (entityWithDomainData.getDomain().getFullyQualifiedName().equals(name)) {
-          return true;
+        for (EntityReference domain : entityWithDomainData.getDomains()) {
+          if (domain.getFullyQualifiedName().equals(name)) {
+            return true;
+          }
         }
       }
+    }
+
+    if (changeEvent.getEntityType().equals(TEST_CASE)) {
+      // If we did not match on the domain and are dealing with a test case,
+      // check if the match happens on the test suite domain
+      TestCase testCase = ((TestCase) entity);
+      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
+      return testSuites.filter(suites -> testSuiteMatcher(suites, fieldChangeUpdate)).isPresent();
     }
     return false;
   }
@@ -474,6 +507,16 @@ public class AlertsRuleEvaluator {
         String.format(
             "Change Event Data Asset is not an entity %s",
             JsonUtils.pojoToJson(event.getEntity())));
+  }
+
+  public static Thread getThreadEntity(ChangeEvent event) {
+    Thread entity;
+    if (event.getEntity() instanceof String str) {
+      entity = JsonUtils.readValue(str, Thread.class);
+    } else {
+      entity = JsonUtils.convertValue(event.getEntity(), Thread.class);
+    }
+    return entity;
   }
 
   @Function(
@@ -497,11 +540,6 @@ public class AlertsRuleEvaluator {
     }
 
     Thread thread = getThread(changeEvent);
-
-    if (!thread.getType().equals(Conversation)) {
-      // Only applies to Conversation
-      return false;
-    }
 
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
@@ -542,5 +580,53 @@ public class AlertsRuleEvaluator {
               "Change Event Data Asset is not an Thread %s",
               JsonUtils.pojoToJson(event.getEntity())));
     }
+  }
+
+  private boolean testSuiteMatcher(List<TestSuite> testSuites, List<String> entityNames) {
+    for (TestSuite testSuite : testSuites) {
+      for (String name : entityNames) {
+        Pattern pattern = Pattern.compile(name);
+        Matcher matcherTestSuiteFQN = pattern.matcher(testSuite.getFullyQualifiedName());
+        if (matcherTestSuiteFQN.find()) return true;
+        if (!nullOrEmpty(testSuite.getDomains())) {
+          for (EntityReference domain : testSuite.getDomains()) {
+            Matcher matcherDomainFQN = pattern.matcher(domain.getFullyQualifiedName());
+            if (matcherDomainFQN.find()) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean testSuiteOwnerMatcher(List<TestSuite> testSuites, List<String> ownerNameList) {
+    boolean match;
+    for (TestSuite testSuite : testSuites) {
+      List<EntityReference> owners = testSuite.getOwners();
+      match = matchOwners(owners, ownerNameList);
+      if (match) return true;
+    }
+    return false;
+  }
+
+  private boolean matchOwners(List<EntityReference> ownerReferences, List<String> ownerNameList) {
+    for (EntityReference owner : ownerReferences) {
+      if (USER.equals(owner.getType())) {
+        User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
+        for (String name : ownerNameList) {
+          if (user.getName().equals(name)) {
+            return true;
+          }
+        }
+      } else if (TEAM.equals(owner.getType())) {
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+        for (String name : ownerNameList) {
+          if (team.getName().equals(name)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 }

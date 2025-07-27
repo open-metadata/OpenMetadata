@@ -16,9 +16,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
@@ -39,10 +39,12 @@ import {
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/tests/testCase';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -56,18 +58,19 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import '../task-page.style.less';
 import { EntityData } from '../TasksPage.interface';
 
 const RequestDescription = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { t } = useTranslation();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
@@ -98,7 +101,7 @@ const RequestDescription = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const getTaskAbout = () => {
     if (field && value) {
@@ -114,43 +117,42 @@ const RequestDescription = () => {
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
-    if (selectedAssignees.length) {
-      const data: CreateThread = {
-        from: currentUser?.name as string,
-        message: value.title || taskMessage,
-        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-        taskDetails: {
-          assignees: selectedAssignees.map((assignee) => ({
-            id: assignee.id,
-            type: assignee.type,
-          })),
-          suggestion: markdownRef.current?.getEditorContent(),
-          type: TaskType.RequestDescription,
-          oldValue: '',
-        },
-        type: ThreadType.Task,
-      };
-      postThread(data)
-        .then(() => {
-          showSuccessToast(
-            t('server.create-entity-success', {
-              entity: t('label.task'),
-            })
-          );
-          history.push(
-            entityUtilClassBase.getEntityLink(
-              entityType,
-              entityFQN,
-              EntityTabs.ACTIVITY_FEED,
-              ActivityFeedTabs.TASKS
-            )
-          );
-        })
-        .catch((err: AxiosError) => showErrorToast(err))
-        .finally(() => setIsLoading(false));
-    } else {
-      showErrorToast(t('server.no-task-creation-without-assignee'));
-    }
+    const data: CreateThread = {
+      from: currentUser?.name as string,
+      message: value.title || taskMessage,
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      taskDetails: {
+        assignees: selectedAssignees.map((assignee) => ({
+          id: assignee.id,
+          type: assignee.type,
+        })),
+        suggestion: isDescriptionContentEmpty(suggestion)
+          ? undefined
+          : suggestion,
+        type: TaskType.RequestDescription,
+        oldValue: '',
+      },
+      type: ThreadType.Task,
+    };
+
+    postThread(data)
+      .then(() => {
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.task'),
+          })
+        );
+        navigate(
+          entityUtilClassBase.getEntityLink(
+            entityType,
+            entityFQN,
+            EntityTabs.ACTIVITY_FEED,
+            ActivityFeedTabs.TASKS
+          )
+        );
+      })
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -173,10 +175,12 @@ const RequestDescription = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         minWidth: 700,
         flex: 0.6,
         children: (
-          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+          <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
@@ -285,7 +289,7 @@ const RequestDescription = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {suggestion ? t('label.suggest') : t('label.submit')}
+                      {suggestion ? t('label.suggest') : t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>
@@ -294,7 +298,7 @@ const RequestDescription = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.request-description')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -317,4 +321,4 @@ const RequestDescription = () => {
   );
 };
 
-export default RequestDescription;
+export default withPageLayout(RequestDescription);

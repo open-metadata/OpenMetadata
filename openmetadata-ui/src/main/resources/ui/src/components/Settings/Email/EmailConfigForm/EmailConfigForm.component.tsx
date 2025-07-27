@@ -12,7 +12,7 @@
  */
 
 import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
-import React, { FocusEvent } from 'react';
+import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { TRANSPORTATION_STRATEGY_OPTIONS } from '../../../../constants/EmailConfig.constants';
@@ -70,15 +70,6 @@ function EmailConfigForm({
         />
       </Item>
       <Item
-        label={t('label.open-metadata-url')}
-        name="openMetadataUrl"
-        rules={[{ required: true }]}>
-        <Input
-          data-testid="open-metadata-url-input"
-          id="root/openMetadataUrl-input"
-        />
-      </Item>
-      <Item
         label={t('label.server-endpoint')}
         name="serverEndpoint"
         rules={[{ required: true }]}>
@@ -132,7 +123,7 @@ function EmailConfigForm({
         </Col>
         <Col>
           <Button htmlType="submit" loading={isLoading} type="primary">
-            {t('label.submit')}
+            {t('label.save')}
           </Button>
         </Col>
       </Row>

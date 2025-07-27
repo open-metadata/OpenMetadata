@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,11 @@ from typing import Optional, Tuple
 import sqlparse
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -100,3 +105,40 @@ def set_cache(cache: defaultdict, key: str, value):
             cache[key_] = value
             break
         cache = cache[key_]
+
+
+def get_context_entities(
+    entity: Table, metadata: OpenMetadata
+) -> Tuple[DatabaseSchema, Database, DatabaseService]:
+    """Based on the table, get all the parent entities"""
+    schema_entity = None
+    database_entity = None
+    db_service = None
+
+    if entity.databaseSchema:
+        schema_entity_list = metadata.es_search_from_fqn(
+            entity_type=DatabaseSchema,
+            fqn_search_string=entity.databaseSchema.fullyQualifiedName,
+            fields="databaseSchemaProfilerConfig",
+        )
+        if schema_entity_list:
+            schema_entity = schema_entity_list[0]
+
+    if entity.database:
+        database_entity_list = metadata.es_search_from_fqn(
+            entity_type=Database,
+            fqn_search_string=entity.database.fullyQualifiedName,
+            fields="databaseProfilerConfig",
+        )
+        if database_entity_list:
+            database_entity = database_entity_list[0]
+
+    if entity.service:
+        db_service_list = metadata.es_search_from_fqn(
+            entity_type=DatabaseService,
+            fqn_search_string=entity.service.fullyQualifiedName,
+        )
+        if db_service_list:
+            db_service = db_service_list[0]
+
+    return schema_entity, database_entity, db_service

@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,7 +36,10 @@ from metadata.ingestion.source.database.bigtable.models import Row
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE as GLOBAL_SAMPLE_SIZE,
 )
-from metadata.ingestion.source.database.common_nosql_source import CommonNoSQLSource
+from metadata.ingestion.source.database.common_nosql_source import (
+    CommonNoSQLSource,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils.logger import ingestion_logger
 
@@ -114,7 +117,9 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
             )
             raise
 
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         project_id = self.context.get().database
         try:
             instance = self._get_instance(project_id, schema_name)
@@ -127,7 +132,10 @@ class BigtableSource(CommonNoSQLSource, MultiDBSource):
                     [project_id, instance.instance_id, table.table_id],
                     table,
                 )
-            return list(self.tables[project_id][schema_name].keys())
+            return [
+                TableNameAndType(name=table)
+                for table in self.tables[project_id][schema_name].keys()
+            ]
         except Exception as err:
             logger.debug(traceback.format_exc())
             # add context to the error message

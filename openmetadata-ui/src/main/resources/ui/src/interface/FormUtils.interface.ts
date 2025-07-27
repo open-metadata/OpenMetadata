@@ -34,6 +34,7 @@ export enum FieldTypes {
   SELECT = 'select',
   ASYNC_SELECT_LIST = 'async_select_list',
   NUMBER = 'number',
+  CHECK_BOX = 'check_box',
   SLIDER_INPUT = 'slider_input',
   DESCRIPTION = 'description',
   TAG_SUGGESTION = 'tag_suggestion',
@@ -42,6 +43,7 @@ export enum FieldTypes {
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',
   CRON_EDITOR = 'cron_editor',
+  TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
 }
 
 export enum HelperTextType {
@@ -65,4 +67,5 @@ export interface FieldProp {
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
   isBeta?: boolean;
+  newLook?: boolean;
 }

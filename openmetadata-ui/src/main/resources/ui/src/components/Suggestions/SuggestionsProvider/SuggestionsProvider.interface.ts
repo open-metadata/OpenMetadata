@@ -10,30 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../../generated/entity/feed/suggestion';
+import { Suggestion } from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 
+export interface SuggestionDataByTypes {
+  tags: Suggestion[];
+  description: Suggestion[];
+  combinedData: Suggestion[];
+}
+
 export interface SuggestionsContextType {
-  selectedUserSuggestions: Suggestion[];
+  suggestionLimit: number;
+  suggestionPendingCount: number;
+  selectedUserSuggestions: SuggestionDataByTypes;
   suggestions: Suggestion[];
-  suggestionsByUser: Map<string, Suggestion[]>;
+  suggestionsByUser: Map<string, SuggestionDataByTypes>;
   loading: boolean;
   loadingAccept: boolean;
   loadingReject: boolean;
   allSuggestionsUsers: EntityReference[];
   onUpdateActiveUser: (user?: EntityReference) => void;
-  fetchSuggestions: (entityFqn: string) => void;
+  fetchSuggestions: (limit?: number, skipMerge?: boolean) => void;
+  fetchSuggestionsByUserId: (userId: string, limit?: number) => void;
   acceptRejectSuggestion: (
     suggestion: Suggestion,
     action: SuggestionAction
   ) => void;
-  acceptRejectAllSuggestions: (
-    suggestionType: SuggestionType,
-    status: SuggestionAction
-  ) => void;
+  acceptRejectAllSuggestions: (status: SuggestionAction) => void;
 }
 
 export enum SuggestionAction {

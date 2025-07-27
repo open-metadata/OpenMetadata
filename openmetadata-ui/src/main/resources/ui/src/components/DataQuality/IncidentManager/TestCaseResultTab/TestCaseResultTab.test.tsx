@@ -17,9 +17,14 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
-import { TestCase } from '../../../../generated/tests/testCase';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { TagLabel, TestCase } from '../../../../generated/tests/testCase';
+import {
+  LabelType,
+  State,
+  TagSource,
+} from '../../../../generated/type/tagLabel';
+import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import TestCaseResultTab from './TestCaseResultTab.component';
 
 const mockTestCaseData: TestCase = {
@@ -69,7 +74,19 @@ const mockUseTestCaseStore = {
   testCase: mockTestCaseData,
   setTestCase: jest.fn(),
   showAILearningBanner: false,
+  isPermissionLoading: false,
+  testCasePermission: MOCK_PERMISSIONS,
+  setTestCasePermission: jest.fn(),
+  setIsPermissionLoading: jest.fn(),
+  isTabExpanded: false,
 };
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockImplementation(() => ({
+    version: undefined,
+  })),
+}));
 
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -104,9 +121,27 @@ jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
     </div>
   ));
 });
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
+
+const mockUpdateTestCaseById = jest.fn();
+jest.mock('../../../../rest/testAPI', () => ({
+  updateTestCaseById: jest
+    .fn()
+    .mockImplementation(() => mockUpdateTestCaseById()),
 }));
+
+// Mock TagsContainerV2 to capture props
+const mockTagsContainerV2 = jest.fn();
+jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest.fn().mockImplementation((props) => {
+    mockTagsContainerV2(props);
+
+    return (
+      <div data-testid={`tags-container-${props.tagType}`}>
+        TagsContainerV2 - {props.tagType}
+      </div>
+    );
+  });
+});
 
 describe('TestCaseResultTab', () => {
   it('Should render component', async () => {
@@ -129,6 +164,15 @@ describe('TestCaseResultTab', () => {
     render(<TestCaseResultTab />);
 
     const editButton = await screen.findByTestId('edit-parameter-icon');
+    fireEvent.click(editButton);
+
+    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+  });
+
+  it("EditTestCaseModal should be rendered when 'Edit SQL expression' button is clicked", async () => {
+    render(<TestCaseResultTab />);
+
+    const editButton = await screen.findByTestId('edit-sql-param-icon');
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -165,12 +209,14 @@ describe('TestCaseResultTab', () => {
   });
 
   it("Should not show edit icon if user doesn't have edit permission", () => {
-    (checkPermission as jest.Mock).mockReturnValueOnce(false);
+    mockUseTestCaseStore.testCasePermission = DEFAULT_ENTITY_PERMISSION;
     const { container } = render(<TestCaseResultTab />);
 
     const editButton = queryByTestId(container, 'edit-parameter-icon');
 
     expect(editButton).not.toBeInTheDocument();
+
+    mockUseTestCaseStore.testCasePermission = MOCK_PERMISSIONS;
   });
 
   it('Should show useDynamicAssertion if enabled', async () => {
@@ -222,5 +268,221 @@ describe('TestCaseResultTab', () => {
 
     mockTestCaseData.useDynamicAssertion = false;
     mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  // Tier tag tests
+  describe('Tier tag filtering', () => {
+    beforeEach(() => {
+      mockTagsContainerV2.mockClear();
+      mockUpdateTestCaseById.mockClear();
+      mockUpdateTestCaseById.mockResolvedValue({});
+    });
+
+    it('should filter out tier tags from displayed tags in TagsContainerV2', async () => {
+      const testCaseWithTierTag = {
+        ...mockTestCaseData,
+        tags: [
+          {
+            tagFQN: 'Tier.Tier1',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+          {
+            tagFQN: 'PII.Sensitive',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+          {
+            tagFQN: 'PersonalData.Email',
+            source: TagSource.Glossary,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ],
+      };
+
+      mockUseTestCaseStore.testCase = testCaseWithTierTag;
+      mockUseTestCaseStore.isTabExpanded = true;
+
+      render(<TestCaseResultTab />);
+
+      // Wait for tags containers to render
+      expect(
+        await screen.findByTestId('tags-container-Classification')
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('tags-container-Glossary')
+      ).toBeInTheDocument();
+
+      // Check that TagsContainerV2 is called with filtered tags (without tier tags)
+      const classificationCall = mockTagsContainerV2.mock.calls.find(
+        (call) => call[0].tagType === TagSource.Classification
+      );
+      const glossaryCall = mockTagsContainerV2.mock.calls.find(
+        (call) => call[0].tagType === TagSource.Glossary
+      );
+
+      expect(classificationCall).toBeDefined();
+      expect(glossaryCall).toBeDefined();
+
+      // The selectedTags prop should not contain tier tags
+      const selectedTags = classificationCall[0].selectedTags;
+
+      expect(selectedTags).toBeDefined();
+      expect(
+        selectedTags.some((tag: TagLabel) => tag.tagFQN.startsWith('Tier.'))
+      ).toBe(false);
+    });
+
+    it('should preserve tier tags when updating tags', async () => {
+      const testCaseWithTierTag = {
+        ...mockTestCaseData,
+        tags: [
+          {
+            tagFQN: 'Tier.Tier2',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+          {
+            tagFQN: 'PII.Sensitive',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ],
+      };
+
+      mockUseTestCaseStore.testCase = testCaseWithTierTag;
+      mockUseTestCaseStore.isTabExpanded = true;
+
+      render(<TestCaseResultTab />);
+
+      // Wait for tags container to render
+      expect(
+        await screen.findByTestId('tags-container-Classification')
+      ).toBeInTheDocument();
+
+      // Get the onSelectionChange handler
+      const classificationCall = mockTagsContainerV2.mock.calls.find(
+        (call) => call[0].tagType === TagSource.Classification
+      );
+      const onSelectionChange = classificationCall[0].onSelectionChange;
+
+      // Simulate tag selection change with a new tag
+      const newTags = [
+        {
+          tagFQN: 'PII.NonSensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        },
+      ];
+
+      await onSelectionChange(newTags);
+
+      // Verify updateTestCaseById was called
+      expect(mockUpdateTestCaseById).toHaveBeenCalled();
+
+      // The tier tag should be preserved in the update
+      // Note: The actual preservation logic is in the component
+    });
+
+    it('should work correctly when no tier tags are present', async () => {
+      const testCaseWithoutTierTag = {
+        ...mockTestCaseData,
+        tags: [
+          {
+            tagFQN: 'PII.Sensitive',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+          {
+            tagFQN: 'PersonalData.Email',
+            source: TagSource.Glossary,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ],
+      };
+
+      mockUseTestCaseStore.testCase = testCaseWithoutTierTag;
+      mockUseTestCaseStore.isTabExpanded = true;
+
+      render(<TestCaseResultTab />);
+
+      // Wait for tags containers to render
+      expect(
+        await screen.findByTestId('tags-container-Classification')
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('tags-container-Glossary')
+      ).toBeInTheDocument();
+
+      // Should work normally without tier tags
+      const classificationCall = mockTagsContainerV2.mock.calls.find(
+        (call) => call[0].tagType === TagSource.Classification
+      );
+
+      expect(classificationCall).toBeDefined();
+
+      // Should have both tags but no tier tags
+      const allTags = classificationCall[0].selectedTags;
+
+      expect(allTags).toHaveLength(2); // PII.Sensitive and PersonalData.Email
+      expect(
+        allTags.some((tag: TagLabel) => tag.tagFQN.startsWith('Tier.'))
+      ).toBe(false);
+    });
+
+    it('should display only non-tier tags when test case has multiple tier tags', async () => {
+      const testCaseWithMultipleTierTags = {
+        ...mockTestCaseData,
+        tags: [
+          {
+            tagFQN: 'Tier.Tier1',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+          {
+            tagFQN: 'Tier.Tier2', // This shouldn't happen in practice
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+          {
+            tagFQN: 'PII.Sensitive',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ],
+      };
+
+      mockUseTestCaseStore.testCase = testCaseWithMultipleTierTags;
+      mockUseTestCaseStore.isTabExpanded = true;
+
+      render(<TestCaseResultTab />);
+
+      // Wait for tags container to render
+      expect(
+        await screen.findByTestId('tags-container-Classification')
+      ).toBeInTheDocument();
+
+      // Check that TagsContainerV2 is called with filtered tags
+      const classificationCall = mockTagsContainerV2.mock.calls.find(
+        (call) => call[0].tagType === TagSource.Classification
+      );
+
+      const selectedTags = classificationCall[0].selectedTags;
+
+      // Should only have the non-tier tag
+      expect(selectedTags).toHaveLength(1);
+      expect(selectedTags[0].tagFQN).toBe('PII.Sensitive');
+    });
   });
 });

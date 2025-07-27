@@ -17,9 +17,9 @@
 }
 .custom-query-editor {
   border: @global-border;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   .CodeMirror {
-    border-radius: @border-radius-base;
+    border-radius: @border-rad-base;
     height: 200px;
   }
 }
@@ -34,7 +34,8 @@
     min-height: 60px;
   }
 }
-.full-screen-editor-height > .CodeMirror {
+.full-screen-editor-height > .CodeMirror,
+.full-screen-editor-height > .react-codemirror2 > .CodeMirror {
   height: calc(100vh - 250px) !important;
 }
 

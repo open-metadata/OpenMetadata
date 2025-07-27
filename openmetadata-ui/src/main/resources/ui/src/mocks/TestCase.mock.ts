@@ -39,7 +39,7 @@ export const MOCK_TEST_CASE_DATA = {
     name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-    description: 'This is an executable test suite linked to an entity',
+    description: 'This is an basic test suite linked to an entity',
     deleted: false,
     href: 'http://localhost:8585/api/v1/dataQuality/testSuites/bce9b69f-125a-42a8-b06a-13bdbc049f8d',
   },

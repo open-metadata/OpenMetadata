@@ -10,23 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { Col, Row, Space, Typography } from 'antd';
+import { get } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 interface DataProductSummaryProps {
   entityDetails: DataProduct;
   isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
 const DataProductSummary = ({
   entityDetails,
   isLoading,
+  highlights,
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
 
@@ -34,55 +40,41 @@ const DataProductSummary = ({
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <>
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
+      <div className="d-flex flex-col gap-5">
+        <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
               data-testid="domain-header">
-              {t('label.domain')}
+              {t('label.domain-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <Typography.Text data-testid="domain-header">
-              {getEntityName(entityDetails.domain)}
-            </Typography.Text>
-          </Col>
-        </Row>
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
-              className="summary-panel-section-title"
-              data-testid="description-header">
-              {t('label.description')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <div>
-              {entityDetails.description?.trim() ? (
-                <RichTextEditorPreviewer
-                  markdown={entityDetails.description}
-                  maxLength={80}
-                />
-              ) : (
-                <Typography className="text-grey-body">
-                  {t('label.no-data-found')}
-                </Typography>
-              )}
-            </div>
+            <DomainLabel
+              domains={entityDetails.domains ?? []}
+              entityFqn={entityDetails.fullyQualifiedName ?? ''}
+              entityId={entityDetails.id ?? ''}
+              entityType={EntityType.DATA_PRODUCT}
+              hasPermission={false}
+              showDomainHeading={false}
+            />
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={getSortedTagsWithHighlight(
+            entityDetails.tags,
+            get(highlights, 'tag.name')
+          )}
+        />
 
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
+        <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
               data-testid="owner-header">
-              {t('label.owner')}
+              {t('label.owner-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>
@@ -90,9 +82,7 @@ const DataProductSummary = ({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
+        <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -116,9 +106,7 @@ const DataProductSummary = ({
             )}
           </Col>
         </Row>
-
-        <Divider className="m-y-xs" />
-      </>
+      </div>
     </SummaryPanelSkeleton>
   );
 };

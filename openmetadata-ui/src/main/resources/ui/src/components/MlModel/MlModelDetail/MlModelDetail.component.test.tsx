@@ -17,12 +17,10 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Paging } from '../../../generated/type/paging';
-import { LeafNodes } from '../../Entity/EntityLineage/EntityLineage.interface';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {
@@ -157,7 +155,6 @@ const mockProp = {
     entityLineageHandler: jest.fn(),
     isLineageLoading: false,
     entityLineage: { entity: { id: 'test', type: 'mlmodel' } },
-    lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
   onExtensionUpdate: jest.fn(),
@@ -168,7 +165,7 @@ const mockProp = {
   fetchFeedHandler: jest.fn(),
   postFeedHandler: jest.fn(),
   deletePostHandler: jest.fn(),
-
+  onMlModelUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],
@@ -177,6 +174,7 @@ const mockProp = {
   versionHandler: jest.fn(),
   handleToggleDelete: jest.fn(),
   onUpdateVote: jest.fn(),
+  onMlModelUpdateCertification: jest.fn(),
 };
 
 const mockParams = {
@@ -189,7 +187,6 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

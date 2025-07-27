@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ from typing import Union
 
 from sqlalchemy import Column
 
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -44,27 +45,26 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Returns:
             TestCaseResult:
         """
+        matched = False
         allowed_values = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "allowedValues",
             literal_eval,
         )
 
-        match_enum = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "matchEnum",
-            bool,
-            default=False,
+        match_enum = utils.get_bool_test_case_param(
+            self.test_case.parameterValues, "matchEnum"
         )
 
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
             res = self._run_results(Metrics.COUNT_IN_SET, column, values=allowed_values)
+            matched = res > 0
             if match_enum:
                 count = self._run_results(
                     Metrics.ROW_COUNT, column, values=allowed_values
                 )
-                res = count - res
+                matched = count - res == 0
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -83,7 +83,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(res == 0 if match_enum else res >= 1),
+            self.get_test_case_status(matched),
             f"Found countInSet={res}.",
             [TestResultValue(name=ALLOWED_VALUE_COUNT, value=str(res))],
             row_count=row_count,

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,6 +58,9 @@ class TestFqn(TestCase):
             FQNTest(["a.1", "b.2", "c", "d"], '"a.1"."b.2".c.d'),
             FQNTest(["a.1", "b.2", "c.3", "d"], '"a.1"."b.2"."c.3".d'),
             FQNTest(["a.1", "b.2", "c.3", "d.4"], '"a.1"."b.2"."c.3"."d.4"'),
+            FQNTest(["fqn", "test.test.test"], 'fqn."test.test.test"'),
+            FQNTest(["fqn", "testtesttest"], "fqn.testtesttest"),
+            FQNTest(["fqn", "testtes ttest"], "fqn.testtes ttest"),
         ]
         for x in xs:
             x.validate(fqn.split(x.fqn), fqn._build(*x.parts))
@@ -87,7 +90,7 @@ class TestFqn(TestCase):
 
     def test_invalid(self):
         with self.assertRaises(Exception):
-            fqn.split('a"')
+            fqn.split('a.."')
 
     def test_build_table(self):
         """

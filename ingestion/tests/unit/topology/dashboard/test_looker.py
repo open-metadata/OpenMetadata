@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -47,6 +47,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
@@ -123,6 +124,13 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Looker,
 )
+
+EXPECTED_PARSED_VIEWS = {
+    "v1": "table1",
+    "v2": "select * from v2",
+    "v3": "select * from (select * from v2)",
+    "v4": "select * from (select * from (select * from v2)) inner join (table1)",
+}
 
 
 class LookerUnitTest(TestCase):
@@ -292,13 +300,33 @@ class LookerUnitTest(TestCase):
         """
         Check table cleaning
         """
-        self.assertEqual(self.looker._clean_table_name("MY_TABLE"), "my_table")
+        self.assertEqual(
+            self.looker._clean_table_name("MY_TABLE", Dialect.MYSQL), "my_table"
+        )
 
-        self.assertEqual(self.looker._clean_table_name("  MY_TABLE  "), "my_table")
+        self.assertEqual(
+            self.looker._clean_table_name("  MY_TABLE  ", Dialect.REDSHIFT), "my_table"
+        )
 
-        self.assertEqual(self.looker._clean_table_name("  my_table"), "my_table")
+        self.assertEqual(
+            self.looker._clean_table_name("  my_table", Dialect.SNOWFLAKE), "my_table"
+        )
 
-        self.assertEqual(self.looker._clean_table_name("TABLE AS ALIAS"), "table")
+        self.assertEqual(
+            self.looker._clean_table_name("TABLE AS ALIAS", Dialect.BIGQUERY), "table"
+        )
+
+        self.assertEqual(
+            self.looker._clean_table_name(
+                "`project_id.dataset_id.table_id` AS ALIAS", Dialect.BIGQUERY
+            ),
+            "project_id.dataset_id.table_id",
+        )
+
+        self.assertEqual(
+            self.looker._clean_table_name("`db.schema.table`", Dialect.POSTGRES),
+            "`db.schema.table`",
+        )
 
     def test_render_table_name(self):
         """
@@ -393,22 +421,19 @@ class LookerUnitTest(TestCase):
         with patch.object(fqn, "build", return_value=None), patch.object(
             OpenMetadata, "get_by_name", return_value=table
         ):
-            self.assertEqual(
-                self.looker.build_lineage_request(
-                    source, db_service_name, to_entity
-                ).right,
-                AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table.id.root, type="table"),
-                        toEntity=EntityReference(
-                            id=to_entity.id.root, type="dashboard"
-                        ),
-                        lineageDetails=LineageDetails(
-                            source=LineageSource.DashboardLineage
-                        ),
-                    )
-                ),
+            original_lineage = self.looker.build_lineage_request(
+                source, db_service_name, to_entity
+            ).right
+            expected_lineage = AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=table.id.root, type="table"),
+                    toEntity=EntityReference(id=to_entity.id.root, type="dashboard"),
+                    lineageDetails=LineageDetails(
+                        source=LineageSource.DashboardLineage, columnsLineage=[]
+                    ),
+                )
             )
+            self.assertEqual(original_lineage, expected_lineage)
 
     def test_yield_dashboard_chart(self):
         """
@@ -539,3 +564,33 @@ class LookerUnitTest(TestCase):
             self.assertIsNotNone(
                 list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))[0].left
             )
+
+    def test_derived_view_references(self):
+        """
+        Validate if we can find derived references in a SQL query
+        and replace them with their actual values
+        """
+        # pylint: disable=protected-access
+        self.looker._parsed_views.update(
+            {
+                "v1": "table1",
+                "v2": "select * from v2",
+            }
+        )
+        self.looker._unparsed_views.update(
+            {
+                "v3": "select * from ${v2.SQL_TABLE_NAME}",
+                "v4": "select * from ${v3.SQL_TABLE_NAME} inner join ${v1.SQL_TABLE_NAME}",
+            }
+        )
+        self.looker._derived_dependencies.add_edges_from(
+            [
+                ("v3", "v2"),
+                ("v4", "v3"),
+                ("v4", "v1"),
+            ]
+        )
+        list(self.looker.build_lineage_for_unparsed_views())
+
+        self.assertEqual(self.looker._parsed_views, EXPECTED_PARSED_VIEWS)
+        self.assertEqual(self.looker._unparsed_views, {})

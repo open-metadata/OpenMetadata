@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.resources.feeds;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.ONE_SECOND;
@@ -51,6 +51,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
@@ -64,8 +66,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -107,6 +107,7 @@ import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -121,7 +122,6 @@ import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -211,7 +211,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout(null);
     assertResponse(
-        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[about must not be null]");
+        () -> createThread(create, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param about must not be null]");
   }
 
   @Test
@@ -219,7 +221,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    String failureReason = "[about must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+    String failureReason =
+        "[about must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
     assertResponseContains(
         () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 
@@ -240,14 +243,18 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   void post_feedWithoutMessage_4xx() {
     CreateThread create = create().withFrom(USER.getName()).withMessage(null);
     assertResponseContains(
-        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[message must not be null]");
+        () -> createThread(create, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param message must not be null]");
   }
 
   @Test
   void post_feedWithoutFrom_4xx() {
     CreateThread create = create().withFrom(null);
     assertResponseContains(
-        () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, "[from must not be null]");
+        () -> createThread(create, USER_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param from must not be null]");
   }
 
   @Test
@@ -531,6 +538,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     announcements = listAnnouncements(about, null, false, ADMIN_AUTH_HEADERS);
     assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
     assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+
+    // verify the announcement counts in the feed count API
+    FeedResource.ThreadCountList threadCounts = listThreadsCount(about, ADMIN_AUTH_HEADERS);
+    for (ThreadCount threadCount : threadCounts.getData()) {
+      if (threadCount.getEntityLink().equals(about)
+          && threadCount.getTotalAnnouncementCount() != null) {
+        assertEquals(totalAnnouncementCount + 4, threadCount.getTotalAnnouncementCount());
+        assertEquals(1, threadCount.getActiveAnnouncementCount());
+        assertEquals(totalAnnouncementCount + 3, threadCount.getInactiveAnnouncementCount());
+      }
+    }
   }
 
   @Test
@@ -882,7 +900,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponseContains(
         () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
         BAD_REQUEST,
-        "[message must not be null]");
+        "[query param message must not be null]");
   }
 
   @Test
@@ -893,7 +911,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertResponseContains(
         () -> addPost(THREAD.getId(), createPost, USER_AUTH_HEADERS),
         BAD_REQUEST,
-        "[from must not be null]");
+        "[query param from must not be null]");
   }
 
   @Test

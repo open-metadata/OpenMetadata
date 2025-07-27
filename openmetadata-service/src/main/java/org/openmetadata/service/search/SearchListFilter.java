@@ -27,6 +27,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     conditions.add(getIncludeCondition(entityType));
     conditions.add(getDomainCondition());
     conditions.add(getOwnerCondition());
+    conditions.add(getCreatedByCondition());
 
     if (entityType != null) {
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
@@ -90,10 +91,10 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getDomainCondition() {
-    String domain = getQueryParam("domain");
+    String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
       return String.format(
-          "{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
+          "{\"term\": {\"domains.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
     }
     return "";
   }
@@ -118,6 +119,14 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       String ownersList =
           Arrays.stream(owners.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
       return String.format("{\"terms\": {\"owners.id\": [%s]}}", ownersList);
+    }
+    return "";
+  }
+
+  private String getCreatedByCondition() {
+    String createdBy = getQueryParam("createdBy");
+    if (!nullOrEmpty(createdBy)) {
+      return String.format("{\"term\": {\"createdBy\": \"%s\"}}", escapeDoubleQuotes(createdBy));
     }
     return "";
   }
@@ -257,8 +266,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
-      boolean executable = !testSuiteType.equals("logical");
-      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+      boolean basic = !testSuiteType.equals("logical");
+      conditions.add(String.format("{\"term\": {\"basic\": \"%s\"}}", basic));
     }
 
     if (!includeEmptyTestSuites) {

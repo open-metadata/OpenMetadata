@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,14 +31,14 @@ ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
 SELECT
 LOWER(view_name) AS "view_name",
 LOWER(owner) AS "schema",
-DBMS_METADATA.GET_DDL('VIEW', view_name, owner) AS view_def
+text AS view_def
 FROM DBA_VIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
 UNION ALL
 SELECT
 LOWER(mview_name) AS "view_name",
 LOWER(owner) AS "schema",
-DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner) AS view_def
+query AS view_def
 FROM DBA_MVIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
 """
@@ -87,11 +87,32 @@ SELECT
     OWNER,
     NAME,
     LINE,
-    TEXT
+    TEXT,
+    'StoredProcedure' as procedure_type
 FROM
     DBA_SOURCE
 WHERE
     type = 'PROCEDURE' and owner = '{schema}'
+"""
+)
+ORACLE_GET_SCHEMA = """
+    SELECT USERNAME AS SCHEMA_NAME 
+    FROM ALL_USERS 
+    WHERE ROWNUM = 1 
+    ORDER BY USERNAME
+"""
+ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
+    """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT,
+    'StoredPackage' as procedure_type
+
+FROM
+    DBA_SOURCE
+WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
 """
 )
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"

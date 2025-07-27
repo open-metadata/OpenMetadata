@@ -11,39 +11,36 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables.component';
 
-const mockFrequentlyJoinedTablesProps = {
-  joinedTables: [
+jest.mock('../../../utils/TableUtils', () => ({
+  getJoinsFromTableJoins: jest.fn().mockReturnValue([
     {
       name: 'test',
       fullyQualifiedName: 'test',
       joinCount: 1,
     },
-  ],
-};
+  ]),
+}));
 
 describe('FrequentlyJoinedTables component', () => {
-  it('should render the component', async () => {
-    render(<FrequentlyJoinedTables {...mockFrequentlyJoinedTablesProps} />, {
+  it('should render header the component', async () => {
+    render(<FrequentlyJoinedTables />, {
       wrapper: MemoryRouter,
     });
 
     expect(
-      await screen.findByTestId('frequently-joint-table-container')
-    ).toBeInTheDocument();
-    expect(
       await screen.findByTestId('frequently-joint-data-container')
     ).toBeInTheDocument();
+
     expect(
       await screen.findByText('label.frequently-joined-table-plural')
     ).toBeInTheDocument();
   });
 
   it("should show the table's name and join count", async () => {
-    render(<FrequentlyJoinedTables {...mockFrequentlyJoinedTablesProps} />, {
+    render(<FrequentlyJoinedTables />, {
       wrapper: MemoryRouter,
     });
 

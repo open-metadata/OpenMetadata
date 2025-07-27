@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,11 +20,15 @@ from requests.models import Response
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.apiService.restConnection import (
-    RESTConnection,
+from metadata.generated.schema.entity.services.connections.api.restConnection import (
+    RestConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 class SchemaURLError(Exception):
@@ -39,7 +43,7 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RESTConnection) -> Response:
+def get_connection(connection: RestConnection) -> Response:
     """
     Create connection
     """
@@ -52,36 +56,42 @@ def get_connection(connection: RESTConnection) -> Response:
 def test_connection(
     metadata: OpenMetadata,
     client: Response,
-    service_connection: RESTConnection,
+    service_connection: RestConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
     def custom_url_exec():
-        if (
-            "application/json" in client.headers.get("content-type")
-            and client.status_code == 200
-        ):
+        if client.status_code == 200:
             return []
         raise SchemaURLError(
-            "Failed to parse JSON schema url. Please check if provided url is valid JSON schema."
+            "Failed to connect to the JSON schema url. Please check the url and credentials. Status Code was: "
+            + str(client.status_code)
         )
 
     def custom_schema_exec():
-        if client.json().get("openapi") is not None:
-            return []
-        raise InvalidOpenAPISchemaError(
-            "Provided schema is not valid OpenAPI JSON schema"
-        )
+        try:
+            if client.json() is not None and client.json().get("openapi") is not None:
+                return []
+
+            raise InvalidOpenAPISchemaError(
+                "Provided schema is not valid OpenAPI JSON schema"
+            )
+        except:
+            raise InvalidOpenAPISchemaError(
+                "Provided schema is not valid OpenAPI JSON schema"
+            )
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

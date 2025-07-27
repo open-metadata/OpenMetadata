@@ -10,6 +10,74 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.ant-col.entity-header-content {
-  max-width: calc(100% - 100px);
+@import (reference) url('../../../styles/variables.less');
+
+.entity-header-title {
+  flex: 1;
+  .ant-typography-ellipsis.entity-header-name {
+    margin-bottom: 0px;
+    display: block;
+    color: @grey-900;
+    min-width: 0;
+  }
+  .ant-typography-ellipsis.entity-header-display-name {
+    font-size: 16px;
+    color: @grey-700;
+  }
+}
+
+.ant-btn.entity-follow-button {
+  border-radius: 16px;
+  background-color: @primary-button-background;
+  padding: 4px 12px;
+  border: none;
+  width: fit-content;
+  height: auto;
+  .ant-typography {
+    color: @primary-heading-color;
+    font-weight: @font-medium;
+  }
+  span.anticon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  svg {
+    // to make follow button icon color same as primary color
+    color: @primary-color;
+  }
+  span.ant-typography {
+    margin-left: 0px;
+  }
+
+  &:hover {
+    background-color: @primary-button-background;
+  }
+  &:active {
+    background-color: @primary-button-background;
+  }
+  &:focus {
+    background-color: @primary-button-background;
+  }
+}
+
+.ant-btn.copy-button {
+  border-radius: 6px;
+  border: 1px solid @border-light;
+  background: @background-color;
+  color: @background-color;
+  width: 22px;
+  height: 22px;
+  &:hover {
+    background-color: @background-color;
+    color: @background-color;
+  }
+  &:active {
+    background-color: @background-color;
+    color: @background-color;
+  }
+  &:focus {
+    background-color: @background-color;
+    color: @background-color;
+  }
 }

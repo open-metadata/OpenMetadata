@@ -32,10 +32,13 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.DIContainer;
+import org.openmetadata.service.util.ResultList;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -53,21 +56,28 @@ public abstract class AbstractEventConsumer
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+  protected final DIContainer dependencies;
   private long offset = -1;
+  private long startingOffset = -1;
+
   private AlertMetrics alertMetrics;
 
   @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
-  protected AbstractEventConsumer() {}
+  protected AbstractEventConsumer(DIContainer dependencies) {
+    this.dependencies = dependencies;
+  }
 
   private void init(JobExecutionContext context) {
     EventSubscription sub =
         (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
-    this.offset = loadInitialOffset(context);
+    EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
+    this.offset = eventSubscriptionOffset.getCurrentOffset();
+    this.startingOffset = eventSubscriptionOffset.getStartingOffset();
     this.alertMetrics = loadInitialMetrics();
     this.destinationMap = loadDestinationsMap(context);
     this.doInit(context);
@@ -77,8 +87,19 @@ public abstract class AbstractEventConsumer
     // To be implemented by the Subclass if needed
   }
 
+  public enum FailureTowards {
+    SUBSCRIBER,
+    PUBLISHER
+  }
+
   @Override
-  public void handleFailedEvent(EventPublisherException ex) {
+  public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
+    if (ex.getChangeEventWithSubscription() == null) {
+      LOG.error(
+          "Change Event with Subscription is null in EventPublisherException: {}", ex.getMessage());
+      return;
+    }
+
     UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
     ChangeEvent changeEvent = ex.getChangeEventWithSubscription().getRight();
     LOG.debug(
@@ -86,6 +107,8 @@ public abstract class AbstractEventConsumer
         eventSubscription.getName(),
         failingSubscriptionId,
         changeEvent);
+
+    FailureTowards source = errorOnSub ? FailureTowards.SUBSCRIBER : FailureTowards.PUBLISHER;
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
@@ -97,21 +120,33 @@ public abstract class AbstractEventConsumer
                     .withFailingSubscriptionId(failingSubscriptionId)
                     .withChangeEvent(changeEvent)
                     .withRetriesLeft(eventSubscription.getRetries())
-                    .withTimestamp(System.currentTimeMillis())));
+                    .withReason(ex.getMessage())
+                    .withTimestamp(System.currentTimeMillis())),
+            source.toString());
   }
 
-  private long loadInitialOffset(JobExecutionContext context) {
+  private void recordSuccessfulChangeEvent(UUID eventSubscriptionId, ChangeEvent event) {
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSuccessfulChangeEvent(
+            event.getId().toString(),
+            eventSubscriptionId.toString(),
+            JsonUtils.pojoToJson(event),
+            System.currentTimeMillis());
+  }
+
+  private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
     EventSubscriptionOffset jobStoredOffset =
         (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     // If the Job Data Map has the latest offset, use it
     if (jobStoredOffset != null) {
-      return jobStoredOffset.getOffset();
+      return jobStoredOffset;
     } else {
       EventSubscriptionOffset eventSubscriptionOffset =
           getStartingOffset(eventSubscription.getId());
       // Update the Job Data Map with the latest offset
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
-      return eventSubscriptionOffset.getOffset();
+      return eventSubscriptionOffset;
     }
   }
 
@@ -159,12 +194,12 @@ public abstract class AbstractEventConsumer
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
       for (UUID receiverId : eventWithReceivers.getValue()) {
-        try {
-          sendAlert(receiverId, eventWithReceivers.getKey());
+        boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
+        if (status) {
+          recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
-        } catch (EventPublisherException e) {
+        } else {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-          handleFailedEvent(e);
         }
       }
     }
@@ -175,7 +210,11 @@ public abstract class AbstractEventConsumer
     long currentTime = System.currentTimeMillis();
     // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset().withOffset(offset).withTimestamp(currentTime);
+        new EventSubscriptionOffset()
+            .withCurrentOffset(offset)
+            .withStartingOffset(startingOffset)
+            .withTimestamp(currentTime);
+
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -183,6 +222,7 @@ public abstract class AbstractEventConsumer
             OFFSET_EXTENSION,
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
+
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
@@ -195,6 +235,7 @@ public abstract class AbstractEventConsumer
             .withFailedEvents(alertMetrics.getFailedEvents())
             .withSuccessEvents(alertMetrics.getSuccessEvents())
             .withTimestamp(currentTime);
+
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -202,6 +243,7 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
+
     jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
 
     // Populate the Destination map
@@ -209,34 +251,46 @@ public abstract class AbstractEventConsumer
   }
 
   @Override
-  public List<ChangeEvent> pollEvents(long offset, long batchSize) {
-    // Read from Change Event Table
+  public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
     List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
-
     List<ChangeEvent> changeEvents = new ArrayList<>();
+    List<EntityError> errorEvents = new ArrayList<>();
     for (String json : eventJson) {
-      ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
-      changeEvents.add(event);
+      try {
+        ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
+        changeEvents.add(event);
+      } catch (Exception ex) {
+        errorEvents.add(new EntityError().withMessage(ex.getMessage()).withEntity(json));
+        LOG.error("Error in Parsing Change Event : {} , Message: {} ", json, ex.getMessage(), ex);
+      }
     }
-    return changeEvents;
+    return new ResultList<>(changeEvents, errorEvents, null, null, eventJson.size());
   }
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
-    // Poll Events from Change Event Table
-    List<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
-    int batchSize = batch.size();
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = createEventsWithReceivers(batch);
+    long batchSize = 0;
+    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
     try {
+      // Poll Events from Change Event Table
+      ResultList<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
+      batchSize = batch.getPaging().getTotal();
+      eventsWithReceivers.putAll(createEventsWithReceivers(batch.getData()));
       // Publish Events
       if (!eventsWithReceivers.isEmpty()) {
         alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
         publishEvents(eventsWithReceivers);
       }
     } catch (Exception e) {
-      LOG.error("Error in executing the Job : {} ", e.getMessage());
+      LOG.error(
+          "Error in polling events for alert : {} , Offset : {} , Batch Size : {} ",
+          e.getMessage(),
+          offset,
+          batchSize,
+          e);
+
     } finally {
       if (!eventsWithReceivers.isEmpty()) {
         // Commit the Offset

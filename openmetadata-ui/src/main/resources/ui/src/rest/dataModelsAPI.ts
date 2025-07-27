@@ -12,10 +12,11 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Column } from '../generated/entity/data/table';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
@@ -78,7 +79,7 @@ export const getDataModelVersionsList = async (id: string) => {
   return response.data;
 };
 
-export const getDataModelVersion = async (id: string, version: string) => {
+export const getDataModelVersion = async (id: string, version?: string) => {
   const url = `${URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);
@@ -100,6 +101,57 @@ export const updateDataModelVotes = async (id: string, data: QueryVote) => {
     QueryVote,
     AxiosResponse<DashboardDataModel>
   >(`${URL}/${id}/vote`, data);
+
+  return response.data;
+};
+
+export interface DataModelColumnParams {
+  limit?: number;
+  offset?: number;
+  fields?: string;
+  include?: Include;
+}
+
+export interface SearchDataModelColumnsParams extends DataModelColumnParams {
+  q?: string; // Search query
+}
+
+export const getDataModelColumnsByFQN = async (
+  fqn: string,
+  params?: DataModelColumnParams
+) => {
+  const response = await APIClient.get<PagingResponse<Column[]>>(
+    `${URL}/name/${getEncodedFqn(fqn)}/columns`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
+
+  return response.data;
+};
+
+export const searchDataModelColumnsByFQN = async (
+  fqn: string,
+  params?: SearchDataModelColumnsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Column[]>>(
+    `${URL}/name/${getEncodedFqn(fqn)}/columns/search`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
+
+  return response.data;
+};
+
+export const updateDataModelColumn = async (
+  fqn: string,
+  column: Partial<Column>
+) => {
+  const response = await APIClient.put<Column>(
+    `/columns/name/${getEncodedFqn(fqn)}?entityType=dashboardDataModel`,
+    column
+  );
 
   return response.data;
 };

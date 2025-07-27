@@ -11,15 +11,23 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
-import React from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import incidentManagerClassBase from './IncidentManagerClassBase';
 
 const IncidentManagerPage = () => {
+  const { t } = useTranslation();
+  const WidgetComponent = useMemo(
+    () => incidentManagerClassBase.getIncidentWidgets(),
+    []
+  );
+
   return (
-    <PageLayoutV1 pageTitle="Incident Manager">
-      <Row className="p-x-lg p-b-lg p-t-md" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.incident-manager')}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title
             className="m-b-md"
@@ -33,6 +41,12 @@ const IncidentManagerPage = () => {
             {PAGE_HEADERS.INCIDENT_MANAGER.subHeader}
           </Typography.Paragraph>
         </Col>
+
+        {WidgetComponent && (
+          <Col span={24}>
+            <WidgetComponent />
+          </Col>
+        )}
 
         <Col span={24}>
           <IncidentManager />

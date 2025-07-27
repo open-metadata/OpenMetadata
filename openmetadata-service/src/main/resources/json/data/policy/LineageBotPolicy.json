@@ -18,8 +18,15 @@
       "name": "LineageBotRule-Allow",
       "description" : "Allow creating and updating lineage",
       "resources" : ["All"],
-      "operations": ["EditLineage", "EditQueries", "ViewAll"],
+      "operations": ["EditAll", "ViewAll"],
       "effect": "allow"
+    },
+    {
+      "name": "DisplayName-Deny",
+      "description" : "Deny bots to update display name",
+      "resources" : ["All"],
+      "operations": ["EditDisplayName"],
+      "effect": "deny"
     }
   ]
 }

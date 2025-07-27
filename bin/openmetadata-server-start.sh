@@ -50,19 +50,24 @@ fi
 
 
 COMMAND=$1
-case $COMMAND in
-  -name)
-    DAEMON_NAME=$2
-    CONSOLE_OUTPUT_FILE=$LOG_DIR/$DAEMON_NAME.out
-    shift 2
-    ;;
-  -daemon)
-    DAEMON_MODE=true
-    shift
-    ;;
-  *)
-    ;;
-esac
+while [ "$COMMAND" != "" ]; do
+  case $COMMAND in
+    -name)
+      DAEMON_NAME=$2
+      shift 2
+      ;;
+    -daemon)
+      DAEMON_NAME=OpenMetadataServer
+      DAEMON_MODE=true
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+  COMMAND=$1
+done
+CONSOLE_OUTPUT_FILE=$LOG_DIR/$DAEMON_NAME.out
 
 # Which java to use
 if [ -z "$JAVA_HOME" ]; then
@@ -92,20 +97,21 @@ if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 fi
 
 # GC options
-GC_LOG_FILE_NAME='openmetadata-gc.log'
 if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
-  JAVA_MAJOR_VERSION=$($JAVA -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
-  if [[ "$JAVA_MAJOR_VERSION" -ge "9" ]] ; then
-    OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,tags:filecount=10,filesize=102400"
-  else
-    OPENMETADATA_GC_LOG_OPTS="-Xloggc:$LOG_DIR/$GC_LOG_FILE_NAME -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
-  fi
+  OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/openmetadata-gc.log:time,tags:filecount=10,filesize=102400"
 fi
-
 
 # JVM performance options
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
-  OPENMETADATA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
+  export OPENMETADATA_JVM_PERFORMANCE_OPTS="\
+    -server -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=200 \
+    -XX:InitiatingHeapOccupancyPercent=45 \
+    -XX:+ExplicitGCInvokesConcurrent \
+    -XX:+UseStringDeduplication \
+    -XX:-UseLargePages \
+    -XX:+UseCompressedOops -XX:+UseCompressedClassPointers \
+    -Djava.awt.headless=true"
 fi
 
 #Application classname
@@ -113,7 +119,7 @@ APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
-    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
-    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
+    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
 fi

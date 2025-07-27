@@ -19,5 +19,6 @@ export interface InlineAlertProps {
   type?: InlineAlertType;
   heading: string;
   description: ReactNode;
+  subDescription?: ReactNode;
   onClose?: () => void;
 }

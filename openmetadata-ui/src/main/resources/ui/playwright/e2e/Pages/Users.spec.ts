@@ -31,6 +31,7 @@ import {
   addUser,
   checkDataConsumerPermissions,
   checkEditOwnerButtonPermission,
+  checkForUserExistError,
   checkStewardPermissions,
   checkStewardServicesPermissions,
   generateToken,
@@ -98,6 +99,8 @@ const test = base.extend<{
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   await adminUser.create(apiContext);
@@ -116,6 +119,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -154,6 +159,17 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
+    await test.step(
+      "User shouldn't be allowed to create User with same Email",
+      async () => {
+        await checkForUserExistError(adminPage, {
+          name: updatedUserDetails.name,
+          email: updatedUserDetails.email,
+          password: updatedUserDetails.password,
+        });
+      }
+    );
+
     await permanentDeleteUser(
       adminPage,
       updatedUserDetails.name,
@@ -189,16 +205,17 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
+    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForSelector('.user-list-table [data-testid="loader"]', {
+      state: 'detached',
+    });
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,
       user.responseData.displayName
     );
 
-    await restoreUserProfilePage(
-      adminPage,
-      user.responseData.fullyQualifiedName
-    );
+    await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
   });
 });
@@ -243,6 +260,11 @@ test.describe('User with Data Consumer Roles', () => {
 
     // Check CRUD for Glossary
     await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+
+    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(
       dataConsumerPage.locator('[data-testid="add-glossary"]')
@@ -303,7 +325,7 @@ test.describe('User with Data Consumer Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
 
-    await tableEntity.visitEntityPage(adminPage);
+    await tableEntity.visitEntityPageWithCustomSearchBox(adminPage);
 
     await addOwner({
       page: adminPage,
@@ -313,7 +335,7 @@ test.describe('User with Data Consumer Roles', () => {
       dataTestId: 'data-assets-header',
     });
 
-    await tableEntity.visitEntityPage(dataConsumerPage);
+    await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
 
     await checkDataConsumerPermissions(dataConsumerPage);
   });
@@ -407,11 +429,11 @@ test.describe('User with Data Steward Roles', () => {
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    await tableEntity2.visitEntityPage(adminPage);
+    await tableEntity2.visitEntityPageWithCustomSearchBox(adminPage);
 
     await addOwner({
       page: adminPage,
-      owner: user.responseData.displayName,
+      owner: user.responseData.displayName ?? user.responseData.name,
       type: 'Users',
       endpoint: EntityTypeEndpoint.Table,
       dataTestId: 'data-assets-header',
@@ -441,5 +463,78 @@ test.describe('User with Data Steward Roles', () => {
     );
 
     await visitOwnProfilePage(dataStewardPage);
+  });
+});
+
+test.describe('User Profile Feed Interactions', () => {
+  test('Should navigate to user profile from feed card avatar click', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    const feedResponse = adminPage.waitForResponse(
+      '/api/v1/feed?type=Conversation'
+    );
+
+    await visitOwnProfilePage(adminPage);
+    await feedResponse;
+
+    await adminPage.waitForSelector('[data-testid="message-container"]');
+    const userDetailsResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*'
+    );
+    const userFeedResponse = adminPage.waitForResponse(
+      '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
+    );
+
+    const avatar = adminPage
+      .locator('#feedData [data-testid="message-container"]')
+      .first()
+      .locator('[data-testid="profile-avatar"]')
+      .first();
+
+    await avatar.hover();
+    await adminPage.waitForSelector('.ant-popover-card');
+
+    // Ensure popover is stable and visible before clicking
+    await adminPage.waitForTimeout(500); // Give popover time to stabilize
+
+    // Get the user name element and ensure it's ready for interaction
+    const userNameElement = adminPage.getByTestId('user-name').nth(1);
+
+    // Click with force to handle pointer event interception
+    await userNameElement.click({ force: true });
+
+    const [response] = await Promise.all([
+      userDetailsResponse,
+      userFeedResponse,
+    ]);
+    const { name, displayName } = await response.json();
+
+    // The UI shows displayName if available, otherwise falls back to name
+    const expectedText = displayName ?? name;
+
+    await expect(
+      adminPage.locator('[data-testid="user-display-name"]')
+    ).toHaveText(expectedText);
+  });
+
+  test('Close the profile dropdown after redirecting to user profile page', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await adminPage.locator('[data-testid="dropdown-profile"] svg').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+    const userResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*?fields=*&include=all'
+    );
+    await adminPage.getByTestId('user-name').click();
+    await userResponse;
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(
+      adminPage.locator('.user-profile-dropdown-overlay')
+    ).not.toBeVisible();
   });
 });

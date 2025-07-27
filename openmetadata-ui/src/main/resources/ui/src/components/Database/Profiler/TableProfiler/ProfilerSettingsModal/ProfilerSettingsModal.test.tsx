@@ -14,40 +14,74 @@
 import {
   act,
   cleanup,
-  findByText,
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
-import React from 'react';
+import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getTableProfilerConfig } from '../../../../../rest/tableAPI';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
+const mockShowSuccessToast = jest.fn();
+const mockShowErrorToast = jest.fn();
+const mockOnVisibilityChange = jest.fn();
+
 jest.mock('../../../../../rest/tableAPI', () => ({
   getTableProfilerConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
-  putTableProfileConfig: jest.fn(),
+  putTableProfileConfig: jest.fn().mockResolvedValue({}),
 }));
 
 const mockProps: ProfilerSettingsModalProps = {
   tableId: MOCK_TABLE.id,
-  columns: MOCK_TABLE.columns || [],
+  columns: [
+    { name: 'column1', dataType: 'string' },
+    { name: 'column2', dataType: 'timestamp' },
+  ] as unknown as Column[],
   visible: true,
-  onVisibilityChange: jest.fn(),
+  onVisibilityChange: mockOnVisibilityChange,
+};
+
+const mockTableProfilerConfig = {
+  profileSample: 60.0,
+  profileSampleType: 'PERCENTAGE',
+  sampleDataCount: 500,
+  profileQuery: 'select * from table',
+  excludeColumns: ['column1'],
+  includeColumns: [{ columnName: 'column2', metrics: ['column_count'] }],
+  partitioning: {
+    enablePartitioning: true,
+    partitionColumnName: 'column2',
+    partitionIntervalType: 'COLUMN-VALUE',
+    partitionValues: ['test'],
+  },
 };
 
 jest.mock('../../../../../constants/profiler.constant', () => ({
   DEFAULT_INCLUDE_PROFILE: [],
-  INTERVAL_TYPE_OPTIONS: [],
-  INTERVAL_UNIT_OPTIONS: [],
-  PROFILER_METRIC: [],
+  INTERVAL_TYPE_OPTIONS: [
+    { label: 'Column Value', value: 'COLUMN-VALUE' },
+    { label: 'Time Unit', value: 'TIME-UNIT' },
+  ],
+  INTERVAL_UNIT_OPTIONS: [
+    { label: 'Day', value: 'DAY' },
+    { label: 'Hour', value: 'HOUR' },
+  ],
+  PROFILER_METRIC: ['column_count', 'distinct_count'],
   PROFILER_MODAL_LABEL_STYLE: {},
-  PROFILE_SAMPLE_OPTIONS: [],
-  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL: {},
-  TIME_BASED_PARTITION: [],
+  PROFILE_SAMPLE_OPTIONS: [
+    { label: 'Percentage', value: 'PERCENTAGE' },
+    { label: 'Row Count', value: 'ROW_COUNT' },
+  ],
+  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL: {
+    'COLUMN-VALUE': ['string'],
+    'TIME-UNIT': ['timestamp'],
+  },
+  TIME_BASED_PARTITION: ['TIME-UNIT'],
 }));
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
@@ -55,8 +89,12 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
 }));
 
 jest.mock('../../../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
+  showErrorToast: jest
+    .fn()
+    .mockImplementation((error) => mockShowErrorToast(error)),
+  showSuccessToast: jest
+    .fn()
+    .mockImplementation((msg) => mockShowSuccessToast(msg)),
 }));
 
 jest.mock('../../../SchemaEditor/SchemaEditor', () => {
@@ -70,133 +108,84 @@ jest.mock('../../../../common/SliderWithInput/SliderWithInput', () => {
 describe('Test ProfilerSettingsModal component', () => {
   beforeEach(() => {
     cleanup();
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should render without crashing', async () => {
-    render(<ProfilerSettingsModal {...mockProps} />);
-
-    const modal = await screen.findByTestId('profiler-settings-modal');
-    const sampleContainer = await screen.findByTestId(
-      'profile-sample-container'
-    );
-    const sqlEditor = await screen.findByTestId('sql-editor-container');
-    const includeSelect = await screen.findByTestId('include-column-container');
-    const excludeSelect = await screen.findByTestId('exclude-column-container');
-    const partitionSwitch = await screen.findByTestId(
-      'enable-partition-switch'
-    );
-    const intervalType = await screen.findByTestId('interval-type');
-    const columnName = await screen.findByTestId('column-name');
-    const sampleDataCount = await screen.findByTestId(
-      'sample-data-count-input'
-    );
-
-    expect(modal).toBeInTheDocument();
-    expect(sampleContainer).toBeInTheDocument();
-    expect(sqlEditor).toBeInTheDocument();
-    expect(includeSelect).toBeInTheDocument();
-    expect(excludeSelect).toBeInTheDocument();
-    expect(partitionSwitch).toBeInTheDocument();
-    expect(intervalType).toBeInTheDocument();
-    expect(columnName).toBeInTheDocument();
-    expect(sampleDataCount).toBeInTheDocument();
-  });
-
-  it('Interval Type and Column Name field should be disabled, when partition switch is off', async () => {
-    render(<ProfilerSettingsModal {...mockProps} />);
-    const partitionSwitch = await screen.findByTestId(
-      'enable-partition-switch'
-    );
-    const intervalType = await screen.findByTestId('interval-type');
-    const columnName = await screen.findByTestId('column-name');
-
-    expect(partitionSwitch).toHaveAttribute('aria-checked', 'false');
-    expect(intervalType).toHaveClass('ant-select-disabled');
-    expect(columnName).toHaveClass('ant-select-disabled');
-  });
-
-  it.skip('Interval Type and Column Name field should be enabled, when partition switch is on', async () => {
-    render(<ProfilerSettingsModal {...mockProps} />);
-    const partitionSwitch = await screen.findByTestId(
-      'enable-partition-switch'
-    );
-
-    expect(partitionSwitch).toHaveAttribute('aria-checked', 'false');
-
     await act(async () => {
-      fireEvent.click(partitionSwitch);
+      render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('interval-type')).not.toHaveClass(
-      'ant-select-disabled'
-    );
-    expect(await screen.findByTestId('column-name')).not.toHaveClass(
-      'ant-select-disabled'
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId('profiler-settings-modal')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('profile-sample-container')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('sql-editor-container')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('include-column-container')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('exclude-column-container')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('enable-partition-switch')).toBeInTheDocument();
+      expect(screen.getByTestId('interval-type')).toBeInTheDocument();
+      expect(screen.getByTestId('column-name')).toBeInTheDocument();
+      expect(screen.getByTestId('sample-data-count-input')).toBeInTheDocument();
+    });
   });
 
-  it.skip('initial values should be visible in the form', async () => {
-    const tableProfilerConfig = {
-      profileSample: 60.0,
-      profileSampleType: 'PERCENTAGE',
-      sampleDataCount: 500,
-      profileQuery: 'select * from table',
-      excludeColumns: ['address_id'],
-      includeColumns: [
-        {
-          columnName: 'first_name',
-        },
-      ],
-      partitioning: {
-        enablePartitioning: true,
-        partitionColumnName: 'last_name',
-        partitionIntervalType: 'COLUMN-VALUE',
-        partitionValues: ['test'],
-      },
-    };
-    (getTableProfilerConfig as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ ...MOCK_TABLE, tableProfilerConfig })
-    );
-    render(<ProfilerSettingsModal {...mockProps} />);
+  it('should handle modal visibility', async () => {
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
 
-    const excludeSelect = await screen.findByTestId('exclude-column-select');
-    const includeSelect = await screen.findByTestId('include-column-select');
-    const partitionSwitch = await screen.findByTestId(
-      'enable-partition-switch'
-    );
-    const intervalType = await screen.findByTestId('interval-type');
-    const columnName = await screen.findByTestId('column-name');
+    await waitFor(() => {
+      expect(screen.getByTestId('profiler-settings-modal')).toBeInTheDocument();
+    });
 
-    expect(await screen.findByTestId('sample-data-count-input')).toHaveValue(
-      tableProfilerConfig.sampleDataCount.toString()
-    );
-    expect(await screen.findByTestId('slider-input')).toHaveValue(
-      `${tableProfilerConfig.profileSample}%`
-    );
-    expect(await screen.findByTestId('partition-value')).toHaveValue(
-      tableProfilerConfig.partitioning.partitionValues[0]
-    );
-    expect(
-      await findByText(excludeSelect, tableProfilerConfig.excludeColumns[0])
-    ).toBeInTheDocument();
-    expect(
-      await findByText(
-        includeSelect,
-        tableProfilerConfig.includeColumns[0].columnName
-      )
-    ).toBeInTheDocument();
-    expect(
-      await findByText(
-        intervalType,
-        tableProfilerConfig.partitioning.partitionIntervalType
-      )
-    ).toBeInTheDocument();
-    expect(
-      await findByText(
-        columnName,
-        tableProfilerConfig.partitioning.partitionColumnName
-      )
-    ).toBeInTheDocument();
-    expect(partitionSwitch).toHaveAttribute('aria-checked', 'true');
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+
+    expect(mockOnVisibilityChange).toHaveBeenCalledWith(false);
+  });
+
+  it('should load initial profiler config', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: mockTableProfilerConfig,
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      const sampleDataCount = screen.getByTestId('sample-data-count-input');
+
+      expect(sampleDataCount).toHaveAttribute('value', '500');
+    });
+  });
+
+  it('should handle sample data count change', async () => {
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    const sampleDataCount = screen.getByTestId('sample-data-count-input');
+
+    await act(async () => {
+      fireEvent.change(sampleDataCount, { target: { value: '100' } });
+    });
+
+    await waitFor(() => {
+      expect(sampleDataCount).toHaveAttribute('value', '100');
+    });
   });
 });

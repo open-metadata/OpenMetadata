@@ -15,13 +15,14 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
 import {
   BETA_SERVICES,
   excludedService,
   SERVICE_CATEGORY_OPTIONS,
+  SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
@@ -85,11 +86,9 @@ const SelectServiceType = ({
   const getServiceName = (type: string) => {
     if (type.includes('Custom')) {
       return startCase(type);
-    } else if (type === PipelineServiceType.GluePipeline) {
-      return 'Glue Pipeline';
     }
 
-    return type;
+    return SERVICE_TYPE_WITH_DISPLAY_NAME.get(type) || type;
   };
 
   return (
@@ -121,8 +120,8 @@ const SelectServiceType = ({
         <Row className="service-list-container" data-testid="select-service">
           {filteredConnectors.map((type) => (
             <Button
-              className={classNames('service-box p-xs d-block border', {
-                'border-primary': type === selectServiceType,
+              className={classNames('service-box', {
+                'selected-service': type === selectServiceType,
               })}
               data-testid={type}
               key={type}

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,
   groupBy,
@@ -22,24 +21,31 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TagLabel } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Table from '../../common/Table/Table';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -50,12 +56,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
-  onThreadLinkSelect,
 }) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
@@ -106,9 +111,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
         render: (_, record: Column) => (
@@ -119,9 +123,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
-        accessor: 'dataTypeDisplay',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         ellipsis: true,
         width: 220,
         render: (
@@ -146,9 +149,8 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -162,24 +164,15 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditContainerColumnDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -194,24 +187,15 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -220,13 +204,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
@@ -235,26 +218,26 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       isReadOnly,
       entityFqn,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,
-      onThreadLinkSelect,
       handleFieldTagsChange,
     ]
   );
 
   if (isEmpty(dataModel?.columns)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 
   return (
     <>
       <Table
-        bordered
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
         dataSource={dataModel?.columns}
+        defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),
@@ -263,20 +246,25 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         rowKey="name"
         scroll={TABLE_SCROLL_VALUE}
         size="small"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
       {editContainerColumnDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editContainerColumnDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.column'),
-          })}
-          value={editContainerColumnDescription.description ?? ''}
-          visible={Boolean(editContainerColumnDescription)}
-          onCancel={() => setEditContainerColumnDescription(undefined)}
-          onSave={handleContainerColumnDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editContainerColumnDescription.fullyQualifiedName}
+          entityType={EntityType.CONTAINER}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editContainerColumnDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.column'),
+            })}
+            value={editContainerColumnDescription.description ?? ''}
+            visible={Boolean(editContainerColumnDescription)}
+            onCancel={() => setEditContainerColumnDescription(undefined)}
+            onSave={handleContainerColumnDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </>
   );

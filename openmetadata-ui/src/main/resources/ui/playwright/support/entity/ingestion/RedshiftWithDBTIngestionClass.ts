@@ -18,14 +18,14 @@ import {
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
-import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
+import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
 import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPage } from '../../../utils/entity';
+import { visitEntityPageWithCustomSearchBox } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -35,17 +35,30 @@ import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
   dbtEntityFqn: string;
   schemaFilterPattern = 'dbt_automate_upgrade_tests';
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       REDSHIFT.serviceName,
       REDSHIFT.serviceType,
-      REDSHIFT.tableName
+      REDSHIFT.tableName,
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
@@ -105,29 +118,42 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         true
       );
 
-      await page.click('[data-testid="ingestions"]');
+      await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
-      await page.waitForTimeout(1000);
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('.ant-dropdown:visible [data-menu-id*="dbt"]');
       await page.click('[data-menu-id*="dbt"]');
 
       await page.waitForSelector('#root\\/dbtConfigSource__oneof_select');
       await page.selectOption(
         '#root\\/dbtConfigSource__oneof_select',
-        'DBT HTTP Config'
+        'DBT S3 Config'
       );
       await page.fill(
-        '#root\\/dbtConfigSource\\/dbtCatalogHttpPath',
-        HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH
+        '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsAccessKeyId',
+        process.env.PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID ?? ''
       );
       await page.fill(
-        '#root\\/dbtConfigSource\\/dbtManifestHttpPath',
-        HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH
+        '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsSecretAccessKey',
+        process.env.PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY ?? ''
       );
       await page.fill(
-        '#root\\/dbtConfigSource\\/dbtRunResultsHttpPath',
-        HTTP_CONFIG_SOURCE.DBT_RUN_RESULTS_FILE_PATH
+        '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsRegion',
+        DBT.awsRegion
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtPrefixConfig\\/dbtBucketName',
+        DBT.s3BucketName
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtPrefixConfig\\/dbtObjectPrefix',
+        DBT.s3Prefix
       );
 
       await page.click('[data-testid="submit-btn"]');
@@ -139,9 +165,14 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Header available once page loads
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
-      await page.getByTestId('ingestions').click();
+      await page.getByTestId('agents').click();
+      const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab2.isVisible()) {
+        await metadataTab2.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page
-        .getByLabel('Ingestions')
+        .getByLabel('agents')
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
@@ -187,7 +218,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
 
       // Verify DBT in table entity
-      await visitEntityPage({
+      await visitEntityPageWithCustomSearchBox({
         page,
         searchTerm: this.dbtEntityFqn,
         dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
@@ -198,7 +229,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await expect(
         page
-          .getByTestId('entity-right-panel')
+          .getByTestId('KnowledgePanel.Tags')
           .getByTestId('tags-container')
           .getByTestId('entity-tags')
       ).toContainText(DBT.tagName);

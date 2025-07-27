@@ -10,25 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Select, Space } from 'antd';
+import {
+  Col,
+  Form,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  INITIAL_PAGING_VALUE,
-  ROUTES,
-} from '../../../../constants/constants';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -40,37 +39,55 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
   TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getTestSuitePath } from '../../../../utils/RouterUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
+import {
+  getDataQualityPagePath,
+  getEntityDetailsPath,
+  getTestSuitePath,
+} from '../../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
+import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
+import './test-suites.style.less';
 
-export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestSuites = () => {
   const { t } = useTranslation();
-  const { tab = DataQualityPageTabs.TABLES } =
-    useParams<{ tab: DataQualityPageTabs }>();
-  const history = useHistory();
+  const {
+    tab = DataQualityPageTabs.TEST_CASES,
+    subTab = DataQualitySubTabs.TABLE_SUITES,
+  } = useParams<{
+    tab?: DataQualityPageTabs;
+    subTab?: DataQualitySubTabs;
+  }>();
+  const navigate = useNavigate();
   const location = useCustomLocation();
+  const { isTestCaseSummaryLoading, testCaseSummary } =
+    useDataQualityProvider();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -116,12 +133,13 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        width: 600,
         sorter: (a, b) => {
-          if (a.executable) {
-            // Sort for executable test suites
+          if (a.basic) {
+            // Sort for basic test suites
             return (
-              a.executableEntityReference?.fullyQualifiedName?.localeCompare(
-                b.executableEntityReference?.fullyQualifiedName ?? ''
+              a.basicEntityReference?.fullyQualifiedName?.localeCompare(
+                b.basicEntityReference?.fullyQualifiedName ?? ''
               ) ?? 0
             );
           } else {
@@ -134,28 +152,34 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         },
         sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
-          return record.executable ? (
-            <Link
-              data-testid={name}
-              to={{
-                pathname: getEntityDetailsPath(
-                  EntityType.TABLE,
-                  record.executableEntityReference?.fullyQualifiedName ?? '',
-                  EntityTabs.PROFILER
-                ),
-                search: QueryString.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
-              {record.executableEntityReference?.fullyQualifiedName ??
-                record.executableEntityReference?.name}
-            </Link>
-          ) : (
-            <Link
-              data-testid={name}
-              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
-              {getEntityName(record)}
-            </Link>
+          return (
+            <Typography.Paragraph className="m-0">
+              {record.basic ? (
+                <Link
+                  data-testid={name}
+                  to={{
+                    pathname: getEntityDetailsPath(
+                      EntityType.TABLE,
+                      record.basicEntityReference?.fullyQualifiedName ?? '',
+                      EntityTabs.PROFILER
+                    ),
+                    search: QueryString.stringify({
+                      activeTab: TableProfilerTab.DATA_QUALITY,
+                    }),
+                  }}>
+                  {record.basicEntityReference?.fullyQualifiedName ??
+                    record.basicEntityReference?.name}
+                </Link>
+              ) : (
+                <Link
+                  data-testid={name}
+                  to={getTestSuitePath(
+                    record.fullyQualifiedName ?? record.name
+                  )}>
+                  {getEntityName(record)}
+                </Link>
+              )}
+            </Typography.Paragraph>
           );
         },
       },
@@ -163,11 +187,13 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: t('label.test-plural'),
         dataIndex: 'summary',
         key: 'tests',
+        width: 100,
         render: (value: TestSummary) => value?.total ?? 0,
       },
       {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
+        width: 200,
         key: 'success',
         render: (value: TestSuite['summary']) => {
           const percent =
@@ -175,18 +201,14 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
           return (
             <ProfilerProgressWidget
+              direction="right"
               strokeColor={PROGRESS_BAR_COLOR}
               value={percent}
             />
           );
         },
       },
-      {
-        title: t('label.owner'),
-        dataIndex: 'owners',
-        key: 'owners',
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<TestSuite>(),
     ];
 
     return data;
@@ -204,10 +226,10 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         q: searchValue ? `*${searchValue}*` : undefined,
         owner: ownerFilterValue?.key,
         offset: (currentPage - 1) * pageSize,
-        includeEmptyTestSuites: tab !== DataQualityPageTabs.TABLES,
+        includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
         testSuiteType:
-          tab === DataQualityPageTabs.TABLES
-            ? TestSuiteType.executable
+          subTab === DataQualitySubTabs.TABLE_SUITES
+            ? TestSuiteType.basic
             : TestSuiteType.logical,
         sortField: 'testCaseResultSummary.timestamp',
         sortType: SORT_ORDER.DESC,
@@ -228,14 +250,14 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
-    [pageSize, paging]
+    [pageSize, handlePageChange]
   );
 
   const handleSearchParam = (
     value: string,
     key: keyof TestSuiteSearchParams
   ) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({
         ...params,
         [key]: isEmpty(value) ? undefined : value,
@@ -250,102 +272,135 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     );
   };
 
+  const handleSubTabChange = (e: RadioChangeEvent) => {
+    navigate(getDataQualityPagePath(tab, e.target.value as DataQualitySubTabs));
+  };
+
+  const customPaginationProps = useMemo(
+    () => ({
+      currentPage,
+      isLoading,
+      pageSize,
+      isNumberBased: true,
+      paging,
+      pagingHandler: handleTestSuitesPageChange,
+      onShowSizeChange: handlePageSizeChange,
+      showPagination,
+    }),
+    [
+      currentPage,
+      isLoading,
+      pageSize,
+      paging,
+      handleTestSuitesPageChange,
+      handlePageSizeChange,
+      showPagination,
+    ]
+  );
+
   useEffect(() => {
-    if (testSuitePermission?.ViewAll || testSuitePermission?.ViewBasic) {
-      fetchTestSuites(INITIAL_PAGING_VALUE, {
+    if (
+      getPrioritizedViewPermission(testSuitePermission, Operation.ViewBasic)
+    ) {
+      fetchTestSuites(currentPage, {
         limit: pageSize,
       });
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner]);
+  }, [testSuitePermission, pageSize, searchValue, owner, subTab, currentPage]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-suite'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
-    <Row
-      className="p-x-lg p-y-md"
-      data-testid="test-suite-container"
-      gutter={[16, 16]}>
+    <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Row justify="space-between">
-          <Col>
-            <Form layout="inline">
-              <Space
-                align="center"
-                className="w-full justify-between"
-                size={16}>
-                <Form.Item className="m-0 w-80">
-                  <Searchbar
-                    removeMargin
-                    searchValue={searchValue}
-                    onSearch={(value) =>
-                      handleSearchParam(value, 'searchValue')
-                    }
-                  />
-                </Form.Item>
-                <Form.Item
-                  className="m-0"
-                  label={t('label.owner')}
-                  name="owner">
-                  <UserTeamSelectableList
-                    hasPermission
-                    owner={selectedOwner}
-                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
-                    <Select
-                      data-testid="owner-select-filter"
-                      open={false}
-                      placeholder={t('label.owner')}
-                      value={ownerFilterValue}
-                    />
-                  </UserTeamSelectableList>
-                </Form.Item>
-              </Space>
-            </Form>
-          </Col>
-          <Col>
-            {tab === DataQualityPageTabs.TEST_SUITES &&
-              testSuitePermission?.Create && (
-                <Link
-                  data-testid="add-test-suite-btn"
-                  to={ROUTES.ADD_TEST_SUITES}>
-                  <Button type="primary">
-                    {t('label.add-entity', { entity: t('label.test-suite') })}
-                  </Button>
-                </Link>
-              )}
-          </Col>
-        </Row>
+        <Form layout="inline">
+          <Space align="center" className="w-full justify-between" size={16}>
+            <Form.Item className="m-0" label={t('label.owner')} name="owner">
+              <UserTeamSelectableList
+                hasPermission
+                owner={selectedOwner}
+                onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
+                <Select
+                  data-testid="owner-select-filter"
+                  open={false}
+                  placeholder={t('label.owner')}
+                  value={ownerFilterValue}
+                />
+              </UserTeamSelectableList>
+            </Form.Item>
+          </Space>
+        </Form>
       </Col>
 
-      <Col span={24}>{summaryPanel}</Col>
       <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          data-testid="test-suite-table"
-          dataSource={testSuites}
-          loading={isLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          size="small"
+        <PieChartSummaryPanel
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
         />
       </Col>
+
       <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            isNumberBased
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleTestSuitesPageChange}
-            onShowSizeChange={handlePageSizeChange}
+        <div className="test-suite-list-container">
+          <div className="test-suite-list-header">
+            <Row gutter={[16, 16]}>
+              <Col data-testid="test-suite-sub-tab-container" span={16}>
+                <Radio.Group value={subTab} onChange={handleSubTabChange}>
+                  <Radio.Button
+                    data-testid="table-suite-radio-btn"
+                    value={DataQualitySubTabs.TABLE_SUITES}>
+                    {t('label.table-suite-plural')}
+                  </Radio.Button>
+                  <Radio.Button
+                    data-testid="bundle-suite-radio-btn"
+                    value={DataQualitySubTabs.BUNDLE_SUITES}>
+                    {t('label.bundle-suite-plural')}
+                  </Radio.Button>
+                </Radio.Group>
+              </Col>
+              <Col span={8}>
+                <Searchbar
+                  removeMargin
+                  placeholder={t('label.search-entity', {
+                    entity:
+                      subTab === DataQualitySubTabs.TABLE_SUITES
+                        ? t('label.table-suite-plural')
+                        : t('label.bundle-suite-plural'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={(value) => handleSearchParam(value, 'searchValue')}
+                />
+              </Col>
+            </Row>
+          </div>
+          <Table
+            columns={columns}
+            containerClassName="custom-card-with-table"
+            customPaginationProps={customPaginationProps}
+            data-testid="test-suite-table"
+            dataSource={testSuites}
+            loading={isLoading}
+            locale={{
+              emptyText: <FilterTablePlaceHolder />,
+            }}
+            pagination={false}
+            scroll={{
+              x: '100%',
+            }}
+            size="small"
           />
-        )}
+        </div>
       </Col>
     </Row>
   );

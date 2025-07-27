@@ -14,10 +14,9 @@
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
-import { DataInsightSearchRequest } from '../interface/data-insight.interface';
+import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
   Aggregations,
-  DataInsightSearchResponse,
   KeysOfUnion,
   SearchIndexSearchSourceMapping,
   SearchRequest,
@@ -203,6 +202,7 @@ export const rawSearchQuery = <
       track_total_hits: trackTotalHits,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
+      exclude_source_fields: req.excludeSourceFields,
     },
     paramsSerializer: {
       indexes: null,
@@ -236,57 +236,46 @@ export const searchQuery = async <
   return formatSearchQueryResponse(res.data);
 };
 
-/**
- * Access point for the Search API.
- * Executes a request to /search/query, returning a formatted response.
- *
- * @param req Request object
- */
-export const searchQueryDataInsight = async (
-  req: DataInsightSearchRequest
-): Promise<DataInsightSearchResponse> => {
+export const searchPreview = async (payload: PreviewSearchRequest) => {
+  const response = await APIClient.post<SearchResponse<SearchIndex>>(
+    '/search/preview',
+    payload
+  );
+
+  return response.data;
+};
+
+export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
   const {
-    query,
     pageNumber = 1,
     pageSize = 10,
-    queryFilter,
+    query,
+    searchIndex,
     sortField,
     sortOrder,
-    searchIndex,
-    includeDeleted,
-    trackTotalHits,
-    postFilter,
-    fetchSource,
-    filters,
-  } = req;
+    queryFilter,
+  } = payload;
 
-  const queryWithSlash = getQueryWithSlash(query || '');
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/nlq/query',
+    {
+      params: {
+        q: query,
+        index: searchIndex,
+        size: pageSize,
+        from: (pageNumber - 1) * pageSize,
+        sort_field: sortField,
+        sort_order: sortOrder,
+        query_filter: JSON.stringify(queryFilter),
+      },
+    }
+  );
 
-  const apiQuery = query
-    ? filters
-      ? `${queryWithSlash} AND `
-      : queryWithSlash
-    : '';
+  return formatSearchQueryResponse(response.data);
+};
 
-  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
+export const getNLPEnabledStatus = async () => {
+  const response = await APIClient.get<boolean>('/system/search/nlq');
 
-  const res = await APIClient.get(apiUrl, {
-    params: {
-      index: searchIndex,
-      from: (pageNumber - 1) * pageSize,
-      size: pageSize,
-      deleted: includeDeleted,
-      query_filter: JSON.stringify(queryFilter),
-      post_filter: JSON.stringify(postFilter),
-      sort_field: sortField,
-      sort_order: sortOrder,
-      track_total_hits: trackTotalHits,
-      fetch_source: fetchSource,
-      include_source_fields: req.fetchSource ? req.includeFields : undefined,
-    },
-  });
-
-  return formatSearchQueryResponse(
-    res.data
-  ) as unknown as DataInsightSearchResponse;
+  return response.data;
 };

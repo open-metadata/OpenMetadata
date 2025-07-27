@@ -15,6 +15,8 @@ import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
@@ -22,7 +24,60 @@ import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { getApiContext, getEntityTypeSearchIndexMapping } from './common';
+import {
+  getApiContext,
+  getEntityTypeSearchIndexMapping,
+  redirectToHomePage,
+  toastNotification,
+} from './common';
+import { parseCSV } from './entityImport';
+
+type LineageCSVRecord = {
+  fromEntityFQN: string;
+  fromServiceName: string;
+  fromServiceType: string;
+  toEntityFQN: string;
+  toServiceName: string;
+  toServiceType: string;
+  pipelineName: string;
+};
+
+export const LINEAGE_CSV_HEADERS = [
+  'fromEntityFQN',
+  'fromServiceName',
+  'fromServiceType',
+  'fromOwners',
+  'fromDomain',
+  'toEntityFQN',
+  'toServiceName',
+  'toServiceType',
+  'toOwners',
+  'toDomain',
+  'fromChildEntityFQN',
+  'toChildEntityFQN',
+  'pipelineName',
+  'pipelineType',
+  'pipelineDescription',
+  'pipelineOwners',
+  'pipelineDomain',
+  'pipelineServiceName',
+  'pipelineServiceType',
+];
+
+export type LineageEdge = {
+  fromEntity: {
+    id: string;
+    type: string;
+  };
+  toEntity: {
+    id: string;
+    type: string;
+  };
+  columns: {
+    fromColumns: string[];
+    toColumn: string;
+  }[];
+};
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
@@ -46,7 +101,7 @@ export const editLineage = async (page: Page) => {
 };
 
 export const performZoomOut = async (page: Page) => {
-  const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
+  const zoomOutBtn = page.getByTestId('zoom-out');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
     for (const _ of Array.from({ length: 8 })) {
@@ -95,8 +150,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await destinationElement.hover();
+  const x = box.x + 250;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
 
@@ -119,6 +175,10 @@ export const dragConnection = async (
     .dispatchEvent('click');
 
   await lineageRes;
+};
+
+export const rearrangeNodes = async (page: Page) => {
+  await page.getByTestId('rearrange').click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -157,6 +217,51 @@ export const connectEdgeBetweenNodes = async (
   );
 };
 
+export const performExpand = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  newNode?: EntityClass
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const expandBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('plus-icon');
+
+  if (newNode) {
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await expandBtn.click();
+    await expandRes;
+    await verifyNodePresent(page, newNode);
+  }
+};
+
+export const performCollapse = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  hiddenEntity: EntityClass[]
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const collapseBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('minus-icon');
+
+  await collapseBtn.click();
+
+  for (const entity of hiddenEntity) {
+    const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
+    const hiddenNode = page.locator(
+      `[data-testid="lineage-node-${hiddenNodeFqn}"]`
+    );
+
+    await expect(hiddenNode).not.toBeVisible();
+  }
+};
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
@@ -182,6 +287,7 @@ export const setupEntitiesForLineage = async (
     | SearchIndexClass
     | ApiEndpointClass
     | MetricClass
+    | DashboardDataModelClass
 ) => {
   const entities = [
     new TableClass(),
@@ -192,6 +298,7 @@ export const setupEntitiesForLineage = async (
     new SearchIndexClass(),
     new ApiEndpointClass(),
     new MetricClass(),
+    new DashboardDataModelClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
@@ -215,7 +322,7 @@ export const editPipelineEdgeDescription = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass,
-  pipelineData,
+  pipelineData: ResponseDataType,
   description: string
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
@@ -288,7 +395,8 @@ export const applyPipelineFromModal = async (
 
   await page
     .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .dispatchEvent('click');
+    .click({ force: true });
+
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
@@ -306,6 +414,10 @@ export const applyPipelineFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
   await saveRes;
+
+  await page.waitForSelector('[data-testid="add-edge-modal"]', {
+    state: 'detached',
+  });
 };
 
 export const deleteNode = async (page: Page, node: EntityClass) => {
@@ -390,8 +502,9 @@ export const addPipelineBetweenNodes = async (
   pipelineItem?: PipelineClass,
   bVerifyPipeline = false
 ) => {
-  await sourceEntity.visitEntityPage(page);
-  await page.click('[data-testid="lineage"]');
+  await redirectToHomePage(page);
+  await sourceEntity.visitEntityPageWithCustomSearchBox(page);
+  await visitLineageTab(page);
   await editLineage(page);
 
   await performZoomOut(page);
@@ -419,4 +532,235 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+  await page.waitForLoadState('networkidle');
+};
+
+export const fillLineageConfigForm = async (
+  page: Page,
+  config: { upstreamDepth: number; downstreamDepth: number; layer: string }
+) => {
+  await page
+    .getByTestId('field-upstream')
+    .fill(config.upstreamDepth.toString());
+  await page
+    .getByTestId('field-downstream')
+    .fill(config.downstreamDepth.toString());
+  await page.getByTestId('field-lineage-layer').click();
+  await page.locator(`.ant-select-item[title="${config.layer}"]`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/system/settings');
+  await page.getByTestId('save-button').click();
+  await saveRes;
+
+  await toastNotification(page, /Lineage Config updated successfully/);
+};
+
+export const verifyColumnLayerActive = async (page: Page) => {
+  await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
+  await page.waitForSelector('[data-testid="lineage-layer-column-btn"].active');
+  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
+};
+
+export const verifyCSVHeaders = async (headers: string[]) => {
+  LINEAGE_CSV_HEADERS.forEach((expectedHeader) => {
+    expect(headers).toContain(expectedHeader);
+  });
+};
+
+export const getLineageCSVData = async (page: Page) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
+  await page.getByTestId('lineage-export').click();
+
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
+
+  const fileContent = await download.createReadStream();
+
+  let fileData = '';
+  for await (const item of fileContent) {
+    fileData += item.toString();
+  }
+
+  const csvRows = fileData
+    .split('\n')
+    .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
+
+  const headers = csvRows[0];
+  await verifyCSVHeaders(headers);
+
+  return parseCSV(csvRows);
+};
+
+export const verifyExportLineageCSV = async (
+  page: Page,
+  currentEntity: EntityClass,
+  entities: readonly [
+    TableClass,
+    DashboardClass,
+    TopicClass,
+    MlModelClass,
+    ContainerClass,
+    SearchIndexClass,
+    ApiEndpointClass,
+    MetricClass,
+    DashboardDataModelClass
+  ],
+  pipeline: PipelineClass
+) => {
+  const parsedData = await getLineageCSVData(page);
+  const currentEntityFQN = get(
+    currentEntity,
+    'entityResponseData.fullyQualifiedName'
+  );
+
+  const arr = [];
+  for (let i = 0; i < entities.length; i++) {
+    arr.push({
+      fromEntityFQN: currentEntityFQN,
+      fromServiceName: get(
+        currentEntity,
+        'entityResponseData.service.name',
+        ''
+      ),
+      fromServiceType: get(currentEntity, 'entityResponseData.serviceType', ''),
+      toEntityFQN: get(
+        entities[i],
+        'entityResponseData.fullyQualifiedName',
+        ''
+      ),
+      toServiceName: get(entities[i], 'entityResponseData.service.name', ''),
+      toServiceType: get(entities[i], 'entityResponseData.serviceType', ''),
+      pipelineName: get(pipeline, 'entityResponseData.name', ''),
+    });
+  }
+
+  arr.forEach((expectedRow: LineageCSVRecord) => {
+    const matchingRow = parsedData.find((row) =>
+      Object.keys(expectedRow).every(
+        (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
+      )
+    );
+
+    expect(matchingRow).toBeDefined(); // Ensure a matching row exists
+  });
+};
+
+export const verifyExportLineagePNG = async (
+  page: Page,
+  isPNGSelected?: boolean
+) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
+  await page.getByTestId('lineage-export').click();
+
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
+
+  if (!isPNGSelected) {
+    await page.getByTestId('export-type-select').click();
+    await page.locator('.ant-select-item[title="PNG"]').click();
+  }
+
+  await expect(
+    page.getByTestId('export-type-select').getByText('PNGBeta')
+  ).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
+};
+
+export const verifyColumnLineageInCSV = async (
+  page: Page,
+  sourceEntity: EntityClass,
+  targetEntity: EntityClass,
+  sourceColFqn: string,
+  targetColFqn: string
+) => {
+  const parsedData = await getLineageCSVData(page);
+  const expectedRow = {
+    fromEntityFQN: get(sourceEntity, 'entityResponseData.fullyQualifiedName'),
+    fromServiceName: get(sourceEntity, 'entityResponseData.service.name', ''),
+    fromServiceType: get(sourceEntity, 'entityResponseData.serviceType', ''),
+    toEntityFQN: get(targetEntity, 'entityResponseData.fullyQualifiedName', ''),
+    toServiceName: get(targetEntity, 'entityResponseData.service.name', ''),
+    toServiceType: get(targetEntity, 'entityResponseData.serviceType', ''),
+    fromChildEntityFQN: sourceColFqn,
+    toChildEntityFQN: targetColFqn,
+    pipelineName: '',
+  };
+
+  const matchingRow = parsedData.find((row) =>
+    Object.keys(expectedRow).every(
+      (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
+    )
+  );
+
+  expect(matchingRow).toBeDefined(); // Ensure a matching row exists
+};
+
+export const verifyLineageConfig = async (page: Page) => {
+  await page.click('[data-testid="lineage-config"]');
+  await page.waitForSelector('.ant-modal-content', {
+    state: 'visible',
+  });
+
+  await page.getByTestId('field-upstream').fill('-1');
+  await page.getByTestId('field-downstream').fill('-1');
+  await page.getByTestId('field-nodes-per-layer').fill('3');
+
+  await page.getByText('OK').click();
+
+  await expect(
+    page.getByText('Upstream Depth size cannot be less than 0')
+  ).toBeVisible();
+  await expect(
+    page.getByText('Downstream Depth size cannot be less than 0')
+  ).toBeVisible();
+  await expect(
+    page.getByText('Nodes Per Layer size cannot be less than 5')
+  ).toBeVisible();
+
+  await page.getByTestId('field-upstream').fill('0');
+  await page.getByTestId('field-downstream').fill('0');
+  await page.getByTestId('field-nodes-per-layer').fill('5');
+
+  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  await page.getByText('OK').click();
+  await saveRes;
 };

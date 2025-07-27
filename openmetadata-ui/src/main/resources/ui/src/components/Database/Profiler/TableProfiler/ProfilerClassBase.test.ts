@@ -12,13 +12,12 @@
  */
 import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
+import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as TableProfilerIcon } from '../../../../assets/svg/table-profile.svg';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
-import {
-  GetProfilerTabOptionsType,
-  ProfilerClassBase,
-} from './ProfilerClassBase';
+import IncidentsTab from './IncidentsTab/IncidentsTab.component';
+import { ProfilerClassBase } from './ProfilerClassBase';
 import { QualityTab } from './QualityTab/QualityTab.component';
 import TableProfilerChart from './TableProfilerChart/TableProfilerChart';
 
@@ -35,6 +34,7 @@ describe('ProfilerClassBase', () => {
         [TableProfilerTab.DATA_QUALITY]: QualityTab,
         [TableProfilerTab.COLUMN_PROFILE]: ColumnProfileTable,
         [TableProfilerTab.TABLE_PROFILE]: TableProfilerChart,
+        [TableProfilerTab.INCIDENTS]: IncidentsTab,
       };
 
       const tabs = profilerClassBaseInstance.getProfilerTabs();
@@ -45,34 +45,30 @@ describe('ProfilerClassBase', () => {
 
   describe('getProfilerTabOptions', () => {
     it('should return the correct profiler tab options', () => {
-      const options: GetProfilerTabOptionsType = {
-        viewProfiler: true,
-        viewTest: true,
-      };
-
       const expectedOptions = [
         {
           label: 'label.table-entity-text',
           key: TableProfilerTab.TABLE_PROFILE,
-          disabled: false,
           icon: TableProfilerIcon,
         },
         {
           label: 'label.column-entity',
           key: TableProfilerTab.COLUMN_PROFILE,
-          disabled: false,
           icon: ColumnProfileIcon,
         },
         {
           label: 'label.data-entity',
           key: TableProfilerTab.DATA_QUALITY,
-          disabled: false,
           icon: DataQualityIcon,
+        },
+        {
+          label: 'label.incident-plural',
+          key: TableProfilerTab.INCIDENTS,
+          icon: IncidentIcon,
         },
       ];
 
-      const tabOptions =
-        profilerClassBaseInstance.getProfilerTabOptions(options);
+      const tabOptions = profilerClassBaseInstance.getProfilerTabOptions();
 
       expect(tabOptions).toEqual(expectedOptions);
     });

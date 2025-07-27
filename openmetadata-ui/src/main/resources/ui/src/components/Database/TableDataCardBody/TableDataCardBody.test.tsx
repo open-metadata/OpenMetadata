@@ -12,11 +12,10 @@
  */
 
 import { render } from '@testing-library/react';
-import React from 'react';
 import { TAG_CONSTANT } from '../../../constants/Tag.constants';
 import TableDataCardBody from './TableDataCardBody';
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

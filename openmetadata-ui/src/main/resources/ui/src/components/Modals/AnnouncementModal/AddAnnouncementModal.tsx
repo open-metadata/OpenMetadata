@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { DatePicker, Form, Input, Modal, Space } from 'antd';
+import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { Moment } from 'moment';
-import React, { FC, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
@@ -27,7 +27,9 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { getField } from '../../../utils/formUtils';
+import DatePicker from '../../common/DatePicker/DatePicker';
 import './announcement-modal.less';
 
 interface Props {
@@ -96,6 +98,22 @@ const AddAnnouncementModal: FC<Props> = ({
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        placeHolder: t('message.write-your-announcement-lowercase'),
+      },
+    }),
+    []
+  );
+
   return (
     <Modal
       centered
@@ -162,15 +180,7 @@ const AddAnnouncementModal: FC<Props> = ({
             <DatePicker className="w-full" />
           </Form.Item>
         </Space>
-        <Form.Item
-          label={`${t('label.description')}:`}
-          name="description"
-          trigger="onTextChange"
-          valuePropName="initialValue">
-          <RichTextEditor
-            placeHolder={t('message.write-your-announcement-lowercase')}
-          />
-        </Form.Item>
+        {getField(descriptionField)}
       </Form>
     </Modal>
   );

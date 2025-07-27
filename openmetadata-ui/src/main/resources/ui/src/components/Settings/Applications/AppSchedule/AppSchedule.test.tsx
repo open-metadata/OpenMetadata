@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import {
   AppType,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
@@ -39,16 +38,14 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
     .mockImplementation((...args) => mockGetIngestionPipelineByFqn(...args)),
 }));
 
-jest.mock(
-  '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler',
-  () =>
-    jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
-      <div>
-        TestSuiteScheduler
-        <button onClick={onSubmit}>Submit TestSuiteSchedular</button>
-        <button onClick={onCancel}>Cancel TestSuiteSchedular</button>
-      </div>
-    ))
+jest.mock('../../Services/AddIngestion/Steps/ScheduleInterval', () =>
+  jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+    <div>
+      ScheduleInterval
+      <button onClick={onDeploy}>Submit ScheduleInterval</button>
+      <button onClick={onBack}>Cancel ScheduleInterval</button>
+    </div>
+  ))
 );
 
 jest.mock('../../../common/Loader/Loader', () => {
@@ -78,6 +75,7 @@ const mockProps1 = {
     isRunLoading: false,
     isDeployLoading: false,
   },
+  jsonSchema: {},
   onSave: mockOnSave,
   onDemandTrigger: mockOnDemandTrigger,
   onDeployTrigger: mockOnDeployTrigger,
@@ -117,7 +115,8 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/ScheduleUtils', () => ({
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getCronDefaultValue: jest.fn().mockReturnValue('0 0 * * *'),
   getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
 }));
 
@@ -130,11 +129,11 @@ describe('AppSchedule component', () => {
     expect(screen.getByTestId('cron-string')).toBeInTheDocument();
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
   });
@@ -156,7 +155,7 @@ describe('AppSchedule component', () => {
       screen.getByText('message.no-ingestion-pipeline-found')
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.deploy' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.deploy' }));
 
     expect(mockOnDeployTrigger).toHaveBeenCalled();
   });
@@ -166,18 +165,18 @@ describe('AppSchedule component', () => {
 
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
-    userEvent.click(
-      screen.getByRole('button', { name: 'Submit TestSuiteSchedular' })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
     );
 
     expect(mockOnSave).toHaveBeenCalled();
 
-    userEvent.click(
-      screen.getByRole('button', { name: 'Cancel TestSuiteSchedular' })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
     );
 
     expect(screen.getByText('Modal is close')).toBeInTheDocument();

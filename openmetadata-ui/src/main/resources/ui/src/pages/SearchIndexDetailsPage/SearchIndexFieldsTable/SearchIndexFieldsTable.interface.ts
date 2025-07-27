@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactNode } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 
 export interface SearchIndexFieldsTableProps {
   searchIndexFields: Array<SearchIndexField>;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
-  searchedFields: Array<SearchIndexField>;
-  expandableConfig: ExpandableConfig<SearchIndexField>;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly?: boolean;
   entityFqn: string;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  fieldAllRowKeys: string[];
 }
 
 export type SearchIndexCellRendered<T, K extends keyof T> = (

@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.metrics;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -8,12 +9,12 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
@@ -29,9 +30,9 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -54,6 +55,43 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
 
     createMetric = createRequest("metric2", "", "", null);
     Metric2 = createEntity(createMetric, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_duplicateRelatedMetricsIssue() throws IOException {
+    CreateMetric createMetric1 = createRequest("test_metric_duplicate_1", "", "", null);
+    Metric metric1 = createEntity(createMetric1, ADMIN_AUTH_HEADERS);
+
+    CreateMetric createMetric2 = createRequest("test_metric_duplicate_2", "", "", null);
+    Metric metric2 = createEntity(createMetric2, ADMIN_AUTH_HEADERS);
+
+    Metric originalMetric2 = getMetric(metric2.getId(), "*", ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(originalMetric2);
+
+    originalMetric2.setRelatedMetrics(List.of(metric1.getEntityReference()));
+    patchEntity(originalMetric2.getId(), origJson, originalMetric2, ADMIN_AUTH_HEADERS);
+
+    Metric updatedMetric2 = getMetric(metric2.getId(), "relatedMetrics", ADMIN_AUTH_HEADERS);
+
+    Assertions.assertNotNull(updatedMetric2.getRelatedMetrics());
+    Assertions.assertEquals(
+        1,
+        updatedMetric2.getRelatedMetrics().size(),
+        "Expected only 1 related metric, but found "
+            + updatedMetric2.getRelatedMetrics().size()
+            + ". Related metrics: "
+            + updatedMetric2.getRelatedMetrics());
+    Assertions.assertEquals(metric1.getId(), updatedMetric2.getRelatedMetrics().getFirst().getId());
+
+    // Also verify that metric1 now has metric2 as a related metric (bidirectional)
+    Metric updatedMetric1 = getMetric(metric1.getId(), "relatedMetrics", ADMIN_AUTH_HEADERS);
+    Assertions.assertNotNull(updatedMetric1.getRelatedMetrics());
+    Assertions.assertEquals(
+        1,
+        updatedMetric1.getRelatedMetrics().size(),
+        "Expected only 1 related metric for the reverse relationship, but found "
+            + updatedMetric1.getRelatedMetrics().size());
+    Assertions.assertEquals(metric2.getId(), updatedMetric1.getRelatedMetrics().getFirst().getId());
   }
 
   @Test
@@ -164,7 +202,8 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwners(), entity.getTags());
+    assertListNull(entity.getOwners());
+    assertTrue(entity.getTags().isEmpty());
 
     fields = "owners,followers,tags";
     entity =
@@ -175,9 +214,9 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     return entity;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual)
-      throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected != null && actual != null) {
       switch (fieldName) {
         case "relatedMetrics" -> TestUtils.assertEntityReferences(

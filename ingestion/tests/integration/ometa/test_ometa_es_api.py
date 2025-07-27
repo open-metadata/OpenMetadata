@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@ OMeta ES Mixin integration tests. The API needs to be up
 import logging
 import time
 import uuid
+from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -52,7 +53,9 @@ from metadata.generated.schema.type.basic import EntityName, SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 
-from ..integration_base import get_create_entity
+from ..integration_base import TIER1_TAG, get_create_entity
+
+FIELDS = "owners,domains"
 
 
 class OMetaESTest(TestCase):
@@ -234,7 +237,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         # We get the created table back
@@ -252,7 +255,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         self.assertIsNotNone(res)
@@ -269,7 +272,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            fields="owners",
+            fields=FIELDS,
         )
 
         self.assertIsNotNone(res)
@@ -363,3 +366,30 @@ class OMetaESTest(TestCase):
                 )
             )
             assert len(assets) == 10
+
+    def test_paginate_with_filters(self):
+        """We can paginate only tier 1 tables"""
+        # prepare some tables with tier 1 tags
+        for idx, name in enumerate([f"filtered_{i}" for i in range(10)]):
+            table = self.metadata.create_or_update(
+                data=get_create_entity(
+                    entity=Table,
+                    name=EntityName(name),
+                    reference=self.create_schema_entity.fullyQualifiedName,
+                )
+            )
+            if idx % 2 == 0:
+                dest = deepcopy(table)
+                dest.tags = [TIER1_TAG]
+                self.metadata.patch(entity=Table, source=table, destination=dest)
+
+        query_filter = (
+            '{"query":{"bool":{"must":[{"bool":{"must":['
+            '{"term":{"tier.tagFQN":"Tier.Tier1"}},'
+            f'{{"term":{{"service.displayName.keyword":"{self.service_entity.name.root}"}}}}'
+            "]}}]}}}"
+        )
+        assets = list(
+            self.metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
+        )
+        assert len(assets) == 5

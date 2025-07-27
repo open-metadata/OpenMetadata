@@ -34,9 +34,13 @@ test('Table custom metric', async ({ page }) => {
 
   await test.step('Create', async () => {
     const profilerResponse = page.waitForResponse(
-      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest`
+      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest?includeColumnProfile=false`
     );
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
     await page.waitForTimeout(1000);
@@ -71,9 +75,9 @@ test('Column custom metric', async ({ page }) => {
 
   await test.step('Create', async () => {
     const profilerResponse = page.waitForResponse(
-      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest`
+      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest?includeColumnProfile=false`
     );
-    await table.visitEntityPage(page);
+    await table.visitEntityPageWithCustomSearchBox(page);
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
     await page.waitForTimeout(1000);

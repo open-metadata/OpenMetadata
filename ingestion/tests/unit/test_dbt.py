@@ -8,13 +8,21 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from collate_dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+)
 from pydantic import AnyUrl
 
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type import entityReference
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
@@ -51,7 +59,9 @@ mock_dbt_config = {
                     "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
                     "dbtManifestFilePath": "sample/dbt_files/manifest.json",
                     "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",
+                    "dbtSourcesFilePath": "sample/dbt_files/sources.json",
                 },
+                "dbtUpdateOwners": True,
             }
         },
     },
@@ -81,10 +91,14 @@ MOCK_SAMPLE_MANIFEST_V8 = "resources/datasets/manifest_v8.json"
 
 MOCK_SAMPLE_MANIFEST_VERSIONLESS = "resources/datasets/manifest_versionless.json"
 
+MOCK_SAMPLE_MANIFEST_VERSIONLESS_BROKEN_EXPOSURES = (
+    "resources/datasets/manifest_versionless_broken_exposures.json"
+)
+
+
 MOCK_SAMPLE_MANIFEST_NULL_DB = "resources/datasets/manifest_null_db.json"
 
 MOCK_SAMPLE_MANIFEST_TEST_NODE = "resources/datasets/manifest_test_node.json"
-
 
 EXPECTED_DATA_MODEL_FQNS = [
     "dbt_test.dev.dbt_jaffle.customers",
@@ -129,6 +143,14 @@ EXPECTED_DATA_MODELS = [
             ),
             TagLabel(
                 tagFQN="dbtTags.model_tag_two",
+                description=None,
+                source="Classification",
+                labelType="Automated",
+                state="Suggested",
+                href=None,
+            ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
                 description=None,
                 source="Classification",
                 labelType="Automated",
@@ -185,7 +207,7 @@ EXPECTED_DATA_MODEL_NULL_DB = [
                 )
             ]
         ),
-        tags=None,
+        tags=[],
         columns=[
             Column(
                 name="customer_id",
@@ -285,6 +307,26 @@ EXPECTED_DATA_MODEL_VERSIONLESS = [
     )
 ]
 
+EXPECTED_EXPOSURE_ENTITIES = [
+    Dashboard(
+        id=uuid.uuid4(),
+        name="looker_dashboard",
+        service=entityReference.EntityReference(id=uuid.uuid4(), type="dashboard"),
+    ),
+    MlModel(
+        id=uuid.uuid4(),
+        name="mlflow_model",
+        algorithm="lr",
+        service=entityReference.EntityReference(id=uuid.uuid4(), type="mlModel"),
+    ),
+    APIEndpoint(
+        id=uuid.uuid4(),
+        name="createTable",
+        endpointURL="http://localhost:8000",
+        service=entityReference.EntityReference(id=uuid.uuid4(), type="apiEndpoint"),
+    ),
+]
+
 MOCK_OWNER = EntityReferenceList(
     root=[
         EntityReference(
@@ -309,7 +351,6 @@ MOCK_USER = EntityReference(
     href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
     fullyQualifiedName="aaron_johnson0",
 )
-
 
 MOCK_TABLE_ENTITIES = [
     Table(
@@ -426,6 +467,12 @@ class DbtUnitTest(TestCase):
                 state=State.Suggested.value,
                 source=TagSource.Classification.value,
             ),
+            TagLabel(
+                tagFQN='dbtTags."22.8.5.1"',
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
         ]
         self.execute_test(
             MOCK_SAMPLE_MANIFEST_V8,
@@ -457,7 +504,7 @@ class DbtUnitTest(TestCase):
         ]
         self.execute_test(
             MOCK_SAMPLE_MANIFEST_VERSIONLESS,
-            expected_records=9,
+            expected_records=12,
             expected_data_models=EXPECTED_DATA_MODEL_VERSIONLESS,
         )
 
@@ -660,6 +707,7 @@ class DbtUnitTest(TestCase):
                     data_model_link.right.table_entity.fullyQualifiedName.root,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
+                self.check_process_dbt_owners(data_model_link.right)
                 data_model_list.append(data_model_link.right.datamodel)
 
         for _, (expected, original) in enumerate(
@@ -667,8 +715,14 @@ class DbtUnitTest(TestCase):
         ):
             self.assertEqual(expected, original)
 
+    def check_process_dbt_owners(self, data_model_link):
+        process_dbt_owners = self.dbt_source_obj.process_dbt_owners(data_model_link)
+        for entity in process_dbt_owners:
+            entity_owner = entity.right.new_entity.owners
+            self.assertEqual(entity_owner, MOCK_OWNER)
+
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    def test_updtream_nodes_for_lineage(self, es_search_from_fqn):
+    def test_upstream_nodes_for_lineage(self, es_search_from_fqn):
         expected_upstream_nodes = [
             "model.jaffle_shop.stg_customers",
             "model.jaffle_shop.stg_orders",
@@ -732,3 +786,42 @@ class DbtUnitTest(TestCase):
         )
 
         self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)
+
+    def test_parse_exposure_node_exposure_absent(self):
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)
+
+        parsed_exposures = [
+            self.dbt_source_obj.parse_exposure_node(node)
+            for _, node in dbt_objects.dbt_manifest.exposures.items()
+        ]
+
+        assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_parse_exposure_node_exposure_happy_path(self, get_by_name):
+        get_by_name.side_effect = EXPECTED_EXPOSURE_ENTITIES
+        _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+
+        parsed_exposures = [
+            self.dbt_source_obj.parse_exposure_node(node)
+            for _, node in dbt_objects.dbt_manifest.exposures.items()
+        ]
+
+        assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 3
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_parse_exposure_node_exposure_broken_exposures(self, get_by_name):
+        """
+        Test on data where there is one exposure with missing open_metadata_fqn and one with unsupported type.
+        """
+        get_by_name.side_effect = EXPECTED_EXPOSURE_ENTITIES
+        _, dbt_objects = self.get_dbt_object_files(
+            MOCK_SAMPLE_MANIFEST_VERSIONLESS_BROKEN_EXPOSURES
+        )
+
+        parsed_exposures = [
+            self.dbt_source_obj.parse_exposure_node(node)
+            for _, node in dbt_objects.dbt_manifest.exposures.items()
+        ]
+
+        assert len(list(filter(lambda x: x is not None, parsed_exposures))) == 0

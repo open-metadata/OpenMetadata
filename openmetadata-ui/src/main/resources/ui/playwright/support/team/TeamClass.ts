@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { uuid } from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
+import { searchTeam } from '../../utils/team';
 type ResponseDataType = {
   name: string;
   displayName: string;
@@ -21,12 +24,13 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   users?: string[];
   defaultRoles?: string[];
+  policies?: string[];
 };
 
 export class TeamClass {
   id = uuid();
   data: ResponseDataType;
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.data = data ?? {
@@ -35,6 +39,7 @@ export class TeamClass {
       description: 'playwright team description',
       teamType: 'Group',
       users: [],
+      policies: [],
     };
   }
 
@@ -44,6 +49,28 @@ export class TeamClass {
 
   get() {
     return this.responseData;
+  }
+
+  async visitTeamPage(page: Page) {
+    // complete url since we are making basic and advance call to get the details of the team
+    const fetchOrganizationResponse = page.waitForResponse(
+      `/api/v1/teams/name/Organization?fields=users%2CdefaultRoles%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+    );
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+    await fetchOrganizationResponse;
+
+    await searchTeam(page, this.responseData?.['displayName']);
+
+    await page
+      .locator(`[data-row-key="${this.data.name}"]`)
+      .getByRole('link')
+      .click();
+
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('team-heading')).toHaveText(
+      this.data.displayName
+    );
   }
 
   async create(apiContext: APIRequestContext) {

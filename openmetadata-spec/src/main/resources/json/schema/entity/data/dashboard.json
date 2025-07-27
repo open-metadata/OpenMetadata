@@ -99,7 +99,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "service": {
       "description": "Link to service where this dashboard is hosted in.",
@@ -118,6 +118,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -127,9 +131,9 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain": {
-      "description": "Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
@@ -142,6 +146,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

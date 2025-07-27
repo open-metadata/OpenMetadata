@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByRole,
-  fireEvent,
-  render,
-  screen,
-  waitForElement,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
 import { getRoles } from '../../../../../rest/rolesAPIV1';
@@ -81,7 +72,7 @@ describe('Test User Profile Roles Component', () => {
 
     expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
 
-    expect(await screen.findAllByText('Chip')).toHaveLength(1);
+    expect(await screen.findAllByText('Chip')).toHaveLength(2);
   });
 
   it('should not render roles edit button if non admin user', async () => {
@@ -112,7 +103,7 @@ describe('Test User Profile Roles Component', () => {
     expect(screen.getByTestId('edit-roles-button')).toBeInTheDocument();
   });
 
-  it('should render select field on edit button action', async () => {
+  it('should render edit popover on edit button action', async () => {
     (useAuth as jest.Mock).mockImplementation(() => ({
       isAdminUser: true,
     }));
@@ -127,7 +118,7 @@ describe('Test User Profile Roles Component', () => {
 
     fireEvent.click(editButton);
 
-    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
   });
 
   it('should call updateUserDetails on click save', async () => {
@@ -138,10 +129,12 @@ describe('Test User Profile Roles Component', () => {
 
     fireEvent.click(screen.getByTestId('edit-roles-button'));
 
-    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
 
     act(() => {
-      fireEvent.click(screen.getByTestId('save'));
+      fireEvent.click(
+        screen.getByTestId('user-profile-edit-roles-save-button')
+      );
     });
 
     expect(mockPropsData.updateUserDetails).toHaveBeenCalledWith(
@@ -167,7 +160,7 @@ describe('Test User Profile Roles Component', () => {
 
     expect(getRoles).toHaveBeenCalledWith('', undefined, undefined, false, 50);
 
-    expect(screen.getByText('InlineEdit')).toBeInTheDocument();
+    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
   });
 
   it('should maintain initial state if edit is close without save', async () => {
@@ -184,36 +177,14 @@ describe('Test User Profile Roles Component', () => {
 
     fireEvent.click(screen.getByTestId('edit-roles-button'));
 
-    const selectInput = await findByRole(
-      screen.getByTestId('select-user-roles'),
-      'combobox'
+    const selectInput = screen.getByTestId('profile-edit-roles-select');
+    fireEvent.click(selectInput);
+    fireEvent.click(
+      screen.getByTestId('user-profile-edit-roles-cancel-button')
     );
 
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    // wait for list to render, checked with item having in the list
-    await waitForElement(() => screen.findByText('admin'));
-
-    await act(async () => {
-      userEvent.click(screen.getByText('admin'));
-    });
-
-    fireEvent.click(screen.getByTestId('cancel'));
-
-    fireEvent.click(screen.getByTestId('edit-roles-button'));
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    expect(
-      screen.getByText('37a00e0b-383c-4451-b63f-0bad4c745abc')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('afc5583c-e268-4f6c-a638-a876d04ebaa1')
-    ).toBeInTheDocument();
+    expect(screen.getByText('37a00e0b-383...')).toBeInTheDocument();
+    expect(screen.getByText('afc5583c-e26...')).toBeInTheDocument();
 
     expect(screen.queryByText('admin')).not.toBeInTheDocument();
   });

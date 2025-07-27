@@ -12,11 +12,10 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockReturnValue(
@@ -54,6 +53,33 @@ jest.mock(
           DataAssetAsyncSelectList
         </div>
       )
+);
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  calculateInterval: jest.fn().mockReturnValue('4 Days, 0 Hours'),
+}));
+
+jest.mock('../../../utils/EntityUtilClassBase', () => ({
+  getEntityLink: jest.fn().mockReturnValue('Entity Link'),
+}));
+
+jest.mock('../../../utils/CustomProperty.utils', () => ({
+  getCustomPropertyMomentFormat: jest.fn().mockReturnValue('DD-MM-YYYY'),
+}));
+
+jest.mock('../../../utils/SearchClassBase', () => ({
+  getEntityIcon: jest.fn().mockReturnValue('Icon'),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../DatePicker/DatePicker', () =>
+  jest
+    .fn()
+    .mockReturnValue(<div data-testid="date-time-picker">DatePicker</div>)
 );
 
 const mockUpdate = jest.fn();
@@ -119,7 +145,7 @@ describe('Test PropertyValue Component', () => {
     const valueElement = await screen.findAllByTestId('RichTextPreviewer');
     const iconElement = await screen.findByTestId('edit-icon');
 
-    expect(valueElement).toHaveLength(2);
+    expect(valueElement).toHaveLength(1);
     expect(iconElement).toBeInTheDocument();
 
     await act(async () => {
@@ -200,7 +226,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('value')).toHaveTextContent(
-      '20-03-2024 | 2:00:00'
+      '20-03-2024 2:00:00'
     );
 
     await act(async () => {
@@ -298,8 +324,8 @@ describe('Test PropertyValue Component', () => {
   it('Should render start and end input component for "timeInterval" type', async () => {
     const extension = {
       yNumber: {
-        start: '1736255200000',
-        end: '1736255200020',
+        start: '1710831125922',
+        end: '1711176725922',
       },
     };
     const propertyType = {
@@ -317,7 +343,7 @@ describe('Test PropertyValue Component', () => {
     const iconElement = await screen.findByTestId('edit-icon');
 
     expect(await screen.findByTestId('time-interval-value')).toHaveTextContent(
-      'label.start-entity: 1736255200000label.end-entity: 1736255200020'
+      'label.start-entity17108311259224 Days, 0 Hourslabel.end-entity1711176725922'
     );
 
     await act(async () => {

@@ -51,6 +51,11 @@
       },
       "default": null
     },
+    "state": {
+      "description": "State of the pipeline.",
+      "$ref": "../../entity/data/pipeline.json#/definitions/pipelineState",
+      "default": null
+    },
     "tags": {
       "description": "Tags for this Pipeline.",
       "type": "array",
@@ -77,9 +82,12 @@
       "type": "string",
       "default": null
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Pipeline belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Pipeline belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "lifeCycle": {
       "description": "Life Cycle of the entity",

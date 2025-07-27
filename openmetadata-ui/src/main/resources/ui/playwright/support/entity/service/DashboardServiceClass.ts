@@ -12,10 +12,11 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
-import { EntityTypeEndpoint } from '../Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
 
 export class DashboardServiceClass extends EntityClass {
@@ -35,8 +36,14 @@ export class DashboardServiceClass extends EntityClass {
       },
     },
   };
+  childEntity = {
+    name: `pw-dashboard-${uuid()}`,
+    displayName: `pw-dashboard-${uuid()}`,
+    service: this.entity.name,
+  };
 
-  entityResponseData: unknown;
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
+  childrenArrayResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DashboardService);
@@ -44,7 +51,21 @@ export class DashboardServiceClass extends EntityClass {
     this.type = 'Dashboard Service';
   }
 
-  async create(apiContext: APIRequestContext) {
+  private async createDashboardChild(
+    apiContext: APIRequestContext,
+    dashboardData: { name: string; displayName: string; service: string }
+  ): Promise<ResponseDataType> {
+    const response = await apiContext.post('/api/v1/dashboards', {
+      data: dashboardData,
+    });
+
+    return await response.json();
+  }
+
+  async create(
+    apiContext: APIRequestContext,
+    customChildDashboards?: { name: string; displayName: string }[]
+  ) {
     const serviceResponse = await apiContext.post(
       '/api/v1/services/dashboardServices',
       {
@@ -56,7 +77,38 @@ export class DashboardServiceClass extends EntityClass {
 
     this.entityResponseData = service;
 
-    return service;
+    const childDashboardResponseData: ResponseDataType[] = [];
+
+    if (!isUndefined(customChildDashboards)) {
+      for (const child of customChildDashboards) {
+        const childDashboard = {
+          ...child,
+          service: this.entity.name,
+        };
+
+        const responseData = await this.createDashboardChild(
+          apiContext,
+          childDashboard
+        );
+        childDashboardResponseData.push(responseData);
+      }
+    } else {
+      const childDashboard = {
+        ...this.childEntity,
+      };
+      const responseData = await this.createDashboardChild(
+        apiContext,
+        childDashboard
+      );
+      childDashboardResponseData.push(responseData);
+    }
+
+    this.childrenArrayResponseData = childDashboardResponseData;
+
+    return {
+      service,
+      children: this.childrenArrayResponseData,
+    };
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
@@ -82,6 +134,17 @@ export class DashboardServiceClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Dashboard,
+      },
+      false
+    );
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
     await visitServiceDetailsPage(
       page,
       {

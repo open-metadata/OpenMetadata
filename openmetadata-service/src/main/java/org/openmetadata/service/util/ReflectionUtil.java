@@ -19,9 +19,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.ReflectionException;
 
+@Slf4j
 public class ReflectionUtil {
   private ReflectionUtil() {
     /* Hidden construction */
@@ -79,5 +81,21 @@ public class ReflectionUtil {
     return method.getName().startsWith("get")
         && !method.getReturnType().equals(Void.TYPE)
         && !method.getReturnType().isPrimitive();
+  }
+
+  /**
+   * Creates a class instance from a fully qualified class name
+   */
+  public static Class<?> createClass(String className) throws ClassNotFoundException {
+    try {
+      return Class.forName(className);
+    } catch (ClassNotFoundException ex) {
+      // Try with context class loader if direct class loading fails
+      ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+      if (contextClassLoader != null) {
+        return Class.forName(className, true, contextClassLoader);
+      }
+      throw ex;
+    }
   }
 }

@@ -12,20 +12,20 @@
  */
 
 import { DownloadOutlined } from '@ant-design/icons';
+import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
-import React, {
+import {
   Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
-import { useParams } from 'react-router-dom';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -54,15 +54,19 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { downloadIngestionLog } from '../../utils/IngestionLogs/LogsUtils';
+import {
+  downloadAppLogs,
+  downloadIngestionLog,
+} from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
 import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
 const LogsViewerPage = () => {
-  const { logEntityType } = useParams<LogViewerParams>();
+  const { logEntityType } = useRequiredParams<LogViewerParams>();
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
@@ -73,6 +77,8 @@ const LogsViewerPage = () => {
   const [appData, setAppData] = useState<App>();
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
+  const [isLogsLoading, setIsLogsLoading] = useState(true);
+  const lazyLogRef = useRef<LazyLog>(null);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -83,6 +89,7 @@ const LogsViewerPage = () => {
     ingestionId?: string,
     pipelineType?: PipelineType
   ) => {
+    setIsLogsLoading(true);
     try {
       if (isApplicationType) {
         const currentTime = Date.now();
@@ -103,49 +110,52 @@ const LogsViewerPage = () => {
         paging?.total !== paging?.after ? paging?.after : ''
       );
 
-      if (res.data.after && res.data.total) {
-        setPaging({
-          after: res.data.after,
-          total: toNumber(res.data.total),
-        });
-      }
+      setPaging({
+        after: res.data.after,
+        total: toNumber(res.data.total),
+      });
 
       switch (pipelineType || ingestionDetails?.pipelineType) {
         case PipelineType.Metadata:
-          setLogs(logs.concat(res.data?.ingestion_task || ''));
+          setLogs(logs.concat(res.data?.ingestion_task ?? ''));
 
           break;
         case PipelineType.Application:
-          setLogs(logs.concat(res.data?.application_task || ''));
+          setLogs(logs.concat(res.data?.application_task ?? ''));
 
           break;
         case PipelineType.Profiler:
-          setLogs(logs.concat(res.data?.profiler_task || ''));
+          setLogs(logs.concat(res.data?.profiler_task ?? ''));
 
           break;
         case PipelineType.Usage:
-          setLogs(logs.concat(res.data?.usage_task || ''));
+          setLogs(logs.concat(res.data?.usage_task ?? ''));
 
           break;
         case PipelineType.Lineage:
-          setLogs(logs.concat(res.data?.lineage_task || ''));
+          setLogs(logs.concat(res.data?.lineage_task ?? ''));
 
           break;
         case PipelineType.Dbt:
-          setLogs(logs.concat(res.data?.dbt_task || ''));
+          setLogs(logs.concat(res.data?.dbt_task ?? ''));
 
           break;
         case PipelineType.TestSuite:
-          setLogs(logs.concat(res.data?.test_suite_task || ''));
+          setLogs(logs.concat(res.data?.test_suite_task ?? ''));
 
           break;
         case PipelineType.DataInsight:
-          setLogs(logs.concat(res.data?.data_insight_task || ''));
+          setLogs(logs.concat(res.data?.data_insight_task ?? ''));
 
           break;
 
         case PipelineType.ElasticSearchReindex:
-          setLogs(logs.concat(res.data?.elasticsearch_reindex_task || ''));
+          setLogs(logs.concat(res.data?.elasticsearch_reindex_task ?? ''));
+
+          break;
+
+        case PipelineType.AutoClassification:
+          setLogs(logs.concat(res.data?.auto_classification_task ?? ''));
 
           break;
 
@@ -156,6 +166,8 @@ const LogsViewerPage = () => {
       }
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsLogsLoading(false);
     }
   };
 
@@ -195,10 +207,6 @@ const LogsViewerPage = () => {
 
   const fetchMoreLogs = () => {
     fetchLogs(ingestionDetails?.id, ingestionDetails?.pipelineType);
-    setPaging({
-      ...paging,
-      after: '',
-    } as Paging);
   };
 
   useEffect(() => {
@@ -218,20 +226,13 @@ const LogsViewerPage = () => {
     const isBottom = clientHeight + scrollTop === scrollHeight;
 
     if (
+      !isLogsLoading &&
       isBottom &&
       !isNil(paging) &&
       !isUndefined(paging.after) &&
       toNumber(paging?.after) < toNumber(paging?.total)
     ) {
       fetchMoreLogs();
-    }
-
-    if (toNumber(paging?.after) + 1 === toNumber(paging?.total)) {
-      // to stop at last page
-      setPaging({
-        ...paging,
-        after: undefined,
-      } as Paging);
     }
 
     return;
@@ -264,12 +265,11 @@ const LogsViewerPage = () => {
   });
 
   const handleJumpToEnd = () => {
-    const logsBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
+    if (lazyLogRef.current?.listRef.current) {
+      // Get the total number of lines
+      const totalLines = lazyLogRef.current.state.count;
+      // Scroll to the last line
+      lazyLogRef.current.listRef.current.scrollToIndex(totalLines - 1);
     }
   };
 
@@ -278,8 +278,8 @@ const LogsViewerPage = () => {
       return (
         <IngestionRecentRuns
           appRuns={appRuns}
+          fetchStatus={!isApplicationType}
           ingestion={ingestionDetails}
-          isApplicationType={isApplicationType}
         />
       );
     }
@@ -311,18 +311,24 @@ const LogsViewerPage = () => {
       );
 
       updateProgress(paging?.after ? progress : 1);
-
-      const logs = await downloadIngestionLog(
-        ingestionDetails?.id,
+      let logs = '';
+      let fileName = `${getEntityName(ingestionDetails)}-${
         ingestionDetails?.pipelineType
-      );
+      }.log`;
+      if (isApplicationType) {
+        logs = await downloadAppLogs(ingestionName);
+        fileName = `${ingestionName}.log`;
+      } else {
+        logs = await downloadIngestionLog(
+          ingestionDetails?.id,
+          ingestionDetails?.pipelineType
+        );
+      }
 
       const element = document.createElement('a');
       const file = new Blob([logs || ''], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
-      element.download = `${getEntityName(ingestionDetails)}-${
-        ingestionDetails?.pipelineType
-      }.log`;
+      element.download = fileName;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
@@ -412,6 +418,7 @@ const LogsViewerPage = () => {
                   enableSearch
                   selectableLines
                   extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                  ref={lazyLogRef}
                   text={logs}
                 />
               </Col>

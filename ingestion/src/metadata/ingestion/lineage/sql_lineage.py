@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,9 +13,20 @@ Helper functions to handle SQL lineage operations
 """
 import itertools
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple
+from collections import defaultdict
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+
+import networkx as nx
+from collate_sqllineage.core.models import Column, DataFunction
+from collate_sqllineage.core.models import Table as LineageTable
+from networkx import DiGraph
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedure,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -36,12 +47,14 @@ from metadata.ingestion.lineage.models import (
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 logger = utils_logger()
 DEFAULT_SCHEMA_NAME = "<default>"
+CUTOFF_NODES = 20
 
 
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
@@ -162,6 +175,189 @@ def get_table_fqn_from_query_name(
     return database_query, schema_query, table
 
 
+def __process_intermediate_column_lineage(
+    intermediate_column_lineage: dict,
+    result: dict,
+    source_table: str,
+    intermediate_table: str,
+    intermediate_column: str,
+    source_column: str,
+):
+    # Check intermediate dictionary for mappings
+    for (
+        target_table,
+        target_mappings,
+    ) in intermediate_column_lineage[intermediate_table].items():
+        for inter_col, target_col in target_mappings:
+            if intermediate_column == inter_col:
+                # Append to the result dictionary
+                if target_table not in result[source_table]:
+                    result[source_table][target_table] = []
+                result[source_table][target_table].append((source_column, target_col))
+
+
+def __process_column_mappings(
+    mappings: dict, result: dict, source_table: str, intermediate_column_lineage: dict
+):
+    for intermediate_table, column_pairs in mappings.items():
+        # Iterate through each column mapping in the original dictionary
+        for source_column, intermediate_column in column_pairs:
+            if intermediate_table in intermediate_column_lineage:
+                __process_intermediate_column_lineage(
+                    intermediate_column_lineage,
+                    result,
+                    source_table,
+                    intermediate_table,
+                    intermediate_column,
+                    source_column,
+                )
+
+
+def handle_udf_column_lineage(
+    column_lineage_original: dict,
+    column_lineage_generated: List[Tuple[Column, Column]],
+):
+    """
+    Handle UDF column lineage
+    """
+    try:
+        result = defaultdict(dict)
+        intermediate_column_lineage = populate_column_lineage_map(
+            column_lineage_generated
+        )
+        # Iterate through the original dictionary
+        for source_table, mappings in column_lineage_original.items():
+            __process_column_mappings(
+                mappings, result, source_table, intermediate_column_lineage
+            )
+        column_lineage_original.update(result)
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Error handling UDF column lineage: {exc}")
+
+
+# pylint: disable=too-many-arguments
+def __process_udf_es_results(
+    metadata: OpenMetadata,
+    dialect: Dialect,
+    source_table: Union[DataFunction, LineageTable],
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    service_name: Optional[str],
+    timeout_seconds: int,
+    column_lineage: dict,
+    es_result_entities: List[StoredProcedure],
+    procedure: Optional[StoredProcedure] = None,
+):
+    for entity in es_result_entities:
+        if (
+            entity.storedProcedureType == StoredProcedureType.UDF
+            and entity.storedProcedureCode
+            and entity.storedProcedureCode.language == Language.SQL
+        ):
+            expected_table_name = str(source_table).replace(
+                f"{DEFAULT_SCHEMA_NAME}.", ""
+            )
+            lineage_parser = LineageParser(
+                f"create table {str(expected_table_name)} as {entity.storedProcedureCode.code}",
+                dialect=dialect,
+                timeout_seconds=timeout_seconds,
+            )
+            handle_udf_column_lineage(column_lineage, lineage_parser.column_lineage)
+            for source in lineage_parser.source_tables or []:
+                yield from get_source_table_names(
+                    metadata,
+                    dialect,
+                    source,
+                    database_name,
+                    schema_name,
+                    service_name,
+                    timeout_seconds,
+                    column_lineage,
+                    procedure or entity,
+                )
+
+
+def __process_udf_table_names(
+    metadata: OpenMetadata,
+    dialect: Dialect,
+    source_table: Union[DataFunction, LineageTable],
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    service_name: Optional[str],
+    timeout_seconds: int,
+    column_lineage: dict,
+    procedure: Optional[StoredProcedure] = None,
+):
+    database_query, schema_query, table = get_table_fqn_from_query_name(
+        str(source_table)
+    )
+    function_fqn_string = build_es_fqn_search_string(
+        database_query or database_name,
+        schema_query or schema_name,
+        service_name,
+        table,
+    )
+    es_result_entities: Optional[List[StoredProcedure]] = metadata.es_search_from_fqn(
+        entity_type=StoredProcedure,
+        fqn_search_string=function_fqn_string,
+    )
+    if es_result_entities:
+        yield from __process_udf_es_results(
+            metadata,
+            dialect,
+            source_table,
+            database_name,
+            schema_name,
+            service_name,
+            timeout_seconds,
+            column_lineage,
+            es_result_entities,
+            procedure,
+        )
+
+
+def get_source_table_names(
+    metadata: OpenMetadata,
+    dialect: Dialect,
+    source_table: Union[DataFunction, LineageTable],
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    service_name: Optional[str],
+    timeout_seconds: int,
+    column_lineage: dict,
+    procedure: Optional[StoredProcedure] = None,
+) -> Iterable[Tuple[Optional[EntityReference], str]]:
+    """
+    Get source table names from DataFunction
+    """
+    try:
+        if not isinstance(source_table, DataFunction):
+            yield (
+                EntityReference(id=procedure.id.root, type="storedProcedure")
+                if procedure
+                else None
+            ), str(source_table)
+        else:
+            yield from __process_udf_table_names(
+                metadata,
+                dialect,
+                source_table,
+                database_name,
+                schema_name,
+                service_name,
+                timeout_seconds,
+                column_lineage,
+                procedure,
+            )
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Error getting source table names for table [{source_table}]: {exc}"
+        )
+
+
 def get_table_entities_from_query(
     metadata: OpenMetadata,
     service_name: str,
@@ -243,14 +439,16 @@ def get_column_lineage(
     return column_lineage
 
 
+# pylint: disable=too-many-arguments
 def _build_table_lineage(
     from_entity: Table,
     to_entity: Table,
     from_table_raw_name: str,
     to_table_raw_name: str,
-    query: str,
+    masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    procedure: Optional[EntityReference] = None,
 ) -> Either[AddLineageRequest]:
     """
     Prepare the lineage request generator
@@ -275,7 +473,9 @@ def _build_table_lineage(
             from_table_raw_name=str(from_table_raw_name),
             column_lineage_map=column_lineage_map,
         )
-        lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
+        lineage_details = LineageDetails(
+            sqlQuery=masked_query, source=lineage_source, pipeline=procedure
+        )
         if col_lineage:
             lineage_details.columnsLineage = col_lineage
         lineage = AddLineageRequest(
@@ -311,14 +511,15 @@ def _create_lineage_by_table_name(
     service_name: str,
     database_name: Optional[str],
     schema_name: Optional[str],
-    query: str,
+    masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    procedure: Optional[EntityReference] = None,
+    graph: DiGraph = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
     """
-
     try:
         from_table_entities = get_table_entities_from_query(
             metadata=metadata,
@@ -341,10 +542,32 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                raise RuntimeError(f"Table entity not found: [{table_name}]")
+                logger.debug(
+                    f"WARNING: Table entity [{table_name}] not found in OpenMetadata"
+                )
+        if graph is not None and (not from_table_entities or not to_table_entities):
+            # Add nodes and edges with minimal data
+            graph.add_node(
+                from_table,
+                fqns=(
+                    [table.fullyQualifiedName.root for table in from_table_entities]
+                    if from_table_entities
+                    else []
+                ),
+            )
+            graph.add_node(
+                to_table,
+                fqns=(
+                    [table.fullyQualifiedName.root for table in to_table_entities]
+                    if to_table_entities
+                    else []
+                ),
+            )
+            graph.add_edge(from_table, to_table)
+            return
 
         for from_entity, to_entity in itertools.product(
-            from_table_entities, to_table_entities
+            from_table_entities or [], to_table_entities or []
         ):
             if to_entity and from_entity:
                 yield _build_table_lineage(
@@ -352,9 +575,10 @@ def _create_lineage_by_table_name(
                     from_entity=from_entity,
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage_map,
                     lineage_source=lineage_source,
+                    procedure=procedure,
                 )
 
     except Exception as exc:
@@ -408,6 +632,7 @@ def get_lineage_by_query(
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    graph: DiGraph = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -417,25 +642,38 @@ def get_lineage_by_query(
     query_parsing_failures = QueryParsingFailures()
 
     try:
-        logger.debug(f"Running lineage with query: {query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
+        masked_query = lineage_parser.masked_query
+        logger.debug(f"Running lineage with query: {masked_query or query}")
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
 
         for intermediate_table in lineage_parser.intermediate_tables:
             for source_table in lineage_parser.source_tables:
-                yield from _create_lineage_by_table_name(
-                    metadata,
-                    from_table=str(source_table),
-                    to_table=str(intermediate_table),
-                    service_name=service_name,
+                for procedure, from_table_name in get_source_table_names(
+                    metadata=metadata,
+                    dialect=dialect,
+                    source_table=source_table,
                     database_name=database_name,
                     schema_name=schema_name,
-                    query=query,
-                    column_lineage_map=column_lineage,
-                    lineage_source=lineage_source,
-                )
+                    service_name=service_name,
+                    timeout_seconds=timeout_seconds,
+                    column_lineage=column_lineage,
+                ):
+                    yield from _create_lineage_by_table_name(
+                        metadata,
+                        from_table=str(from_table_name),
+                        to_table=str(intermediate_table),
+                        service_name=service_name,
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        masked_query=masked_query,
+                        column_lineage_map=column_lineage,
+                        lineage_source=lineage_source,
+                        procedure=procedure,
+                        graph=graph,
+                    )
             for target_table in lineage_parser.target_tables:
                 yield from _create_lineage_by_table_name(
                     metadata,
@@ -444,28 +682,41 @@ def get_lineage_by_query(
                     service_name=service_name,
                     database_name=database_name,
                     schema_name=schema_name,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
                 for source_table in lineage_parser.source_tables:
-                    yield from _create_lineage_by_table_name(
-                        metadata,
-                        from_table=str(source_table),
-                        to_table=str(target_table),
-                        service_name=service_name,
+                    for procedure, from_table_name in get_source_table_names(
+                        metadata=metadata,
+                        dialect=dialect,
+                        source_table=source_table,
                         database_name=database_name,
                         schema_name=schema_name,
-                        query=query,
-                        column_lineage_map=column_lineage,
-                        lineage_source=lineage_source,
-                    )
+                        service_name=service_name,
+                        timeout_seconds=timeout_seconds,
+                        column_lineage=column_lineage,
+                    ):
+                        yield from _create_lineage_by_table_name(
+                            metadata,
+                            from_table=str(from_table_name),
+                            to_table=str(target_table),
+                            service_name=service_name,
+                            database_name=database_name,
+                            schema_name=schema_name,
+                            masked_query=masked_query,
+                            column_lineage_map=column_lineage,
+                            lineage_source=lineage_source,
+                            procedure=procedure,
+                            graph=graph,
+                        )
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
                 QueryParsingError(
-                    query=query, error=lineage_parser.query_parsing_failure_reason
+                    query=masked_query or query,
+                    error=lineage_parser.query_parsing_failure_reason,
                 )
             )
     except Exception as exc:
@@ -488,32 +739,49 @@ def get_lineage_via_table_entity(
     dialect: Dialect,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    graph: DiGraph = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
 
     try:
-        logger.debug(f"Getting lineage via table entity using query: {query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
+        masked_query = lineage_parser.masked_query
+        logger.debug(
+            f"Getting lineage via table entity using query: {masked_query or query}"
+        )
         to_table_name = table_entity.name.root
 
         for from_table_name in lineage_parser.source_tables:
-            yield from _create_lineage_by_table_name(
-                metadata,
-                from_table=str(from_table_name),
-                to_table=f"{schema_name}.{to_table_name}",
-                service_name=service_name,
+            for procedure, source_table in get_source_table_names(
+                metadata=metadata,
+                dialect=dialect,
+                source_table=from_table_name,
                 database_name=database_name,
                 schema_name=schema_name,
-                query=query,
-                column_lineage_map=column_lineage,
-                lineage_source=lineage_source,
-            ) or []
+                service_name=service_name,
+                timeout_seconds=timeout_seconds,
+                column_lineage=column_lineage,
+            ):
+                yield from _create_lineage_by_table_name(
+                    metadata,
+                    from_table=str(source_table),
+                    to_table=f"{schema_name}.{to_table_name}",
+                    service_name=service_name,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    masked_query=masked_query,
+                    column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
+                    procedure=procedure,
+                    graph=graph,
+                ) or []
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
                 QueryParsingError(
-                    query=query, error=lineage_parser.query_parsing_failure_reason
+                    query=masked_query,
+                    error=lineage_parser.query_parsing_failure_reason,
                 )
             )
     except Exception as exc:  # pylint: disable=broad-except
@@ -524,3 +792,157 @@ def get_lineage_via_table_entity(
                 stackTrace=traceback.format_exc(),
             )
         )
+
+
+def _get_lineage_for_path(
+    from_fqn: str,
+    to_fqn: str,
+    from_node: Any,
+    current_node: Any,
+    table_chain: List[str],
+    metadata: OpenMetadata,
+) -> Optional[Either[AddLineageRequest]]:
+    """
+    Get lineage for a pair of FQNs in the path
+    """
+    try:
+        to_entity = get_entity_from_es_result(
+            entity_list=metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=to_fqn,
+            ),
+        )
+        from_entity = get_entity_from_es_result(
+            entity_list=metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=from_fqn,
+            ),
+        )
+        if to_entity and from_entity:
+            # Create the table chain string
+            table_relationship = "--- TEMPT TABLE LINEAGE \n--- "
+            table_relationship += " > ".join(table_chain)
+            return _build_table_lineage(
+                to_entity=to_entity,
+                from_entity=from_entity,
+                to_table_raw_name=str(current_node),
+                from_table_raw_name=str(from_node),
+                masked_query=table_relationship,  # Using table chain as the query
+                column_lineage_map={},
+                lineage_source=LineageSource.QueryLineage,
+                procedure=None,
+            )
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Error fetching table entities [{from_fqn} -> {to_fqn}]: {exc}")
+    return None
+
+
+def _process_sequence(
+    sequence: List[Any], graph: DiGraph, metadata: OpenMetadata
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Process a sequence of nodes to generate lineage information.
+    """
+    from_node = None
+    table_chain = []
+    for node in sequence:
+        try:
+            current_node = graph.nodes[node]
+            current_fqns = current_node.get("fqns", [])
+
+            # Add the current node name to the chain
+            table_chain.append(str(node).replace(f"{DEFAULT_SCHEMA_NAME}.", ""))
+
+            if current_fqns and from_node is not None:
+                from_fqns = from_node.get("fqns", [])
+                for from_fqn, to_fqn in itertools.product(from_fqns, current_fqns):
+                    lineage = _get_lineage_for_path(
+                        from_fqn=from_fqn,
+                        to_fqn=to_fqn,
+                        from_node=from_node,
+                        current_node=node,
+                        table_chain=table_chain,
+                        metadata=metadata,
+                    )
+                    if lineage:
+                        yield lineage
+
+            if current_fqns:
+                from_node = graph.nodes[node]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error creating lineage for node [{node}]: {exc}")
+
+
+def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
+    """
+    Get all paths from root nodes to leaf nodes in a subtree
+    """
+    paths = []
+    # Find all root nodes (nodes with no incoming edges)
+    root_nodes = [node for node in subtree if subtree.in_degree(node) == 0]
+    # Find all leaf nodes (nodes with no outgoing edges)
+    leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
+
+    # Find all simple paths from each root to each leaf
+    for root in root_nodes:
+        logger.debug(f"Processing root node {root}")
+        for leaf in leaf_nodes:
+            paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=CUTOFF_NODES))
+    return paths
+
+
+def get_lineage_by_graph(
+    graph: Optional[DiGraph],
+    metadata: OpenMetadata,
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Generate lineage information from a directed graph.
+    This method processes a directed graph to extract lineage information by identifying
+    weakly connected components and traversing each component to generate sequences of nodes.
+    It then yields lineage information for each sequence.
+    Args:
+        graph (DiGraph): A directed graph representing the lineage.
+        metadata (OpenMetadata): OpenMetadata client instance to fetch table entities
+    Raises:
+        Exception: If an error occurs during the lineage creation process, it logs the error.
+    """
+    if graph is None:
+        return
+
+    logger.info(
+        f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges"
+    )
+    # Get all weakly connected components
+    components = list(nx.weakly_connected_components(graph))
+
+    # Extract each component as an independent subgraph and process paths
+    for component in components:
+        subtree = graph.subgraph(component).copy()
+        for path in _get_paths_from_subtree(subtree):
+            yield from _process_sequence(path, subtree, metadata)
+
+
+def get_lineage_by_procedure_graph(
+    procedure_graph_map: Optional[Dict],
+    metadata: OpenMetadata,
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Generate lineage information from a directed graph.
+    """
+    if procedure_graph_map is None:
+        return
+
+    for procedure_and_procedure_graph in procedure_graph_map.values():
+        for either_lineage in get_lineage_by_graph(
+            graph=procedure_and_procedure_graph.graph,
+            metadata=metadata,
+        ):
+            if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
+                either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
+                    id=procedure_and_procedure_graph.procedure.id,
+                    type="storedProcedure",
+                )
+
+            yield either_lineage

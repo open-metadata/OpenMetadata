@@ -14,11 +14,10 @@
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
@@ -29,17 +28,15 @@ import {
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
-  entityDisplayName,
   getEntityFQN,
   getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import CustomPropertyFeed from '../../ActivityFeedCardV2/FeedCardBody/CustomPropertyFeed/CustomPropertyFeed.component';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
-import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
@@ -83,19 +80,10 @@ const FeedCardBodyV1 = ({
         return <TagsFeed feed={feed} />;
       }
 
-      if (cardStyle === CardStyle.TestCaseResult) {
-        return (
-          <TestCaseFeed
-            entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
-            testCaseName={entityDisplayName(entityType, entityFQN) ?? ''}
-          />
-        );
-      }
-
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
-          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+          entityType === EntityType.TEST_SUITE && entityInfo.basic;
         const isObservabilityAlert =
           entityType === EntityType.EVENT_SUBSCRIPTION &&
           (entityInfo as EventSubscription).alertType ===
@@ -127,14 +115,10 @@ const FeedCardBodyV1 = ({
           </Link>
         );
       }
-
-      if (cardStyle === CardStyle.CustomProperties) {
-        return <CustomPropertyFeed feed={feed} />;
-      }
     }
 
     return (
-      <RichTextEditorPreviewer
+      <RichTextEditorPreviewerV1
         className="text-wrap"
         markdown={getFrontEndFormat(message)}
       />
@@ -180,10 +164,7 @@ const FeedCardBodyV1 = ({
 
   return (
     <div
-      className={classNames(
-        'feed-card-body bg-grey-5 p-sm rounded-6',
-        isEditPost ? '' : className
-      )}>
+      className={classNames('p-y-sm rounded-6', isEditPost ? '' : className)}>
       <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>
@@ -208,7 +189,7 @@ const FeedCardBodyV1 = ({
             </Row>
             <Row>
               <Col span={24}>
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   className="text-wrap"
                   markdown={announcement.description ?? ''}
                 />

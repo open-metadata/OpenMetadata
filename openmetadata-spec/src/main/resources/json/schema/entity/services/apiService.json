@@ -1,37 +1,37 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/apiService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "API Service",
+  "title": "Api Service",
   "description": "This schema defines the API Service entity, to capture metadata from any REST API Services.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.services.APIService",
+  "javaType": "org.openmetadata.schema.entity.services.ApiService",
   "javaInterfaces": [
     "org.openmetadata.schema.EntityInterface",
     "org.openmetadata.schema.ServiceEntityInterface"
   ],
   "definitions": {
-    "APIServiceType": {
+    "apiServiceType": {
       "description": "Type of api service such as REST, Webhook,...",
       "javaInterfaces": [
         "org.openmetadata.schema.EnumInterface"
       ],
       "type": "string",
       "enum": [
-        "REST",
+        "Rest",
         "WEBHOOK"
       ],
       "javaEnums": [
         {
-          "name": "REST"
+          "name": "Rest"
         },
         {
           "name": "WEBHOOK"
         }
       ]
     },
-    "apiServiceConnection": {
+    "apiConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.schema.type.APIServiceConnection",
+      "javaType": "org.openmetadata.schema.type.ApiConnection",
       "description": "API Service Connection.",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
@@ -41,7 +41,7 @@
           "mask": true,
           "oneOf": [
             {
-              "$ref": "./connections/apiService/restConnection.json"
+              "$ref": "./connections/api/restConnection.json"
             }
           ]
         }
@@ -68,14 +68,14 @@
     },
     "serviceType": {
       "description": "Type of API service such as REST, WEBHOOK..",
-      "$ref": "#/definitions/APIServiceType"
+      "$ref": "#/definitions/apiServiceType"
     },
     "description": {
       "description": "Description of a API service instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
-      "$ref": "#/definitions/apiServiceConnection"
+      "$ref": "#/definitions/apiConnection"
     },
     "pipelines": {
       "description": "References to pipelines deployed for this API service to extract metadata, usage, lineage etc..",
@@ -91,7 +91,11 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -117,6 +121,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -126,8 +134,12 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the API service belongs to.",
+    "domains" : {
+      "description": "Domains the API service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

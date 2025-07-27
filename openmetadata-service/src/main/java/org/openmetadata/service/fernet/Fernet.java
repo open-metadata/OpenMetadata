@@ -30,13 +30,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.util.JsonUtils;
 
 public class Fernet {
   private static final Fernet instance = new Fernet();
@@ -140,6 +141,10 @@ public class Fernet {
                 subscription.withConfig(config);
               }
             }
+          }
+
+          if (nullOrEmpty(subscription.getId())) {
+            subscription.withId(UUID.randomUUID());
           }
 
           result.add(subscription);

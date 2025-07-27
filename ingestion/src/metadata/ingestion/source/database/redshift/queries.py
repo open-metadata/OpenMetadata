@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,10 @@ SQL Queries used during ingestion
 """
 
 import textwrap
+from typing import List
+
+from metadata.utils.profiler_utils import QueryResult
+from metadata.utils.time_utils import datetime_to_timestamp
 
 # Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
 REDSHIFT_SQL_STATEMENT = textwrap.dedent(
@@ -196,6 +200,11 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             """
 )
 
+REDSHIFT_EXTERNAL_TABLE_LOCATION = """
+  SELECT schemaname, tablename, location
+    FROM svv_external_tables
+    where redshift_database_name='{database_name}'
+"""
 
 REDSHIFT_PARTITION_DETAILS = """
   select "schema", "table", diststyle
@@ -321,7 +330,7 @@ Q_HISTORY as (
         pid as query_session_id,
         starttime as query_start_time,
         endtime as query_end_time,
-        userid as query_user_name
+        cast(b.usename as varchar) as query_user_name
     from STL_QUERY q
     join pg_catalog.pg_user b
       on b.usesysid = q.userid
@@ -332,16 +341,16 @@ Q_HISTORY as (
       and userid <> 1
 )
 select
-    sp.procedure_text,
+    trim(sp.procedure_text) procedure_text,
     sp.procedure_start_time,
     sp.procedure_end_time,
-    q.query_text,
+    trim(q.query_text) query_text,
     q.query_type,
-    q.query_database_name,
+    trim(q.query_database_name) query_database_name,
     null as query_schema_name,
     q.query_start_time,
     q.query_end_time,
-    q.query_user_name
+    trim(q.query_user_name) query_user_name
 from SP_HISTORY sp
   join Q_HISTORY q
     on sp.procedure_session_id = q.query_session_id
@@ -375,3 +384,53 @@ WHERE status = 'success'
   and end_time >= '{start_date}'
 ORDER BY end_time DESC
 """
+
+
+STL_QUERY = """
+    with data as (
+        select
+            {alias}.*
+        from 
+            pg_catalog.stl_insert si
+            {join_type} join pg_catalog.stl_delete sd on si.query = sd.query
+        where 
+            {condition}
+    )
+	SELECT
+        SUM(data."rows") AS "rows",
+        sti."database",
+        sti."schema",
+        sti."table",
+        DATE_TRUNC('second', data.starttime) AS starttime
+    FROM
+        data
+        INNER JOIN  pg_catalog.svv_table_info sti ON data.tbl = sti.table_id
+    where
+        sti."database" = '{database}' AND
+       	sti."schema" = '{schema}' AND
+        "rows" != 0 AND
+        DATE(data.starttime) >= CURRENT_DATE - 1
+    GROUP BY 2,3,4,5
+    ORDER BY 5 DESC
+"""
+
+
+def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
+    """Given query results, retur the metric result
+
+    Args:
+        ddls (List[QueryResult]): list of query results
+        table_name (str): table name
+
+    Returns:
+        List:
+    """
+    return [
+        {
+            "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
+            "operation": ddl.query_type,
+            "rowsAffected": ddl.rows,
+        }
+        for ddl in ddls
+        if ddl.table_name == table_name
+    ]

@@ -26,10 +26,12 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
+import java.util.Map;
+import java.util.UUID;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -42,10 +44,14 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -56,7 +62,6 @@ import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -75,6 +80,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put("pipelineStatus", this::fetchAndSetPipelineStatuses);
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTaskFieldsInBulk);
+    fieldFetchers.put(FIELD_OWNERS, this::fetchAndSetTaskFieldsInBulk);
   }
 
   @Override
@@ -147,6 +158,79 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         fields.contains("pipelineStatus")
             ? getPipelineStatus(pipeline)
             : pipeline.getPipelineStatus());
+    if (pipeline.getUsageSummary() == null) {
+      pipeline.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), pipeline.getId())
+              : null);
+    }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Pipeline> entities) {
+    // Always set default service field for all pipelines
+    fetchAndSetDefaultService(entities);
+
+    fetchAndSetFields(entities, fields);
+    fetchAndSetPipelineSpecificFields(entities, fields);
+    setInheritedFields(entities, fields);
+
+    for (Pipeline entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetPipelineSpecificFields(List<Pipeline> pipelines, Fields fields) {
+    if (pipelines == null || pipelines.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains(FIELD_TAGS) || fields.contains(FIELD_OWNERS)) {
+      fetchAndSetTaskFieldsInBulk(pipelines, fields);
+    }
+
+    if (fields.contains("pipelineStatus")) {
+      fetchAndSetPipelineStatuses(pipelines, fields);
+    }
+
+    if (fields.contains("usageSummary")) {
+      fetchAndSetUsageSummaries(pipelines, fields);
+    }
+  }
+
+  private void fetchAndSetTaskFieldsInBulk(List<Pipeline> pipelines, Fields fields) {
+    if (pipelines == null || pipelines.isEmpty()) {
+      return;
+    }
+
+    // Use bulk tag and owner fetching for all pipeline tasks
+    for (Pipeline pipeline : pipelines) {
+      if (pipeline.getTasks() != null) {
+        // Still need individual calls here as tasks don't have bulk fetching pattern
+        // This is better than the original N+N pattern we had
+        getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
+        getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
+      }
+    }
+  }
+
+  private void fetchAndSetPipelineStatuses(List<Pipeline> pipelines, Fields fields) {
+    if (!fields.contains("pipelineStatus") || pipelines == null || pipelines.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, pipelines, batchFetchPipelineStatuses(pipelines), Pipeline::setPipelineStatus);
+  }
+
+  private void fetchAndSetUsageSummaries(List<Pipeline> pipelines, Fields fields) {
+    if (!fields.contains("usageSummary") || pipelines == null || pipelines.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        pipelines,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(pipelines)),
+        Pipeline::setUsageSummary);
   }
 
   @Override
@@ -154,6 +238,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.withTasks(fields.contains(TASKS_FIELD) ? pipeline.getTasks() : null);
     pipeline.withPipelineStatus(
         fields.contains("pipelineStatus") ? pipeline.getPipelineStatus() : null);
+    pipeline.withUsageSummary(fields.contains("usageSummary") ? pipeline.getUsageSummary() : null);
   }
 
   @Override
@@ -171,8 +256,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  public RestUtil.PutResponse<?> addPipelineStatus(
-      UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
+  public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
@@ -207,12 +291,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
 
     // Update ES Indexes and usage of this pipeline index
-    searchRepository.updateEntity(pipeline);
+    searchRepository.updateEntityIndex(pipeline);
     searchRepository
         .getSearchClient()
-        .reindexAcrossIndices("lineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
+        .reindexAcrossIndices(
+            "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
@@ -297,6 +383,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  protected void entitySpecificCleanup(Pipeline pipeline) {
+    // When a pipeline is removed , the linege needs to be removed
+    daoCollection
+        .relationshipDAO()
+        .deleteLineageBySourcePipeline(
+            pipeline.getId(),
+            LineageDetails.Source.PIPELINE_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+  }
+
+  @Override
   public void storeRelationships(Pipeline pipeline) {
     addServiceRelationship(pipeline, pipeline.getService());
 
@@ -328,6 +425,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public EntityInterface getParentEntity(Pipeline entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -349,7 +449,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      if (t.getTags() == null) {
+      if (t.getTags() == null || t.getTags().isEmpty()) {
         t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : t.getTags());
       }
     }
@@ -401,7 +501,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
+  public EntityRepository<Pipeline>.EntityUpdater getUpdater(
+      Pipeline original, Pipeline updated, Operation operation, ChangeSource changeSource) {
     return new PipelineUpdater(original, updated, operation);
   }
 
@@ -461,6 +562,56 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
   }
 
+  private Map<UUID, PipelineStatus> batchFetchPipelineStatuses(List<Pipeline> pipelines) {
+    Map<UUID, PipelineStatus> statusMap = new HashMap<>();
+    if (pipelines == null || pipelines.isEmpty()) {
+      return statusMap;
+    }
+
+    for (Pipeline pipeline : pipelines) {
+      statusMap.put(pipeline.getId(), getPipelineStatus(pipeline));
+    }
+
+    return statusMap;
+  }
+
+  private void fetchAndSetDefaultService(List<Pipeline> pipelines) {
+    if (pipelines == null || pipelines.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all pipelines
+    Map<UUID, EntityReference> serviceMap = batchFetchServices(pipelines);
+
+    // Set service for all pipelines
+    for (Pipeline pipeline : pipelines) {
+      pipeline.setService(serviceMap.get(pipeline.getId()));
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<Pipeline> pipelines) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (pipelines == null || pipelines.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all pipelines
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(pipelines), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID pipelineId = UUID.fromString(record.getToId());
+      EntityReference serviceRef =
+          Entity.getEntityReferenceById(
+              Entity.PIPELINE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+      serviceMap.put(pipelineId, serviceRef);
+    }
+
+    return serviceMap;
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class PipelineUpdater extends EntityUpdater {
     public PipelineUpdater(Pipeline original, Pipeline updated, Operation operation) {
@@ -469,8 +620,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);
+      recordChange("state", original.getState(), updated.getState());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(

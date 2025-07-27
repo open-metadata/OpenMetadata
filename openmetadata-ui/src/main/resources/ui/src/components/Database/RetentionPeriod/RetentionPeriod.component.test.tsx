@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import RetentionPeriod from './RetentionPeriod.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
@@ -21,12 +20,9 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock(
-  '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
-  () => ({
-    ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
-  })
-);
+jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
+  ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
+}));
 
 const mockOnUpdate = jest.fn();
 
@@ -141,6 +137,41 @@ describe('Test Retention Period Component', () => {
     });
 
     expect(mockOnUpdate).toHaveBeenCalledWith('69 days and 16 hours');
+  });
+
+  it('Should render correctly with ISO 8601 duration P0Y0M4D', () => {
+    render(
+      <RetentionPeriod
+        {...mockRetentionPeriodProps}
+        retentionPeriod="P0Y0M4D"
+      />
+    );
+
+    expect(screen.getByText('4 days')).toBeInTheDocument();
+  });
+
+  it('Should render correctly with ISO 8601 duration P0Y0M4W', () => {
+    render(
+      <RetentionPeriod
+        {...mockRetentionPeriodProps}
+        retentionPeriod="P0Y0M4W"
+      />
+    );
+
+    expect(screen.getByText('4 weeks')).toBeInTheDocument();
+  });
+
+  it('Should render correctly with ISO 8601 duration P0Y1M1DT1H30M', () => {
+    render(
+      <RetentionPeriod
+        {...mockRetentionPeriodProps}
+        retentionPeriod="P2Y1M1DT1H30M"
+      />
+    );
+
+    expect(
+      screen.getByText('2 years 1 month 1 day 1 hour 30 minutes')
+    ).toBeInTheDocument();
   });
 
   it('Should not render Retention Period Component if has no permission', () => {

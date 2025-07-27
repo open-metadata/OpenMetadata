@@ -1,5 +1,5 @@
 {
-    "name": "REST",
+    "name": "Rest",
     "displayName": "REST Test Connection",
     "description": "This Test Connection validates the schema provided for openapi",
     "steps": [

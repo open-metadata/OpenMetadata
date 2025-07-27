@@ -14,9 +14,10 @@
 import { Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { noop } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
@@ -55,6 +56,7 @@ const AccessTokenCard: FC<MockProps> = ({
     useState<PersonalAccessToken>(
       USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken
     );
+  const { t } = useTranslation();
   const [authenticationMechanismBot, setAuthenticationMechanismBot] =
     useState<AuthenticationMechanism>({
       authType: AuthType.Jwt,
@@ -212,8 +214,8 @@ const AccessTokenCard: FC<MockProps> = ({
   const tokenCard = (
     <Card
       className={classNames(
-        'm-t-md access-token-card',
-        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto',
+        'access-token-card',
+        isBot ? 'page-layout-v1-left-panel mt-2 ' : '',
         { disabled }
       )}
       data-testid="center-panel">

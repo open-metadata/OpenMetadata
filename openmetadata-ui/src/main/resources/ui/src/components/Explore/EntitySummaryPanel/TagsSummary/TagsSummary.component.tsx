@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
@@ -68,7 +68,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Row className="m-md m-t-0" gutter={[0, 8]}>
+      <Row className="p-md border-radius-card" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"

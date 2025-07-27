@@ -11,26 +11,20 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, Row } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import { isUndefined, map, omit, omitBy, startCase } from 'lodash';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+
+import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
+  CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
-  ENUM_WITH_DESCRIPTION,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
   SUPPORTED_FORMAT_MAP,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
@@ -41,7 +35,6 @@ import {
 import { EntityType } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { Category, Type } from '../../../../generated/entity/type';
-import { EnumWithDescriptionsConfig } from '../../../../generated/type/customProperties/enumWithDescriptionsConfig';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -53,20 +46,21 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
   const [form] = Form.useForm();
-  const { entityType } = useParams<{ entityType: EntityType }>();
-  const history = useHistory();
-
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [typeDetail, setTypeDetail] = useState<Type>();
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
@@ -99,12 +93,27 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    return map(propertyTypes, (type) => ({
-      key: type.name,
+    return map(propertyTypes, (type) => {
+      const Icon =
+        CUSTOM_PROPERTIES_ICON_MAP[
+          type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+        ];
+
       // Remove -cp from the name and convert to start case
-      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
-      value: type.id,
-    }));
+      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+
+      return {
+        searchField: title,
+        key: type.name,
+        label: (
+          <div className="d-flex gap-2 items-center" title={title}>
+            {Icon && <Icon width={20} />}
+            <span>{title}</span>
+          </div>
+        ),
+        value: type.id,
+      };
+    });
   }, [propertyTypes]);
 
   const {
@@ -112,7 +121,7 @@ const AddCustomProperty = () => {
     hasFormatConfig,
     hasEntityReferenceConfig,
     watchedOption,
-    hasEnumWithDescriptionConfig,
+    hasTableTypeConfig,
   } = useMemo(() => {
     const watchedOption = propertyTypeOptions.find(
       (option) => option.value === watchedPropertyType
@@ -121,8 +130,7 @@ const AddCustomProperty = () => {
 
     const hasEnumConfig = watchedOptionKey === 'enum';
 
-    const hasEnumWithDescriptionConfig =
-      watchedOptionKey === ENUM_WITH_DESCRIPTION;
+    const hasTableTypeConfig = watchedOptionKey === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const hasFormatConfig =
       PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
@@ -135,7 +143,7 @@ const AddCustomProperty = () => {
       hasFormatConfig,
       hasEntityReferenceConfig,
       watchedOption,
-      hasEnumWithDescriptionConfig,
+      hasTableTypeConfig,
     };
   }, [watchedPropertyType, propertyTypeOptions]);
 
@@ -157,7 +165,7 @@ const AddCustomProperty = () => {
     }
   };
 
-  const handleCancel = useCallback(() => history.goBack(), [history]);
+  const handleCancel = useCallback(() => navigate(-1), [navigate]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     const isDescription = event.target.classList.contains('ProseMirror');
@@ -176,7 +184,7 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
-      enumWithDescriptionsConfig?: EnumWithDescriptionsConfig['values'];
+      columns: string[];
     }
   ) => {
     if (isUndefined(typeDetail)) {
@@ -208,11 +216,10 @@ const AddCustomProperty = () => {
         };
       }
 
-      if (hasEnumWithDescriptionConfig) {
+      if (hasTableTypeConfig) {
         customPropertyConfig = {
           config: {
-            multiSelect: Boolean(data?.multiSelect),
-            values: data.enumWithDescriptionsConfig,
+            columns: data.columns,
           },
         };
       }
@@ -224,7 +231,7 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
-            'enumWithDescriptionsConfig',
+            'columns',
           ]),
           propertyType: {
             id: data.propertyType,
@@ -236,7 +243,7 @@ const AddCustomProperty = () => {
       ) as unknown as CustomProperty;
 
       await addPropertyToEntity(typeDetail?.id ?? '', payload);
-      history.goBack();
+      navigate(-1);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -272,6 +279,17 @@ const AddCustomProperty = () => {
       ],
     },
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'propertyType',
       required: true,
       label: t('label.type'),
@@ -284,8 +302,8 @@ const AddCustomProperty = () => {
           field: t('label.type'),
         })}`,
         showSearch: true,
-        filterOption: (input: string, option: { label: string }) => {
-          return (option?.label ?? '')
+        filterOption: (input: string, option: { searchField: string }) => {
+          return (option?.searchField ?? '')
             .toLowerCase()
             .includes(input.toLowerCase());
         },
@@ -315,6 +333,8 @@ const AddCustomProperty = () => {
       'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -388,8 +408,48 @@ const AddCustomProperty = () => {
     },
   };
 
+  const tableTypePropertyConfig: FieldProp[] = [
+    {
+      name: 'columns',
+      required: true,
+      label: t('label.column-plural'),
+      id: 'root/columns',
+      type: FieldTypes.SELECT,
+      props: {
+        'data-testid': 'columns',
+        mode: 'tags',
+        placeholder: t('label.column-plural'),
+      },
+      rules: [
+        {
+          required: true,
+          validator: async (_, value) => {
+            if (isArray(value)) {
+              if (value.length > 3) {
+                return Promise.reject(
+                  t('message.maximum-count-allowed', {
+                    count: 3,
+                    label: t('label.column-plural'),
+                  })
+                );
+              }
+
+              return Promise.resolve();
+            } else {
+              return Promise.reject(
+                t('label.field-required', {
+                  field: t('label.column-plural'),
+                })
+              );
+            }
+          },
+        },
+      ],
+    },
+  ];
+
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Form
         className="m-t-md"
@@ -415,94 +475,8 @@ const AddCustomProperty = () => {
             generateFormFields([entityReferenceConfigField])
         }
 
-        {hasEnumWithDescriptionConfig && (
-          <>
-            <Form.List name="enumWithDescriptionsConfig">
-              {(fields, { add, remove }) => (
-                <>
-                  <Form.Item
-                    className="form-item-horizontal"
-                    colon={false}
-                    label={t('label.property')}>
-                    <Button
-                      data-testid="add-enum-description-config"
-                      icon={
-                        <PlusOutlined
-                          style={{ color: 'white', fontSize: '12px' }}
-                        />
-                      }
-                      size="small"
-                      type="primary"
-                      onClick={() => {
-                        add();
-                      }}
-                    />
-                  </Form.Item>
+        {hasTableTypeConfig && generateFormFields(tableTypePropertyConfig)}
 
-                  {fields.map((field, index) => (
-                    <Row gutter={[8, 0]} key={field.key}>
-                      <Col span={23}>
-                        <Row gutter={[8, 0]}>
-                          <Col span={24}>
-                            <Form.Item
-                              name={[field.name, 'key']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: `${t(
-                                    'message.field-text-is-required',
-                                    {
-                                      fieldText: t('label.key'),
-                                    }
-                                  )}`,
-                                },
-                              ]}>
-                              <Input
-                                id={`key-${index}`}
-                                placeholder={t('label.key')}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={24}>
-                            <Form.Item
-                              name={[field.name, 'description']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: `${t(
-                                    'message.field-text-is-required',
-                                    {
-                                      fieldText: t('label.description'),
-                                    }
-                                  )}`,
-                                },
-                              ]}
-                              trigger="onTextChange"
-                              valuePropName="initialValue">
-                              <RichTextEditor height="200px" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                      </Col>
-                      <Col span={1}>
-                        <Button
-                          data-testid={`remove-enum-description-config-${index}`}
-                          icon={<DeleteIcon width={16} />}
-                          size="small"
-                          type="text"
-                          onClick={() => {
-                            remove(field.name);
-                          }}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
-                </>
-              )}
-            </Form.List>
-            {generateFormFields([multiSelectField])}
-          </>
-        )}
         {generateFormFields([descriptionField])}
         <Row justify="end">
           <Col>
@@ -524,7 +498,7 @@ const AddCustomProperty = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -540,6 +514,8 @@ const AddCustomProperty = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -144,17 +144,20 @@ class FetchChart(BaseModel):
     id: Optional[int] = None
     slice_name: Optional[str] = None
     description: Optional[str] = None
+    table_id: Optional[int] = None
     table_name: Optional[str] = None
     table_schema: Optional[str] = Field(None, alias="schema")
     database_name: Optional[str] = None
     sqlalchemy_uri: Optional[str] = None
     viz_type: Optional[str] = None
     datasource_id: Optional[int] = None
+    sql: Optional[str] = None
 
 
 class FetchColumn(BaseModel):
     id: Optional[int] = None
     type: Optional[str] = None
     column_name: Optional[str] = None
+    table_id: Optional[int] = None
     table_name: Optional[str] = None
     description: Optional[str] = None

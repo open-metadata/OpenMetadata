@@ -13,24 +13,27 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import process from 'process';
+import QueryString from 'qs';
 import {
-  getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
   LOG_ENTITY_NAME,
   LOG_ENTITY_TYPE,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_ID,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
   PLACEHOLDER_ROUTE_QUERY_ID,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
+  PLACEHOLDER_ROUTE_SUB_TAB,
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
+  PLACEHOLDER_USER_BOT,
+  PLACEHOLDER_WEBHOOK_NAME,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -38,11 +41,15 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityAction } from '../enums/entity.enum';
+import { AlertDetailTabs } from '../enums/Alerts.enum';
+import { EntityAction, EntityTabs, EntityType } from '../enums/entity.enum';
+import { ServiceAgentSubTabs } from '../enums/service.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { getPartialNameFromFQN } from './CommonUtils';
+import { getBasePath } from './HistoryUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -216,6 +223,18 @@ export const getSettingPath = (
   return path;
 };
 
+export const getSettingPathRelative = (
+  category?: string,
+  tab?: string,
+  withFqn = false,
+  withAction = false
+) => {
+  return getSettingPath(category, tab, withFqn, withAction).replace(
+    ROUTES.SETTINGS,
+    ''
+  );
+};
+
 export const getSettingsPathWithFqn = (
   category: string,
   tab: string,
@@ -244,7 +263,7 @@ export const getSettingCategoryPath = (category: string) => {
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 
-  return path;
+  return path.replace(ROUTES.SETTINGS, '');
 };
 
 export const getTeamsWithFqnPath = (fqn: string) => {
@@ -340,18 +359,6 @@ export const getTagPath = (fqn?: string) => {
   return path;
 };
 
-export const getAddDataQualityTableTestPath = (
-  dashboardType: string,
-  fqn: string
-) => {
-  let path = ROUTES.ADD_DATA_QUALITY_TEST_CASE;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-
-  return path;
-};
 export const getAddCustomMetricPath = (
   dashboardType: ProfilerDashboardType,
   fqn: string
@@ -411,37 +418,6 @@ export const getLogsViewerPath = (
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
 
   return path;
-};
-
-/**
- * It returns a path
- * @param {string} path - The path of the current page.
- * @param {string | undefined} logEntityType - The type of the log entity.
- * @returns a string.
- */
-export const getLogEntityPath = (
-  path: string,
-  logEntityType: string | undefined
-): string => {
-  if (isUndefined(logEntityType)) {
-    return '';
-  }
-
-  if (logEntityType === PipelineType.TestSuite) {
-    return getTestSuitePath(path);
-  }
-
-  if (
-    !arrServiceTypes.includes(path as ServiceTypes) &&
-    path !== PipelineType.TestSuite
-  ) {
-    return getServiceDetailsPath(path, logEntityType, 'ingestions');
-  }
-
-  return getSettingPath(
-    GlobalSettingsMenuCategory.SERVICES,
-    getServiceRouteFromServiceType(logEntityType as ServiceTypes)
-  );
 };
 
 export const getGlossaryPathWithAction = (
@@ -511,25 +487,59 @@ export const getGlossaryTermsVersionsPath = (
   return path;
 };
 
-export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
-  let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
+export const getDataQualityPagePath = (
+  tab?: DataQualityPageTabs,
+  subTab?: string
+) => {
+  let path = ROUTES.DATA_QUALITY;
+
+  if (tab) {
+    path = ROUTES.DATA_QUALITY_WITH_TAB;
+  }
+
+  if (subTab) {
+    path = ROUTES.DATA_QUALITY_WITH_SUB_TAB;
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
+  if (subTab) {
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
   return path;
 };
 
-export const getIncidentManagerDetailPagePath = (
+export const getTestCaseDetailPagePath = (
   fqn: string,
-  tab = IncidentManagerTabs.TEST_CASE_RESULTS
+  tab = TestCasePageTabs.TEST_CASE_RESULTS
 ) => {
-  let path = ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB;
+  let path = ROUTES.TEST_CASE_DETAILS_WITH_TAB;
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+export const getTestCaseVersionPath = (
+  fqn: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.TEST_CASE_DETAILS_WITH_TAB_VERSION
+    : ROUTES.TEST_CASE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
@@ -556,6 +566,17 @@ export const getClassificationDetailsPath = (classificationFqn: string) => {
   return path;
 };
 
+export const getClassificationTagPath = (tagFqn: string, tab?: string) => {
+  let path = tab ? ROUTES.TAG_ITEM_WITH_TAB : ROUTES.TAG_ITEM;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tagFqn));
+
+  return path;
+};
+
 export const getClassificationVersionsPath = (
   classificationFqn: string,
   version: string
@@ -569,11 +590,10 @@ export const getClassificationVersionsPath = (
 };
 
 export const getPersonaDetailsPath = (fqn: string) => {
-  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  let path = ROUTES.SETTINGS_WITH_CATEGORY_FQN;
 
   path = path
-    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
-    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingOptions.PERSONA)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
@@ -595,22 +615,300 @@ export const getNotificationAlertsEditPath = (fqn: string) => {
   return path;
 };
 
-export const getObservabilityAlertDetailsPath = (fqn: string) => {
-  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS;
+export const getObservabilityAlertDetailsPath = (fqn: string, tab?: string) => {
+  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
 
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-
-  return path;
-};
-
-export const getNotificationAlertDetailsPath = (fqn: string) => {
-  let path = ROUTES.NOTIFICATION_ALERT_DETAILS;
-
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  path = path.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? AlertDetailTabs.CONFIGURATION
+  );
 
   return path;
 };
 
+export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
+  let path = ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
+
+  path = path.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? AlertDetailTabs.CONFIGURATION
+  );
+
+  return path;
+};
 export const getPathNameFromWindowLocation = () => {
-  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
+  return window.location.pathname.replace(getBasePath() ?? '', '');
+};
+
+export const getTagsDetailsPath = (entityFQN: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
+
+  return path;
+};
+
+export const getVersionPath = (
+  entityType: string,
+  fqn: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB
+    : ROUTES.ENTITY_VERSION_DETAILS;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
+    .replace(PLACEHOLDER_ROUTE_VERSION, version)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab ?? '');
+
+  return path;
+};
+
+export const getServiceDetailsPath = (
+  serviceFQN: string,
+  serviceCat: string,
+  tab?: string,
+  subTab?: string
+) => {
+  let path = ROUTES.SERVICE;
+
+  if (tab) {
+    path = ROUTES.SERVICE_WITH_TAB;
+  }
+
+  if (subTab) {
+    path = ROUTES.SERVICE_WITH_SUB_TAB;
+  }
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN));
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  if (subTab) {
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  return path;
+};
+
+export const getExplorePath: (args: {
+  tab?: string;
+  search?: string;
+  extraParameters?: Record<string, unknown>;
+  isPersistFilters?: boolean;
+}) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
+  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? ''
+  );
+  let paramsObject: Record<string, unknown> = QueryString.parse(
+    location.search.startsWith('?')
+      ? location.search.substring(1)
+      : location.search
+  );
+
+  const { search: paramSearch } = paramsObject;
+
+  /**
+   * persist the filters if isPersistFilters is true
+   * otherwise only persist the search and passed extra params
+   * */
+  if (isPersistFilters) {
+    if (!isUndefined(search)) {
+      paramsObject = {
+        ...paramsObject,
+        search,
+      };
+    }
+    if (!isUndefined(extraParameters)) {
+      paramsObject = {
+        ...paramsObject,
+        ...extraParameters,
+      };
+    }
+  } else {
+    paramsObject = {
+      search: isUndefined(search) ? paramSearch : search,
+      ...(!isUndefined(extraParameters) ? extraParameters : {}),
+    };
+  }
+
+  const query = QueryString.stringify(paramsObject);
+
+  return `${pathname}?${query}`;
+};
+
+export const getEntityDetailsPath = (
+  entityType: EntityType,
+  fqn: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  let path = tab ? ROUTES.ENTITY_DETAILS_WITH_TAB : ROUTES.ENTITY_DETAILS;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.ENTITY_DETAILS_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  path = path.replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType);
+
+  return path;
+};
+
+export const getGlossaryTermDetailsPath = (
+  glossaryFQN: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryFQN));
+
+  return path;
+};
+
+export const getTeamAndUserDetailsPath = (name?: string) => {
+  let path = getSettingPath(
+    GlobalSettingsMenuCategory.MEMBERS,
+    GlobalSettingOptions.TEAMS
+  );
+  if (name) {
+    path = getSettingPath(
+      GlobalSettingsMenuCategory.MEMBERS,
+      GlobalSettingOptions.TEAMS,
+      true
+    );
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
+  }
+
+  return path;
+};
+
+export const getEditWebhookPath = (webhookName: string) => {
+  let path = ROUTES.EDIT_WEBHOOK;
+  path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
+
+  return path;
+};
+
+export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
+  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.USER_PROFILE_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
+
+  return path;
+};
+
+export const getBotsPath = (botsName: string) => {
+  let path = ROUTES.BOTS_PROFILE;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
+
+  return path;
+};
+
+export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
+  let path = ROUTES.ADD_CUSTOM_PROPERTY;
+  path = path.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    getEncodedFqn(entityTypeFQN)
+  );
+
+  return path;
+};
+
+export const getCreateUserPath = (bot: boolean) => {
+  let path = bot ? ROUTES.CREATE_USER_WITH_BOT : ROUTES.CREATE_USER;
+
+  if (bot) {
+    path = path.replace(PLACEHOLDER_USER_BOT, 'bot');
+  }
+
+  return path;
+};
+
+export const getUsersPagePath = (isAdmin?: boolean) => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
+    isAdmin ? 'admins' : 'users'
+  }`;
+};
+
+export const getBotsPagePath = () => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`;
+};
+
+export const getKpiPath = (kpiName: string) => {
+  let path = ROUTES.EDIT_KPI;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(kpiName));
+
+  return path;
+};
+
+/**
+ * It returns a path
+ * @param {string} path - The path of the current page.
+ * @param {string | undefined} logEntityType - The type of the log entity.
+ * @returns a string.
+ */
+export const getLogEntityPath = (
+  path: string,
+  logEntityType: string | undefined
+): string => {
+  if (isUndefined(logEntityType)) {
+    return '';
+  }
+
+  if (logEntityType === PipelineType.TestSuite) {
+    return getTestSuitePath(path);
+  }
+
+  if (
+    !arrServiceTypes.includes(path as ServiceTypes) &&
+    path !== PipelineType.TestSuite
+  ) {
+    return getServiceDetailsPath(
+      path,
+      logEntityType,
+      EntityTabs.AGENTS,
+      ServiceAgentSubTabs.METADATA
+    );
+  }
+
+  return getSettingPath(
+    GlobalSettingsMenuCategory.SERVICES,
+    getServiceRouteFromServiceType(logEntityType as ServiceTypes)
+  );
 };

@@ -18,10 +18,9 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import userEvent from '@testing-library/user-event';
+import { CodeMirrorLanguageAliases } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
 
@@ -264,6 +263,118 @@ describe('Test RichTextEditor Previewer Component', () => {
     expect(markdownParser).toBeInTheDocument();
   });
 
+  it.each([
+    ['javascript', 'const foo = "bar";'],
+    ['js', 'const foo = "bar";'],
+    ['java', 'public static string foo = "bar";'],
+    ['text/x-java', 'public static string foo = "bar";'],
+    ['python', 'foo = "bar"'],
+    ['py', 'foo = "bar"'],
+    ['sql', 'SELECT "bar" AS foo'],
+    ['yaml', 'foo: bar'],
+  ])(
+    'Should render code block (%s) markdown content',
+    async (language, content) => {
+      const { container } = render(
+        <RichTextEditorPreviewer
+          {...mockProp}
+          isDescriptionExpanded
+          markdown={'```' + language + '\n' + content + '\n```'}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+      const cmLang = CodeMirrorLanguageAliases[language] || language;
+
+      const markdownParser = await findByTestId(container, 'markdown-parser');
+
+      expect(markdownParser).toBeInTheDocument();
+
+      // pre
+      const pre = markdownParser.querySelector('pre.code-block');
+
+      expect(pre).toBeInTheDocument();
+      expect(pre).toHaveClass('cm-s-default', `lang-${cmLang}`);
+
+      // code
+      const code = pre?.querySelector('code');
+
+      expect(code).toBeInTheDocument();
+      expect(code).toHaveAttribute('data-language', cmLang);
+
+      // code fragment
+      expect(code?.querySelector('span')).toBeInTheDocument();
+    }
+  );
+
+  it('Should render code block (unsupported language) markdown content', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        isDescriptionExpanded
+        markdown={'```unknown\nvar foo string = "bar"\n```'}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser).toBeInTheDocument();
+
+    // pre
+    const pre = markdownParser.querySelector('pre.code-block');
+
+    expect(pre).toBeInTheDocument();
+    expect(pre).toHaveClass('cm-s-default', `lang-unknown`);
+
+    // code
+    const code = pre?.querySelector('code');
+
+    expect(code).toBeInTheDocument();
+    expect(code).toHaveAttribute('data-language', 'unknown');
+
+    // no code fragments
+    expect(code?.querySelector('span')).not.toBeInTheDocument();
+  });
+
+  it('Should render code block (without language specifier) markdown content', async () => {
+    const { container } = render(
+      <RichTextEditorPreviewer
+        {...mockProp}
+        isDescriptionExpanded
+        markdown={'```\n::LET FOO BE 42::\n```'}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const markdownParser = await findByTestId(container, 'markdown-parser');
+
+    expect(markdownParser).toBeInTheDocument();
+
+    // pre
+    const pre = markdownParser.querySelector('pre.code-block');
+
+    expect(pre).toBeInTheDocument();
+    expect(pre).not.toHaveClass('cm-s-default');
+    expect(
+      [...(pre?.classList || [])].find((c) => c.startsWith('lang-'))
+    ).toBeUndefined();
+
+    // code
+    const code = pre?.querySelector('code');
+
+    expect(code).toBeInTheDocument();
+    expect(code).not.toHaveAttribute('data-language');
+
+    // no code fragments
+    expect(code?.querySelector('span')).not.toBeInTheDocument();
+  });
+
   it('Should render horizontal rule markdown content', async () => {
     const { container } = render(<RichTextEditorPreviewer {...mockProp} />, {
       wrapper: MemoryRouter,
@@ -371,17 +482,13 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const readMoreButton = screen.getByTestId('read-more-button');
 
-    await act(async () => {
-      userEvent.click(readMoreButton);
-    });
+    fireEvent.click(readMoreButton);
 
     const readLessButton = screen.getByTestId('read-less-button');
 
     expect(readLessButton).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(readLessButton);
-    });
+    fireEvent.click(readLessButton);
 
     expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
   });

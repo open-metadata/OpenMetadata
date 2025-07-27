@@ -16,7 +16,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
 
@@ -87,12 +87,11 @@ jest.mock('../../../rest/PersonaAPI', () => {
 jest.mock('../../../hooks/useFqn', () => {
   return { useFqn: jest.fn().mockReturnValue({ fqn: 'fqn' }) };
 });
-const mockUseHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   };
 });
 jest.mock(
@@ -149,9 +148,16 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
 );
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    pathname: '/persona/testPersona',
+    hash: '#users',
+  }));
+});
+
 describe('PersonaDetailsPage', () => {
   it('Component should render', async () => {
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />), { wrapper: MemoryRouter };
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
@@ -170,7 +176,7 @@ describe('PersonaDetailsPage', () => {
     (getPersonaByName as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByText('NoDataPlaceholder.component')
@@ -178,20 +184,18 @@ describe('PersonaDetailsPage', () => {
   });
 
   it('handleAfterDeleteAction should call after delete', async () => {
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     const deleteBtn = await screen.findByTestId('delete-btn');
 
     fireEvent.click(deleteBtn);
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith(
-      '/settings/members/persona'
-    );
+    expect(mockNavigate).toHaveBeenCalledWith('/settings/persona');
   });
 
   it('handleDisplayNameUpdate should call after updating displayName', async () => {
     const mockUpdatePersona = updatePersona as jest.Mock;
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     const updateName = await screen.findByTestId('display-name-btn');
 
@@ -204,7 +208,7 @@ describe('PersonaDetailsPage', () => {
 
   it('add user should work', async () => {
     const mockUpdatePersona = updatePersona as jest.Mock;
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     const addUser = await screen.findByTestId('user-selectable-list');
 

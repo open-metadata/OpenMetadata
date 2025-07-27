@@ -11,11 +11,23 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import React, { forwardRef } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import {
+  findByTestId,
+  findByText,
+  queryByTestId,
+  queryByText,
+  render,
+} from '@testing-library/react';
+import { forwardRef } from 'react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({
+    state: { isAdminPage: false },
+  }),
+}));
 
 jest.mock('../../Team/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
@@ -56,12 +68,33 @@ describe('Test CreateUser component', () => {
       container,
       /TeamsSelectable component/i
     );
+    const roleSelectInput = queryByTestId(container, 'roles-dropdown');
 
     expect(email).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
+    expect(roleSelectInput).toBeInTheDocument();
     expect(teamsSelectable).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
+  });
+
+  it('should not visible team and role input if isAdminPage true', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      state: { isAdminPage: true },
+    });
+
+    const { container } = render(<CreateUser {...propsValue} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const roleSelectInput = queryByTestId(container, 'roles-dropdown');
+    const teamsSelectable = queryByText(
+      container,
+      /TeamsSelectable component/i
+    );
+
+    expect(roleSelectInput).not.toBeInTheDocument();
+    expect(teamsSelectable).not.toBeInTheDocument();
   });
 });

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,9 +20,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import Source
+from metadata.ingestion.lineage.masker import masked_query_cache
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.utils.helpers import get_start_and_end
+from metadata.ingestion.source.connections import test_connection_common
+from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -40,10 +42,12 @@ class QueryParserSource(Source, ABC):
     """
 
     sql_stmt: str
+    dialect: str
     filters: str
     database_field: str
     schema_field: str
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -53,12 +57,19 @@ class QueryParserSource(Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
+        self.service_name = self.config.serviceName
         self.service_connection = self.config.serviceConnection.root.config
+        connection_type = self.service_connection.type.value
+        self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.engine = (
-            get_ssl_connection(self.service_connection) if get_engine else None
-        )
+        self.graph = None
+        self.procedure_graph_map = None
+
+        self.engine = None
+        if get_engine:
+            self.engine = get_ssl_connection(self.service_connection)
+            self.test_connection()
 
     @property
     def name(self) -> str:
@@ -117,8 +128,8 @@ class QueryParserSource(Source, ABC):
         yield self.engine
 
     def close(self):
-        """By default, there is nothing to close"""
+        # Clear the cache
+        masked_query_cache.clear()
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine)
+        test_connection_common(self.metadata, self.engine, self.service_connection)

@@ -33,7 +33,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 4 : undefined,
-  maxFailures: 30,
+  maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -45,6 +45,7 @@ export default defineConfig({
         showError: true,
       },
     ],
+    ['blob'],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -63,6 +64,11 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: '**/*.setup.ts',
+      teardown: 'restore-policies',
+    },
+    {
+      name: 'restore-policies',
+      testMatch: '**/auth.teardown.ts',
     },
     {
       name: 'chromium',
@@ -70,6 +76,7 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
       grepInvert: /data-insight/,
+      testIgnore: ['**/nightly/**'],
     },
     {
       name: 'data-insight-application',

@@ -1,0 +1,122 @@
+{
+  "mappingFields": {
+    "common": [
+      "id",
+      "description",
+      "displayName",
+      "name",
+      "deleted",
+      "version",
+      "owners",
+      "tags",
+      "extension",
+      "votes",
+      "fullyQualifiedName",
+      "domain",
+      "dataProducts",
+      "certification"
+    ],
+    "table": [
+      "tableType",
+      "columns",
+      "databaseSchema",
+      "tableConstraint",
+      "database",
+      "service",
+      "serviceType"
+    ],
+    "storedProcedure": [
+      "storedProcedureType",
+      "databaseSchema",
+      "database",
+      "service",
+      "serviceType"
+    ],
+    "databaseSchema": [
+      "database",
+      "service",
+      "serviceType"
+    ],
+    "database": [
+      "service",
+      "serviceType"
+    ],
+    "chart": [
+      "service",
+      "serviceType",
+      "chartType"
+    ],
+    "dashboard": [
+      "service",
+      "serviceType",
+      "dashboardType"
+    ],
+    "dashboardDataModel": [
+      "service",
+      "serviceType",
+      "dataModelType",
+      "project",
+      "columns"
+    ],
+    "pipeline": [
+      "service",
+      "serviceType",
+      "pipelineStatus",
+      "tasks"
+    ],
+    "topic": [
+      "service",
+      "serviceType"
+    ],
+    "container": [
+      "service",
+      "serviceType",
+      "numberOfObjects",
+      "size",
+      "fileFormats",
+      "parent",
+      "children",
+      "prefix"
+    ],
+    "searchIndex": [
+      "service",
+      "serviceType",
+      "indexType",
+      "fields"
+    ],
+    "mlmodel": [
+      "service",
+      "serviceType",
+      "mlStore",
+      "algorithm",
+      "mlFeatures",
+      "mlHyperParameters",
+      "target",
+      "dashboard",
+      "server"
+    ],
+    "dataProduct": [
+      "experts",
+      "domain",
+      "assets"
+    ],
+    "glossaryTerm": [
+      "synonyms",
+      "glossary",
+      "parent",
+      "children",
+      "relatedTerms",
+      "references",
+      "reviewers",
+      "status",
+      "usageCount",
+      "childrenCount"
+    ],
+    "tag": [
+      "classification",
+      "parent",
+      "children",
+      "usageCount"
+    ]
+  }
+}

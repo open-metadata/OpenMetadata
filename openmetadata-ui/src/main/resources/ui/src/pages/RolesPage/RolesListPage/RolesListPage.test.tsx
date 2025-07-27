@@ -12,16 +12,16 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';
 
-const mockPush = jest.fn();
-
+const mockNavigate = jest.fn();
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
   })),
   Link: jest.fn().mockImplementation(({ children, to, ...res }) => (
     <a href={to} {...res}>
@@ -42,7 +42,7 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
 );
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
@@ -118,7 +118,9 @@ describe('Test Roles List Page', () => {
 
     fireEvent.click(addRoleButton);
 
-    expect(mockPush).toHaveBeenCalledWith('/settings/access/roles/add-role');
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/settings/access/roles/add-role'
+    );
   });
 
   it('Should render all table columns', async () => {

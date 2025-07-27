@@ -19,8 +19,7 @@ source:
   sourceConfig:
     config:
       type: Profiler
-      generateSampleData: true
-      databaseFilterPattern: 
+      databaseFilterPattern:
         includes: 
           - hello-world-1234
       schemaFilterPattern:

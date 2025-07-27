@@ -15,9 +15,8 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter, Route } from 'react-router-dom';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useFqn } from '../../hooks/useFqn';
 import AddIngestionPage from './AddIngestionPage.component';
 const mockShowErrorToast = jest.fn();
@@ -33,7 +32,7 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: 'testFqn' })),
 }));
 
-jest.mock('../../hooks/useAirflowStatus', () => ({
+jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     fetchAirflowStatus: jest.fn().mockImplementation(() => Promise.resolve()),
   })),
@@ -73,6 +72,10 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>AddIngestion</div>)
 );
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   addIngestionPipeline: jest.fn().mockReturnValue(() => Promise.resolve({})),
   deployIngestionPipelineById: jest
@@ -105,6 +108,10 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 
+const mockProps = {
+  pageTitle: 'add-ingestion',
+};
+
 describe('Test AddIngestionPage component', () => {
   beforeEach(() => {
     (useAirflowStatus as jest.Mock).mockReturnValue({
@@ -122,9 +129,12 @@ describe('Test AddIngestionPage component', () => {
     render(
       <MemoryRouter
         initialEntries={['/addIngestion/databaseServices/testIngestionType']}>
-        <Route path="/addIngestion/:serviceCategory/:ingestionType">
-          <AddIngestionPage />
-        </Route>
+        <Routes>
+          <Route
+            element={<AddIngestionPage {...mockProps} />}
+            path="/addIngestion/:serviceCategory/:ingestionType"
+          />
+        </Routes>
       </MemoryRouter>
     );
 

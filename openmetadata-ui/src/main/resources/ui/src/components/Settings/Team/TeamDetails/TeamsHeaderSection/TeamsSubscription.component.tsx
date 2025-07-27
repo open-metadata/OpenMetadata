@@ -22,7 +22,7 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -37,7 +37,7 @@ import {
 import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
-
+import './teams-subscription.less';
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,
@@ -79,35 +79,19 @@ const TeamsSubscription = ({
     if (isEmpty(subscription)) {
       if (hasEditPermission) {
         return (
-          <div className="flex-center gap-2">
+          <div className="d-flex gap-2">
             <Typography.Text
-              className="font-medium"
+              className="font-medium text-sm text-secondary-new "
               data-testid="subscription-no-data">
               {t('label.none')}
             </Typography.Text>
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.subscription'),
-              })}>
-              <EditIcon
-                className="cursor-pointer"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-team-subscription"
-                width={14}
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setEditSubscription(true);
-                }}
-              />
-            </Tooltip>
           </div>
         );
       }
 
       return (
         <Typography.Text
-          className="font-medium"
+          className="font-medium text-sm text-secondary-new"
           data-testid="subscription-no-data">
           {NO_DATA_PLACEHOLDER}
         </Typography.Text>
@@ -147,30 +131,58 @@ const TeamsSubscription = ({
   }, [subscription, editSubscription]);
 
   return (
-    <Space align="center" data-testid="teams-subscription">
-      <Typography.Text className="right-panel-label font-normal">
-        {`${t('label.subscription')} :`}
-      </Typography.Text>
-      {subscriptionRenderElement}
+    <Space
+      align="start"
+      className="teams-subscription-container d-flex flex-col gap-2"
+      data-testid="teams-subscription">
+      <div className="d-flex gap-1 items-center teams-subscription-label-container">
+        <Typography.Text className="right-panel-label text-sm font-medium subscription-label">
+          {`${t('label.subscription')}`}
+        </Typography.Text>
+        {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.subscription'),
+            })}>
+            <Button
+              className="flex-center teams-info-email-edit-button p-0"
+              data-testid="edit-team-subscription"
+              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
+              {...ICON_DIMENSION}
+              onClick={(e) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                setEditSubscription(true);
+              }}
+            />
+          </Tooltip>
+        )}
+        {isEmpty(subscription) && hasEditPermission && (
+          <Tooltip
+            title={t('label.edit-entity', {
+              entity: t('label.subscription'),
+            })}>
+            <Button
+              className="flex-center teams-info-email-edit-button p-0"
+              data-testid="edit-team-subscription"
+              icon={
+                <EditIcon
+                  color={DE_ACTIVE_COLOR}
+                  {...ICON_DIMENSION}
+                  width="12px"
+                />
+              }
+              onClick={(e) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                setEditSubscription(true);
+              }}
+            />
+          </Tooltip>
+        )}
+      </div>
 
-      {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
-        <Tooltip
-          title={t('label.edit-entity', {
-            entity: t('label.subscription'),
-          })}>
-          <EditIcon
-            className="cursor-pointer align-middle"
-            color={DE_ACTIVE_COLOR}
-            data-testid="edit-team-subscription"
-            {...ICON_DIMENSION}
-            onClick={(e) => {
-              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-              e.stopPropagation();
-              setEditSubscription(true);
-            }}
-          />
-        </Tooltip>
-      )}
+      {subscriptionRenderElement}
 
       {editSubscription && (
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel

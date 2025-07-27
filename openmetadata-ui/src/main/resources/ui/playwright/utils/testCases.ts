@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
+import { redirectToHomePage, toastNotification } from './common';
 
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId(`delete-${testCaseName}`).click();
@@ -25,14 +26,15 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId('confirm-button').click();
   await deleteResponse;
 
-  await expect(page.getByRole('alert')).toHaveText(/deleted successfully!/);
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
-  await table.visitEntityPage(page);
+  await redirectToHomePage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await page.getByTestId('profiler').click();
   const testCaseResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/search/list?fields=*'
+    '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
   await page
     .getByTestId('profiler-tab-left-panel')

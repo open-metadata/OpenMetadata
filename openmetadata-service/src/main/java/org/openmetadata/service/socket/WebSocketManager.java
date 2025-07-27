@@ -24,9 +24,18 @@ public class WebSocketManager {
   @Getter private final SocketIoServer socketIoServer;
   public static final String FEED_BROADCAST_CHANNEL = "activityFeed";
   public static final String TASK_BROADCAST_CHANNEL = "taskChannel";
-  public static final String JOB_STATUS_BROADCAST_CHANNEL = "jobStatus";
+  public static final String SEARCH_INDEX_JOB_BROADCAST_CHANNEL = "searchIndexJobStatus";
+  public static final String DATA_INSIGHTS_JOB_BROADCAST_CHANNEL = "dataInsightsJobStatus";
+  public static final String BACKGROUND_JOB_CHANNEL = "backgroundJobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
+  public static final String CSV_EXPORT_CHANNEL = "csvExportChannel";
+  public static final String CSV_IMPORT_CHANNEL = "csvImportChannel";
+
+  public static final String BULK_ASSETS_CHANNEL = "bulkAssetsChannel";
+
+  public static final String DELETE_ENTITY_CHANNEL = "deleteEntityChannel";
+  public static final String MOVE_GLOSSARY_TERM_CHANNEL = "moveGlossaryTermChannel";
 
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =

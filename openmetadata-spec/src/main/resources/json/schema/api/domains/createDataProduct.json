@@ -33,9 +33,12 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
-    "domain": {
-      "description": "Fully qualified name of the Domain the DataProduct belongs to.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName",
+    "domains": {
+      "description": "Fully qualified names of the Domains the DataProduct belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
       "default": null
     },
     "experts": {
@@ -51,6 +54,14 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "tags": {
+      "description": "Tags for this Data Product.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
@@ -58,7 +69,8 @@
   },
   "required": [
     "name",
-    "description"
+    "description",
+    "domains"
   ],
   "additionalProperties": false
 }

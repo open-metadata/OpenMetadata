@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 
-import { Col, InputNumber, Row, Slider } from 'antd';
-import React, { useCallback } from 'react';
+import { CloseOutlined } from '@ant-design/icons';
+import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
+import { useTranslation } from 'react-i18next';
+import { percentageFormatter } from '../../../utils/ChartUtils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
-
 const SliderWithInput = ({
   value,
   onChange,
   className,
 }: SliderWithInputProps) => {
-  const formatter = useCallback((value) => `${value}%`, [value]);
+  const { t } = useTranslation();
 
   return (
     <Row className={className} data-testid="percentage-input" gutter={20}>
-      <Col span={20}>
+      <Col flex="auto">
         <Slider
           marks={{
             0: '0%',
@@ -37,16 +38,27 @@ const SliderWithInput = ({
           onChange={onChange}
         />
       </Col>
-      <Col span={4}>
-        <InputNumber
-          data-testid="slider-input"
-          formatter={formatter}
-          max={100}
-          min={0}
-          step={1}
-          value={value}
-          onChange={onChange}
-        />
+      <Col className="w-32">
+        <div className="flex items-center gap-2">
+          <InputNumber
+            data-testid="slider-input"
+            formatter={percentageFormatter}
+            max={100}
+            min={0}
+            step={1}
+            value={value}
+            onChange={onChange}
+          />
+          <Tooltip title={t('label.clear')}>
+            <Button
+              className="p-0"
+              data-testid="clear-slider-input"
+              type="text"
+              onClick={() => onChange(null)}>
+              <CloseOutlined />
+            </Button>
+          </Tooltip>
+        </div>
       </Col>
     </Row>
   );

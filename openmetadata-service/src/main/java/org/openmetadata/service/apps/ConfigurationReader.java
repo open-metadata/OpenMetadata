@@ -4,22 +4,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
-import io.dropwizard.configuration.FileConfigurationSourceProvider;
+import io.dropwizard.configuration.ResourceConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
-import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Map;
 import org.apache.commons.text.StringSubstitutor;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConfigurationReader {
+  private static final Logger log = LoggerFactory.getLogger(ConfigurationReader.class);
   private final StringSubstitutor substitutor;
   private final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
   private final YamlConfigurationFactory<Object> factory =
-      new YamlConfigurationFactory<>(Object.class, null, mapper, "dw");
+      new YamlConfigurationFactory<>(Object.class, null, mapper, "app");
 
   public ConfigurationReader(Map<String, String> envMap) {
     // envMap is for custom environment variables (e.g., for testing), defaulting to the system
@@ -39,17 +41,18 @@ public class ConfigurationReader {
     if (resource == null) {
       throw new IOException("Configuration file not found: " + configFilePath);
     }
-    File configFile = new File(resource.getFile());
-    return JsonUtils.convertValue(readConfigFile(configFile), AppPrivateConfig.class);
+    log.debug("Loaded config file from resource: {}", configFilePath);
+    return JsonUtils.convertValue(readConfigResource(configFilePath), AppPrivateConfig.class);
   }
 
-  public Map<String, Object> readConfigFile(File configFile)
+  public Map<String, Object> readConfigResource(String resourcePath)
       throws IOException, ConfigurationException {
     try {
       return (Map<String, Object>)
           factory.build(
-              new SubstitutingSourceProvider(new FileConfigurationSourceProvider(), substitutor),
-              configFile.getAbsolutePath());
+              new SubstitutingSourceProvider(
+                  new ResourceConfigurationSourceProvider(), substitutor),
+              resourcePath);
     } catch (ClassCastException e) {
       throw new RuntimeException("Configuration file is not a valid YAML file", e);
     }

@@ -20,7 +20,8 @@
         "filterByFieldChange",
         "filterByDomain",
         "filterByMentionedName",
-        "filterByGeneralMetadataEvents"
+        "filterByGeneralMetadataEvents",
+        "filterByUpdaterIsBot"
       ]
     }
   },

@@ -16,7 +16,9 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Converter class to get an `GreenplumConnection` object.
@@ -24,6 +26,8 @@ import org.openmetadata.service.util.JsonUtils;
 public class GreenplumConnectionClassConverter extends ClassConverter {
 
   private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, IamAuthConfig.class);
 
   public GreenplumConnectionClassConverter() {
     super(GreenplumConnection.class);
@@ -33,6 +37,9 @@ public class GreenplumConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     GreenplumConnection greenplumConnection =
         (GreenplumConnection) JsonUtils.convertValue(object, this.clazz);
+
+    tryToConvert(greenplumConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(greenplumConnection::setAuthType);
 
     tryToConvert(greenplumConnection.getSslConfig(), SSL_SOURCE_CLASS)
         .ifPresent(greenplumConnection::setSslConfig);

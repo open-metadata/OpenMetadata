@@ -18,4 +18,9 @@ export type ListParams = {
   before?: string;
   after?: string;
   include?: Include;
+  sort?: string;
+};
+
+export type ListParamsWithOffset = ListParams & {
+  offset?: number;
 };

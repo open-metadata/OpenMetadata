@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { uuid } from '../utils/common';
-import { GlobalSettingOptions } from './settings';
+import { GlobalSettingOptions, ServiceTypes } from './settings';
 
 export const SERVICE_TYPE = {
   Database: GlobalSettingOptions.DATABASES,
@@ -25,50 +26,49 @@ export const SERVICE_TYPE = {
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
   ApiService: GlobalSettingOptions.APIS,
 };
+export const FollowSupportedServices = [
+  EntityTypeEndpoint.DatabaseService,
+  EntityTypeEndpoint.DatabaseSchema,
+  EntityTypeEndpoint.Database,
+];
 
-export const SERVICE_CATEGORIES = {
-  DATABASE_SERVICES: 'databaseServices',
-  MESSAGING_SERVICES: 'messagingServices',
-  PIPELINE_SERVICES: 'pipelineServices',
-  DASHBOARD_SERVICES: 'dashboardServices',
-  ML_MODEL_SERVICES: 'mlmodelServices',
-  STORAGE_SERVICES: 'storageServices',
-  METADATA_SERVICES: 'metadataServices',
-  SEARCH_SERVICES: 'searchServices',
-};
+export const CertificationSupportedServices = [
+  EntityTypeEndpoint.DatabaseSchema,
+  EntityTypeEndpoint.Database,
+];
 
 export const VISIT_SERVICE_PAGE_DETAILS = {
   [SERVICE_TYPE.Database]: {
     settingsMenuId: GlobalSettingOptions.DATABASES,
-    serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
+    serviceCategory: ServiceTypes.DATABASE_SERVICES,
   },
   [SERVICE_TYPE.Messaging]: {
     settingsMenuId: GlobalSettingOptions.MESSAGING,
-    serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
+    serviceCategory: ServiceTypes.MESSAGING_SERVICES,
   },
   [SERVICE_TYPE.Dashboard]: {
     settingsMenuId: GlobalSettingOptions.DASHBOARDS,
-    serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
+    serviceCategory: ServiceTypes.DASHBOARD_SERVICES,
   },
   [SERVICE_TYPE.Pipeline]: {
     settingsMenuId: GlobalSettingOptions.PIPELINES,
-    serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
+    serviceCategory: ServiceTypes.PIPELINE_SERVICES,
   },
   [SERVICE_TYPE.MLModels]: {
     settingsMenuId: GlobalSettingOptions.MLMODELS,
-    serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
+    serviceCategory: ServiceTypes.ML_MODEL_SERVICES,
   },
   [SERVICE_TYPE.Storage]: {
     settingsMenuId: GlobalSettingOptions.STORAGES,
-    serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
+    serviceCategory: ServiceTypes.STORAGE_SERVICES,
   },
   [SERVICE_TYPE.Search]: {
     settingsMenuId: GlobalSettingOptions.SEARCH,
-    serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+    serviceCategory: ServiceTypes.SEARCH_SERVICES,
   },
   [SERVICE_TYPE.Metadata]: {
     settingsMenuId: GlobalSettingOptions.METADATA,
-    serviceCategory: SERVICE_CATEGORIES.METADATA_SERVICES,
+    serviceCategory: ServiceTypes.METADATA_SERVICES,
   },
 };
 
@@ -90,17 +90,11 @@ export const POSTGRES = {
 
 export const MYSQL = 'Mysql';
 
-export const HTTP_CONFIG_SOURCE = {
-  DBT_CATALOG_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/catalog.json',
-  DBT_MANIFEST_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/manifest.json',
-  DBT_RUN_RESULTS_FILE_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/run_results.json',
-};
-
 export const DBT = {
   classification: 'dbtTags',
+  awsRegion: 'us-east-2',
+  s3BucketName: 'awsdatalake-testing',
+  s3Prefix: 'dbt-testing/mayur/',
   tagName: 'model_tag_two',
   dbtQuery: 'select * from "dev"."dbt_automate_upgrade_tests"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
@@ -108,3 +102,5 @@ export const DBT = {
   dataQualityTest1: 'unique_customers_customer_id',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
+
+export const MAX_CONSECUTIVE_ERRORS = 3;

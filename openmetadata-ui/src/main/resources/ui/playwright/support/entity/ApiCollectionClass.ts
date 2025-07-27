@@ -13,10 +13,15 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { ServiceTypes } from '../../constant/settings';
+import { redirectToHomePage, uuid } from '../../utils/common';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ApiCollectionClass extends EntityClass {
@@ -24,10 +29,10 @@ export class ApiCollectionClass extends EntityClass {
   private apiCollectionName = `pw-api-collection-${uuid()}`;
   service = {
     name: this.serviceName,
-    serviceType: 'REST',
+    serviceType: 'Rest',
     connection: {
       config: {
-        type: 'REST',
+        type: 'Rest',
         openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
       },
     },
@@ -39,7 +44,6 @@ export class ApiCollectionClass extends EntityClass {
   };
 
   private apiEndpointName = `pw-api-endpoint-${uuid()}`;
-  private fqn = `${this.service.name}.${this.entity.name}.${this.apiEndpointName}`;
 
   apiEndpoint = {
     name: this.apiEndpointName,
@@ -49,45 +53,44 @@ export class ApiCollectionClass extends EntityClass {
       schemaType: 'JSON',
       schemaFields: [
         {
-          name: 'default',
+          name: `default${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
           tags: [],
           children: [
             {
-              name: 'name',
+              name: `name${uuid()}`,
               dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
               tags: [],
               children: [
                 {
-                  name: 'first_name',
+                  name: `first_name${uuid()}`,
                   dataType: 'STRING',
                   description: 'Description for schema field first_name',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
                   tags: [],
                 },
                 {
-                  name: 'last_name',
+                  name: `last_name${uuid()}`,
                   dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
                   tags: [],
                 },
               ],
             },
             {
-              name: 'age',
+              name: `age${uuid()}`,
               dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
               tags: [],
             },
             {
-              name: 'club_name',
+              name: `club_name${uuid()}`,
               dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
               tags: [],
             },
           ],
+        },
+        {
+          name: `secondary${uuid()}`,
+          dataType: 'RECORD',
+          tags: [],
         },
       ],
     },
@@ -95,55 +98,57 @@ export class ApiCollectionClass extends EntityClass {
       schemaType: 'JSON',
       schemaFields: [
         {
-          name: 'default',
+          name: `default${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
           tags: [],
           children: [
             {
-              name: 'name',
+              name: `name${uuid()}`,
               dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
               tags: [],
               children: [
                 {
-                  name: 'first_name',
+                  name: `first_name${uuid()}`,
                   dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
                   tags: [],
                 },
                 {
-                  name: 'last_name',
+                  name: `last_name${uuid()}`,
                   dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
                   tags: [],
                 },
               ],
             },
             {
-              name: 'age',
+              name: `age${uuid()}`,
               dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
               tags: [],
             },
             {
-              name: 'club_name',
+              name: `club_name${uuid()}`,
               dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
               tags: [],
             },
           ],
+        },
+        {
+          name: `secondary${uuid()}`,
+          dataType: 'RECORD',
+          tags: [],
         },
       ],
     },
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
-  apiEndpointResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  apiEndpointResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_COLLECTION);
+    this.serviceCategory = SERVICE_TYPE.ApiService;
+    this.serviceType = ServiceTypes.API_SERVICES;
     this.service.name = name ?? this.service.name;
     this.type = 'Api Collection';
   }
@@ -180,7 +185,7 @@ export class ApiCollectionClass extends EntityClass {
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
     const apiCollectionResponse = await apiContext.patch(
-      `/api/v1/apiCollections/${this.entityResponseData?.['id']}`,
+      `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
       {
         data: payload,
         headers: {
@@ -221,6 +226,23 @@ export class ApiCollectionClass extends EntityClass {
     await apiCollectionsResponse;
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.service.name,
+        type: SERVICE_TYPE.ApiService,
+      },
+      false
+    );
+
+    const apiCollectionsResponse = page.waitForResponse(
+      `/api/v1/apiCollections/name/*${this.entity}?*`
+    );
+    await page.getByTestId(this.entity.name).click();
+    await apiCollectionsResponse;
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/apiServices/name/${encodeURIComponent(
@@ -235,7 +257,8 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async verifyOwnerPropagation(page: Page, owner: string) {
-    await visitEntityPage({
+    await redirectToHomePage(page);
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.apiEndpoint.name}`,

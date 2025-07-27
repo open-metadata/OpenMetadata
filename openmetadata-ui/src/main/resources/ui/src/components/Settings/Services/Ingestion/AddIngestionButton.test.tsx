@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockIngestionWorkFlow } from '../../../../mocks/Ingestion.mock';
 import { mockAddIngestionButtonProps } from '../../../../mocks/IngestionListTable.mock';
 import AddIngestionButton from './AddIngestionButton.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../../../hoc/LimitWrapper', () =>
   jest
@@ -28,13 +27,11 @@ jest.mock('../../../../hoc/LimitWrapper', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('AddIngestionButton', () => {
-  it('should redirect to metadata ingestion page when no ingestion is present', async () => {
+  it('should not redirect to metadata ingestion page when no ingestion is present', async () => {
     await act(async () => {
       render(<AddIngestionButton {...mockAddIngestionButtonProps} />, {
         wrapper: MemoryRouter,
@@ -42,13 +39,11 @@ describe('AddIngestionButton', () => {
     });
     const addIngestionButton = screen.getByTestId('add-new-ingestion-button');
 
-    await act(async () => {
-      userEvent.click(addIngestionButton);
-    });
+    fireEvent.click(addIngestionButton);
 
-    expect(mockPush).toHaveBeenCalledWith(
-      '/service/databaseServices/OpenMetadata/add-ingestion/metadata'
-    );
+    expect(mockNavigate).toHaveBeenCalledTimes(0);
+
+    expect(screen.getByTestId('agent-item-metadata')).toBeInTheDocument();
   });
 
   it('should not redirect to metadata ingestion page when ingestion data is present', async () => {
@@ -69,6 +64,6 @@ describe('AddIngestionButton', () => {
       userEvent.click(addIngestionButton);
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(0);
+    expect(mockNavigate).toHaveBeenCalledTimes(0);
   });
 });

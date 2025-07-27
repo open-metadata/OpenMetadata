@@ -1,6 +1,6 @@
-FROM mysql:8.3 as mysql
+FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:2.9.1-python3.10
+FROM apache/airflow:2.10.5-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -29,6 +29,8 @@ RUN apt-get -qq update \
     libkrb5-dev \
     default-jdk \
     openssl \
+    # To ensure compatibility with unixodbc package
+    odbcinst=2.3.11-2+deb12u1 \
     postgresql \
     postgresql-contrib \
     tdsodbc \
@@ -42,7 +44,7 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
-RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
  then \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
@@ -54,7 +56,7 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess Driver
-RUN if [[ $(uname -m) == "x86_64" ]]; \
+RUN if [ $(uname -m) = "x86_64" ]; \
   then \
   curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
   && apt update \
@@ -76,21 +78,20 @@ ARG INGESTION_DEPENDENCY="all"
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="1.6.0.0.dev0"
+ARG RI_VERSION="1.8.0.0.dev0"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN if [[ $(uname -m) == "x86_64" ]]; \
-  then \
-  pip install "openmetadata-ingestion[db2]~=${RI_VERSION}"; \
-  fi
+RUN [ $(uname -m) = "x86_64" ] \
+  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
+  || echo "DB2 not supported on ARM architectures."
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker and cncf kubernetes
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab" | xargs pip uninstall -y
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error

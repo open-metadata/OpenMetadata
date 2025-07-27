@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import UserProfileInheritedRoles from './UserProfileInheritedRoles.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
 
@@ -32,7 +31,9 @@ describe('Test User Profile Roles Component', () => {
       screen.getByTestId('user-profile-inherited-roles')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('inherited-roles-label')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('user-profile-inherited-roles')
+    ).toBeInTheDocument();
 
     expect(await screen.findAllByText('Chip')).toHaveLength(1);
   });

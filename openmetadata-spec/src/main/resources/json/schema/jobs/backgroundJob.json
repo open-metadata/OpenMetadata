@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/jobs/backgroundJob.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BackgroundJob",
+  "description": "Defines a background job that is triggered on insertion of new record in background_jobs table.",
+  "javaType": "org.openmetadata.schema.jobs.BackgroundJob",
+  "type": "object",
+  "properties": {
+    "id": {
+      "existingJavaType": "java.lang.Long",
+      "description": "Unique identifier for the job. This field is auto-incremented."
+    },
+    "jobType": {
+      "type": "string",
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN"],
+      "description": "Type of the job."
+    },
+    "methodName": {
+      "type": "string",
+      "description": "JobHandler name of the method that will be executed for this job."
+    },
+    "jobArgs": {
+      "oneOf": [
+        {
+          "$ref": "./enumCleanupArgs.json"
+        },
+        {
+         "type": "object",
+         "additionalProperties": true
+        }
+      ],
+      "description": "Object containing job arguments."
+    },
+    "runAt": {
+      "description": "Timestamp when the job was run in Unix epoch time milliseconds (default: as soon as possible).",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["COMPLETED", "FAILED", "RUNNING","PENDING"],
+      "description": "Current status of the job."
+    },
+    "createdBy": {
+      "type": "string",
+      "description": "User or Bot who triggered the background job."
+    },
+    "createdAt": {
+      "description": "Timestamp when the job was created in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Time when job was last updated in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["id", "jobType", "methodName", "jobArgs", "status", "createdBy", "createdAt", "updatedAt"],
+  "additionalProperties": false
+}

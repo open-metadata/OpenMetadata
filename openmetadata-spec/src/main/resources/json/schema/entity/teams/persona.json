@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/teams/persona.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Team",
+  "title": "Persona",
   "description": "This schema defines the Persona entity. A `Persona` is a job function associated with a user. An Example, Data Engineer or Data Consumer is a Persona of a user in Metadata world.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Persona",
@@ -38,6 +38,10 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "uiCustomization": {
+      "description": "Reference to the UI customization configuration.",
+      "$ref": "../../type/entityReference.json"
+    },
     "users": {
       "description": "Users that are assigned a persona.",
       "$ref": "../../type/entityReferenceList.json",
@@ -51,9 +55,18 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "default": {
+      "description": "When true, this persona is the system-wide default persona that will be applied to users who don't have any persona assigned or no default persona set.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["id", "name"],

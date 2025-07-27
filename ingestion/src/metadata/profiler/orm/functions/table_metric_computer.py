@@ -1,9 +1,9 @@
 #  pylint: disable=protected-access,attribute-defined-outside-init
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@ Run profiler metrics on the table
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Type
 
 from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
@@ -27,13 +27,29 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.registry import MetricRegistry
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
 
+
+@inject
+def get_row_count_metric(metrics: Inject[Type[MetricRegistry]] = None):
+    if metrics is None:
+        raise DependencyNotFoundError(
+            "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
+        )
+    return metrics.ROW_COUNT().name()
+
+
 COLUMN_COUNT = "columnCount"
 COLUMN_NAMES = "columnNames"
-ROW_COUNT = Metrics.ROW_COUNT().name()
+ROW_COUNT = get_row_count_metric()
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
@@ -53,7 +69,7 @@ class AbstractTableMetricComputer(ABC):
         self._metrics = metrics
         self._conn_config = conn_config
         self._database = self._runner._session.get_bind().url.database
-        self._table = self._runner.table
+        self._table = self._runner.dataset
         self._entity = entity
 
     @property
@@ -91,8 +107,8 @@ class AbstractTableMetricComputer(ABC):
             table (DeclarativeMeta): _description_
         """
         try:
-            self._schema_name = self.table.__table_args__.get("schema")
-            self._table_name = self.table.__tablename__
+            self._schema_name = self.runner.schema_name
+            self._table_name = self.runner.table_name
         except AttributeError:
             raise AttributeError(ERROR_MSG)
 
@@ -119,10 +135,10 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.table).c.keys()), type_=String).label(
-            COLUMN_NAMES
-        )
-        col_count = literal(len(inspect(self.table).c)).label(COLUMN_COUNT)
+        col_names = literal(
+            ",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String
+        ).label(COLUMN_NAMES)
+        col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(
@@ -147,7 +163,8 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
     """Base table computer"""
 
     def compute(self):
-        """Default compute behavior for table metrics"""
+        """Default compute behavior for table metrics. This method will use the raw table
+        to compute metrics and omit any sampling or partitioning logic."""
         return self.runner.select_first_from_table(
             *[metric().fn() for metric in self.metrics]
         )
@@ -335,12 +352,16 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
+        schema = (
+            self.schema_name.startswith(
+                f"{self.conn_config.credentials.gcpConfig.projectId.root}."
+            )
+            and self.schema_name
+            or f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}"
+        )
         query = self._build_query(
             columns,
-            self._build_table(
-                "__TABLES__",
-                f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}",
-            ),
+            self._build_table("__TABLES__", schema),
             where_clause,
         )
         res = self.runner._session.execute(query).first()
@@ -357,8 +378,14 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
 class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
-    def compute(self):
+    @inject
+    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):
         """compute table metrics for mysql"""
+
+        if metrics is None:
+            raise DependencyNotFoundError(
+                "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
+            )
 
         columns = [
             Column("TABLE_ROWS").label(ROW_COUNT),
@@ -385,7 +412,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         res = res._asdict()
         # innodb row count is an estimate we need to patch the row count with COUNT(*)
         # https://dev.mysql.com/doc/refman/8.3/en/information-schema-innodb-tablestats-table.html
-        row_count = self.runner.select_first_from_table(Metrics.ROW_COUNT().fn())
+        row_count = self.runner.select_first_from_table(metrics.ROW_COUNT().fn())
         res.update({ROW_COUNT: row_count.rowCount})
         return res
 
@@ -412,7 +439,7 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         )
         res = self.runner._session.execute(query).first()
         if not res:
-            return None
+            return super().compute()
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):

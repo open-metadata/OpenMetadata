@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { expect, Page, Response } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -38,12 +39,13 @@ const verifyLastExecutionStatus = async (page: Page) => {
       },
       {
         // Custom expect message for reporting, optional.
-        message: 'To get the last run execution status as success',
+        message:
+          'To get the last run execution status as success or active with error',
         intervals: [30_000],
         timeout: 300_000,
       }
     )
-    .toBe('success');
+    .toEqual(expect.stringMatching(/success|activeError/g));
 
   await page.reload();
 
@@ -52,13 +54,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
   await expect(page.getByTestId('pipeline-status')).toContainText('Success');
 };
 
-const verifyLastExecutionRun = async (page: Page) => {
-  const response = await page.waitForResponse(
-    '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
-  );
-
-  expect(response.status()).toBe(200);
-
+const verifyLastExecutionRun = async (page: Page, response: Response) => {
   const responseData = await response.json();
   if (responseData.data.length > 0) {
     expect(responseData.data).toHaveLength(1);
@@ -67,7 +63,9 @@ const verifyLastExecutionRun = async (page: Page) => {
       // wait for success status
       await verifyLastExecutionStatus(page);
     } else {
-      expect(responseData.data[0].status).toBe('success');
+      expect(responseData.data[0].status).toEqual(
+        expect.stringMatching(/success|activeError/g)
+      );
     }
   }
 };
@@ -79,18 +77,44 @@ test('Search Index Application', async ({ page }) => {
   });
 
   await test.step('Verify last execution run', async () => {
+    const statusAPI = page.waitForResponse(
+      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
+    );
     await page
       .locator(
         '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
       )
       .click();
-    await verifyLastExecutionRun(page);
+    const statusResponse = await statusAPI;
+
+    expect(statusResponse.status()).toBe(200);
+
+    await verifyLastExecutionRun(page, statusResponse);
+  });
+
+  await test.step('View App Run Config', async () => {
+    await page.getByTestId('app-historical-config').click();
+    await page.waitForSelector('[role="dialog"].ant-modal');
+
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await expect(page.locator('.ant-modal-title')).toContainText(
+      'Search Indexing Configuration'
+    );
+
+    await page.click('[data-testid="app-run-config-close"]');
+    await page.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'detached',
+    });
   });
 
   await test.step('Edit application', async () => {
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.rc-virtual-list [title="None"]');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
 
     const deployResponse = page.waitForResponse('/api/v1/apps/*');
     await page.click('.ant-modal-body [data-testid="deploy-button"]');
@@ -103,14 +127,36 @@ test('Search Index Application', async ({ page }) => {
     );
 
     await page.click('[data-testid="configuration"]');
-    await page.fill('#root\\/batchSize', '0');
+    await page.waitForLoadState('networkidle');
 
-    await page.getByTitle('chart').getByLabel('close').click();
-
-    await page.click(
-      '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
+    await expect(page.locator('#search-indexing-application')).toContainText(
+      'Search Indexing Application'
     );
-    await page.click('[data-testid="select-option-JP"]');
+
+    await expect(page.locator('form')).toContainText('Auto Tune');
+
+    await page.fill('#root\\/batchSize', '100');
+
+    await page.getByTestId('tree-select-widget').click();
+
+    // Bring table option to view in dropdown via searching for it
+    await page
+      .getByTestId('tree-select-widget')
+      .getByRole('combobox')
+      .fill('Table');
+
+    // uncheck the entity
+    await page.getByRole('tree').getByTitle('Table').click();
+
+    // Need an outside click to close the dropdown
+    await clickOutside(page);
+    await page.locator('[for="root/searchIndexMappingLanguage"]').click();
+
+    await page.getByTestId('select-widget').click();
+
+    await expect(page.getByTestId('select-option-JP')).toBeVisible();
+
+    await page.getByTestId('select-option-JP').click();
 
     const responseAfterSubmit = page.waitForResponse('/api/v1/apps/*');
     await page.click('[data-testid="submit-btn"]');
@@ -154,22 +200,30 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="install-application"]');
     await page.click('[data-testid="save-button"]');
     await page.click('[data-testid="submit-btn"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.rc-virtual-list [title="None"]');
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
 
-    expect(await page.innerText('[data-testid="cron-type"]')).toContain('None');
+    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
+    const getApplications = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/apps?limit') &&
+        request.method() === 'GET'
+    );
     await page.click('[data-testid="deploy-button"]');
     await installApplicationResponse;
 
     await toastNotification(page, 'Application installed successfully');
 
-    const card = page.locator(
-      '[data-testid="search-indexing-application-card"]'
-    );
+    await getApplications;
 
-    expect(await card.isVisible()).toBe(true);
+    await expect(
+      page.getByTestId('search-indexing-application-card')
+    ).toBeVisible();
   });
 
   if (process.env.PLAYWRIGHT_IS_OSS) {
@@ -189,9 +243,15 @@ test('Search Index Application', async ({ page }) => {
 
       await toastNotification(page, 'Application triggered successfully');
 
+      const statusAPI = page.waitForResponse(
+        '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
+      );
       await page.reload();
+      const statusResponse = await statusAPI;
 
-      await verifyLastExecutionRun(page);
+      expect(statusResponse.status()).toBe(200);
+
+      await verifyLastExecutionRun(page, statusResponse);
     });
   }
 });

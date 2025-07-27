@@ -15,11 +15,15 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
-import { EntityTypeEndpoint } from '../Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ServiceEntity,
+} from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
 
 export class DatabaseServiceClass extends EntityClass {
-  entity = {
+  entity: ServiceEntity = {
     name: `pw-database-service-${uuid()}`,
     serviceType: 'Mysql',
     connection: {
@@ -39,10 +43,11 @@ export class DatabaseServiceClass extends EntityClass {
     },
   };
 
-  entityResponseData: unknown;
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string) {
+  constructor(name?: string, entity?: ServiceEntity) {
     super(EntityTypeEndpoint.DatabaseService);
+    this.entity = entity ?? this.entity;
     this.entity.name = name ?? this.entity.name;
     this.type = 'Database Service';
   }
@@ -85,6 +90,17 @@ export class DatabaseServiceClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.entity.name,
+        type: SERVICE_TYPE.Database,
+      },
+      false
+    );
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
     await visitServiceDetailsPage(
       page,
       {

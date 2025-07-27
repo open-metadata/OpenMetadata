@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,13 +17,19 @@ from datetime import datetime, time, timedelta, timezone
 from math import floor
 from typing import Union
 
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.utils.deprecation import deprecated
 from metadata.utils.helpers import datetime_to_ts
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 
 def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
-    """Convert a datetime object to timestamp integer. Datetime can be timezone aware or naive. Result
-    will always be in UTC.
+    """Convert a datetime object to timestamp integer. If datetime is timezone aware, it will be converted to UTC.
+    If it is naive it will be assumed to be in UTC.
+
+    # TODO: not sure the milliseconds flag is useful. Maybe this should return a 'Timestamp' object instead.
 
     Args:
         datetime_value (_type_): datetime object
@@ -37,10 +43,27 @@ def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
             f"Object of type {type(datetime_value).__name__} has not method `timestamp()`"
         )
 
+    datetime_value = (
+        datetime_value.replace(tzinfo=timezone.utc)
+        if datetime_value.tzinfo is None
+        else datetime_value.astimezone(timezone.utc)
+    )
     tmsap = datetime_value.timestamp()
     if milliseconds:
         return int(tmsap * 1000)
     return int(tmsap)
+
+
+def timestamp_to_datetime(ts: Timestamp) -> datetime:
+    """Convert a timestamp to datetime object in UTC.
+
+    Args:
+        ts (Timestamp): timestamp
+
+    Returns:
+        datetime: datetime object
+    """
+    return datetime.fromtimestamp(ts.root / 1000, tz=timezone.utc)
 
 
 def get_beginning_of_day_timestamp_mill(

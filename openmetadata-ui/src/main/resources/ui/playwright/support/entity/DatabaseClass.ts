@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import {
   assignDomain,
   removeDomain,
@@ -28,7 +29,11 @@ import {
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { Domain } from '../domain/Domain';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DatabaseClass extends EntityClass {
@@ -111,15 +116,19 @@ export class DatabaseClass extends EntityClass {
     databaseSchema: `${this.service.name}.${this.entity.name}.${this.schema.name}`,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
-  schemaResponseData: unknown;
-  tableResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  tableResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Database);
     this.service.name = name ?? this.service.name;
     this.type = 'Database';
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -203,6 +212,23 @@ export class DatabaseClass extends EntityClass {
     await databaseResponse;
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.service.name,
+        type: SERVICE_TYPE.Database,
+      },
+      false
+    );
+
+    const databaseResponse = page.waitForResponse(
+      `/api/v1/databases/name/*${this.entity.name}?**`
+    );
+    await page.getByTestId(this.entity.name).click();
+    await databaseResponse;
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
@@ -240,7 +266,9 @@ export class DatabaseClass extends EntityClass {
     await expect(
       page
         .getByTestId(`table-data-card_${searchTerm}`)
-        .getByRole('link', { name: owner })
+        .getByTestId('owner-label')
+        .getByTestId('owner-link')
+        .getByTestId(owner)
     ).toBeVisible();
   }
 
@@ -339,6 +367,6 @@ export class DatabaseClass extends EntityClass {
     await assignDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
     await updateDomain(page, domain2);
-    await removeDomain(page);
+    await removeDomain(page, domain2);
   }
 }

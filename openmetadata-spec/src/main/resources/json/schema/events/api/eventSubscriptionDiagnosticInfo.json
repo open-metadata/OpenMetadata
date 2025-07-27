@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/eventSubscriptionDiagnosticInfo.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event Subscription Diagnostic Info",
+  "description": "Schema defining the response for event subscription diagnostics, including details about processed and unprocessed events.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo",
+  "properties": {
+    "latestOffset": {
+      "description": "The latest offset of the event in the system.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "currentOffset": {
+      "description": "The current offset of the event subscription.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "startingOffset": {
+      "description": "The initial offset of the event subscription when it started processing.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "hasProcessedAllEvents": {
+      "description": "Indicates whether all events have been processed.",
+      "type": "boolean"
+    },
+    "successfulEventsCount": {
+      "description": "Count of successful events for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "failedEventsCount": {
+      "description": "Count of failed events for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "relevantUnprocessedEventsCount": {
+      "description": "The number of relevant unprocessed events based on the alert's filtering rules for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "totalUnprocessedEventsCount": {
+      "description": "The total number of unprocessed events.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "relevantUnprocessedEventsList": {
+      "description": "A list of relevant unprocessed events based on the alert's filtering criteria.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/changeEvent.json"
+      }
+    },
+    "totalUnprocessedEventsList": {
+      "description": "A list of all unprocessed events.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/changeEvent.json"
+      }    }
+  },
+  "additionalProperties": false
+}

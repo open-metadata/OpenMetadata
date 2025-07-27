@@ -12,21 +12,17 @@
  */
 import { Editor, ReactRenderer } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
-import { EditorSlotsRef } from './BlockEditor.interface';
+import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
 
-interface EditorSlotsProps {
-  editor: Editor | null;
-}
-
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
-  ({ editor }, ref) => {
+  ({ editor, menuType }, ref) => {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
     const handleLinkToggle = () => {
@@ -142,12 +138,17 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       }
     };
 
-    const menus = !isNil(editor) && (
+    /**
+     * render the bubble menu only if the editor is available
+     * and the menu type is bubble
+     */
+    const menus = !isNil(editor) && menuType === 'bubble' && (
       <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
     );
 
     useImperativeHandle(ref, () => ({
       onMouseDown: handleLinkPopup,
+      onLinkToggle: handleLinkToggle,
     }));
 
     if (isNil(editor)) {

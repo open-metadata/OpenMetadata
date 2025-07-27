@@ -11,76 +11,56 @@
  *  limitations under the License.
  */
 
-import { RightOutlined, SettingOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip } from 'antd';
+import { RightOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
-import React, {
-  FC,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
-import { ReactComponent as EditIconColor } from '../../../assets/svg/ic-edit-lineage-colored.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit-lineage.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { SearchIndex } from '../../../enums/search.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
-import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
 import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { ControlProps, LineageConfig } from './EntityLineage.interface';
-import LineageConfigModal from './LineageConfigModal';
+import { ControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
 const CustomControls: FC<ControlProps> = ({
   style,
   className,
-  deleted,
-  hasEditAccess,
-  handleFullScreenViewClick,
-  onExitFullScreenViewClick,
 }: ControlProps) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const [dialogVisible, setDialogVisible] = useState<boolean>(false);
-  const {
-    lineageConfig,
-    onLineageEditClick,
-    expandAllColumns,
-    loading,
-    status,
-    isEditMode,
-    activeLayer,
-    toggleColumnView,
-    onLineageConfigUpdate,
-    onQueryFilterUpdate,
-    onExportClick,
-  } = useLineageProvider();
+  const { onQueryFilterUpdate, nodes } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
-  const isColumnLayerActive = useMemo(() => {
-    return activeLayer.includes(LineageLayerView.COLUMN);
-  }, [activeLayer]);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
   };
+
+  const queryFilter = useMemo(() => {
+    const nodeIds = (nodes ?? [])
+      .map((node) => node.data?.node?.id)
+      .filter(Boolean);
+
+    return {
+      query: {
+        bool: {
+          must: {
+            terms: {
+              'id.keyword': nodeIds,
+            },
+          },
+        },
+      },
+    };
+  }, [nodes]);
 
   const filterMenu: ItemType[] = useMemo(() => {
     return filters.map((filter) => ({
@@ -106,26 +86,6 @@ const CustomControls: FC<ControlProps> = ({
 
     setSelectedFilter(defaultFilterValues);
   }, []);
-
-  const editIcon = useMemo(() => {
-    return (
-      <span className="anticon">
-        {isEditMode ? (
-          <EditIcon height="16px" width="16px" />
-        ) : (
-          <EditIconColor height="16px" width="16px" />
-        )}
-      </span>
-    );
-  }, [isEditMode]);
-
-  const handleDialogSave = useCallback(
-    (config: LineageConfig) => {
-      onLineageConfigUpdate?.(config);
-      setDialogVisible(false);
-    },
-    [onLineageConfigUpdate, setDialogVisible]
-  );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
     const quickFilterQuery = getQuickFilterQuery(data);
@@ -175,157 +135,36 @@ const CustomControls: FC<ControlProps> = ({
   }, [selectedFilter, selectedQuickFilters, filters]);
 
   return (
-    <>
-      <Row
-        className={classNames('z-10 w-full', className)}
-        gutter={[8, 8]}
-        style={style}>
-        <Col flex="auto">
-          <LineageSearchSelect />
-          <Space className="m-l-xs" size={16}>
-            <Dropdown
-              menu={{
-                items: filterMenu,
-                selectedKeys: selectedFilter,
-              }}
-              trigger={['click']}>
-              <Button ghost className="expand-btn" type="primary">
-                {t('label.advanced')}
-                <RightOutlined />
-              </Button>
-            </Dropdown>
-            <ExploreQuickFilters
-              independent
-              aggregations={{}}
-              fields={selectedQuickFilters}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={handleQuickFiltersValueSelect}
-            />
-          </Space>
-        </Col>
-        <Col flex="250px">
-          <Space className="justify-end w-full" size={16}>
-            {isColumnLayerActive && !isEditMode && (
-              <Button
-                ghost
-                className="expand-btn"
-                data-testid="expand-column"
-                type="primary"
-                onClick={toggleColumnView}>
-                {expandAllColumns
-                  ? t('label.collapse-all')
-                  : t('label.expand-all')}
-              </Button>
-            )}
-
-            <Tooltip
-              title={t('label.export-entity', {
-                entity: t('label.lineage'),
-              })}>
-              <Button
-                className="flex-center"
-                data-testid="lineage-export"
-                disabled={isEditMode}
-                icon={
-                  <span className="anticon">
-                    <ExportIcon
-                      color={theme.primaryColor}
-                      height={14}
-                      width={14}
-                    />
-                  </span>
-                }
-                onClick={onExportClick}
-              />
-            </Tooltip>
-
-            {handleFullScreenViewClick && (
-              <Tooltip title={t('label.fit-to-screen')}>
-                <Button
-                  data-testid="full-screen"
-                  icon={
-                    <span className="anticon">
-                      <FullScreen
-                        color={theme.primaryColor}
-                        height={16}
-                        width={16}
-                      />
-                    </span>
-                  }
-                  onClick={handleFullScreenViewClick}
-                />
-              </Tooltip>
-            )}
-            {onExitFullScreenViewClick && (
-              <Tooltip title={t('label.exit-fit-to-screen')}>
-                <Button
-                  data-testid="exit-full-screen"
-                  icon={
-                    <span className="anticon">
-                      <ExitFullScreen
-                        color={theme.primaryColor}
-                        height={16}
-                        width={16}
-                      />
-                    </span>
-                  }
-                  onClick={onExitFullScreenViewClick}
-                />
-              </Tooltip>
-            )}
-
-            <Tooltip title={t('label.setting-plural')}>
-              <Button
-                data-testid="lineage-config"
-                disabled={isEditMode}
-                icon={
-                  <SettingOutlined
-                    style={{
-                      fontSize: '16px',
-                      color: theme.primaryColor,
-                    }}
-                  />
-                }
-                onClick={() => setDialogVisible(true)}
-              />
-            </Tooltip>
-
-            {!deleted && (
-              <Tooltip
-                placement="topRight"
-                title={t('label.edit-entity', {
-                  entity: t('label.lineage'),
-                })}>
-                <Button
-                  className={classNames(
-                    'custom-control-edit-button rounded-full',
-                    {
-                      active: isEditMode,
-                    }
-                  )}
-                  data-testid="edit-lineage"
-                  disabled={!hasEditAccess}
-                  icon={getLoadingStatusValue(editIcon, loading, status)}
-                  title={
-                    hasEditAccess
-                      ? t('label.edit-entity', { entity: t('label.lineage') })
-                      : NO_PERMISSION_FOR_ACTION
-                  }
-                  onClick={onLineageEditClick}
-                />
-              </Tooltip>
-            )}
-          </Space>
-        </Col>
-      </Row>
-      <LineageConfigModal
-        config={lineageConfig}
-        visible={dialogVisible}
-        onCancel={() => setDialogVisible(false)}
-        onSave={handleDialogSave}
-      />
-    </>
+    <Row
+      className={classNames('z-10 w-full', className)}
+      gutter={[8, 8]}
+      style={style}>
+      <Col flex="auto">
+        <LineageSearchSelect />
+        <Space className="m-l-xs" size={16}>
+          <Dropdown
+            menu={{
+              items: filterMenu,
+              selectedKeys: selectedFilter,
+            }}
+            trigger={['click']}>
+            <Button ghost className="expand-btn" type="primary">
+              {t('label.advanced')}
+              <RightOutlined />
+            </Button>
+          </Dropdown>
+          <ExploreQuickFilters
+            independent
+            aggregations={{}}
+            defaultQueryFilter={queryFilter}
+            fields={selectedQuickFilters}
+            index={SearchIndex.ALL}
+            showDeleted={false}
+            onFieldValueSelect={handleQuickFiltersValueSelect}
+          />
+        </Space>
+      </Col>
+    </Row>
   );
 };
 

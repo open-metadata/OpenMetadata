@@ -14,17 +14,17 @@
 import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React from 'react';
+import moment from 'moment';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import { ERROR_MESSAGE } from '../constants/constants';
+import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 
@@ -46,6 +46,12 @@ export const commonUserDetailColumns = (
     dataIndex: 'username',
     key: 'username',
     render: (_, record) => userCellRenderer(record),
+  },
+  {
+    title: t('label.name'),
+    dataIndex: 'name',
+    key: 'name',
+    render: (_, record) => getEntityName(record),
   },
   {
     title: t('label.team-plural'),
@@ -182,4 +188,53 @@ export const getUserCreationErrorMessage = ({
   }
 
   return t('server.create-entity-error', { entity });
+};
+
+export const getEmptyTextFromUserProfileItem = (item: string) => {
+  const messages = {
+    roles: t('message.no-roles-assigned'),
+    teams: t('message.no-teams-assigned'),
+    inheritedRoles: t('message.no-inherited-roles-found'),
+    personas: t('message.no-persona-assigned'),
+  };
+
+  return messages[item as keyof typeof messages] || NO_DATA_PLACEHOLDER;
+};
+
+export const getUserOnlineStatus = (userData: User, includeTooltip = false) => {
+  // Don't show online status for bots or if userData is not provided
+  if (!userData || userData.isBot) {
+    return null;
+  }
+
+  // Use lastActivityTime if available, otherwise fall back to lastLoginTime
+  const activityTime = userData.lastActivityTime || userData.lastLoginTime;
+
+  if (!activityTime) {
+    return null;
+  }
+
+  const lastActivityMoment = moment(activityTime);
+  const now = moment();
+  const diffMinutes = now.diff(lastActivityMoment, 'minutes');
+
+  if (diffMinutes <= 5) {
+    return {
+      status: 'success' as const,
+      text: t('label.online-now'),
+      ...(includeTooltip && {
+        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
+      }),
+    };
+  } else if (diffMinutes <= 60) {
+    return {
+      status: 'success' as const,
+      text: t('label.active-recently'),
+      ...(includeTooltip && {
+        tooltip: t('label.last-activity-n-minutes-ago', { count: diffMinutes }),
+      }),
+    };
+  }
+
+  return null;
 };

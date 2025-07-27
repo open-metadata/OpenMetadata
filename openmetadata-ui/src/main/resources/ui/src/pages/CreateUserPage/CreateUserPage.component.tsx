@@ -11,19 +11,16 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
-import {
-  getBotsPagePath,
-  getUsersPagePath,
-  PAGE_SIZE_LARGE,
-} from '../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
@@ -36,25 +33,36 @@ import {
   createUserWithPut,
   getBotByName,
 } from '../../rest/userAPI';
-import { getSettingPath } from '../../utils/RouterUtils';
+import {
+  getBotsPagePath,
+  getSettingPath,
+  getUsersPagePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
 const CreateUserPage = () => {
-  const history = useHistory();
+  const {
+    state,
+  }: {
+    state?: { isAdminPage: boolean };
+  } = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
+  const isAdminPage = Boolean(state?.isAdminPage);
   const { setInlineAlertDetails } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { bot } = useParams<{ bot: string }>();
+  const { bot } = useRequiredParams<{ bot: string }>();
 
   const goToUserListPage = () => {
     if (bot) {
-      history.push(getSettingPath(GlobalSettingOptions.BOTS));
+      navigate(getSettingPath(GlobalSettingOptions.BOTS));
     } else {
-      history.goBack();
+      navigate(-1);
     }
   };
 
@@ -169,25 +177,48 @@ const CreateUserPage = () => {
     fetchRoles();
   }, []);
 
+  const BREADCRUMB_DETAILS = useMemo(() => {
+    if (bot) {
+      return {
+        name: t('label.bot'),
+        namePlural: t('label.bot-plural'),
+        url: getBotsPagePath(),
+      };
+    } else if (isAdminPage) {
+      return {
+        namePlural: t('label.admin-plural'),
+        name: t('label.admin'),
+        url: getUsersPagePath(true),
+      };
+    } else {
+      return {
+        name: t('label.user'),
+        namePlural: t('label.user-plural'),
+        url: getUsersPagePath(),
+      };
+    }
+  }, [bot, isAdminPage]);
+
   const slashedBreadcrumbList = useMemo(
     () => [
       {
-        name: bot ? t('label.bot-plural') : t('label.user-plural'),
-        url: bot ? getBotsPagePath() : getUsersPagePath(),
+        name: BREADCRUMB_DETAILS.namePlural,
+        url: BREADCRUMB_DETAILS.url,
       },
       {
-        name: `${t('label.create')} ${bot ? t('label.bot') : t('label.user')}`,
+        name: `${t('label.create')} ${BREADCRUMB_DETAILS.name}`,
         url: '',
         activeTitle: true,
       },
     ],
-    [bot]
+    [BREADCRUMB_DETAILS]
   );
 
   return (
     <PageLayoutV1
+      center
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
-      <div className="max-width-md w-9/10 service-form-container">
+      <Card className="m-x-auto w-800">
         <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
         <div className="m-t-md">
           <CreateUserComponent
@@ -198,7 +229,7 @@ const CreateUserPage = () => {
             onSave={handleAddUserSave}
           />
         </div>
-      </div>
+      </Card>
     </PageLayoutV1>
   );
 };

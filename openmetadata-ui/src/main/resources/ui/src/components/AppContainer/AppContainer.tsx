@@ -13,32 +13,48 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useCallback, useEffect } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { SettingType } from '../../generated/settings/settings';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
+import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import Appbar from '../AppBar/Appbar';
+import i18n from '../../utils/i18next/LocalUtil';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
+import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import './app-container.less';
 
+const { Content } = Layout;
+
 const AppContainer = () => {
-  const { i18n } = useTranslation();
-  const { Header, Sider, Content } = Layout;
-  const { currentUser } = useApplicationStore();
+  const { currentUser, setAppPreferences, appPreferences } =
+    useApplicationStore();
+  const {
+    preferences: { language },
+  } = useCurrentUserPreferences();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
-  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const { isAuthenticated } = useApplicationStore();
+
   const { setConfig, bannerDetails } = useLimitStore();
 
-  const fetchLimitConfig = useCallback(async () => {
+  const fetchAppConfigurations = useCallback(async () => {
     try {
-      const response = await getLimitConfig();
+      const [response, lineageConfig] = await Promise.all([
+        getLimitConfig(),
+        getSettingsByType(SettingType.LineageSettings),
+      ]);
 
       setConfig(response);
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig: lineageConfig as LineageSettings,
+      });
     } catch (error) {
       // silent fail
     }
@@ -46,9 +62,15 @@ const AppContainer = () => {
 
   useEffect(() => {
     if (currentUser?.id) {
-      fetchLimitConfig();
+      fetchAppConfigurations();
     }
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (language) {
+      i18n.changeLanguage(language);
+    }
+  }, [language]);
 
   return (
     <Layout>
@@ -56,19 +78,19 @@ const AppContainer = () => {
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
-          ['reserve-right-sidebar']: Boolean(ApplicationExtras),
         })}>
-        <Sider
-          className={classNames('left-sidebar-col', {
-            'left-sidebar-col-rtl': isDirectionRTL,
-          })}
-          width={60}>
-          <LeftSidebar />
-        </Sider>
+        {/* Render left side navigation */}
+        <LeftSidebar />
+
+        {/* Render main content */}
         <Layout>
-          <Header className="p-x-0">
-            <Appbar />
-          </Header>
+          {/* Render Appbar */}
+          {applicationRoutesClass.isProtectedRoute(location.pathname) &&
+          isAuthenticated ? (
+            <NavBar />
+          ) : null}
+
+          {/* Render main content */}
           <Content>
             <AuthenticatedRouter />
             {ApplicationExtras && <ApplicationExtras />}

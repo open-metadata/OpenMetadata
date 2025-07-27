@@ -1,0 +1,32 @@
+{
+  "name": "AutoClassificationBotPolicy",
+  "displayName": "AutoClassification Bot Policy",
+  "fullyQualifiedName": "AutoClassificationBotPolicy",
+  "description": "Policy for AutoClassification Bot to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "AutoClassificationBotRule-Allow-Table",
+      "description" : "Allow adding tags and sample data to the tables",
+      "resources" : ["Table"],
+      "operations": ["EditAll", "ViewAll"],
+      "effect": "allow"
+    },
+    {
+      "name": "AutoClassificationBotRule-ViewAll",
+      "description" : "Allow viewing all assets",
+      "resources" : ["All"],
+      "operations": ["ViewAll"],
+      "effect": "allow"
+    },
+    {
+      "name": "DisplayName-Deny",
+      "description" : "Deny bots to update display name",
+      "resources" : ["All"],
+      "operations": ["EditDisplayName"],
+      "effect": "deny"
+    }
+  ]
+}

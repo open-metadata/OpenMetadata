@@ -119,7 +119,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "owners": {
       "description": "Owners of this pipeline service.",
@@ -133,6 +133,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -142,8 +146,16 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the MLModel service belongs to.",
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains" : {
+      "description": "Domains the MLModel service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

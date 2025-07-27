@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,9 +19,10 @@ import traceback
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.pii.algorithms.presidio_utils import _load_spacy_model
 from metadata.pii.constants import PII, SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.ner import NEREntity
@@ -46,6 +47,7 @@ class StringAnalysis(BaseModel):
 class NLPEngineModel(BaseModel):
     """Required to pass the nlp_engine as {"lang_code": "en", "model_name": "en_core_web_lg"}"""
 
+    model_config = ConfigDict(protected_namespaces=())
     lang_code: str
     model_name: str
 
@@ -55,18 +57,10 @@ class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        import spacy
         from presidio_analyzer import AnalyzerEngine
         from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
 
-        try:
-            spacy.load(SPACY_EN_MODEL)
-        except OSError:
-            logger.warning("Downloading en_core_web_md language model for the spaCy")
-            from spacy.cli import download
-
-            download(SPACY_EN_MODEL)
-            spacy.load(SPACY_EN_MODEL)
+        _load_spacy_model(SPACY_EN_MODEL)
 
         nlp_engine_model = NLPEngineModel(
             lang_code=SUPPORTED_LANG, model_name=SPACY_EN_MODEL

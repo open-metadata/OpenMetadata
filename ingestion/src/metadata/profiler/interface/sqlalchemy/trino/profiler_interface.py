@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,9 +19,14 @@ from typing import List
 from sqlalchemy import func
 from sqlalchemy.exc import ProgrammingError
 
+from metadata.ingestion.source.database.trino.profiler.system_tables_profiler import (
+    TrinoStoredStatisticsSource,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
     handle_query_exception,
+)
+from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import (
+    ProfilerWithStatistics,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import FLOAT_SET
@@ -31,7 +36,7 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-class TrinoProfilerInterface(SQAProfilerInterface):
+class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource):
     """
     Interface to interact with registry supporting
     sqlalchemy.
@@ -71,11 +76,11 @@ class TrinoProfilerInterface(SQAProfilerInterface):
                 return dict(row)
         except ProgrammingError as err:
             logger.info(
-                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to {err}"
+                f"Skipping window metrics for {runner.table_name}.{column.name} due to {err}"
             )
             return None
 
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None

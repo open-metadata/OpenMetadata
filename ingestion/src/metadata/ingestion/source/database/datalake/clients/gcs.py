@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,9 +33,11 @@ from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credential
 
 class DatalakeGcsClient(DatalakeBaseClient):
     def __init__(
-        self, client: storage.Client, temp_credentials_file_path_list: List[str]
+        self,
+        client: storage.Client,
+        temp_credentials_file_path_list: List[str],
     ):
-        self._client = client
+        super().__init__(client=client)
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
 
     @property
@@ -49,8 +51,10 @@ class DatalakeGcsClient(DatalakeBaseClient):
         if hasattr(config.securityConfig, "gcpConfig") and isinstance(
             config.securityConfig.gcpConfig.projectId, MultipleProjectId
         ):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-                gcs_config.securityConfig.gcpConfig.projectId.root[0]
+            gcs_config.securityConfig.gcpConfig.projectId = (
+                SingleProjectId.model_validate(
+                    gcs_config.securityConfig.gcpConfig.projectId.root[0]
+                )
             )
 
         if not gcs_config.securityConfig:
@@ -89,8 +93,8 @@ class DatalakeGcsClient(DatalakeBaseClient):
         gcs_config = deepcopy(config)
 
         if hasattr(gcs_config.securityConfig, "gcpConfig"):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-                database_name
+            gcs_config.securityConfig.gcpConfig.projectId = (
+                SingleProjectId.model_validate(database_name)
             )
 
         self._client = self.get_gcs_client(gcs_config)

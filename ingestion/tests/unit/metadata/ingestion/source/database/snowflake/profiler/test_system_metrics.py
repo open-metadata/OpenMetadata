@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
+from metadata.profiler.metrics.system.snowflake.system import (
     PUBLIC_SCHEMA,
     SnowflakeTableResovler,
 )

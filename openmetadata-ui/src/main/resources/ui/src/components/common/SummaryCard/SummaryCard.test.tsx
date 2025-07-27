@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { SummaryCard } from './SummaryCard.component';
 import { SummaryCardProps } from './SummaryCard.interface';
 
@@ -66,5 +65,32 @@ describe('SummaryCard component', () => {
     expect(description).toBeInTheDocument();
     expect(title.textContent).toStrictEqual('summary title');
     expect(description.textContent).toStrictEqual('description');
+  });
+
+  it("label should be inverse, if 'inverseLabel' is true", async () => {
+    render(<SummaryCard {...mockProps} inverseLabel />);
+
+    const label = await screen.findByTestId('summary-card-label');
+
+    expect(label).toHaveClass('inverse-label');
+  });
+
+  it("should render title icon, if 'titleIcon' is provided", async () => {
+    render(
+      <SummaryCard
+        {...mockProps}
+        titleIcon={<span data-testid="title-icon">icon</span>}
+      />
+    );
+
+    expect(await screen.findByTestId('title-icon')).toBeInTheDocument();
+  });
+
+  it("should render card background based on 'cardBackgroundClass'", async () => {
+    render(<SummaryCard {...mockProps} cardBackgroundClass="bg-success" />);
+
+    const container = await screen.findByTestId('summary-card-container');
+
+    expect(container).toHaveClass('bg-success');
   });
 });

@@ -12,16 +12,18 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import i18next from 'i18next';
-import { isArray, isEmpty } from 'lodash';
-import React from 'react';
 import {
-  AsyncFetchListValues,
+  ListValues,
+  OldJsonTree,
   RenderSettings,
-} from 'react-awesome-query-builder';
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/antd';
+import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
+import { isArray, isEmpty, toLower } from 'lodash';
+import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -31,7 +33,7 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -47,7 +49,10 @@ import {
 } from '../interface/search.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
+import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
 export const getDropDownItems = (index: string) => {
@@ -68,38 +73,6 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
       return [...COMMON_DROPDOWN_ITEMS];
   }
   // TODO: Add more quick filters
-};
-
-export const getAdvancedField = (field: string) => {
-  switch (field) {
-    case 'columns.name':
-    case 'dataModel.columns.name':
-      return AdvancedFields.COLUMN;
-
-    case 'databaseSchema.name':
-      return AdvancedFields.SCHEMA;
-
-    case 'database.name':
-      return AdvancedFields.DATABASE;
-
-    case 'charts.displayName.keyword':
-      return AdvancedFields.CHART;
-
-    case 'dataModels.displayName.keyword':
-      return AdvancedFields.DATA_MODEL;
-
-    case 'tasks.displayName.keyword':
-      return AdvancedFields.TASK;
-
-    case 'messageSchema.schemaFields.name':
-      return AdvancedFields.FIELD;
-
-    case 'service.name':
-      return AdvancedFields.SERVICE;
-
-    default:
-      return;
-  }
 };
 
 export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
@@ -128,7 +101,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
-        {i18next.t('label.add')}
+        {t('label.add')}
       </Button>
     );
   } else if (type === 'addGroup') {
@@ -139,14 +112,14 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
-        {i18next.t('label.add')}
+        {t('label.add')}
       </Button>
     );
   } else if (type === 'delGroup') {
     return (
       <Icon
-        alt={i18next.t('label.delete-entity', {
-          entity: i18next.t('label.group'),
+        alt={t('label.delete-entity', {
+          entity: t('label.group'),
         })}
         className="action action--DELETE cursor-pointer align-middle"
         component={IconDeleteColored}
@@ -365,37 +338,6 @@ export const getServiceOptions = (
     : option.text;
 };
 
-// Function to get the display name to show in the options for search Dropdowns
-export const getOptionTextFromKey = (
-  index: SearchIndex,
-  option: SuggestOption<SearchIndex, ExploreSearchSource>,
-  key: string
-) => {
-  switch (key) {
-    case 'charts.displayName.keyword': {
-      return getChartsOptions(option);
-    }
-    case 'dataModels.displayName.keyword': {
-      return getDataModelOptions(option);
-    }
-    case 'tasks.displayName.keyword': {
-      return getTasksOptions(option);
-    }
-    case 'columns.name': {
-      return getColumnsOptions(option, index);
-    }
-    case 'service.name': {
-      return getServiceOptions(option);
-    }
-    case 'messageSchema.schemaFields.name': {
-      return getSchemaFieldOptions(option);
-    }
-    default: {
-      return option.text;
-    }
-  }
-};
-
 export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
   if (!buckets) {
     return [];
@@ -413,7 +355,7 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     }));
 };
 
-export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
+export const getTierOptions = async (): Promise<ListValues> => {
   try {
     const { data: tiers } = await getTags({
       parent: 'Tier',
@@ -425,8 +367,81 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
       value: tier.fullyQualifiedName,
     }));
 
-    return tierFields;
+    return tierFields as ListValues;
   } catch (error) {
     return [];
   }
+};
+
+export const getTreeConfig = ({
+  searchOutputType,
+  searchIndex,
+  isExplorePage,
+  tierOptions,
+}: {
+  searchOutputType: SearchOutputType;
+  searchIndex: SearchIndex | SearchIndex[];
+  tierOptions: Promise<ListValues>;
+  isExplorePage: boolean;
+}) => {
+  const index = isArray(searchIndex) ? searchIndex : [searchIndex];
+
+  return searchOutputType === SearchOutputType.ElasticSearch
+    ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
+    : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
+};
+
+export const formatQueryValueBasedOnType = (
+  value: string[],
+  field: string,
+  type: string
+) => {
+  if (field.includes('extension') && type === 'text') {
+    return value.map((item) => toLower(item));
+  }
+
+  return value;
+};
+
+export const getCustomPropertyAdvanceSearchEnumOptions = (
+  enumValues: string[]
+) => {
+  return enumValues.reduce((acc: Record<string, string>, value) => {
+    acc[value] = value;
+
+    return acc;
+  }, {});
+};
+
+export const getEmptyJsonTree = (
+  defaultField: string = EntityFields.OWNERS
+): OldJsonTree => {
+  return {
+    id: QbUtils.uuid(),
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [QbUtils.uuid()]: {
+        type: 'group',
+        properties: {
+          conjunction: 'AND',
+          not: false,
+        },
+        children1: {
+          [QbUtils.uuid()]: {
+            type: 'rule',
+            properties: {
+              field: defaultField,
+              operator: null,
+              value: [],
+              valueSrc: ['value'],
+            },
+          },
+        },
+      },
+    },
+  };
 };

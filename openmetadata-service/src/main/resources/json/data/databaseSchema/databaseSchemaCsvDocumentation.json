@@ -62,6 +62,16 @@
       ]
     },
     {
+      "name": "certification",
+      "required": false,
+      "description": "Certification tag from the Certification classification. Only one certification level can be applied.",
+      "examples": [
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ]
+    },
+    {
       "name": "retentionPeriod",
       "required": false,
       "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
@@ -78,11 +88,28 @@
       ]
     },
     {
-      "name": "domain",
+      "name": "domains",
       "required": false,
-      "description": "Domain to which the database schema belongs to",
+      "description": "Domains to which the database schema belongs to, separated by ';'",
       "examples": [
-        "Marketing", "Sales"
+        "Marketing", "Sales;Operations"
+      ]
+    },
+    {
+      "name": "extension",
+      "required": false,
+      "description": "Custom property values added to the glossary term. Each field value (property and its value) is separated by `;` and internal values can be separated by `|`. For `entityReferenceList` type property, pass `type1:fqn1|type2:fqn2`. For single `entityReference` type property, pass `type:fqn`. Similarly, for `enumMultiSelect`, pass values separated by `|`, and for `enumSingleSelect`, pass a single value along with the property name. For `timeInterval` property type, pass the `startTime:endTime` to the property name. If the field value itself contains delimiter values like `,` and `;` or newline they need to be quoted, and the quotation needs to be further escaped. In general, if passing multiple field values separated by `;`, the extension column value needs to be quoted.",
+      "examples": [
+        "`customAttribute1:value1;customAttribute2:value2`",
+        "`\"dateCp:18-09-2024;dateTimeCp:18-09-2024 01:09:34;durationCp:PT5H30M10S;emailCp:admin@open-metadata.org\"`",
+        "`entRefListCp:searchIndex:elasticsearch_sample.table_search_index|databaseSchema:Glue.default.information_schema|databaseSchema:sample_data.ecommerce_db.shopify|database:Glue.default|`",
+        "`\"entRefCp:user:\"\"aaron.singh2\"\"\"`",
+        "`\"enumMultiSelectCp:val3|val2|val1|val4|val5;enumSingleSelectCp:singleVal1\"`",
+        "`\"timeCp:10:08:45;timeIntervalCp:1726142300000:17261420000;timeStampCp:1726142400000\"`",
+        "`\"integerCp:7777;numberCp:123456\"`",
+        "`\"\"\"queryCp:select col,row from table where id ='30';\"\";stringcp:sample string content\"`",
+        "`markdownCp:# Sample Markdown Text`",
+        "\"\"\"tableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value\"\"\""
       ]
     }
   ]

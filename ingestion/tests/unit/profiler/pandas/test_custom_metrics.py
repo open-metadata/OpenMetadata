@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,13 +12,14 @@
 """
 Test Metrics behavior
 """
-# import datetime
 import os
-from unittest import TestCase
-from unittest.mock import patch
+import sys
+from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -35,9 +36,27 @@ from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.processor.core import Profiler
+from metadata.sampler.pandas.sampler import DatalakeSampler
 
 BUCKET_NAME = "MyBucket"
 REGION = "us-west-1"
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
+
+
+class FakeClient:
+    def __init__(self):
+        self._client = None
+
+
+class FakeConnection:
+    def __init__(self):
+        self.client = FakeClient()
 
 
 class MetricsTest(TestCase):
@@ -98,24 +117,42 @@ class MetricsTest(TestCase):
         ],
     )
 
-    def setUp(self):
-        with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=self.dfs,
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def setUp(self, *_):
+        with (
+            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            self.sqa_profiler_interface = PandasProfilerInterface(
-                self.datalake_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+            self.sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+            )
+            self.datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                source_config=None,
+                sampler=self.sampler,
                 thread_count=1,
             )
 
-    def test_table_custom_metric(self):
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_table_custom_metric(self, *_):
         table_entity = Table(
             id=uuid4(),
             name="user",
@@ -163,34 +200,44 @@ class MetricsTest(TestCase):
                 ),
             ],
         )
-        with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=self.dfs,
+
+        with (
+            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            self.sqa_profiler_interface = PandasProfilerInterface(
-                self.datalake_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+            )
+            datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+                source_config=None,
+                sampler=sampler,
                 thread_count=1,
             )
+            profiler = Profiler(
+                profiler_interface=datalake_profiler_interface,
+            )
+            metrics = profiler.compute_metrics()
+            for k, v in metrics._table_results.items():
+                for metric in v:
+                    if metric.name == "LastNameFilter":
+                        assert metric.value == 1
+                    if metric.name == "notUS":
+                        assert metric.value == 2
 
-        profiler = Profiler(
-            profiler_interface=self.sqa_profiler_interface,
-        )
-        metrics = profiler.compute_metrics()
-        for k, v in metrics._table_results.items():
-            for metric in v:
-                if metric.name == "LastNameFilter":
-                    assert metric.value == 1
-                if metric.name == "notUS":
-                    assert metric.value == 2
-
-    def test_column_custom_metric(self):
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_column_custom_metric(self, *_):
         table_entity = Table(
             id=uuid4(),
             name="user",
@@ -216,29 +263,31 @@ class MetricsTest(TestCase):
                 )
             ],
         )
-        with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=self.dfs,
+        with (
+            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            self.sqa_profiler_interface = PandasProfilerInterface(
-                self.datalake_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+            )
+            datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+                source_config=None,
+                sampler=sampler,
                 thread_count=1,
             )
 
-        profiler = Profiler(
-            profiler_interface=self.sqa_profiler_interface,
-        )
-        metrics = profiler.compute_metrics()
-        for k, v in metrics._column_results.items():
-            for metric in v.get("customMetrics", []):
-                if metric.name == "CustomerBornedAfter1991":
-                    assert metric.value == 1
-                if metric.name == "AverageAge":
-                    assert metric.value == 2
+            profiler = Profiler(
+                profiler_interface=datalake_profiler_interface,
+            )
+            metrics = profiler.compute_metrics()
+            for k, v in metrics._column_results.items():
+                for metric in v.get("customMetrics", []):
+                    if metric.name == "CustomerBornAfter1991":
+                        assert metric.value == 1
+                    if metric.name == "AverageAge":
+                        assert metric.value == 2

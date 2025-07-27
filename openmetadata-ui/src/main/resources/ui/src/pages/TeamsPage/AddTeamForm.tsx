@@ -16,11 +16,9 @@ import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../components/common/RichTextEditor/RichTextEditor.interface';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -52,7 +50,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const [form] = useForm();
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
-  const markdownRef = useRef<EditorContentRef>();
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
     Form.useWatch<EntityReference[]>('domains', form) ?? [];
@@ -88,7 +85,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     name: 'domains',
     id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef
@@ -124,6 +121,25 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     formItemLayout: FormItemLayout.HORIZONTAL,
     helperText: t('message.access-to-collaborate'),
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          marginBottom: 0,
+        },
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
 
   useEffect(() => {
     if (visible) {
@@ -220,25 +236,13 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           />
         </Form.Item>
         {getField(isJoinableField)}
-        <Form.Item
-          label={t('label.description')}
-          name="description"
-          style={{
-            marginBottom: 0,
-          }}>
-          <RichTextEditor
-            data-testid="description"
-            initialValue=""
-            ref={markdownRef}
-            onTextChange={(value) => setDescription(value)}
-          />
-        </Form.Item>
+        {getField(descriptionField)}
         <div className="m-t-xs">
           {getField(domainsField)}
           {selectedDomain && (
             <DomainLabel
               multiple
-              domain={selectedDomain}
+              domains={selectedDomain}
               entityFqn=""
               entityId=""
               entityType={EntityType.GLOSSARY}

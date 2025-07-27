@@ -23,9 +23,12 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import customizePageClassBase from '../../../../utils/CustomizePageClassBase';
+import { PageType } from '../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
+import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';
 
 function AddWidgetTabContent({
@@ -38,27 +41,40 @@ function AddWidgetTabContent({
   const [selectedWidgetSize, setSelectedWidgetSize] = useState<number>(
     widgetSizeOptions[0].value
   );
+  const { currentPageType } = useCustomizeStore();
 
   const widgetAddable = useMemo(
     () => selectedWidgetSize <= maxGridSizeSupport,
     [selectedWidgetSize, maxGridSizeSupport]
   );
 
-  const widgetImage = useMemo(
-    () =>
-      customizePageClassBase.getWidgetImageFromKey(
-        widget.fullyQualifiedName,
-        selectedWidgetSize
-      ),
-    [widget, selectedWidgetSize]
-  );
+  const widgetImage = useMemo(() => {
+    switch (currentPageType) {
+      case PageType.Glossary:
+      case PageType.GlossaryTerm:
+        return customizeDetailPageClassBase.getGlossaryWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          selectedWidgetSize
+        );
+      case PageType.LandingPage:
+        return customizePageClassBase.getWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          selectedWidgetSize
+        );
+      default:
+        return customizeDetailPageClassBase.getDetailPageWidgetImageFromKey(
+          widget.fullyQualifiedName,
+          selectedWidgetSize
+        );
+    }
+  }, [widget, selectedWidgetSize, currentPageType]);
 
   const handleSizeChange = useCallback((e: RadioChangeEvent) => {
     setSelectedWidgetSize(e.target.value);
   }, []);
 
   return (
-    <Row>
+    <Row data-testid={widget.id}>
       <Col span={24}>
         <Space>
           <Typography.Text>{`${t('label.size')}:`}</Typography.Text>

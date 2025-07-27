@@ -16,7 +16,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TaskTabIncidentManagerHeader from './TaskTabIncidentManagerHeader.component';
@@ -157,7 +156,7 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>Severity.component</div>);
   }
 );
-jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);

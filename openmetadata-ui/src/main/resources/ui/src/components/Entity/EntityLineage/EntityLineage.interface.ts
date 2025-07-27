@@ -12,19 +12,10 @@
  */
 
 import { LoadingState } from 'Models';
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, ReactNode } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
-import { Column } from '../../../generated/entity/data/container';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../../generated/entity/type';
-
-export interface SelectedNode {
-  name: string;
-  type: string;
-  fqn: string;
-  displayName?: string;
-  id?: string;
-  entityId: string;
-}
 
 export interface Edge {
   edge: {
@@ -65,71 +56,10 @@ export interface CustomEdgeData {
   isExpanded?: false;
 }
 
-export interface SelectedEdge {
-  id: string;
-  source: EntityReference;
-  target: EntityReference;
-  data?: CustomEdgeData;
-}
-
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export type ModifiedColumn = Column & {
-  type: string;
-};
-
-export interface CustomControlElementsProps {
-  deleted: boolean | undefined;
-  isEditMode: boolean;
-  hasEditAccess: boolean | undefined;
-  onClick: () => void;
-  onExpandColumnClick: () => void;
-  loading: boolean;
-  status: LoadingState;
-}
-
-export enum EdgeTypeEnum {
-  UP_STREAM = 'upstream',
-  DOWN_STREAM = 'downstream',
-  NO_STREAM = '',
-}
-
-export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  handleFullScreenViewClick?: () => void;
-  onExitFullScreenViewClick?: () => void;
-  deleted: boolean | undefined;
-  hasEditAccess: boolean | undefined;
-  onExpandColumnClick?: () => void;
-  onOptionSelect?: (value?: string) => void;
-  onLineageConfigUpdate?: (config: LineageConfig) => void;
-}
-
-export type LineagePos = 'from' | 'to';
-
-export interface LeafNodes {
-  upStreamNode: Array<string>;
-  downStreamNode: Array<string>;
-}
-export interface LoadingNodeState {
-  id: string | undefined;
-  state: boolean;
-}
-
-export interface EntityReferenceChild extends EntityReference {
-  /**
-   * Children of this entity, if any.
-   */
-  children?: EntityReferenceChild[];
-  parents?: EntityReferenceChild[];
-  pageIndex?: number;
-  edgeType?: EdgeTypeEnum;
-}
-
-export interface NodeIndexMap {
-  upstream: number[];
-  downstream: number[];
-}
+export type ControlProps = HTMLAttributes<HTMLDivElement>;
 
 export interface LineageConfig {
   upstreamDepth: number;
@@ -142,4 +72,25 @@ export interface LineageConfigModalProps {
   config: LineageConfig;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
+}
+
+export interface NodeHandlesProps {
+  nodeType: string;
+  id: string;
+  isConnectable: boolean;
+  expandCollapseHandles: ReactNode;
+}
+
+export interface ExpandCollapseHandlesProps {
+  isEditMode: boolean;
+  hasOutgoers: boolean;
+  hasIncomers: boolean;
+  isDownstreamNode: boolean;
+  isUpstreamNode: boolean;
+  isRootNode: boolean;
+  upstreamExpandPerformed: boolean;
+  downstreamExpandPerformed: boolean;
+  upstreamLineageLength: number;
+  onCollapse: (direction?: LineageDirection) => void;
+  onExpand: (direction: LineageDirection) => void;
 }

@@ -14,10 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -40,9 +39,11 @@ import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import {
   createTeam,
+  deleteUserFromTeam,
   getTeamByName,
   getTeams,
   patchTeamDetail,
+  updateUsersFromTeam,
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
@@ -52,7 +53,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
 const TeamsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
@@ -63,8 +64,6 @@ const TeamsPage = () => {
 
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
 
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -75,7 +74,7 @@ const TeamsPage = () => {
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isFetchingAdvancedDetails, setFetchingAdvancedDetails] =
-    useState<boolean>(false);
+    useState<boolean>(true);
   const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
 
@@ -83,10 +82,6 @@ const TeamsPage = () => {
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
   );
-
-  const descriptionHandler = (value: boolean) => {
-    setIsDescriptionEditable(value);
-  };
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
@@ -206,7 +201,7 @@ const TeamsPage = () => {
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);
-      } catch (error) {
+      } catch {
         // Error
       }
     }
@@ -217,7 +212,7 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(name, {
         fields: [
-          TabSpecificField.USERS,
+          TabSpecificField.USER_COUNT,
           TabSpecificField.PARENTS,
           TabSpecificField.PROFILE,
           TabSpecificField.OWNERS,
@@ -286,8 +281,8 @@ const TeamsPage = () => {
 
       const res = await createTeam(teamData);
       if (res) {
-        fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
+        await fetchTeamBasicDetails(selectedTeam.name, true);
         loadAdvancedDetails();
       }
     } catch (error) {
@@ -367,15 +362,18 @@ const TeamsPage = () => {
    * @param data
    */
   const addUsersToTeam = async (data: Array<EntityReference>) => {
-    if (!isUndefined(selectedTeam) && !isUndefined(selectedTeam.users)) {
-      const updatedTeam = {
-        ...selectedTeam,
-        users: data,
-      };
-      const jsonPatch = compare(selectedTeam, updatedTeam);
+    if (!isUndefined(selectedTeam)) {
       try {
-        const res = await patchTeamDetail(selectedTeam.id, jsonPatch);
-        setSelectedTeam((prev) => ({ ...prev, ...res }));
+        const res = await updateUsersFromTeam(selectedTeam.id, data);
+        if (res) {
+          setSelectedTeam((prev) => ({
+            ...prev,
+            users: data,
+            userCount: data.length,
+          }));
+        } else {
+          throw new Error(t('server.unexpected-response'));
+        }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -391,38 +389,27 @@ const TeamsPage = () => {
    * Take user id and remove that user from the team
    * @param id - user id
    */
-  const removeUserFromTeam = (id: string) => {
-    const newUsers = selectedTeam?.users?.filter((user) => {
-      return user.id !== id;
-    });
-    const updatedTeam = {
-      ...selectedTeam,
-      users: newUsers,
-    };
-
-    const jsonPatch = compare(selectedTeam, updatedTeam);
-
-    return new Promise<void>((resolve) => {
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            setSelectedTeam((prev) => ({ ...prev, ...res }));
-          } else {
-            throw t('server.unexpected-response');
-          }
+  const removeUserFromTeam = async (id: string) => {
+    const updatedUsers = selectedTeam?.users?.filter((user) => user.id !== id);
+    try {
+      const res = await deleteUserFromTeam(selectedTeam.id, id);
+      if (res) {
+        setSelectedTeam((prev) => ({
+          ...prev,
+          users: updatedUsers,
+          userCount: updatedUsers?.length,
+        }));
+      } else {
+        throw new Error(t('server.unexpected-response'));
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.team'),
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.team'),
-            })
-          );
-        })
-        .finally(() => {
-          resolve();
-        });
-    });
+      );
+    }
   };
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -438,11 +425,7 @@ const TeamsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        descriptionHandler(false);
       }
-    } else {
-      descriptionHandler(false);
     }
   };
 
@@ -468,7 +451,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(getTeamsWithFqnPath(TeamType.Organization));
+      : navigate(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
@@ -509,11 +492,24 @@ const TeamsPage = () => {
   }
 
   if (!hasViewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.team-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isEmpty(selectedTeam)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
   }
 
   return (
@@ -523,13 +519,11 @@ const TeamsPage = () => {
         assetsCount={assets}
         childTeams={childTeams}
         currentTeam={selectedTeam}
-        descriptionHandler={descriptionHandler}
         entityPermissions={entityPermissions}
         handleAddTeam={handleAddTeam}
         handleAddUser={addUsersToTeam}
         handleJoinTeamClick={handleJoinTeamClick}
         handleLeaveTeamClick={handleLeaveTeamClick}
-        isDescriptionEditable={isDescriptionEditable}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
         isTeamMemberLoading={isDataLoading}

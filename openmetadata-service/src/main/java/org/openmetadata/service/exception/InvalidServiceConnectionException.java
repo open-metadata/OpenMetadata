@@ -1,6 +1,6 @@
 package org.openmetadata.service.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class InvalidServiceConnectionException extends WebServiceException {
@@ -10,6 +10,10 @@ public class InvalidServiceConnectionException extends WebServiceException {
 
   public InvalidServiceConnectionException(String message) {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
+  }
+
+  public InvalidServiceConnectionException(String message, Throwable e) {
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message, e);
   }
 
   private InvalidServiceConnectionException(Response.Status status, String message) {

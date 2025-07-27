@@ -56,6 +56,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -86,7 +90,7 @@
       "type": "string"
     },
     "className": {
-      "description": "Full Qualified ClassName for the the application",
+      "description": "Full Qualified ClassName for the the application. Use can use 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.",
       "type": "string"
     },
     "sourcePythonClass": {
@@ -96,6 +100,10 @@
     "appType": {
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"
+    },
+    "agentType": {
+      "description": "This schema defines the type of the agent.",
+      "$ref": "../app.json#/definitions/agentType"
     },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",
@@ -141,14 +149,22 @@
       "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
       "default": false
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReferenceList.json"
     },
     "supportsInterrupt": {
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "eventSubscriptions": {
+      "description": "Event subscriptions that will be created when the application is installed.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "../../../events/api/createEventSubscription.json"
+      }
     }
   },
   "additionalProperties": false,

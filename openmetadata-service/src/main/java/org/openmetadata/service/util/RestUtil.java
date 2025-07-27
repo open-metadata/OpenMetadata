@@ -13,44 +13,49 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.ResponseBuilder;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
-import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final DateFormat DATE_TIME_FORMAT;
-  public static final DateFormat DATE_FORMAT;
+  public static final DateTimeFormatter DATE_FORMAT;
 
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
     DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
     DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
 
-    DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-    DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.of("UTC"));
   }
 
   private RestUtil() {}
@@ -64,8 +69,15 @@ public final class RestUtil {
 
   public static URI getHref(UriInfo uriInfo, String collectionPath) {
     collectionPath = removeSlashes(collectionPath);
-    String uriPath = uriInfo.getBaseUri() + collectionPath;
-    return URI.create(uriPath);
+    OpenMetadataBaseUrlConfiguration urlConfiguration =
+        SettingsCache.getSetting(
+            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+            OpenMetadataBaseUrlConfiguration.class);
+    String url =
+        nullOrEmpty(urlConfiguration.getOpenMetadataUrl())
+            ? uriInfo.getBaseUri().toString()
+            : urlConfiguration.getOpenMetadataUrl();
+    return URI.create(url + "/" + collectionPath);
   }
 
   public static URI getHref(URI parent, String child) {
@@ -90,13 +102,14 @@ public final class RestUtil {
     return getHref(uriInfo, collectionPath, id.toString());
   }
 
-  public static int compareDates(String date1, String date2) throws ParseException {
-    return DATE_FORMAT.parse(date1).compareTo(DATE_FORMAT.parse(date2));
+  public static int compareDates(String date1, String date2) {
+    return LocalDateTime.parse(date1, DATE_FORMAT)
+        .compareTo(LocalDateTime.parse(date2, DATE_FORMAT));
   }
 
   public static String today(int offsetDays) {
-    Date date = CommonUtil.getDateByOffset(new Date(), offsetDays);
-    return DATE_FORMAT.format(date);
+    LocalDate localDate = CommonUtil.getDateByOffset(LocalDate.now(), offsetDays);
+    return localDate.format(DATE_FORMAT);
   }
 
   public static void validateCursors(String before, String after) {
@@ -119,7 +132,7 @@ public final class RestUtil {
     @Getter private T entity;
     private ChangeEvent changeEvent;
     @Getter private final Response.Status status;
-    private final EventType changeType;
+    @Getter private final EventType changeType;
 
     /**
      * Response.Status.CREATED when PUT operation creates a new entity or Response.Status.OK when PUT operation updates
@@ -155,10 +168,15 @@ public final class RestUtil {
 
   public record PatchResponse<T>(Status status, T entity, EventType changeType) {
     public Response toResponse() {
-      return Response.status(status)
-          .header(CHANGE_CUSTOM_HEADER, changeType.value())
-          .entity(entity)
-          .build();
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType.value()).entity(entity);
+
+      // Add ETag header if entity implements EntityInterface
+      if (entity != null && entity instanceof org.openmetadata.schema.EntityInterface) {
+        EntityETag.addETagHeader(responseBuilder, (org.openmetadata.schema.EntityInterface) entity);
+      }
+
+      return responseBuilder.build();
     }
   }
 

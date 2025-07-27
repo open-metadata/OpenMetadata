@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,8 +38,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import kill_active_connections
+from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
 
@@ -92,25 +93,24 @@ def _test_connection_steps(
     metadata: OpenMetadata,
     steps: List[TestConnectionStep],
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+) -> TestConnectionResult:
     """
     Run all the function steps and raise any errors
     """
 
     if automation_workflow:
-        _test_connection_steps_automation_workflow(
+        return _test_connection_steps_automation_workflow(
             metadata=metadata, steps=steps, automation_workflow=automation_workflow
         )
 
-    else:
-        _test_connection_steps_during_ingestion(steps=steps)
+    return _test_connection_steps_during_ingestion(steps=steps)
 
 
 def _test_connection_steps_automation_workflow(
     metadata: OpenMetadata,
     steps: List[TestConnectionStep],
     automation_workflow: AutomationWorkflow,
-) -> None:
+) -> TestConnectionResult:
     """
     Run the test connection as part of the automation workflow
     We need to update the automation workflow in each step
@@ -187,33 +187,40 @@ def _test_connection_steps_automation_workflow(
             )
         )
 
+    return test_connection_result
 
-def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> None:
-    """
-    Run the test connection as part of the ingestion workflow
-    Raise an exception if something fails
-    """
-    test_connection_result = TestConnectionIngestionResult()
+
+def _test_connection_steps_during_ingestion(
+    steps: List[TestConnectionStep],
+) -> TestConnectionResult:
+    """Run the test connection steps during ingestion"""
+    test_connection_result = TestConnectionResult(
+        status=StatusType.Running,
+        steps=[],
+    )
     for step in steps:
         try:
+            logger.info(f"Running {step.name}...")
             step.function()
-            test_connection_result.success.append(f"'{step.name}': Pass")
-
-        except Exception as exc:
+            test_connection_result.steps.append(
+                TestConnectionStepResult(
+                    name=step.name,
+                    mandatory=step.mandatory,
+                    passed=True,
+                )
+            )
+        except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"{step.name}-{exc}")
-            if step.mandatory:
-                test_connection_result.failed.append(
-                    f"'{step.name}': This is a mandatory step and we won't be able to extract"
-                    f" necessary metadata. Failed due to: {exc}"
+            logger.error(f"{step.name}-{err}")
+            test_connection_result.steps.append(
+                TestConnectionStepResult(
+                    name=step.name,
+                    mandatory=step.mandatory,
+                    passed=False,
+                    message=step.error_message,
+                    errorLog=str(err),
                 )
-
-            else:
-                test_connection_result.warning.append(
-                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected."
-                    f"Failed due to: {exc}"
-                )
-
+            )
             if step.short_circuit:
                 # break the workflow if the step is a short circuit step
                 break
@@ -221,10 +228,20 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
     logger.info("Test connection results:")
     logger.info(test_connection_result)
 
-    if test_connection_result.failed:
-        raise SourceConnectionException(
-            f"Some steps failed when testing the connection: [{test_connection_result}]"
-        )
+    return test_connection_result
+
+
+def raise_test_connection_exception(result: TestConnectionResult) -> None:
+    """Raise if needed an exception for the test connection"""
+    for step in result.steps:
+        if not step.passed and step.mandatory:
+            raise SourceConnectionException(
+                f"Failed to run the test connection step: {step.name}"
+            )
+        if not step.passed:
+            logger.warning(
+                f"You might be missing metadata in: {step.name} due to {step.message}"
+            )
 
 
 def test_connection_steps(
@@ -232,8 +249,8 @@ def test_connection_steps(
     service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: int = 3 * 60,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test the connection steps with a given timeout
 
@@ -268,9 +285,12 @@ def test_connection_steps(
         for step in test_connection_definition.steps
     ]
 
-    return timeout(timeout_seconds)(_test_connection_steps)(
-        metadata, steps, automation_workflow
-    )
+    if timeout_seconds:
+        return timeout(timeout_seconds)(_test_connection_steps)(
+            metadata, steps, automation_workflow
+        )
+
+    return _test_connection_steps(metadata, steps, automation_workflow)
 
 
 def test_connection_engine_step(connection: Engine) -> None:
@@ -289,8 +309,8 @@ def test_connection_db_common(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-    timeout_seconds: int = 3 * 60,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -322,7 +342,7 @@ def test_connection_db_common(
     for key, query in queries.items():
         test_fn[key] = partial(test_query, statement=query, engine=engine)
 
-    test_connection_steps(
+    result = test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
@@ -332,6 +352,8 @@ def test_connection_db_common(
 
     kill_active_connections(engine)
 
+    return result
+
 
 def test_connection_db_schema_sources(
     metadata: OpenMetadata,
@@ -339,7 +361,8 @@ def test_connection_db_schema_sources(
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -388,14 +411,17 @@ def test_connection_db_schema_sources(
     for key, query in queries.items():
         test_fn[key] = partial(test_query, statement=query, engine=engine)
 
-    test_connection_steps(
+    result = test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
 
     kill_active_connections(engine)
+
+    return result
 
 
 def test_query(engine: Engine, statement: str):

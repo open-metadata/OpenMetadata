@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Select, Space } from 'antd';
+import {
+  Button,
+  Form,
+  FormProps,
+  Input,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
+
 import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
-import {
-  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
-  TABLE_DIFF,
-} from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
+import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
@@ -54,7 +61,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import {
   TestCaseFormProps,
   TestCaseFormType,
@@ -67,9 +74,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
-  const history = useHistory();
-  const { dashboardType } = useParams<{ dashboardType: string }>();
-
+  const navigate = useNavigate();
+  const { dashboardType } = useRequiredParams<{ dashboardType: string }>();
+  const { t } = useTranslation();
   const { fqn: decodedEntityFQN } = useFqn();
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
@@ -116,17 +123,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: columnType,
       });
-      const updatedData = data.filter((definition) => {
-        if (definition.fullyQualifiedName === TABLE_DIFF) {
-          return (
-            table.serviceType &&
-            SUPPORTED_SERVICES_FOR_TABLE_DIFF.includes(table.serviceType)
-          );
-        }
 
-        return true;
-      });
-      setTestDefinitions(updatedData);
+      setTestDefinitions(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -142,20 +140,20 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       });
 
       setTestCases(data);
-    } catch (error) {
+    } catch {
       setTestCases([]);
     }
   };
 
   const getSelectedTestDefinition = useCallback(() => {
-    const testType = isEmpty(initialValue?.testSuite)
+    const testType = isEmpty(initialValue?.testDefinition)
       ? selectedTestType
-      : initialValue?.testSuite;
+      : initialValue?.testDefinition;
 
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
     );
-  }, [initialValue?.testSuite, selectedTestType, testDefinitions]);
+  }, [initialValue?.testDefinition, selectedTestType, testDefinitions]);
   const isComputeRowCountFieldVisible = useMemo(() => {
     const selectedDefinition = getSelectedTestDefinition();
 
@@ -193,7 +191,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       ),
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
-      testSuite: '',
+      tags: [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
       ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };
@@ -240,6 +238,57 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
   };
 
+  const formField: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'description',
+        required: false,
+        label: t('label.description'),
+        id: 'root/description',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'description',
+          initialValue: initialValue?.description ?? '',
+          style: {
+            margin: 0,
+          },
+        },
+      },
+      {
+        name: 'tags',
+        required: false,
+        label: t('label.tag-plural'),
+        id: 'root/tags',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          selectProps: {
+            'data-testid': 'tags-selector',
+          },
+        },
+      },
+      {
+        name: 'glossaryTerms',
+        required: false,
+        label: t('label.glossary-term-plural'),
+        id: 'root/glossaryTerms',
+        type: FieldTypes.TAG_SUGGESTION,
+        props: {
+          selectProps: {
+            'data-testid': 'glossary-terms-selector',
+          },
+          open: false,
+          hasNoActionButtons: true,
+          isTreeSelect: true,
+          tagType: TagSource.Glossary,
+          placeholder: t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          }),
+        },
+      },
+    ],
+    [initialValue?.description, initialValue?.tags]
+  );
+
   useEffect(() => {
     const selectedColumn = table.columns.find(
       (column) => column.name === columnName
@@ -250,7 +299,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       setCurrentColumnType(selectedColumn?.dataType);
     }
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: Qs.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),
@@ -272,6 +321,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         ? getParamsValue()
         : undefined,
       columnName: activeColumnFqn ? getNameFromFQN(activeColumnFqn) : undefined,
+      tags: initialValue?.tags || [],
     });
   }, []);
 
@@ -281,11 +331,21 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     });
   }, [activeColumnFqn]);
 
-  const testTypeOptions = useMemo(
+  const testTypeOptions: DefaultOptionType[] = useMemo(
     () =>
       testDefinitions.map((suite) => ({
-        label: getEntityName(suite),
+        label: (
+          <div data-testid={suite.fullyQualifiedName}>
+            <Typography.Paragraph className="m-b-0">
+              {getEntityName(suite)}
+            </Typography.Paragraph>
+            <Typography.Paragraph className="m-b-0 text-grey-muted text-xs">
+              {suite.description}
+            </Typography.Paragraph>
+          </div>
+        ),
         value: suite.fullyQualifiedName ?? '',
+        labelValue: getEntityName(suite),
       })),
 
     [testDefinitions]
@@ -378,6 +438,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           filterOption={filterSelectOptions}
           options={testTypeOptions}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
+          popupClassName="no-wrap-option"
           onChange={handleTestDefinitionChange}
         />
       </Form.Item>
@@ -398,18 +459,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           getFieldValue('useDynamicAssertion') ? null : generateParamsField
         }
       </Form.Item>
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        trigger="onTextChange">
-        <RichTextEditor
-          height="200px"
-          initialValue={initialValue?.description || ''}
-          style={{
-            margin: 0,
-          }}
-        />
-      </Form.Item>
+
+      {generateFormFields(formField)}
 
       {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 
@@ -423,7 +474,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             htmlType="submit"
             loading={loading}
             type="primary">
-            {t('label.submit')}
+            {t('label.create')}
           </Button>
         </Space>
       </Form.Item>

@@ -9,29 +9,29 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateStorageService;
@@ -39,10 +39,12 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
 import org.openmetadata.service.limits.Limits;
@@ -50,7 +52,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -63,8 +64,9 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storageServices")
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
+  private final StorageServiceMapper mapper = new StorageServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  static final String FIELDS = "pipelines,owners,tags,domain";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
@@ -115,7 +117,11 @@ public class StorageServiceResource
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+      @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
       @Parameter(
               description = "Returns list of storage services before this cursor",
               schema = @Schema(type = "string"))
@@ -209,6 +215,69 @@ public class StorageServiceResource
     StorageService storageService =
         getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, storageService);
+  }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToDatabaseService",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this Storage service",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Storage Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Storage Service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(
+      operationId = "deleteFollower",
+      summary = "Remove a follower",
+      description = "Remove the user identified `userId` as a follower of the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class)))
+      })
+  public Response deleteFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user being removed as follower",
+              schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
+        .toResponse();
   }
 
   @PUT
@@ -332,7 +401,8 @@ public class StorageServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateStorageService create) {
-    StorageService service = getService(create, securityContext.getUserPrincipal().getName());
+    StorageService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
@@ -357,7 +427,8 @@ public class StorageServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateStorageService update) {
-    StorageService service = getService(update, securityContext.getUserPrincipal().getName());
+    StorageService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
@@ -390,6 +461,37 @@ public class StorageServiceResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchStorageServiceByFQN",
+      summary = "Update an storage service by FQN",
+      description = "Update an existing storage service using JsonPatch by FQN.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the storage service",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -419,6 +521,37 @@ public class StorageServiceResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteStorageServiceAsync",
+      summary = "Asynchronously delete an storage service",
+      description =
+          "Asynchronously delete an storage services. If containers belong the service, it can't be deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "StorageService service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -471,13 +604,6 @@ public class StorageServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private StorageService getService(CreateStorageService create, String user) {
-    return repository
-        .copy(new StorageService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

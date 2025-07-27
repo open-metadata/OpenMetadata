@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { Button, Form, FormProps, Modal, Typography } from 'antd';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
-import { EntityNameModalProps } from './EntityNameModal.interface';
+import SanitizedInput from '../../common/SanitizedInput/SanitizedInput';
+import { EntityName, EntityNameModalProps } from './EntityNameModal.interface';
 
-const EntityNameModal: React.FC<EntityNameModalProps> = ({
+const EntityNameModal = <T extends EntityName>({
   visible,
   entity,
   onCancel,
@@ -25,12 +26,14 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   // re-name will update actual name of the entity, it will impact across application
   // By default its disabled, send allowRename true to get the functionality
   allowRename = false,
-}) => {
+  nameValidationRules = [],
+  additionalFields,
+}: EntityNameModalProps<T>) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ name: string; displayName: string }>();
+  const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = async (obj: { name: string; displayName: string }) => {
+  const handleSave: FormProps['onFinish'] = async (obj) => {
     setIsLoading(true);
     await form.validateFields();
     // Error must be handled by the parent component
@@ -39,7 +42,7 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
   };
 
   useEffect(() => {
-    form.setFieldsValue({ name: entity.name, displayName: entity.displayName });
+    form.setFieldsValue(entity);
   }, [visible]);
 
   return (
@@ -83,8 +86,9 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
               pattern: ENTITY_NAME_REGEX,
               message: t('message.entity-name-validation'),
             },
+            ...nameValidationRules,
           ]}>
-          <Input
+          <SanitizedInput
             disabled={!allowRename}
             placeholder={t('label.enter-entity-name', {
               entity: t('label.glossary'),
@@ -92,8 +96,10 @@ const EntityNameModal: React.FC<EntityNameModalProps> = ({
           />
         </Form.Item>
         <Form.Item label={t('label.display-name')} name="displayName">
-          <Input placeholder={t('message.enter-display-name')} />
+          <SanitizedInput placeholder={t('message.enter-display-name')} />
         </Form.Item>
+
+        {additionalFields}
       </Form>
     </Modal>
   );

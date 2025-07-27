@@ -12,22 +12,25 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
-import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 
 const SuggestionsSlider = () => {
   const {
+    loading,
+    suggestionPendingCount,
+    fetchSuggestions,
     selectedUserSuggestions,
     acceptRejectAllSuggestions,
     loadingAccept,
     loadingReject,
     onUpdateActiveUser,
   } = useSuggestionsContext();
+  const { t } = useTranslation();
 
   return (
     <div className="d-flex items-center gap-2 m-r-md">
@@ -35,36 +38,40 @@ const SuggestionsSlider = () => {
         {t('label.suggested-description-plural')}
       </Typography.Text>
       <AvatarCarousel />
-      {selectedUserSuggestions.length > 0 && (
+      {suggestionPendingCount > 0 && (
+        <Button
+          className="suggestion-pending-btn"
+          data-testid="more-suggestion-button"
+          loading={loading}
+          type="primary"
+          onClick={() => fetchSuggestions()}>
+          {t('label.plus-count-more', {
+            count: suggestionPendingCount,
+          })}
+        </Button>
+      )}
+      {selectedUserSuggestions?.combinedData.length > 0 && (
         <Space className="slider-btn-container m-l-xs">
           <Button
             ghost
             className="text-xs text-primary font-medium"
             data-testid="accept-all-suggestions"
+            disabled={loadingAccept}
             icon={<CheckOutlined />}
             loading={loadingAccept}
             type="primary"
-            onClick={() =>
-              acceptRejectAllSuggestions(
-                SuggestionType.SuggestDescription,
-                SuggestionAction.Accept
-              )
-            }>
+            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
             {t('label.accept-all')}
           </Button>
           <Button
             ghost
             className="text-xs text-primary font-medium"
             data-testid="reject-all-suggestions"
+            disabled={loadingReject}
             icon={<CloseOutlined />}
             loading={loadingReject}
             type="primary"
-            onClick={() =>
-              acceptRejectAllSuggestions(
-                SuggestionType.SuggestDescription,
-                SuggestionAction.Reject
-              )
-            }>
+            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
             {t('label.reject-all')}
           </Button>
           <Button

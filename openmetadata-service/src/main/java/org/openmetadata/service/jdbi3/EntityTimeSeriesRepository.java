@@ -3,10 +3,14 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityFields;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
-import java.beans.IntrospectionException;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,12 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
@@ -27,14 +25,16 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -280,6 +280,16 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  public T getLatestRecord(String recordFQN, String extension) {
+    String jsonRecord = timeSeriesDao.getLatestExtension(recordFQN, extension);
+    if (jsonRecord == null) {
+      return null;
+    }
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
+  }
+
   public T getById(UUID id) {
     String jsonRecord = timeSeriesDao.getById(id);
     if (jsonRecord == null) {
@@ -302,26 +312,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       return;
     }
     timeSeriesDao.deleteById(id);
-  }
-
-  private String getAfterOffset(int offsetInt, int limit, int total) {
-    int afterOffset = offsetInt + limit;
-    // If afterOffset is greater than total, then set it to null to indicate end of list
-    return afterOffset >= total ? null : String.valueOf(afterOffset);
-  }
-
-  private String getBeforeOffset(int offsetInt, int limit) {
-    int beforeOffsetInt = offsetInt - limit;
-    // If offset is negative, then set it to 0 if you pass offset 4 and limit 10, then the previous
-    // page will be at offset 0
-    if (beforeOffsetInt < 0) beforeOffsetInt = 0;
-    // if offsetInt is 0 (i.e. either no offset or offset is 0), then set it to null as there is no
-    // previous page
-    return (offsetInt == 0) ? null : String.valueOf(beforeOffsetInt);
-  }
-
-  private int getOffset(String offset) {
-    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
@@ -347,8 +337,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return resultList;
   }
 
-  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user) {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));
@@ -372,7 +361,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       int limit,
       int offset,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     long total;
@@ -380,9 +370,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
@@ -392,14 +382,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       }
       return new ResultList<>(entityList, offset, limit, (int) total);
     } else {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, (int) total);
     }
   }
 
+  @SuppressWarnings("unchecked")
   public ResultList<T> listLatestFromSearch(
       EntityUtil.Fields fields, SearchListFilter searchListFilter, String groupBy, String q)
       throws IOException {
@@ -408,26 +399,26 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
     String aggregationStr =
-        "{\"aggregations\":{\"byTerms\":{\"terms\": {\"field\":\"%s\",\"size\":100},\"aggs\":{\"latest\":"
-            + "{\"top_hits\":{\"size\":1,\"sort_field\":\"timestamp\",\"sort_order\":\"desc\"}}}}}}";
+        "bucketName=byTerms:aggType=terms:field=%s&size=100,"
+            + "bucketName=latest:aggType=top_hits:size=1&sort_field=timestamp&sort_order=desc";
     aggregationStr = String.format(aggregationStr, groupBy);
-    JsonObject aggregation = JsonUtils.readJson(aggregationStr).asJsonObject();
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
     JsonObject jsonObjResults =
-        searchRepository.aggregate(q, entityType, aggregation, searchListFilter);
+        searchRepository.aggregate(q, entityType, searchAggregation, searchListFilter);
 
     Optional<List> jsonObjects =
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
     jsonObjects.ifPresent(
         jsonObjectList -> {
-          for (Map<String, String> json : (List<Map<String, String>>) jsonObjectList) {
+          for (Map<String, Object> json : (List<Map<String, Object>>) jsonObjectList) {
             String bucketAggregationPath = "top_hits#latest.hits.hits";
             Optional<List> hits =
                 JsonUtils.readJsonAtPath(
                     JsonUtils.pojoToJson(json), bucketAggregationPath, List.class);
             hits.ifPresent(
                 hitList -> {
-                  for (Map<String, String> hit : (List<Map<String, String>>) hitList) {
-                    JsonObject source = getSourceDocument(JsonUtils.pojoToJson(hit));
+                  for (Map<String, Object> hit : (List<Map<String, Object>>) hitList) {
+                    Map<String, Object> source = extractAndFilterSource(hit);
                     T entity =
                         setFieldsInternal(
                             JsonUtils.readOrConvertValue(source, entityClass), fields);
@@ -448,7 +439,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
-    SearchClient.SearchResultListMapper results =
+    SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
       T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
@@ -475,27 +466,40 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return new ArrayList<>();
   }
 
-  private JsonObject getSourceDocument(String hit) {
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> extractAndFilterSource(Map<String, Object> hit) {
     List<String> includeSearchFields = getIncludeSearchFields();
     List<String> excludeSearchFields = getExcludeSearchFields();
-    JsonObject hitJson = JsonUtils.readJson(hit).asJsonObject();
-    JsonObject source = hitJson.asJsonObject().getJsonObject("_source");
-    // Aggregation results will return all fields by default,
-    // so we need to filter out the fields that are not included
-    // in the search fields
-    if (source != null
-        && (!CommonUtil.nullOrEmpty(includeSearchFields)
-            || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
-      JsonObjectBuilder sourceCopy = Json.createObjectBuilder();
-      for (Map.Entry<String, JsonValue> entry : source.entrySet()) {
-        if (includeSearchFields.contains(entry.getKey())
-            || (CommonUtil.nullOrEmpty(includeSearchFields)
-                && !excludeSearchFields.contains(entry.getKey()))) {
-          sourceCopy.add(entry.getKey(), entry.getValue());
-        }
-      }
-      return sourceCopy.build();
+
+    Map<String, Object> source = (Map<String, Object>) hit.get("_source");
+    if (source == null) {
+      return new HashMap<>();
     }
-    return source;
+
+    if (CommonUtil.nullOrEmpty(includeSearchFields)
+        && CommonUtil.nullOrEmpty(excludeSearchFields)) {
+      return source;
+    }
+
+    Map<String, Object> filteredSource = new HashMap<>();
+    for (Map.Entry<String, Object> entry : source.entrySet()) {
+      String fieldName = entry.getKey();
+      if (shouldIncludeField(fieldName, includeSearchFields, excludeSearchFields)) {
+        filteredSource.put(fieldName, entry.getValue());
+      }
+    }
+
+    return filteredSource;
+  }
+
+  private boolean shouldIncludeField(
+      String fieldName, List<String> includeFields, List<String> excludeFields) {
+    if (!CommonUtil.nullOrEmpty(includeFields)) {
+      return includeFields.contains(fieldName);
+    }
+    if (!CommonUtil.nullOrEmpty(excludeFields)) {
+      return !excludeFields.contains(fieldName);
+    }
+    return true;
   }
 }

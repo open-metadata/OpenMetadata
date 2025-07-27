@@ -11,18 +11,38 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React from 'react';
+import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  ICON_DIMENSION,
+  SUCCESS_COLOR,
+  TEXT_BODY_COLOR,
+  TEXT_GREY_MUTED,
+} from '../constants/constants';
+import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  Status,
+  TermReference,
+} from '../generated/entity/data/glossaryTerm';
+import { Domain } from '../generated/entity/domains/domain';
+import { User } from '../generated/entity/teams/user';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
+import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 
@@ -113,9 +133,10 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
 
 export const StatusClass = {
   [Status.Approved]: StatusType.Success,
-  [Status.Draft]: StatusType.Warning,
+  [Status.Draft]: StatusType.Pending,
   [Status.Rejected]: StatusType.Failure,
-  [Status.Deprecated]: StatusType.Warning,
+  [Status.Deprecated]: StatusType.Deprecated,
+  [Status.InReview]: StatusType.InReview,
 };
 
 export const StatusFilters = Object.values(Status)
@@ -148,26 +169,55 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
   return breadcrumbList;
 };
 
+export const updateGlossaryTermByFqn = (
+  glossaryTerms: ModifiedGlossary[],
+  fqn: string,
+  newValue: ModifiedGlossary
+): ModifiedGlossary[] => {
+  return glossaryTerms.map((term) => {
+    if (term.fullyQualifiedName === fqn) {
+      return newValue;
+    }
+    if (term.children) {
+      return {
+        ...term,
+        children: updateGlossaryTermByFqn(
+          term.children as ModifiedGlossary[],
+          fqn,
+          newValue
+        ),
+      };
+    }
+
+    return term;
+  }) as ModifiedGlossary[];
+};
+
 // This function finds and gives you the glossary term you're looking for.
 // You can then use this term or update its information in the Glossary or Term with it's reference created
 // Reference will only be created if withReference is true
-export const findGlossaryTermByFqn = (
-  list: ModifiedGlossaryTerm[],
+export const findItemByFqn = (
+  list: ModifiedGlossaryTerm[] | Domain[],
   fullyQualifiedName: string,
   withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | null => {
+): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
   for (const item of list) {
-    if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
+    if (
+      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
+      fullyQualifiedName
+    ) {
       return withReference
         ? item
         : {
             ...item,
-            fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
-            ...(item.data ?? {}),
+            fullyQualifiedName:
+              item.fullyQualifiedName ??
+              (item as ModifiedGlossaryTerm).data?.tagFQN,
+            ...((item as ModifiedGlossaryTerm).data ?? {}),
           };
     }
     if (item.children) {
-      const found = findGlossaryTermByFqn(
+      const found = findItemByFqn(
         item.children as ModifiedGlossaryTerm[],
         fullyQualifiedName
       );
@@ -182,7 +232,8 @@ export const findGlossaryTermByFqn = (
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],
-  level = 0
+  level = 0,
+  allowParentSelection = false
 ): Omit<DefaultOptionType, 'label'>[] => {
   const treeData = options.map((option) => {
     const hasChildren = 'children' in option && !isEmpty(option?.children);
@@ -201,14 +252,15 @@ export const convertGlossaryTermsToTreeOptions = (
         </Typography.Text>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
-      checkable: isGlossaryTerm,
+      checkable: allowParentSelection || isGlossaryTerm,
       isLeaf: isGlossaryTerm ? !hasChildren : false,
-      selectable: isGlossaryTerm,
+      selectable: allowParentSelection || isGlossaryTerm,
       children:
         hasChildren &&
         convertGlossaryTermsToTreeOptions(
           option.children as ModifiedGlossaryTerm[],
-          level + 1
+          level + 1,
+          allowParentSelection
         ),
     };
   });
@@ -308,4 +360,140 @@ export const filterTreeNodeOptions = (
   };
 
   return filterNodes(options as ModifiedGlossaryTerm[]);
+};
+
+export const renderReferenceElement = (
+  ref: TermReference,
+  versionStatus?: VersionStatus
+) => {
+  let iconColor: string;
+  let textClassName: string;
+  if (versionStatus?.added) {
+    iconColor = SUCCESS_COLOR;
+    textClassName = 'text-success';
+  } else if (versionStatus?.removed) {
+    iconColor = TEXT_GREY_MUTED;
+    textClassName = 'text-grey-muted';
+  } else {
+    iconColor = TEXT_BODY_COLOR;
+    textClassName = 'text-body';
+  }
+
+  return (
+    <Tag
+      className={classNames(
+        'm-r-xs m-t-xs d-flex items-center term-reference-tag bg-white',
+        { 'diff-added': versionStatus?.added },
+        { 'diff-removed ': versionStatus?.removed }
+      )}
+      key={ref.name}>
+      <Tooltip placement="bottomLeft" title={ref.name}>
+        <a
+          data-testid={`reference-link-${ref.name}`}
+          href={ref?.endpoint}
+          rel="noopener noreferrer"
+          target="_blank">
+          <div className="d-flex items-center">
+            <Icon
+              className="m-r-xss"
+              component={ExternalLinkIcon}
+              data-testid="external-link-icon"
+              style={{ ...ICON_DIMENSION, color: iconColor }}
+            />
+            <span className={textClassName}>{ref.name}</span>
+          </div>
+        </a>
+      </Tooltip>
+    </Tag>
+  );
+};
+
+export const findAndUpdateNested = (
+  terms: ModifiedGlossary[],
+  newTerm: GlossaryTerm
+): ModifiedGlossary[] => {
+  // If new term has no parent, it's a top level term
+  // So just update 0 level terms no need to iterate over it
+  if (!newTerm.parent) {
+    return [...terms, newTerm as ModifiedGlossary];
+  }
+
+  // If parent is there means term is  created within a term
+  // So we need to find the parent term and update it's children
+  return terms.map((term) => {
+    if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
+      const children = [...(term.children || []), newTerm] as GlossaryTerm[];
+
+      return {
+        ...term,
+        children,
+        // Need to update childrenCount in case of 0 to update expand / collapse icon
+        childrenCount: children.length,
+      } as ModifiedGlossary;
+    } else if ('children' in term && term.children?.length) {
+      return {
+        ...term,
+        children: findAndUpdateNested(
+          term.children as ModifiedGlossary[],
+          newTerm
+        ),
+      } as ModifiedGlossary;
+    }
+
+    return term;
+  });
+};
+
+export const glossaryTermTableColumnsWidth = (
+  tableWidth: number,
+  havingCreatePermission: boolean
+) => {
+  return {
+    name: calculatePercentageFromValue(tableWidth, 20),
+    description: calculatePercentageFromValue(
+      tableWidth,
+      havingCreatePermission ? 21 : 33
+    ),
+    reviewers: calculatePercentageFromValue(tableWidth, 33),
+    synonyms: calculatePercentageFromValue(tableWidth, 33),
+    owners: calculatePercentageFromValue(tableWidth, 17),
+    status: calculatePercentageFromValue(tableWidth, 20),
+  };
+};
+
+export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
+  `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
+
+export const permissionForApproveOrReject = (
+  record: ModifiedGlossaryTerm,
+  currentUser: User,
+  termTaskThreads: Record<string, Array<any>>
+) => {
+  const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
+  const taskThread = termTaskThreads[entityLink]?.find(
+    (thread) => thread.about === entityLink
+  );
+
+  const isReviewer = record.reviewers?.some(
+    (reviewer) => reviewer.id === currentUser?.id
+  );
+
+  return {
+    permission: taskThread && isReviewer,
+    taskId: taskThread?.task?.id,
+  };
+};
+
+export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
+  if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)) {
+    return <GlossaryTermTab isGlossary />;
+  }
+
+  return (
+    <CommonWidgets
+      showTaskHandler
+      entityType={EntityType.GLOSSARY}
+      widgetConfig={widget}
+    />
+  );
 };

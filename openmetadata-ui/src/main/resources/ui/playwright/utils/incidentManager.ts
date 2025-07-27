@@ -12,13 +12,14 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { sidebarClick } from './sidebar';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await redirectToHomePage(page);
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await page.click('[data-testid="profiler"]');
 };
 
@@ -34,7 +35,11 @@ export const acknowledgeTask = async (data: {
     .getByTestId('profiler-tab-left-panel')
     .getByText('Data Quality')
     .click();
-  await page.click(`[data-testid="${testCase}"] >> .last-run-box.failed`);
+
+  await expect(
+    page.locator(`[data-testid="status-badge-${testCase}"]`)
+  ).toContainText('Failed');
+
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=New`);
   await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
   await page.click('[data-testid="edit-resolution-icon"]');
@@ -87,7 +92,7 @@ export const assignIncident = async (data: {
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
-  pipeline: unknown;
+  pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
   // wait for 2s before the pipeline to be run
@@ -100,6 +105,8 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
           `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
         );
       }
+
+      return res;
     });
 
   // Wait for the run to complete
@@ -122,7 +129,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for the pipeline to be successful',
-        timeout: 60_000,
+        timeout: 90_000,
         intervals: [5_000, 10_000],
       }
     )

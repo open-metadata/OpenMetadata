@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -23,10 +24,12 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
@@ -81,7 +84,18 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void storeRelationships(T service) {
-    // No relationships to store beyond what is stored in the super class
+    addIngestionRunnerRelationship(service);
+  }
+
+  private void addIngestionRunnerRelationship(T service) {
+    if (service.getIngestionRunner() != null) {
+      addRelationship(
+          service.getId(),
+          service.getIngestionRunner().getId(),
+          entityType,
+          service.getIngestionRunner().getType(),
+          Relationship.USES);
+    }
   }
 
   public T addTestConnectionResult(UUID serviceId, TestConnectionResult testConnectionResult) {
@@ -105,7 +119,8 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
-  public ServiceUpdater getUpdater(T original, T updated, Operation operation) {
+  public EntityRepository<T>.EntityUpdater getUpdater(
+      T original, T updated, Operation operation, ChangeSource changeSource) {
     return new ServiceUpdater(original, updated, operation);
   }
 
@@ -117,29 +132,52 @@ public abstract class ServiceEntityRepository<
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
+      updateIngestionRunner();
     }
 
     private void updateConnection() {
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
-      if (!CommonUtil.nullOrEmpty(origConn) && !CommonUtil.nullOrEmpty(updatedConn)) {
+      if (!CommonUtil.nullOrEmpty(updatedConn)) {
+        // We check if the updatedConn is null or empty
         String origJson = JsonUtils.pojoToJson(origConn);
         String updatedJson = JsonUtils.pojoToJson(updatedConn);
         S decryptedOrigConn = JsonUtils.readValue(origJson, serviceConnectionClass);
         S decryptedUpdatedConn = JsonUtils.readValue(updatedJson, serviceConnectionClass);
         SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-        decryptedOrigConn.setConfig(
-            secretsManager.decryptServiceConnectionConfig(
-                decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
+        if (!CommonUtil.nullOrEmpty(decryptedOrigConn)) {
+          // Only decrypt the original connection if it is not null or empty
+          decryptedOrigConn.setConfig(
+              secretsManager.decryptServiceConnectionConfig(
+                  decryptedOrigConn.getConfig(), original.getServiceType().value(), serviceType));
+        }
+
         decryptedUpdatedConn.setConfig(
             secretsManager.decryptServiceConnectionConfig(
                 decryptedUpdatedConn.getConfig(), updated.getServiceType().value(), serviceType));
-        if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
-          // we don't want save connection config details in our database
+        // we don't want save connection config details in our database
+        if (CommonUtil.nullOrEmpty(decryptedOrigConn)
+                && !CommonUtil.nullOrEmpty(decryptedUpdatedConn)
+            || !objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
+
+          // if Original connection is null or empty and updated connection is not null or empty
+          // or if the connection details are different
+
           recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
         }
+      }
+    }
+
+    private void updateIngestionRunner() {
+      UUID originalAgentId =
+          original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
+      UUID updatedAgentId =
+          updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
+      if (!Objects.equals(originalAgentId, updatedAgentId)) {
+        addIngestionRunnerRelationship(updated);
+        recordChange("ingestionAgent", originalAgentId, updatedAgentId, true);
       }
     }
   }

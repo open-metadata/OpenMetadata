@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,9 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import hashlib
 import itertools
+import pprint
 import re
 import shutil
 import sys
@@ -32,6 +34,9 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -90,6 +95,7 @@ om_chart_type_dict = {
     "levelTable": ChartType.Table,
     "dist_bar": ChartType.Bar,
     "bar": ChartType.Bar,
+    "vertical_bar": ChartType.Bar,
     "box_plot": ChartType.BoxPlot,
     "box": ChartType.BoxPlot,
     "boxplot": ChartType.BoxPlot,
@@ -360,8 +366,7 @@ def clean_uri(uri: Union[str, Url]) -> str:
     make it http://localhost:9000
     """
     # force a string of the given Uri if needed
-    if isinstance(uri, Url):
-        uri = str(uri)
+    uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 
@@ -477,3 +482,97 @@ def init_staging_dir(directory: str) -> None:
     location = Path(directory)
     logger.info(f"Creating the directory to store staging data in {location}")
     location.mkdir(parents=True, exist_ok=True)
+
+
+def retry_with_docker_host(config: Optional[WorkflowSource] = None):
+    """
+    Retries the function on exception, replacing "localhost" with "host.docker.internal"
+    in the `hostPort` config if applicable. Raises the original exception if no `config` is found.
+    """
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            nonlocal config
+            try:
+                func(*args, **kwargs)
+            except Exception as error:
+                config = config or kwargs.get("config")
+                if not config:
+                    for argument in args:
+                        if isinstance(argument, WorkflowSource):
+                            config = argument
+                            break
+                    else:
+                        raise error
+
+                host_port_str = str(
+                    getattr(config.serviceConnection.root.config, "hostPort", None)
+                    or ""
+                )
+                if "localhost" not in host_port_str:
+                    raise error
+
+                host_port_type = type(config.serviceConnection.root.config.hostPort)
+                docker_host_port_str = host_port_str.replace(
+                    "localhost", "host.docker.internal"
+                )
+                config.serviceConnection.root.config.hostPort = host_port_type(
+                    docker_host_port_str
+                )
+                func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def get_query_hash(query: str) -> str:
+    result = hashlib.md5(query.encode())
+    return str(result.hexdigest())
+
+
+def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
+    """Evaluate the threshold against the result.
+
+    Args:
+        threshold: A string representing a comparison threshold (e.g., "< 5", ">= 10").
+        result: The integer value to compare against the threshold.
+
+    Returns:
+        True if the result satisfies the threshold condition, False otherwise.
+        If no comparison operator is provided, it defaults to less than or equal to comparison.
+        Returns False for invalid threshold formats.
+    """
+    import operator as op  # pylint: disable=import-outside-toplevel
+
+    operators = {
+        "<": op.lt,
+        "<=": op.le,
+        ">": op.gt,
+        ">=": op.ge,
+        "==": op.eq,
+        "!=": op.ne,
+    }
+    op_func = operators.get(operator, op.le)
+    try:
+        if op_func:
+            return op_func(result, threshold)
+    except ValueError:
+        return False
+
+    # Fallback:
+    logger.error(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
+    raise ValueError(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
+
+
+def pprint_format_object(data: Any) -> str:
+    """
+    Pretty print an object in a format that is easy to read
+    """
+    return pprint.pformat(data, width=150)

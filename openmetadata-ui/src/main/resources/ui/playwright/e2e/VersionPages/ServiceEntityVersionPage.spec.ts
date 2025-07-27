@@ -10,48 +10,75 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
-import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
-import { DatabaseClass } from '../../support/entity/DatabaseClass';
-import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { expect, Page, test as base } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
-import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
-import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
-import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
-import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
-import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
-import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import {
+  descriptionBoxReadOnly,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
+const entityCreationConfig: EntityDataClassCreationConfig = {
+  apiService: true,
+  apiCollection: true,
+  databaseService: true,
+  dashboardService: true,
+  messagingService: true,
+  database: true,
+  databaseSchema: true,
+  mlmodelService: true,
+  pipelineService: true,
+  searchIndexService: true,
+  storageService: true,
+  entityDetails: true,
+};
+
 const entities = [
-  ApiServiceClass,
-  ApiCollectionClass,
-  DatabaseServiceClass,
-  DashboardServiceClass,
-  MessagingServiceClass,
-  MlmodelServiceClass,
-  PipelineServiceClass,
-  SearchIndexServiceClass,
-  StorageServiceClass,
-  DatabaseClass,
-  DatabaseSchemaClass,
-] as const;
+  EntityDataClass.apiService,
+  EntityDataClass.apiCollection1,
+  EntityDataClass.databaseService,
+  EntityDataClass.dashboardService,
+  EntityDataClass.messagingService,
+  EntityDataClass.mlmodelService,
+  EntityDataClass.pipelineService,
+  EntityDataClass.searchIndexService,
+  EntityDataClass.storageService,
+  EntityDataClass.database,
+  EntityDataClass.databaseSchema,
+];
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
 
-entities.forEach((EntityClass) => {
-  const entity = new EntityClass();
+const adminUser = new UserClass();
 
-  test.describe(entity.getType(), () => {
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
-      await entity.create(apiContext);
+test.describe('Service Version pages', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+
+    await EntityDataClass.preRequisitesForTests(
+      apiContext,
+      entityCreationConfig
+    );
+
+    for (const entity of entities) {
       const domain = EntityDataClass.domain1.responseData;
       await entity.patch(apiContext, [
         {
@@ -81,32 +108,42 @@ entities.forEach((EntityClass) => {
         },
         {
           op: 'add',
-          path: '/domain',
-          value: {
-            id: domain.id,
-            type: 'domain',
-            name: domain.name,
-            description: domain.description,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.id,
+              type: 'domain',
+              name: domain.name,
+              description: domain.description,
+            },
+          ],
         },
       ]);
+    }
 
-      await afterAction();
-    });
+    await afterAction();
+  });
 
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
-      await entity.visitEntityPage(page);
-    });
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow();
 
-    test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
-      await afterAction();
-    });
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
 
-    test('Version page', async ({ page }) => {
+    await EntityDataClass.postRequisitesForTests(
+      apiContext,
+      entityCreationConfig
+    );
+    await afterAction();
+  });
+
+  test.beforeEach('Visit entity details page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  entities.forEach((entity) => {
+    test(`${entity.getType()}`, async ({ page }) => {
+      await entity.visitEntityPageWithCustomSearchBox(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -122,7 +159,7 @@ entities.forEach((EntityClass) => {
 
           await expect(
             page.locator(
-              '[data-testid="viewer-container"] [data-testid="diff-added"]'
+              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
             )
           ).toBeVisible();
 
@@ -153,14 +190,12 @@ entities.forEach((EntityClass) => {
           type: 'Users',
         });
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
         await expect(
-          page.locator(
-            '[data-testid="owner-link"] > [data-testid="diff-added"]'
-          )
+          page.locator('[data-testid="owner-link"] [data-testid="diff-added"]')
         ).toBeVisible();
       });
 
@@ -169,7 +204,7 @@ entities.forEach((EntityClass) => {
 
         await assignTier(page, 'Tier1', entity.endpoint);
 
-        const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
+        const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
@@ -192,17 +227,17 @@ entities.forEach((EntityClass) => {
 
           await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
           const deleteResponse = page.waitForResponse(
-            `/api/v1/${entity.endpoint}/*?hardDelete=false&recursive=true`
+            `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
           );
           await page.click('[data-testid="confirm-button"]');
 
           await deleteResponse;
 
-          await expect(page.locator('.Toastify__toast-body')).toHaveText(
-            /deleted successfully!/
+          await toastNotification(
+            page,
+            /deleted successfully!/,
+            BIG_ENTITY_DELETE_TIMEOUT
           );
-
-          await page.click('.Toastify__close-button');
 
           await page.reload();
 
@@ -210,7 +245,7 @@ entities.forEach((EntityClass) => {
 
           await expect(deletedBadge).toHaveText('Deleted');
 
-          const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
+          const versionDetailResponse = page.waitForResponse(`**/versions/0.4`);
           await page.locator('[data-testid="version-button"]').click();
           await versionDetailResponse;
 

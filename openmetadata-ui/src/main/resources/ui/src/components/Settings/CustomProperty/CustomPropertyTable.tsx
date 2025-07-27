@@ -10,25 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tag, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isArray, isEmpty, isString, isUndefined } from 'lodash';
-import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
+import { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ENUM_WITH_DESCRIPTION } from '../../../constants/CustomProperty.constants';
+import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../constants/CustomProperty.constants';
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
-import { EnumWithDescriptionsConfig } from '../../../generated/type/customProperties/enumWithDescriptionsConfig';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
+import './custom-property-table.less';
 import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
 import EditCustomPropertyModal, {
   FormData,
@@ -70,13 +70,12 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     const updatedProperties = customProperties.map((property) => {
       if (property.name === selectedProperty.name) {
         const config = data.customPropertyConfig;
-        const isEnumType =
-          selectedProperty.propertyType.name === 'enum' ||
-          selectedProperty.propertyType.name === ENUM_WITH_DESCRIPTION;
+        const isEnumType = selectedProperty.propertyType.name === 'enum';
 
         return {
           ...property,
           description: data.description,
+          displayName: data.displayName,
           ...(config
             ? {
                 customPropertyConfig: {
@@ -120,7 +119,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.type'),
         dataIndex: 'propertyType',
         key: 'propertyType',
-        render: (propertyType) => getEntityName(propertyType),
+        render: (propertyType: CustomProperty['propertyType']) => {
+          const Icon =
+            CUSTOM_PROPERTIES_ICON_MAP[
+              propertyType.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+            ];
+
+          return (
+            <div className="d-flex gap-2 custom-property-type-chip items-center">
+              {Icon && <Icon width={20} />}
+              <span>
+                {startCase(getEntityName(propertyType).replace(/-cp/g, ''))}
+              </span>
+            </div>
+          );
+        },
       },
       {
         title: t('label.config'),
@@ -144,36 +157,18 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
 
           // If config is an object, then it is a enum config
           if (!isString(config) && !isArray(config)) {
-            if (record.propertyType.name === ENUM_WITH_DESCRIPTION) {
-              const values =
-                (config?.values as EnumWithDescriptionsConfig['values']) ?? [];
-
+            if (config?.columns) {
               return (
-                <div
-                  className="w-full d-flex gap-2 flex-column"
-                  data-testid="enum-with-description-config">
-                  <div className="w-full d-flex gap-2 flex-column">
-                    {values.map((value) => (
-                      <Tooltip
-                        key={value.key}
-                        title={value.description}
-                        trigger="hover">
-                        <Tag
-                          style={{
-                            width: 'max-content',
-                            margin: '0px',
-                            border: 'none',
-                            padding: '4px',
-                            background: 'rgba(0, 0, 0, 0.03)',
-                          }}>
-                          {value.key}
-                        </Tag>
-                      </Tooltip>
-                    ))}
-                  </div>
+                <div className="w-full d-flex gap-2 flex-column">
                   <Typography.Text>
-                    {t('label.multi-select')}:{' '}
-                    {config?.multiSelect ? t('label.yes') : t('label.no')}
+                    <span className="font-medium">{`${t(
+                      'label.column-plural'
+                    )}:`}</span>
+                    <ul className="m-b-0">
+                      {config.columns.map((column) => (
+                        <li key={column}>{column}</li>
+                      ))}
+                    </ul>
                   </Typography.Text>
                 </div>
               );
@@ -205,7 +200,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         width: 300,
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewer markdown={text || ''} />
+            <RichTextEditorPreviewerNew markdown={text ?? ''} />
           ) : (
             <Typography.Text
               className="text-grey-muted "
@@ -274,18 +269,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   return (
     <Fragment>
       <Table
-        bordered
         columns={tableColumn}
+        containerClassName="entity-custom-properties-table"
         data-testid="entity-custom-properties-table"
         dataSource={customProperties}
         loading={isLoading}
         locale={{
           emptyText: (
             <ErrorPlaceHolder
-              className="mt-xs"
+              className="mt-xs border-none"
               doc={ADD_CUSTOM_PROPERTIES_DOCS}
               heading={t('label.property')}
               permission={hasAccess}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.custom-property'),
+              })}
               type={ERROR_PLACEHOLDER_TYPE.CREATE}
             />
           ),

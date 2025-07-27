@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
@@ -26,9 +25,7 @@ const testSuitePermission = {
   EditDisplayName: true,
   EditCustomFields: true,
 };
-const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
-  tab?: DataQualityPageTabs;
-};
+
 const mockLocation = {
   search: '',
 };
@@ -40,12 +37,12 @@ const mockList = {
       name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
       fullyQualifiedName:
         'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-      description: 'This is an executable test suite linked to an entity',
+      description: 'This is an basic test suite linked to an entity',
       serviceType: 'TestSuite',
       href: 'href',
       deleted: false,
-      executable: true,
-      executableEntityReference: {
+      basic: true,
+      basicEntityReference: {
         id: 'id1',
         type: 'table',
         name: 'dim_address',
@@ -81,17 +78,38 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 jest.mock('react-router-dom', () => {
   return {
+    ...jest.requireActual('react-router-dom'),
     Link: jest
       .fn()
       .mockImplementation(({ children, ...rest }) => (
         <div {...rest}>{children}</div>
       )),
-    useHistory: jest.fn(),
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
+    useNavigate: jest.fn().mockReturnValue(jest.fn()),
+    useParams: jest.fn().mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    }),
   };
 });
 jest.mock('../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
+});
+const mockDataQualityContext = {
+  isTestCaseSummaryLoading: false,
+  testCaseSummary: {
+    total: 0,
+    passed: 0,
+    failed: 0,
+    skipped: 0,
+  },
+  activeTab: DataQualityPageTabs.TEST_CASES,
+};
+jest.mock('../../../../pages/DataQuality/DataQualityProvider', () => {
+  return {
+    useDataQualityProvider: jest
+      .fn()
+      .mockImplementation(() => mockDataQualityContext),
+  };
 });
 jest.mock(
   '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
@@ -101,26 +119,42 @@ jest.mock(
       .mockImplementation(({ children }) => <div>{children}</div>),
   })
 );
-jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>SearchBar.component</div>);
-});
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>SearchBar.component</div>),
+}));
+jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div>SummaryPanel.component</div>),
+}));
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ type }) => (
       <div data-testid={`error-placeholder-type-${type}`}>
         ErrorPlaceHolder.component
       </div>
-    ));
-});
+    )),
+}));
 
-const mockProps = {
-  summaryPanel: <div>SummaryPanel.component</div>,
-};
+jest.mock('../../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div>OwnerLabel</div>,
+    },
+  ]),
+}));
 
 describe('TestSuites component', () => {
   it('component should render', async () => {
-    render(<TestSuites {...mockProps} />);
+    render(<TestSuites />);
     const tableHeader = await screen.findAllByRole('columnheader');
     const labels = tableHeader.map((header) => header.textContent);
 
@@ -129,7 +163,7 @@ describe('TestSuites component', () => {
       'label.name',
       'label.test-plural',
       'label.success %',
-      'label.owner',
+      'label.owner-plural',
     ]);
     expect(await screen.findByTestId('test-suite-table')).toBeInTheDocument();
     expect(
@@ -141,10 +175,10 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
   });
 
-  it('should send testSuiteType executable in api, if active tab is tables', async () => {
+  it('should send testSuiteType basic in api, if active tab is tables', async () => {
     const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
 
-    render(<TestSuites {...mockProps} />);
+    render(<TestSuites />);
 
     expect(
       await screen.findByTestId('test-suite-container')
@@ -160,7 +194,7 @@ describe('TestSuites component', () => {
       sortNestedMode: ['max'],
       sortNestedPath: 'testCaseResultSummary',
       sortType: 'desc',
-      testSuiteType: 'executable',
+      testSuiteType: 'basic',
     });
   });
 
@@ -169,7 +203,7 @@ describe('TestSuites component', () => {
       '?owner={"id":"84c3e66f-a4a6-42ab-b85c-b578f46d3bca","type":"user","name":"admin","fullyQualifiedName":"admin"}&searchValue=sales';
     testSuitePermission.ViewAll = true;
     const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
-    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
+    render(<TestSuites />, { wrapper: MemoryRouter });
 
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: ['owners', 'summary'],
@@ -182,7 +216,7 @@ describe('TestSuites component', () => {
       sortNestedMode: ['max'],
       sortNestedPath: 'testCaseResultSummary',
       sortType: 'desc',
-      testSuiteType: 'executable',
+      testSuiteType: 'basic',
     });
   });
 
@@ -191,7 +225,7 @@ describe('TestSuites component', () => {
       Promise.resolve({ data: [], paging: { total: 16 } })
     );
 
-    render(<TestSuites {...mockProps} />);
+    render(<TestSuites />);
 
     expect(
       await screen.findByText('NextPrevious.component')
@@ -199,26 +233,29 @@ describe('TestSuites component', () => {
   });
 
   // TestSuite type test
-  it('add test suite button should be visible, if type is testSuite', async () => {
-    mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
+  it('should render radio buttons for table and bundle suites', async () => {
+    render(<TestSuites />, { wrapper: MemoryRouter });
 
-    expect(await screen.findByTestId('add-test-suite-btn')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('table-suite-radio-btn')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('bundle-suite-radio-btn')
+    ).toBeInTheDocument();
   });
 
-  it('should send testSuiteType logical in api, if active tab is tables', async () => {
+  it('should send testSuiteType basic by default', async () => {
     mockLocation.search = '';
-    mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
     const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
 
-    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
+    render(<TestSuites />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: ['owners', 'summary'],
-      includeEmptyTestSuites: true,
+      includeEmptyTestSuites: false,
       limit: 15,
       offset: 0,
       owner: undefined,
@@ -227,14 +264,15 @@ describe('TestSuites component', () => {
       sortNestedMode: ['max'],
       sortNestedPath: 'testCaseResultSummary',
       sortType: 'desc',
-      testSuiteType: 'logical',
+      testSuiteType: 'basic',
     });
   });
 
   it('should render no data placeholder, if there is no permission', async () => {
-    mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
+    // Reset permission for this test
     testSuitePermission.ViewAll = false;
-    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
+
+    render(<TestSuites />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByTestId('error-placeholder-type-PERMISSION')

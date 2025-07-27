@@ -43,8 +43,18 @@
         }
       ]
     },
+    "searchAcrossDatabases": {
+      "description": "Optional configuration to search across databases for tables or not",
+      "type": "boolean",
+      "default": false
+    },
     "dbtUpdateDescriptions": {
       "description": "Optional configuration to update the description from DBT or not",
+      "type": "boolean",
+      "default": false
+    },
+    "dbtUpdateOwners": {
+      "description": "Optional configuration to update the owners from DBT or not",
       "type": "boolean",
       "default": false
     },
@@ -80,6 +90,11 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "tagFilterPattern": {
+      "description": "Regex to only fetch tags that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Tag Filter Pattern"
     }
   },
   "additionalProperties": false,

@@ -1,12 +1,15 @@
 """
 Test Tableau Dashboard
 """
-
+import uuid
+from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -16,6 +19,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
+from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauDashboard,
     TableauSource,
@@ -42,11 +51,8 @@ mock_tableau_config = {
             "config": {
                 "type": "Tableau",
                 "authType": {"username": "username", "password": "abcdefg"},
-                "env": "tableau_env",
                 "hostPort": "http://tableauHost.com",
                 "siteName": "tableauSiteName",
-                "siteUrl": "tableauSiteUrl",
-                "apiVersion": "3.19",
             }
         },
         "sourceConfig": {
@@ -75,6 +81,7 @@ MOCK_DASHBOARD = TableauDashboard(
     name="Regional",
     webpageUrl="http://tableauHost.com/#/site/hidarsite/workbooks/897790",
     description="tableau dashboard description",
+    user_views=10,
     tags=[],
     owner=TableauOwner(
         id="1234", name="Dashboard Owner", email="samplemail@sample.com"
@@ -167,21 +174,20 @@ class TableauUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
     )
-    @patch("tableau_api_lib.tableau_server_connection.TableauServerConnection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(
-        self, methodName, get_connection, tableau_server_connection, test_connection
-    ) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
         get_connection.return_value = False
-        tableau_server_connection.return_value = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
         self.tableau = TableauSource.create(
             mock_tableau_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
+        self.tableau.client = SimpleNamespace()
+        self.tableau.context.get().__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
         assert self.tableau.get_dashboard_name(MOCK_DASHBOARD) == MOCK_DASHBOARD.name
@@ -198,3 +204,268 @@ class TableauUnitTest(TestCase):
 
         for _, (exptected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
             self.assertEqual(exptected, original)
+
+    def test_yield_dashboard_usage(self):
+        """
+        Validate the logic for existing or new usage
+        """
+        self.tableau.context.get().__dict__["dashboard"] = "dashboard_name"
+
+        # Start checking dashboard without usage
+        # and a view count
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            got_usage = next(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))
+            self.assertEqual(
+                got_usage.right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.tableau.today, count=10),
+                ),
+            )
+
+        # Now check what happens if we already have some summary data for today
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=10), date=self.tableau.today
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            # Nothing is returned
+            self.assertEqual(
+                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 0
+            )
+
+        # But if we have usage for today but the count is 0, we'll return the details
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=0), date=self.tableau.today
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.tableau.today, count=10),
+                ),
+            )
+
+        # But if we have usage for another day, then we do the difference
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=5),
+                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                next(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD)).right,
+                DashboardUsage(
+                    dashboard=return_value,
+                    usage=UsageRequest(date=self.tableau.today, count=5),
+                ),
+            )
+
+        # If the past usage is higher than what we have today, something weird is going on
+        # we don't return usage but don't explode
+        return_value = Dashboard(
+            id=uuid.uuid4(),
+            name="dashboard_name",
+            fullyQualifiedName="dashboard_service.dashboard_name",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            usageSummary=UsageDetails(
+                dailyStats=UsageStats(count=1000),
+                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+            ),
+        )
+        with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
+            self.assertEqual(
+                len(list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))), 1
+            )
+
+            self.assertIsNotNone(
+                list(self.tableau.yield_dashboard_usage(MOCK_DASHBOARD))[0].left
+            )
+
+    def test_check_basemodel_returns_id_as_string(self):
+        """
+        Test that the basemodel returns the id as a string
+        """
+        base_model = TableauBaseModel(id=uuid.uuid4())
+        self.assertEqual(base_model.id, str(base_model.id))
+
+        base_model = TableauBaseModel(id="1234")
+        self.assertEqual(base_model.id, "1234")
+
+    def test_get_dashboard_project_filter(self):
+        """
+        Test get_dashboard filters dashboards based on projectFilterPattern
+        """
+
+        mock_dashboard_details_list = [
+            TableauDashboard(
+                id="dashboard1",
+                name="dashboard1",
+                project=TableauBaseModel(id="p1", name="FilteredProject"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+            TableauDashboard(
+                id="dashboard2",
+                name="dashboard2",
+                project=TableauBaseModel(id="p2", name="OtherProject"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+            TableauDashboard(
+                id="dashboard3",
+                name="dashboard3",
+                project=TableauBaseModel(id="p3", name="excludedDashboard"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+            TableauDashboard(
+                id="dashboard4",
+                name="dashboard4",
+                project=TableauBaseModel(id="p4", name="excludedDashboard"),
+                charts=[],
+                dataModels=[],
+                tags=[],
+            ),
+        ]
+
+        project_names_return_map = {
+            "dashboard1": "FilteredProject.OtherProject",
+            "dashboard2": "FilteredProject.OtherProject.ChildProject",
+            "dashboard3": "AnFilteredProject.OtherProject.ChildProject",
+            "dashboard4": "AnFilteredProject.OtherProject1.ChildProject2.ExcludedProject2",
+        }
+
+        self.tableau.source_config.projectFilterPattern = FilterPattern(
+            includes=["^FilteredProject.OtherProject$"]
+        )
+
+        with patch.object(
+            self.tableau,
+            "get_dashboards_list",
+            return_value=mock_dashboard_details_list,
+        ):
+
+            with patch.object(
+                self.tableau,
+                "get_project_names",
+                side_effect=lambda dashboard_details: project_names_return_map[
+                    dashboard_details.name
+                ],
+            ), patch.object(
+                self.tableau,
+                "get_dashboards_list",
+                return_value=mock_dashboard_details_list,
+            ), patch.object(
+                self.tableau,
+                "get_dashboard_details",
+                side_effect=lambda x: x,
+            ):
+                dashboards = list(self.tableau.get_dashboard())
+                self.assertEqual(len(dashboards), 1)
+                self.assertEqual(dashboards[0].name, "dashboard1")
+
+        # Test with other project names
+        self.tableau.source_config.projectFilterPattern = FilterPattern(
+            includes=[
+                "^FilteredProject.OtherProject.*",
+                "^AnFilteredProject.OtherProject.ChildProject$",
+            ]
+        )
+
+        with patch.object(
+            self.tableau,
+            "get_dashboards_list",
+            return_value=mock_dashboard_details_list,
+        ):
+
+            with patch.object(
+                self.tableau,
+                "get_project_names",
+                side_effect=lambda dashboard_details: project_names_return_map[
+                    dashboard_details.name
+                ],
+            ), patch.object(
+                self.tableau,
+                "get_dashboards_list",
+                return_value=mock_dashboard_details_list,
+            ), patch.object(
+                self.tableau,
+                "get_dashboard_details",
+                side_effect=lambda x: x,
+            ):
+                dashboards = list(self.tableau.get_dashboard())
+                self.assertEqual(len(dashboards), 3)
+                self.assertEqual(dashboards[0].name, "dashboard1")
+                self.assertEqual(dashboards[1].name, "dashboard2")
+                self.assertEqual(dashboards[2].name, "dashboard3")
+
+        # Test with includes and excludes
+
+        self.tableau.source_config.projectFilterPattern = FilterPattern(
+            includes=["^AnFilteredProject.OtherProject1.*"],
+            excludes=[".*ExcludedProject2.*"],
+        )
+
+        with patch.object(
+            self.tableau,
+            "get_dashboards_list",
+            return_value=mock_dashboard_details_list,
+        ):
+
+            with patch.object(
+                self.tableau,
+                "get_project_names",
+                side_effect=lambda dashboard_details: project_names_return_map[
+                    dashboard_details.name
+                ],
+            ), patch.object(
+                self.tableau,
+                "get_dashboards_list",
+                return_value=mock_dashboard_details_list,
+            ), patch.object(
+                self.tableau,
+                "get_dashboard_details",
+                side_effect=lambda x: x,
+            ):
+                dashboards = list(self.tableau.get_dashboard())
+                self.assertEqual(len(dashboards), 0)
+
+    def test_generate_dashboard_url(self):
+        """
+        Test that the dashboard url is generated correctly with proxyURL
+        """
+        self.tableau.config.serviceConnection.root.config.proxyURL = (
+            "http://mockTableauServer.com"
+        )
+        result = list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
+        self.assertEqual(
+            result[0].right.sourceUrl.root,
+            "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
+        )

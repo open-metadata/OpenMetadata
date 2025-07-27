@@ -2,91 +2,7 @@
   "summary": "Table CSV file is used for importing and exporting table metadata from and to an **existing** table.",
   "headers": [
     {
-      "name": "name",
-      "required": true,
-      "description": "The name of the table being updated.",
-      "examples": [
-        "`users`, `customers`"
-      ]
-    },
-    {
-      "name": "displayName",
-      "required": false,
-      "description": "Display name for the table.",
-      "examples": [
-        "`fact_session`, `dim_user`"
-      ]
-    },
-    {
-      "name": "description",
-      "required": false,
-      "description": "Description for the table in Markdown format.",
-      "examples": [
-        "`Customer Schema` that contains all the tables related to customer entity."
-      ]
-    },
-    {
-      "name": "owner",
-      "required": false,
-      "description": "Owner names separated by ';'. For team owner, include prefix team. For user owner, include prefix user.",
-      "examples": [
-        "`team;marketing`",
-        "`user;john`"
-      ]
-    },
-    {
-      "name": "tags",
-      "required": false,
-      "description": "Fully qualified classification tag names associated with the table separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
-      "examples": [
-        "`PII.Sensitive`",
-        "`PII.Sensitive;PersonalData.Personal`"
-      ]
-    },
-    {
-      "name": "glossaryTerms",
-      "required": false,
-      "description": "Fully qualified glossary term names associated with the table separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
-      "examples": [
-        "`Glossary.GlossaryTerm1`",
-        "`Glossary.GlossaryTerm1.GlossaryTerm2`"
-      ]
-    },
-    {
-      "name": "tiers",
-      "required": false,
-      "description": "Fully qualified tier tags names associated with the table separated by ';'.",
-      "examples": [
-        "`Tier.Tier1`",
-        "`Tier.Tier2`"
-      ]
-    },
-    {
-      "name": "retentionPeriod",
-      "required": false,
-      "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
-      "examples": [
-        "`P23DT23H`"
-      ]
-    },
-    {
-      "name": "sourceUrl",
-      "required": false,
-      "description": "Source URL for the table.",
-      "examples": [
-        "http://domain.com/system/customer_schema"
-      ]
-    },
-    {
-      "name": "domain",
-      "required": false,
-      "description": "Domain to which the table belongs to.",
-      "examples": [
-        "Marketing", "Sales"
-      ]
-    },
-    {
-      "name": "column.fullyQualifiedName",
+      "name": "column.name",
       "required": true,
       "description": "Fully qualified name of the column.",
       "examples": [
@@ -119,7 +35,7 @@
     },
     {
       "name": "column.dataType",
-      "required": false,
+      "required": true,
       "description": "Actual Column data type.",
       "examples": [
         "BLOB", "DATE"
@@ -133,7 +49,7 @@
         "BLOB", "DATE"
       ]
     },
-    
+
     {
       "name": "column.dataLength",
       "required": false,

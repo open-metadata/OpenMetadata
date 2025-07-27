@@ -10,15 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { useFqn } from '../../hooks/useFqn';
+import {
+  addDataModelFollower,
+  getDataModelByFqn,
+  patchDataModelDetails,
+  removeDataModelFollower,
+  updateDataModelVotes,
+} from '../../rest/dataModelsAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import DataModelsPage from './DataModelPage.component';
 import {
   CREATE_THREAD,
@@ -32,18 +37,11 @@ import {
   UPDATE_VOTE,
 } from './mocks/DataModelPage.mock';
 
-const mockAddDataModelFollower = jest.fn().mockResolvedValue({});
-const mockGetDataModelByFqn = jest.fn().mockResolvedValue({});
-const mockPatchDataModelDetails = jest.fn().mockResolvedValue({});
-const mockRemoveDataModelFollower = jest.fn().mockResolvedValue({});
-const mockUpdateDataModelVotes = jest.fn().mockResolvedValue({});
-const mockPostThread = jest.fn().mockResolvedValue({});
-const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
+const mockGetEntityPermissionByFqn = jest.fn().mockImplementation(() => ({
   ViewAll: true,
   ViewBasic: true,
-});
+}));
 const mockUpdateTierTag = jest.fn();
-const mockShowErrorToast = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
 
 jest.mock('../../hooks/useApplicationStore', () => ({
@@ -65,12 +63,9 @@ jest.mock(
         ({
           createThread,
           dataModelData,
-          handleColumnUpdateDataModel,
           handleFollowDataModel,
           handleToggleDelete,
-          handleUpdateDescription,
           handleUpdateOwner,
-          handleUpdateTags,
           handleUpdateTier,
           onUpdateDataModel,
           onUpdateVote,
@@ -81,10 +76,7 @@ jest.mock(
             <button onClick={createThread}>{CREATE_THREAD}</button>
             <button
               onClick={() => {
-                handleColumnUpdateDataModel();
-                handleUpdateDescription();
                 handleUpdateOwner();
-                handleUpdateTags();
                 handleUpdateTier();
                 onUpdateDataModel();
               }}>
@@ -103,9 +95,9 @@ jest.mock('../../components/common/Loader/Loader', () =>
 );
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn(() => mockGetEntityPermissionByFqn()),
-  }),
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+  })),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -113,21 +105,20 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../rest/dataModelsAPI', () => ({
-  addDataModelFollower: () => mockAddDataModelFollower(),
-  getDataModelByFqn: () => mockGetDataModelByFqn(),
-  patchDataModelDetails: () => mockPatchDataModelDetails(),
-  removeDataModelFollower: () => mockRemoveDataModelFollower(),
-  updateDataModelVotes: () => mockUpdateDataModelVotes(),
-}));
-
-jest.mock('../../rest/feedsAPI', () => ({
-  postThread: () => mockPostThread(),
+  getDataModelByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
+  patchDataModelDetails: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
+  addDataModelFollower: jest.fn().mockImplementation(() => Promise.resolve({})),
+  updateDataModelVotes: jest.fn().mockImplementation(() => Promise.resolve({})),
+  removeDataModelFollower: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
-  sortTagsCaseInsensitive: jest.fn((tags) => tags),
 }));
 
 jest.mock('../../utils/DataModelsUtils', () => ({
@@ -145,7 +136,7 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn((...args) => mockShowErrorToast(...args)),
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('fast-json-patch', () => ({
@@ -153,49 +144,52 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockImplementation(() => 'testEntityName'),
+}));
+
 describe('DataModelPage component', () => {
   it('should render necessary elements', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+    await act(async () => {
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
+    });
 
-    expect(mockGetDataModelByFqn).toHaveBeenCalled();
+    expect(getDataModelByFqn).toHaveBeenCalled();
     expect(screen.getByText('DataModelDetails')).toBeInTheDocument();
   });
 
   it('toggle delete action check', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+    await act(async () => {
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
+    });
 
     // toggle delete
-    await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: TOGGLE_DELETE,
-        })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: TOGGLE_DELETE,
+      })
+    );
 
     expect(screen.getByText(DATA_MODEL_DELETED)).toBeInTheDocument();
   });
 
   it('follow data model action check', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
-
-    // follow data model
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: FOLLOW_DATA_MODEL,
-        })
-      );
+    await act(async () => {
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
     });
 
-    expect(mockAddDataModelFollower).toHaveBeenCalled();
+    // follow data model
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: FOLLOW_DATA_MODEL,
+      })
+    );
+
+    expect(addDataModelFollower).toHaveBeenCalled();
   });
 
   it('unfollow data model action check', async () => {
-    mockGetDataModelByFqn.mockResolvedValueOnce({
+    (getDataModelByFqn as jest.Mock).mockResolvedValueOnce({
       followers: [
         {
           id: mockUserData.id,
@@ -203,75 +197,57 @@ describe('DataModelPage component', () => {
       ],
     });
 
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
-
-    // unfollow data model
     await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: FOLLOW_DATA_MODEL,
-        })
-      );
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
     });
 
-    expect(mockRemoveDataModelFollower).toHaveBeenCalled();
-  });
-
-  it('create thread action checks', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
-
-    // create thread
-    userEvent.click(
+    // unfollow data model
+    fireEvent.click(
       screen.getByRole('button', {
-        name: CREATE_THREAD,
+        name: FOLLOW_DATA_MODEL,
       })
     );
 
-    expect(mockPostThread).toHaveBeenCalled();
+    expect(removeDataModelFollower).toHaveBeenCalled();
   });
 
   it('update data model action check', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
-
-    // update data model
     await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: UPDATE_DATA_MODEL,
-        })
-      );
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
     });
 
-    expect(mockPatchDataModelDetails).toHaveBeenCalledTimes(6);
+    // update data model
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: UPDATE_DATA_MODEL,
+      })
+    );
+
+    expect(patchDataModelDetails).toHaveBeenCalledTimes(3);
   });
 
   it('update vote action check', async () => {
-    render(<DataModelsPage />);
-    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
-
-    // update vote
     await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', {
-          name: UPDATE_VOTE,
-        })
-      );
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
     });
 
-    expect(mockUpdateDataModelVotes).toHaveBeenCalled();
+    // update vote
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: UPDATE_VOTE,
+      })
+    );
+
+    expect(updateDataModelVotes).toHaveBeenCalled();
   });
 
   it('errors check', async () => {
-    mockPostThread.mockRejectedValueOnce(ERROR);
-    mockPatchDataModelDetails.mockRejectedValue(ERROR);
-    mockAddDataModelFollower.mockRejectedValueOnce(ERROR);
-    mockUpdateDataModelVotes.mockRejectedValueOnce(ERROR);
+    (patchDataModelDetails as jest.Mock).mockRejectedValue(ERROR);
+    (addDataModelFollower as jest.Mock).mockRejectedValueOnce(ERROR);
+    (updateDataModelVotes as jest.Mock).mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<DataModelsPage />);
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
     });
 
     // create thread
@@ -283,53 +259,62 @@ describe('DataModelPage component', () => {
 
     await act(async () => {
       // update data model
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', {
           name: UPDATE_DATA_MODEL,
         })
       );
 
       // follow data model
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', {
           name: FOLLOW_DATA_MODEL,
         })
       );
 
       // update vote
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', {
           name: UPDATE_VOTE,
         })
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(9);
+    expect(showErrorToast).toHaveBeenCalledTimes(5);
 
-    mockPatchDataModelDetails.mockResolvedValue({});
+    (patchDataModelDetails as jest.Mock).mockResolvedValue({});
   });
 
   it('error when rendering component', async () => {
     mockGetEntityPermissionByFqn.mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<DataModelsPage />);
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
     });
 
     expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
-    expect(mockShowErrorToast).toHaveBeenCalledWith(
-      FETCH_ENTITY_PERMISSION_ERROR
-    );
+    expect(showErrorToast).toHaveBeenCalledWith(FETCH_ENTITY_PERMISSION_ERROR);
   });
 
   it('error while fetching data model data', async () => {
-    mockGetDataModelByFqn.mockRejectedValueOnce(ERROR);
-
-    await act(async () => {
-      render(<DataModelsPage />);
+    (getDataModelByFqn as jest.Mock).mockImplementationOnce(() => {
+      return Promise.reject(new Error(ERROR));
     });
 
+    await act(async () => {
+      render(<DataModelsPage />, { wrapper: MemoryRouter });
+    });
+
+    expect(useFqn).toHaveBeenCalled();
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+      ResourceEntity.DASHBOARD_DATA_MODEL,
+      'testFqn'
+    );
     expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
-    expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR);
+    expect(showErrorToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: ERROR,
+      })
+    );
   });
 });

@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/uiCustomization.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UICustomization",
+  "description": "Contains UI customization details for a Persona.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.UICustomization",
+  "properties": {
+    "id": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "name": {
+      "description": "A unique name for the UI customization configuration.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the UI customization.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "pages": {
+      "description": "List of Pages in the UI customization.",
+      "type": "array",
+      "items": { "$ref": "page.json" }
+    },
+    "navigation": {
+      "description": "Site-wide navigation configuration.",
+      "type": "array",
+      "items": { "$ref": "navigationItem.json" }
+    },
+    "personaPreferences": {
+      "description": "Persona default preferences. Admin can customize certain UI elements per persona as base configuration.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/personaPreferences.json"
+      },
+      "default": []
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": { "type": "string" },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "href": { "$ref": "../../type/basic.json#/definitions/href" }
+  },
+  "required": ["id", "name", "pages"],
+  "additionalProperties": false
+}

@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Query } from '../../../../generated/entity/data/query';
 import {
@@ -83,13 +82,13 @@ jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
     </div>
   ));
 });
-jest.mock('../../../TagsInput/TagsInput.component', () => {
-  return jest.fn().mockImplementation(({ onTagsUpdate }) => (
+jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest.fn().mockImplementation(({ onSelectionChange }) => (
     <div>
       TagsInput.component
       <button
         data-testid="update-tags-button"
-        onClick={() => onTagsUpdate(mockNewTag)}>
+        onClick={() => onSelectionChange(mockNewTag)}>
         {' '}
         Update Tags
       </button>

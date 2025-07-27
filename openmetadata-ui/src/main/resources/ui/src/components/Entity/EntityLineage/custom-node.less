@@ -30,6 +30,7 @@
 .ant-btn.ant-btn-background-ghost.expand-btn {
   background-color: white;
   box-shadow: none;
+
   &:hover {
     background-color: white;
   }
@@ -40,49 +41,66 @@
 }
 
 .lineage-node {
+  width: 100%;
+  max-width: 320px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
   border-radius: 10px;
   overflow: hidden;
+
   .profiler-item {
-    width: 36px;
-    height: 36px;
     margin-right: 4px;
     border-radius: 4px;
-    line-height: 36px;
-    font-size: 14px;
+
+    &.medium {
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      font-size: 14px;
+    }
+
+    &.small {
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      font-size: 12px;
+    }
+
     &.green {
       border: 1px solid @green-5;
     }
+
     &.amber {
       border: 1px solid @yellow-4;
     }
+
     &.red {
       border: 1px solid @red-5;
     }
   }
+
   .column-container {
     min-height: 48px;
-    padding: 6px 12px;
+    padding: 12px;
+    background-color: @grey-1;
 
-    .lineage-collapse-column {
-      .ant-collapse {
-        border-radius: 0;
-        border: 1px solid @border-color;
-        border-color: @border-color;
-      }
+    .lineage-collapse-column.ant-collapse {
+      border: none;
+      border-radius: 0;
+
       .ant-collapse-header {
-        padding: 0;
+        padding: 4px;
         font-size: 12px;
+        display: inherit; // to fix the overflow issue of parent column node, which has children.
+
         .custom-node-column-container {
           background-color: @lineage-collapse-header;
         }
-        .lineage-column-node-handle {
-          background-color: @lineage-collapse-header;
-        }
       }
+
       .ant-collapse-content-box {
         padding: 4px;
       }
+
       .ant-collapse-item {
         border: none;
         border-radius: 0;
@@ -116,6 +134,7 @@
   .lineage-node-handle {
     border-color: @primary-color;
   }
+
   .lineage-node {
     border-color: @primary-color !important;
   }
@@ -139,18 +158,61 @@
   .lineage-node {
     border-color: @primary-color !important;
   }
+
   .lineage-node-handle {
     border-color: @primary-color;
+
     svg {
       color: @primary-color;
     }
   }
+
   .label-container {
     background: @primary-1;
   }
+
   .column-container {
     background: @primary-1;
     border-top: 1px solid @border-color;
+  }
+}
+
+.react-flow__node-default.selectable.selected,
+.react-flow__node-default.selectable:focus,
+.react-flow__node-default.selectable:focus-visible,
+.react-flow__node-input.selectable.selected,
+.react-flow__node-input.selectable:focus,
+.react-flow__node-input.selectable:focus-visible,
+.react-flow__node-output.selectable.selected,
+.react-flow__node-output.selectable:focus,
+.react-flow__node-output.selectable:focus-visible,
+.react-flow__node-group.selectable.selected,
+.react-flow__node-group.selectable:focus,
+.react-flow__node-group.selectable:focus-visible,
+.react-flow__node-load-more.selectable.selected,
+.react-flow__node-load-more.selectable:focus,
+.react-flow__node-load-more.selectable:focus-visible {
+  .data-quality-failed-custom-node-header {
+    &.lineage-node {
+      border-color: @red-3 !important;
+    }
+
+    .lineage-node-handle {
+      border-color: @red-3;
+
+      svg {
+        color: @red-3;
+      }
+    }
+
+    .label-container {
+      background: fade(@red-3, 10%);
+    }
+
+    .column-container {
+      background: fade(@red-3, 10%);
+      border-top: 1px solid @border-color;
+    }
   }
 }
 
@@ -158,9 +220,21 @@
   .label-container {
     background: @primary-1;
   }
+
   .column-container {
     background: @primary-1;
     border-top: 1px solid @border-color;
+  }
+}
+
+.data-quality-failed-custom-node-header.custom-node-header-active {
+  .label-container {
+    background: fade(@red-3, 10%);
+  }
+
+  .column-container {
+    background: fade(@red-3, 10%);
+    border-top: 1px solid @red-3;
   }
 }
 
@@ -172,6 +246,7 @@
   .lineage-node-handle.react-flow__handle-left {
     left: -22px;
   }
+
   .lineage-node-handle.react-flow__handle-right {
     right: -22px;
   }
@@ -185,35 +260,67 @@
   border-color: @lineage-border !important;
   background: @white !important;
   top: 43px !important; // Need to show handles on top half
+
   svg {
     color: @text-grey-muted;
   }
 }
 
 .react-flow .lineage-column-node-handle {
-  width: 20px;
+  width: 30px;
   border-radius: 0;
   border-color: @lineage-border;
-  background: @white;
-  top: 1px;
+  background: transparent;
+  top: 5px;
   height: 25px;
   transform: none;
   border: none;
+  z-index: 1; // Adding as column text and data type should be behind handles
+
   &.react-flow__handle-left {
     left: 0;
   }
+
   &.react-flow__handle-right {
     right: 0;
   }
 }
 
 .custom-node-column-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 6px 8px;
+  background: @white;
   position: relative;
-  background-color: @white;
   font-size: 12px;
+  font-weight: 400;
+
+  .custom-node-name-container {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    text-align: left;
+    gap: 4px;
+
+    .custom-node-name-icon {
+      width: 14px;
+      display: flex;
+    }
+
+    .custom-node-column-label {
+      width: 100%;
+      display: block;
+    }
+  }
+
+  .custom-node-constraint {
+    padding-left: 4px;
+    padding-right: 12px;
+  }
+
+  .ant-skeleton-element {
+    .ant-skeleton-button-sm {
+      height: 32px; // Height of the skeleton button, to match the height of the column name
+    }
+  }
 }
 
 .custom-node-deleted-icon {

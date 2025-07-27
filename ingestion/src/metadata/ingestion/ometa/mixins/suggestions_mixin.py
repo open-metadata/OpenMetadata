@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.feed.suggestion import Suggestion, Suggest
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -65,7 +65,7 @@ class OMetaSuggestionsMixin:
         self.client.put(
             f"{self.get_suffix(Suggestion)}/accept-all?"
             f"userId={model_str(user_id)}&"
-            f"entityFQN={model_str(fqn)}&"
+            f"entityFQN={quote(fqn)}&"
             f"suggestionType={suggestion_type.value}",
         )
 
@@ -79,6 +79,6 @@ class OMetaSuggestionsMixin:
         self.client.put(
             f"{self.get_suffix(Suggestion)}/reject-all?"
             f"userId={model_str(user_id)}&"
-            f"entityFQN={model_str(fqn)}&"
+            f"entityFQN={quote(fqn)}&"
             f"suggestionType={suggestion_type.value}",
         )

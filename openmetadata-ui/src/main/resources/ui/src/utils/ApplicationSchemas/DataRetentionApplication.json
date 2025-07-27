@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/dataRetentionConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Retention Configuration",
+  "type": "object",
+  "description": "Configure retention policies for each entity.",
+  "properties": {
+    "changeEventRetentionPeriod": {
+      "title": "Change Event Retention Period (days)",
+      "description": "Enter the retention period for change event records in days (e.g., 7 for one week, 30 for one month).",
+      "type": "integer",
+      "default": 7,
+      "minimum": 1
+    },
+    "activityThreadsRetentionPeriod": {
+      "title": "Activity Threads Retention Period (days)",
+      "description": "Enter the retention period for Activity Threads of type = 'Conversation' records in days (e.g., 30 for one month, 60 for two months).",
+      "type": "integer",
+      "default": 60,
+      "minimum": 0
+    }
+  },
+  "required": ["changeEventRetentionPeriod", "activityThreadsRetentionPeriod"],
+  "additionalProperties": false
+}

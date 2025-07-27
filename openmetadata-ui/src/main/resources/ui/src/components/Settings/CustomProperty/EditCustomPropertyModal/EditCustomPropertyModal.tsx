@@ -10,30 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Form,
-  Input,
-  Modal,
-  Row,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { get, isUndefined, uniq } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { Form, Modal, Typography } from 'antd';
+import { isUndefined, uniq } from 'lodash';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import {
   ENTITY_REFERENCE_OPTIONS,
-  ENUM_WITH_DESCRIPTION,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
 } from '../../../../constants/CustomProperty.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
+  Config,
   CustomProperty,
-  EnumConfig,
-  ValueClass,
 } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -41,12 +29,14 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
+import Banner from '../../../common/Banner/Banner';
+import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 export interface FormData {
   description: string;
-  customPropertyConfig: string[] | ValueClass[];
+  customPropertyConfig: string[];
   multiSelect?: boolean;
+  displayName?: string;
 }
 
 interface EditCustomPropertyModalProps {
@@ -72,25 +62,30 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     setIsSaving(false);
   };
 
-  const {
-    hasEnumConfig,
-    hasEntityReferenceConfig,
-    hasEnumWithDescriptionConfig,
-  } = useMemo(() => {
+  const { hasEnumConfig, hasEntityReferenceConfig } = useMemo(() => {
     const propertyName = customProperty.propertyType.name ?? '';
     const hasEnumConfig = propertyName === 'enum';
-    const hasEnumWithDescriptionConfig = propertyName === ENUM_WITH_DESCRIPTION;
     const hasEntityReferenceConfig =
       PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(propertyName);
 
     return {
       hasEnumConfig,
       hasEntityReferenceConfig,
-      hasEnumWithDescriptionConfig,
     };
   }, [customProperty]);
 
   const formFields: FieldProp[] = [
+    {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
     {
       name: 'description',
       required: true,
@@ -115,11 +110,11 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
-        const enumConfig = customProperty.customPropertyConfig
-          ?.config as EnumConfig;
-        const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
+        const updatedValues = uniq([...value]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -170,27 +165,31 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     props: {
       'data-testid': 'multiSelect',
     },
+    formItemProps: {
+      style: { marginBottom: '0px' },
+    },
     id: 'root/multiSelect',
     formItemLayout: FormItemLayout.HORIZONTAL,
   };
 
   const initialValues = useMemo(() => {
-    if (hasEnumConfig || hasEnumWithDescriptionConfig) {
-      const enumConfig = customProperty.customPropertyConfig
-        ?.config as EnumConfig;
+    if (hasEnumConfig) {
+      const enumConfig = customProperty.customPropertyConfig?.config as Config;
 
       return {
         description: customProperty.description,
         customPropertyConfig: enumConfig?.values ?? [],
         multiSelect: Boolean(enumConfig?.multiSelect),
+        displayName: customProperty.displayName,
       };
     }
 
     return {
       description: customProperty.description,
       customPropertyConfig: customProperty.customPropertyConfig?.config,
+      displayName: customProperty.displayName,
     };
-  }, [customProperty, hasEnumConfig, hasEnumWithDescriptionConfig]);
+  }, [customProperty, hasEnumConfig]);
 
   const note = (
     <Typography.Text
@@ -233,133 +232,24 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         initialValues={initialValues}
         layout="vertical"
         onFinish={handleSubmit}>
-        {generateFormFields(formFields)}
+        <EntityAttachmentProvider
+          entityFqn={customProperty?.name}
+          entityType={EntityType.TYPE}>
+          {generateFormFields(formFields)}
+        </EntityAttachmentProvider>
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (
               <>
-                {generateFormFields([enumConfigField])}
-                {note}
-                {generateFormFields([multiSelectField])}
-              </>
-            )}
-
-            {hasEnumWithDescriptionConfig && (
-              <>
-                <Form.List name="customPropertyConfig">
-                  {(fields, { add, remove }) => {
-                    const config =
-                      (initialValues?.customPropertyConfig as ValueClass[]) ??
-                      [];
-
-                    return (
-                      <>
-                        <Form.Item
-                          className="form-item-horizontal"
-                          colon={false}
-                          label={
-                            <div className="d-flex gap-2 items-center">
-                              <span>{t('label.property')}</span>
-                              <Tooltip
-                                title={t(
-                                  'message.enum-with-description-update-note'
-                                )}>
-                                <InfoCircleOutlined
-                                  className="m-x-xss"
-                                  style={{ color: '#C4C4C4' }}
-                                />
-                              </Tooltip>
-                            </div>
-                          }>
-                          <Button
-                            data-testid="add-enum-description-config"
-                            icon={
-                              <PlusOutlined
-                                style={{ color: 'white', fontSize: '12px' }}
-                              />
-                            }
-                            size="small"
-                            type="primary"
-                            onClick={() => {
-                              add();
-                            }}
-                          />
-                        </Form.Item>
-
-                        {fields.map((field, index) => {
-                          const isExisting = Boolean(get(config, index, false));
-
-                          return (
-                            <Row
-                              className="m-t-md"
-                              gutter={[8, 0]}
-                              key={field.key}>
-                              <Col span={23}>
-                                <Row gutter={[8, 0]}>
-                                  <Col span={24}>
-                                    <Form.Item
-                                      name={[field.name, 'key']}
-                                      rules={[
-                                        {
-                                          required: true,
-                                          message: `${t(
-                                            'message.field-text-is-required',
-                                            {
-                                              fieldText: t('label.key'),
-                                            }
-                                          )}`,
-                                        },
-                                      ]}>
-                                      <Input
-                                        disabled={isExisting}
-                                        id={`key-${index}`}
-                                        placeholder={t('label.key')}
-                                      />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={24}>
-                                    <Form.Item
-                                      name={[field.name, 'description']}
-                                      rules={[
-                                        {
-                                          required: true,
-                                          message: `${t(
-                                            'message.field-text-is-required',
-                                            {
-                                              fieldText: t('label.description'),
-                                            }
-                                          )}`,
-                                        },
-                                      ]}
-                                      trigger="onTextChange"
-                                      valuePropName="initialValue">
-                                      <RichTextEditor height="200px" />
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
-                              </Col>
-                              {!isExisting && (
-                                <Col span={1}>
-                                  <Button
-                                    data-testid={`remove-enum-description-config-${index}`}
-                                    icon={<DeleteIcon width={16} />}
-                                    size="small"
-                                    type="text"
-                                    onClick={() => {
-                                      remove(field.name);
-                                    }}
-                                  />
-                                </Col>
-                              )}
-                            </Row>
-                          );
-                        })}
-                      </>
-                    );
-                  }}
-                </Form.List>
-
-                {generateFormFields([multiSelectField])}
+                {generateFormFields([enumConfigField, multiSelectField])}
+                {isSaving && (
+                  <Banner
+                    className="border-radius"
+                    isLoading={isSaving}
+                    message={t('message.enum-property-update-message')}
+                    type="success"
+                  />
+                )}
               </>
             )}
 

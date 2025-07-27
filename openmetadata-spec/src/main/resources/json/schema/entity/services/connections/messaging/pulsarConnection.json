@@ -20,6 +20,11 @@
       "$ref": "#/definitions/pulsarType",
       "default": "Pulsar"
     },
+    "topicFilterPattern": {
+      "description": "Regex to only fetch topics that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Topic Filter Pattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

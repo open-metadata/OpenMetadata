@@ -11,56 +11,110 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as TestCaseAbortedIcon } from '../../../assets/svg/aborted-status.svg';
+import { ReactComponent as TestCaseIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as TestCaseFailedIcon } from '../../../assets/svg/failed-status.svg';
+import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
+import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
+import { ReactComponent as TestCaseSuccessIcon } from '../../../assets/svg/success-colored.svg';
 import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
+import { PRIMARY_COLOR } from '../../../constants/Color.constants';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
 export const SummaryPanel: FC<SummaryPanelProps> = ({
   testSummary: summary,
   isLoading = false,
+  showAdditionalSummary = false,
 }: SummaryPanelProps) => {
   const { t } = useTranslation();
+  const spanValue = useMemo(
+    () => (showAdditionalSummary ? 8 : 6),
+    [showAdditionalSummary]
+  );
 
   return (
     <Row wrap gutter={[16, 16]}>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="bg-primary"
           className="h-full"
           isLoading={isLoading}
           showProgressBar={false}
           title={t('label.total-entity', { entity: t('label.test-plural') })}
+          titleIcon={
+            <TestCaseIcon color={PRIMARY_COLOR} height={16} width={16} />
+          }
           total={summary?.total ?? 0}
           value={summary?.total ?? 0}
         />
       </Col>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="bg-success"
           isLoading={isLoading}
           title={t('label.success')}
+          titleIcon={<TestCaseSuccessIcon height={16} width={16} />}
           total={summary?.total ?? 0}
           type="success"
           value={summary?.success ?? 0}
         />
       </Col>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="bg-aborted"
           isLoading={isLoading}
           title={t('label.aborted')}
+          titleIcon={<TestCaseAbortedIcon height={16} width={16} />}
           total={summary?.total ?? 0}
           type="aborted"
           value={summary?.aborted ?? 0}
         />
       </Col>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="bg-failed"
           isLoading={isLoading}
           title={t('label.failed')}
+          titleIcon={<TestCaseFailedIcon height={16} width={16} />}
           total={summary?.total ?? 0}
           type="failed"
           value={summary?.failed ?? 0}
         />
       </Col>
+      {showAdditionalSummary && (
+        <>
+          <Col span={spanValue}>
+            <SummaryCard
+              inverseLabel
+              cardBackgroundClass="bg-success"
+              isLoading={isLoading}
+              title={t('label.healthy-data-asset-plural')}
+              titleIcon={<HealthCheckIcon height={16} width={16} />}
+              total={summary?.totalDQEntities ?? 0}
+              type="success"
+              value={summary?.healthy ?? 0}
+            />
+          </Col>
+          <Col span={spanValue}>
+            <SummaryCard
+              inverseLabel
+              cardBackgroundClass="bg-primary"
+              isLoading={isLoading}
+              title={t('label.data-asset-plural-coverage')}
+              titleIcon={<DataAssetsCoverageIcon height={16} width={16} />}
+              total={summary?.totalEntityCount ?? 0}
+              type="acknowledged"
+              value={summary?.totalDQEntities ?? 0}
+            />
+          </Col>
+        </>
+      )}
     </Row>
   );
 };

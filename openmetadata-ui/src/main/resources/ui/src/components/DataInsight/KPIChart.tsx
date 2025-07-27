@@ -15,9 +15,9 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   CartesianGrid,
   Legend,
@@ -79,7 +79,7 @@ const KPIChart: FC<Props> = ({
   isKpiLoading,
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
@@ -90,7 +90,7 @@ const KPIChart: FC<Props> = ({
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
-  const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
+  const handleAddKpi = () => navigate(ROUTES.ADD_KPI);
 
   const getKPIResult = async (kpi: Kpi) => {
     const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
@@ -227,7 +227,7 @@ const KPIChart: FC<Props> = ({
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isLoading || isKpiLoading}
@@ -264,7 +264,7 @@ const KPIChart: FC<Props> = ({
                     <XAxis
                       allowDuplicatedCategory={false}
                       dataKey="day"
-                      tickFormatter={formatDate}
+                      tickFormatter={(value) => formatDate(value)}
                       type="category"
                     />
                     <YAxis dataKey="count" />
@@ -319,7 +319,13 @@ const KPIChart: FC<Props> = ({
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
-                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+                <ErrorPlaceHolder
+                  className="border-none"
+                  permissionValue={t('label.view-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })}
+                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+                />
               )}
             </Col>
           )}
@@ -340,8 +346,11 @@ const KPIChart: FC<Props> = ({
                 })}
               </Button>
             }
-            className="m-0"
+            className="m-0 border-none"
             permission={createKPIPermission}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
             size={SIZE.MEDIUM}
             type={
               createKPIPermission

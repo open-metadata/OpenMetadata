@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@ Base class for ingesting database services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -23,7 +23,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -66,7 +65,7 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     TopologyNode,
 )
-from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema
@@ -109,13 +108,9 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
         post_process=[
-            "yield_view_lineage",
-            "yield_procedure_lineage_and_queries",
             "yield_external_table_lineage",
+            "yield_table_constraints",
         ],
     )
     database: Annotated[
@@ -140,6 +135,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["databaseSchema"],
+        post_process=["mark_databases_as_deleted"],
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -163,7 +159,11 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        post_process=[
+            "mark_schemas_as_deleted",
+            "mark_tables_as_deleted",
+            "mark_stored_procedures_as_deleted",
+        ],
         threads=True,
     )
     table: Annotated[
@@ -222,6 +222,8 @@ class DatabaseServiceSource(
     config: WorkflowSource
     database_source_state: Set = set()
     stored_procedure_source_state: Set = set()
+    database_entity_source_state: Set = set()
+    schema_entity_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation
 
@@ -342,15 +344,14 @@ class DatabaseServiceSource(
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
 
-    @abstractmethod
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
-
     def update_table_constraints(
-        self, table_constraints: List[TableConstraint], foreign_columns: []
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints: List[TableConstraint],
+        foreign_columns: [],
+        columns,
     ) -> List[TableConstraint]:
         """
         process the table constraints of all tables
@@ -377,12 +378,6 @@ class DatabaseServiceSource(
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
-
-    @abstractmethod
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
@@ -506,6 +501,64 @@ class DatabaseServiceSource(
 
         self.stored_procedure_source_state.add(table_fqn)
 
+    def register_record_database_request(
+        self, database_request: CreateDatabaseRequest
+    ) -> None:
+        """
+        Mark the database record as scanned and update the database_entity_source_state
+        """
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.context.get().database_service,
+            database_name=database_request.name.root,
+        )
+
+        self.database_entity_source_state.add(database_fqn)
+
+    def register_record_schema_request(
+        self, schema_request: CreateDatabaseSchemaRequest
+    ) -> None:
+        """
+        Mark the schema record as scanned and update the schema_entity_source_state
+        """
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=schema_request.name.root,
+        )
+
+        self.schema_entity_source_state.add(schema_fqn)
+
+    def _get_filtered_database_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
+        """
+        Get filtered database names based on the database filter pattern
+        """
+        database_names_iterable = getattr(
+            self, "get_database_names_raw", self.get_database_names
+        )()
+        for database_name in database_names_iterable:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=database_name,
+            )
+            if filter_by_schema(
+                self.source_config.databaseFilterPattern,
+                database_fqn
+                if self.source_config.useFqnForFiltering
+                else database_name,
+            ):
+                if add_to_status:
+                    self.status.filter(database_fqn, "Database Filtered Out")
+                continue
+            yield database_fqn if return_fqn else database_name
+
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
     ) -> Iterable[str]:
@@ -536,7 +589,7 @@ class DatabaseServiceSource(
                 self.inspector, "get_table_owner"
             ):
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member.fetchall()
+                    connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )
@@ -597,6 +650,89 @@ class DatabaseServiceSource(
                     params={"databaseSchema": schema_fqn},
                 )
 
+    def mark_databases_as_deleted(self):
+        """
+        Use the current inspector to mark databases as deleted
+        """
+        if self.source_config.markDeletedDatabases:
+            logger.info(
+                f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"
+            )
+
+            # We need to include ALL databases from the source in the source state
+            # This includes both processed databases and all databases (filtered-in and filtered-out)
+            # to ensure we mark as deleted any databases that were previously ingested but are now
+            # filtered out, as well as any databases that were processed in this run
+            all_database_fqns = set()
+
+            # Get all databases from the source (both filtered-in and filtered-out)
+            for database_name in self._get_filtered_database_names():
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=database_name,
+                )
+                all_database_fqns.add(database_fqn)
+
+            # Combine the processed databases with all databases from source
+            complete_db_source_state = self.database_entity_source_state.union(
+                all_database_fqns
+            )
+
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Database,
+                entity_source_state=complete_db_source_state,
+                mark_deleted_entity=self.source_config.markDeletedDatabases,
+                params={"service": self.context.get().database_service},
+            )
+
+    def mark_schemas_as_deleted(self):
+        """
+        Use the current inspector to mark schemas as deleted
+        """
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the schema deletion."
+            )
+
+        if self.source_config.markDeletedSchemas:
+            logger.info(
+                f"Mark Deleted Schemas set to True. Processing database [{self.context.get().database}]"
+            )
+
+            # Build the database FQN to use as parameter
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+            )
+
+            # Get all filtered-in schema FQNs to create a complete source state
+            # We need to include both processed schemas and filtered schemas in the source state
+            # to ensure we mark as deleted any schemas that were previously ingested but are now
+            # filtered out, as well as any schemas that were processed in this run
+            filtered_schema_fqns = set()
+            for schema_name in self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            ):
+                filtered_schema_fqns.add(schema_name)
+
+            # Combine the processed schemas with filtered schemas
+            complete_source_state = self.schema_entity_source_state.union(
+                filtered_schema_fqns
+            )
+
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DatabaseSchema,
+                entity_source_state=complete_source_state,
+                mark_deleted_entity=self.source_config.markDeletedSchemas,
+                params={"database": database_fqn},
+            )
+
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
         Get the life cycle data of the table
@@ -607,6 +743,12 @@ class DatabaseServiceSource(
         Process external table lineage
         """
 
+    def yield_table_constraints(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process remaining table constraints by patching the table
+        """
+
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        test_connection_common(
+            self.metadata, self.connection_obj, self.service_connection
+        )

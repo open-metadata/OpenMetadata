@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DatabaseSchemaClass extends EntityClass {
@@ -47,14 +52,17 @@ export class DatabaseSchemaClass extends EntityClass {
     database: `${this.service.name}.${this.database.name}`,
   };
 
-  serviceResponseData: unknown;
-  databaseResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  databaseResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DatabaseSchema);
     this.service.name = name ?? this.service.name;
     this.type = 'Database Schema';
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -113,6 +121,28 @@ export class DatabaseSchemaClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.service.name,
+        type: SERVICE_TYPE.Database,
+      },
+      false
+    );
+
+    const databaseResponse = page.waitForResponse(
+      `/api/v1/databases/name/*${this.database.name}?**`
+    );
+    await page.getByTestId(this.database.name).click();
+    await databaseResponse;
+    const databaseSchemaResponse = page.waitForResponse(
+      `/api/v1/databaseSchemas/name/*${this.entity}?*`
+    );
+    await page.getByTestId(this.entity.name).click();
+    await databaseSchemaResponse;
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
     await visitServiceDetailsPage(
       page,
       {

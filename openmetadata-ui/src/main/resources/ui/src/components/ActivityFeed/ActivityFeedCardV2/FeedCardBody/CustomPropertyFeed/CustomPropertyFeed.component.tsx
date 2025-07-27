@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { getTextDiffCustomProperty } from '../../../../../utils/EntityVersionUtils';
-import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { CustomPropertyFeedProps } from './CustomPropertyFeed.interface';
 
 function CustomPropertyFeed({ feed }: Readonly<CustomPropertyFeedProps>) {
@@ -28,7 +28,7 @@ function CustomPropertyFeed({ feed }: Readonly<CustomPropertyFeedProps>) {
   );
 
   return (
-    <RichTextEditorPreviewer
+    <RichTextEditorPreviewerV1
       className="text-wrap text-grey-muted"
       markdown={message}
     />

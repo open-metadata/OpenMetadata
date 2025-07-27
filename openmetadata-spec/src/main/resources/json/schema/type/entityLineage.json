@@ -52,8 +52,29 @@
         "source": {
           "description": "Lineage type describes how a lineage was created.",
           "type": "string",
-          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage", "SparkLineage", "OpenLineage", "ExternalTableLineage"],
+          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage", "SparkLineage", "OpenLineage", "ExternalTableLineage", "CrossDatabaseLineage", "ChildAssets"],
           "default": "Manual"
+        },
+        "createdAt": {
+          "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "createdBy": {
+          "description": "User who created the node.",
+          "type": "string"
+        },
+        "updatedAt": {
+          "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+          "$ref": "../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": {
+          "description": "User who made the update.",
+          "type": "string"
+        },
+        "assetEdges": {
+          "description": "Asset count in case of child assets lineage.",
+          "type": "integer",
+          "default": null
         }
       }
     },

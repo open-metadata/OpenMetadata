@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/microStrategyConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicroStrategyConnection",
+  "description": "MicroStrategy Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection",
+  "definitions": {
+    "microStrategyType": {
+      "description": "MicroStrategy service type",
+      "type": "string",
+      "enum": ["MicroStrategy"],
+      "default": "MicroStrategy"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/microStrategyType",
+      "default": "MicroStrategy"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to MicroStrategy. This user should have privileges to read all the metadata in MicroStrategy.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to MicroStrategy.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and Port of the MicroStrategy instance.",
+      "type": "string",
+      "format": "uri"
+    },
+    "projectName": {
+      "title": "Project Name",
+      "description": "MicroStrategy Project Name",
+      "type": "string"
+    },
+    "loginMode": {
+      "title": "Login Mode",
+      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+      "type": "string",
+      "default": "1"
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Chart Filter Pattern"
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Data Model Filter Pattern"
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Project Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "password"]
+}

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Modal, Skeleton, Typography } from 'antd';
+import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -33,14 +33,18 @@ import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
@@ -50,12 +54,31 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   data,
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
+  searchTerm,
+  showDeletedTeam,
+  onShowDeletedTeamChange,
+  handleAddTeamButtonClick,
+  createTeamPermission,
+  isTeamDeleted,
+  handleTeamSearch,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeamProps>();
   const [isTableHovered, setIsTableHovered] = useState(false);
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-entity', {
+        entity: t('label.team'),
+      }),
+      searchValue: searchTerm,
+      typingInterval: 500,
+      onSearch: handleTeamSearch,
+    }),
+    [searchTerm, handleTeamSearch]
+  );
 
   const columns: ColumnsType<Team> = useMemo(() => {
     return [
@@ -68,7 +91,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           <Link
             className="link-hover"
             to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
+            {stringToHTML(
+              highlightSearchText(getEntityName(record), searchTerm)
+            )}
           </Link>
         ),
       },
@@ -96,7 +121,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.user-plural'),
         dataIndex: 'userCount',
-        width: 60,
+        width: 80,
         key: 'users',
         render: (userCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
@@ -136,7 +161,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               {NO_DATA_PLACEHOLDER}
             </Typography.Paragraph>
           ) : (
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerNew
               markdown={description}
               maxLength={DESCRIPTION_LENGTH}
               showReadMoreBtn={false}
@@ -245,10 +270,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   );
 
   return (
-    <>
+    <div className="team-list-container">
       <DndProvider backend={HTML5Backend}>
         <Table
-          bordered
           className={classNames('teams-list-table drop-over-background', {
             'drop-over-table': isTableHovered,
           })}
@@ -257,12 +281,36 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           data-testid="team-hierarchy-table"
           dataSource={data}
           expandable={expandableConfig}
+          extraTableFilters={
+            <Space align="center">
+              <span>
+                <Switch
+                  checked={showDeletedTeam}
+                  data-testid="show-deleted"
+                  onClick={onShowDeletedTeamChange}
+                />
+                <Typography.Text className="m-l-xs">
+                  {t('label.deleted')}
+                </Typography.Text>
+              </span>
+
+              {createTeamPermission && !isTeamDeleted && (
+                <Button
+                  data-testid="add-team"
+                  type="primary"
+                  onClick={handleAddTeamButtonClick}>
+                  {t('label.add-entity', { entity: t('label.team') })}
+                </Button>
+              )}
+            </Space>
+          }
           loading={isTableLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="name"
+          searchProps={searchProps}
           size="small"
           onHeaderRow={onTableHeader}
           onRow={onTableRow}
@@ -291,7 +339,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           }}
         />
       </Modal>
-    </>
+    </div>
   );
 };
 

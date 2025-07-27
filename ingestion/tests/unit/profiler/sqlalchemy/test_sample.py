@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,14 +26,14 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -48,6 +48,7 @@ class User(Base):
     age = Column(Integer)
 
 
+@patch.object(SQASampler, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
     """
     Run checks on different metrics
@@ -92,20 +93,48 @@ class SampleTest(TestCase):
         ],
     )
 
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
-    engine = sqa_profiler_interface.session.get_bind()
-    session = sqa_profiler_interface.session
-
     @classmethod
-    def setUpClass(cls) -> None:
+    @patch.object(SQASampler, "build_table_orm", return_value=User)
+    def setUpClass(cls, sampler_mock) -> None:
         """
         Prepare Ingredients
         """
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            cls.sampler = SQASampler(
+                service_connection_config=cls.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(profileSample=50.0),
+            )
+        cls.dataset = cls.sampler.get_dataset()
+        cls.sqa_profiler_interface = SQAProfilerInterface(
+            cls.sqlite_conn,
+            None,
+            cls.table_entity,
+            None,
+            cls.sampler,
+            5,
+            43200,
+        )
+        cls.engine = cls.sqa_profiler_interface.session.get_bind()
+        cls.session = cls.sqa_profiler_interface.session
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            cls.full_sampler = SQASampler(
+                service_connection_config=cls.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+            )
+        cls.full_sqa_profiler_interface = SQAProfilerInterface(
+            cls.sqlite_conn,
+            None,
+            cls.table_entity,
+            None,
+            cls.full_sampler,
+            5,
+            43200,
+        )
+
         User.__table__.create(bind=cls.engine)
 
         # Insert 30 rows
@@ -136,48 +165,26 @@ class SampleTest(TestCase):
             cls.session.add_all(data)
             cls.session.commit()
 
-    def test_random_sampler(self):
+    def test_sampler(self, sampler_mock):
         """
         The random sampler should be able to
         generate a random subset of data
         """
-        sampler = SQASampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-        )
-        random_sample = sampler.random_sample()
+        random_sample = self.sampler.get_dataset()
         res = self.session.query(func.count()).select_from(random_sample).first()
         assert res[0] < 30
 
-    def test_sample_property(self):
+    def test_sample_property(self, sampler_mock):
         """
         Sample property should be properly generated
         """
 
-        # Randomly pick table_count to init the Profiler, we don't care for this test
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                self.table_entity,
-                None,
-                ProfileSampleConfig(profile_sample=50.0),
-                None,
-                None,
-                None,
-            )
+        dataset = self.sqa_profiler_interface.sampler.get_dataset()
 
-        sample = sqa_profiler_interface._create_thread_safe_sampler(
-            self.session, User
-        ).random_sample()
-
-        res = self.session.query(func.count()).select_from(sample).first()
+        res = self.session.query(func.count()).select_from(dataset).first()
         assert res[0] < 30
 
-    def test_table_row_count(self):
+    def test_table_row_count(self, sampler_mock):
         """
         Profile sample should be ignored in row count
         """
@@ -190,7 +197,7 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
 
-    def test_random_sample_count(self):
+    def test_random_sample_count(self, sampler_mock):
         """
         Check we can properly sample data.
 
@@ -199,26 +206,12 @@ class SampleTest(TestCase):
         """
 
         count = Metrics.COUNT.value
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            profiler = Profiler(
-                count,
-                profiler_interface=SQAProfilerInterface(
-                    self.sqlite_conn,
-                    None,
-                    self.table_entity,
-                    None,
-                    ProfileSampleConfig(profile_sample=50),
-                    None,
-                    None,
-                    None,
-                ),
-            )
+
+        profiler = Profiler(count, profiler_interface=self.sqa_profiler_interface)
         res = profiler.compute_metrics()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
 
-    def test_random_sample_histogram(self):
+    def test_random_sample_histogram(self, sampler_mock):
         """
         Histogram should run correctly
         """
@@ -229,33 +222,6 @@ class SampleTest(TestCase):
         first_quartile = Metrics.FIRST_QUARTILE.value
         third_quartile = Metrics.THIRD_QUARTILE.value
         iqr = Metrics.IQR.value
-
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            profiler = Profiler(
-                hist,
-                count,
-                min,
-                max,
-                first_quartile,
-                third_quartile,
-                iqr,
-                profiler_interface=SQAProfilerInterface(
-                    self.sqlite_conn,
-                    None,
-                    self.table_entity,
-                    None,
-                    ProfileSampleConfig(profile_sample=50),
-                    None,
-                    None,
-                    None,
-                ),
-            )
-        res = profiler.compute_metrics()._column_results
-
-        # The sum of all frequencies should be sampled
-        assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
         profiler = Profiler(
             hist,
@@ -270,9 +236,24 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # The sum of all frequencies should be sampled
+        assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
+
+        profiler = Profiler(
+            hist,
+            count,
+            min,
+            max,
+            first_quartile,
+            third_quartile,
+            iqr,
+            profiler_interface=self.full_sqa_profiler_interface,
+        )
+        res = profiler.compute_metrics()._column_results
+
+        # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 30.0
 
-    def test_random_sample_unique_count(self):
+    def test_random_sample_unique_count(self, sampler_mock):
         """
         Unique count should run correctly
         """
@@ -298,15 +279,11 @@ class SampleTest(TestCase):
         # This tests might very rarely, fail, depending on the sampled random data.
         assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 0
 
-    def test_sample_data(self):
+    def test_sample_data(self, sampler_mock):
         """
         We should be able to pick up sample data from the sampler
         """
-        sampler = SQASampler(
-            client=self.session,
-            table=User,
-        )
-        sample_data = sampler.fetch_sample_data()
+        sample_data = self.full_sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 6
         assert len(sample_data.rows) == 30
@@ -315,7 +292,7 @@ class SampleTest(TestCase):
         names = [str(col.root) for col in sample_data.columns]
         assert names == ["id", "name", "fullname", "nickname", "comments", "age"]
 
-    def test_sample_data_binary(self):
+    def test_sample_data_binary(self, sampler_mock):
         """
         We should be able to pick up sample data from the sampler
         """
@@ -347,10 +324,13 @@ class SampleTest(TestCase):
             self.session.add_all(data)
             self.session.commit()
 
-        sampler = SQASampler(
-            client=self.session,
-            table=UserBinary,
-        )
+        with patch.object(SQASampler, "build_table_orm", return_value=UserBinary):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+            )
+
         sample_data = sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 7
@@ -371,16 +351,19 @@ class SampleTest(TestCase):
 
         UserBinary.__table__.drop(bind=self.engine)
 
-    def test_sample_from_user_query(self):
+    def test_sample_from_user_query(self, sampler_mock):
         """
         Test sample data are returned based on user query
         """
         stmt = "SELECT id, name FROM users"
-        sampler = SQASampler(
-            client=self.session,
-            table=User,
-            profile_sample_query=stmt,
-        )
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(profileSample=50.0),
+                sample_query=stmt,
+            )
         sample_data = sampler.fetch_sample_data()
 
         assert len(sample_data.columns) == 2

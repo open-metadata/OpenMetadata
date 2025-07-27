@@ -12,15 +12,8 @@
 name: py-tests
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - "ingestion/**"
       - "openmetadata-service/**"
@@ -37,114 +30,116 @@ concurrency:
 
 jobs:
   py-run-tests:
+    timeout-minutes: 180
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     strategy:
       fail-fast: false
       matrix:
-        py-version: ['3.8', '3.9', '3.10', '3.11']
+        py-version: ["3.9", "3.10", "3.11"]
     steps:
-    - name: Free Disk Space (Ubuntu)
-      uses: jlumbroso/free-disk-space@main
-      with:
-        tool-cache: false
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: false
-        swap-storage: true
-        docker-images: false
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
 
-    - name: Wait for the labeler
-      uses: lewagon/wait-on-check-action@v1.3.3
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        check-name: Team Label
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 90
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.3.4
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
 
-    - name: Verify PR labels
-      uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        github-token: '${{ secrets.GITHUB_TOKEN }}'
-        valid-labels: 'safe to test'
-        pull-request-number: '${{ github.event.pull_request.number }}'
-        disable-reviews: true  # To not auto approve changes
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
 
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-    - name: Setup Openmetadata Test Environment
-      uses: ./.github/actions/setup-openmetadata-test-environment
-      with:
-        python-version: ${{ matrix.py-version}}
-        args: "-m no-ui"
-        ingestion_dependency: "mysql,elasticsearch,sample-data"
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version}}
+          args: "-m no-ui"
+          ingestion_dependency: "mysql,elasticsearch,sample-data"
 
-    - name: Run Python Tests
-      if: ${{ matrix.py-version != '3.9' }}
-      run: |
-        source env/bin/activate
-        make run_python_tests
-      env:
-        TESTCONTAINERS_RYUK_DISABLED: true
-      
-    - name: Run Python Tests & record coverage
-      if: ${{ matrix.py-version == '3.9' }}
-      run: |
-        source env/bin/activate
-        make coverage
-        rm pom.xml
-        # fix coverage xml report for github
-        sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+      - name: Run Python Tests
+        if: ${{ matrix.py-version != '3.10' }}
+        run: |
+          source env/bin/activate
+          make run_python_tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
 
-    - name: Clean Up
-      run: |
-        cd ./docker/development
-        docker compose down --remove-orphans
-        sudo rm -rf ${PWD}/docker-volume
+      - name: Run Python Tests & record coverage
+        if: ${{ matrix.py-version == '3.10' }}
+        run: |
+          source env/bin/activate
+          make coverage
+          rm pom.xml
+          # fix coverage xml report for github
+          sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
 
-      # we have to pass these args values since we are working with the 'pull_request_target' trigger
-    - name: Push Results in PR to Sonar
-      id: push-to-sonar
-      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
-      continue-on-error: true
-      uses: sonarsource/sonarcloud-github-action@v2.3.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-      with:
-        projectBaseDir: ingestion/
-        args: >
-          -Dproject.settings=ingestion/sonar-project.properties
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.head_ref }}
-          -Dsonar.pullrequest.github.repository=OpenMetadata
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-          -Dsonar.pullrequest.provider=github
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
 
-    # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
-    - name: Wait to retry 'Push Results in PR to Sonar'
-      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
-      run: sleep 20s
-      shell: bash
+        # we have to pass these args values since we are working with the 'pull_request_target' trigger
+      - name: Push Results in PR to Sonar
+        id: push-to-sonar
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
+        continue-on-error: true
+        uses: sonarsource/sonarcloud-github-action@v2.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+          args: >
+            -Dproject.settings=ingestion/sonar-project.properties
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.github.repository=OpenMetadata
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.pullrequest.provider=github
 
-    - name: Retry 'Push Results in PR to Sonar'
-      uses: sonarsource/sonarcloud-github-action@master
-      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-      with:
-        projectBaseDir: ingestion/
-        args: >
-          -Dproject.settings=ingestion/sonar-project.properties
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.head_ref }}
-          -Dsonar.pullrequest.github.repository=OpenMetadata
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-          -Dsonar.pullrequest.provider=github
+      # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
+      - name: Wait to retry 'Push Results in PR to Sonar'
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+        run: sleep 20s
+        shell: bash
+
+      - name: Retry 'Push Results in PR to Sonar'
+        uses: sonarsource/sonarcloud-github-action@master
+        if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+          args: >
+            -Dproject.settings=ingestion/sonar-project.properties
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.github.repository=OpenMetadata
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+            -Dsonar.pullrequest.provider=github

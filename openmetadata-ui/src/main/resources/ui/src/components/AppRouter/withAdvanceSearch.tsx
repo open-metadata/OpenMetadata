@@ -10,14 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
+import { get } from 'lodash';
+import { FC } from 'react';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import {
+  AdvanceSearchProviderProps,
+  SearchOutputType,
+} from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 export const withAdvanceSearch =
-  (Component: FC) =>
-  (props: JSX.IntrinsicAttributes & { children?: React.ReactNode }) => {
+  <P extends Record<string, unknown>>(
+    Component: FC<P>,
+    providerProps?: Omit<AdvanceSearchProviderProps, 'children'>
+  ) =>
+  (props: P) => {
+    const searchOutputType = get(
+      props,
+      'schema.outputType',
+      SearchOutputType.ElasticSearch
+    );
+
     return (
-      <AdvanceSearchProvider>
+      <AdvanceSearchProvider
+        {...providerProps}
+        searchOutputType={searchOutputType as SearchOutputType}>
         <Component {...props} />
       </AdvanceSearchProvider>
     );

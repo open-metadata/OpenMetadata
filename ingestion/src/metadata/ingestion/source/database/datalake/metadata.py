@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,18 +14,16 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import json
 import traceback
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -131,9 +129,11 @@ class DatalakeSource(DatabaseServiceSource):
             )
             if filter_by_database(
                 self.source_config.databaseFilterPattern,
-                database_fqn
-                if self.source_config.useFqnForFiltering
-                else database_name,
+                (
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else database_name
+                ),
             ):
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
@@ -157,12 +157,13 @@ class DatalakeSource(DatabaseServiceSource):
         """
         if isinstance(self.config_source, GCSConfig):
             database_name = self.client.project
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=FullyQualifiedEntityName(self.context.get().database_service),
-            )
+
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=FullyQualifiedEntityName(self.context.get().database_service),
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -182,9 +183,11 @@ class DatalakeSource(DatabaseServiceSource):
 
                 if filter_by_schema(
                     self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema_name,
+                    (
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema_name
+                    ),
                 ):
                     self.status.filter(schema_fqn, "Bucket Filtered Out")
                     continue
@@ -206,19 +209,20 @@ class DatalakeSource(DatabaseServiceSource):
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
@@ -240,13 +244,13 @@ class DatalakeSource(DatabaseServiceSource):
                 verbose=False,
             )
             content = json.loads(metadata_config_response)
-            metadata_entry = StorageContainerConfig.parse_obj(content)
+            metadata_entry = StorageContainerConfig.model_validate(content)
         except ReadException:
             metadata_entry = None
         if self.source_config.includeTables:
             for key_name in self.client.get_table_names(bucket_name, prefix):
                 table_name = self.standardize_table_name(bucket_name, key_name)
-
+                logger.info(f"Processing table: {table_name}")
                 if self.filter_dl_table(table_name):
                     continue
 
@@ -319,9 +323,6 @@ class DatalakeSource(DatabaseServiceSource):
                 )
             )
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
-
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -337,12 +338,6 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Not Implemented"""
-        yield from []
 
     def standardize_table_name(
         self, schema: str, table: str  # pylint: disable=unused-argument
@@ -363,9 +358,11 @@ class DatalakeSource(DatabaseServiceSource):
 
         if filter_by_table(
             self.config.sourceConfig.config.tableFilterPattern,
-            table_fqn
-            if self.config.sourceConfig.config.useFqnForFiltering
-            else table_name,
+            (
+                table_fqn
+                if self.config.sourceConfig.config.useFqnForFiltering
+                else table_name
+            ),
         ):
             self.status.filter(
                 table_fqn,

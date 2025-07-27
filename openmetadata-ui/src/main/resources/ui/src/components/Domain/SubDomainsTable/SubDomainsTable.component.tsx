@@ -10,23 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import {
-  Domain,
-  EntityReference,
-} from '../../../generated/entity/domains/domain';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../common/Table/Table';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
 const SubDomainsTable = ({
@@ -43,6 +40,7 @@ const SubDomainsTable = ({
         title: t('label.sub-domain-plural'),
         dataIndex: 'name',
         key: 'name',
+        width: 200,
         render: (name: string, record: Domain) => {
           return (
             <Link
@@ -61,23 +59,18 @@ const SubDomainsTable = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 300,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
-              maxLength={120}
             />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
-      {
-        title: t('label.owner'),
-        dataIndex: 'owners',
-        key: 'owners',
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<Domain>(),
     ];
 
     return data;
@@ -90,9 +83,12 @@ const SubDomainsTable = ({
   if (isEmpty(subDomains) && !isLoading) {
     return (
       <ErrorPlaceHolder
-        className="m-t-xlg"
+        className="p-md p-b-lg"
         heading={t('label.sub-domain')}
         permission={permissions.Create}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.sub-domain'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={onAddSubDomain}
       />
@@ -101,9 +97,8 @@ const SubDomainsTable = ({
 
   return (
     <Table
-      bordered
-      className="p-md"
       columns={columns}
+      containerClassName="m-md"
       dataSource={subDomains}
       pagination={false}
       rowKey="fullyQualifiedName"

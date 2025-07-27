@@ -10,23 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
-import { Col, Radio, RadioChangeEvent, Row, Tooltip, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   APIEndpoint,
@@ -35,12 +32,12 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -51,19 +48,17 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { APIEndpointDetailsProps } from '../APIEndpointDetails/APIEndpointDetails.interface';
 
 interface APIEndpointSchemaProps {
-  apiEndpointDetails: APIEndpoint;
-  permissions: OperationPermission;
-  onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
-  onApiEndpointUpdate?: APIEndpointDetailsProps['onApiEndpointUpdate'];
   isVersionView?: boolean;
 }
 
@@ -73,10 +68,6 @@ export enum SchemaViewType {
 }
 
 const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
-  apiEndpointDetails,
-  permissions,
-  onThreadLinkSelect,
-  onApiEndpointUpdate,
   isVersionView = false,
 }) => {
   const { theme } = useApplicationStore();
@@ -86,7 +77,22 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
+  const {
+    data: apiEndpointDetails,
+    permissions,
+    onUpdate: onApiEndpointUpdate,
+  } = useGenericContext<APIEndpoint>();
 
+  const viewTypeOptions = [
+    {
+      label: t('label.request'),
+      value: SchemaViewType.REQUEST_SCHEMA,
+    },
+    {
+      label: t('label.response'),
+      value: SchemaViewType.RESPONSE_SCHEMA,
+    },
+  ];
   const {
     requestSchemaAllRowKeys,
     responseSchemaAllRowKeys,
@@ -179,10 +185,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
-
   const handleExpandedRowsChange = (keys: readonly Key[]) => {
     setExpandedRowKeys(keys as string[]);
   };
@@ -196,12 +198,12 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   };
 
   const renderSchemaName = useCallback(
-    (_, record: Field) => (
+    (_: string, record: Field) => (
       <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
-              <RichTextEditorPreviewer markdown={getEntityName(record)} />
+              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
@@ -216,7 +218,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     (dataType: DataType, record: Field) => (
       <Typography.Text>
         {isVersionView ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
           />
         ) : (
@@ -279,25 +281,24 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
         render: renderSchemaName,
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataType',
-        key: 'dataType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         ellipsis: true,
         width: 220,
         render: renderDataType,
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -313,24 +314,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
@@ -342,7 +334,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -351,30 +342,23 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={
+              permissions.EditGlossaryTerms || permissions.EditAll
+            }
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,
@@ -401,65 +385,61 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Row justify="space-between">
-          <Col>
-            <Radio.Group value={viewType} onChange={handleViewChange}>
-              <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-                {t('label.request')}
-              </Radio.Button>
-              <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-                {t('label.response')}
-              </Radio.Button>
-            </Radio.Group>
-          </Col>
-          <Col flex="auto">
-            <Row justify="end">
-              <Col>
-                <ToggleExpandButton
-                  allRowKeys={schemaAllRowKeys}
-                  expandedRowKeys={expandedRowKeys}
-                  toggleExpandAll={handleToggleExpandAll}
-                />
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
         <Table
-          bordered
           className={classNames('align-table-filter-left')}
           columns={columns}
           data-testid="schema-fields-table"
           dataSource={
             isVersionView ? activeSchemaFieldsDiff : activeSchemaFields
           }
+          defaultVisibleColumns={DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS}
           expandable={{
             ...getTableExpandableConfig<Field>(),
             rowExpandable: (record) => !isEmpty(record.children),
             onExpandedRowsChange: handleExpandedRowsChange,
             expandedRowKeys,
           }}
+          extraTableFilters={
+            <div className="d-flex justify-between items-center w-full">
+              <Segmented
+                className="segment-toggle"
+                options={viewTypeOptions}
+                value={viewType}
+                onChange={(value) => setViewType(value as SchemaViewType)}
+              />
+
+              <ToggleExpandButton
+                allRowKeys={schemaAllRowKeys}
+                expandedRowKeys={expandedRowKeys}
+                toggleExpandAll={handleToggleExpandAll}
+              />
+            </div>
+          }
           key={viewType}
           pagination={false}
           rowKey="name"
           scroll={TABLE_SCROLL_VALUE}
           size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
       </Col>
       {editFieldDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.schema-field'),
-          })}: "${getEntityName(editFieldDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.schema-field'),
-          })}
-          value={editFieldDescription.description ?? ''}
-          visible={Boolean(editFieldDescription)}
-          onCancel={() => setEditFieldDescription(undefined)}
-          onSave={handleFieldDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editFieldDescription.fullyQualifiedName}
+          entityType={EntityType.API_ENDPOINT}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.schema-field'),
+            })}: "${getEntityName(editFieldDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.schema-field'),
+            })}
+            value={editFieldDescription.description ?? ''}
+            visible={Boolean(editFieldDescription)}
+            onCancel={() => setEditFieldDescription(undefined)}
+            onSave={handleFieldDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </Row>
   );

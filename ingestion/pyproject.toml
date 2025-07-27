@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.6.0.0.dev0"
+version = "1.8.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     { name = "OpenMetadata Committers" }
 ]
 license = { file = "LICENSE" }
 description = "Ingestion Framework for OpenMetadata"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://open-metadata.org/"
@@ -31,6 +31,7 @@ namespaces = true
 [tool.setuptools.package-data]
 "metadata.examples" = ["workflows/*.yaml"]
 "_openmetadata_testutils" = ["data/**/*"]
+"metadata.data_quality" = ["data/**/*"]
 
 [project.scripts]
 metadata = "metadata.cmd:metadata"
@@ -40,7 +41,7 @@ provider_info = "airflow_provider_openmetadata:get_provider_config"
 
 [tool.coverage.run]
 source = [
-    "env/lib/python3.9/site-packages/metadata"
+    "env/lib/python3.10/site-packages/metadata"
 ]
 relative_files = true
 branch = true
@@ -73,6 +74,11 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
 
+# Skip tests that are known to fail or are not ready to run until issue #21736 is solved
+addopts = "--ignore=ingestion/tests/unit/topology/database/test_deltalake.py --ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
+[project.entry-points.pytest11]
+pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
+
 [tool.pylint.BASIC]
 # W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
 # W1202: logging-format-interpolation - lazy formatting in logging functions
@@ -96,7 +102,7 @@ module-rgx = "(([a-z_][a-z0-9_]*)|([a-zA-Z0-9]+))$"
 fail-under = 6.0
 init-hook = "from pylint.config import find_default_config_files; import os, sys; sys.path.append(os.path.dirname(next(find_default_config_files())))"
 extension-pkg-allow-list = "pydantic"
-load-plugins = "ingestion.plugins.print_checker"
+load-plugins = "ingestion.plugins.print_checker,ingestion.plugins.import_checker"
 max-public-methods = 25
 
 ignore-paths = [
@@ -110,10 +116,98 @@ ignore-paths = [
     "ingestion/src/metadata/utils/datalake/datalake_utils.py",
     "ingestion/src/metadata/great_expectations/action.py",
     "ingestion/src/metadata/profiler/interface/nosql/profiler_interface.py",
-    "ingestion/src/metadata/profiler/processor/sampler/nosql/sampler.py",
-    "ingestion/src/metadata/ingestion/source",
+    ".*/src/metadata/ingestion/source/.*/service_spec.py",
     "ingestion/src/metadata/profiler/metrics",
     "ingestion/src/metadata/profiler/source/databricks",
+
+    # metadata ingestion sources
+    "ingestion/src/metadata/ingestion/source/api/rest/connection.py",
+    "ingestion/src/metadata/ingestion/source/api/rest/metadata.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/dashboard_service.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/metabase/models.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/mode/client.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/powerbi/metadata.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/qlikcloud/client.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/qlikcloud/metadata.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/qliksense/client.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/qliksense/metadata.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/quicksight/metadata.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/sigma/client.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/superset/api_source.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/superset/metadata.py",
+    "ingestion/src/metadata/ingestion/source/dashboard/tableau/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/athena/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/athena/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/azuresql/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/bigquery/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/bigquery/incremental_table_processor.py",
+    "ingestion/src/metadata/ingestion/source/database/bigquery/queries.py",
+    "ingestion/src/metadata/ingestion/source/database/common_db_source.py",
+    "ingestion/src/metadata/ingestion/source/database/couchbase/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/databricks/client.py",
+    "ingestion/src/metadata/ingestion/source/database/databricks/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/datalake/clients/azure_blob.py",
+    "ingestion/src/metadata/ingestion/source/database/datalake/clients/base.py",
+    "ingestion/src/metadata/ingestion/source/database/datalake/clients/gcs.py",
+    "ingestion/src/metadata/ingestion/source/database/datalake/clients/s3.py",
+    "ingestion/src/metadata/ingestion/source/database/datalake/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/datalake/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/dbt/dbt_service.py",
+    "ingestion/src/metadata/ingestion/source/database/deltalake/clients/base.py",
+    "ingestion/src/metadata/ingestion/source/database/deltalake/clients/pyspark.py",
+    "ingestion/src/metadata/ingestion/source/database/deltalake/clients/s3.py",
+    "ingestion/src/metadata/ingestion/source/database/deltalake/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/deltalake/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/doris/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/exasol/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/exasol/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/external_table_lineage_mixin.py",
+    "ingestion/src/metadata/ingestion/source/database/hive/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/lineage_source.py",
+    "ingestion/src/metadata/ingestion/source/database/mssql/lineage.py",
+    "ingestion/src/metadata/ingestion/source/database/mssql/usage.py",
+    "ingestion/src/metadata/ingestion/source/database/mssql/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/mysql/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/oracle/lineage.py",
+    "ingestion/src/metadata/ingestion/source/database/pinotdb/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/converter_orm.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/lineage.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/metrics.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/types/money.py",
+    "ingestion/src/metadata/ingestion/source/database/postgres/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/redshift/incremental_table_processor.py",
+    "ingestion/src/metadata/ingestion/source/database/redshift/lineage.py",
+    "ingestion/src/metadata/ingestion/source/database/redshift/models.py",
+    "ingestion/src/metadata/ingestion/source/database/sample_data.py",
+    "ingestion/src/metadata/ingestion/source/database/saphana/cdata_parser.py",
+    "ingestion/src/metadata/ingestion/source/database/saphana/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/sas/client.py",
+    "ingestion/src/metadata/ingestion/source/database/sas/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/snowflake/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/snowflake/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/sql_column_handler.py",
+    "ingestion/src/metadata/ingestion/source/database/stored_procedures_mixin.py",
+    "ingestion/src/metadata/ingestion/source/database/teradata/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/trino/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/unitycatalog/client.py",
+    "ingestion/src/metadata/ingestion/source/database/unitycatalog/metadata.py",
+    "ingestion/src/metadata/ingestion/source/messaging/kafka/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/dagster/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/databrickspipeline/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/domopipeline/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/fivetran/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/fivetran/models.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/flink/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/gluepipeline/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/openlineage/metadata.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/openlineage/utils.py",
+    "ingestion/src/metadata/ingestion/source/pipeline/spline/metadata.py",
+    "ingestion/src/metadata/ingestion/source/sqa_types.py",
+    "ingestion/src/metadata/ingestion/source/storage/gcs/connection.py",
+    "ingestion/src/metadata/ingestion/source/storage/gcs/metadata.py",
+    "ingestion/src/metadata/ingestion/source/storage/s3/metadata.py",
 ]
 
 [tool.pylint."MESSAGES CONTROL"]
@@ -141,6 +235,7 @@ skip_glob = [
 profile = "black"
 indent = "    "
 multi_line_output = 3
+known_first_party = "ingestion"
 
 [tool.basedpyright]
 include = ["src"]
@@ -166,8 +261,10 @@ ignore = [
   "src/metadata/ingestion/*",
   "src/metadata/mixins/*",
   "src/metadata/parsers/*",
-  "src/metadata/pii/*",
+  "src/metadata/pii/scanners/*",
+  "src/metadata/pii/*processor.py",
   "src/metadata/profiler/*",
+  "src/metadata/sampler/*",
   "src/metadata/readers/*",
   "src/metadata/timer/*",
   "src/metadata/utils/*",
@@ -179,9 +276,13 @@ ignore = [
   "src/metadata/workflow/metadata.py",
   "src/metadata/workflow/profiler.py",
   "src/metadata/workflow/usage.py",
+  "src/metadata/workflow/classification.py",
   "src/metadata/workflow/workflow_status_mixin.py",
 ]
 
 reportDeprecated = false
 reportMissingTypeStubs = false
 reportAny = false
+reportExplicitAny = false
+# @override was only added in python 3.12: https://docs.python.org/3/library/typing.html#typing.override
+reportImplicitOverride = false

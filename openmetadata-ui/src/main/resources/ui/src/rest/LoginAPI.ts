@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { HttpStatusCode } from 'axios';
+import { NavigateFunction } from 'react-router-dom';
 import axiosClient from '.';
+import { ROUTES } from '../constants/constants';
 
 const BASE_URL = '/auth';
 
@@ -22,12 +25,18 @@ interface RenewTokenResponse {
   expiryDuration: number;
 }
 
-export const renewToken = async () => {
+export const renewToken = async (navigate: NavigateFunction) => {
   const data = await axiosClient.get<RenewTokenResponse>(`${BASE_URL}/refresh`);
+
+  if (data.status === HttpStatusCode.Found) {
+    navigate(ROUTES.LOGOUT);
+  }
 
   return data.data;
 };
 
 export const logoutUser = async () => {
-  return await axiosClient.get(`${BASE_URL}/logout`);
+  const response = await axiosClient.get(`${BASE_URL}/logout`);
+
+  return response.data;
 };

@@ -12,13 +12,14 @@
  */
 import { Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/success-badge.svg';
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import {
   UserCSVRecord,
@@ -102,14 +103,12 @@ export const UserImportResult = ({
         width: 300,
         render: (description: string) => {
           return (
-            <Typography.Paragraph
-              ellipsis={{
-                rows: 2,
-              }}
-              style={{ width: 300 }}
-              title={description}>
-              {description || '--'}
-            </Typography.Paragraph>
+            <RichTextEditorPreviewerNew
+              className="w-80"
+              enableSeeMoreVariant={false}
+              markdown={description}
+              reducePreviewLineClass="max-one-line"
+            />
           );
         },
       },
@@ -203,7 +202,6 @@ export const UserImportResult = ({
 
   return (
     <Table
-      bordered
       className="vertical-top-align-td"
       columns={columns}
       data-testid="import-result-table"

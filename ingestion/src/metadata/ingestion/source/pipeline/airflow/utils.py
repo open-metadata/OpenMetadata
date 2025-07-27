@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+# pylint: disable=too-many-branches,too-many-return-statements,too-many-nested-blocks
 def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
     """
     Fetch Schedule Intervals from Airflow Dags
@@ -40,7 +41,49 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
 
             expression_class = timetable.get("__type")
             if expression_class:
-                return import_from_module(expression_class)().summary
+                try:
+                    # Try to instantiate the timetable class safely
+                    timetable_class = import_from_module(expression_class)
+
+                    # Handle special cases for classes that require arguments
+                    if "DatasetTriggeredTimetable" in expression_class:
+                        # DatasetTriggeredTimetable requires datasets argument
+                        # For now, return a descriptive string since we can't instantiate it properly
+                        return "Dataset Triggered"
+                    if "CronDataIntervalTimetable" in expression_class:
+                        # Handle cron-based timetables
+                        try:
+                            return timetable_class().summary
+                        except (TypeError, AttributeError):
+                            return "Cron Based"
+                    else:
+                        # Try to instantiate with no arguments
+                        try:
+                            return timetable_class().summary
+                        except (TypeError, AttributeError):
+                            # If summary attribute doesn't exist, try to get a string representation
+                            try:
+                                instance = timetable_class()
+                                return str(instance)
+                            except TypeError:
+                                # If instantiation fails, return the class name
+                                return f"Custom Timetable ({expression_class.split('.')[-1]})"
+                except ImportError as import_error:
+                    logger.debug(
+                        f"Could not import timetable class {expression_class}: {import_error}"
+                    )
+                    return f"Custom Timetable ({expression_class.split('.')[-1]})"
+                except TypeError as type_error:
+                    # If instantiation fails due to missing arguments, log and continue
+                    logger.debug(
+                        f"Could not instantiate timetable class {expression_class}: {type_error}"
+                    )
+                    return f"Custom Timetable ({expression_class.split('.')[-1]})"
+                except Exception as inst_error:
+                    logger.debug(
+                        f"Error instantiating timetable class {expression_class}: {inst_error}"
+                    )
+                    return f"Custom Timetable ({expression_class.split('.')[-1]})"
 
         if schedule:
             if isinstance(schedule, str):
@@ -57,7 +100,6 @@ def get_schedule_interval(pipeline_data: Dict[str, Any]) -> Optional[str]:
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning(
-            f"Couldn't fetch schedule interval for dag {pipeline_data.get('_dag_id'): [{exc}]}"
-        )
+        dag_id = pipeline_data.get("_dag_id", "unknown")
+        logger.warning(f"Couldn't fetch schedule interval for dag {dag_id}: {exc}")
     return None

@@ -11,33 +11,15 @@
  *  limitations under the License.
  */
 
-import { DateRangeObject } from 'Models';
+import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
-import {
-  Column,
-  ColumnProfile,
-  Table,
-} from '../../../../generated/entity/data/table';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
-import { ListTestCaseParams } from '../../../../rest/testAPI';
+import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-
-export interface ProfilerDashboardProps {
-  onTableChange: (table: Table) => void;
-  isTestCaseLoading?: boolean;
-  table: Table;
-  testCases: TestCase[];
-  profilerData: ColumnProfile[];
-  fetchProfilerData: (
-    tableId: string,
-    dateRangeObject?: DateRangeObject
-  ) => void;
-  fetchTestCases: (fqn: string, params?: ListTestCaseParams) => void;
-  onTestCaseUpdate: (deleted?: boolean) => void;
-}
 
 export type MetricChartType = {
   information: {
@@ -58,12 +40,8 @@ export interface ProfilerDetailsCardProps {
   tickFormatter?: string;
   curveType?: CurveType;
   isLoading?: boolean;
-}
-
-export enum ProfilerDashboardTab {
-  SUMMARY = 'Summary',
-  PROFILER = 'Profiler',
-  DATA_QUALITY = 'Data Quality',
+  noDataPlaceholderText?: ReactNode;
+  children?: ReactNode;
 }
 
 export enum TableProfilerTab {
@@ -71,35 +49,7 @@ export enum TableProfilerTab {
   TABLE_PROFILE = 'Table Profile',
   DATA_QUALITY = 'Data Quality',
   OVERVIEW = 'Overview',
-}
-
-export type ChartData = {
-  name: string;
-  proportion?: number;
-  value: number;
-  timestamp: number;
-};
-
-export type ChartCollection = {
-  data: ChartData[];
-  color: string;
-};
-
-export type ChartDataCollection = Record<string, ChartCollection>;
-
-export interface ProfilerTabProps {
-  profilerData: ColumnProfile[];
-  activeColumnDetails: Column;
-  tableProfile: Table['profile'];
-}
-
-export interface ProfilerSummaryCardProps {
-  title: string;
-  data: {
-    title: string;
-    value: number | string;
-  }[];
-  showIndicator?: boolean;
+  INCIDENTS = 'Incidents',
 }
 
 export interface DataQualityTabProps {
@@ -115,6 +65,9 @@ export interface DataQualityTabProps {
   };
   showPagination?: boolean;
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
+  fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
+  isEditAllowed?: boolean;
+  tableHeader?: ReactNode;
 }
 
 export interface TestSummaryProps {
@@ -140,3 +93,7 @@ export type TestCaseChartDataType = {
 export interface LineChartRef {
   container: HTMLElement;
 }
+
+export type TestCasePermission = OperationPermission & {
+  fullyQualifiedName?: string;
+};

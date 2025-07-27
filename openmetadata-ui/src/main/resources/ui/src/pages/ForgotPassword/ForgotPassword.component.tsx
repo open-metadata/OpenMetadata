@@ -11,57 +11,98 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
-import React, { useCallback, useState } from 'react';
+import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import { useNavigate } from 'react-router-dom';
+import bgImg from '../../assets/img/forgot-password.png';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
+import { useAlertStore } from '../../hooks/useAlertStore';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
-  const history = useHistory();
+  const { alert, resetAlert } = useAlertStore();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
-  const [showResetLinkSentAlert, setShowResetLinkSentAlert] = useState(false);
 
   const handleSubmit = useCallback(
     async (data: { email: string }) => {
       try {
         setLoading(true);
-        handleForgotPassword && (await handleForgotPassword(data.email));
-        setShowResetLinkSentAlert(true);
+        await handleForgotPassword?.(data.email);
+        showSuccessToast(t('message.reset-link-has-been-sent'));
       } catch (error) {
-        setShowResetLinkSentAlert(false);
+        showErrorToast(
+          (error as AxiosError).response?.status ===
+            HTTP_STATUS_CODE.FAILED_DEPENDENCY
+            ? t('server.forgot-password-email-error')
+            : t('server.email-not-found')
+        );
       } finally {
         setLoading(false);
       }
     },
-    [setShowResetLinkSentAlert, handleForgotPassword]
+    [handleForgotPassword]
   );
+
+  const handleLogin = () => {
+    navigate(ROUTES.SIGNIN);
+    resetAlert();
+  };
 
   return (
     <div
       className="h-full py-24 forgot-password-container "
       data-testid="forgot-password-container">
+      <div className="absolute inset-0">
+        <img
+          alt="bg-image"
+          className="w-full h-full"
+          data-testid="bg-image"
+          src={bgImg}
+        />
+      </div>
+      <DocumentTitle title={t('label.forgot-password')} />
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
-        style={{ maxWidth: '430px' }}>
+        style={{ maxWidth: '512px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
-            <BrandImage className="m-auto" height="auto" width={200} />
+            <BrandImage
+              isMonoGram
+              className="m-auto"
+              height="auto"
+              width={50}
+            />
           </Col>
-          <Col className="flex-center text-center mt-8" span={24}>
-            <Typography.Text className="text-xl font-medium text-grey-muted">
+          <Col className="text-center mt-4" span={24}>
+            <Typography.Title level={3}>
+              {t('label.forgot-your-password')}
+            </Typography.Title>
+            <Typography.Text className="text-md text-grey-muted">
               {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
+
+          {alert && (
+            <Col className="m-b-lg" span={24}>
+              <AlertBar
+                defafultExpand
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </Col>
+          )}
 
           <Form
             className="w-full"
@@ -80,49 +121,30 @@ const ForgotPassword = () => {
                     }),
                   },
                 ]}>
-                <Input type="email" />
+                <Input
+                  className="input-field"
+                  placeholder={t('label.email')}
+                  type="email"
+                />
               </Form.Item>
             </Col>
             <Col className="m-t-md" span={24}>
-              <Button block htmlType="submit" loading={loading} type="primary">
-                {t('label.submit')}
+              <Button
+                block
+                htmlType="submit"
+                loading={loading}
+                size="large"
+                type="primary">
+                {t('label.send-login-link')}
               </Button>
             </Col>
           </Form>
-
-          {showResetLinkSentAlert && (
-            <Col span={24}>
-              <div
-                className="flex flex-col"
-                data-testid="success-screen-container">
-                <div className="flex global-border rounded-4 p-sm success-alert">
-                  <div className="m-r-xs">
-                    <Icon
-                      className="align-middle"
-                      component={IconSuccessBadge}
-                      data-testid="success-icon"
-                      style={{ fontSize: '20px' }}
-                    />
-                  </div>
-                  <p data-testid="success-line">
-                    <span>{t('message.reset-link-has-been-sent')}</span>
-                  </p>
-                </div>
-              </div>
-            </Col>
-          )}
-          <Divider className="w-min-0 mt-8 mb-12 justify-center items-start p-x-xs">
-            <Typography.Text className="text-sm" type="secondary">
-              {t('label.or-lowercase')}
-            </Typography.Text>
-          </Divider>
-          <Col span={24}>
+          <Col className="d-flex flex-center" span={24}>
             <Button
-              ghost
-              className="w-full"
+              className="p-0"
               data-testid="go-back-button"
-              type="primary"
-              onClick={() => history.push(ROUTES.SIGNIN)}>
+              type="link"
+              onClick={handleLogin}>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

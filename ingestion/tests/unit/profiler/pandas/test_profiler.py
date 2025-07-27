@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,8 +13,10 @@
 Test Profiler behavior
 """
 import os
+import sys
 from datetime import datetime
 from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -49,8 +51,16 @@ from metadata.profiler.metrics.core import MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import MissingMetricException, Profiler
 from metadata.profiler.processor.default import DefaultProfiler
+from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(Base):
@@ -155,21 +165,35 @@ class ProfilerTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
-    def setUpClass(cls, mock_get_connection, mocked_dfs):
-        cls.datalake_profiler_interface = PandasProfilerInterface(
-            entity=cls.table_entity,
-            service_connection_config=DatalakeConnection(configSource={}),
-            storage_config=None,
-            ometa_client=None,
-            thread_count=None,
-            profile_sample_config=None,
-            source_config=None,
-            sample_query=None,
-            table_partition_config=None,
-        )
+    def setUp(cls, mock_get_connection, *_) -> None:
+        import pandas as pd
+
+        with (
+            patch.object(
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [
+                    cls.df1,
+                    pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
+                ],
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            cls.sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=cls.table_entity,
+            )
+            cls.datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=cls.table_entity,
+                source_config=None,
+                sampler=cls.sampler,
+            )
 
     def test_default_profiler(self):
         """
@@ -177,6 +201,7 @@ class ProfilerTest(TestCase):
         """
         simple = DefaultProfiler(
             profiler_interface=self.datalake_profiler_interface,
+            metrics_registry=Metrics,
         )
         simple.compute_metrics()
 
@@ -313,6 +338,7 @@ class ProfilerTest(TestCase):
 
         default_profiler = DefaultProfiler(
             profiler_interface=self.datalake_profiler_interface,
+            metrics_registry=Metrics,
         )
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
