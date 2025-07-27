@@ -382,10 +382,14 @@ export const testPipelineSpecificOperations = async (
 
   // Test Edit Lineage for Pipeline
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
+  await testUserPage.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
   }
 };
 
@@ -430,10 +434,14 @@ export const testDashboardDataModelSpecificOperations = async (
 
   // Test Edit Lineage for Dashboard Data Model
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
+  await testUserPage.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
   }
 };
 
