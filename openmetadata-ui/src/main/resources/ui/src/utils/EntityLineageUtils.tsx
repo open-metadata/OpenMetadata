@@ -1133,8 +1133,12 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
-      stack.push(...childNodes);
-      outgoers.push(...childNodes);
+      const finalChildNodeRemovingRootNode = childNodes.filter(
+        (item) => !item.data.isRootNode
+      );
+
+      stack.push(...finalChildNodeRemovingRootNode);
+      outgoers.push(...finalChildNodeRemovingRootNode);
       connectedEdges.push(...childEdges);
     }
   }
