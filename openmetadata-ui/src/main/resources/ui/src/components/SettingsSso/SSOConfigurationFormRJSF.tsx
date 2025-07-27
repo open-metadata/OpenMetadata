@@ -124,7 +124,7 @@ const SSOConfigurationFormRJSF: React.FC<SSOConfigurationFormRJSFProps> = ({
           <Typography.Text className="card-title m-t-0 m-b-2 text-md">
             {t('label.sso-configuration')}
           </Typography.Text>
-          <Typography.Paragraph className="card-description m-b-0 m-t-4 ">
+          <Typography.Paragraph className="card-description m-b-0 m-t-4">
             {t(
               'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
             )}

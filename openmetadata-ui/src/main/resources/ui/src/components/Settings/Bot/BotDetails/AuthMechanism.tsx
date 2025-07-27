@@ -70,7 +70,7 @@ const AuthMechanism: FC<Props> = ({
       <Space className="w-full justify-between">
         {isSCIMBot ? (
           <div className="flex flex-col gap-2">
-            <Typography.Text className="card-title m-t-0 m-b-2">
+            <Typography.Text className="card-title m-t-0 m-b-2 text-md">
               {t('message.automate-provisioning-with-scim')}
             </Typography.Text>
             <Typography.Paragraph className="m-b-0 card-description">

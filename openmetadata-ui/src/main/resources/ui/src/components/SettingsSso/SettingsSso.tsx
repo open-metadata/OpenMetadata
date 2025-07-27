@@ -37,7 +37,6 @@ const SettingsSso = () => {
   const { t } = useTranslation();
   const [botUserData, setBotUserData] = useState<User | null>(null);
   const [botData, setBotData] = useState<Bot | null>(null);
-  const [isEditMode, setIsEditMode] = useState<boolean>(false);
 
   const breadcrumb = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.SSO),
