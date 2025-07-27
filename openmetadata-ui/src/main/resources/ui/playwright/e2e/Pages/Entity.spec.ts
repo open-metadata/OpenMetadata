@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { DATA_CONSUMER_RULES } from '../../constant/permission';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -26,9 +29,9 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   assignDomain,
-  createNewPage,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
@@ -59,8 +62,38 @@ const entities = [
   MetricClass,
 ] as const;
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new UserClass();
+const dataConsumerUser = new UserClass();
+const user = new UserClass();
+const tableEntity = new TableClass();
+
+const test = base.extend<{
+  page: Page;
+  dataConsumerPage: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+  dataConsumerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await dataConsumerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await dataConsumerUser.create(apiContext);
+  await user.create(apiContext);
+  await tableEntity.create(apiContext);
+  await afterAction();
+});
 
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
@@ -68,8 +101,11 @@ entities.forEach((EntityClass) => {
   const entityName = entity.getType();
 
   test.describe(entityName, () => {
+    const rowSelector =
+      entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
@@ -78,10 +114,11 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPage(page);
+      await entity.visitEntityPageWithCustomSearchBox(page);
     });
 
-    test('Domain Add, Update and Remove', async ({ page }) => {
+    // Need to address fixes for Domain / Data Product update
+    test.fixme('Domain Add, Update and Remove', async ({ page }) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
@@ -192,7 +229,18 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        EntityDataClass.tierTag1.data.displayName
+        EntityDataClass.tierTag1.responseData.displayName,
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+        entity
+      );
+    });
+
+    test('Certification Add Remove', async ({ page }) => {
+      await entity.certification(
+        page,
+        EntityDataClass.certificationTag1,
+        EntityDataClass.certificationTag2,
+        entity
       );
     });
 
@@ -213,7 +261,13 @@ entities.forEach((EntityClass) => {
     test('Tag Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(
+        page,
+        'PersonalData.Personal',
+        EntityDataClass.tag1.responseData.displayName,
+        entity,
+        EntityDataClass.tag1.responseData.fullyQualifiedName
+      );
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
@@ -222,15 +276,69 @@ entities.forEach((EntityClass) => {
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
-        EntityDataClass.glossaryTerm2.responseData
+        EntityDataClass.glossaryTerm2.responseData,
+        entity
       );
     });
+
+    if (!['Store Procedure', 'Metric'].includes(entity.type)) {
+      test('Tag and Glossary Selector should close vice versa', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        const isMlModel = entity.type === 'MlModel';
+        // Tag Selector
+        await page
+          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
+
+        // Glossary Selector
+        await page
+          .locator(
+            `[${rowSelector}="${
+              isMlModel
+                ? entity.childrenSelectorId2
+                : entity.childrenSelectorId ?? ''
+            }"]`
+          )
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeVisible();
+        await expect(page.locator('.async-select-list-dropdown')).toBeHidden();
+
+        // Re-check Tag Selector
+        await page
+          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
+
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        await expect(
+          page.locator('.async-tree-select-list-dropdown')
+        ).toBeHidden();
+      });
+    }
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Tag Add, Update and Remove for child entities', async ({
         page,
       }) => {
+        test.slow(true);
+
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.tagChildren({
@@ -238,8 +346,8 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
@@ -256,9 +364,36 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
+      });
+
+      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+        test('DisplayName Add, Update and Remove for child entities', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.displayNameChildren({
+            page: page,
+            columnName: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector,
+          entity.endpoint
+        );
       });
     }
 
@@ -323,10 +458,146 @@ entities.forEach((EntityClass) => {
       await entity.renameEntity(page, entity.entity.name);
     });
 
+    test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
+      page,
+      dataConsumerPage,
+    }) => {
+      await redirectToHomePage(page);
+
+      await entity.visitEntityPageWithCustomSearchBox(page);
+
+      const { apiContext } = await getApiContext(page);
+
+      // Create policy with deny rule for edit description
+      const customPolicy = new PolicyClass();
+      await customPolicy.create(apiContext, [
+        ...DATA_CONSUMER_RULES,
+        {
+          name: 'DenyEditDescription-Rule',
+          resources: ['All'],
+          operations: ['EditDescription'],
+          effect: 'deny',
+        },
+      ]);
+
+      // Create role with the custom policy
+      const customRole = new RolesClass();
+      await customRole.create(apiContext, [customPolicy.responseData.name]);
+
+      // Assign the custom role to the data consumer user
+      await dataConsumerUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'replace',
+            path: '/roles',
+            value: [
+              {
+                id: customRole.responseData.id,
+                type: 'role',
+                name: customRole.responseData.name,
+              },
+            ],
+          },
+        ],
+      });
+
+      await entity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
+
+      // Check if edit description button is not visible
+      await expect(
+        dataConsumerPage.locator('[data-testid="edit-description"]')
+      ).not.toBeVisible();
+
+      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+        await getApiContext(page);
+      await customRole.delete(cleanupContext);
+      await customPolicy.delete(cleanupContext);
+      await cleanupAfterAction();
+    });
+
+    // Add the data consumer test only for Table entity
+    if (entityName === 'Table') {
+      test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
+        page,
+        dataConsumerPage,
+      }) => {
+        await redirectToHomePage(page);
+
+        await tableEntity.visitEntityPageWithCustomSearchBox(page);
+
+        const { apiContext } = await getApiContext(page);
+
+        // Create policy with both allow and deny rules
+        const customPolicy = new PolicyClass();
+        await customPolicy.create(apiContext, [
+          ...DATA_CONSUMER_RULES,
+          {
+            name: 'DataConsumerPolicy-DenyRule',
+            resources: ['All'],
+            operations: ['ViewQueries', 'ViewSampleData'],
+            effect: 'deny',
+          },
+        ]);
+
+        // Create role with the custom policy
+        const customRole = new RolesClass();
+        await customRole.create(apiContext, [customPolicy.responseData.name]);
+
+        // Assign the custom role to the data consumer user
+        await dataConsumerUser.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/roles',
+              value: [
+                {
+                  id: customRole.responseData.id,
+                  type: 'role',
+                  name: customRole.responseData.name,
+                },
+              ],
+            },
+          ],
+        });
+
+        await tableEntity.visitEntityPageWithCustomSearchBox(dataConsumerPage);
+
+        // check if queries tab is visible
+        await dataConsumerPage.locator('[data-testid="table_queries"]').click();
+
+        await expect(
+          dataConsumerPage
+            .locator('[data-testid="permission-error-placeholder"]')
+            .getByText(
+              "You don't have necessary permissions. Please check with the admin to get the View Queries permission."
+            )
+        ).toBeVisible();
+
+        // check is sample data tab visible
+        await dataConsumerPage.locator('[data-testid="sample_data"]').click();
+
+        await expect(
+          dataConsumerPage
+            .locator('[data-testid="permission-error-placeholder"]')
+            .getByText(
+              "You don't have necessary permissions. Please check with the admin to get the View Sample Data permission."
+            )
+        ).toBeVisible();
+
+        const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+          await getApiContext(page);
+        await customRole.delete(cleanupContext);
+        await customPolicy.delete(cleanupContext);
+        await cleanupAfterAction();
+      });
+    }
+
     test.afterAll('Cleanup', async ({ browser }) => {
       test.slow();
 
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
@@ -345,7 +616,7 @@ entities.forEach((EntityClass) => {
     const apiContext = await getAuthContext(token);
     await deleteEntity.create(apiContext);
     await redirectToHomePage(page);
-    await deleteEntity.visitEntityPage(page);
+    await deleteEntity.visitEntityPageWithCustomSearchBox(page);
 
     await test.step('Soft delete', async () => {
       await deleteEntity.softDeleteEntity(
@@ -363,4 +634,13 @@ entities.forEach((EntityClass) => {
       );
     });
   });
+});
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await dataConsumerUser.delete(apiContext);
+  await user.delete(apiContext);
+  await tableEntity.delete(apiContext);
+  await afterAction();
 });

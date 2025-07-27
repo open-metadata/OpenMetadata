@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import CopyToClipboardButton from './CopyToClipboardButton';
 
 const clipboardWriteTextMock = jest.fn();
@@ -28,6 +33,12 @@ Object.defineProperty(window.navigator, 'clipboard', {
   writable: true,
 });
 
+// Set secure context to true by default
+Object.defineProperty(window, 'isSecureContext', {
+  value: true,
+  writable: true,
+});
+
 describe('Test CopyToClipboardButton Component', () => {
   it('Should render all child elements', async () => {
     render(<CopyToClipboardButton copyText={value} />);
@@ -40,7 +51,7 @@ describe('Test CopyToClipboardButton Component', () => {
     render(<CopyToClipboardButton copyText={value} onCopy={callBack} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('copy-secret'));
+      await fireEvent.click(screen.getByTestId('copy-secret'));
     });
 
     expect(callBack).toHaveBeenCalled();
@@ -57,7 +68,9 @@ describe('Test CopyToClipboardButton Component', () => {
     fireEvent.mouseOver(screen.getByTestId('copy-secret'));
     jest.advanceTimersByTime(1000);
 
-    expect(screen.getByTestId('copy-success')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('copy-success')).toBeInTheDocument();
+    });
   });
 
   it('Should have copied text in clipboard', async () => {
@@ -84,6 +97,8 @@ describe('Test CopyToClipboardButton Component', () => {
     });
 
     // not show the success message if clipboard API has error
-    expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
+    });
   });
 });

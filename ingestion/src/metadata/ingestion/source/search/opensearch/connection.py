@@ -141,11 +141,7 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
 
     # Check for AWS IAM Authentication
     if isinstance(connection.authType, AWSCredentials):
-        aws_access_key = (
-            connection.authType.awsAccessKeyId.get_secret_value()
-            if connection.authType.awsAccessKeyId
-            else None
-        )
+        aws_access_key = connection.authType.awsAccessKeyId
         aws_secret_key = (
             connection.authType.awsSecretAccessKey.get_secret_value()
             if connection.authType.awsSecretAccessKey

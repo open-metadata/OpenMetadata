@@ -13,6 +13,7 @@
 Tableau Source Model module
 """
 
+import uuid
 from typing import Dict, List, Optional, Set, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -28,8 +29,17 @@ class TableauBaseModel(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    id: str
+    # in case of personal space workbooks, the project id is returned as a UUID
+    id: Union[str, uuid.UUID]
     name: Optional[str] = None
+
+    # pylint: disable=no-self-argument
+    @field_validator("id", mode="before")
+    def coerce_uuid_to_string(cls, value):
+        """Ensure id is always stored as a string internally"""
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return value
 
     def __hash__(self):
         return hash(self.id)
@@ -187,7 +197,7 @@ class TableauDashboard(TableauBaseModel):
     tags: Optional[Set] = []
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
-    dataModels: List[DataSource] = []
+    dataModels: Optional[List[DataSource]] = []
     custom_sql_queries: Optional[List[str]] = None
     user_views: Optional[int] = None
 

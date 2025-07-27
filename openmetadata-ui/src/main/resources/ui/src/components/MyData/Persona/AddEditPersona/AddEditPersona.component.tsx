@@ -17,7 +17,7 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
@@ -55,13 +55,15 @@ export const AddEditPersonaForm = ({
         const { users } = data;
 
         const usersList = users?.map((u) => u.id) ?? [];
-        const domain = data.domain?.fullyQualifiedName;
+        const domains = data.domains
+          ?.map((d) => d.fullyQualifiedName)
+          .filter(Boolean) as string[];
         if (persona && isEditMode) {
           const jsonPatch = compare(persona, data);
 
           await updatePersona(persona?.id, jsonPatch);
         } else {
-          await createPersona({ ...data, users: usersList, domain });
+          await createPersona({ ...data, users: usersList, domains });
         }
         onSave();
       } catch (error) {

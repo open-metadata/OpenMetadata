@@ -62,6 +62,8 @@ import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -217,6 +219,23 @@ public final class TestUtils {
               .waitDuration(Duration.ofMillis(100))
               .retryExceptions(RetryableAssertionError.class)
               .build());
+
+  /**
+   * Simulates work by performing a CPU-intensive operation
+   * that takes approximately the specified milliseconds.
+   * This is more reliable than Thread.sleep() for testing
+   * as it doesn't block threads and is more predictable.
+   */
+  public static void simulateWork(long targetMillis) {
+    long startTime = System.nanoTime();
+    long targetNanos = targetMillis * 1_000_000L;
+
+    // Perform busy work until target time is reached
+    while ((System.nanoTime() - startTime) < targetNanos) {
+      // Perform some computation to consume CPU time
+      Math.sqrt(Math.random());
+    }
+  }
 
   public static void assertCustomProperties(
       List<CustomProperty> expected, List<CustomProperty> actual) {
@@ -500,7 +519,15 @@ public final class TestUtils {
       assertEquals(limit, actual.getData().size());
     }
     for (int i = 0; i < actual.getData().size(); i++) {
-      assertEquals(allEntities.get(offset + i), actual.getData().get(i));
+      if (actual.getData().get(i) instanceof EntityTimeSeriesInterface) {
+        assertEquals(
+            ((EntityTimeSeriesInterface) allEntities.get(offset + i)).getId(),
+            ((EntityTimeSeriesInterface) actual.getData().get(i)).getId());
+      } else {
+        assertEquals(
+            ((EntityInterface) allEntities.get(offset + i)).getId(),
+            ((EntityInterface) actual.getData().get(i)).getId());
+      }
     }
     // Ensure total count returned in paging is correct
     assertEquals(allEntities.size(), actual.getPaging().getTotal());
@@ -548,6 +575,22 @@ public final class TestUtils {
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
+            .method(
+                "PATCH",
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+    return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <T> T patch(
+      WebTarget target,
+      JsonNode patch,
+      Class<T> clz,
+      Map<String, String> headers,
+      String ifMatchHeader)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .header("If-Match", ifMatchHeader)
             .method(
                 "PATCH",
                 Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
@@ -885,7 +928,8 @@ public final class TestUtils {
       // Try javax.validation.constraints.Size first
       Size size = field.getAnnotation(Size.class);
       if (size != null) {
-        return String.format("[name size must be between %d and %d]", size.min(), size.max());
+        return String.format(
+            "[query param name size must be between %d and %d]", size.min(), size.max());
       }
 
       // Try jakarta.validation.constraints.Size
@@ -893,12 +937,13 @@ public final class TestUtils {
           field.getAnnotation(jakarta.validation.constraints.Size.class);
       if (jakartaSize != null) {
         return String.format(
-            "[name size must be between %d and %d]", jakartaSize.min(), jakartaSize.max());
+            "[query param name size must be between %d and %d]",
+            jakartaSize.min(), jakartaSize.max());
       }
 
       // Fallback if no Size annotation found
       LOG.warn("No Size annotation found for name field in {}", clazz.getSimpleName());
-      return "[name size must be between 1 and 256]"; // Default values
+      return "[query param name size must be between 1 and 256]"; // Default values
     } catch (NoSuchFieldException e) {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }

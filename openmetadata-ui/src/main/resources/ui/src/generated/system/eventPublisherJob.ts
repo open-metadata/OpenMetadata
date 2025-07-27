@@ -19,6 +19,11 @@ export interface EventPublisherJob {
      */
     afterCursor?: string;
     /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
+    /**
      * Maximum number of events sent in a batch (Default 10).
      */
     batchSize?: number;
@@ -34,6 +39,10 @@ export interface EventPublisherJob {
      * Failure for the job
      */
     failure?: IndexingAppError;
+    /**
+     * Force reindexing even if no index mapping changes are detected
+     */
+    force?: boolean;
     /**
      * Initial backoff time in milliseconds
      */
@@ -74,7 +83,16 @@ export interface EventPublisherJob {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-    stats?:                      Stats;
+    /**
+     * Optional Slack bot token for sending progress notifications with real-time updates
+     */
+    slackBotToken?: string;
+    /**
+     * Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or
+     * '#general')
+     */
+    slackChannel?: string;
+    stats?:        Stats;
     /**
      * This schema publisher run job status.
      */

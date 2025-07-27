@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
   private final SearchIndexMapper mapper = new SearchIndexMapper();
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
-  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domains,dataProducts,sourceHash";
 
   @Override
   public SearchIndex addHref(UriInfo uriInfo, SearchIndex searchIndex) {
@@ -134,8 +134,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
               description = "Limit the number SearchIndexes returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of SearchIndexes before this cursor",

@@ -21,17 +21,12 @@ import {
   InputNumber,
   Select,
   Switch,
+  Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
-import React, {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -221,7 +216,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                     <>
                       <span>{data.displayName}</span>
                       <Button
-                        className="m-x-sm"
+                        className="m-x-sm list-add-btn"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
@@ -234,7 +229,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   {fields.map(({ key, name, ...restField }) => (
                     <div className="d-flex w-full" key={key}>
                       <Form.Item
-                        className="w-full"
+                        className="w-full m-b-0"
                         {...restField}
                         name={[name, 'value']}
                         rules={[
@@ -273,23 +268,33 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       }
     }
 
-    return (
-      <Form.Item
-        data-testid="parameter"
-        key={data.name}
-        label={label}
-        name={data.name}
-        rules={[
-          {
-            required: data.required,
-            message: `${t('message.field-text-is-required', {
-              fieldText: label,
-            })}`,
-          },
-          ruleValidation,
-        ]}
-        tooltip={data.description}
-        {...internalFormItemProps}>
+    const commonFormItemProps = {
+      'data-testid': 'parameter',
+      key: data.name,
+
+      name: data.name,
+      rules: [
+        {
+          required: data.required,
+          message: `${t('message.field-text-is-required', {
+            fieldText: label,
+          })}`,
+        },
+        ruleValidation,
+      ],
+      tooltip: data.description,
+      ...internalFormItemProps,
+    };
+
+    return data.dataType === TestDataType.Boolean ? (
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item {...commonFormItemProps} className="m-b-0">
+          {Field}
+        </Form.Item>
+        <Typography.Text className="font-medium">{label}</Typography.Text>
+      </div>
+    ) : (
+      <Form.Item {...commonFormItemProps} label={label}>
         {DynamicField ?? Field}
       </Form.Item>
     );

@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -66,7 +66,7 @@ const DataProductsTab = forwardRef(
           '',
           1,
           PAGE_SIZE_LARGE,
-          `(domain.fullyQualifiedName:"${encodedFqn}")`,
+          `(domains.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT

@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
   private final APICollectionMapper mapper = new APICollectionMapper();
-  static final String FIELDS = "owners,apiEndpoints,tags,extension,domain,sourceHash";
+  static final String FIELDS = "owners,apiEndpoints,tags,extension,domains,sourceHash";
 
   @Override
   public APICollection addHref(UriInfo uriInfo, APICollection apiCollection) {
@@ -133,8 +133,8 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
                   "Limit the number APICollections returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of API Collections before this cursor",

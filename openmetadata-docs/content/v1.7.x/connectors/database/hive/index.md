@@ -1,5 +1,6 @@
 ---
-title: Hive
+title: Hive Connector | OpenMetadata Big Data Integration Guide
+description: Connect Apache Hive to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/database/hive
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/hive
 name="Hive"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

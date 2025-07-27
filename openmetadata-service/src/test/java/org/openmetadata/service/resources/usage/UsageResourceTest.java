@@ -126,7 +126,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsage(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[count must be greater than or equal to 0]");
+        "[query param count must be greater than or equal to 0]");
   }
 
   @Test
@@ -135,7 +135,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsagePut(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[count must be greater than or equal to 0]");
+        "[query param count must be greater than or equal to 0]");
   }
 
   @Test
@@ -144,7 +144,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsage(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[date must not be null]");
+        "[query param date must not be null]");
   }
 
   @Test
@@ -153,7 +153,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsagePut(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[date must not be null]");
+        "[query param date must not be null]");
   }
 
   @Test

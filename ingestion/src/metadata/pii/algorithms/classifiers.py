@@ -38,7 +38,11 @@ from metadata.pii.algorithms.feature_extraction import (
     split_column_name,
 )
 from metadata.pii.algorithms.preprocessing import preprocess_values
-from metadata.pii.algorithms.presidio_patches import url_patcher
+from metadata.pii.algorithms.presidio_patches import (
+    combine_patchers,
+    date_time_patcher,
+    url_patcher,
+)
 from metadata.pii.algorithms.presidio_utils import (
     build_analyzer_engine,
     set_presidio_logger_level,
@@ -69,9 +73,6 @@ class ColumnClassifier(ABC, Generic[T]):
         """
 
 
-# Implementations
-
-
 @final
 class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     """
@@ -99,7 +100,6 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         column_name: Optional[str] = None,
         column_data_type: Optional[DataType] = None,
     ) -> Mapping[PIITag, float]:
-
         if column_data_type is not None and is_non_pii_datatype(column_data_type):
             return {}
 
@@ -119,7 +119,7 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             self._presidio_analyzer,
             str_values,
             context=context,
-            recognizer_result_patcher=url_patcher,
+            recognizer_result_patcher=combine_patchers(date_time_patcher, url_patcher),
         )
 
         column_name_matches: Set[PIITag] = set()

@@ -22,9 +22,9 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/dashboard';
@@ -38,6 +38,7 @@ import {
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -58,7 +59,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedMlModelName,
@@ -69,8 +70,8 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   entityPermissions,
 }: MlModelVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
 
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -83,9 +84,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const mlFeaturesData = useMemo(
@@ -95,7 +96,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.MLMODEL,
           currentVersionData.fullyQualifiedName ?? '',
@@ -289,7 +290,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -373,7 +374,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.MLMODEL}
         versionHandler={versionHandler}
         versionList={versionList}

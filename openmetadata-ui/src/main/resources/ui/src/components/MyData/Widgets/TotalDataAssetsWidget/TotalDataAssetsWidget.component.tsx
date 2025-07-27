@@ -10,121 +10,159 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Typography } from 'antd';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import {
-  first,
-  groupBy,
-  isEmpty,
-  isUndefined,
-  last,
-  omit,
-  reduce,
-  sortBy,
-} from 'lodash';
-import { default as React, useCallback, useEffect, useMemo } from 'react';
+import { groupBy, isEmpty, omit, reduce, sortBy, startCase } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/data-insight-no-data-placeholder.svg';
-import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
+import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
+import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
+import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
-import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
-import { entityChartColor } from '../../../../utils/CommonUtils';
-import {
-  CustomTooltip,
-  getRandomHexColor,
-} from '../../../../utils/DataInsightUtils';
+import { generatePalette } from '../../../../styles/colorPallet';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { EmptyGraphPlaceholder } from '../../../DataInsight/EmptyGraphPlaceholder';
-import TotalEntityInsightSummary from '../../../DataInsight/TotalEntityInsightSummary.component';
+import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './total-data-assets-widget.less';
+import {
+  DATA_ASSETS_SORT_BY_KEYS,
+  DATA_ASSETS_SORT_BY_OPTIONS,
+} from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
 const TotalDataAssetsWidget = ({
   isEditView = false,
-  selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
   widgetKey,
-  selectedGridSize,
+  currentLayout,
+  handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [chartData, setChartData] =
-    React.useState<DataInsightCustomChartResult>();
+  const { applicationConfig } = useApplicationStore();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [chartData, setChartData] = useState<DataInsightCustomChartResult>();
+  const [selectedDate, setSelectedDate] = useState<number | undefined>();
+  const [selectedSortBy, setSelectedSortBy] = useState<string>(
+    DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
+  );
 
-  const { rightSideEntityList, latestData, graphData, changeInValue, total } =
+  const pieChartColors = useMemo(() => {
+    const primaryColor =
+      applicationConfig?.customTheme?.primaryColor ??
+      DEFAULT_THEME.primaryColor;
+
+    const fullPalette = generatePalette(primaryColor);
+    const reversed = fullPalette.slice().reverse();
+
+    const firstTwo = reversed.slice(0, 2);
+    const remaining = reversed.slice(2);
+
+    return [...remaining, ...firstTwo];
+  }, [applicationConfig?.customTheme?.primaryColor]);
+
+  const widgetData = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey);
+  }, [currentLayout, widgetKey]);
+
+  const isFullSizeWidget = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
+  }, [currentLayout, widgetKey]);
+
+  const { graphData, rightSideEntityList, dataByDate, availableDates } =
     useMemo(() => {
       const results = chartData?.results ?? [];
-      const timeStampResults = groupBy(results, 'day');
+
+      const groupedByDay = groupBy(results, 'day');
       const labels: string[] = [];
 
-      const graphData = Object.entries(timeStampResults).map(([key, value]) => {
-        const keys = value.reduce((acc, curr) => {
-          curr.group && labels.push(curr.group);
+      const graphData = Object.entries(groupedByDay).map(
+        ([dayKey, entries]) => {
+          const day = Number(dayKey);
+          const values = entries.reduce((acc, curr) => {
+            if (curr.group) {
+              labels.push(curr.group);
+            }
 
-          return { ...acc, [curr.group ?? 'count']: curr.count };
-        }, {});
+            return {
+              ...acc,
+              [curr.group ?? 'count']: curr.count,
+            };
+          }, {});
 
-        return {
-          day: +key,
-          dayString: customFormatDateTime(+key, 'MMM dd'),
-          ...keys,
-        };
-      });
-
-      const finalData = sortBy(graphData, 'day');
-      const uniqueLabels = Array.from(new Set(labels));
-
-      const latestData: Record<string, number> = omit(last(finalData ?? {}), [
-        'day',
-        'dayString',
-      ]);
-
-      const total = reduce(latestData, (acc, value) => acc + value, 0);
-
-      const firstRecordTotal = reduce(
-        omit(first(finalData) ?? {}, ['day', 'dayString']),
-        (acc, value) => acc + value,
-        0
+          return {
+            day,
+            dayString: customFormatDateTime(day, 'dd MMM'),
+            ...values,
+          };
+        }
       );
 
-      const changeInValue = firstRecordTotal
-        ? (total - firstRecordTotal) / firstRecordTotal
-        : 0;
+      const sortedData = sortBy(graphData, 'day');
+      const uniqueLabels = Array.from(new Set(labels));
+
+      const dataByDate: Record<number, Record<string, number>> = {};
+      sortedData.forEach((item) => {
+        dataByDate[item.day] = omit(item, ['day', 'dayString']);
+      });
+
+      const availableDates = sortedData.map(({ day, dayString }) => ({
+        day,
+        dayString,
+      }));
 
       return {
+        graphData: sortedData,
         rightSideEntityList: uniqueLabels,
-        latestData,
-        graphData: finalData,
-        changeInValue,
-        total,
+        dataByDate,
+        availableDates,
       };
     }, [chartData?.results]);
+
+  const selectedDateData = useMemo(() => {
+    if (!selectedDate) {
+      return {};
+    }
+
+    return dataByDate[selectedDate] ?? {};
+  }, [selectedDate, dataByDate]);
+
+  const totalDatAssets = useMemo(() => {
+    return reduce(selectedDateData, (acc, value) => acc + value, 0);
+  }, [selectedDateData]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      const daysMap: Record<string, number> = {
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
+        [DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS]: 30,
+      };
+
+      const days = daysMap[selectedSortBy] ?? 7;
+
       const filter = {
-        start: getEpochMillisForPastDays(selectedDays),
+        start: getEpochMillisForPastDays(days),
         end: getCurrentMillis(),
       };
 
@@ -141,118 +179,158 @@ const TotalDataAssetsWidget = ({
     }
   };
 
-  const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
-  }, [widgetKey]);
+  const emptyState = useMemo(() => {
+    return (
+      <WidgetEmptyState
+        actionButtonLink={ROUTES.EXPLORE}
+        actionButtonText={t('label.browse-assets')}
+        description={t('message.no-data-for-total-assets')}
+        icon={
+          <TotalDataAssetsEmptyIcon height={SIZE.LARGE} width={SIZE.LARGE} />
+        }
+        title={t('label.no-data-assets-to-display')}
+      />
+    );
+  }, [t]);
 
-  const isWidgetSizeLarge = useMemo(
-    () => selectedGridSize === WidgetWidths.large,
-    [selectedGridSize]
-  );
+  const totalDataAssetsContent = useMemo(() => {
+    return (
+      <div className="total-data-assets-widget-content">
+        <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
+          {/* Donut Chart */}
+          <div className="flex-1 donut-chart-wrapper">
+            <ResponsiveContainer height={300} width="100%">
+              <PieChart>
+                <Pie
+                  cx="50%"
+                  cy="50%"
+                  data={Object.entries(selectedDateData).map(
+                    ([name, value]) => ({
+                      name,
+                      value,
+                    })
+                  )}
+                  dataKey="value"
+                  innerRadius={90}
+                  nameKey="name"
+                  outerRadius={140}
+                  paddingAngle={1}>
+                  {rightSideEntityList.map((label, index) => (
+                    <Cell
+                      fill={pieChartColors[index % pieChartColors.length]}
+                      key={label}
+                    />
+                  ))}
+                </Pie>
+                <RechartsTooltip
+                  formatter={(value: number, name: string) => [
+                    `(${value})`,
+                    startCase(name),
+                  ]}
+                  separator={' '}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div
+              className="donut-center-value"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}>
+              <Typography.Title level={3} style={{ margin: 0 }}>
+                {totalDatAssets.toLocaleString()}
+              </Typography.Title>
+            </div>
+          </div>
+
+          {/* Right-side Legend */}
+          {isFullSizeWidget && (
+            <div className="flex-1 legend-list p-md">
+              {rightSideEntityList.map((label, index) => (
+                <div className="d-flex items-center gap-3 text-sm" key={label}>
+                  <span
+                    className="h-3 w-3"
+                    style={{
+                      borderRadius: '50%',
+                      backgroundColor:
+                        pieChartColors[index % pieChartColors.length],
+                    }}
+                  />
+                  <Typography.Text ellipsis={{ tooltip: true }}>
+                    {startCase(label)}
+                  </Typography.Text>
+                  <span className="text-xs font-medium p-y-xss p-x-xs data-value">
+                    {selectedDateData[label] ?? 0}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Date Selector */}
+        <div className="date-selector-wrapper m-t-xs">
+          <div className="date-selector-container">
+            {availableDates.map(({ day, dayString }) => (
+              <div
+                className={`date-box ${selectedDate === day ? 'selected' : ''}`}
+                key={day}
+                onClick={() => setSelectedDate(day)}>
+                <div className="day font-semibold text-sm">
+                  {dayString.split(' ')[0]}
+                </div>
+                <div className="month text-xs">{dayString.split(' ')[1]}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }, [
+    availableDates,
+    selectedDate,
+    selectedDateData,
+    totalDatAssets,
+    rightSideEntityList,
+    isFullSizeWidget,
+  ]);
 
   useEffect(() => {
     fetchData();
-  }, [selectedDays]);
+  }, [selectedSortBy]);
+
+  useEffect(() => {
+    if (!selectedDate && graphData.length > 0) {
+      setSelectedDate(graphData[graphData.length - 1].day); // select last available date
+    }
+  }, [graphData]);
 
   return (
-    <Card
-      className="total-data-insight-card data-insight-card-chart"
-      data-testid="total-assets-widget"
-      id={SystemChartType.TotalDataAssets}
+    <WidgetWrapper
+      dataLength={graphData.length > 0 ? graphData.length : 10}
       loading={isLoading}>
-      {isEditView && (
-        <Row gutter={8} justify="end">
-          <Col>
-            <DragOutlined
-              className="drag-widget-icon cursor-pointer"
-              data-testid="drag-widget-button"
-              size={14}
-            />
-          </Col>
-          <Col>
-            <CloseOutlined
-              data-testid="remove-widget-button"
-              size={14}
-              onClick={handleCloseClick}
-            />
-          </Col>
-        </Row>
-      )}
-      {isEmpty(graphData) ? (
-        <Row className="h-full">
-          <Col span={14}>
-            <Typography.Text className="font-medium">
-              {t('label.data-insight-total-entity-summary')}
-            </Typography.Text>
-          </Col>
-          <Col className="h-95" span={24}>
-            <EmptyGraphPlaceholder
-              icon={
-                <TotalDataAssetsEmptyIcon
-                  height={SIZE.X_SMALL}
-                  width={SIZE.X_SMALL}
-                />
-              }
-            />
-          </Col>
-        </Row>
-      ) : (
-        <Row className="h-95">
-          <Col span={isWidgetSizeLarge ? 14 : 24}>
-            <Typography.Text className="font-medium">
-              {t('label.data-insight-total-entity-summary')}
-            </Typography.Text>
-            <div className="p-t-md">
-              <ResponsiveContainer height={250} width="100%">
-                <AreaChart
-                  data={graphData}
-                  margin={{
-                    top: 10,
-                    right: 30,
-                    left: 0,
-                    bottom: 0,
-                  }}
-                  syncId="anyId">
-                  <XAxis
-                    allowDuplicatedCategory={false}
-                    dataKey="day"
-                    tickFormatter={(value: number) =>
-                      customFormatDateTime(value, 'MMM dd')
-                    }
-                  />
-                  <YAxis />
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <Tooltip
-                    content={<CustomTooltip timeStampKey="day" />}
-                    wrapperStyle={{ pointerEvents: 'auto' }}
-                  />
-                  {rightSideEntityList.map((label, i) => (
-                    <Area
-                      dataKey={label}
-                      fill={entityChartColor(i) ?? getRandomHexColor()}
-                      key={label}
-                      name={label}
-                      stroke={entityChartColor(i) ?? getRandomHexColor()}
-                    />
-                  ))}
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </Col>
-          {isWidgetSizeLarge && (
-            <Col className="total-entity-insight-summary-container" span={10}>
-              <TotalEntityInsightSummary
-                entities={rightSideEntityList}
-                latestData={latestData}
-                relativePercentage={changeInValue}
-                selectedDays={selectedDays}
-                total={total}
-              />
-            </Col>
-          )}
-        </Row>
-      )}
-    </Card>
+      <div className="total-data-assets-widget-container">
+        <WidgetHeader
+          className="items-center"
+          currentLayout={currentLayout}
+          handleLayoutUpdate={handleLayoutUpdate}
+          handleRemoveWidget={handleRemoveWidget}
+          icon={<TotalAssetsWidgetIcon height={24} width={24} />}
+          isEditView={isEditView}
+          selectedSortBy={selectedSortBy}
+          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+          title={t('label.data-insight-total-entity-summary')}
+          widgetKey={widgetKey}
+          widgetWidth={widgetData?.w}
+          onSortChange={(key) => setSelectedSortBy(key)}
+        />
+        <div className="widget-content flex-1 h-full">
+          {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
+        </div>
+      </div>
+    </WidgetWrapper>
   );
 };
 

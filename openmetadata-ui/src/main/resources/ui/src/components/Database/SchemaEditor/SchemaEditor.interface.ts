@@ -20,6 +20,7 @@ export type Mode = {
 
 export interface SchemaEditorProps {
   value?: string;
+  refreshEditor?: boolean;
   className?: string;
   mode?: Mode;
   readOnly?: boolean;

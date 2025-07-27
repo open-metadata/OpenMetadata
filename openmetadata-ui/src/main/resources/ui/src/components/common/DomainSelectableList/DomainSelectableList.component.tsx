@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 import { Button, Popover, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/WidgetsUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
@@ -52,18 +56,20 @@ export const DomainListItemRenderer = (props: EntityReference) => {
 };
 
 const DomainSelectableList = ({
-  onUpdate,
   children,
+  disabled,
   hasPermission,
-  popoverProps,
-  selectedDomain,
   multiple = false,
   onCancel,
-  wrapInButton = true,
+  onUpdate,
+  popoverProps,
+  selectedDomain,
   showAllDomains = false,
+  wrapInButton = true,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
+  const { isVersionView } = useGenericContext<Domain>();
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -106,36 +112,46 @@ const DomainSelectableList = ({
       <Popover
         destroyTooltipOnHide
         content={
-          <DomainSelectablTree
-            initialDomains={initialDomains}
-            isMultiple={multiple}
-            showAllDomains={showAllDomains}
-            value={selectedDomainsList as string[]}
-            visible={popupVisible || Boolean(popoverProps?.open)}
-            onCancel={handleCancel}
-            onSubmit={handleUpdate}
-          />
+          !disabled && (
+            <FocusTrapWithContainer active={popoverProps?.open || false}>
+              <DomainSelectablTree
+                initialDomains={initialDomains}
+                isMultiple={multiple}
+                showAllDomains={showAllDomains}
+                value={selectedDomainsList as string[]}
+                visible={popupVisible || Boolean(popoverProps?.open)}
+                onCancel={handleCancel}
+                onSubmit={handleUpdate}
+              />
+            </FocusTrapWithContainer>
+          )
         }
+        getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
         overlayClassName="domain-select-popover w-400"
         placement="bottomRight"
         showArrow={false}
         trigger="click"
-        onOpenChange={setPopupVisible}
+        onOpenChange={(visible) => {
+          if (!disabled) {
+            setPopupVisible(visible);
+          }
+        }}
         {...popoverProps}>
-        {children ?? (
-          <EditIconButton
-            newLook
-            data-testid="add-domain"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.domain'),
-            })}
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
+        {children ??
+          (!isVersionView && (
+            <EditIconButton
+              newLook
+              data-testid="add-domain"
+              disabled={!hasPermission || disabled}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.domain-plural'),
+              })}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ))}
       </Popover>
     );
   }, [
@@ -148,12 +164,14 @@ const DomainSelectableList = ({
     popoverProps,
     popupVisible,
     selectedDomainsList,
+    isVersionView,
   ]);
 
   if (wrapInButton) {
     return (
       <Button
         className="remove-button-default-styling flex-center"
+        disabled={disabled}
         onClick={(e) => e.stopPropagation()}>
         {popoverContent}
       </Button>

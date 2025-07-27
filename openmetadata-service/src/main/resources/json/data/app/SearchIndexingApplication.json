@@ -15,7 +15,8 @@
     "maxRetries": 3,
     "initialBackoff": 1000,
     "maxBackoff": 10000,
-    "searchIndexMappingLanguage": "EN"
+    "searchIndexMappingLanguage": "EN",
+    "autoTune": false
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",

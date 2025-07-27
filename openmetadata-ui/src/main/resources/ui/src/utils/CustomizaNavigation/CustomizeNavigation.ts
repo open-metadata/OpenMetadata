@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TreeDataNode } from 'antd/lib';
 import { isEmpty } from 'lodash';
 import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
@@ -37,18 +38,18 @@ const sidebarMap = createSidebarMap(leftSidebarItems);
 
 export const getTreeDataForNavigationItems = (
   navigationItems?: NavigationItem[]
-) => {
+): TreeDataNode[] => {
   return isEmpty(navigationItems)
     ? leftSidebarItems.map((item) => {
         return {
           title: item.title,
           key: item.key ?? '',
-          icon: item.icon,
+          icon: item.icon as TreeDataNode['icon'],
           children: item.children?.map((i) => {
             return {
               title: i.title,
               key: i.key,
-              icon: i.icon,
+              icon: i.icon as TreeDataNode['icon'],
             };
           }),
         };
@@ -59,14 +60,14 @@ export const getTreeDataForNavigationItems = (
         return {
           title: item.title,
           key: item.id,
-          icon: sidebarItem?.icon,
+          icon: sidebarItem?.icon as TreeDataNode['icon'],
           children: item.children?.map((i) => {
             const sidebarItem = sidebarMap.get(i.id);
 
             return {
               title: i.title,
               key: i.id,
-              icon: sidebarItem?.icon,
+              icon: sidebarItem?.icon as TreeDataNode['icon'],
             };
           }),
         };

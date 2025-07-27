@@ -47,6 +47,10 @@
         "config": {
           "description": "Pipeline configuration for this particular execution.",
           "$ref": "../../../type/basic.json#/definitions/map"
+        },
+        "metadata": {
+          "description": "Metadata for the pipeline status.",
+          "$ref": "../../../type/basic.json#/definitions/map"
         }
       },
       "additionalProperties": false
@@ -227,9 +231,9 @@
     "provider" : {
       "$ref": "../../../type/basic.json#/definitions/providerType"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReferenceList.json"
     },
     "applicationType": {
       "description": "Type of the application when pipelineType is 'application'.",
@@ -237,6 +241,10 @@
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../../type/entityReference.json"
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
       "$ref": "../../../type/entityReference.json"
     }
   },

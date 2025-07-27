@@ -12,7 +12,7 @@
 MicroStrategy Models
 """
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -134,6 +134,17 @@ class MstrAvailableObject(BaseModel):
     id: str
     name: str
     type: str
+    forms: Optional[List[Dict[str, Any]]] = None
+
+
+class MstrDataset(BaseModel):
+    id: str
+    name: str
+    availableObjects: Optional[List[MstrAvailableObject]] = None
+    rows: Optional[List[Dict[str, Any]]] = None
+    columns: Optional[List[Dict[str, Any]]] = None
+    pageBy: Optional[List[Dict[str, Any]]] = None
+    sqlStatement: Optional[str] = None
 
 
 class MstrDashboardDetails(BaseModel):
@@ -143,6 +154,7 @@ class MstrDashboardDetails(BaseModel):
     projectName: str
     currentChapter: str
     chapters: List[MstrChapter]
+    datasets: List[MstrDataset]
 
 
 class AuthHeaderCookie(BaseModel):

@@ -1,5 +1,6 @@
 ---
-title: Sandbox
+title: Sandbox Quickstart | OpenMetadata Sandbox Environment
+description: Get started with OpenMetadata in minutes using our interactive sandbox environment. Explore data discovery, lineage, and governance features hands-on.
 slug: /quick-start/sandbox
 ---
 

@@ -62,7 +62,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   private final ContainerMapper mapper = new ContainerMapper();
   public static final String COLLECTION_PATH = "v1/containers/";
   static final String FIELDS =
-      "parent,children,dataModel,owners,tags,followers,extension,domain,sourceHash";
+      "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -125,8 +125,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           Boolean root,
       @Parameter(description = "Limit the number containers returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -597,14 +597,14 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Parameter(
               description = "Limit the number of children returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           Integer limit,
       @Parameter(description = "Returns list of children after the given offset")
           @DefaultValue("0")
           @QueryParam("offset")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           Integer offset) {
     return repository.listChildren(fqn, limit, offset);
   }

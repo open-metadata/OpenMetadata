@@ -14,15 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -43,6 +37,7 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import {
   EntityAction,
@@ -65,19 +60,19 @@ import {
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
-import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
-  const { action } = useParams<{ action: EntityAction }>();
+  const { action } = useRequiredParams<{ action: EntityAction }>();
   const [initialised, setInitialised] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -118,45 +113,37 @@ const GlossaryPage = () => {
     return true;
   }, [glossaryFqn]);
 
-  const createGlossaryPermission = useMemo(
-    () =>
-      checkPermission(
+  const {
+    createGlossaryPermission,
+    viewBasicGlossaryPermission,
+    viewAllGlossaryPermission,
+  } = useMemo(() => {
+    const resourceType = isGlossaryActive
+      ? ResourceEntity.GLOSSARY
+      : ResourceEntity.GLOSSARY_TERM;
+
+    return {
+      createGlossaryPermission: checkPermission(
         Operation.Create,
-        isGlossaryActive
-          ? ResourceEntity.GLOSSARY
-          : ResourceEntity.GLOSSARY_TERM,
+        resourceType,
         permissions
       ),
-    [permissions, isGlossaryActive]
-  );
-
-  const viewBasicGlossaryPermission = useMemo(
-    () =>
-      checkPermission(
+      viewBasicGlossaryPermission: checkPermission(
         Operation.ViewBasic,
-        isGlossaryActive
-          ? ResourceEntity.GLOSSARY
-          : ResourceEntity.GLOSSARY_TERM,
+        resourceType,
         permissions
       ),
-    [permissions, isGlossaryActive]
-  );
-
-  const viewAllGlossaryPermission = useMemo(
-    () =>
-      checkPermission(
+      viewAllGlossaryPermission: checkPermission(
         Operation.ViewAll,
-        isGlossaryActive
-          ? ResourceEntity.GLOSSARY
-          : ResourceEntity.GLOSSARY_TERM,
+        resourceType,
         permissions
       ),
-    [permissions, isGlossaryActive]
-  );
+    };
+  }, [permissions, isGlossaryActive]);
 
   const handleAddGlossaryClick = useCallback(() => {
-    history.push(ROUTES.ADD_GLOSSARY);
-  }, [history]);
+    navigate(ROUTES.ADD_GLOSSARY);
+  }, [navigate]);
 
   const fetchGlossaryList = useCallback(async () => {
     try {
@@ -173,7 +160,7 @@ const GlossaryPage = () => {
             TabSpecificField.TAGS,
             TabSpecificField.REVIEWERS,
             TabSpecificField.VOTES,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
             TabSpecificField.TERM_COUNT,
           ],
           limit: PAGE_SIZE_LARGE,
@@ -216,7 +203,7 @@ const GlossaryPage = () => {
           TabSpecificField.TAGS,
           TabSpecificField.REVIEWERS,
           TabSpecificField.VOTES,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
         ],
         limit: PAGE_SIZE_LARGE,
         after: after,
@@ -256,17 +243,20 @@ const GlossaryPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.CHILDREN,
           TabSpecificField.VOTES,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.EXTENSION,
         ],
       });
       setActiveGlossary(response as ModifiedGlossary);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        navigate(ROUTES.FORBIDDEN, { replace: true });
+      }
     } finally {
       setIsRightPanelLoading(false);
     }
   }, [glossaryFqn]);
+
   useEffect(() => {
     setIsRightPanelLoading(true);
     if (glossaries.length) {
@@ -280,7 +270,9 @@ const GlossaryPage = () => {
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
-          history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
+          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+            replace: true,
+          });
         setIsRightPanelLoading(false);
       }
     }
@@ -296,14 +288,14 @@ const GlossaryPage = () => {
         updateActiveGlossary({ ...updatedData, ...response });
 
         if (activeGlossary?.name !== updatedData.name) {
-          history.push(getGlossaryPath(response.fullyQualifiedName));
+          navigate(getGlossaryPath(response.fullyQualifiedName));
           fetchGlossaryList();
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [activeGlossary, updateActiveGlossary, history, fetchGlossaryList]
+    [activeGlossary, updateActiveGlossary, navigate, fetchGlossaryList]
   );
 
   const updateVote = useCallback(
@@ -369,7 +361,7 @@ const GlossaryPage = () => {
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
           if (activeGlossary?.name !== updatedData.name) {
-            history.push(getGlossaryPath(response.fullyQualifiedName));
+            navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
           shouldRefreshTerms && fetchGlossaryTermDetails();
@@ -403,7 +395,7 @@ const GlossaryPage = () => {
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
-        history.push(getGlossaryPath(fqn));
+        navigate(getGlossaryPath(fqn));
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -443,7 +435,7 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="d-flex justify-center items-center full-height">
+      <div className="full-height">
         <ErrorPlaceHolder
           buttonId="add-glossary"
           className="mt-0-important border-none"
@@ -550,4 +542,4 @@ const GlossaryPage = () => {
   return <div>{resizableLayout}</div>;
 };
 
-export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);
+export default withPageLayout(GlossaryPage);

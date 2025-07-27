@@ -13,8 +13,13 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.TABLE;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.antlr.v4.runtime.BailErrorStrategy;
@@ -205,5 +210,83 @@ public class FullyQualifiedName {
 
   public static String getColumnName(String columnFQN) {
     return FullyQualifiedName.split(columnFQN)[4]; // Get from column name from FQN
+  }
+
+  /**
+   * Generates all possible FQN parts for search and matching purposes.
+   * For example, given FQN "service.database.schema.table", this method generates:
+   * - Full hierarchy: "service", "service.database", "service.database.schema", "service.database.schema.table"
+   * - Individual parts: "service", "database", "schema", "table"
+   * - Bottom-up combinations: "database.schema.table", "schema.table", "table"
+   */
+  public static Set<String> getAllParts(String fqn) {
+    var parts = split(fqn);
+    var fqnParts = new HashSet<String>();
+
+    // Generate all possible sub-paths
+    for (int start = 0; start < parts.length; start++) {
+      for (int end = start + 1; end <= parts.length; end++) {
+        var subPath =
+            String.join(Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, start, end));
+        fqnParts.add(subPath);
+      }
+    }
+
+    return fqnParts;
+  }
+
+  /**
+   * Generates hierarchical FQN parts from root to the full FQN.
+   * For example, given FQN "service.database.schema.table", this method generates:
+   * ["service", "service.database", "service.database.schema", "service.database.schema.table"]
+   */
+  public static List<String> getHierarchicalParts(String fqn) {
+    var parts = split(fqn);
+    return java.util.stream.IntStream.rangeClosed(1, parts.length)
+        .mapToObj(i -> String.join(Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, 0, i)))
+        .toList();
+  }
+
+  /**
+   * Gets all ancestor FQNs for a given FQN.
+   * For example, given FQN "service.database.schema.table", this method returns:
+   * ["service.database.schema", "service.database", "service"]
+   */
+  public static List<String> getAncestors(String fqn) {
+    var parts = split(fqn);
+    return java.util.stream.IntStream.range(1, parts.length)
+        .mapToObj(
+            i ->
+                String.join(
+                    Entity.SEPARATOR, java.util.Arrays.copyOfRange(parts, 0, parts.length - i)))
+        .toList();
+  }
+
+  /**
+   * Split columnFQN of format serviceName.model.dataModelName.columnName
+   * column FQN for struct columns are of format
+   * serviceName.model.dataModelName.column.child1.child2
+   * and not serviceName.model.dataModelName."column.child1.child2" so split length should be 4 or more
+   * Return data model FQN of format serviceName.model.dataModelName
+   *
+   * @param columnFQN the FQN of the column
+   * @return the FQN of the parent dashboard data model
+   */
+  public static String getDashboardDataModelFQN(String columnFQN) {
+    String[] split = split(columnFQN);
+    if (split.length < 4) {
+      throw new IllegalArgumentException("Invalid dashboard data model column FQN: " + columnFQN);
+    }
+    // Return data model FQN of format serviceName.model.dataModelName
+    return build(split[0], split[1], split[2]);
+  }
+
+  // Get parent entity fqn for a given column fqn
+  public static String getParentEntityFQN(String columnFQN, String entityType) {
+    return switch (entityType) {
+      case TABLE -> getTableFQN(columnFQN);
+      case DASHBOARD_DATA_MODEL -> getDashboardDataModelFQN(columnFQN);
+      default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
+    };
   }
 }

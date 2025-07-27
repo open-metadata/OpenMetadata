@@ -85,7 +85,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   static final String FIELDS = "owners";
   private WorkflowMapper mapper;
   private PipelineServiceClientInterface pipelineServiceClient;
-  private OpenMetadataConnectionBuilder openMetadataConnectionBuilder;
+  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
   public WorkflowResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW, authorizer, limits);
@@ -93,11 +93,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
+    this.openMetadataApplicationConfig = config;
     this.mapper = new WorkflowMapper();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
-    openMetadataConnectionBuilder = new OpenMetadataConnectionBuilder(config);
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
@@ -134,8 +134,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                   "Limit the number automations workflows returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of automations workflows before this cursor",
@@ -359,7 +359,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
-    workflow.setOpenMetadataServerConnection(openMetadataConnectionBuilder.build());
+    workflow.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     /*
      We will send the encrypted Workflow to the Pipeline Service Client
      It will be fetched from the API from there, since we are
@@ -594,7 +595,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       return workflowConverted;
     }
     Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
-    OpenMetadataConnection openMetadataServerConnection = openMetadataConnectionBuilder.build();
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     workflowDecrypted.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext)) {

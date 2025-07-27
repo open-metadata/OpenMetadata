@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.dqtests;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -50,20 +51,23 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
@@ -81,6 +85,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         "dataQuality/testSuites",
         TestSuiteResource.FIELDS);
     supportsSearchIndex = true;
+    supportsEtag = false;
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {
@@ -130,7 +135,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponse(
         () -> createEntity(createRequest(test).withName(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
   }
 
   @Test
@@ -144,10 +149,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
 
     for (int i = 0; i < 5; i++) {
-      CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest("test_testSuite_" + i)
-              .withTestSuite(TEST_SUITE1.getFullyQualifiedName());
+      CreateTestCase createTestCase = testCaseResourceTest.createRequest("test_testSuite_" + i);
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -156,10 +158,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     }
 
     for (int i = 5; i < 10; i++) {
-      CreateTestCase create =
-          testCaseResourceTest
-              .createRequest("test_testSuite_2_" + i)
-              .withTestSuite(TEST_SUITE2.getFullyQualifiedName());
+      CreateTestCase create = testCaseResourceTest.createRequest("test_testSuite_2_" + i);
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
       testCaseResourceTest.postTestCaseResult(
           testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
@@ -217,9 +216,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       for (int j = 0; j < 3; j++) {
         CreateTestCase createTestCase =
-            testCaseResourceTest
-                .createRequest("test_" + RandomStringUtils.randomAlphabetic(10))
-                .withTestSuite(testSuite.getFullyQualifiedName());
+            testCaseResourceTest.createRequest("test_" + RandomStringUtils.randomAlphabetic(10));
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       }
       testSuites.add(createTestSuite);
@@ -292,14 +289,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(testSuite.getOwners(), table.getOwners());
+    assertReferenceList(testSuite.getOwners(), table.getOwners());
     Table updateTableOwner = table;
     updateTableOwner.setOwners(List.of(TEAM11_REF));
     tableResourceTest.patchEntity(
         table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertOwners(table.getOwners(), testSuite.getOwners());
+    assertReferenceList(table.getOwners(), testSuite.getOwners());
   }
 
   @Test
@@ -315,23 +312,23 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withDomain(DOMAIN1.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
         createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
-    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getId(), testSuite.getDomain().getId());
+    TestSuite testSuite = getEntity(executableTestSuite.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(DOMAIN1.getId(), testSuite.getDomains().get(0).getId());
     ResultList<TestSuite> testSuites =
         listEntitiesFromSearch(
-            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domain"),
+            Map.of("domain", DOMAIN1.getFullyQualifiedName(), "fields", "domains"),
             100,
             0,
             ADMIN_AUTH_HEADERS);
     assertTrue(
         testSuites.getData().stream()
-            .allMatch(ts -> ts.getDomain().getId().equals(DOMAIN1.getId())));
+            .allMatch(ts -> ts.getDomains().get(0).getId().equals(DOMAIN1.getId())));
   }
 
   @Test
@@ -369,9 +366,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -522,9 +519,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(testSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -572,9 +568,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(testSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
     }
 
@@ -683,7 +679,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertResponseContains(
         () -> createEntity(createTestSuite, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[name must not be null]");
+        "[query param name must not be null]");
 
     // Create an entity with mandatory name field empty
     final CreateTestSuite createTestSuite1 = createRequest("", "description", "displayName", null);
@@ -724,9 +720,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i,
+              new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases.add(testCase.getEntityReference());
@@ -770,9 +766,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // We'll create tests cases for testSuite1
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest
-              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
-              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+          testCaseResourceTest.createRequest(
+              String.format("test_testSuite_2_%s_", test.getDisplayName()) + i);
       TestCase testCase =
           testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
@@ -1037,5 +1032,136 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_testSuiteReindexConsistency(TestInfo test)
+      throws IOException, InterruptedException, ParseException {
+    // 1. Create a table and test suite for it
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // 2. Add a new test case to the table
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    CreateTestCase createTestCase =
+        testCaseResourceTest.createRequest(
+            "test_reindex_consistency_" + test.getDisplayName(),
+            new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName()));
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // 3. Ingest test case results for this test case
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(TestUtils.dateToTimestamp("2021-09-09"));
+    testCaseResourceTest.postTestCaseResult(
+        testCase.getFullyQualifiedName(), createTestCaseResult, ADMIN_AUTH_HEADERS);
+
+    // 3a. Verify test case results are available via search endpoint before reindex
+    Map<String, String> testCaseResultsQueryParams = new HashMap<>();
+    testCaseResultsQueryParams.put("testCaseId", testCase.getId().toString());
+    testCaseResultsQueryParams.put("fields", "testCase,testDefinition,testCaseStatus");
+    ResultList<TestCaseResult> testCaseResultsBeforeReindex =
+        testCaseResourceTest.listTestCaseResultsFromSearch(
+            testCaseResultsQueryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseResultsBeforeReindex);
+    assertFalse(testCaseResultsBeforeReindex.getData().isEmpty());
+    TestCaseResult testCaseResultBeforeReindex = testCaseResultsBeforeReindex.getData().getFirst();
+
+    // 4. Fetch the test suite linked to the table using the search endpoint (before reindex)
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
+    queryParams.put("fields", "tests,testCaseResultSummary");
+    ResultList<TestSuite> testSuitesBeforeReindex =
+        listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(testSuitesBeforeReindex);
+    assertFalse(testSuitesBeforeReindex.getData().isEmpty());
+    TestSuite testSuiteBeforeReindex = testSuitesBeforeReindex.getData().getFirst();
+
+    // 5. Trigger an Elasticsearch index refresh for the test suite entity (simulating a reindex)
+    postTriggerSearchIndexingApp(ADMIN_AUTH_HEADERS);
+
+    // Wait for reindexing to complete
+    Thread.sleep(5000);
+
+    // 6. Fetch the test suite again using the search endpoint (after reindex)
+    ResultList<TestSuite> testSuitesAfterReindex =
+        listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(testSuitesAfterReindex);
+    assertTrue(testSuitesAfterReindex.getData().size() > 0);
+    TestSuite testSuiteAfterReindex = testSuitesAfterReindex.getData().get(0);
+
+    // 6a. Verify test case results are still available via search endpoint after reindex
+    ResultList<TestCaseResult> testCaseResultsAfterReindex =
+        testCaseResourceTest.listTestCaseResultsFromSearch(
+            testCaseResultsQueryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseResultsAfterReindex);
+    assertFalse(testCaseResultsAfterReindex.getData().isEmpty());
+    TestCaseResult testCaseResultAfterReindex = testCaseResultsAfterReindex.getData().getFirst();
+
+    // Compare test case results before and after reindex
+    assertEquals(
+        testCaseResultBeforeReindex.getTestCaseStatus(),
+        testCaseResultAfterReindex.getTestCaseStatus());
+    assertEquals(testCaseResultBeforeReindex.getResult(), testCaseResultAfterReindex.getResult());
+    assertEquals(
+        testCaseResultBeforeReindex.getTimestamp(), testCaseResultAfterReindex.getTimestamp());
+    assertNotNull(testCaseResultAfterReindex.getTestCase());
+    assertEquals(testCase.getId(), testCaseResultAfterReindex.getTestCase().getId());
+
+    // Compare testDefinition
+    assertEquals(
+        testCaseResultBeforeReindex.getTestDefinition(),
+        testCaseResultAfterReindex.getTestDefinition());
+
+    // 7. Compare the test suite results from before and after the reindex to ensure they are
+    // identical
+    assertEquals(testSuiteBeforeReindex.getId(), testSuiteAfterReindex.getId());
+    assertEquals(testSuiteBeforeReindex.getName(), testSuiteAfterReindex.getName());
+    assertEquals(
+        testSuiteBeforeReindex.getFullyQualifiedName(),
+        testSuiteAfterReindex.getFullyQualifiedName());
+    assertEquals(testSuiteBeforeReindex.getDescription(), testSuiteAfterReindex.getDescription());
+
+    // Assert that every test ID is in both before and after testSuite
+    for (EntityReference testRef : testSuiteBeforeReindex.getTests()) {
+      assertTrue(
+          testSuiteAfterReindex.getTests().stream()
+              .allMatch(t -> t.getId().equals(testRef.getId())),
+          "Test ID " + testRef.getId() + " should be present in testSuite after reindex");
+    }
+
+    // Compare test cases
+    assertEquals(testSuiteBeforeReindex.getTests().size(), testSuiteAfterReindex.getTests().size());
+    if (testSuiteBeforeReindex.getTests() != null && testSuiteAfterReindex.getTests() != null) {
+      verifyTestCases(testSuiteBeforeReindex.getTests(), testSuiteAfterReindex.getTests());
+    }
+
+    // Compare test case result summaries
+    assertEquals(
+        testSuiteBeforeReindex.getTestCaseResultSummary(),
+        testSuiteAfterReindex.getTestCaseResultSummary());
+  }
+
+  private void postTriggerSearchIndexingApp(Map<String, String> authHeaders) throws IOException {
+    WebTarget target = getResource("apps/trigger").path("SearchIndexingApplication");
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders)
+            .post(jakarta.ws.rs.client.Entity.json(Map.of()));
+    TestUtils.readResponse(response, Response.Status.OK.getStatusCode());
   }
 }

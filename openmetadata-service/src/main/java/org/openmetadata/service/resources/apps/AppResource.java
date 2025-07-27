@@ -64,6 +64,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppException;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -132,6 +133,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           getEntitiesFromSeedData(
               APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
       loadDefaultApplications(createAppsReq);
+      ApplicationContext.initialize();
     } catch (Exception ex) {
       LOG.error("Failed in Create App Requests", ex);
     }
@@ -229,8 +231,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   "Limit the number of installed applications returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of tests before this cursor",
@@ -303,13 +305,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(1000)
           int limitParam,
       @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(1000)
           int offset,
       @Parameter(
@@ -387,14 +389,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int offset,
       @Parameter(
               description = "Filter pipeline status after the given start timestamp",

@@ -179,6 +179,24 @@
     "afterCursor": {
       "description": "Provide After in case of failure to start reindexing after the issue is solved",
       "type": "string"
+    },
+    "autoTune": {
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
+    },
+    "force": {
+      "description": "Force reindexing even if no index mapping changes are detected",
+      "type": "boolean",
+      "default": false
+    },
+    "slackBotToken": {
+      "description": "Optional Slack bot token for sending progress notifications with real-time updates",
+      "type": "string"
+    },
+    "slackChannel": {
+      "description": "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general')",
+      "type": "string"
     }
   },
   "additionalProperties": false

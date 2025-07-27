@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
@@ -117,7 +116,7 @@ export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
   announcementWidget: {
     h: 3,
-    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    i: LandingPageWidgetKeys.ACTIVITY_FEED,
     w: 1,
     x: 3,
     y: 0,

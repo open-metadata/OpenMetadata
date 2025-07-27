@@ -77,7 +77,9 @@ public class APICollectionResourceTest
   void post_APICollectionWithoutRequiredService_4xx(TestInfo test) {
     CreateAPICollection create = createRequest(test).withService(null);
     assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "query param service must not be null");
   }
 
   @Test

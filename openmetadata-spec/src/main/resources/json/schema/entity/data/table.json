@@ -170,7 +170,10 @@
         "BIT",
         "MONEY",
         "MEASURE HIDDEN",
-        "MEASURE VISIBLE"
+        "MEASURE VISIBLE",
+        "MEASURE",
+        "KPI",
+        "HEIRARCHY"
       ]
     },
     "constraint": {
@@ -354,8 +357,7 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
-          },
-          "default": null
+          }
         },
         "profile": {
           "description": "Latest Data profile for a Column.",
@@ -667,7 +669,8 @@
       "enum": [
         "UPDATE",
         "INSERT",
-        "DELETE"
+        "DELETE",
+        "WRITE"
       ]
     },
     "systemProfile": {
@@ -955,7 +958,7 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
+      "enum": ["csv", "tsv", "avro", "parquet", "pq", "pqt", "parq", "parquet.snappy", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {
@@ -1003,8 +1006,7 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/column"
-      },
-      "default": null
+      }
     },
     "tableConstraints": {
       "description": "Table constraints.",
@@ -1129,9 +1131,9 @@
       "description": "Source URL of table.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
@@ -1162,6 +1164,14 @@
       "description": "Processed lineage for the table",
       "type": "boolean",
       "default": false
+    },
+    "queries": {
+      "description": "List of queries that are used to create this table.", 
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/sqlQuery"
+      },
+      "default": null
     }
   },
   "required": [

@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
 import org.openmetadata.service.limits.Limits;
@@ -51,7 +52,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -66,7 +66,7 @@ public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
   private final StorageServiceMapper mapper = new StorageServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
@@ -117,7 +117,11 @@ public class StorageServiceResource
               schema = @Schema(type = "string", example = "Marketing"))
           @QueryParam("domain")
           String domain,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
+      @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @QueryParam("limit")
+          int limitParam,
       @Parameter(
               description = "Returns list of storage services before this cursor",
               schema = @Schema(type = "string"))

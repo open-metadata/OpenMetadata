@@ -1,5 +1,6 @@
 ---
-title: What are Tiers
+title: What are Tiers | OpenMetadata Classification Tiers Guide
+description: Use tier-based classification to rank assets by quality, importance, and readiness for business consumption.
 slug: /how-to-guides/data-governance/classification/tiers
 ---
 

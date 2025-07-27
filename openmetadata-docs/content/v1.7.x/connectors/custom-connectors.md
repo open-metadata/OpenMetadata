@@ -1,5 +1,6 @@
 ---
-title: Custom Connectors
+title: Custom Connectors | Build & Extend OpenMetadata Easily
+description: Learn to build custom connectors for OpenMetadata to integrate any data source. Step-by-step guides, code examples, and best practices included.
 slug: /connectors/custom-connectors
 ---
 
@@ -24,19 +25,19 @@ Watch OpenMetadata's [Webinar on Custom Connectors](https://www.youtube.com/watc
 
 {% youtube videoId="fDUj30Ub9VE" start="0:00" end="36:33" width="800px" height="450px" /%}
 
-# Steps to Set Up a Custom Connector
+## Steps to Set Up a Custom Connector
 
-## Step 1 - Prepare your Connector
+### Step 1 - Prepare your Connector
 
 A connector is a class that extends from `from metadata.ingestion.api.steps import Source`. It should implement
-all the required methods ([docs](https://docs.open-metadata.org/sdk/python/build-connector/source#for-consumers-of-openmetadata-ingestion-to-define-custom-connectors-in-their-own-package-with-same-namespace)).
+all the required methods ([docs](https://docs.open-metadata.org/latest/sdk/python/build-connector/source#for-consumers-of-openmetadata-ingestion-to-define-custom-connectors-in-their-own-package-with-same-namespace)).
 
 In [connector/my_awesome_connector.py](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_awesome_connector.py) you have a minimal example of it.
 
 Note how te important method is the `_iter`. This is the generator function that will be iterated over
-to send all the Create Entity Requests to the `Sink`. Read more about the `Workflow` [here](https://docs.open-metadata.org/sdk/python/build-connector).
+to send all the Create Entity Requests to the `Sink`. Read more about the `Workflow` [here](https://docs.open-metadata.org/latest/sdk/python/build-connector).
 
-## Step 2 - Yield the Data
+### Step 2 - Yield the Data
 
 The `Sink` is expecting Create Entity Requests. To get familiar with the Python SDK and understand how to create
 the different Entities, a recommended read is the Python SDK [docs](/sdk/python).
@@ -44,7 +45,7 @@ the different Entities, a recommended read is the Python SDK [docs](/sdk/python)
 We do not have docs and examples of all the supported Services. A way to get examples on how to create and fetch
 other types of Entities is to directly refer to the `ometa` [integration tests](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/tests/integration/ometa).
 
-### Either & StackTraceError
+#### Either & StackTraceError
 
 When we `yield` the data, we are now wrapping the state of the execution being correct or not with an `Either` class:
 
@@ -92,12 +93,12 @@ Note that with the new structure, any errors are going to be properly logged at 
 +--------+---------------+-------------------+--------------------------------------------------------------------------------------------------------------------------+
 ```
 
-## Step 3 - Prepare the Package Installation
+### Step 3 - Prepare the Package Installation
 
 We'll need to package the code so that it can be shipped to the ingestion container and used there. In this demo
 you can find a simple `setup.py` that builds the `connector` module.
 
-## Step 4 - Prepare the Ingestion Image
+### Step 4 - Prepare the Ingestion Image
 
 If you want to use the connector from the UI, the Python environment running the ingestion process should contain
 the new code you just created. For example, if running via Docker, the `openmetadata-ingestion` image should be 
@@ -120,12 +121,12 @@ COPY setup.py .
 RUN pip install --no-deps .
 ```
 
-## Step 5 - Run OpenMetadata with the Custom Ingestion Image
+### Step 5 - Run OpenMetadata with the Custom Ingestion Image
 
 We have a `Makefile` prepared for you to run `make run`. This will get OpenMetadata up in Docker Compose using the
 custom Ingestion image.
 
-## Step 6 - Configure the Connector
+### Step 6 - Configure the Connector
 
 In the example we prepared a Database Connector. Thus, go to `Database Services > Add New Service > Custom`
 and set the `Source Python Class Name` as `connector.my_awesome_connector.MyAwesomeConnector`.

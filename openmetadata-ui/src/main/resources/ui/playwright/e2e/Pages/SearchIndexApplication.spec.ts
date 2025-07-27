@@ -133,6 +133,8 @@ test('Search Index Application', async ({ page }) => {
       'Search Indexing Application'
     );
 
+    await expect(page.locator('form')).toContainText('Auto Tune');
+
     await page.fill('#root\\/batchSize', '100');
 
     await page.getByTestId('tree-select-widget').click();

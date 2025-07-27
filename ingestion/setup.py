@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+# https://github.com/open-metadata/OpenMetadata/actions/runs/15640676139/job/44066998708?pr=21719  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -46,7 +46,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
-    "databricks-sdk": "databricks-sdk>=0.18.0,<0.20.0",
+    "databricks-sdk": "databricks-sdk~=0.20.0",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
@@ -134,18 +134,20 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager>=2.19.0,<2.20.1",
+    "google-cloud-secret-manager==2.22.1",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch<2.0, >=1.24",
+    "kubernetes>=21.0.0",  # Kubernetes client for secrets manager
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
+    "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
@@ -156,7 +158,8 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools~=70.0",
     "shapely",
-    "collate-data-diff",
+    "collate-data-diff>=0.11.6",
+    "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     # TODO: Remove one once we have updated datadiff version
     "snowflake-connector-python>=3.13.1,<4.0.0",
     "mysql-connector-python>=8.0.29;python_version<'3.9'",
@@ -209,7 +212,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
-    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=2.0.0"},
+    "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {"sqlalchemy-ibmi~=0.9.3"},
     "databricks": {
         VERSIONS["sqlalchemy-databricks"],
@@ -236,11 +239,12 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "deltalake": {
-        "delta-spark<=2.3.0",
-        "deltalake~=0.17,<0.20",
+        "delta-spark>=3.0.0,<4.0.0",
+        "deltalake>=0.19.0,<0.20",
+        "pyspark==3.5.6",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
-    "deltalake-storage": {"deltalake~=0.17"},
-    "deltalake-spark": {"delta-spark<=2.3.0"},
+    "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
+    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
     "druid": {"pydruid>=0.6.5"},
@@ -292,7 +296,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    "mlflow": {"mlflow-skinny>=2.3.0"},
+    "mlflow": {"mlflow-skinny~=2.22.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -377,7 +381,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -396,7 +400,7 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
-    "pytest==7.0.0",
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
     "dirty-equals",
@@ -478,7 +482,7 @@ playwright_dependencies = {
     *plugins["datalake-s3"],
     *plugins["dbt"],
     *plugins["presidio-analyzer"],
-    *e2e_test
+    *e2e_test,
     # Add other plugins as needed for Playwright tests
 }
 

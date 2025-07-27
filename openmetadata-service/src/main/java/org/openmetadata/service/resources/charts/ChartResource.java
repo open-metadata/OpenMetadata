@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
   private final ChartMapper mapper = new ChartMapper();
-  static final String FIELDS = "owners,followers,tags,domain,dataProducts,sourceHash,dashboards";
+  static final String FIELDS = "owners,followers,tags,domains,dataProducts,sourceHash,dashboards";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -130,8 +130,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of charts before this cursor",

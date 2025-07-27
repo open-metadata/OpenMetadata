@@ -72,6 +72,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
@@ -89,7 +90,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
@@ -187,8 +187,8 @@ public class EventSubscriptionResource
               description =
                   "Limit the number event subscriptions returned. (1 to 1000000, default = 10) ")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(description = "alertType filter. Notification / Observability")
@@ -627,7 +627,7 @@ public class EventSubscriptionResource
           @PathParam("alertType")
           CreateEventSubscription.AlertType alertType) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
@@ -698,7 +698,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -851,7 +851,7 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Maximum number of unprocessed events returned")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @QueryParam("limit")
           int limit,
       @Parameter(
@@ -917,7 +917,7 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Maximum number of unprocessed events returned")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @QueryParam("limit")
           int limit,
       @Parameter(
@@ -992,7 +992,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1049,7 +1049,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1110,7 +1110,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1170,7 +1170,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",
@@ -1235,7 +1235,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("15")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int limit,
       @Parameter(
               description = "Offset for pagination (starting point for records)",

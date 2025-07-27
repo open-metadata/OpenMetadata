@@ -29,17 +29,18 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { isEmpty, isObject } from 'lodash';
+import { isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import React, {
+import {
   forwardRef,
+  ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -131,12 +132,15 @@ const AssetsTabs = forwardRef(
   ) => {
     const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
-    const [activeFilter, _] = useState<SearchIndex[]>([]);
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =
       useState<QueryFilterInterface>();
+    const { t } = useTranslation();
+    const [totalAssetCount, setTotalAssetCount] = useState<number>(
+      assetCount ?? 0
+    );
 
     const {
       currentPage,
@@ -217,7 +221,7 @@ const AssetsTabs = forwardRef(
 
     const fetchAssets = useCallback(
       async ({
-        index = activeFilter,
+        index = [SearchIndex.ALL],
         page = currentPage,
         queryFilter,
       }: {
@@ -239,6 +243,9 @@ const AssetsTabs = forwardRef(
           handlePagingChange({ total: res.hits.total.value ?? 0 });
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
+          if (assetCount === undefined) {
+            setTotalAssetCount(res.hits.total.value ?? 0);
+          }
           hits[0] && setSelectedCard(hits[0]._source);
         } catch {
           // Nothing here
@@ -246,7 +253,7 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage, pageSize, searchValue, queryParam]
+      [currentPage, pageSize, searchValue, queryParam, assetCount]
     );
 
     const hideNotification = () => {
@@ -282,7 +289,7 @@ const AssetsTabs = forwardRef(
           break;
         case AssetsOfEntity.DATA_PRODUCT:
           data = await getDataProductByName(fqn, {
-            fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+            fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });
 
           break;
@@ -427,18 +434,7 @@ const AssetsTabs = forwardRef(
     }, [entityFqn]);
 
     const assetErrorPlaceHolder = useMemo(() => {
-      if (!isEmpty(activeFilter)) {
-        return (
-          <ErrorPlaceHolderNew
-            heading={t('label.asset')}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        );
-      } else if (
-        isObject(noDataPlaceholder) ||
-        searchValue ||
-        !permissions.Create
-      ) {
+      if (isObject(noDataPlaceholder) || searchValue || !permissions.Create) {
         return (
           <ErrorPlaceHolderNew
             className="p-lg "
@@ -518,7 +514,6 @@ const AssetsTabs = forwardRef(
         );
       }
     }, [
-      activeFilter,
       searchValue,
       noDataPlaceholder,
       permissions,
@@ -526,7 +521,7 @@ const AssetsTabs = forwardRef(
       isEntityDeleted,
     ]);
 
-    const renderDropdownContainer = useCallback((menus) => {
+    const renderDropdownContainer = useCallback((menus: ReactNode) => {
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
@@ -675,7 +670,6 @@ const AssetsTabs = forwardRef(
         )
       );
     }, [
-      activeFilter,
       activeEntity,
       isLoading,
       data,
@@ -720,18 +714,11 @@ const AssetsTabs = forwardRef(
       );
 
       fetchAssets({
-        index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+        index: [SearchIndex.ALL],
         page: currentPage,
         queryFilter: newFilter,
       });
-    }, [
-      activeFilter,
-      currentPage,
-      pageSize,
-      searchValue,
-      queryFilter,
-      quickFilterQuery,
-    ]);
+    }, [currentPage, pageSize, searchValue, queryFilter, quickFilterQuery]);
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
@@ -783,7 +770,7 @@ const AssetsTabs = forwardRef(
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
-            index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+            index: [SearchIndex.ALL],
             page: 1,
             queryFilter: newFilter,
           });
@@ -805,6 +792,12 @@ const AssetsTabs = forwardRef(
       }
     }, [isSummaryPanelOpen]);
 
+    useEffect(() => {
+      if (assetCount !== undefined) {
+        setTotalAssetCount(assetCount);
+      }
+    }, [assetCount]);
+
     return (
       <>
         <div
@@ -815,10 +808,10 @@ const AssetsTabs = forwardRef(
           id="asset-tab">
           <Row
             className={classNames('filters-row gap-2 p-md', {
-              'h-full': assetCount === 0,
+              'h-full': totalAssetCount === 0,
             })}
             gutter={[0, 20]}>
-            {assetCount > 0 && (
+            {totalAssetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>
                   <Dropdown
@@ -899,7 +892,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && assetCount > 0 && (
+        {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

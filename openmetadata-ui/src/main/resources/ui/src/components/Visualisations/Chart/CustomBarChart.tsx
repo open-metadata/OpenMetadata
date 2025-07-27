@@ -12,10 +12,11 @@
  */
 
 import { Col, Row } from 'antd';
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Legend,
   LegendProps,
@@ -25,6 +26,7 @@ import {
   YAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
+import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
   axisTickFormatter,
   tooltipFormatter,
@@ -43,6 +45,13 @@ const CustomBarChart = ({
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+
+  const { showBrush, endIndex } = useMemo(() => {
+    return {
+      showBrush: data.length > PROFILER_CHART_DATA_SIZE,
+      endIndex: PROFILER_CHART_DATA_SIZE,
+    };
+  }, [data.length]);
 
   if (data.length === 0) {
     return (
@@ -104,6 +113,15 @@ const CustomBarChart = ({
           />
         ))}
         <Legend onClick={handleClick} />
+        {showBrush && (
+          <Brush
+            data={data}
+            endIndex={endIndex}
+            gap={5}
+            height={30}
+            padding={{ left: 16, right: 16 }}
+          />
+        )}
       </BarChart>
     </ResponsiveContainer>
   );

@@ -80,6 +80,8 @@ import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -87,7 +89,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -851,6 +852,32 @@ public class IngestionPipelineResourceTest
     createEntity(
         createRequest("ingestion").withService(service.getEntityReference()),
         authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void testListByProvider(TestInfo test) throws IOException {
+    // Create a pipeline with a provider
+    CreateIngestionPipeline create = createRequest(test).withProvider(ProviderType.AUTOMATION);
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    CreateIngestionPipeline createNoProvider = createRequest(test, 1);
+    createAndCheckEntity(createNoProvider, ADMIN_AUTH_HEADERS);
+
+    // List pipelines by provider
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("provider", ProviderType.AUTOMATION.value());
+    ResultList<IngestionPipeline> resultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, resultList.getData().size());
+    assertEquals(ingestionPipeline.getId(), resultList.getData().get(0).getId());
+
+    Map<String, String> multipleQueryParams = new HashMap<>();
+    multipleQueryParams.put("provider", ProviderType.AUTOMATION.value());
+    multipleQueryParams.put("serviceType", "databaseService");
+    multipleQueryParams.put("pipelineType", "metadata");
+    ResultList<IngestionPipeline> multipleParamsResult =
+        listEntities(multipleQueryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, multipleParamsResult.getData().size());
+    assertEquals(ingestionPipeline.getId(), multipleParamsResult.getData().get(0).getId());
   }
 
   private IngestionPipeline updateIngestionPipeline(

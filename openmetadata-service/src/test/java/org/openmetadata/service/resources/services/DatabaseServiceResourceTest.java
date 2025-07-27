@@ -21,10 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.entityNotFound;
-import static org.openmetadata.csv.EntityCsvTest.*;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidEnumValue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -78,6 +82,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
@@ -85,9 +90,9 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -358,7 +363,7 @@ public class DatabaseServiceResourceTest
     // Update database with invalid tags field
     String resultsHeader =
         recordToString(EntityCsv.getResultHeaders(getDatabaseServiceCsvHeaders(service, false)));
-    String record = "d1,dsp1,dsc1,,Tag.invalidTag,,,,";
+    String record = "d1,dsp1,dsc1,,Tag.invalidTag,,,,,";
     String csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     CsvImportResult result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -369,7 +374,7 @@ public class DatabaseServiceResourceTest
     assertRows(result, expectedRows);
 
     //  invalid tag it will give error.
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
     csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
@@ -381,7 +386,7 @@ public class DatabaseServiceResourceTest
 
     // database will be created if it does not exist
     String databaseFqn = FullyQualifiedName.add(serviceName, "non-existing");
-    record = "non-existing,dsp1,dsc1,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,";
     csv = createCsv(getDatabaseServiceCsvHeaders(service, false), listOf(record), null);
     result = importCsv(serviceName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
@@ -400,11 +405,15 @@ public class DatabaseServiceResourceTest
         databaseTest.createRequest("d1").withService(service.getFullyQualifiedName());
     databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
+    // Create certification
+    TagResourceTest tagResourceTest = new TagResourceTest();
+
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers,
+    // certification,domain, extension
     // Update terms with change in description
     String record =
         String.format(
-            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,",
+            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,,%s,",
             user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
@@ -413,6 +422,23 @@ public class DatabaseServiceResourceTest
         getDatabaseServiceCsvHeaders(service, false),
         null,
         listOf(record));
+
+    String clearRecord = "d1,dsp1,new-dsc2,,,,,,,";
+
+    importCsvAndValidate(
+        service.getFullyQualifiedName(),
+        getDatabaseServiceCsvHeaders(service, false),
+        null,
+        listOf(clearRecord));
+
+    String databaseFqn = String.format("%s.%s", service.getFullyQualifiedName(), "d1");
+    Database updatedDb = databaseTest.getEntityByName(databaseFqn, ADMIN_AUTH_HEADERS);
+
+    assertEquals("new-dsc2", updatedDb.getDescription());
+    assertTrue(listOrEmpty(updatedDb.getOwners()).isEmpty(), "Owner should be cleared");
+    assertTrue(listOrEmpty(updatedDb.getTags()).isEmpty(), "Tags should be empty after clearing");
+    assertTrue(
+        listOrEmpty(updatedDb.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test

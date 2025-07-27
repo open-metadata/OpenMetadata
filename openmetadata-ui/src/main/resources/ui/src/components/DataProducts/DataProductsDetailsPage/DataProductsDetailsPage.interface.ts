@@ -17,6 +17,9 @@ export interface DataProductsDetailsPageProps {
   isVersionsView?: boolean;
   onUpdate: (dataProductDetails: DataProduct) => Promise<void>;
   onDelete: () => Promise<void>;
+  isFollowing?: boolean;
+  isFollowingLoading?: boolean;
+  handleFollowingClick?: () => void;
 }
 
 export enum DataProductTabs {

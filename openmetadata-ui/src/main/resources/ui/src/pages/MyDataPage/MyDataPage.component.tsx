@@ -12,45 +12,46 @@
  */
 
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import RGL, { WidthProvider } from 'react-grid-layout';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
+import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  KNOWLEDGE_LIST_LENGTH,
-  LOGGED_IN_USER_STORAGE_KEY,
-} from '../../constants/constants';
+import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { Page, PageType } from '../../generated/system/ui/page';
-import { EntityReference } from '../../generated/type/entityReference';
+import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
-import { searchQuery } from '../../rest/searchAPI';
+import { updateUserDetail } from '../../rest/userAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
-const ReactGridLayout = WidthProvider(RGL);
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser, selectedPersona, setCurrentUser } =
+    useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-  const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
-  const [followedDataCount, setFollowedDataCount] = useState(0);
-  const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
 
@@ -58,6 +59,9 @@ const MyDataPage = () => {
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const [personaPreferences, setPersonaPreferences] = useState<
+    PersonaPreferences[]
+  >([]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -70,6 +74,22 @@ const MyDataPage = () => {
       : false;
   }, [storageData, loggedInUserName]);
 
+  const userPersonaBackgroundColor = useMemo(() => {
+    return currentUser?.personaPreferences?.find(
+      (persona) => persona.personaId === selectedPersona?.id
+    )?.landingPageSettings?.headerColor;
+  }, [currentUser, selectedPersona]);
+
+  const adminPersonaBackgroundColor = useMemo(() => {
+    return personaPreferences?.find(
+      (persona) => persona.personaId === selectedPersona?.id
+    )?.landingPageSettings?.headerColor;
+  }, [personaPreferences, selectedPersona]);
+
+  const backgroundColor = useMemo(() => {
+    return userPersonaBackgroundColor ?? adminPersonaBackgroundColor;
+  }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
+
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
@@ -77,14 +97,22 @@ const MyDataPage = () => {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
         const docData = await getDocumentByFQN(pageFQN);
 
+        setPersonaPreferences(docData.data?.personPreferences ?? []);
+
         const pageData = docData.data?.pages?.find(
           (p: Page) => p.pageType === PageType.LandingPage
         ) ?? { layout: [], pageType: PageType.LandingPage };
 
+        const filteredLayout = pageData.layout.filter(
+          (widget: WidgetConfig) =>
+            !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+            !isEmpty(widget.config)
+        );
+
         setLayout(
-          isEmpty(pageData.layout)
+          isEmpty(filteredLayout)
             ? customizePageClassBase.defaultLayout
-            : pageData.layout
+            : filteredLayout
         );
       } else {
         setLayout(customizePageClassBase.defaultLayout);
@@ -117,63 +145,17 @@ const MyDataPage = () => {
     return () => updateWelcomeScreen(false);
   }, []);
 
-  const fetchUserFollowedData = async () => {
-    if (!currentUser?.id) {
-      return;
-    }
-    setIsLoadingOwnedData(true);
-    try {
-      const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
-        searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
-      });
-
-      setFollowedDataCount(res?.hits?.total.value ?? 0);
-      setFollowedData(res.hits.hits.map((hit) => hit._source));
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoadingOwnedData(false);
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserFollowedData();
-    }
-  }, [currentUser]);
-
   const widgets = useMemo(
     () =>
-      // Adding announcement widget to the layout when announcements are present
-      // Since the widget wont be in the layout config of the page
-      // ok
-      [
-        ...(isEmpty(announcements)
-          ? []
-          : [customizePageClassBase.announcementWidget]),
-        ...layout,
-      ].map((widget) => (
+      layout.map((widget) => (
         <div data-grid={widget} key={widget.i}>
           {getWidgetFromKey({
-            announcements: announcements,
-            followedData,
-            followedDataCount,
-            isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
+            currentLayout: layout,
           })}
         </div>
       )),
-    [
-      layout,
-      isAnnouncementLoading,
-      announcements,
-      followedData,
-      followedDataCount,
-      isLoadingOwnedData,
-    ]
+    [layout, isAnnouncementLoading, announcements]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -188,6 +170,62 @@ const MyDataPage = () => {
       setIsAnnouncementLoading(false);
     }
   }, []);
+
+  const handleBackgroundColorUpdate = async (color: string) => {
+    try {
+      if (!currentUser?.id) {
+        return;
+      }
+
+      //   Find the persona preference for the selected persona
+      const hasPersonaPreference = currentUser.personaPreferences?.find(
+        (persona) => persona.personaId === selectedPersona?.id
+      );
+
+      //   If the persona preference is found, update the landing page settings else add a new persona preference
+      const updatedPersonaPreferences = hasPersonaPreference
+        ? currentUser.personaPreferences?.map((persona) =>
+            persona.personaId === selectedPersona?.id
+              ? {
+                  ...persona,
+                  landingPageSettings: {
+                    ...persona.landingPageSettings,
+                    headerColor: color,
+                  },
+                }
+              : persona
+          )
+        : [
+            ...(currentUser.personaPreferences ?? []),
+            {
+              personaName: selectedPersona?.name,
+              personaId: selectedPersona?.id,
+              landingPageSettings: {
+                headerColor: color,
+              },
+            },
+          ];
+
+      //   Compare the current user with the updated user to get the json patch
+      const jsonPatch = compare(currentUser, {
+        ...currentUser,
+        personaPreferences: updatedPersonaPreferences,
+      });
+
+      const response = await updateUserDetail(currentUser.id, jsonPatch);
+
+      //   Update the current user with the updated persona preferences
+      if (response) {
+        setCurrentUser({
+          ...currentUser,
+          personaPreferences: updatedPersonaPreferences as PersonaPreferences[],
+        });
+        showSuccessToast(t('message.persona-preference-updated'));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   useEffect(() => {
     fetchAnnouncements();
@@ -209,23 +247,38 @@ const MyDataPage = () => {
   }
 
   return (
-    <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
-      <ReactGridLayout
-        cols={4}
-        containerPadding={[0, 0]}
-        isDraggable={false}
-        isResizable={false}
-        margin={[
-          customizePageClassBase.landingPageWidgetMargin,
-          customizePageClassBase.landingPageWidgetMargin,
-        ]}
-        rowHeight={100}>
-        {widgets}
-      </ReactGridLayout>
-      <LimitWrapper resource="dataAssets">
-        <br />
-      </LimitWrapper>
-    </PageLayoutV1>
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+      <PageLayoutV1
+        className="p-b-lg"
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
+        <div className="grid-wrapper">
+          <CustomiseLandingPageHeader
+            overlappedContainer
+            backgroundColor={backgroundColor}
+            hideCustomiseButton={!selectedPersona}
+            onHomePage
+            onBackgroundColorUpdate={handleBackgroundColorUpdate}
+          />
+          <ReactGridLayout
+            className="grid-container p-x-box"
+            cols={customizePageClassBase.landingPageMaxGridSize}
+            containerPadding={[0, 0]}
+            isDraggable={false}
+            isResizable={false}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizePageClassBase.landingPageRowHeight}>
+            {widgets}
+          </ReactGridLayout>
+        </div>
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
+      </PageLayoutV1>
+    </AdvanceSearchProvider>
   );
 };
 

@@ -60,12 +60,12 @@ import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -100,19 +100,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withPartitions(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[partitions must not be null]");
+        "[query param partitions must not be null]");
 
     // Partitions must be >= 1
     assertResponse(
         () -> createEntity(createRequest(test).withPartitions(0), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[partitions must be greater than or equal to 1]");
+        "[query param partitions must be greater than or equal to 1]");
   }
 
   @Test
@@ -396,12 +396,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // When domain is not set for a topic, carry it forward from the messaging service
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
     CreateMessagingService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a topic without domain and ensure it inherits domain from the parent
     CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -563,7 +563,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

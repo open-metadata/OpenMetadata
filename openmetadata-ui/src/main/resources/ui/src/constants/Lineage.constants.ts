@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Source } from '../generated/type/entityLineage';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.65;
@@ -84,7 +84,7 @@ export const ELEMENT_DELETE_STATE = {
 };
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
-  EntityFields.DOMAIN,
+  EntityFields.DOMAINS,
   EntityFields.OWNERS,
   EntityFields.TAG,
   EntityFields.COLUMN,
@@ -122,7 +122,7 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'entityType', title: 'Entity Type' },
   { field: 'direction', title: 'Direction' },
   { field: 'owners', title: 'Owner' },
-  { field: 'domain', title: 'Domain' },
+  { field: 'domains', title: 'Domains' },
   { field: 'tags', title: 'Tags' },
   { field: 'tier', title: 'Tier' },
   { field: 'glossaryTerms', title: 'Glossary Terms' },

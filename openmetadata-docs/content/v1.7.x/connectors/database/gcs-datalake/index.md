@@ -1,5 +1,6 @@
 ---
-title: GCS Datalake
+title: GCS Datalake Connector | OpenMetadata Cloud Storage Integration
+description: Connect your Google Cloud Storage data lake to OpenMetadata with our comprehensive GCS connector guide. Setup instructions, configuration tips & best practices.
 slug: /connectors/database/gcs-datalake
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/gcs-datalake
 name="GCS Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 
@@ -62,7 +63,7 @@ We support two ways of authenticating to GCS:
    5. Client Email
    6. Client ID
    7. Auth URI, [https://accounts.google.com/o/oauth2/auth](https://accounts.google.com/o/oauth2/auth) by default
-   8. Token URI, [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
+   8. Token URI, **https://oauth2.googleapis.com/token** by default
    9. Authentication Provider X509 Certificate URL, [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
    10. Client X509 Certificate URL
 

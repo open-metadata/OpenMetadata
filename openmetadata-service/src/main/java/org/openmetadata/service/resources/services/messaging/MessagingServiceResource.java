@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
 import org.openmetadata.service.limits.Limits;
@@ -62,7 +63,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/messagingServices")
@@ -75,7 +75,7 @@ public class MessagingServiceResource
         MessagingService, MessagingServiceRepository, MessagingConnection> {
   private final MessagingServiceMapper mapper = new MessagingServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
-  public static final String FIELDS = "owners,domain,followers";
+  public static final String FIELDS = "owners,domains,followers";
 
   public MessagingServiceResource(Authorizer authorizer, Limits limits) {
     super(Entity.MESSAGING_SERVICE, authorizer, limits, ServiceType.MESSAGING);
@@ -116,8 +116,8 @@ public class MessagingServiceResource
           String domain,
       @Parameter(description = "Limit number services returned. (1 to 1000000, default 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(

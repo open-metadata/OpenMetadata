@@ -1,5 +1,6 @@
 ---
 title: Set up Data Observability Alerts and Notifications
+description: Set up alerts for data quality failures, ingestion issues, or governance rule violations.
 slug: /how-to-guides/admin-guide/alerts
 ---
 
@@ -14,8 +15,6 @@ Starting from the 1.3 release, Data Observability alerts have been completely re
 - **Ingestion Pipeline Monitoring:** for OpenMetadata’s ingestion workflows
 
 Depending on your use cases, notifications can be sent to owners, admins, teams, or users, providing a more personalized and informed experience. Teams can configure their dedicated Slack, MS Teams, or Google Chat channels to receive notifications related to their data assets, streamlining communication and collaboration. With the alerts and notifications in OpenMetadata, users can send Announcements over email, Slack, or Teams. Alerts are sent to a user when they are mentioned in a task or an activity feed.
-
-{% youtube videoId="qc-3sZ_eU5Y" start="0:00" end="2:04" width="800px" height="450px" /%}
 
 - [Create Observability Alerts](#create-observability-alerts)
 - [Add Notifications for Change Events](#add-notifications-for-change-events)

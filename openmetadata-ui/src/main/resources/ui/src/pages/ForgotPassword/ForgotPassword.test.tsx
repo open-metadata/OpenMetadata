@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockHandleForgotPassword = jest.fn();
 const mockHandleError = jest.fn().mockImplementation(() => {
   return Promise.reject({
@@ -54,9 +53,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('ForgotPassword', () => {
@@ -76,7 +73,7 @@ describe('ForgotPassword', () => {
 
     const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -93,7 +90,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: '' } });
@@ -110,7 +107,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -129,7 +126,7 @@ describe('ForgotPassword', () => {
       fireEvent.click(goBackButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should call show error toast', async () => {
@@ -141,7 +138,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
-    const submitButton = getByText('label.submit');
+    const submitButton = getByText('label.send-login-link');
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });

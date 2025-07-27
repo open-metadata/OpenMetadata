@@ -13,7 +13,6 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';
 
@@ -27,6 +26,13 @@ const InlineEdit = ({
   cancelButtonProps,
   saveButtonProps,
 }: InlineEditProps) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel?.();
+    }
+  };
+
   return (
     <Space
       className={classNames(className, 'inline-edit-container')}
@@ -34,7 +40,8 @@ const InlineEdit = ({
       direction={direction}
       // Used onClick to stop click propagation event anywhere in the component to parent
       // TeamDetailsV1 and User.component collapsible panel.
-      onClick={(e) => e.stopPropagation()}>
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={handleKeyDown}>
       {children}
 
       <Space className="w-full justify-end" data-testid="buttons" size={4}>

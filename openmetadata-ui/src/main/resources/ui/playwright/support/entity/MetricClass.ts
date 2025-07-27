@@ -12,12 +12,15 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import {
+  visitEntityPage,
+  visitEntityPageWithCustomSearchBox,
+} from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MetricClass extends EntityClass {
-  private metricName = `pw.metric%${uuid()}`;
+  private metricName = `playwright.metric%${uuid()}`;
 
   entity = {
     name: this.metricName,
@@ -62,6 +65,14 @@ export class MetricClass extends EntityClass {
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.entity.name}-${this.entity.name}`,
+    });
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitEntityPageWithCustomSearchBox({
+      page,
+      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      dataTestId: `explore-card-${this.entityResponseData?.['fullyQualifiedName']}`,
     });
   }
 

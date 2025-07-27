@@ -17,11 +17,11 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface MetricVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: Metric;
   isVersionLoading: boolean;
   owners: Metric['owners'];
-  domain: Metric['domain'];
+  domains: Metric['domains'];
   tier: TagLabel;
   slashedMetricName: TitleBreadcrumbProps['titleLinks'];
   versionList: EntityHistory;

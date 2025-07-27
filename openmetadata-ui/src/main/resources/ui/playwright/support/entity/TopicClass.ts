@@ -15,7 +15,10 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import {
+  visitEntityPage,
+  visitEntityPageWithCustomSearchBox,
+} from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -38,7 +41,7 @@ export class TopicClass extends EntityClass {
       },
     },
   };
-  private topicName = `pw.topic%${uuid()}`;
+  private topicName = `pw.topic-entity-class%${uuid()}`;
 
   children = [
     {
@@ -86,6 +89,7 @@ export class TopicClass extends EntityClass {
 
   entity = {
     name: this.topicName,
+    displayName: this.topicName,
     service: this.service.name,
     messageSchema: {
       schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
@@ -165,6 +169,14 @@ export class TopicClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      dataTestId: `${this.service.name}-${this.entity.name}`,
+    });
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
+    await visitEntityPageWithCustomSearchBox({
+      page,
+      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }

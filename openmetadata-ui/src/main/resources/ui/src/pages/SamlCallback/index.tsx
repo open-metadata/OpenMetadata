@@ -12,19 +12,19 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import Loader from '../../components/common/Loader/Loader';
 import { REFRESH_TOKEN_KEY } from '../../constants/constants';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { setOidcToken, setRefreshToken } from '../../utils/LocalStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
 const SamlCallback = () => {
-  const { handleSuccessfulLogin } = useApplicationStore();
+  const { handleSuccessfulLogin } = useAuthProvider();
   const location = useCustomLocation();
   const { t } = useTranslation();
 

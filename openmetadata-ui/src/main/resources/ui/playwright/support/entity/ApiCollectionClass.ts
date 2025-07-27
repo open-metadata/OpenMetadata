@@ -14,8 +14,8 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { redirectToHomePage, uuid } from '../../utils/common';
+import { visitEntityPageWithCustomSearchBox } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   EntityTypeEndpoint,
@@ -226,6 +226,23 @@ export class ApiCollectionClass extends EntityClass {
     await apiCollectionsResponse;
   }
 
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitServiceDetailsPage(
+      page,
+      {
+        name: this.service.name,
+        type: SERVICE_TYPE.ApiService,
+      },
+      false
+    );
+
+    const apiCollectionsResponse = page.waitForResponse(
+      `/api/v1/apiCollections/name/*${this.entity}?*`
+    );
+    await page.getByTestId(this.entity.name).click();
+    await apiCollectionsResponse;
+  }
+
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/apiServices/name/${encodeURIComponent(
@@ -240,7 +257,8 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async verifyOwnerPropagation(page: Page, owner: string) {
-    await visitEntityPage({
+    await redirectToHomePage(page);
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.apiEndpoint.name}`,

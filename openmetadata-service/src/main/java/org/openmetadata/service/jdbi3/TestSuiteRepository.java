@@ -43,8 +43,11 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -53,12 +56,10 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -116,13 +117,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    fieldFetchers.put("summary", this::fetchAndSetTestCaseResultSummary);
+    fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
   }
 
   @Override
   public void setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.setTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+    entity.setTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
     entity.setTestCaseResultSummary(
         fields.contains("summary")
             ? getResultSummary(entity.getId())
@@ -131,6 +134,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         fields.contains("summary")
             ? getTestSummary(entity.getTestCaseResultSummary())
             : entity.getSummary());
+
+    // Ensure tests is never null, default to empty list
+    if (entity.getTests() == null) {
+      entity.setTests(new ArrayList<>());
+    }
   }
 
   @Override
@@ -138,10 +146,55 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
+              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
       inheritOwners(testSuite, fields, table);
-      inheritDomain(testSuite, fields, table);
+      inheritDomains(testSuite, fields, table);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<TestSuite> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    var testsMap = batchFetchTestCases(entities);
+    entities.forEach(
+        entity -> entity.setTests(testsMap.getOrDefault(entity.getId(), new ArrayList<>())));
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchTestCases(List<TestSuite> testSuites) {
+    if (testSuites == null || testSuites.isEmpty()) {
+      return Map.of();
+    }
+    var testSuiteIds = testSuites.stream().map(ts -> ts.getId().toString()).toList();
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(testSuiteIds, Relationship.CONTAINS.ordinal(), TEST_SUITE, TEST_CASE);
+    if (records.isEmpty()) {
+      return Map.of();
+    }
+    var testCaseIds =
+        records.stream()
+            .filter(r -> TEST_CASE.equals(r.getToEntity()))
+            .map(r -> UUID.fromString(r.getToId()))
+            .distinct()
+            .toList();
+
+    var testCaseRefs = Entity.getEntityReferencesByIds(TEST_CASE, testCaseIds, Include.ALL);
+    var idToRefMap =
+        testCaseRefs.stream().collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
+
+    return records.stream()
+        .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
+        .filter(entry -> entry.getValue() != null)
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
   }
 
   @Override
@@ -360,6 +413,40 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
           doc,
           "ctx._source.testSuite = params.testSuite;");
     }
+  }
+
+  private void fetchAndSetTestCaseResultSummary(
+      List<TestSuite> testSuites, EntityUtil.Fields fields) {
+    if (!fields.contains("summary") || testSuites == null || testSuites.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<ResultSummary>> testCaseResultSummaryMap =
+        testSuites.stream()
+            .collect(
+                Collectors.toMap(
+                    TestSuite::getId, testSuite -> getResultSummary(testSuite.getId())));
+
+    Map<UUID, TestSummary> testSummaryMap =
+        testCaseResultSummaryMap.entrySet().stream()
+            .collect(
+                Collectors.toMap(Map.Entry::getKey, entry -> getTestSummary(entry.getValue())));
+
+    setFieldFromMap(
+        true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
+
+    setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
+  }
+
+  protected void fetchAndSetIngestionPipelines(List<TestSuite> entities, EntityUtil.Fields fields) {
+    if (!fields.contains("pipelines") || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> ingestionPipelineMap =
+        entities.stream()
+            .collect(Collectors.toMap(EntityInterface::getId, this::getIngestionPipelines));
+    setFieldFromMap(true, entities, ingestionPipelineMap, TestSuite::setPipelines);
   }
 
   @SneakyThrows

@@ -72,6 +72,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -85,7 +86,6 @@ import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -196,7 +196,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[operations must not be null]");
+        "[query param operations must not be null]");
 
     // Adding a rule without resources should be disallowed
     policyName = getEntityName(test, 1);
@@ -206,7 +206,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     assertResponse(
         () -> createEntity(create2, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[resources must not be null]");
+        "[query param resources must not be null]");
   }
 
   @Test

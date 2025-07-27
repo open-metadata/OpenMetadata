@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -106,4 +108,6 @@ export type MapPatchAPIResponse = {
   [EntityType.METRIC]: Metric;
   [EntityType.TAG]: Tag;
   [EntityType.DOMAIN]: Domain;
+  [EntityType.CLASSIFICATION]: Classification;
+  [EntityType.CHART]: Chart;
 };

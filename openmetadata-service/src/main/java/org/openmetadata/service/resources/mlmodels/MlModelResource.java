@@ -75,7 +75,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public static final String COLLECTION_PATH = "v1/mlmodels/";
   private final MlModelMapper mapper = new MlModelMapper();
   static final String FIELDS =
-      "owners,dashboard,followers,tags,usageSummary,extension,domain,sourceHash";
+      "owners,dashboard,followers,tags,usageSummary,extension,domains,sourceHash";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
@@ -133,8 +133,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           String serviceParam,
       @Parameter(description = "Limit the number models returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(

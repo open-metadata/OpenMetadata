@@ -1,5 +1,6 @@
 ---
-title: Root Cause Analysis
+title: Root Cause Analysis | OpenMetadata Incident Management
+description: Identify root causes of data incidents using observability metrics, lineage context, and entity-level impact traces.
 slug: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
 Collate: true
 ---

@@ -14,9 +14,9 @@ import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { mockFeedData } from '../../../../constants/mockTourData.constants';
@@ -48,7 +48,7 @@ const FeedsWidget = ({
   widgetKey,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isTourOpen } = useTourProvider();
   const { currentUser } = useApplicationStore();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
@@ -119,7 +119,7 @@ const FeedsWidget = ({
   };
 
   const redirectToUserPage = useCallback(() => {
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         EntityType.USER,
         currentUser?.name as string,
@@ -189,9 +189,7 @@ const FeedsWidget = ({
     () => (
       <Transi18next
         i18nKey="message.no-activity-feed"
-        renderElement={
-          <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
-        }
+        renderElement={<Link rel="noreferrer" to={ROUTES.EXPLORE} />}
         values={{
           explored: t('message.have-not-explored-yet'),
         }}

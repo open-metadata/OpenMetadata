@@ -12,7 +12,6 @@
  */
 import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
-import React from 'react';
 import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
 import { SkeletonInterface } from '../Skeleton.interfaces';

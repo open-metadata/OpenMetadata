@@ -9,6 +9,7 @@
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
+  <name>OpenMetadata Service</name>
 
   <properties>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
@@ -31,9 +32,11 @@
     <json-smart.version>2.5.2</json-smart.version>
     <aws.sdk.version>2.31.1</aws.sdk.version>
     <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
-    <jetty.version>11.0.24</jetty.version>
-    <logback-core.version>1.4.7</logback-core.version>
-    <logback-classic.version>1.4.7</logback-classic.version>
+    <jetty.version>11.0.25</jetty.version>
+    <logback-core.version>1.5.18</logback-core.version>
+    <logback-classic.version>1.5.18</logback-classic.version>
+    <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
+    <kubernetes-client.version>21.0.1</kubernetes-client.version>
   </properties>
 
   <dependencyManagement>
@@ -116,7 +119,7 @@
     <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
-      <version>9.42</version>
+      <version>10.0.2</version>
     </dependency>
     <dependency>
       <groupId>org.pac4j</groupId>
@@ -414,6 +417,17 @@
       <artifactId>azure-identity-extensions</artifactId>
       <version>${azure-identity-extensions.version}</version>
     </dependency>
+    
+    <!-- Redis/Cache dependencies -->
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>elasticache</artifactId>
+    </dependency>
+    
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
@@ -421,6 +435,13 @@
     <dependency>
       <groupId>com.github.erosb</groupId>
       <artifactId>everit-json-schema</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.glassfish.jersey.connectors</groupId>
+      <artifactId>jersey-jetty-connector</artifactId>
+      <version>3.1.3</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -575,12 +596,6 @@
       <groupId>org.opensearch</groupId>
       <artifactId>opensearch-testcontainers</artifactId>
       <version>2.0.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.glassfish.jersey.connectors</groupId>
-      <artifactId>jersey-apache-connector</artifactId>
-      <version>${jersey-bom.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -791,6 +806,11 @@
       <version>5.9</version>
     </dependency>
     <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <version>1.11.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
@@ -849,8 +869,13 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.3.1-jre</version>
+      <version>33.4.8-jre</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-ratelimiter</artifactId>
+      <version>${resilience4j-ratelimiter.version}</version>
     </dependency>
     <dependency>
       <groupId>org.junit.platform</groupId>
@@ -865,6 +890,12 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-secretmanager</artifactId>
+    </dependency>
+    <!-- Kubernetes Client for Secrets Management -->
+    <dependency>
+      <groupId>io.kubernetes</groupId>
+      <artifactId>client-java</artifactId>
+      <version>${kubernetes-client.version}</version>
     </dependency>
     <dependency>
       <groupId>com.slack.api</groupId>
@@ -941,6 +972,11 @@
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.http.servlet-api</artifactId>
       <version>2.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -1078,6 +1114,57 @@
           </plugins>
         </build>
       </profile>
+      <profile>
+        <id>postgres-redis-tests</id>
+        <dependencies>
+          <!-- Testcontainers Redis module for integration testing -->
+          <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>${org.testcontainers.version}</version>
+            <scope>test</scope>
+          </dependency>
+        </dependencies>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx2G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <redisContainerClassName>org.testcontainers.containers.GenericContainer</redisContainerClassName>
+                  <redisContainerImage>redis:7-alpine</redisContainerImage>
+                  <runESTestCases>false</runESTestCases>
+                  <enableCache>true</enableCache>
+                  <cacheType>redis</cacheType>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-redis-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
+                      <include>**/cache/*Test.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
   </profiles>
   <build>
     <plugins>
@@ -1138,9 +1225,11 @@
           <outputPath>${basedir}/target/classes/assets</outputPath>
           <outputFormat>JSONANDYAML</outputFormat>
           <resourcePackages>
+            <package>org.openmetadata.service</package>
             <package>org.openmetadata.service.resources</package>
           </resourcePackages>
           <prettyPrint>true</prettyPrint>
+          <contextId>default</contextId>
           <openAPI>
             <info>
               <title>OpenMetadata APIs</title>
@@ -1148,40 +1237,14 @@
               <description>Common types and API definition for OpenMetadata</description>
               <contact>
                 <name>OpenMetadata</name>
-                <url>https://open-metadata.org/</url>
-                <email>dev@open-metadata.org</email>
+                <url>https://open-metadata.org</url>
+                <email>openmetadata-dev@googlegroups.com</email>
               </contact>
               <license>
                 <name>Apache 2.0</name>
-                <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
               </license>
             </info>
-            <servers>
-              <server>
-                <url>/api</url>
-                <description>Current Host</description>
-              </server>
-              <server>
-                <url>http://localhost:8585/api</url>
-                <description>Endpoint URL</description>
-              </server>
-            </servers>
-            <components>
-              <securitySchemes>
-                <securityScheme>
-                  <key>BearerAuth</key>
-                  <securityScheme>
-                    <type>http</type>
-                    <scheme>bearer</scheme>
-                  </securityScheme>
-                </securityScheme>
-              </securitySchemes>
-            </components>
-            <security>
-              <securityRequirement>
-                <name>BearerAuth</name>
-              </securityRequirement>
-            </security>
           </openAPI>
         </configuration>
         <executions>

@@ -1,5 +1,6 @@
 ---
-title: Data Asset Versioning
+title: Data Asset Versioning | OpenMetadata Version Control Guide
+description: Track asset versions and view historical changes to schema, descriptions, tags, and ownership with full traceability.
 slug: /how-to-guides/guide-for-data-users/versions
 ---
 

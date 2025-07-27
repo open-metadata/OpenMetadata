@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createDriveService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDriveServiceRequest",
+  "description": "Create Drive Service entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.services.CreateDriveService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this drive service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this drive service.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of drive service entity.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serviceType": {
+      "description": "Type of drive service",
+      "$ref": "../../entity/services/driveService.json#/definitions/driveServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/driveService.json#/definitions/driveConnection"
+    },
+    "tags": {
+      "description": "Tags for this Drive Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this Drive service.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataProducts": {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "domains": {
+      "description": "Fully qualified names of the domains the Drive Service belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "default": null
+    }
+  },
+  "required": ["name", "serviceType"],
+  "additionalProperties": false
+}

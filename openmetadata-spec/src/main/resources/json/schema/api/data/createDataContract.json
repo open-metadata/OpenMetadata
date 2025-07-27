@@ -1,0 +1,90 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDataContract.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateDataContractRequest",
+  "description": "Request to create a Data Contract entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateDataContract",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name of the data contract.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "status": {
+      "$ref": "../../entity/data/dataContract.json#/definitions/contractStatus",
+      "default": "Draft"
+    },
+    "entity": {
+      "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "schema": {
+      "description": "Schema definition for the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "semantics": {
+      "description": "Semantics rules defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
+      },
+      "default": null
+    },
+    "qualityExpectations": {
+      "description": "Quality expectations defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/dataContract.json#/definitions/qualityExpectation"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "effectiveFrom": {
+      "description": "Date from which this data contract is effective.",
+      "$ref": "../../type/basic.json#/definitions/dateTime",
+      "default": null
+    },
+    "effectiveUntil": {
+      "description": "Date until which this data contract is effective.",
+      "$ref": "../../type/basic.json#/definitions/dateTime",
+      "default": null
+    },
+    "sourceUrl": {
+      "description": "Source URL of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "scheduleConfig": {
+      "description": "Configuration for scheduling data contract validation checks.",
+      "$ref": "../../entity/data/dataContract.json#/properties/scheduleConfig"
+    }
+  },
+  "required": [
+    "name",
+    "entity"
+  ],
+  "additionalProperties": false
+}

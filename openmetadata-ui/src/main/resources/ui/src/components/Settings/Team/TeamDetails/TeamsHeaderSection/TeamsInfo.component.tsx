@@ -17,7 +17,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, last } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -311,7 +311,7 @@ const TeamsInfo = ({
       <DomainLabel
         headerLayout
         multiple
-        domain={currentTeam.domains}
+        domains={currentTeam?.domains ?? []}
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}

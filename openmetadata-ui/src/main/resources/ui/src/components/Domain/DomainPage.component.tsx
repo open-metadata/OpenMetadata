@@ -14,9 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -26,14 +26,17 @@ import { TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
+  addFollower,
   getDomainByName,
   getDomainList,
   patchDomains,
+  removeFollower,
 } from '../../rest/domainAPI';
-import i18n from '../../utils/i18next/LocalUtil';
+import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -46,12 +49,23 @@ import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 const DomainPage = () => {
   const { fqn: domainFqn } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { currentUser } = useApplicationStore();
+  const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
   const { domains, updateDomains, domainLoading, updateDomainLoading } =
     useDomainStore();
   const [isMainContentLoading, setIsMainContentLoading] = useState(false);
   const [activeDomain, setActiveDomain] = useState<Domain>();
+  const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
+
+  const { isFollowing } = useMemo(() => {
+    return {
+      isFollowing: activeDomain?.followers?.some(
+        ({ id }) => id === currentUserId
+      ),
+    };
+  }, [activeDomain?.followers, currentUserId]);
 
   const rootDomains = useMemo(() => {
     return domains.filter((domain) => domain.parent == null);
@@ -85,8 +99,8 @@ const DomainPage = () => {
   }, [permissions]);
 
   const handleAddDomainClick = useCallback(() => {
-    history.push(ROUTES.ADD_DOMAIN);
-  }, [history]);
+    navigate(ROUTES.ADD_DOMAIN);
+  }, [navigate]);
 
   const handleDomainUpdate = async (updatedData: Domain) => {
     if (activeDomain) {
@@ -107,7 +121,7 @@ const DomainPage = () => {
         updateDomains(updatedDomains, false);
 
         if (activeDomain?.name !== updatedData.name) {
-          history.push(getDomainPath(response.fullyQualifiedName));
+          navigate(getDomainPath(response.fullyQualifiedName));
           refreshDomains();
         }
       } catch (error) {
@@ -123,7 +137,7 @@ const DomainPage = () => {
       : getDomainPath();
 
     refreshDomains();
-    history.push(domainPath);
+    navigate(domainPath);
   };
 
   const fetchDomainByName = async (domainFqn: string) => {
@@ -136,15 +150,81 @@ const DomainPage = () => {
           TabSpecificField.PARENT,
           TabSpecificField.EXPERTS,
           TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
         ],
       });
       setActiveDomain(data);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.domain-lowercase'),
+        })
+      );
     } finally {
       setIsMainContentLoading(false);
     }
   };
+
+  const followDomain = async () => {
+    try {
+      if (!activeDomain?.id) {
+        return;
+      }
+      const res = await addFollower(activeDomain.id, currentUserId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      setActiveDomain(
+        (prev) =>
+          ({
+            ...prev,
+            followers: [...(prev?.followers ?? []), ...newValue],
+          } as Domain)
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(activeDomain),
+        })
+      );
+    }
+  };
+
+  const unFollowDomain = async () => {
+    try {
+      if (!activeDomain?.id) {
+        return;
+      }
+      const res = await removeFollower(activeDomain.id, currentUserId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+
+      const filteredFollowers = activeDomain.followers?.filter(
+        (follower) => follower.id !== oldValue[0].id
+      );
+
+      setActiveDomain(
+        (prev) =>
+          ({
+            ...prev,
+            followers: filteredFollowers ?? [],
+          } as Domain)
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(activeDomain),
+        })
+      );
+    }
+  };
+
+  const handleFollowingClick = useCallback(async () => {
+    setIsFollowingLoading(true);
+    isFollowing ? await unFollowDomain() : await followDomain();
+    setIsFollowingLoading(false);
+  }, [isFollowing, unFollowDomain, followDomain]);
 
   const domainPageRender = useMemo(() => {
     if (isMainContentLoading) {
@@ -155,6 +235,9 @@ const DomainPage = () => {
       return (
         <DomainDetailsPage
           domain={activeDomain}
+          handleFollowingClick={handleFollowingClick}
+          isFollowing={isFollowing}
+          isFollowingLoading={isFollowingLoading}
           onDelete={handleDomainDelete}
           onUpdate={handleDomainUpdate}
         />
@@ -165,6 +248,9 @@ const DomainPage = () => {
     activeDomain,
     handleDomainUpdate,
     handleDomainDelete,
+    isFollowing,
+    isFollowingLoading,
+    handleFollowingClick,
   ]);
 
   useEffect(() => {
@@ -175,7 +261,7 @@ const DomainPage = () => {
 
   useEffect(() => {
     if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
-      history.push(getDomainPath(rootDomains[0].fullyQualifiedName));
+      navigate(getDomainPath(rootDomains[0].fullyQualifiedName));
     }
   }, [rootDomains, domainFqn]);
 
@@ -203,7 +289,7 @@ const DomainPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           buttonId="add-domain"
-          className="mt-0-important border-none"
+          className="mt-0-important border-none w-full"
           heading={t('label.domain')}
           permission={createDomainPermission}
           permissionValue={
@@ -247,4 +333,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.domain'))(DomainPage);
+export default withPageLayout(DomainPage);

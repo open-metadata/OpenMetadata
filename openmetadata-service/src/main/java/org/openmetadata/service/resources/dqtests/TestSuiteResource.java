@@ -131,8 +131,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
                   "Limit the number test definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description =
@@ -205,15 +205,15 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Limit the number test suite returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limit,
       @Parameter(
               description = "Returns list of test suite after this offset (default = 0)",
               schema = @Schema(type = "string"))
           @QueryParam("offset")
           @DefaultValue("0")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int offset,
       @Parameter(
               description =
@@ -288,7 +288,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
-    searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("domains", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {
@@ -546,41 +546,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     TestSuite testSuite =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(false);
-    List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
-    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
-  }
-
-  @POST
-  @Path("/executable")
-  @Operation(
-      operationId = "createExecutableTestSuite",
-      summary = "Create an executable test suite",
-      description = "Create an executable test suite.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Executable test suite",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestSuite.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createExecutable(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Context HttpServletResponse response,
-      @Valid CreateTestSuite create) {
-    TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    if (testSuite.getBasicEntityReference() == null) {
-      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
-    }
-    testSuite.setBasic(true);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
-    response.setHeader("Deprecation", "Monday, March 24, 2025");
-    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
     List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
     return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }

@@ -1,5 +1,6 @@
 ---
-title: Bare Metal Deployment
+title: Bare Metal Deployment | Official Documentation
+description: Deploy the platform on bare-metal servers to maintain full control over infrastructure, authentication, and network configuration.
 slug: /deployment/bare-metal
 collate: false
 ---
@@ -10,7 +11,7 @@ Requirements This guide assumes you have access to a command-line environment or
 or Mac OS X or PowerShell on Microsoft Windows. This guide also assumes that your command-line environment has access to
 the tar utility. Please review additional requirements listed in the subsections below.
 
-## Java (version 17.0.0 or higher)
+## Java (version 21.0.0)
 
 OpenMetadata is built using Java, DropWizard, and Jetty.
 
@@ -20,7 +21,7 @@ Type the following command to verify that you have a supported version of the Ja
 java --version
 ```
 
-To install Java or upgrade to Java 17 or greater, see the instructions for your operating system at [How do I install
+To install Java or upgrade to Java 21 or greater, see the instructions for your operating system at [How do I install
 Java?](https://java.com/en/download/help/download_options.html#mac).
 
 ## MySQL (version 8.0.0 or higher)
@@ -59,7 +60,7 @@ OpenMetadata supports ElasticSearch version up to 8.11.4. To install or upgrade 
 
 Please follow the instructions here to [install ElasticSearch](https://www.elastic.co/guide/en/elasticsearch/reference/7.13/setup.html).
 
-If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 2.7. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
+If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 2.19. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
 ## Airflow or other workflow schedulers
 
@@ -172,7 +173,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support 
 
 - Amazon RDS (MySQL) engine version 8 or higher
-- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.7
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.19
 - Amazon RDS (PostgreSQL) engine version between 12 or higher
 
 For Production Systems, we recommend Amazon RDS to be in Multiple Availability Zones. For Amazon OpenSearch (or ElasticSearch) Service, we recommend Multiple Availability Zones with minimum 3 Master Nodes.

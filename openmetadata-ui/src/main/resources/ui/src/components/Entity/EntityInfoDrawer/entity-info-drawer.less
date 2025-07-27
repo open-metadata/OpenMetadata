@@ -26,6 +26,10 @@
   .ant-drawer-content-wrapper {
     box-shadow: none;
     border: @global-border;
+
+    .ant-drawer-title {
+      width: 100%;
+    }
   }
 }
 
@@ -34,6 +38,12 @@
 
   .ant-drawer-header {
     border-bottom: none;
+    align-items: flex-start;
+  }
+
+  .entity-header-title-link {
+    // added to fix title overlap with close button
+    max-width: 95%;
   }
 
   .ant-drawer-body {

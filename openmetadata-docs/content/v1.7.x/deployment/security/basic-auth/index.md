@@ -1,5 +1,6 @@
 ---
-title: Basic Authentication
+title: Basic Authentication | OpenMetadata Security Setup
+description: Configure Basic Auth to secure service access with username and password authentication for lightweight, internal use cases.
 slug: /deployment/security/basic-auth
 collate: false
 ---
