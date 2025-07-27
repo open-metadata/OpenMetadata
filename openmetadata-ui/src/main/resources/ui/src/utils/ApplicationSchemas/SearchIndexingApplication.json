@@ -134,7 +134,7 @@
       "title": "Search Index Language",
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
       "type": "string",
-      "enum": ["EN", "JP", "ZH"],
+      "enum": ["EN", "JP", "RU", "ZH"],
       "default": "EN"
     },
     "autoTune": {
