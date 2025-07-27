@@ -12,6 +12,35 @@
  */
 @import '../../../styles/variables.less';
 
+// Utility classes for common patterns
+.flex-left-aligned {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.text-left-forced {
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+
+.entity-cell-base {
+  .flex-left-aligned;
+  gap: @size-sm;
+  padding: 8px 0;
+  height: auto;
+}
+
+.entity-icon-base {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
 .entity-table {
   .ant-list {
     box-sizing: border-box;
@@ -27,111 +56,24 @@
     }
   }
 
-  .ant-table-selection-column {
-    .ant-checkbox {
-      .ant-checkbox-input {
-        width: 20px;
-        height: 20px;
-      }
-
-      .ant-checkbox-inner {
-        width: 20px;
-        height: 20px;
-        border-radius: 6px;
-        border: 1px solid #d5d7da;
-        background-color: transparent;
-
-        &::after {
-          width: 6.4px;
-          height: 9.33px;
-          border: 2px solid #ffffff;
-          border-top: 0;
-          border-left: 0;
-          transform: rotate(45deg) scale(0.8) translate(-50%, -60%);
-          transition: all 0.2s ease;
-        }
-      }
-
-      &:hover .ant-checkbox-inner {
-        border-radius: 6px;
-        border-color: #1570ef;
-      }
-
-      &.ant-checkbox-checked .ant-checkbox-inner {
-        background-color: #1570ef;
-        border-color: #1570ef;
-        border-radius: 6px;
-
-        &::after {
-          border-color: #ffffff;
-          opacity: 1;
-        }
-      }
-
-      &.ant-checkbox-focused .ant-checkbox-inner {
-        border-radius: 6px;
-        box-shadow: 0 0 0 2px rgba(21, 112, 239, 0.2);
-      }
-
-      &.ant-checkbox-indeterminate .ant-checkbox-inner {
-        background-color: #1570ef;
-        border-color: #1570ef;
-        border-radius: 6px;
-
-        &::after {
-          background-color: #ffffff;
-          border: 0;
-          width: 8px;
-          height: 2px;
-          transform: translate(-50%, -50%) scale(1);
-        }
-      }
-
-      &.ant-checkbox-disabled {
-        .ant-checkbox-inner {
-          background-color: #f5f5f5;
-          border-color: #d9d9d9;
-          border-radius: 6px;
-
-          &::after {
-            border-color: #cccccc;
-          }
-        }
-      }
-    }
-  }
-
   .entity-name-cell {
-    display: flex;
-    align-items: center;
+    .entity-cell-base;
     gap: 12px;
-    padding: 8px 0;
-    height: auto;
 
     .entity-icon-container {
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
-      position: relative;
+      .entity-icon-base;
 
       .entity-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        .entity-icon-base;
         overflow: hidden;
       }
 
       .entity-icon-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
+        .entity-icon-base;
         background-color: #1470ef;
-        border: 1px solid rgba(0, 0, 0, 0.08);
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
       }
 
       .entity-icon-layers {
@@ -140,7 +82,6 @@
         color: #ffffff;
         stroke: #ffffff;
         stroke-width: 2;
-        flex-shrink: 0;
         position: absolute;
         top: 50%;
         left: 50%;
@@ -171,8 +112,7 @@
   }
 
   .owner-cell {
-    display: flex;
-    align-items: center;
+    .entity-cell-base;
     gap: 8px;
 
     .owner-name {
@@ -240,16 +180,13 @@
   }
 
   .table-tags-container {
-    display: flex;
-    align-items: center;
+    .flex-left-aligned;
     gap: @size-xs;
     flex-wrap: wrap;
   }
 
   .first-column-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
+    .flex-left-aligned;
     gap: 8px;
 
     .column-title {
@@ -258,8 +195,7 @@
   }
 
   .first-column-content {
-    display: flex;
-    align-items: center;
+    .flex-left-aligned;
     gap: 10px;
 
     .column-content {
@@ -274,8 +210,7 @@
       gap: @size-md;
 
       .header-info {
-        display: flex;
-        align-items: center;
+        .flex-left-aligned;
         gap: @size-xxs;
         margin-right: @size-xs;
         border-radius: @size-md;
@@ -291,15 +226,13 @@
       }
 
       .header-filters {
-        display: flex;
-        align-items: center;
+        .flex-left-aligned;
         gap: @size-md;
         flex: 1;
       }
 
       .header-actions-row {
-        display: flex;
-        align-items: center;
+        .flex-left-aligned;
         gap: @size-xs;
 
         .list-view-icon,
@@ -364,8 +297,13 @@
     }
   }
 
+  // Consolidated Ant Design table overrides
   .ant-table-wrapper {
+    box-shadow: none !important;
+
     .ant-table {
+      box-shadow: none !important;
+
       .ant-table-thead {
         .ant-table-cell {
           background: @grey-50;
@@ -374,9 +312,14 @@
           font-weight: 500;
           color: #374151;
           padding: 12px 16px;
-          text-align: left !important;
+          .text-left-forced;
           vertical-align: middle;
         }
+      }
+
+      .ant-table-selection-column {
+        padding-right: 0px !important;
+        text-align: right !important;
       }
 
       .ant-table-tbody {
@@ -388,131 +331,47 @@
           .ant-table-cell {
             border-bottom: 1px solid #f3f4f6;
             padding: 12px 16px;
-            text-align: left !important;
+            .text-left-forced;
             vertical-align: middle;
           }
-        }
-      }
-    }
-  }
 
-  .ant-table-thead > tr > th,
-  .ant-table-thead > tr > th.ant-table-cell {
-    text-align: left !important;
-    justify-content: flex-start !important;
-
-    .ant-table-column-title {
-      justify-content: flex-start !important;
-      text-align: left !important;
-    }
-
-    .ant-table-column-sorters {
-      justify-content: flex-start !important;
-    }
-  }
-
-  .ant-table-tbody > tr > td,
-  .ant-table-tbody > tr > td.ant-table-cell {
-    text-align: left !important;
-
-    .ant-table-cell-content {
-      justify-content: flex-start !important;
-      text-align: left !important;
-    }
-  }
-
-  .ant-table-cell-content,
-  .ant-table-cell-content > div,
-  .ant-table-cell-content > span {
-    text-align: left !important;
-    justify-content: flex-start !important;
-  }
-
-  .first-column-header {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-
-    .column-title {
-      text-align: left;
-    }
-  }
-
-  .entity-name-cell,
-  .owner-cell {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: @size-sm;
-  }
-
-  .entity-badge {
-    text-align: left !important;
-  }
-
-  .ant-table-cell {
-    > span,
-    > div {
-      text-align: left !important;
-      justify-content: flex-start !important;
-    }
-  }
-
-  .ant-table-cell-content {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-  }
-
-  &.entity-table {
-    .ant-table-wrapper {
-      .ant-table-container {
-        .ant-table-content {
-          table {
-            .ant-table-thead {
-              tr {
-                th {
-                  text-align: left !important;
-
-                  .ant-table-column-title {
-                    text-align: left !important;
-                    justify-content: flex-start !important;
-                  }
-                }
-              }
-            }
-
-            .ant-table-tbody {
-              tr {
-                td {
-                  text-align: left !important;
-
-                  .ant-table-cell-content {
-                    text-align: left !important;
-                    justify-content: flex-start !important;
-                    display: flex !important;
-                    align-items: center !important;
-                  }
-                }
-              }
-            }
+          .ant-table-selection-column {
+            text-align: right !important;
           }
         }
       }
     }
   }
 
-  .ant-table-wrapper {
-    box-shadow: none !important;
+  // Enhanced specificity for table cell alignment overrides
+  .ant-table-wrapper .ant-table {
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+      &:not(.ant-table-selection-column) {
+        .text-left-forced;
+      }
 
-    .ant-table {
-      box-shadow: none !important;
+      &.ant-table-selection-column {
+        padding-right: 0px !important;
+        padding-left: 24px !important;
+        text-align: right !important;
+      }
+
+      .ant-table-column-title,
+      .ant-table-column-sorters,
+      .ant-table-cell-content {
+        .text-left-forced;
+      }
     }
-  }
 
-  .table-container {
-    box-shadow: none !important;
+    // Force left alignment for all content within table cells
+    .ant-table-cell-content,
+    .ant-table-cell-content > div,
+    .ant-table-cell-content > span {
+      .text-left-forced;
+      display: flex !important;
+      align-items: center !important;
+    }
   }
 }
 
@@ -533,16 +392,6 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-}
-
-.entity-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
 }
 
 // Entity Grid Layout Styles

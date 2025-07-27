@@ -533,6 +533,7 @@ const EntityTable = <T extends EntityData>({
         return (
           <Table
             bordered={false}
+            className="square-checkbox-container"
             columns={antdColumns}
             dataSource={data}
             expandable={{
@@ -555,6 +556,7 @@ const EntityTable = <T extends EntityData>({
               onChange: (selectedRowKeys) => {
                 setSelectedRows(selectedRowKeys);
               },
+              columnWidth: 40,
             }}
             title={() => renderHeader()}
             onRow={(record) => ({
