@@ -410,7 +410,10 @@ export const useSemanticsRuleList = ({
           <Table
             columns={columns}
             dataSource={semanticsRules}
-            loading={isLoading || isSaveLoading}
+            loading={
+              isLoading ||
+              (isSaveLoading && !addEditSemanticsRule && !deleteSemanticsRule)
+            }
             pagination={false}
             rowKey="name"
           />
