@@ -26,6 +26,7 @@ import {
 } from '../../../utils/entityPermissionUtils';
 import {
   assignRoleToUser,
+  cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
 
@@ -163,6 +164,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
+      await cleanupPermissions(apiContext);
       await afterAction();
     });
   });
@@ -172,6 +174,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await testUser.delete(apiContext);
+  await cleanupPermissions(apiContext);
 
   await afterAction();
 });
