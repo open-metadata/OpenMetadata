@@ -4422,14 +4422,6 @@ export interface AuthenticationTypeForTableau {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-    /**
-     * Path to the keytab file for Kerberos authentication.
-     */
-    keytabPath?: string;
-    /**
-     * Kerberos principal for authentication. Used with keytab file.
-     */
-    principal?: string;
 }
 
 /**

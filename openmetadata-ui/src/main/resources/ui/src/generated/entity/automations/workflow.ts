@@ -590,6 +590,8 @@ export interface TestServiceConnectionRequest {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface RequestConnection {
     config?: ConfigClass;
@@ -810,6 +812,8 @@ export interface RequestConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -865,7 +869,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: ConfigType;
     /**
      * Billing Project ID
      */
@@ -996,6 +1000,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
@@ -1392,6 +1398,8 @@ export interface ConfigClass {
      * Types of methods used to authenticate to the tableau instance
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
     /**
@@ -2283,6 +2291,8 @@ export enum AuthMechanismEnum {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
  */
 export interface AuthConfigurationType {
     /**
@@ -2291,6 +2301,8 @@ export interface AuthConfigurationType {
      * Password to access the service.
      *
      * Elastic Search Password for Login
+     *
+     * Password to connect to Apache Ranger.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -2307,6 +2319,9 @@ export interface AuthConfigurationType {
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Username to connect to Apache Ranger. This user should have privileges to read all
+     * policies and metadata in Ranger.
      */
     username?: string;
     /**
@@ -4170,8 +4185,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum ConfigType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -4248,6 +4265,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",

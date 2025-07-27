@@ -83,20 +83,12 @@ export interface AuthenticationType {
     /**
      * Password to connect to Apache Ranger.
      */
-    password?: string;
+    password: string;
     /**
      * Username to connect to Apache Ranger. This user should have privileges to read all
      * policies and metadata in Ranger.
      */
-    username?: string;
-    /**
-     * Path to the keytab file for Kerberos authentication.
-     */
-    keytabPath?: string;
-    /**
-     * Kerberos principal for authentication. Used with keytab file.
-     */
-    principal?: string;
+    username: string;
 }
 
 /**

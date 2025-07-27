@@ -1,6 +1,7 @@
 ---
 title: Apache Ranger
 slug: /connectors/security/ranger
+collate: true
 ---
 
 {% connectorDetailsHeader
