@@ -991,7 +991,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected void postDelete(User entity) {
+  protected void postDelete(User entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // If the User is bot it's token needs to be invalidated
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());

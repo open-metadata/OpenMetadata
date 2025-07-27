@@ -70,6 +70,7 @@ import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -113,10 +114,13 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
+import org.openmetadata.service.resources.rdf.RdfResource;
+import org.openmetadata.service.resources.rdf.RdfSqlResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -445,6 +449,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
+
+    // Initialize RDF if enabled
+    RdfConfiguration rdfConfig = config.getRdfConfiguration();
+    if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
+      RdfUpdater.initialize(rdfConfig);
+      LOG.info("RDF knowledge graph support initialized");
+    }
   }
 
   private void registerHealthCheck(Environment environment) {
@@ -735,6 +746,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
+
+    // Register RDF resources if enabled
+    if (config.getRdfConfiguration() != null
+        && config.getRdfConfiguration().getEnabled() != null
+        && config.getRdfConfiguration().getEnabled()) {
+      environment.jersey().register(new RdfResource(authorizer, config));
+      environment.jersey().register(new RdfSqlResource(config));
+      LOG.info("RDF REST API endpoints registered");
+    }
+
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);

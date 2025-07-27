@@ -242,7 +242,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  protected void postDelete(Pipeline entity) {
+  protected void postDelete(Pipeline entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Cleanup all the fieldRelationship for task ownership. User -[owns]-> Task
     for (Task task : listOrEmpty(entity.getTasks())) {
       deleteTaskOwnerRelationship(task);

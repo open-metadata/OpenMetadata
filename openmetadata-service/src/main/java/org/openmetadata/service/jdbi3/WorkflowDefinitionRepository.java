@@ -47,7 +47,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void postDelete(WorkflowDefinition entity) {
+  protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
   }
 
