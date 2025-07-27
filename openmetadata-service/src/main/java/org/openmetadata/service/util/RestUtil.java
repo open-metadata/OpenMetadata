@@ -20,10 +20,14 @@ import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.ResponseBuilder;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,11 +36,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.TimeZone;
 import java.util.UUID;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
@@ -103,7 +102,7 @@ public final class RestUtil {
     return getHref(uriInfo, collectionPath, id.toString());
   }
 
-  public static int compareDates(String date1, String date2) throws ParseException {
+  public static int compareDates(String date1, String date2) {
     return LocalDateTime.parse(date1, DATE_FORMAT)
         .compareTo(LocalDateTime.parse(date2, DATE_FORMAT));
   }
@@ -169,10 +168,15 @@ public final class RestUtil {
 
   public record PatchResponse<T>(Status status, T entity, EventType changeType) {
     public Response toResponse() {
-      return Response.status(status)
-          .header(CHANGE_CUSTOM_HEADER, changeType.value())
-          .entity(entity)
-          .build();
+      ResponseBuilder responseBuilder =
+          Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType.value()).entity(entity);
+
+      // Add ETag header if entity implements EntityInterface
+      if (entity != null && entity instanceof org.openmetadata.schema.EntityInterface) {
+        EntityETag.addETagHeader(responseBuilder, (org.openmetadata.schema.EntityInterface) entity);
+      }
+
+      return responseBuilder.build();
     }
   }
 

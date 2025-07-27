@@ -41,6 +41,7 @@ export interface ProfilerDetailsCardProps {
   curveType?: CurveType;
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
+  children?: ReactNode;
 }
 
 export enum TableProfilerTab {
@@ -66,6 +67,7 @@ export interface DataQualityTabProps {
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
   fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   isEditAllowed?: boolean;
+  tableHeader?: ReactNode;
 }
 
 export interface TestSummaryProps {

@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNa
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -18,10 +19,10 @@ import org.openmetadata.service.Entity;
  * Interface for creating search source builders for different entity types.
  * This interface provides a common contract for both ElasticSearch and OpenSearch implementations.
  *
- * @param <S> The SearchSourceBuilder type (different for ElasticSearch and OpenSearch)
- * @param <Q> The QueryBuilder type
- * @param <H> The HighlightBuilder type
- * @param <F> The FunctionScoreQueryBuilder type
+ * <S> The SearchSourceBuilder type (different for ElasticSearch and OpenSearch)
+ * <Q> The QueryBuilder type
+ * <H> The HighlightBuilder type
+ * <F> The FunctionScoreQueryBuilder type
  */
 public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
@@ -29,8 +30,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       Pattern.compile(
           "\\w+\\s*:\\s*\\w+|"
               + // Field queries (field:value)
-              "\\b(?i)(?:AND|OR|NOT)\\b|"
-              + // Boolean operators
+              "\\b(?:AND|OR|NOT)\\b|"
+              + // Boolean operators (uppercase only)
               "[*?]|"
               + // Wildcards
               "[()]|"
@@ -42,42 +43,65 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
               "[+\\-~\\^]" // Special operators
           );
 
+  Set<String> FUZZY_FIELDS =
+      Set.of(
+          "name",
+          "displayName",
+          "fullyQualifiedName",
+          "columnNamesFuzzy",
+          "fieldNamesFuzzy",
+          "response_field_namesFuzzy",
+          "request_field_namesFuzzy",
+          "classification.name",
+          "classification.displayName",
+          "glossary.name",
+          "glossary.displayName");
+
+  // Keyword fields added to fuzzy because Lucene needs keyword fields for wildcard/prefix queries
+  // in query_string
+  Set<String> FUZZY_AND_NON_FUZZY_FIELDS =
+      Set.of("name.keyword", "displayName.keyword", "fullyQualifiedName.keyword");
+
   /**
    * Get the appropriate search source builder based on the index name.
-   *
-   * @param index the index name
-   * @param q the search query
-   * @param from the starting offset
-   * @param size the number of results to return
-   * @return a search source builder configured for the specific entity type
    */
-  default S getSearchSourceBuilder(String index, String q, int from, int size) {
-    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+  default S getSearchSourceBuilder(String indexName, String searchQuery, int fromOffset, int size) {
+    return getSearchSourceBuilder(indexName, searchQuery, fromOffset, size, false);
+  }
+
+  /**
+   * Get the appropriate search source builder based on the index name.
+   */
+  default S getSearchSourceBuilder(
+      String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+    indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
-      return buildTimeSeriesSearchBuilder(indexName, q, from, size);
+      return buildTimeSeriesSearchBuilder(indexName, searchQuery, fromOffset, size);
     }
 
     if (isServiceIndex(indexName)) {
-      return buildServiceSearchBuilder(q, from, size);
+      return buildServiceSearchBuilder(searchQuery, fromOffset, size);
     }
 
     if (isDataQualityIndex(indexName)) {
-      return buildDataQualitySearchBuilder(indexName, q, from, size);
+      return buildDataQualitySearchBuilder(indexName, searchQuery, fromOffset, size);
     }
 
     if (isDataAssetIndex(indexName)) {
-      return buildDataAssetSearchBuilder(indexName, q, from, size);
+      return buildDataAssetSearchBuilder(indexName, searchQuery, fromOffset, size, includeExplain);
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
-      return buildCommonSearchBuilder(q, from, size);
+      // For consistency, use entity-specific search builder for dataAsset searches
+      // This ensures both /search/query and /search/entityTypeCounts use the same logic
+      return buildDataAssetSearchBuilder(indexName, searchQuery, fromOffset, size, includeExplain);
     }
 
     return switch (indexName) {
       case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
-          q, from, size);
-      default -> buildAggregateSearchBuilder(q, from, size);
+          searchQuery, fromOffset, size);
+      default -> buildAggregateSearchBuilder(searchQuery, fromOffset, size);
     };
   }
 
@@ -85,7 +109,12 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   S buildDataAssetSearchBuilder(String indexName, String query, int from, int size);
 
+  S buildDataAssetSearchBuilder(
+      String indexName, String query, int from, int size, boolean explain);
+
   S buildCommonSearchBuilder(String query, int from, int size);
+
+  S buildEntitySpecificAggregateSearchBuilder(String query, int from, int size);
 
   S buildUserOrTeamSearchBuilder(String query, int from, int size);
 
@@ -177,31 +206,18 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   /**
    * Build a search query builder with the specified fields and weights.
-   *
-   * @param query the search query
-   * @param fields map of field names to their boost weights
-   * @return a query string query builder
    */
   Q buildSearchQueryBuilder(String query, Map<String, Float> fields);
 
   /**
    * Build highlights for the specified fields.
-   *
-   * @param fields list of field names to highlight
-   * @return a highlight builder
    */
   H buildHighlights(List<String> fields);
 
   /**
    * Create a search source builder with the specified query builder, highlights, and pagination.
-   *
-   * @param queryBuilder the query builder
-   * @param highlightBuilder the highlight builder
-   * @param from the starting offset
-   * @param size the number of results to return
-   * @return a search source builder
    */
-  S searchBuilder(Q queryBuilder, H highlightBuilder, int from, int size);
+  S searchBuilder(Q queryBuilder, H highlightBuilder, int fromOffset, int size);
 
   S addAggregationsToNLQQuery(S searchSourceBuilder, String indexName);
 
@@ -211,5 +227,19 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
     query = query.replace("%20", " ").trim();
     return QUERY_SYNTAX_PATTERN.matcher(query).find();
+  }
+
+  default boolean isFuzzyField(String key) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
+    return FUZZY_FIELDS.contains(key);
+  }
+
+  default boolean isNonFuzzyField(String key) {
+    if (FUZZY_AND_NON_FUZZY_FIELDS.contains(key)) {
+      return true;
+    }
+    return !FUZZY_FIELDS.contains(key);
   }
 }

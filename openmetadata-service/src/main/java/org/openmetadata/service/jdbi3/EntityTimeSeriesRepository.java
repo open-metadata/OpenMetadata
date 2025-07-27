@@ -7,9 +7,10 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
-import java.beans.IntrospectionException;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,12 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonObjectBuilder;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
@@ -30,6 +25,7 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
@@ -39,7 +35,6 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -342,8 +337,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return resultList;
   }
 
-  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user)
-      throws IntrospectionException, InvocationTargetException, IllegalAccessException {
+  public RestUtil.PatchResponse<T> patch(UUID id, JsonPatch patch, String user) {
     String originalJson = timeSeriesDao.getById(id);
     if (originalJson == null) {
       throw new EntityNotFoundException(String.format("Entity with id %s not found", id));
@@ -396,6 +390,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     }
   }
 
+  @SuppressWarnings("unchecked")
   public ResultList<T> listLatestFromSearch(
       EntityUtil.Fields fields, SearchListFilter searchListFilter, String groupBy, String q)
       throws IOException {
@@ -415,15 +410,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
     jsonObjects.ifPresent(
         jsonObjectList -> {
-          for (Map<String, String> json : (List<Map<String, String>>) jsonObjectList) {
+          for (Map<String, Object> json : (List<Map<String, Object>>) jsonObjectList) {
             String bucketAggregationPath = "top_hits#latest.hits.hits";
             Optional<List> hits =
                 JsonUtils.readJsonAtPath(
                     JsonUtils.pojoToJson(json), bucketAggregationPath, List.class);
             hits.ifPresent(
                 hitList -> {
-                  for (Map<String, String> hit : (List<Map<String, String>>) hitList) {
-                    JsonObject source = getSourceDocument(JsonUtils.pojoToJson(hit));
+                  for (Map<String, Object> hit : (List<Map<String, Object>>) hitList) {
+                    Map<String, Object> source = extractAndFilterSource(hit);
                     T entity =
                         setFieldsInternal(
                             JsonUtils.readOrConvertValue(source, entityClass), fields);
@@ -471,27 +466,40 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return new ArrayList<>();
   }
 
-  private JsonObject getSourceDocument(String hit) {
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> extractAndFilterSource(Map<String, Object> hit) {
     List<String> includeSearchFields = getIncludeSearchFields();
     List<String> excludeSearchFields = getExcludeSearchFields();
-    JsonObject hitJson = JsonUtils.readJson(hit).asJsonObject();
-    JsonObject source = hitJson.asJsonObject().getJsonObject("_source");
-    // Aggregation results will return all fields by default,
-    // so we need to filter out the fields that are not included
-    // in the search fields
-    if (source != null
-        && (!CommonUtil.nullOrEmpty(includeSearchFields)
-            || !CommonUtil.nullOrEmpty(excludeSearchFields))) {
-      JsonObjectBuilder sourceCopy = Json.createObjectBuilder();
-      for (Map.Entry<String, JsonValue> entry : source.entrySet()) {
-        if (includeSearchFields.contains(entry.getKey())
-            || (CommonUtil.nullOrEmpty(includeSearchFields)
-                && !excludeSearchFields.contains(entry.getKey()))) {
-          sourceCopy.add(entry.getKey(), entry.getValue());
-        }
-      }
-      return sourceCopy.build();
+
+    Map<String, Object> source = (Map<String, Object>) hit.get("_source");
+    if (source == null) {
+      return new HashMap<>();
     }
-    return source;
+
+    if (CommonUtil.nullOrEmpty(includeSearchFields)
+        && CommonUtil.nullOrEmpty(excludeSearchFields)) {
+      return source;
+    }
+
+    Map<String, Object> filteredSource = new HashMap<>();
+    for (Map.Entry<String, Object> entry : source.entrySet()) {
+      String fieldName = entry.getKey();
+      if (shouldIncludeField(fieldName, includeSearchFields, excludeSearchFields)) {
+        filteredSource.put(fieldName, entry.getValue());
+      }
+    }
+
+    return filteredSource;
+  }
+
+  private boolean shouldIncludeField(
+      String fieldName, List<String> includeFields, List<String> excludeFields) {
+    if (!CommonUtil.nullOrEmpty(includeFields)) {
+      return includeFields.contains(fieldName);
+    }
+    if (!CommonUtil.nullOrEmpty(excludeFields)) {
+      return !excludeFields.contains(fieldName);
+    }
+    return true;
   }
 }

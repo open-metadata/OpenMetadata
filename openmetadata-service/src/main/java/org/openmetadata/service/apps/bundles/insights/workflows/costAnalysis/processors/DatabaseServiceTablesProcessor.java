@@ -15,11 +15,11 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
@@ -59,7 +59,7 @@ public class DatabaseServiceTablesProcessor
         // TODO: Does the DataInsightsProcess have access to PII?
         Table tableProfileData =
             ((TableRepository) Entity.getEntityRepository(Entity.TABLE))
-                .getLatestTableProfile(table.getFullyQualifiedName(), true);
+                .getLatestTableProfile(table.getFullyQualifiedName(), true, false);
 
         Optional<TableProfile> oTableProfile = Optional.ofNullable(tableProfileData.getProfile());
 

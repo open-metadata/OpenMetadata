@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,19 +25,22 @@ import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
+import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -71,17 +74,21 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
@@ -95,7 +102,6 @@ import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -475,8 +481,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   @Order(6)
   @Test
-  void get_dataQualityLineage(TestInfo test)
-      throws IOException, URISyntaxException, ParseException {
+  void get_dataQualityLineage(TestInfo test) throws IOException, ParseException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
@@ -511,19 +516,19 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite6 =
         testSuiteResourceTest.createBasicTestSuite(createTestSuite6, ADMIN_AUTH_HEADERS);
 
-    MessageParser.EntityLink TABLE4_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(4).getFullyQualifiedName());
-    MessageParser.EntityLink TABLE6_LINK =
-        new MessageParser.EntityLink(Entity.TABLE, TABLES.get(6).getFullyQualifiedName());
+    MessageParser.EntityLink TABLE4_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format("<#E::table::%s::columns::c1>", TABLES.get(4).getFullyQualifiedName()));
+    MessageParser.EntityLink TABLE6_COLUMN_LINK =
+        MessageParser.EntityLink.parse(
+            String.format("<#E::table::%s::columns::c1>", TABLES.get(6).getFullyQualifiedName()));
     CreateTestCase create4 = testCaseResourceTest.createRequest(test);
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
-        .withEntityLink(TABLE4_LINK.getLinkString())
-        .withTestSuite(testSuite4.getFullyQualifiedName())
+        .withEntityLink(TABLE4_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     create6
-        .withEntityLink(TABLE6_LINK.getLinkString())
-        .withTestSuite(testSuite6.getFullyQualifiedName())
+        .withEntityLink(TABLE6_COLUMN_LINK.getLinkString())
         .withTestDefinition(testDefinition.getFullyQualifiedName());
     TestCase testCase4 = testCaseResourceTest.createEntity(create4, ADMIN_AUTH_HEADERS);
     TestCase testCase6 = testCaseResourceTest.createEntity(create6, ADMIN_AUTH_HEADERS);
@@ -901,5 +906,159 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     for (Edge expectedDownstreamEdge : expectedDownstreamEdges) {
       assertEdgeFromLineage(lineage.getDownstreamEdges(), expectedDownstreamEdge);
     }
+  }
+
+  @Order(8)
+  @Test
+  void test_getChildrenNames_AllEntityTypes() throws Exception {
+    LineageRepository lineageRepository = new LineageRepository();
+    Method getChildrenNamesMethod =
+        LineageRepository.class.getDeclaredMethod("getChildrenNames", EntityReference.class);
+    getChildrenNamesMethod.setAccessible(true);
+
+    // Test Table Entity - should return column children
+    EntityReference tableRef = TABLES.get(0).getEntityReference();
+    Set<String> tableChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, tableRef);
+    assertFalse(tableChildren.isEmpty(), "Table should have column children");
+    assertTrue(tableChildren.size() >= 3, "Table should have at least 3 columns");
+    Set<String> expectedColumns =
+        TABLES.get(0).getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+    assertTrue(
+        tableChildren.containsAll(expectedColumns),
+        "Table children should contain expected column names: " + expectedColumns);
+
+    // Test Topic Entity - should return schema field children
+    EntityReference topicRef = TOPIC.getEntityReference();
+    Set<String> topicChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, topicRef);
+    assertFalse(topicChildren.isEmpty(), "Topic should have schema field children");
+    assertTrue(topicChildren.size() >= 1, "Topic should have at least 1 schema field");
+    Set<String> expectedFields =
+        TOPIC.getMessageSchema().getSchemaFields().stream()
+            .map(Field::getName)
+            .sorted()
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    assertEquals(
+        expectedFields,
+        topicChildren.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)),
+        "Topic children should contain expected field names: " + expectedFields);
+
+    // Test Container Entity - should return data model column children
+    EntityReference containerRef = CONTAINER.getEntityReference();
+    Set<String> containerChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, containerRef);
+    assertFalse(containerChildren.isEmpty(), "Container should have data model column children");
+    assertTrue(containerChildren.size() >= 2, "Container should have at least 2 columns");
+    Set<String> expectedContainerField =
+        CONTAINER.getDataModel().getColumns().stream()
+            .map(Column::getName)
+            .sorted()
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    assertEquals(
+        expectedContainerField,
+        containerChildren.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new)),
+        "Container children should contain expected column names: " + expectedContainerField);
+
+    // Test DashboardDataModel Entity - should return column children
+    EntityReference dataModelRef = DATA_MODEL.getEntityReference();
+    Set<String> dataModelChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, dataModelRef);
+    assertFalse(dataModelChildren.isEmpty(), "DashboardDataModel should have column children");
+    assertTrue(dataModelChildren.size() >= 3, "DashboardDataModel should have at least 3 columns");
+    Set<String> expectedDataModelColumns =
+        DATA_MODEL.getColumns().stream()
+            .map(Column::getName)
+            .sorted()
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    assertTrue(
+        dataModelChildren.stream().sorted().toList().containsAll(expectedDataModelColumns),
+        "DashboardDataModel children should contain expected column names: "
+            + expectedDataModelColumns);
+
+    // Test Dashboard Entity - should return chart children without FQN prefix
+    EntityReference dashboardRef = DASHBOARD.getEntityReference();
+    Set<String> dashboardChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, dashboardRef);
+    assertFalse(dashboardChildren.isEmpty(), "Dashboard should have chart children");
+    assertTrue(dashboardChildren.size() >= 2, "Dashboard should have at least 2 charts");
+    Set<String> expectedChartNames =
+        DASHBOARD.getCharts().stream()
+            .map(
+                chart ->
+                    chart
+                        .getFullyQualifiedName()
+                        .replace(DASHBOARD.getFullyQualifiedName() + ".", ""))
+            .collect(Collectors.toSet());
+    assertEquals(
+        expectedChartNames,
+        dashboardChildren,
+        "Dashboard children should match expected chart names without FQN prefix");
+    for (String chartName : dashboardChildren) {
+      assertFalse(
+          chartName.contains(DASHBOARD.getFullyQualifiedName() + "."),
+          "Chart name should not contain dashboard FQN prefix: " + chartName);
+    }
+
+    // Test MlModel Entity - should return feature children without FQN prefix
+    EntityReference mlModelRef = ML_MODEL.getEntityReference();
+    Set<String> mlModelChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, mlModelRef);
+    assertFalse(mlModelChildren.isEmpty(), "MlModel should have ML feature children");
+    assertTrue(mlModelChildren.size() >= 2, "MlModel should have at least 2 ML features");
+    Set<String> expectedFeatureNames =
+        ML_MODEL.getMlFeatures().stream()
+            .map(
+                feature ->
+                    feature
+                        .getFullyQualifiedName()
+                        .replace(ML_MODEL.getFullyQualifiedName() + ".", ""))
+            .collect(Collectors.toSet());
+    assertEquals(
+        expectedFeatureNames,
+        mlModelChildren,
+        "MlModel children should match expected feature names without FQN prefix");
+    for (String featureName : mlModelChildren) {
+      assertFalse(
+          featureName.contains(ML_MODEL.getFullyQualifiedName() + "."),
+          "Feature name should not contain ML model FQN prefix: " + featureName);
+    }
+
+    // Test Topic Entity without schema - should return empty set
+    TopicResourceTest topicResourceTest = new TopicResourceTest();
+    CreateTopic topicRequest = topicResourceTest.createRequest("topicWithoutSchema");
+    topicRequest.setMessageSchema(null);
+    Topic topicWithoutSchema = topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
+    EntityReference topicWithoutSchemaRef = topicWithoutSchema.getEntityReference();
+    Set<String> topicWithoutSchemaChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, topicWithoutSchemaRef);
+    assertTrue(
+        topicWithoutSchemaChildren.isEmpty(),
+        "Topic without message schema should return empty set");
+
+    // Test Container Entity without data model - should return empty set
+    ContainerResourceTest containerResourceTest = new ContainerResourceTest();
+    CreateContainer containerRequest =
+        containerResourceTest.createRequest("containerWithoutDataModel");
+    containerRequest.setDataModel(null);
+    Container containerWithoutDataModel =
+        containerResourceTest.createEntity(containerRequest, ADMIN_AUTH_HEADERS);
+    EntityReference containerWithoutDataModelRef = containerWithoutDataModel.getEntityReference();
+    Set<String> containerWithoutDataModelChildren =
+        (Set<String>)
+            getChildrenNamesMethod.invoke(lineageRepository, containerWithoutDataModelRef);
+    assertTrue(
+        containerWithoutDataModelChildren.isEmpty(),
+        "Container without data model should return empty set");
+
+    // Test unknown entity type - should return empty set
+    EntityReference unknownRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("UNKNOWN_TYPE")
+            .withFullyQualifiedName("test.unknown");
+    Set<String> unknownChildren =
+        (Set<String>) getChildrenNamesMethod.invoke(lineageRepository, unknownRef);
+    assertTrue(unknownChildren.isEmpty(), "Unknown entity type should return empty set");
   }
 }

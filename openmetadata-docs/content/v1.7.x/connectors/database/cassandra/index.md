@@ -1,5 +1,6 @@
 ---
-title: Cassandra
+title: Cassandra Connector | OpenMetadata Database Integration
+description: Connect Cassandra to OpenMetadata with our database connector. Step-by-step setup guide, configuration options, and metadata extraction for your NoSQL database.
 slug: /connectors/database/cassandra
 ---
 
@@ -8,7 +9,7 @@ name="Cassandra"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures", "Data Profiler"]
+unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures", "Data Profiler", "Auto-Classification"]
 / %}
 
 

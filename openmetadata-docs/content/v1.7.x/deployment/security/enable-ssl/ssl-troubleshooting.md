@@ -1,5 +1,6 @@
 ---
-title: SSL Troubleshooting
+title: SSL Troubleshooting | OpenMetadata Security Guide
+description: Troubleshoot SSL errors and misconfigurations affecting secure access to services, ingestion, and the UI.
 slug: /deployment/security/enable-ssl/ssl-troubleshooting
 collate: false
 ---

@@ -1,5 +1,6 @@
 ---
-title: PinotDB
+title: PinotDB Connector | OpenMetadata Real-Time Analytics Guide
+description: Connect Apache Pinot to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration examples, and metadata extraction tips.
 slug: /connectors/database/pinotdb
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/pinotdb
 name="PinotDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

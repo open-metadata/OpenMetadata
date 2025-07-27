@@ -20,6 +20,11 @@ export interface Persona {
      */
     changeDescription?: ChangeDescription;
     /**
+     * When true, this persona is the system-wide default persona that will be applied to users
+     * who don't have any persona assigned or no default persona set.
+     */
+    default?: boolean;
+    /**
      * Description of the persona.
      */
     description?: string;
@@ -28,10 +33,10 @@ export interface Persona {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -138,8 +143,13 @@ export interface FieldChange {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -147,13 +157,6 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Reference to the UI customization configuration.
- *
- * Users that are assigned a persona.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**

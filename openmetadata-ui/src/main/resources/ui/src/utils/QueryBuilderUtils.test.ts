@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Fields } from 'react-awesome-query-builder';
+import { Fields } from '@react-awesome-query-builder/antd';
 import { EntityType } from '../enums/entity.enum';
 import {
   QueryFieldInterface,
@@ -20,6 +20,7 @@ import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
+  jsonLogicToElasticsearch,
   resolveFieldType,
 } from './QueryBuilderUtils';
 
@@ -93,7 +94,6 @@ describe('getJsonTreeFromQueryFilter', () => {
         },
       },
       id: 'uuid1',
-      path: ['uuid1'],
     });
   });
 
@@ -328,5 +328,118 @@ describe('getEntityTypeAggregationFilter', () => {
     );
 
     expect(result).toEqual(queryFilter);
+  });
+});
+
+describe('jsonLogicToElasticsearch', () => {
+  it('should convert any in operator', () => {
+    const logic = {
+      and: [
+        {
+          or: [
+            {
+              '==': [
+                {
+                  var: 'database.name',
+                },
+                'default',
+              ],
+            },
+            {
+              '==': [
+                {
+                  var: 'database.name',
+                },
+                'ecommerce_db',
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const configFields = {
+      'database.name': {
+        label: 'Database',
+        type: 'select',
+      },
+    };
+
+    const result = jsonLogicToElasticsearch(logic, configFields);
+
+    expect(result).toEqual({
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    should: [
+                      {
+                        term: {
+                          'database.name': 'default',
+                        },
+                      },
+                      {
+                        term: {
+                          'database.name': 'ecommerce_db',
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('should convert not in operator', () => {
+    const logic = {
+      and: [
+        {
+          '!': {
+            '==': [
+              {
+                var: 'database.name',
+              },
+              ['default', 'ecommerce_db'],
+            ],
+          },
+        },
+      ],
+    };
+    const configFields = {
+      'database.name': {
+        label: 'Database',
+        type: 'select',
+      },
+    };
+
+    const result = jsonLogicToElasticsearch(logic, configFields);
+
+    expect(result).toEqual({
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  bool: {
+                    must_not: {
+                      term: {
+                        'database.name': ['default', 'ecommerce_db'],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
   });
 });

@@ -1,5 +1,6 @@
 ---
-title: External Profiler Workflow
+title: External Profiler Workflow | Official Documentation
+description: Trigger external profiling workflows to capture custom metrics and analyze datasets based on business context.
 slug: /how-to-guides/data-quality-observability/profiler/external-workflow
 ---
 
@@ -14,19 +15,7 @@ Note that this requires OpenMetadata 1.2.1 or higher.
 Consider a use case where you have a large database source with multiple databases and schemas which are maintained by 
 different teams within your organization. You have created multiple database services within OpenMetadata depending on 
 your use case by applying various filters on this large source. Now, instead of running a profiler pipeline for each 
-service, you want to run a **single workflow profiler for the entire source**, irrespective of the OpenMetadata service which
-an asset would belong to. This document will guide you on how to achieve this.
-
-You might also want to check out how to configure external sample data. You can find more information here:
-
-{% tilesContainer %}
-{% tile
-title="External Sample Data"
-description="Configure OpenMetadata to store sample data in an external storage such as S3"
-link="/how-to-guides/data-quality-observability/profiler/external-sample-data"
-/ %}
-{% /tilesContainer %}
-
+service, you want to run a **single workflow profiler for the entire source**, irrespective of the OpenMetadata service which an asset would belong to. This document will guide you on how to achieve this.
 
 {% note %}
 
@@ -54,7 +43,7 @@ pip install "openmetadata-ingestion[athena,datalake,trino]~=1.2.1"
 ```
 
 - The `athena` plugin will bring all the requirements to connect to the Athena Service
-- The `datalake` plugin helps us connect to S3 to manage the [sample data](/how-to-guides/data-quality-observability/profiler/external-sample-data)
+- The `datalake` plugin helps us connect to S3 to manage the sample data.
 - The `trino` plugin will only be needed temporarily
 
 ## 1. Define the YAML Config

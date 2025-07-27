@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
-import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
-import AuthProvider from './AuthProvider';
+import AuthProvider, { useAuthProvider } from './AuthProvider';
 
 const localStorageMock = {
   getItem: jest.fn(),
@@ -38,7 +35,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -88,7 +85,6 @@ jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
-    setHelperFunctionsRef: jest.fn(),
     setCurrentUser: jest.fn(),
     updateNewUser: jest.fn(),
     setIsAuthenticated: jest.fn(),
@@ -118,7 +114,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useApplicationStore();
+      const { onLogoutHandler } = useAuthProvider();
 
       return (
         <button data-testid="logout-button" onClick={onLogoutHandler}>
@@ -157,9 +153,7 @@ describe('Test auth provider', () => {
 
     expect(logoutButton).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(logoutButton);
-    });
+    fireEvent.click(logoutButton);
 
     expect(mockOnLogoutHandler).toHaveBeenCalled();
   });

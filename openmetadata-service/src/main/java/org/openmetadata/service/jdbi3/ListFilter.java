@@ -45,12 +45,17 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getDomainCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getDirectoryCondition(tableName));
+    conditions.add(getSpreadsheetCondition(tableName));
+    conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
+    conditions.add(getProviderCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -79,6 +84,16 @@ public class ListFilter extends Filter<ListFilter> {
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
   }
 
+  private String getCreatedByCondition() {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
+    } else {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
+    }
+  }
+
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
     return workflowDefinitionId == null
@@ -100,6 +115,23 @@ public class ListFilter extends Filter<ListFilter> {
         return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
       } else {
         return String.format("json->>'agentType' = '%s'", agentType);
+      }
+    }
+  }
+
+  public String getProviderCondition(String tableName) {
+    String provider = queryParams.get("provider");
+    if (provider == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return tableName == null
+            ? "JSON_EXTRACT(json, '$.provider') = :provider"
+            : String.format("JSON_EXTRACT(%s.json, '$.provider') = :provider", tableName);
+      } else {
+        return tableName == null
+            ? "json->>'provider' = :provider"
+            : String.format("%s.json->>'provider' = :provider", tableName);
       }
     }
   }
@@ -193,6 +225,30 @@ public class ListFilter extends Filter<ListFilter> {
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn, "parent");
+  }
+
+  public String getDirectoryCondition(String tableName) {
+    String directoryFqn = queryParams.get("directory");
+    if (directoryFqn == null) {
+      return "";
+    }
+    return String.format("directoryFqn = '%s'", directoryFqn);
+  }
+
+  public String getSpreadsheetCondition(String tableName) {
+    String spreadsheetFqn = queryParams.get("spreadsheet");
+    if (spreadsheetFqn == null) {
+      return "";
+    }
+    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+  }
+
+  public String getFileTypeCondition(String tableName) {
+    String fileType = queryParams.get("fileType");
+    if (fileType == null) {
+      return "";
+    }
+    return String.format("fileType = '%s'", fileType);
   }
 
   public String getDisabledCondition() {

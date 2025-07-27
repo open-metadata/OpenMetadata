@@ -1,5 +1,6 @@
 ---
-title: OpenMetadata
+title: OpenMetadata Features | Product Overview
+description: Discover OpenMetadata's powerful features for data discovery, lineage tracking, governance, and collaboration. Explore comprehensive tools to manage you...
 slug: /features
 ---
 

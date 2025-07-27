@@ -122,13 +122,16 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         Prepare a database request and pass it to the sink
         """
 
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=self.context.get().database_service,
-                sourceUrl=self.get_source_url(database_name=database_name),
-            )
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=self.context.get().database_service,
+            sourceUrl=self.get_source_url(database_name=database_name),
         )
+
+        yield Either(
+            right=database_request,
+        )
+        self.register_record_database_request(database_request=database_request)
 
     @abstractmethod
     def get_schema_name_list(self) -> List[str]:
@@ -164,23 +167,24 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         Prepare a database schema request and pass it to the sink
         """
 
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                sourceUrl=self.get_source_url(
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
                     database_name=self.context.get().database,
-                    schema_name=schema_name,
-                ),
-            )
+                )
+            ),
+            sourceUrl=self.get_source_url(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            ),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     @abstractmethod
     def query_table_names_and_types(

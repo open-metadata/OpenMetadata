@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import SeverityModal from './SeverityModal.component';
 
@@ -48,7 +47,7 @@ describe('SeverityModal', () => {
 
   it('onSubmit should work', async () => {
     render(<SeverityModal {...mockProps} />);
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
     await act(async () => {
       fireEvent.click(submitBtn);
     });

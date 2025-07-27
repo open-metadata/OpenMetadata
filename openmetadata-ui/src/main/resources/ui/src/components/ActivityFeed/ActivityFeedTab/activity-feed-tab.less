@@ -21,7 +21,7 @@
   width: 100%;
   overflow-x: hidden;
   border: 1px solid @grey-15;
-  border-radius: @border-radius-sm;
+  border-radius: @border-rad-sm;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
@@ -139,8 +139,8 @@
   }
 
   .activity-feed-card-new.is-active {
-    background: #eff8ff;
-    border: 1px solid #84caff;
+    background: @primary-50;
+    border: 1px solid @primary-3;
   }
 
   .activity-feed-card-message {
@@ -281,6 +281,15 @@
   }
 }
 
+.activity-feed-card-container:not(:last-child) .horizontal-line {
+  position: absolute;
+  top: @size-sm;
+  left: @size-sm;
+  bottom: -17px;
+  width: 1px;
+  background-color: @blue-23;
+}
+
 .activity-feed-editor-send-btn {
   color: @white;
 
@@ -333,7 +342,7 @@
     line-height: 20px;
 
     &.selected {
-      color: #2e90fa;
+      color: @primary-5;
     }
   }
 
@@ -352,7 +361,7 @@
     align-items: center;
 
     &.active {
-      background-color: #2e90fa !important;
+      background-color: @primary-5 !important;
     }
 
     .task-count-text {
@@ -375,10 +384,10 @@
 
     .active {
       box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
-      background-color: #f5faff;
+      background-color: @primary-25;
 
       svg path {
-        fill: #2e90fa;
+        fill: @primary-5;
       }
     }
   }

@@ -18,10 +18,8 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
-import userEvent from '@testing-library/user-event';
 import { CodeMirrorLanguageAliases } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
@@ -484,17 +482,13 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     const readMoreButton = screen.getByTestId('read-more-button');
 
-    await act(async () => {
-      userEvent.click(readMoreButton);
-    });
+    fireEvent.click(readMoreButton);
 
     const readLessButton = screen.getByTestId('read-less-button');
 
     expect(readLessButton).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(readLessButton);
-    });
+    fireEvent.click(readLessButton);
 
     expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
   });

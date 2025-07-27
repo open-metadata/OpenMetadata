@@ -1,5 +1,6 @@
 ---
-title: Webhooks
+title: Webhooks | OpenMetadata Developer Integration Guide
+description: Learn how to use webhooks for real-time event updates, triggers, and third-party integrations.
 slug: /developers/webhooks
 ---
 

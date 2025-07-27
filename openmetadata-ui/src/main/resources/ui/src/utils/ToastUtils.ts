@@ -15,46 +15,58 @@ import {
   InfoCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { AlertProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
+import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
-export const getIconAndClassName = (type: AlertProps['type']) => {
+export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {
     case 'info':
       return {
         icon: InfoCircleOutlined,
         className: 'info',
+        type: 'info',
+      };
+
+    case 'grey-info':
+      return {
+        icon: InfoCircleOutlined,
+        className: 'grey-info',
+        type: 'info',
       };
 
     case 'success':
       return {
         icon: SuccessIcon,
         className: 'success',
+        type: 'success',
       };
 
     case 'warning':
       return {
         icon: WarningOutlined,
         className: 'warning',
+        type: 'warning',
       };
 
     case 'error':
       return {
         icon: ExclamationCircleOutlined,
         className: 'error',
+        type: 'error',
       };
 
     default:
       return {
         icon: null,
         className: '',
+        type: 'info',
       };
   }
 };

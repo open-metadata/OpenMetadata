@@ -25,9 +25,7 @@ from metadata.generated.schema.security.credentials.azureCredentials import (
     AzureCredentials,
 )
 from metadata.ingestion.source.database.azuresql.connection import get_connection_url
-from metadata.ingestion.source.database.mysql.connection import (
-    get_connection as mysql_get_connection,
-)
+from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 from metadata.ingestion.source.database.postgres.connection import (
     get_connection as postgres_get_connection,
 )
@@ -72,7 +70,7 @@ class TestGetConnectionURL(unittest.TestCase):
             hostPort="localhost:3306",
             databaseSchema="openmetadata_db",
         )
-        engine_connection = mysql_get_connection(connection)
+        engine_connection = MySQLConnection(connection).client
         self.assertEqual(
             str(engine_connection.url),
             "mysql+pymysql://openmetadata_user:openmetadata_password@localhost:3306/openmetadata_db",
@@ -95,7 +93,7 @@ class TestGetConnectionURL(unittest.TestCase):
             "get_token",
             return_value=AccessToken(token="mocked_token", expires_on=100),
         ):
-            engine_connection = mysql_get_connection(connection)
+            engine_connection = MySQLConnection(connection).client
             self.assertEqual(
                 str(engine_connection.url),
                 "mysql+pymysql://openmetadata_user:mocked_token@localhost:3306/openmetadata_db",

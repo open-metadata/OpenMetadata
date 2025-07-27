@@ -22,6 +22,10 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,8 +34,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -43,9 +45,12 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -355,6 +360,22 @@ public final class UserUtil {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
-        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()))
+        .withExternalId(create.getExternalId())
+        .withScimUserName(create.getScimUserName());
+  }
+
+  public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
+    if (settings.getHeaderImage() != null && !settings.getHeaderImage().isEmpty()) {
+      try {
+        new URI(settings.getHeaderImage());
+        if (!settings.getHeaderImage().startsWith("http://")
+            && !settings.getHeaderImage().startsWith("https://")) {
+          throw new BadRequestException("Header image must be a valid HTTP or HTTPS URL");
+        }
+      } catch (URISyntaxException e) {
+        throw new BadRequestException("Header image must be a valid URL: " + e.getMessage());
+      }
+    }
   }
 }

@@ -14,9 +14,9 @@
 import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -42,7 +42,7 @@ const ResetPassword = () => {
 
   const { handleResetPassword } = useBasicAuth();
 
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -65,7 +65,7 @@ const ResetPassword = () => {
 
     try {
       await handleResetPassword(ResetRequest);
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
@@ -163,7 +163,7 @@ const ResetPassword = () => {
                 data-testid="submit-button"
                 htmlType="submit"
                 type="primary">
-                {t('label.submit')}
+                {t('label.save')}
               </Button>
             </Form>
           </Col>

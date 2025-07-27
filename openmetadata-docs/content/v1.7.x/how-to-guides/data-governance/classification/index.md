@@ -1,5 +1,6 @@
 ---
-title: Classification
+title: Classification | OpenMetadata Data Classification Guide
+description: Learn how to classify data using tags, tiers, and rules to improve governance, discovery, and sensitivity tracking.
 slug: /how-to-guides/data-governance/classification
 ---
 
@@ -37,7 +38,7 @@ Watch the [Webinar on Glossaries and Classifications in OpenMetadata](https://ww
   color="violet-70"
   bold="Auto-Classification"
   icon="MdDiscount"
-  href="/how-to-guides/data-governance/classification/auto"%}
+  href="/how-to-guides/data-governance/classification/auto-classification"%}
   Learn how OpenMetadata identifies PII data and auto tags or suggests the tags.
  {%/inlineCallout%}
  {%inlineCallout

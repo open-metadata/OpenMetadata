@@ -12,13 +12,12 @@
  */
 
 import { Tooltip } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 
 export const getFieldThreadElement = (
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,

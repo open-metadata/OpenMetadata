@@ -147,13 +147,10 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock(
@@ -292,7 +289,7 @@ describe('Test DatabaseDetails page', () => {
     );
 
     expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
-      fields: 'owners,tags,domain,votes,extension,dataProducts,followers',
+      fields: 'owners,tags,domains,votes,extension,dataProducts,followers',
       include: 'all',
     });
     expect(entityHeader).toBeInTheDocument();

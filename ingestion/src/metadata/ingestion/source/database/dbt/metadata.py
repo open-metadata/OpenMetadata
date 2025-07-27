@@ -70,10 +70,12 @@ from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
     DBT_RUN_RESULT_DATE_FORMAT,
     REQUIRED_CATALOG_KEYS,
+    REQUIRED_EXPOSURE_KEYS,
     REQUIRED_MANIFEST_KEYS,
     DbtCommonEnum,
     DbtTestFailureEnum,
     DbtTestSuccessEnum,
+    ExposureTypeMap,
     SkipResourceTypeEnum,
 )
 from metadata.ingestion.source.database.dbt.dbt_service import (
@@ -83,7 +85,6 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     check_ephemeral_node,
-    check_or_create_test_suite,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
     generate_entity_link,
@@ -97,6 +98,7 @@ from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
+from metadata.utils.filters import filter_by_tag
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -210,6 +212,7 @@ class DbtSource(DbtServiceSource):
             manifest_entities = {
                 **dbt_files.dbt_manifest[DbtCommonEnum.NODES.value],
                 **dbt_files.dbt_manifest[DbtCommonEnum.SOURCES.value],
+                **dbt_files.dbt_manifest.get(DbtCommonEnum.EXPOSURES.value, {}),
             }
             catalog_entities = None
             if dbt_files.dbt_catalog:
@@ -221,6 +224,23 @@ class DbtSource(DbtServiceSource):
                 if manifest_node[DbtCommonEnum.RESOURCETYPE.value] in [
                     item.value for item in SkipResourceTypeEnum
                 ]:
+                    continue
+
+                if (
+                    manifest_node[DbtCommonEnum.RESOURCETYPE.value]
+                    == DbtCommonEnum.EXPOSURE.value
+                ):
+                    if all(
+                        required_key in manifest_node
+                        for required_key in REQUIRED_EXPOSURE_KEYS
+                    ):
+                        logger.debug(f"Successfully Validated DBT Node: {key}")
+                    else:
+                        logger.warning(
+                            f"Error validating DBT Node: {key}\n"
+                            f"Please check if following keys exist for the node: {REQUIRED_EXPOSURE_KEYS}"
+                        )
+
                     continue
 
                 # Validate if all the required keys are present in the manifest nodes
@@ -244,6 +264,18 @@ class DbtSource(DbtServiceSource):
                         logger.warning(
                             f"Unable to find the node or columns in the catalog file for dbt node: {key}"
                         )
+
+    def filter_tags(self, tags: List[str]) -> List[str]:
+        """
+        Filter tags based on tag filter pattern if configured
+        """
+        if self.source_config.tagFilterPattern:
+            return [
+                tag
+                for tag in tags
+                if not filter_by_tag(self.source_config.tagFilterPattern, tag)
+            ]
+        return tags
 
     def yield_dbt_tags(
         self, dbt_objects: DbtObjects
@@ -272,13 +304,13 @@ class DbtSource(DbtServiceSource):
                     # Add the tags from the model
                     model_tags = manifest_node.tags
                     if model_tags:
-                        dbt_tags_list.extend(model_tags)
+                        dbt_tags_list.extend(self.filter_tags(model_tags))
 
                     # Add the tags from the columns
                     for _, column in manifest_node.columns.items():
                         column_tags = column.tags
                         if column_tags:
-                            dbt_tags_list.extend(column_tags)
+                            dbt_tags_list.extend(self.filter_tags(column_tags))
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
@@ -334,6 +366,19 @@ class DbtSource(DbtServiceSource):
             ),
             None,
         )
+
+    def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
+        exposure_entity = self.parse_exposure_node(manifest_node)
+
+        if exposure_entity:
+            self.context.get().exposures[key] = {
+                DbtCommonEnum.EXPOSURE: exposure_entity,
+                DbtCommonEnum.MANIFEST_NODE: manifest_node,
+            }
+
+            self.context.get().exposures[key][
+                DbtCommonEnum.UPSTREAM
+            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
 
     def add_dbt_sources(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
@@ -428,6 +473,7 @@ class DbtSource(DbtServiceSource):
             manifest_entities = {
                 **dbt_objects.dbt_manifest.sources,
                 **dbt_objects.dbt_manifest.nodes,
+                **dbt_objects.dbt_manifest.exposures,
             }
             catalog_entities = None
             if dbt_objects.dbt_catalog:
@@ -436,6 +482,7 @@ class DbtSource(DbtServiceSource):
                     **dbt_objects.dbt_catalog.nodes,
                 }
             self.context.get().data_model_links = []
+            self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
             # Since we'll be processing multiple run_results for a single project
@@ -479,6 +526,10 @@ class DbtSource(DbtServiceSource):
                             dbt_objects=dbt_objects,
                         )
 
+                    if resource_type == DbtCommonEnum.EXPOSURE.value:
+                        self.add_dbt_exposure(key, manifest_node, manifest_entities)
+                        continue
+
                     # Skip the ephemeral nodes since it is not materialized
                     if check_ephemeral_node(manifest_node):
                         logger.debug(f"Skipping ephemeral DBT node: {key}.")
@@ -509,6 +560,7 @@ class DbtSource(DbtServiceSource):
 
                     dbt_table_tags_list = []
                     if manifest_node.tags:
+                        manifest_node.tags = self.filter_tags(manifest_node.tags)
                         dbt_table_tags_list = (
                             get_tag_labels(
                                 metadata=self.metadata,
@@ -669,6 +721,7 @@ class DbtSource(DbtServiceSource):
                     column_description = catalog_column.comment
 
                 dbt_column_tag_list = []
+                manifest_column.tags = self.filter_tags(manifest_column.tags)
                 dbt_column_tag_list.extend(
                     get_tag_labels(
                         metadata=self.metadata,
@@ -721,6 +774,57 @@ class DbtSource(DbtServiceSource):
                 logger.warning(f"Failed to parse DBT column {column_name}: {exc}")
 
         return columns
+
+    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:
+        """
+        Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
+        Open Metadata entity. Returns entity object if both conditions are met.
+
+        The implementation assumes that value of meta.open_metadata_fqn provided in DBT exposures object matches
+        to FQN of OpenMetadata entity.
+
+        ```yaml
+        exposures:
+          - name: orders_dashboard
+            label: orders
+            meta:
+              open_metadata_fqn: sample_looker.orders  # OpenMetadata entity FullyQualifiedName
+            type: dashboard
+            maturity: high
+            url: http://localhost:808/looker/dashboard/8/
+            description: >
+              Exemplary OM Looker Dashboard.
+
+            depends_on:
+              - ref('fact_sales')
+        ```
+        """
+        exposure_type = exposure_spec.type.value
+        entity_type = ExposureTypeMap.get(exposure_type, {}).get("entity_type")
+
+        if not entity_type:
+            logger.warning(f"Exposure type [{exposure_spec.type.value}] not supported.")
+
+            return None
+
+        try:
+            entity_fqn = exposure_spec.meta["open_metadata_fqn"]
+        except KeyError:
+            logger.warning(
+                f"meta.open_metadata_fqn not found in [{exposure_spec.name}] exposure spec."
+            )
+            return None
+
+        entity = self.metadata.get_by_name(fqn=entity_fqn, entity=entity_type)
+
+        if not entity:
+            logger.warning(
+                f"Entity [{entity_fqn}] of [{exposure_type}] type not found in Open Metadata."
+            )
+
+            return None
+
+        return entity
 
     def create_dbt_lineage(
         self, data_model_link: DataModelLink
@@ -813,6 +917,51 @@ class DbtSource(DbtServiceSource):
                         ),
                         stackTrace=traceback.format_exc(),
                     )
+                )
+
+    def create_dbt_exposures_lineage(
+        self, exposure_spec: dict
+    ) -> Iterable[Either[AddLineageRequest]]:
+        to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
+        upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
+        manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
+
+        for upstream_node in upstream:
+            try:
+                from_es_result = self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=upstream_node,
+                )
+                from_entity: Optional[
+                    Union[Table, List[Table]]
+                ] = get_entity_from_es_result(
+                    entity_list=from_es_result, fetch_multiple_entities=False
+                )
+                if from_entity and to_entity:
+                    yield Either(
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=Uuid(from_entity.id.root),
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=Uuid(to_entity.id.root),
+                                    type=ExposureTypeMap[manifest_node.type.value][
+                                        "entity_type_name"
+                                    ],
+                                ),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DbtLineage
+                                ),
+                            )
+                        )
+                    )
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                 )
 
     def process_dbt_meta(self, manifest_meta):
@@ -1009,9 +1158,6 @@ class DbtSource(DbtServiceSource):
                 logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")
                 entity_link_list = generate_entity_link(dbt_test)
                 for entity_link_str in entity_link_list:
-                    test_suite = check_or_create_test_suite(
-                        self.metadata, entity_link_str
-                    )
                     table_fqn = get_table_fqn(entity_link_str)
                     logger.debug(f"Table fqn found: {table_fqn}")
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
@@ -1041,7 +1187,6 @@ class DbtSource(DbtServiceSource):
                                     manifest_node.name
                                 ),
                                 entityLink=entity_link_str,
-                                testSuite=test_suite.fullyQualifiedName,
                                 parameterValues=create_test_case_parameter_values(
                                     dbt_test
                                 ),

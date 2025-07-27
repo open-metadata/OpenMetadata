@@ -16,7 +16,10 @@ import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import {
+  visitEntityPage,
+  visitEntityPageWithCustomSearchBox,
+} from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -98,6 +101,7 @@ export class ContainerClass extends EntityClass {
     this.serviceType = ServiceTypes.STORAGE_SERVICES;
     this.type = 'Container';
     this.serviceCategory = SERVICE_TYPE.Storage;
+    this.childrenSelectorId = `${this.entity.dataModel.columns[0].name}`;
   }
 
   async create(
@@ -190,6 +194,14 @@ export class ContainerClass extends EntityClass {
 
   async visitEntityPage(page: Page) {
     await visitEntityPage({
+      page,
+      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      dataTestId: `${this.service.name}-${this.entity.name}`,
+    });
+  }
+
+  async visitEntityPageWithCustomSearchBox(page: Page) {
+    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,

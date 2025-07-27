@@ -10,12 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
 import DataAssetsWidget from './DataAssetsWidget.component';
+
+// Mock useNavigate hook
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
 
 jest.mock('../../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -40,69 +47,101 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 const mockHandleRemoveWidget = jest.fn();
 
 const widgetProps = {
-  selectedGridSize: 10,
   isEditView: true,
   widgetKey: 'testWidgetKey',
   handleRemoveWidget: mockHandleRemoveWidget,
+  handleLayoutUpdate: jest.fn(),
+  currentLayout: [
+    {
+      i: 'testWidgetKey',
+      x: 0,
+      y: 0,
+      w: 2,
+      h: 4,
+      config: {},
+    },
+  ],
 };
 
 describe('DataAssetsWidget', () => {
-  it('should fetch dataAssets initially', async () => {
-    render(<DataAssetsWidget {...widgetProps} />);
-
-    expect(searchData).toHaveBeenCalledWith('', 0, 0, '', 'updatedAt', '', [
-      SearchIndex.TABLE,
-      SearchIndex.TOPIC,
-      SearchIndex.DASHBOARD,
-      SearchIndex.PIPELINE,
-      SearchIndex.MLMODEL,
-      SearchIndex.CONTAINER,
-      SearchIndex.SEARCH_INDEX,
-      SearchIndex.API_ENDPOINT_INDEX,
-    ]);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should render DataAssetsWidget', async () => {
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
+  const renderDataAssetsWidget = (props = {}) => {
+    return render(
+      <MemoryRouter>
+        <DataAssetsWidget {...widgetProps} {...props} />
+      </MemoryRouter>
+    );
+  };
 
-      expect(screen.getByTestId('data-assets-widget')).toBeInTheDocument();
-      expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
-      expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
-      expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
-    });
+  it('should fetch dataAssets initially', () => {
+    renderDataAssetsWidget();
+
+    expect(searchData).toHaveBeenCalledWith(
+      '',
+      0,
+      0,
+      '',
+      'name.keyword',
+      'asc',
+      [
+        SearchIndex.TABLE,
+        SearchIndex.TOPIC,
+        SearchIndex.DASHBOARD,
+        SearchIndex.PIPELINE,
+        SearchIndex.MLMODEL,
+        SearchIndex.CONTAINER,
+        SearchIndex.SEARCH_INDEX,
+        SearchIndex.API_ENDPOINT_INDEX,
+      ]
+    );
   });
 
-  it('should handle close click when in edit view', async () => {
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
+  it('should render DataAssetsWidget with widget wrapper', async () => {
+    (searchData as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          aggregations: { 'sterms#serviceType': { buckets: [] } },
+        },
+      })
+    );
 
-      fireEvent.click(screen.getByTestId('remove-widget-button'));
+    renderDataAssetsWidget();
 
-      expect(mockHandleRemoveWidget).toHaveBeenCalledWith(
-        widgetProps.widgetKey
-      );
-    });
+    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
+    expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
   });
 
-  it('should render ErrorPlaceholder if API is rejected', async () => {
-    (searchData as jest.Mock).mockImplementation(() => Promise.reject());
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
-    });
+  it('should render empty state when no data assets', async () => {
+    (searchData as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          aggregations: { 'sterms#serviceType': { buckets: [] } },
+        },
+      })
+    );
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-empty-state')).toBeInTheDocument();
+    expect(screen.queryByText('DataAssetCard')).not.toBeInTheDocument();
   });
 
-  it('should render DataAsset card if data present', async () => {
+  it('should render DataAsset cards when data is present', async () => {
     (searchData as jest.Mock).mockImplementation(() =>
       Promise.resolve({ data: MOCK_EXPLORE_SEARCH_RESULTS })
     );
-    await act(async () => {
-      render(<DataAssetsWidget {...widgetProps} />);
-    });
 
-    expect(screen.getAllByText('DataAssetCard')).toHaveLength(10);
-    expect(screen.queryByText('ErrorPlaceHolder')).not.toBeInTheDocument();
+    renderDataAssetsWidget();
+
+    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.data-asset-plural')
+    ).toBeInTheDocument();
+    expect(await screen.findAllByText('DataAssetCard')).toHaveLength(10);
   });
 });

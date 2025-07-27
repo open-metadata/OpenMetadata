@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
@@ -42,12 +42,7 @@ const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
     const { t } = useTranslation();
-    const {
-      setIsAuthenticated,
-      authConfig,
-
-      isApplicationLoading,
-    } = useApplicationStore();
+    const { authConfig, isApplicationLoading } = useApplicationStore();
 
     const handleSilentSignIn =
       useCallback(async (): Promise<AccessTokenResponse> => {
@@ -77,10 +72,7 @@ const BasicAuthenticator = forwardRef(
       }, [authConfig, getRefreshToken, setOidcToken, setRefreshToken, t]);
 
     useImperativeHandle(ref, () => ({
-      invokeLogout() {
-        handleLogout();
-        setIsAuthenticated(false);
-      },
+      invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
     }));
 

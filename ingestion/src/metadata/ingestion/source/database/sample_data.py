@@ -40,10 +40,15 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
+from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
+)
+from metadata.generated.schema.api.data.createSpreadsheet import (
+    CreateSpreadsheetRequest,
 )
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -53,7 +58,15 @@ from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
+from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createDriveService import (
+    CreateDriveServiceRequest,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -82,7 +95,9 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureCode,
 )
 from metadata.generated.schema.entity.data.table import (
+    Column,
     ColumnProfile,
+    DataType,
     SystemProfile,
     Table,
     TableData,
@@ -94,8 +109,16 @@ from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
@@ -112,7 +135,11 @@ from metadata.generated.schema.tests.resolved import Resolved, TestCaseFailureRe
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
@@ -123,6 +150,7 @@ from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
+from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResolutionStatus,
@@ -150,6 +178,17 @@ COLUMN_NAME = "Column"
 KEY_TYPE = "Key type"
 DATA_TYPE = "Data type"
 COL_DESCRIPTION = "Description"
+NUM_SERVICES = 1
+DATABASES_PER_SERVICE = 5
+SCHEMAS_PER_DATABASE = 5
+TABLES_PER_SCHEMA = 10
+COLUMNS_PER_TABLE = 50
+NUM_THREADS = 10
+BATCH_SIZE = 10
+COLUMNS = [
+    Column(name=f"column_{i}", dataType=DataType.STRING)
+    for i in range(COLUMNS_PER_TABLE)
+]
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
@@ -629,6 +668,85 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.domain = json.load(
+            open(
+                sample_data_folder + "/domains/domain.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        # Load drive sample data
+        try:
+            logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")
+            self.drive_service_json = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/service.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            logger.info(f"Drive service JSON: {self.drive_service_json}")
+            logger.info("Creating drive service...")
+
+            # Check if service already exists
+            try:
+                self.drive_service = self.metadata.get_by_name(
+                    entity=DriveService, fqn=self.drive_service_json["name"]
+                )
+                logger.info(f"Drive service already exists: {self.drive_service.name}")
+            except Exception:
+                # Create the service using direct API call
+                drive_service_request = CreateDriveServiceRequest(
+                    **self.drive_service_json
+                )
+
+                # Use the direct API endpoint
+                resp = self.metadata.client.put(
+                    path="/services/driveServices",
+                    data=drive_service_request.model_dump_json(),
+                )
+
+                self.drive_service = DriveService(**resp)
+                logger.info(f"Created drive service: {self.drive_service.name}")
+            self.directories = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/directories.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.files = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/files.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.spreadsheets = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/spreadsheets.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.worksheets = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/worksheets.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.has_drive_data = True
+            logger.info(
+                f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
+            )
+        except Exception as exc:
+            import traceback
+
+            logger.warning(f"Drive sample data not found: {exc}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            self.has_drive_data = False
 
     @classmethod
     def create(
@@ -647,8 +765,10 @@ class SampleDataSource(
         """Nothing to prepare"""
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
+        yield from self.ingest_domains()
         yield from self.ingest_teams()
         yield from self.ingest_users()
+        yield from self.ingest_drives()
         yield from self.ingest_tables()
         yield from self.ingest_glue()
         yield from self.ingest_mysql()
@@ -674,6 +794,48 @@ class SampleDataSource(
         yield from self.ingest_life_cycle()
         yield from self.ingest_api_service()
         yield from self.ingest_ometa_api_service()
+        self.modify_column_descriptions()
+        yield from self.process_service_batch()
+
+    def ingest_domains(self):
+
+        domain_request = CreateDomainRequest(**self.domain)
+        yield Either(right=domain_request)
+
+    def modify_column_descriptions(self):
+        """
+        Modify column descriptions to include the table name
+        """
+        table: Table = self.metadata.get_by_name(
+            entity=Table, fqn="mysql_sample.default.posts_db.Tags"
+        )
+        col_desc_list = []
+        for column in table.columns:
+            column.description = f"{table.name} - {column.name}"
+            col_desc_list.append(
+                ColumnDescription(
+                    column_fqn=column.fullyQualifiedName.root,
+                    description=column.description,
+                )
+            )
+
+        self.metadata.patch_column_descriptions(
+            table=table,
+            column_descriptions=col_desc_list,
+        )
+        self.metadata.patch_column_descriptions(
+            table=table,
+            column_descriptions=[
+                ColumnDescription(
+                    column_fqn=column.fullyQualifiedName.root, description=None
+                )
+                for column in table.columns
+            ],
+        )
+        self.metadata.patch_column_descriptions(
+            table=table,
+            column_descriptions=col_desc_list,
+        )
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -702,6 +864,178 @@ class SampleDataSource(
                 team_to_ingest.parents = parent_list_id
 
             yield Either(right=team_to_ingest)
+
+    def ingest_drives(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Drive data"""
+        logger.info(
+            f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}"
+        )
+        if not getattr(self, "has_drive_data", False):
+            logger.warning("No drive data to ingest")
+            return
+            yield  # Make this a generator that yields nothing
+
+        # Create directories first, building references as we go
+        directory_refs = {}
+
+        for directory_data in self.directories:
+            directory_request = CreateDirectoryRequest(
+                name=directory_data["name"],
+                displayName=directory_data.get("displayName"),
+                description=directory_data.get("description"),
+                service=self.drive_service.fullyQualifiedName.root,
+                path=directory_data.get("path"),
+                directoryType=directory_data.get("directoryType"),
+                isShared=directory_data.get("isShared", False),
+                numberOfFiles=directory_data.get("numberOfFiles"),
+                numberOfSubDirectories=directory_data.get("numberOfSubDirectories"),
+                totalSize=directory_data.get("totalSize"),
+                tags=directory_data.get("tags", []),
+                owners=directory_data.get("owners", []),
+            )
+
+            # Handle parent directory reference
+            if directory_data.get("parent"):
+                parent_name = directory_data["parent"]
+                if parent_name in directory_refs:
+                    directory_request.parent = directory_refs[parent_name]
+                else:
+                    # For nested references like "Marketing.Campaigns_2024"
+                    # Build parent FQN manually
+                    parent_path = parent_name.replace(".", "/")
+                    directory_request.parent = (
+                        f"{self.drive_service.fullyQualifiedName.root}.{parent_path}"
+                    )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/directories", data=directory_request.model_dump_json()
+                )
+                logger.debug(f"Created directory: {directory_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create directory {directory_data['name']}: {e}"
+                )
+
+            # Store the FQN for later reference
+            # Build FQN manually since Directory FQN builder is not implemented
+            if directory_data.get("parent"):
+                parent_path = directory_data["parent"].replace(".", "/")
+                directory_fqn = f"{self.drive_service.fullyQualifiedName.root}.{parent_path}.{directory_data['name']}"
+            else:
+                directory_fqn = f"{self.drive_service.fullyQualifiedName.root}.{directory_data['name']}"
+            directory_refs[directory_data["name"]] = directory_fqn
+
+        # Create files
+        for file_data in self.files:
+            file_request = CreateFileRequest(
+                name=file_data["name"],
+                displayName=file_data.get("displayName"),
+                description=file_data.get("description"),
+                service=self.drive_service.fullyQualifiedName.root,
+                directory=directory_refs.get(file_data["directory"])
+                if file_data.get("directory")
+                else None,
+                fileType=file_data.get("fileType"),
+                mimeType=file_data.get("mimeType"),
+                fileExtension=file_data.get("fileExtension"),
+                path=file_data.get("path"),
+                size=file_data.get("size"),
+                checksum=file_data.get("checksum"),
+                webViewLink=file_data.get("webViewLink"),
+                downloadLink=file_data.get("downloadLink"),
+                isShared=file_data.get("isShared", False),
+                fileVersion=file_data.get("fileVersion"),
+                sourceUrl=file_data.get("webViewLink"),
+                tags=file_data.get("tags", []),
+                owners=file_data.get("owners", []),
+            )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/files", data=file_request.model_dump_json()
+                )
+                logger.debug(f"Created file: {file_data['name']}")
+            except Exception as e:
+                logger.warning(f"Failed to create file {file_data['name']}: {e}")
+
+        # Create spreadsheets
+        spreadsheet_refs = {}
+
+        for spreadsheet_data in self.spreadsheets:
+            # Build the request without parent first
+            spreadsheet_request_dict = {
+                "name": spreadsheet_data["name"],
+                "displayName": spreadsheet_data.get("displayName"),
+                "description": spreadsheet_data.get("description"),
+                "service": self.drive_service.fullyQualifiedName,
+                "path": spreadsheet_data.get("path"),
+                "size": spreadsheet_data.get("size"),
+                "sourceUrl": spreadsheet_data.get("sourceUrl"),
+                "tags": spreadsheet_data.get("tags", []),
+                "owners": spreadsheet_data.get("owners", []),
+            }
+
+            # Skip parent for now as it requires entity reference
+            # TODO: Add parent reference once directories are created and we can get their IDs
+
+            spreadsheet_request = CreateSpreadsheetRequest(**spreadsheet_request_dict)
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/spreadsheets",
+                    data=spreadsheet_request.model_dump_json(),
+                )
+                logger.debug(f"Created spreadsheet: {spreadsheet_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}"
+                )
+
+            # Store FQN for worksheet references
+            # Build FQN manually - spreadsheets use simple FQN without directory path
+            spreadsheet_fqn = f"{self.drive_service.fullyQualifiedName.root}.{spreadsheet_data['name']}"
+            spreadsheet_refs[spreadsheet_data["name"]] = spreadsheet_fqn
+            logger.debug(
+                f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}"
+            )
+
+        # Create worksheets
+        for worksheet_data in self.worksheets:
+            spreadsheet_fqn = spreadsheet_refs.get(worksheet_data["spreadsheet"])
+            logger.debug(
+                f"Creating worksheet {worksheet_data['name']} for spreadsheet {worksheet_data['spreadsheet']} -> {spreadsheet_fqn}"
+            )
+
+            if not spreadsheet_fqn:
+                logger.warning(
+                    f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs"
+                )
+                continue
+
+            worksheet_request = CreateWorksheetRequest(
+                name=worksheet_data["name"],
+                displayName=worksheet_data.get("displayName"),
+                description=worksheet_data.get("description"),
+                spreadsheet=spreadsheet_fqn,
+                columns=worksheet_data.get("columns", []),
+                isHidden=worksheet_data.get("isHidden", False),
+                tags=worksheet_data.get("tags", []),
+            )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/worksheets", data=worksheet_request.model_dump_json()
+                )
+                logger.debug(f"Created worksheet: {worksheet_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create worksheet {worksheet_data['name']}: {e}"
+                )
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
@@ -752,6 +1086,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
                 sourceUrl=table.get("sourceUrl"),
+                domains=["TestDomain"],
             )
             yield Either(right=table_request)
 
@@ -890,6 +1225,7 @@ class SampleDataSource(
                 tags=table["tags"],
                 schemaDefinition=table.get("schemaDefinition"),
                 sourceUrl=table.get("sourceUrl"),
+                tablePartition=table.get("tablePartition"),
             )
 
             yield Either(right=table_and_db)
@@ -1602,7 +1938,6 @@ class SampleDataSource(
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
-                        testSuite=suite.fullyQualifiedName.root,
                         parameterValues=[
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
@@ -1840,3 +2175,161 @@ class SampleDataSource(
         for endpoint in self.ometa_api_endpoint.get("endpoints"):
             endpoint_request = CreateAPIEndpointRequest(**endpoint)
             yield Either(right=endpoint_request)
+
+    def create_database_service(self, service_idx: int) -> None:
+        """Create a database service and its databases.
+
+        Args:
+            service_idx: Service index
+        """
+        service_name = f"openmetadata-{service_idx}"
+
+        try:
+            # Create minimal Snowflake connection
+            connection = DatabaseConnection(
+                config=SnowflakeConnection(
+                    username="dummy",
+                    password="dummy",  # This will be handled by the library
+                    account="dummy",
+                    database="dummy",
+                    warehouse="dummy",
+                )
+            )
+
+            # Create service with minimal required fields
+            yield Either(
+                right=CreateDatabaseServiceRequest(
+                    name=service_name,
+                    serviceType=DatabaseServiceType.Snowflake,
+                    connection=connection,
+                )
+            )
+
+            logger.info(f"Created database service {service_name} ({NUM_SERVICES})")
+            tasks = []
+            # Create databases sequentially
+            for db_idx in range(DATABASES_PER_SERVICE):
+                yield from self.create_database(service_name, db_idx)
+
+        except Exception as e:
+            logger.error(f"Failed to create database service {service_name}: {e}")
+
+    def process_service_batch(self) -> None:
+        """Process a batch of services.
+
+        Args:
+            start_idx: Start index of service batch
+            end_idx: End index of service batch
+        """
+
+        services_per_thread = NUM_SERVICES // NUM_THREADS
+        # Create tasks for each thread
+        for service_idx in range(NUM_SERVICES):
+            yield from self.create_database_service(service_idx)
+
+        # create table and column lineage from the snowflake sample data to Mysql Table `Tags`
+        yield from self.create_table_lineage()
+
+    def create_table_lineage(self) -> None:
+        """Create table lineage from the snowflake sample data to Mysql Table `Tags`"""
+        source_table_list = list(
+            self.metadata.list_entities(
+                entity=Table,
+                limit=5,
+                params={"database": "openmetadata-0.openmetadata-db-0"},
+            ).entities
+        )
+        destination_table = self.metadata.get_by_name(
+            Table, "mysql_sample.default.posts_db.Tags"
+        )
+
+        for source_table in source_table_list:
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=source_table.id, type="table"),
+                        toEntity=EntityReference(id=destination_table.id, type="table"),
+                        lineageDetails=LineageDetails(
+                            columnsLineage=[
+                                ColumnLineage(
+                                    fromColumns=[
+                                        from_column.fullyQualifiedName.root
+                                        for from_column in source_table.columns
+                                    ][:5],
+                                    toColumn=to_column.fullyQualifiedName.root,
+                                )
+                                for to_column in destination_table.columns
+                            ]
+                        ),
+                    )
+                )
+            )
+
+    def create_database(self, service_name: str, db_idx: int) -> None:
+        """Create a database.
+
+        Args:
+            service_name: Service name
+            db_idx: Database index
+        """
+        db_name = f"openmetadata-db-{db_idx}"
+
+        try:
+            # Create with minimal required fields
+            db_request = Either(
+                right=CreateDatabaseRequest(name=db_name, service=service_name)
+            )
+            yield db_request
+            database_fqn = f"{service_name}.{db_name}"
+
+            # Create schemas sequentially to avoid overwhelming the API
+            for schema_idx in range(SCHEMAS_PER_DATABASE):
+                yield from self.create_schema(database_fqn, schema_idx)
+
+        except Exception as e:
+            logger.error(f"Failed to create database {db_name}: {e}")
+
+    def create_schema(self, database_fqn: str, schema_idx: int) -> None:
+        """Create a schema.
+
+        Args:
+            database_fqn: Database FQN
+            schema_idx: Schema index
+        """
+        schema_name = f"openmetadata-schema-{schema_idx}"
+
+        try:
+            # Create with minimal required fields
+            schema_request = Either(
+                right=CreateDatabaseSchemaRequest(
+                    name=schema_name, database=database_fqn
+                )
+            )
+            yield schema_request
+            schema_name = f"{database_fqn}.{schema_name}"
+            # Create tables sequentially to avoid overwhelming the API
+            yield from self.create_table(schema_name)
+
+        except Exception as e:
+            logger.error(f"Failed to create schema {schema_name}: {e}")
+
+    def create_table(self, schema_fqn: str) -> None:
+        """Create a batch of tables for a schema.
+
+        Args:
+            schema_fqn: Fully qualified schema name
+        """
+        # Create table requests
+        for i in range(TABLES_PER_SCHEMA):
+            table_name = f"openmetadata-table-{i}"
+
+            # Create with minimal required fields
+            try:
+                table_request = Either(
+                    right=CreateTableRequest(
+                        name=table_name, databaseSchema=schema_fqn, columns=COLUMNS
+                    )
+                )
+                yield table_request
+            except Exception as e:
+                logger.warning(f"Error creating table request: {e}")

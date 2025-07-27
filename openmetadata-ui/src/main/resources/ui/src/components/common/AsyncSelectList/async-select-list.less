@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../styles/variables.less';
+
 .async-select-list {
   .ant-select-selection-overflow {
     gap: 4px;
+  }
+
+  &.new-chip-style {
+    .ant-tag.tag-chip-content {
+      border: 1px solid @blue-30;
+      border-radius: @border-rad-xs;
+      background: @blue-29;
+      height: unset;
+    }
   }
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FC, Suspense } from 'react';
+import { FC, Suspense } from 'react';
 import Loader from '../common/Loader/Loader';
 
 export default function withSuspenseFallback<T extends unknown>(

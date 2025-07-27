@@ -26,6 +26,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutually
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,11 +40,13 @@ import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -54,7 +57,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
@@ -67,6 +69,10 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetFieldTags);
   }
 
   @Override
@@ -126,6 +132,81 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public void clearFields(SearchIndex searchIndex, Fields fields) {
     /* Nothing to do */
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<SearchIndex> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    // Bulk fetch and set service for all search indexes first
+    fetchAndSetServices(entities);
+
+    // Then call parent's implementation which handles standard fields
+    super.setFieldsInBulk(fields, entities);
+  }
+
+  private void fetchAndSetServices(List<SearchIndex> searchIndexes) {
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all search indexes
+    Map<UUID, EntityReference> serviceRefs = batchFetchServices(searchIndexes);
+
+    // Set service field for all search indexes
+    for (SearchIndex searchIndex : searchIndexes) {
+      EntityReference serviceRef = serviceRefs.get(searchIndex.getId());
+      if (serviceRef != null) {
+        searchIndex.withService(serviceRef);
+      }
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<SearchIndex> searchIndexes) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Batch query to get all services that contain these search indexes
+    // findFromBatch finds relationships where the provided IDs are in the "to" position
+    // So this finds: SEARCH_SERVICE (from) -> CONTAINS -> SEARCH_INDEX (to)
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(searchIndexes), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      // We're looking for records where Search Service contains Search Index
+      if (Entity.SEARCH_SERVICE.equals(record.getFromEntity())) {
+        UUID searchIndexId = UUID.fromString(record.getToId());
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.SEARCH_SERVICE, UUID.fromString(record.getFromId()), Include.NON_DELETED);
+        serviceMap.put(searchIndexId, serviceRef);
+      }
+    }
+
+    return serviceMap;
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetFollowers(List<SearchIndex> searchIndexes, Fields fields) {
+    if (!fields.contains(FIELD_FOLLOWERS) || searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, searchIndexes, batchFetchFollowers(searchIndexes), SearchIndex::setFollowers);
+  }
+
+  private void fetchAndSetFieldTags(List<SearchIndex> searchIndexes, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || searchIndexes == null || searchIndexes.isEmpty()) {
+      return;
+    }
+    // Use bulk tag fetching to avoid N+1 queries
+    bulkPopulateEntityFieldTags(
+        searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
   }
 
   @Override
@@ -249,6 +330,9 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   @Override
   public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -366,6 +450,37 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       }
     }
     return childrenSchemaField;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<SearchIndex> searchIndexes) {
+    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+    if (searchIndexes == null || searchIndexes.isEmpty()) {
+      return followersMap;
+    }
+
+    // Initialize empty lists for all search indexes
+    for (SearchIndex searchIndex : searchIndexes) {
+      followersMap.put(searchIndex.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all followers for all search indexes
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(searchIndexes),
+                org.openmetadata.schema.type.Relationship.FOLLOWS.ordinal());
+
+    // Group followers by search index ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID searchIndexId = UUID.fromString(record.getToId());
+      EntityReference followerRef =
+          Entity.getEntityReferenceById(
+              record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
+      followersMap.get(searchIndexId).add(followerRef);
+    }
+
+    return followersMap;
   }
 
   public class SearchIndexUpdater extends EntityUpdater {

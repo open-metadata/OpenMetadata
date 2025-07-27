@@ -57,7 +57,8 @@
     "deleted": {
       "description": "Filter documents by deleted param.",
       "type": "boolean",
-      "default": false
+      "default": null,
+      "existingJavaType": "java.lang.Boolean"
     },
     "sortFieldParam": {
       "description": "Sort the search results by field, available fields to sort weekly_stats daily_stats, monthly_stats, last_updated_timestamp.",
@@ -71,6 +72,13 @@
     },
     "includeSourceFields": {
       "description": "Get only selected fields of the document body for each hit. Empty value will return all fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "excludeSourceFields": {
+      "description": "Exclude specified fields from the document body for each hit. Use this to exclude heavy fields like 'columns' for better performance",
       "type": "array",
       "items": {
         "type": "string"

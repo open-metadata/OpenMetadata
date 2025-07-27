@@ -27,15 +27,9 @@ import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -45,29 +39,35 @@ import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-side
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   DEFAULT_DOMAIN_VALUE,
+  LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
+  ONE_HOUR_MS,
+  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import {
+  BackgroundJob,
+  EnumCleanupArgs,
+  JobType,
+} from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
+import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { refreshPage } from '../../utils/CommonUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -76,10 +76,8 @@ import {
   getEntityType,
   prepareFeedLink,
 } from '../../utils/FeedUtils';
-import {
-  languageSelectOptions,
-  SupportedLocales,
-} from '../../utils/i18next/i18nextUtil';
+import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
+import { SupportedLocales } from '../../utils/i18next/LocalUtil.interface';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -89,7 +87,6 @@ import DomainSelectableList from '../common/DomainSelectableList/DomainSelectabl
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
-import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
@@ -105,7 +102,7 @@ const NavBar = () => {
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const { t } = useTranslation();
@@ -115,18 +112,35 @@ const NavBar = () => {
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-  const [version, setVersion] = useState<string>();
+  const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed },
+    preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
+
+  // Check if current route should hide global search
+  const shouldHideGlobalSearchAndDomainDropdown = useMemo(() => {
+    const pathname = location.pathname;
+
+    return (
+      pathname === ROUTES.MY_DATA ||
+      pathname.startsWith(ROUTES.CUSTOMIZE_PAGE.replace('/:fqn/:pageFqn', ''))
+    );
+  }, [location.pathname]);
 
   const fetchOMVersion = async () => {
     try {
       const res = await getVersion();
-      setVersion(res.version);
+
+      const now = Date.now();
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
+      });
+
+      // Remove -SNAPSHOT from the version
+      setAppVersion(res.version.replace('-SNAPSHOT', ''));
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -146,19 +160,6 @@ const NavBar = () => {
       return <Component key={key} />;
     });
   }, []);
-
-  const handleSupportClick = ({ key }: MenuInfo): void => {
-    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
-      setIsFeatureModalOpen(true);
-    }
-  };
-
-  const language = useMemo(
-    () =>
-      (cookieStorage.getItem('i18next') as SupportedLocales) ||
-      SupportedLocales.English,
-    []
-  );
 
   const { socket } = useWebSocketConnector();
 
@@ -244,6 +245,18 @@ const NavBar = () => {
         const { jobArgs, status, jobType } = backgroundJobData;
 
         if (jobType === JobType.CustomPropertyEnumCleanup) {
+          const enumCleanupArgs = jobArgs as EnumCleanupArgs;
+          if (!enumCleanupArgs.entityType) {
+            showErrorToast(
+              {
+                isAxiosError: true,
+                message: 'Invalid job arguments: entityType is required',
+              } as AxiosError,
+              t('message.unexpected-error')
+            );
+
+            break;
+          }
           body = t('message.custom-property-update', {
             propertyName: jobArgs.propertyName,
             entityName: jobArgs.entityType,
@@ -252,7 +265,7 @@ const NavBar = () => {
 
           path = getSettingPath(
             GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-            getCustomPropertyEntityPathname(jobArgs.entityType)
+            getCustomPropertyEntityPathname(enumCleanupArgs.entityType)
           );
         }
 
@@ -270,12 +283,12 @@ const NavBar = () => {
       if (isChrome > -1) {
         window.open(path);
       } else {
-        history.push(path);
+        navigate(path);
       }
     };
   };
 
-  const handleKeyPress = useCallback((event) => {
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       searchRef.current?.focus();
       event.preventDefault();
@@ -288,12 +301,36 @@ const NavBar = () => {
     }
 
     const handleDocumentVisibilityChange = async () => {
-      if (isProtectedRoute(location.pathname) && isTourRoute) {
+      if (
+        applicationRoutesClass.isProtectedRoute(location.pathname) &&
+        isTourRoute
+      ) {
         return;
       }
+
+      // Check if we need to fetch based on cache timing
+      // This is to block the API call for 1 hour
+      const lastFetchTime = cookieStorage.getItem(LAST_VERSION_FETCH_TIME_KEY);
+      const now = Date.now();
+
+      if (lastFetchTime) {
+        const timeSinceLastFetch = now - parseInt(lastFetchTime);
+        if (timeSinceLastFetch < ONE_HOUR_MS) {
+          // Less than 1 hour since last fetch, skip API call
+          return;
+        }
+      }
+
       const newVersion = await getVersion();
+      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
+
+      // Update the cache timestamp
+      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+        expires: new Date(Date.now() + ONE_HOUR_MS),
+      });
+
       // Compare version only if version is set previously to have fair comparison
-      if (version && version !== newVersion.version) {
+      if (version && version !== cleanedVersion) {
         setShowVersionMissMatchAlert(true);
       }
     };
@@ -388,17 +425,16 @@ const NavBar = () => {
     async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      refreshPage();
+      navigate(0);
     },
     []
   );
 
-  const handleLanguageChange = useCallback(({ key }) => {
+  const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
-    refreshPage();
+    setPreference({ language: key as SupportedLocales });
+    navigate(0);
   }, []);
-
-  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
   return (
     <>
@@ -427,43 +463,47 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            <GlobalSearchBar />
-            <DomainSelectableList
-              hasPermission
-              showAllDomains
-              popoverProps={{
-                open: isDomainDropdownOpen,
-                onOpenChange: (open) => {
-                  setIsDomainDropdownOpen(open);
-                },
-              }}
-              selectedDomain={activeDomainEntityRef}
-              wrapInButton={false}
-              onCancel={() => setIsDomainDropdownOpen(false)}
-              onUpdate={handleDomainChange}>
-              <Button
-                className={classNames(
-                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
-                  {
-                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                  }
-                )}
-                data-testid="domain-dropdown"
-                onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
-                <DomainIcon
-                  className="d-flex"
-                  height={20}
-                  name="domain"
-                  width={20}
-                />
-                <Typography.Text ellipsis className="domain-text">
-                  {activeDomainEntityRef
-                    ? getEntityName(activeDomainEntityRef)
-                    : activeDomain}
-                </Typography.Text>
-                <DropDownIcon width={12} />
-              </Button>
-            </DomainSelectableList>
+            {!shouldHideGlobalSearchAndDomainDropdown && <GlobalSearchBar />}
+            {!shouldHideGlobalSearchAndDomainDropdown && (
+              <DomainSelectableList
+                hasPermission
+                showAllDomains
+                popoverProps={{
+                  open: isDomainDropdownOpen,
+                  onOpenChange: (open) => {
+                    setIsDomainDropdownOpen(open);
+                  },
+                }}
+                selectedDomain={activeDomainEntityRef}
+                wrapInButton={false}
+                onCancel={() => setIsDomainDropdownOpen(false)}
+                onUpdate={handleDomainChange}>
+                <Button
+                  className={classNames(
+                    'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                    {
+                      'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                    }
+                  )}
+                  data-testid="domain-dropdown"
+                  onClick={() =>
+                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                  }>
+                  <DomainIcon
+                    className="d-flex"
+                    height={20}
+                    name="domain"
+                    width={20}
+                  />
+                  <Typography.Text ellipsis className="domain-text">
+                    {activeDomainEntityRef
+                      ? getEntityName(activeDomainEntityRef)
+                      : activeDomain}
+                  </Typography.Text>
+                  <DropDownIcon width={12} />
+                </Button>
+              </DomainSelectableList>
+            )}
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">
@@ -478,9 +518,7 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 type="text">
-                {upperCase(
-                  (language || SupportedLocales.English).split('-')[0]
-                )}{' '}
+                {language ? upperCase(language.split('-')[0]) : ''}{' '}
                 <DropDownIcon width={12} />
               </Button>
             </Dropdown>
@@ -521,7 +559,6 @@ const NavBar = () => {
             <Dropdown
               menu={{
                 items: getHelpDropdownItems(version),
-                onClick: handleSupportClick,
               }}
               overlayStyle={{ width: 175 }}
               placement="bottomRight"
@@ -538,12 +575,6 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      <WhatsNewModal
-        header={`${t('label.whats-new')}!`}
-        visible={isFeatureModalOpen}
-        onCancel={handleModalCancel}
-      />
-
       {showVersionMissMatchAlert && (
         <Alert
           showIcon
@@ -552,7 +583,7 @@ const NavBar = () => {
               size="small"
               type="link"
               onClick={() => {
-                history.go(0);
+                navigate(0);
               }}>
               {t('label.refresh')}
             </Button>

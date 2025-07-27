@@ -21,6 +21,9 @@ export const checkNoPermissionPlaceholder = async (
   label: string | RegExp,
   permission = false
 ) => {
+  const labelText =
+    typeof label === 'string' ? label : label.source.replace(/^\/|\/$/g, ''); // remove leading/trailing slashes
+
   const placeholder = page
     .getByLabel(label)
     .locator('[data-testid="permission-error-placeholder"]');
@@ -30,7 +33,7 @@ export const checkNoPermissionPlaceholder = async (
   } else {
     await expect(placeholder).toBeVisible();
     await expect(placeholder).toContainText(
-      'You don’t have access, please check with the admin to get permissions'
+      `You don't have necessary permissions. Please check with the admin to get the View ${labelText} permission.`
     );
   }
 };
@@ -49,7 +52,7 @@ export const validateViewPermissions = async (
 
   await expect(
     page.locator('[data-testid="edit-displayName-button"]')
-  ).toHaveCount(permission?.editDisplayName ? 6 : 0);
+  ).toHaveCount(permission?.editDisplayName ? 8 : 0);
 
   // check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
@@ -106,6 +109,9 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
   await page.click('[data-testid="profiler"]');
+  await page.getByTestId('loader').waitFor({ state: 'detached' });
+  await page.waitForLoadState('domcontentloaded');
+  await page.getByText('Data Quality').click();
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(
     page,

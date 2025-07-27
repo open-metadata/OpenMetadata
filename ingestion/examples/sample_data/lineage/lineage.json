@@ -80,5 +80,41 @@
       "type": "dashboard"
     },
     "edge_meta": { "fqn": "", "type": "" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "mysql_sample.default.posts_db.Tags",
+      "type": "table"
+    },
+    "sql_query": "select * from mysql_sample.default.posts_db.Tags",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.raw_customer",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "mysql_sample.default.posts_db.Tags",
+      "type": "table"
+    },
+    "sql_query": "select * from mysql_sample.default.posts_db.Tags",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
+  },
+  {
+    "from": {
+      "fqn": "sample_data.ecommerce_db.shopify.dim_address",
+      "type": "table"
+    },
+    "to": {
+      "fqn": "mysql_sample.default.posts_db.Tags",
+      "type": "table"
+    },
+    "sql_query": "select * from mysql_sample.default.posts_db.Tags",
+    "edge_meta": { "fqn": "sample_airflow.dim_address_etl", "type": "pipeline" }
   }
 ]

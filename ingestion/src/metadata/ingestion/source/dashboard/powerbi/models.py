@@ -143,7 +143,7 @@ class PowerBITableSource(BaseModel):
     PowerBI Table Source
     """
 
-    expression: str
+    expression: Optional[str] = None
 
 
 class PowerBiTable(BaseModel):
@@ -171,7 +171,17 @@ class TablesResponse(BaseModel):
 
 class DatasetExpression(BaseModel):
     name: str
-    expression: str
+    expression: Optional[str] = None
+
+
+class UpstreaDataflow(BaseModel):
+    groupId: Optional[str] = None
+    targetDataflowId: Optional[str] = None
+
+
+class UpstreaDataset(BaseModel):
+    groupId: Optional[str] = None
+    targetDatasetId: Optional[str] = None
 
 
 class Dataset(BaseModel):
@@ -187,6 +197,8 @@ class Dataset(BaseModel):
     users: Optional[List[PowerBIUser]] = []
     expressions: Optional[List[DatasetExpression]] = []
     configuredBy: Optional[str] = None
+    upstreamDataflows: Optional[List[UpstreaDataflow]] = []
+    upstreamDatasets: Optional[List[UpstreaDataset]] = []
 
 
 class DatasetResponse(BaseModel):
@@ -205,6 +217,7 @@ class Dataflow(BaseModel):
     description: Optional[str] = None
     users: Optional[List[PowerBIUser]] = []
     modifiedBy: Optional[str] = None
+    upstreamDataflows: Optional[List[UpstreaDataflow]] = []
 
 
 class Group(BaseModel):

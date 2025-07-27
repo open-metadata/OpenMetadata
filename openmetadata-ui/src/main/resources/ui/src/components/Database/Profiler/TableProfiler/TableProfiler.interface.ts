@@ -25,6 +25,7 @@ import {
 import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
+import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 
 export interface TableProfilerProps {
   permissions: OperationPermission;
@@ -55,6 +56,8 @@ export interface TableProfilerContextInterface {
   onDateRangeChange: (dateRange: DateRangeObject) => void;
   testCasePaging: UsePagingInterface;
   table?: Table;
+  isTestCaseDrawerOpen: boolean;
+  onTestCaseDrawerOpen: (type: TestLevel) => void;
 }
 
 export type TableTestsType = {
@@ -73,6 +76,7 @@ export type ModifiedColumn = Column & {
 export interface ProfilerProgressWidgetProps {
   value: number;
   strokeColor?: string;
+  direction?: 'left' | 'right';
 }
 
 export interface ProfilerSettingsModalProps {
@@ -91,6 +95,7 @@ export type OverallTableSummaryType = {
   title: string;
   value: number | string;
   className?: string;
+  key: string;
 };
 
 export type TableProfilerChartProps = {

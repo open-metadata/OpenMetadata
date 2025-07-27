@@ -1,5 +1,6 @@
 ---
-title: ADLS Datalake
+title: ADLS Datalake | OpenMetadata Database Connector Guide
+description: Connect your Azure Data Lake Storage to OpenMetadata with our ADLS connector. Simple setup guide, configuration steps, and metadata extraction tips.
 slug: /connectors/database/adls-datalake
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/adls-datalake
 name="ADLS Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 

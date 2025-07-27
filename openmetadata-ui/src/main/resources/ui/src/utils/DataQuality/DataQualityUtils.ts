@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
+import { isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
 import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
@@ -19,12 +19,9 @@ import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
-import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import {
-  DEFAULT_DIMENSIONS_DATA,
-  TEST_CASE_FILTERS,
-} from '../../constants/profiler.constant';
+import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
@@ -32,6 +29,7 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
+import { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch, TestCaseType } from '../../rest/testAPI';
 import { generateEntityLink } from '../TableUtils';
@@ -84,7 +82,7 @@ export const createTestCaseParameters = (
           if (arrayValues.length) {
             acc.push({ name: key, value: JSON.stringify(arrayValues) });
           }
-        } else {
+        } else if (!isNil(value)) {
           acc.push({ name: key, value: value as string });
         }
 
@@ -115,45 +113,6 @@ export const getTestCaseFiltersValue = (
   );
 
   return updatedParams;
-};
-
-export const transformToTestCaseStatusByDimension = (
-  inputData: DataQualityReport['data']
-): StatusData[] => {
-  const result: { [key: string]: StatusData } = cloneDeep(
-    DEFAULT_DIMENSIONS_DATA
-  );
-
-  inputData.forEach((item) => {
-    const {
-      document_count,
-      'testCaseResult.testCaseStatus': status,
-      dataQualityDimension = 'No Dimension',
-    } = item;
-    const count = parseInt(document_count, 10);
-
-    if (!result[dataQualityDimension]) {
-      result[dataQualityDimension] = {
-        title: dataQualityDimension,
-        success: 0,
-        failed: 0,
-        aborted: 0,
-        total: 0,
-      };
-    }
-
-    if (status === 'success') {
-      result[dataQualityDimension].success += count;
-    } else if (status === 'failed') {
-      result[dataQualityDimension].failed += count;
-    } else if (status === 'aborted') {
-      result[dataQualityDimension].aborted += count;
-    }
-
-    result[dataQualityDimension].total += count;
-  });
-
-  return Object.values(result);
 };
 
 export const transformToTestCaseStatusObject = (
@@ -355,3 +314,11 @@ export const getDimensionIcon = (dimension: DataQualityDimensions) => {
       return NoDimensionIcon;
   }
 };
+
+export const convertSearchSourceToTable = (
+  searchSource: TableSearchSource
+): Table =>
+  ({
+    ...searchSource,
+    columns: searchSource.columns || [],
+  } as Table);

@@ -20,7 +20,7 @@ import {
   ServicesUpdateRequest,
   ServiceTypes,
 } from 'Models';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -37,6 +37,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
 import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
@@ -44,9 +45,7 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
@@ -89,7 +88,10 @@ import {
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
+import {
+  getIngestionPipelines,
+  getPipelineServiceHostIp,
+} from '../../rest/ingestionPipelineAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
 import { searchQuery } from '../../rest/searchAPI';
@@ -142,6 +144,7 @@ import {
 } from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -150,11 +153,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const airflowInformation = useAirflowStatus();
-  const { isAirflowAvailable, platform } = useMemo(
+  const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
-  const { serviceCategory, tab } = useParams<{
+  const { serviceCategory, tab } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
@@ -168,14 +171,33 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN]
   );
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isAdminUser } = useAuth();
-  const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
-  const collateAgentPagingInfo = usePaging(PAGE_SIZE_BASE);
-  const pagingInfo = usePaging(PAGE_SIZE_BASE);
+  const ingestionPagingInfo = usePaging();
+  const collateAgentPagingInfo = usePaging();
+  const pagingInfo = usePaging();
   const [workflowStatesData, setWorkflowStatesData] =
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
+  const [hostIp, setHostIp] = useState<string>();
+
+  const fetchHostIp = async () => {
+    try {
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip);
+      }
+    } catch {
+      setHostIp(undefined);
+    }
+  };
+
+  useEffect(() => {
+    if (isAirflowAvailable) {
+      fetchHostIp();
+    }
+  }, [isAirflowAvailable]);
+
   const USERId = currentUser?.id ?? '';
   const {
     paging: collateAgentPaging,
@@ -295,7 +317,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
-        serviceDetails
+        serviceDetails,
+        navigate
       ),
     [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
     // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
@@ -333,7 +356,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceCategory, decodedServiceFQN]);
 
   const goToEditConnection = useCallback(() => {
-    history.push(
+    navigate(
       getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
     );
   }, [serviceCategory, decodedServiceFQN]);
@@ -348,7 +371,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           subTab = ServiceAgentSubTabs.METADATA;
         }
 
-        history.push({
+        navigate({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
             serviceCategory,
@@ -734,7 +757,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
             TabSpecificField.FOLLOWERS
           },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
-            isMetadataService ? '' : TabSpecificField.DOMAIN
+            isMetadataService ? '' : TabSpecificField.DOMAINS
           }`,
           include: Include.All,
         }
@@ -746,7 +769,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       }
     } finally {
       setIsLoading(false);
@@ -950,7 +973,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as ServicesType;
 
     setServiceDetails((data) => ({
@@ -1018,7 +1041,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -1065,7 +1088,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (isSoftDelete?: boolean) => {
       if (!isSoftDelete) {
         removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
-        history.push(
+        navigate(
           getSettingPath(
             GlobalSettingsMenuCategory.SERVICES,
             getServiceRouteFromServiceType(serviceCategory)
@@ -1085,8 +1108,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.service'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -1113,14 +1135,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
-  const disableRunAgentsButton = useMemo(
-    () =>
-      workflowStatesData?.mainInstanceState.status &&
-      ![WorkflowStatus.Exception, WorkflowStatus.Failure].includes(
-        workflowStatesData?.mainInstanceState.status
-      ),
-    [workflowStatesData?.mainInstanceState.status]
-  );
+  const disableRunAgentsButton = useMemo(() => {
+    if (isWorkflowStatusLoading) {
+      return true;
+    }
+
+    return isEmpty(workflowStatesData?.mainInstanceState.status)
+      ? false
+      : workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running;
+  }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
@@ -1299,6 +1322,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 <TestConnection
                   connectionType={serviceDetails?.serviceType ?? ''}
                   getData={() => connectionDetails}
+                  hostIp={hostIp}
                   isTestingDisabled={isTestingDisabled}
                   serviceCategory={serviceCategory as ServiceCategory}
                   serviceName={serviceDetails?.name}
@@ -1331,6 +1355,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     statusFilter,
     typeFilter,
     extraInfoData,
+    hostIp,
   ]);
 
   const tabs: TabsProps['items'] = useMemo(() => {
@@ -1454,9 +1479,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    if (platform === AIRFLOW_HYBRID) {
-      serviceUtilClassBase.getExtraInfo();
-    }
+    serviceUtilClassBase.getExtraInfo();
   }, []);
 
   if (isLoading) {
@@ -1464,7 +1487,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

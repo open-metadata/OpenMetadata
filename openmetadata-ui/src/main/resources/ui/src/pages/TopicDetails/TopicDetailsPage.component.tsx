@@ -14,16 +14,12 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { FunctionComponent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
 import { ROUTES } from '../../constants/constants';
@@ -36,6 +32,7 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -50,7 +47,10 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -58,7 +58,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: topicFQN } = useFqn();
@@ -121,7 +121,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,
@@ -145,7 +145,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,
@@ -200,7 +200,7 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const versionHandler = () => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(EntityType.TOPIC, topicFQN, toString(currentVersion))
       );
   };
@@ -236,7 +236,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const updateTopicDetailsState = useCallback((data) => {
+  const updateTopicDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Topic;
 
     setTopicDetails((data) => ({
@@ -250,7 +250,12 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [topicFQN]);
 
   useEffect(() => {
-    if (topicPermissions.ViewAll || topicPermissions.ViewBasic) {
+    if (
+      getPrioritizedViewPermission(
+        topicPermissions,
+        PermissionOperation.ViewBasic
+      )
+    ) {
       fetchTopicDetail(topicFQN);
     }
   }, [topicPermissions, topicFQN]);
@@ -266,7 +271,15 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   }
   if (!topicPermissions.ViewAll && !topicPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.topic'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

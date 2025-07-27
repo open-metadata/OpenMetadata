@@ -21,6 +21,9 @@ import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
@@ -31,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -41,9 +45,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -244,6 +246,46 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
+  }
+
+  public static Map<UUID, UsageDetails> getLatestUsageForEntities(
+      UsageDAO usageDAO, List<UUID> entityIds) {
+    Map<UUID, UsageDetails> usageMap = new HashMap<>();
+    if (entityIds == null || entityIds.isEmpty()) {
+      return usageMap;
+    }
+
+    // Convert UUIDs to strings for the batch query
+    List<String> entityIdStrings =
+        entityIds.stream().map(UUID::toString).collect(java.util.stream.Collectors.toList());
+
+    // Use the new batch query method for efficient bulk fetching
+    List<org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId>
+        usageDetailsList = usageDAO.getLatestUsageBatch(entityIdStrings);
+
+    // Convert the list back to a map keyed by UUID
+    for (org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId usageWithId :
+        usageDetailsList) {
+      if (usageWithId != null && usageWithId.getEntityId() != null) {
+        usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
+      }
+    }
+
+    // For entities without usage data, provide default usage details
+    for (UUID entityId : entityIds) {
+      if (!usageMap.containsKey(entityId)) {
+        UsageStats defaultStats = new UsageStats().withCount(0).withPercentileRank(0.0);
+        UsageDetails defaultUsage =
+            new UsageDetails()
+                .withDailyStats(defaultStats)
+                .withWeeklyStats(defaultStats)
+                .withMonthlyStats(defaultStats)
+                .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
+        usageMap.put(entityId, defaultUsage);
+      }
+    }
+
+    return usageMap;
   }
 
   /** Merge two sets of tags */
@@ -697,7 +739,7 @@ public final class EntityUtil {
 
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
     List<T> flattenedFields = new ArrayList<>();
-    fields.forEach(column -> flattenEntityField(column, flattenedFields));
+    listOrEmpty(fields).forEach(column -> flattenEntityField(column, flattenedFields));
     return flattenedFields;
   }
 
@@ -757,10 +799,6 @@ public final class EntityUtil {
    * Gets the value of a field from an entity using reflection.
    * This method checks if the entity supports the given field and returns its value.
    * If the field is not supported, returns null.
-   *
-   * @param entity The entity to get the field value from
-   * @param fieldName The name of the field to get (corresponds to getter method name without 'get' prefix)
-   * @return The value of the field, or null if field is not supported by the entity
    */
   public static Object getEntityField(EntityInterface entity, String fieldName) {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {
@@ -798,20 +836,5 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
-  }
-
-  public static Object getEntityDetails(Map<String, Object> params) {
-    try {
-      String entityType = (String) params.get("entity_type");
-      String fqn = (String) params.get("fqn");
-
-      LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
-      String fields = "*";
-      Object entity = Entity.getEntityByName(entityType, fqn, fields, null);
-      return entity;
-    } catch (Exception e) {
-      LOG.error("Error getting entity details", e);
-      return Map.of("error", e.getMessage());
-    }
   }
 }

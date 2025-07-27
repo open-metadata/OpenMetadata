@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
 } from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
+
+jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    onLogoutHandler: jest.fn(),
+  })),
+}));
 
 describe('LeftSidebar Items', () => {
   it('should renders sidebar items data', () => {

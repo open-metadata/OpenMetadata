@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { filterSelectOptions } from './CommonUtils';
+import {
+  filterSelectOptions,
+  getTableFQNFromColumnFQN,
+  isLinearGradient,
+} from './CommonUtils';
 
 describe('Tests for CommonUtils', () => {
   describe('filterSelectOptions', () => {
@@ -62,6 +66,58 @@ describe('Tests for CommonUtils', () => {
       const option = { labelValue: 'Label', value: 'value', label: 'Label' };
 
       expect(filterSelectOptions(input, option)).toBe(true);
+    });
+  });
+
+  describe('getTableFQNFromColumnFQN', () => {
+    it('should return the table FQN from a column FQN', () => {
+      const columnFQN = 'service.database.schema.table.column';
+      const tableFQN = getTableFQNFromColumnFQN(columnFQN);
+
+      expect(tableFQN).toBe('service.database.schema.table');
+    });
+
+    it('should return the table FQN as it is if table FQN is provided', () => {
+      const tableFQN = 'service.database.schema.table';
+      const result = getTableFQNFromColumnFQN(tableFQN);
+
+      expect(result).toBe(tableFQN);
+    });
+  });
+
+  describe('isLinearGradient', () => {
+    it('should correctly identify linear gradient colors', () => {
+      // Linear gradient cases
+      expect(
+        isLinearGradient('linear-gradient(to right, #ff0000, #00ff00)')
+      ).toBe(true);
+      expect(isLinearGradient('linear-gradient(45deg, #ff0000, #00ff00)')).toBe(
+        true
+      );
+      expect(
+        isLinearGradient(
+          'linear-gradient(to bottom, rgba(255,0,0,0.5), rgba(0,255,0,0.5))'
+        )
+      ).toBe(true);
+      expect(
+        isLinearGradient(
+          'linear-gradient(90deg, #ff0000 0%, #00ff00 50%, #0000ff 100%)'
+        )
+      ).toBe(true);
+      expect(
+        isLinearGradient('LINEAR-GRADIENT(to right, #ff0000, #00ff00)')
+      ).toBe(true);
+
+      // Non-linear gradient cases
+      expect(isLinearGradient('#ff0000')).toBe(false);
+      expect(isLinearGradient('rgb(255, 0, 0)')).toBe(false);
+      expect(isLinearGradient('rgba(255, 0, 0, 0.5)')).toBe(false);
+      expect(isLinearGradient('red')).toBe(false);
+      expect(isLinearGradient('transparent')).toBe(false);
+      expect(isLinearGradient('hsl(0, 100%, 50%)')).toBe(false);
+      expect(isLinearGradient('hsla(0, 100%, 50%, 0.5)')).toBe(false);
+      expect(isLinearGradient('inherit')).toBe(false);
+      expect(isLinearGradient('')).toBe(false);
     });
   });
 });

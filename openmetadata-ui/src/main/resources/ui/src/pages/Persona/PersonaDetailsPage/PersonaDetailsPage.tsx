@@ -15,9 +15,9 @@ import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -46,7 +46,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
@@ -55,7 +55,7 @@ export const PersonaDetailsPage = () => {
   );
   const location = useCustomLocation();
   const { activeKey, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'users').split(
+    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
       '.'
     )[0];
 
@@ -164,7 +164,7 @@ export const PersonaDetailsPage = () => {
   );
 
   const handleAfterDeleteAction = () => {
-    history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
+    navigate(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
   const handleTabClick = useCallback(
@@ -173,7 +173,7 @@ export const PersonaDetailsPage = () => {
         return;
       }
 
-      history.push({
+      navigate({
         hash: key,
       });
     },
@@ -183,6 +183,11 @@ export const PersonaDetailsPage = () => {
   const tabItems = useMemo(() => {
     return [
       {
+        label: t('label.customize-ui'),
+        key: 'customize-ui',
+        children: <CustomizeUI />,
+      },
+      {
         label: t('label.user-plural'),
         key: 'users',
         children: (
@@ -191,11 +196,6 @@ export const PersonaDetailsPage = () => {
             onRemoveUser={handleRemoveUser}
           />
         ),
-      },
-      {
-        label: t('label.customize-ui'),
-        key: 'customize-ui',
-        children: <CustomizeUI />,
       },
     ];
   }, [personaDetails]);

@@ -1,0 +1,158 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/driveService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Drive Service",
+  "description": "This schema defines the Drive Service entity, such as Google Drive.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.DriveService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "driveServiceType": {
+      "description": "Type of drive service such as Google Drive...",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "type": "string",
+      "enum": [
+        "GoogleDrive",
+        "SharePoint",
+        "CustomDrive"
+      ],
+      "javaEnums": [
+        {
+          "name": "GoogleDrive"
+        },
+        {
+          "name": "SharePoint"
+        },
+        {
+          "name": "CustomDrive"
+        }
+      ]
+    },
+    "driveConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.DriveConnection",
+      "description": "Drive Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "connections/drive/googleDriveConnection.json"
+            },
+            {
+              "$ref": "connections/drive/sharePointConnection.json"
+            },
+            {
+              "$ref": "connections/drive/customDriveConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this drive service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this drive service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this drive service.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of drive service such as Google Drive...",
+      "$ref": "#/definitions/driveServiceType"
+    },
+    "description": {
+      "description": "Description of a drive service instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "connection": {
+      "$ref": "#/definitions/driveConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this drive service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
+    "tags": {
+      "description": "Tags for this drive Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this drive service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this drive service.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains" : {
+      "description": "Domains the Drive service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner": {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["id", "name", "serviceType"],
+  "additionalProperties": false
+}

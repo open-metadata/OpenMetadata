@@ -6,15 +6,15 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.ResultSummary;
@@ -24,11 +24,11 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -248,13 +248,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                       s.setStatus(testCase.getTestCaseStatus());
                       s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
                     },
-                    () -> {
-                      resultSummaries.add(
-                          new ResultSummary()
-                              .withTestCaseName(testCase.getFullyQualifiedName())
-                              .withStatus(testCase.getTestCaseStatus())
-                              .withTimestamp(testCase.getTestCaseResult().getTimestamp()));
-                    });
+                    () ->
+                        resultSummaries.add(
+                            new ResultSummary()
+                                .withTestCaseName(testCase.getFullyQualifiedName())
+                                .withStatus(testCase.getTestCaseStatus())
+                                .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           } else {
             testSuite.setTestCaseResultSummary(
                 List.of(

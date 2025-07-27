@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { isUndefined } from 'lodash';
-import React from 'react';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
@@ -100,7 +99,7 @@ export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
   ) {
-    return <DomainLabelV2 showDomainHeading />;
+    return <DomainLabelV2 multiple showDomainHeading />;
   }
 
   return (

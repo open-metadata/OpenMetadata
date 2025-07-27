@@ -12,29 +12,14 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicies } from '../../../rest/rolesAPIV1';
+import i18n from '../../../utils/i18next/LocalUtil';
 import AddRolePage from './AddRolePage';
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
-}));
-
 jest.mock('../../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation(
-    () =>
-      (Component: React.FC) =>
-      (
-        props: JSX.IntrinsicAttributes & {
-          children?: React.ReactNode | undefined;
-        }
-      ) =>
-        <Component {...props} />
-  ),
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -80,10 +65,19 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+jest.mock('../../../utils/CommonUtils', () => ({
+  getIsErrorMatch: jest.fn(),
+}));
+
+const mockProps = {
+  pageTitle: i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.role'),
+  }),
+};
 
 describe('Test Add Role Page', () => {
   it('Should Render the Add Role page component', async () => {
-    render(<AddRolePage />, { wrapper: MemoryRouter });
+    render(<AddRolePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(getPolicies).toHaveBeenCalledWith(
       `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
@@ -110,7 +104,7 @@ describe('Test Add Role Page', () => {
   });
 
   it('Form fields should render', async () => {
-    render(<AddRolePage />, { wrapper: MemoryRouter });
+    render(<AddRolePage {...mockProps} />, { wrapper: MemoryRouter });
 
     const form = await screen.findByTestId('role-form');
 

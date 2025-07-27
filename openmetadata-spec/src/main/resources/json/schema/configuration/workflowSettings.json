@@ -11,12 +11,12 @@
       "properties": {
         "corePoolSize": {
           "type": "integer",
-          "default": 50,
+          "default": 10,
           "description": "Default worker Pool Size. The Workflow Executor by default has this amount of workers."
         },
         "maxPoolSize": {
           "type": "integer",
-          "default": 100,
+          "default": 20,
           "description": "Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers."
         },
         "queueSize": {

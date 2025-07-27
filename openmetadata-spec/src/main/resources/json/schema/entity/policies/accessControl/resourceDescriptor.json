@@ -42,6 +42,7 @@
         "EditGlossaryTerms",
         "EditTeams",
         "EditTier",
+        "EditCertification",
         "EditTests",
         "EditUsage",
         "EditUsers",
@@ -53,7 +54,11 @@
         "Deploy",
         "Trigger",
         "Kill",
-        "GenerateToken"
+        "GenerateToken",
+        "EditScim",
+        "CreateScim",
+        "DeleteScim",
+        "ViewScim"
       ]
     }
   },

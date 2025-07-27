@@ -216,6 +216,7 @@ public class WorkflowHandler {
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
+    LOG.debug("[GovernanceWorkflows] '{}' triggered with '{}'", processDefinitionKey, variables);
     return runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
   }
 
@@ -431,9 +432,8 @@ public class WorkflowHandler {
         .processDefinitionKey(getTriggerWorkflowId(workflowName))
         .list()
         .forEach(
-            instance -> {
-              runtimeService.deleteProcessInstance(
-                  instance.getId(), "Terminating all instances due to user request.");
-            });
+            instance ->
+                runtimeService.deleteProcessInstance(
+                    instance.getId(), "Terminating all instances due to user request."));
   }
 }

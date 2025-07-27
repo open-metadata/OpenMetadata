@@ -1,5 +1,6 @@
 ---
 title: Run the Cassandra Connector Externally
+description: Use YAML to ingest metadata from Apache Cassandra, including keyspaces, tables, and columns.
 slug: /connectors/database/cassandra/yaml
 ---
 
@@ -8,7 +9,7 @@ name="Cassandra"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures","Data Profiler"]
+unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures","Data Profiler", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Cassandra connector.

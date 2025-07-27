@@ -12,12 +12,11 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Form } from 'antd';
-import React from 'react';
 import { AddTestSuitePipelineProps } from '../AddDataQualityTest.interface';
 import AddTestSuitePipeline from './AddTestSuitePipeline';
-const mockUseHistory = {
-  goBack: jest.fn(),
-};
+
+const mockNavigate = jest.fn();
+
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     search: `?testSuiteId=test-suite-id`,
@@ -47,7 +46,7 @@ jest.mock(
       ))
 );
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../../utils/SchedularUtils', () => ({
@@ -110,7 +109,7 @@ describe('AddTestSuitePipeline', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it('calls history.goBack when cancel button is clicked and onCancel button is not provided', async () => {
+  it('calls navigate(-1) when cancel button is clicked and onCancel button is not provided', async () => {
     render(
       <Form>
         <AddTestSuitePipeline {...mockProps} />
@@ -121,7 +120,7 @@ describe('AddTestSuitePipeline', () => {
       fireEvent.click(screen.getByText('cancel'));
     });
 
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Hide AddTestCaseList after clicking on select-all-test-cases switch', async () => {

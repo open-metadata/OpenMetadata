@@ -14,13 +14,12 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.Configuration;
+import io.dropwizard.core.Configuration;
 import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.DefaultOperationalConfigProvider;
@@ -32,15 +31,17 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.service.config.MCPConfiguration;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.util.JsonUtils;
 
 @Getter
 @Setter
@@ -85,9 +86,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   private static final String CERTIFICATE_PATH = "certificatePath";
 
-  @JsonProperty("mcpConfiguration")
-  private MCPConfiguration mcpConfiguration = new MCPConfiguration();
-
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
     if (pipelineServiceClientConfiguration != null) {
       Map<String, String> temporarySSLConfig =
@@ -123,11 +121,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("fernetConfiguration")
   private FernetConfiguration fernetConfiguration;
 
-  @JsonProperty("health")
-  @NotNull
-  @Valid
-  private HealthConfiguration healthConfiguration = new HealthConfiguration();
-
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
@@ -151,6 +144,16 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("objectStorage")
   @Valid
   private ObjectStorageConfiguration objectStorage;
+
+  @JsonProperty("cacheConfiguration")
+  @Valid
+  private CacheConfiguration cacheConfiguration;
+
+  @JsonProperty("scimConfiguration")
+  private ScimConfiguration scimConfiguration;
+
+  @JsonProperty("aiPlatformConfiguration")
+  private AiPlatformConfiguration aiPlatformConfiguration;
 
   @Override
   public String toString() {

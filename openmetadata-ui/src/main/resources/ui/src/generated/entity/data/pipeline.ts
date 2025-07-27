@@ -43,10 +43,10 @@ export interface Pipeline {
      */
     displayName?: string;
     /**
-     * Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the
+     * Domains the Pipeline belongs to. When not set, the pipeline inherits the domain from the
      * Pipeline service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -331,9 +331,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the
- * Pipeline service it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to service where this pipeline is hosted in.
@@ -506,6 +503,7 @@ export enum PipelineServiceType {
     OpenLineage = "OpenLineage",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Wherescape = "Wherescape",
 }

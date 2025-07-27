@@ -22,6 +22,7 @@ import {
   FIELDS,
   OPERATOR,
   runRuleGroupTests,
+  runRuleGroupTestsWithNonExistingValue,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -72,7 +73,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await table.create(apiContext);
 
     // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPage(page);
+    await EntityDataClass.table1.visitEntityPageWithCustomSearchBox(page);
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
@@ -93,7 +94,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain1.responseData.id,
             type: 'domain',
@@ -125,7 +126,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain2.responseData.id,
             type: 'domain',
@@ -207,7 +208,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.pipeline1.entity.tasks[0].displayName,
         EntityDataClass.pipeline2.entity.tasks[1].displayName,
       ],
-      'domain.displayName.keyword': [
+      'domains.displayName.keyword': [
         EntityDataClass.domain1.data.displayName,
         EntityDataClass.domain2.data.displayName,
       ],
@@ -286,5 +287,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         await runRuleGroupTests(page, field, operator, true, searchCriteria);
       });
     });
+  });
+
+  test('Verify search with non existing value do not result in infinite search', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await runRuleGroupTestsWithNonExistingValue(page);
   });
 });
