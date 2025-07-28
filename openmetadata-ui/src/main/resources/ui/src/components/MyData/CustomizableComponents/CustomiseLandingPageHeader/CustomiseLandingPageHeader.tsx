@@ -50,12 +50,12 @@ import CustomiseSearchBar from './CustomiseSearchBar';
 
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
+  backgroundColor,
   handleAddWidget,
   hideCustomiseButton = false,
-  overlappedContainer = false,
-  onHomePage = false,
-  backgroundColor,
   onBackgroundColorUpdate,
+  onHomePage = false,
+  overlappedContainer = false,
   placeholderWidgetKey,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
@@ -67,7 +67,7 @@ const CustomiseLandingPageHeader = ({
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
-  const [showAnnouncements, setShowAnnouncements] = useState(true);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {

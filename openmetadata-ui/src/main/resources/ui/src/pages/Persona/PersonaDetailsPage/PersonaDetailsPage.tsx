@@ -35,10 +35,12 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { getUserById } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
@@ -47,7 +49,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
   const navigate = useNavigate();
-  const { refetchCurrentUser } = useApplicationStore();
+  const { currentUser, setCurrentUser } = useApplicationStore();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation();
@@ -106,6 +108,21 @@ export const PersonaDetailsPage = () => {
     }
   }, [fqn]);
 
+  const refetchCurrentUser = useCallback(async () => {
+    try {
+      if (currentUser) {
+        const user = await getUserById(currentUser.id, {
+          fields: [TabSpecificField.PERSONAS],
+          include: Include.All,
+        });
+
+        setCurrentUser(user);
+      }
+    } catch {
+      return;
+    }
+  }, [currentUser, setCurrentUser]);
+
   const handlePersonaUpdate = useCallback(
     async (data: Partial<Persona>, shouldRefetch = false) => {
       if (!personaDetails) {
@@ -117,9 +134,7 @@ export const PersonaDetailsPage = () => {
         const response = await updatePersona(personaDetails?.id, diff);
         setPersonaDetails(response);
         if (shouldRefetch) {
-          refetchCurrentUser({
-            fields: [TabSpecificField.PERSONAS],
-          });
+          refetchCurrentUser();
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -139,10 +154,8 @@ export const PersonaDetailsPage = () => {
     [personaDetails]
   );
 
-  const handleAfterDeleteAction = () => {
-    refetchCurrentUser({
-      fields: [TabSpecificField.PERSONAS],
-    });
+  const handleAfterDeleteAction = async () => {
+    await refetchCurrentUser();
     navigate(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 

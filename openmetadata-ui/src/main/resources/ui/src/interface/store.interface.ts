@@ -20,7 +20,6 @@ import {
   EntityUnion,
   ExploreSearchIndex,
 } from '../components/Explore/ExplorePage.interface';
-import { TabSpecificField } from '../enums/entity.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
@@ -31,7 +30,6 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
-import { Include } from '../generated/type/include';
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
@@ -55,10 +53,6 @@ export interface ApplicationStore
   inlineAlertDetails?: InlineAlertProps;
   applications: string[];
   appPreferences: AppPreferences;
-  refetchCurrentUser: (params?: {
-    fields?: TabSpecificField[];
-    include?: Include;
-  }) => void;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona?: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
