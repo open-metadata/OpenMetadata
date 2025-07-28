@@ -1,5 +1,6 @@
 ---
 title: complexTypes | OpenMetadata Complex Types
+description: Connect Complextypes to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/type/customproperties/complextypes
 ---
 

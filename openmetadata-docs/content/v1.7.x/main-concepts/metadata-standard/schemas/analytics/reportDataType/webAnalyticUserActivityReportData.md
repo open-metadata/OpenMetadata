@@ -1,5 +1,6 @@
 ---
-title: webAnalyticUserActivityReportData
+title: webAnalyticUserActivityReportData | Official Documentation
+description: Connect Webanalyticuseractivityreportdata to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integration
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/webanalyticuseractivityreportdata
 ---
 

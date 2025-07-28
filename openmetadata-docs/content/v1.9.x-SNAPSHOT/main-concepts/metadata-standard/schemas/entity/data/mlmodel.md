@@ -1,5 +1,6 @@
 ---
 title: ML Model Schema | OpenMetadata Machine Learning Model Schema
+description: Connect Mlmodel to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 ---
 

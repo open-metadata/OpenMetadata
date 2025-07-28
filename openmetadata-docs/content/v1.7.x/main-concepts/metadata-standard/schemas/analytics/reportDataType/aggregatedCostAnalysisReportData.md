@@ -1,5 +1,6 @@
 ---
-title: aggregatedCostAnalysisReportData
+title: aggregatedCostAnalysisReportData | Official Documentation
+description: Connect Aggregatedcostanalysisreportdata to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/aggregatedcostanalysisreportdata
 ---
 

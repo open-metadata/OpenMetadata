@@ -1,5 +1,6 @@
 ---
 title: App Run Record | OpenMetadata App Run Records
+description: Connect Apprunrecord to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/apprunrecord
 ---
 

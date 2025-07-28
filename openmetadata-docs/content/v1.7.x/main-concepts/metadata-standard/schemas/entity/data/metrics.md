@@ -1,5 +1,6 @@
 ---
-title: metrics
+title: metrics | Official Documentation
+description: Connect Metric to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/metrics
 ---
 

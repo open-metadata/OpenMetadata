@@ -1,5 +1,6 @@
 ---
-title: testServiceConnection
+title: testServiceConnection | Official Documentation
+description: Connect Testserviceconnection to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/automations/testserviceconnection
 ---
 

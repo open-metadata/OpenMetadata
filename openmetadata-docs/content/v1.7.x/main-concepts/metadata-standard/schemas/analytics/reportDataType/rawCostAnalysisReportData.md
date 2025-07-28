@@ -1,5 +1,6 @@
 ---
-title: rawCostAnalysisReportData
+title: rawCostAnalysisReportData | Official Documentation
+description: Connect Rawcostanalysisreportdata to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype/rawcostanalysisreportdata
 ---
 

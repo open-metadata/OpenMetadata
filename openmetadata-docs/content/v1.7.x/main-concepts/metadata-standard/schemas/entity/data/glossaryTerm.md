@@ -1,5 +1,6 @@
 ---
 title: Glossary Term Schema | OpenMetadata Glossary Term
+description: Connect Glossaryterm to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/glossaryterm
 ---
 
