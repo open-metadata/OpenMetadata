@@ -1,5 +1,6 @@
 ---
 title: Test Connection Result | OpenMetadata Test Connection
+description: Capture test connection results including success status, error messages, and diagnostic logs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/testconnectionresult
 ---
 

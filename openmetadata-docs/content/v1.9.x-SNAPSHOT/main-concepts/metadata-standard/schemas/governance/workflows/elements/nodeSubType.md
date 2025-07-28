@@ -1,5 +1,6 @@
 ---
 title: Node Subtype | OpenMetadata Node Subtype Schema
+description: Classify node subtypes to differentiate workflow elements such as automated tasks, user tasks, or decision points.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodesubtype
 noindex: true
 nofollow: true

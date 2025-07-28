@@ -1,5 +1,6 @@
 ---
 title: Basic Auth Credentials | OpenMetadata Basic Auth Details
+description: Schema for basic authentication using username and password for connecting to systems that require simple access control.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/basicauth
 ---
 

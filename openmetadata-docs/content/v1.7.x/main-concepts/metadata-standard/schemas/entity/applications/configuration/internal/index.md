@@ -1,5 +1,6 @@
 ---
 title: Internal Config | OpenMetadata Internal Config
+description: Internal configuration schema used for system-defined app behaviors and execution logic.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/internal
 ---
 

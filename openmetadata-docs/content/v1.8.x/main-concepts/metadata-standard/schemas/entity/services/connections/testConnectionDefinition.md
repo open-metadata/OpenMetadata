@@ -1,5 +1,6 @@
 ---
-title: testConnectionDefinition
+title: Testconnectiondefinition | Official Documentation
+description: Define test connection schema for validating service configurations and establishing connectivity checks.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/testconnectiondefinition
 ---
 

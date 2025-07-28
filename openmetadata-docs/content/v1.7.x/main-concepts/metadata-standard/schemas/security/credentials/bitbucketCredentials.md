@@ -1,5 +1,6 @@
 ---
 title: bitbucketCredentials | OpenMetadata Bitbucket Credentials
+description: Configure credentials for Bitbucket access, supporting OAuth tokens or username/password combinations for secure ingestion.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/bitbucketcredentials
 ---
 

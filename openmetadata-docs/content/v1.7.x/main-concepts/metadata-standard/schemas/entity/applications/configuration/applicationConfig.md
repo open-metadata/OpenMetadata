@@ -1,5 +1,6 @@
 ---
 title: Application Config | OpenMetadata App Configurations
+description: Application configuration schema capturing parameters for deployment, features, and environments.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/applicationconfig
 ---
 

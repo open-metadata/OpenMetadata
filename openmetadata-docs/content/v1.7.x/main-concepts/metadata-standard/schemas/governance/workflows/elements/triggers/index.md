@@ -1,5 +1,6 @@
 ---
 title: Workflow Triggers | OpenMetadata Workflow Triggers Overview
+description: Metadata for configuring workflow triggers like entity change detection or scheduled executions for batch processing.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/triggers
 ---
 

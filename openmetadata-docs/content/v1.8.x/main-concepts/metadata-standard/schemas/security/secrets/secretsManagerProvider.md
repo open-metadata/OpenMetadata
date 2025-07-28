@@ -1,5 +1,6 @@
 ---
-title: secretsManagerProvider
+title: secretsManagerProvider | Official Documentation
+description: Configure supported secrets manager providers including AWS Secrets Manager, GCP Secret Manager, or custom implementations.
 slug: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerprovider
 noindex: true
 nofollow: true

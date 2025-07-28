@@ -1,5 +1,6 @@
 ---
-title: pipelineServiceClientResponse
+title: pipelineServiceClientResponse | Official Documentation
+description: Define pipeline client response including ID, status, and timestamps returned after ingestion execution.
 slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipelines/pipelineserviceclientresponse
 ---
 

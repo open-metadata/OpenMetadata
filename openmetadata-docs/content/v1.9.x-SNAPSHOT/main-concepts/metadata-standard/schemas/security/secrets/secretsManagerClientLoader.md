@@ -1,5 +1,6 @@
 ---
-title: secretsManagerClientLoader
+title: secretsManagerClientLoader | Official Documentation
+description: Schema for loading client configuration in secret managers with implementation type, credentials, and vault path details.
 slug: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerclientloader
 noindex: true
 nofollow: true

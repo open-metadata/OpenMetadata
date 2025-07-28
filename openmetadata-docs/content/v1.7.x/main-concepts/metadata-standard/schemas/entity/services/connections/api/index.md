@@ -1,5 +1,6 @@
 ---
 title: API Connection | OpenMetadata API Connections
+description: Structure API connection metadata including endpoint URLs, auth methods, and supported request parameters.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/api
 ---
 

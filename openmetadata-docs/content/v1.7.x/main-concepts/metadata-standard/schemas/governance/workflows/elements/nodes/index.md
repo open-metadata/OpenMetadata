@@ -1,5 +1,6 @@
 ---
 title: Workflow Nodes | OpenMetadata Workflow Nodes Details
+description: Schema for node configurations in workflows including ID, type, input parameters, and execution rules.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes
 ---
 

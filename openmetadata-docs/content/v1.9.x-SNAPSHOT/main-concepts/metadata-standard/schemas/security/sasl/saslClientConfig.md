@@ -1,5 +1,6 @@
 ---
 title: saslClientConfig | OpenMetadata SASL Client Config
+description: Define SASL client config schema used for secure message streaming authentication with mechanisms like PLAIN, SCRAM, or GSSAPI.
 slug: /main-concepts/metadata-standard/schemas/security/sasl/saslclientconfig
 ---
 

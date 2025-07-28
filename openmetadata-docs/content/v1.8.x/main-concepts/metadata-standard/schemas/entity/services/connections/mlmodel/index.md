@@ -1,5 +1,6 @@
 ---
 title: ML Model Connections | OpenMetadata ML Models
+description: Specify ML model service connection settings including MLFlow, VertexAI, and custom model configurations.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel
 ---
 

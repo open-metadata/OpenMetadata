@@ -1,5 +1,6 @@
 ---
-title: externalAppIngestionConfig
+title: externalAppIngestionConfig | Official Documentation
+description: Schema defining external configuration for application integration with third-party services.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/externalappingestionconfig
 ---
 

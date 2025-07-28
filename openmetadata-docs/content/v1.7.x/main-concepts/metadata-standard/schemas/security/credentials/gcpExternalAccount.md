@@ -1,5 +1,6 @@
 ---
 title: gcpExternalAccount | OpenMetadata GCP External Account
+description: Schema for authenticating with Google Cloud using external account credentials, enabling workload identity federation.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpexternalaccount
 ---
 

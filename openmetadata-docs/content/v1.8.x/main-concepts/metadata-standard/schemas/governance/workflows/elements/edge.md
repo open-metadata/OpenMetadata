@@ -1,5 +1,6 @@
 ---
 title: edge | OpenMetadata Workflow Edge Element
+description: Define edge metadata for linking workflow elements, describing directional flow, source, target, and condition logic.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/edge
 ---
 

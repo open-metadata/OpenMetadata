@@ -1,5 +1,6 @@
 ---
 title: Create KPI Request | OpenMetadata KPI Request API
+description: Structure KPI creation request metadata including entity reference, formula, target, and aggregation.
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/kpi/createkpirequest
 ---
 

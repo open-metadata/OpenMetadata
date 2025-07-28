@@ -1,5 +1,6 @@
 ---
 title: Dashboard Connections | OpenMetadata Dashboard Connections
+description: Schema for dashboard service connections including URL, authentication, and connection-specific configs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard
 ---
 

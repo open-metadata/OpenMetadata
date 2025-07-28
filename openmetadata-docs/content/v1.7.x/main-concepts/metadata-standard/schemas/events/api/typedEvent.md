@@ -1,5 +1,6 @@
 ---
 title: Typed Event Schema | OpenMetadata Typed Event Details
+description: Define event type schema for capturing API-triggered actions, including event name, category, payload, and timestamp.
 slug: /main-concepts/metadata-standard/schemas/events/api/typedevent
 ---
 

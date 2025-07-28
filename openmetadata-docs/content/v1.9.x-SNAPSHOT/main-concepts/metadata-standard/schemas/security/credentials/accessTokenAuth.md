@@ -1,5 +1,6 @@
 ---
 title: accessTokenAuth | OpenMetadata Access Token Auth
+description: Define schema for access token authentication using static or dynamic token values and scope-based access management.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/accesstokenauth
 ---
 

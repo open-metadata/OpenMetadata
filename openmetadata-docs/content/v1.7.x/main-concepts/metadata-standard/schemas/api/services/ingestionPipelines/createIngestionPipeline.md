@@ -1,5 +1,6 @@
 ---
-title: createIngestionPipeline
+title: Createingestionpipeline | Official Documentation
+description: Define API request schema for creating ingestion pipelines including source config and schedule info.
 slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/createingestionpipeline
 ---
 

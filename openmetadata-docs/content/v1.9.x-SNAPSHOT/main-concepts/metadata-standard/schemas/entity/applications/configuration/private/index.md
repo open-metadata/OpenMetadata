@@ -1,5 +1,6 @@
 ---
 title: Private Config | OpenMetadata Private Config
+description: Define private application config metadata used internally for secure and isolated app settings.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/private
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Page Schema | OpenMetadata Page Schema Details
+description: Define metadata for application pages including page ID, layout structure, associated content blocks, and routing paths.
 slug: /main-concepts/metadata-standard/schemas/system/ui/page
 ---
 

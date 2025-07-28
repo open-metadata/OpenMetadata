@@ -1,5 +1,6 @@
 ---
-title: appMarketPlaceDefinition
+title: appMarketPlaceDefinition | Official Documentation
+description: Metadata schema for app marketplace items including definitions, publishers, and versions.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/marketplace/appmarketplacedefinition
 ---
 

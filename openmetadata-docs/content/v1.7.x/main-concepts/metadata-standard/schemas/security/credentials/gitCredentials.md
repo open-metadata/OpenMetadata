@@ -1,5 +1,6 @@
 ---
 title: gitCredentials | OpenMetadata Git Credentials
+description: Schema for Git credentials, including username, personal access tokens, or SSH key usage for secure Git repository access.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gitcredentials
 ---
 
