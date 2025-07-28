@@ -175,6 +175,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
@@ -193,6 +194,7 @@ import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -4939,5 +4941,134 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNotNull(individualTable.getOwners());
     assertEquals(2, individualTable.getOwners().size());
     individualTable.getOwners().forEach(owner -> assertTrue(owner.getInherited()));
+  }
+
+  @Test
+  void testTableRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database and schema
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table with owner and tags
+    CreateTable createTable =
+        createRequest(test)
+            .withTableConstraints(null)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                listOf(
+                    getColumn("id", ColumnDataType.INT, null),
+                    getColumn("name", ColumnDataType.VARCHAR, null).withDataLength(100)))
+            .withOwners(listOf(USER1_REF))
+            .withTags(listOf(TIER1_TAG_LABEL));
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table exists in RDF
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+
+    // Verify hierarchical relationship
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+
+    // Verify owner relationship
+    RdfTestUtils.verifyOwnerInRdf(table.getFullyQualifiedName(), USER1_REF);
+
+    // Verify table tags
+    RdfTestUtils.verifyTagsInRdf(table.getFullyQualifiedName(), table.getTags());
+  }
+
+  @Test
+  void testTableRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database and schema
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table
+    CreateTable createTable =
+        createRequest(test)
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withOwners(listOf(USER1_REF));
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table exists
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(table.getFullyQualifiedName(), USER1_REF);
+
+    // Soft delete the table
+    deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify table still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(table.getFullyQualifiedName(), USER1_REF);
+
+    // Restore the table
+    Table restored =
+        restoreEntity(new RestoreEntity().withId(table.getId()), Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify table still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), restored.getEntityReference());
+    RdfTestUtils.verifyOwnerInRdf(restored.getFullyQualifiedName(), USER1_REF);
+  }
+
+  @Test
+  void testTableRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create database and schema
+    Database db =
+        dbTest.createEntity(
+            dbTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // Verify table exists
+    RdfTestUtils.verifyEntityInRdf(table, RdfUtils.getRdfType("table"));
+    RdfTestUtils.verifyContainsRelationshipInRdf(
+        schema.getEntityReference(), table.getEntityReference());
+
+    // Hard delete the table
+    deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify table no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
   }
 }

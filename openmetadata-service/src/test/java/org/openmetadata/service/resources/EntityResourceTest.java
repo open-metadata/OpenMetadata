@@ -4323,7 +4323,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEntityDeleted(id, hardDelete);
 
     // Verify entity is removed from RDF if enabled
-    if (!hardDelete) {
+    // Note: Some entities like DataProduct don't support soft delete and are always hard deleted
+    boolean actuallyHardDeleted = hardDelete || !supportsSoftDelete;
+
+    if (!actuallyHardDeleted) {
       // For soft delete, entity should still exist but marked as deleted
       verifyEntityInRdf(entity, RdfUtils.getRdfType(entityType));
     } else {
@@ -4593,11 +4596,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Verify container (CONTAINS) relationship if entity has a container
-    if (supportsContainers) {
-      EntityReference container = getContainer(returned);
-      if (container != null) {
-        verifyContainsRelationshipInRdf(container, returned.getEntityReference());
-      }
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
     }
 
     return returned;
@@ -4653,11 +4654,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Verify container (CONTAINS) relationship if entity has a container
-    if (supportsContainers) {
-      EntityReference container = getContainer(returned);
-      if (container != null) {
-        verifyContainsRelationshipInRdf(container, returned.getEntityReference());
-      }
+    EntityReference container = getContainer(returned);
+    if (container != null) {
+      verifyContainsRelationshipInRdf(container, returned.getEntityReference());
     }
 
     return returned;

@@ -55,6 +55,12 @@ public class RdfTestUtils {
       return;
     }
 
+    LOG.info(
+        "Verifying entity in RDF - Type: {}, EntityRef Type: {}, RDF Type: {}",
+        entity.getEntityReference().getType(),
+        entityType,
+        entityType);
+
     // Only escape the name, not the FQN (which already has proper quoting)
     String escapedName = escapeSparqlString(entity.getName());
 
@@ -232,7 +238,9 @@ public class RdfTestUtils {
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "
                 + "ASK { "
-                + "  <%s> om:%s <%s> . "
+                + "  GRAPH ?g { "
+                + "    <%s> om:%s <%s> . "
+                + "  } "
                 + "}",
             fromUri, relationship.value(), toUri);
 
@@ -244,7 +252,9 @@ public class RdfTestUtils {
           String.format(
               "PREFIX om: <https://open-metadata.org/ontology/> "
                   + "ASK { "
+                  + "  GRAPH ?g { "
                   + "    <%s> om:%s <%s> . "
+                  + "  } "
                   + "}",
               fromUri, relationship.name(), toUri);
       exists = executeSparqlAsk(repository, sparql);
