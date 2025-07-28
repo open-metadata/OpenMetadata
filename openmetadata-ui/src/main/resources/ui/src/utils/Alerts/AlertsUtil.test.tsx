@@ -45,6 +45,10 @@ import {
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
   getChangeEventDataFromTypedEvent,
+  getConfigHeaderArrayFromObject,
+  getConfigHeaderObjectFromArray,
+  getConfigQueryParamsArrayFromObject,
+  getConfigQueryParamsObjectFromArray,
   getConnectionTimeoutField,
   getDestinationConfigField,
   getDisplayNameForEntities,
@@ -539,6 +543,9 @@ describe('getFieldByArgumentType tests', () => {
     expect(
       await screen.findByTestId('webhook-4-headers-list')
     ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('webhook-4-query-params-list')
+    ).toBeInTheDocument();
     expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
   });
 
@@ -781,5 +788,150 @@ describe('getAlertExtraInfo', () => {
     const eventCounts = screen.getAllByText('0');
 
     expect(eventCounts).toHaveLength(3);
+  });
+});
+
+describe('Query Parameters Utility Functions', () => {
+  describe('getConfigQueryParamsObjectFromArray', () => {
+    it('should convert query params array to object', () => {
+      const queryParamsArray = [
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ];
+
+      const result = getConfigQueryParamsObjectFromArray(queryParamsArray);
+
+      expect(result).toEqual({
+        param1: 'value1',
+        param2: 'value2',
+      });
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigQueryParamsObjectFromArray(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty array', () => {
+      const result = getConfigQueryParamsObjectFromArray([]);
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle duplicate keys by using last value', () => {
+      const queryParamsArray = [
+        { key: 'param1', value: 'value1' },
+        { key: 'param1', value: 'value2' },
+      ];
+
+      const result = getConfigQueryParamsObjectFromArray(queryParamsArray);
+
+      expect(result).toEqual({
+        param1: 'value2',
+      });
+    });
+  });
+
+  describe('getConfigQueryParamsArrayFromObject', () => {
+    it('should convert query params object to array', () => {
+      const queryParamsObject = {
+        param1: 'value1',
+        param2: 'value2',
+      };
+
+      const result = getConfigQueryParamsArrayFromObject(queryParamsObject);
+
+      expect(result).toEqual([
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ]);
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigQueryParamsArrayFromObject(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty object', () => {
+      const result = getConfigQueryParamsArrayFromObject({});
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle object with various value types', () => {
+      const queryParamsObject = {
+        param1: 'string',
+        param2: 123,
+        param3: true,
+      };
+
+      const result = getConfigQueryParamsArrayFromObject(queryParamsObject);
+
+      expect(result).toEqual([
+        { key: 'param1', value: 'string' },
+        { key: 'param2', value: 123 },
+        { key: 'param3', value: true },
+      ]);
+    });
+  });
+});
+
+describe('Headers Utility Functions', () => {
+  describe('getConfigHeaderObjectFromArray', () => {
+    it('should convert headers array to object', () => {
+      const headersArray = [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ];
+
+      const result = getConfigHeaderObjectFromArray(headersArray);
+
+      expect(result).toEqual({
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      });
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigHeaderObjectFromArray(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty array', () => {
+      const result = getConfigHeaderObjectFromArray([]);
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('getConfigHeaderArrayFromObject', () => {
+    it('should convert headers object to array', () => {
+      const headersObject = {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      };
+
+      const result = getConfigHeaderArrayFromObject(headersObject);
+
+      expect(result).toEqual([
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ]);
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigHeaderArrayFromObject(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty object', () => {
+      const result = getConfigHeaderArrayFromObject({});
+
+      expect(result).toEqual([]);
+    });
   });
 });

@@ -22,6 +22,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,6 +78,7 @@ const LogsViewerPage = () => {
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
   const [isLogsLoading, setIsLogsLoading] = useState(true);
+  const lazyLogRef = useRef<LazyLog>(null);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -263,12 +265,11 @@ const LogsViewerPage = () => {
   });
 
   const handleJumpToEnd = () => {
-    const logsBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
+    if (lazyLogRef.current?.listRef.current) {
+      // Get the total number of lines
+      const totalLines = lazyLogRef.current.state.count;
+      // Scroll to the last line
+      lazyLogRef.current.listRef.current.scrollToIndex(totalLines - 1);
     }
   };
 
@@ -417,6 +418,7 @@ const LogsViewerPage = () => {
                   enableSearch
                   selectableLines
                   extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                  ref={lazyLogRef}
                   text={logs}
                 />
               </Col>

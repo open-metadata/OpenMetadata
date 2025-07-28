@@ -138,6 +138,9 @@
       "upstreamLineage": {
         "type": "object"
       },
+      "upstreamEntityRelationship": {
+        "type": "object"
+      },
       "entityRelationship": {
         "type": "object"
       },
