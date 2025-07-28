@@ -1133,6 +1133,8 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
+      // Removing the Root Node from the Child Nodes here, which comes when a cycle lineage is formed
+      // So while collapsing the cycle lineage, we need to prevent the Root Node not to be removed.
       const finalChildNodeRemovingRootNode = childNodes.filter(
         (item) => !item.data.isRootNode
       );
