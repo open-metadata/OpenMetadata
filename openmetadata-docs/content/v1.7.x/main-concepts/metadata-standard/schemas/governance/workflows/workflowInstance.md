@@ -1,5 +1,6 @@
 ---
 title: workflowInstance | OpenMetadata Workflow Instance
+description: Define metadata for workflow instances including execution ID, associated workflows, runtime inputs, status, and output parameters.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/workflowinstance
 ---
 
