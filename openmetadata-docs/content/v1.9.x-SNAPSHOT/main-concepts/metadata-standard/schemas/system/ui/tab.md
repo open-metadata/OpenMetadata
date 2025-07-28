@@ -1,5 +1,6 @@
 ---
 title: Tab Schema | OpenMetadata Tab Schema Information
+description: Specify UI tab configuration for grouping content or settings into labeled sections within the application interface.
 slug: /main-concepts/metadata-standard/schemas/system/ui/tab
 ---
 

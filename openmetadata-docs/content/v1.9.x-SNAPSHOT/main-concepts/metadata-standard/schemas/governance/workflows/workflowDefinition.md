@@ -1,5 +1,6 @@
 ---
 title: workflowDefinition | OpenMetadata Workflow Definition
+description: Specify the structure of a workflow definition, including triggers, nodes, actions, and conditional flows to orchestrate automation.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/workflowdefinition
 ---
 
