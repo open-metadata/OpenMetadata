@@ -35,6 +35,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,7 +218,8 @@ public class DataInsightSystemChartResource
     try {
       // Get the current user
       String username = securityContext.getUserPrincipal().getName();
-      User user = Entity.getUserRepository().getByName(null, username, null);
+      User user =
+          Entity.getUserRepository().getByName(null, username, EntityUtil.Fields.EMPTY_FIELDS);
 
       // Call repository method to handle streaming
       Map<String, Object> response =
@@ -270,7 +272,8 @@ public class DataInsightSystemChartResource
     try {
       // Get the current user
       String username = securityContext.getUserPrincipal().getName();
-      User user = Entity.getUserRepository().getByName(null, username, null);
+      User user =
+          Entity.getUserRepository().getByName(null, username, EntityUtil.Fields.EMPTY_FIELDS);
 
       // Call repository method to stop streaming
       Map<String, Object> response = repository.stopChartDataStreaming(sessionId, user.getId());

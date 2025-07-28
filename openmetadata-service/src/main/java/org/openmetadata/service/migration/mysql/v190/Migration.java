@@ -1,6 +1,5 @@
 package org.openmetadata.service.migration.mysql.v190;
 
-
 import static org.openmetadata.service.migration.utils.v190.MigrationUtil.updateServiceCharts;
 
 import lombok.SneakyThrows;
