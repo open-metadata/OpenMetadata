@@ -17,7 +17,11 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
-import { GlossaryTerm } from '../../../../../generated/entity/data/glossaryTerm';
+import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/ServiceInsightsTab.constants';
+import {
+  GlossaryTerm,
+  Status,
+} from '../../../../../generated/entity/data/glossaryTerm';
 import {
   WorkflowInstanceState,
   WorkflowStatus,
@@ -56,6 +60,19 @@ const WorkflowHistory = memo(
     >([]);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Collapse only when status is approved
+    const initialCollapseState = useMemo(() => {
+      const status = glossaryTerm?.status ?? Status.Approved;
+
+      return status === Status.Approved && !propGlossaryTerm;
+    }, [glossaryTerm?.status]);
+
+    const [isCollapsed, setIsCollapsed] = useState(initialCollapseState);
+
+    const toggleCollapse = useCallback(() => {
+      setIsCollapsed((prev) => !prev);
+    }, []);
+
     const fetchWorkflowHistory = useCallback(async () => {
       if (!glossaryTerm?.fullyQualifiedName) {
         return;
@@ -87,7 +104,7 @@ const WorkflowHistory = memo(
 
         // Then fetch detailed states for each instance
         const statesPromises = await getWorkflowInstanceStateById(
-          'GlossaryTermApprovalWorkflow',
+          GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
           instances[0]?.id ?? '',
           {
             startTs,
@@ -107,6 +124,11 @@ const WorkflowHistory = memo(
     useEffect(() => {
       fetchWorkflowHistory();
     }, [fetchWorkflowHistory]);
+
+    // Update collapsed state when glossary term status changes
+    useEffect(() => {
+      setIsCollapsed(initialCollapseState);
+    }, [initialCollapseState]);
 
     const { completedSteps, totalSteps } = useMemo(() => {
       const completed = workflowHistory.filter(
@@ -134,7 +156,7 @@ const WorkflowHistory = memo(
         default:
           return (
             <div className="pending-icon bedge-icon flex-center">
-              <PendingIcon data-testid="pending-icon" width={10} />
+              <PendingIcon data-testid="pending-icon" width={12} />
             </div>
           );
       }
@@ -200,22 +222,36 @@ const WorkflowHistory = memo(
           className={classNames('workflow-history-widget', {
             'workflow-history-widget-rightPanel': !propGlossaryTerm,
           })}>
-          <div className="workflow-header">
-            <Text className="workflow-title">
-              {t('label.workflow-history')}
-            </Text>
-            <Text className="workflow-counter">
-              {completedSteps}/{totalSteps}
-            </Text>
+          <div
+            className=" cursor-pointer d-flex flex-col w-full gap-2"
+            role="button"
+            tabIndex={0}
+            onClick={toggleCollapse}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleCollapse();
+              }
+            }}>
+            <div className="workflow-header d-flex justify-between align-center w-full">
+              <div className="d-flex align-center gap-2">
+                <Text className="workflow-title">
+                  {t('label.workflow-history')}
+                </Text>
+              </div>
+              <Text className="workflow-counter">
+                {completedSteps}/{totalSteps}
+              </Text>
+            </div>
+            <div className="workflow-progress w-full">
+              <div className="workflow-steps">{workflowSteps}</div>
+            </div>
           </div>
-
-          <div className="workflow-progress">
-            <div className="workflow-steps">{workflowSteps}</div>
-          </div>
-
-          <div className="workflow-timeline flex flex-col">
-            {workflowHistory.map(renderTimelineItem)}
-          </div>
+          {!isCollapsed && (
+            <div className="workflow-timeline flex flex-col">
+              {workflowHistory.map(renderTimelineItem)}
+            </div>
+          )}
         </div>
       );
     }, [
@@ -226,6 +262,8 @@ const WorkflowHistory = memo(
       workflowSteps,
       renderTimelineItem,
       propGlossaryTerm,
+      isCollapsed,
+      toggleCollapse,
     ]);
 
     return workflowContent;

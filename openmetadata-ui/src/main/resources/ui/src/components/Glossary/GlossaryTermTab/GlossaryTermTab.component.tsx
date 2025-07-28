@@ -402,28 +402,30 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             termTaskThreads
           );
 
+          if (status === Status.InReview && permission) {
+            return (
+              <StatusAction
+                dataTestId={record.name}
+                onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
+                onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
+              />
+            );
+          }
+
           return (
             <Popover
               content={
                 <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
               }
-              overlayStyle={{ maxWidth: '400px' }}
+              overlayStyle={{ minWidth: '260px' }}
               placement="topLeft"
               trigger="hover">
               <div>
-                {status === Status.InReview && permission ? (
-                  <StatusAction
-                    dataTestId={record.name}
-                    onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
-                    onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
-                  />
-                ) : (
-                  <StatusBadge
-                    dataTestId={termFQN + '-status'}
-                    label={status}
-                    status={StatusClass[status]}
-                  />
-                )}
+                <StatusBadge
+                  dataTestId={termFQN + '-status'}
+                  label={status}
+                  status={StatusClass[status]}
+                />
               </div>
             </Popover>
           );
