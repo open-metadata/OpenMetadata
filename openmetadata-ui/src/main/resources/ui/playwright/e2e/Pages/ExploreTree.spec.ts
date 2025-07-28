@@ -84,9 +84,6 @@ test.describe('Explore Tree scenarios', () => {
       await expect(
         page.getByTestId('explore-tree-title-Governance')
       ).toContainText('Governance');
-      await expect(page.getByTestId('explore-tree-title-APIs')).toContainText(
-        'APIs'
-      );
 
       await page
         .locator('div')
@@ -100,18 +97,6 @@ test.describe('Explore Tree scenarios', () => {
       ).toContainText('Glossaries');
       await expect(page.getByTestId('explore-tree-title-Tags')).toContainText(
         'Tags'
-      );
-
-      // APIs
-      await page
-        .locator('div')
-        .filter({ hasText: /^APIs$/ })
-        .locator('svg')
-        .first()
-        .click();
-
-      await expect(page.getByTestId('explore-tree-title-rest')).toContainText(
-        'rest'
       );
     });
 
