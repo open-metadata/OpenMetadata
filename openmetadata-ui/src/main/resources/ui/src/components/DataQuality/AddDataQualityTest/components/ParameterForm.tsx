@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -21,6 +21,7 @@ import {
   InputNumber,
   Select,
   Switch,
+  Tooltip,
   Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
@@ -54,7 +55,7 @@ import {
   validateNotEquals,
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
+import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
@@ -147,10 +148,22 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             );
           } else if (data.name === 'sqlExpression') {
             Field = (
-              <SchemaEditor
+              <CodeEditor
+                showCopyButton
                 className="custom-query-editor query-editor-h-200"
                 mode={{ name: CSMode.SQL }}
-                showCopyButton={false}
+                title={
+                  <div className="ant-form-item-label">
+                    <label className="d-flex align-items-center">
+                      <Typography.Text className="form-label-title">
+                        {label}
+                      </Typography.Text>
+                      <Tooltip title={data.description}>
+                        <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                      </Tooltip>
+                    </label>
+                  </div>
+                }
               />
             );
           } else if (data.name === 'column') {
@@ -298,7 +311,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         <Typography.Text className="font-medium">{label}</Typography.Text>
       </div>
     ) : (
-      <Form.Item {...commonFormItemProps} label={label}>
+      <Form.Item
+        {...commonFormItemProps}
+        label={data.name === 'sqlExpression' ? undefined : label}>
         {DynamicField ?? Field}
       </Form.Item>
     );
