@@ -29,6 +29,7 @@ export interface WidgetHeaderProps {
   disableEdit?: boolean;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleRemoveWidget?: (widgetKey: string) => void;
+  icon?: ReactNode;
   isEditView?: boolean;
   onEditClick?: () => void;
   onSortChange?: (key: string) => void;
@@ -48,6 +49,7 @@ const WidgetHeader = ({
   disableEdit = false,
   handleLayoutUpdate,
   handleRemoveWidget,
+  icon,
   isEditView = false,
   onEditClick,
   onSortChange,
@@ -87,6 +89,7 @@ const WidgetHeader = ({
       data-testid="widget-header"
       justify="space-between">
       <Col className="d-flex items-center h-full min-h-8">
+        {icon && <div className="d-flex h-6 w-6 m-r-xs">{icon}</div>}
         <Typography.Paragraph
           className="widget-title"
           ellipsis={{ tooltip: true }}

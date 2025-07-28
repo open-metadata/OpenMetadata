@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import {
   INITIAL_PAGING_VALUE,
@@ -278,6 +279,7 @@ const MyDataWidgetInternal = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
+          icon={<MyDataIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedFilter}
           sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}

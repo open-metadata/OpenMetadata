@@ -504,12 +504,6 @@ const NavBar = () => {
                 </Button>
               </DomainSelectableList>
             )}
-            {shouldHideGlobalSearchAndDomainDropdown &&
-              location.pathname === ROUTES.MY_DATA && (
-                <Typography.Text className="home-title text-xl font-semibold m-l-md">
-                  {t('label.home')}
-                </Typography.Text>
-              )}
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">

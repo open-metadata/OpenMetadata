@@ -12,6 +12,7 @@
  */
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { groupBy, isEmpty, omit, reduce, sortBy, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +23,7 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
+import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { GRAY_600 } from '../../../../constants/Color.constants';
@@ -195,11 +197,15 @@ const TotalDataAssetsWidget = ({
 
   const totalDataAssetsContent = useMemo(() => {
     return (
-      <div className="total-data-assets-widget-content">
+      <div
+        className={classNames(
+          'total-data-assets-widget-content d-flex flex-column',
+          isFullSizeWidget ? 'gap-1' : 'gap-8'
+        )}>
         <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
           {/* Donut Chart */}
           <div className="flex-1 donut-chart-wrapper">
-            <ResponsiveContainer height={300} width="100%">
+            <ResponsiveContainer height={250} width="100%">
               <PieChart>
                 <Pie
                   cx="50%"
@@ -211,9 +217,9 @@ const TotalDataAssetsWidget = ({
                     })
                   )}
                   dataKey="value"
-                  innerRadius={90}
+                  innerRadius={75}
                   nameKey="name"
-                  outerRadius={140}
+                  outerRadius={117}
                   paddingAngle={1}>
                   {rightSideEntityList.map((label, index) => (
                     <Cell
@@ -315,6 +321,7 @@ const TotalDataAssetsWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
+          icon={<TotalAssetsWidgetIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}

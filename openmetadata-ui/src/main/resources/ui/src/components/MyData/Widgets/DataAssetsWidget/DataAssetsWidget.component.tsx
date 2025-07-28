@@ -16,6 +16,7 @@ import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ROUTES } from '../../../../constants/constants';
 import {
@@ -99,6 +100,10 @@ const DataAssetsWidget = ({
         return [...services].sort((a, b) => a.key.localeCompare(b.key));
       case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
         return [...services].sort((a, b) => b.key.localeCompare(a.key));
+      case DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW:
+        return [...services].sort((a, b) => b.doc_count - a.doc_count);
+      case DATA_ASSETS_SORT_BY_KEYS.LOW_TO_HIGH:
+        return [...services].sort((a, b) => a.doc_count - b.doc_count);
       default:
         return services;
     }
@@ -152,6 +157,7 @@ const DataAssetsWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
+          icon={<DataAssetIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}

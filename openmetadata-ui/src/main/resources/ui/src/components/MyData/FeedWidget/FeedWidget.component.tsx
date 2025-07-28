@@ -13,6 +13,7 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
@@ -157,6 +158,7 @@ const MyFeedWidgetInternal = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
+          icon={<ActivityFeedIcon height={24} width={24} />}
           isEditView={isEditView}
           selectedSortBy={selectedFilter}
           sortOptions={FEED_WIDGET_FILTER_OPTIONS}

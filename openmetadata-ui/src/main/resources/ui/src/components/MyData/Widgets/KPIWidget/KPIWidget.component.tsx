@@ -24,6 +24,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
 import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
 import {
   CHART_WIDGET_DAYS_DURATION,
@@ -334,6 +335,7 @@ const KPIWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
+          icon={<KPIIcon className="kpi-widget-icon" height={24} width={24} />}
           isEditView={isEditView}
           title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
           widgetKey={widgetKey}

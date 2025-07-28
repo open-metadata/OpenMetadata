@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
+import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
 import {
   getSortField,
   getSortOrder,
@@ -44,6 +45,7 @@ import {
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -111,6 +113,8 @@ const CuratedAssetsWidget = ({
     () => Boolean(!isLoading) && data?.length > 10,
     [data, isLoading]
   );
+
+  const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
 
   const prepareData = useCallback(async () => {
     if (selectedResource?.[0]) {
@@ -358,6 +362,17 @@ const CuratedAssetsWidget = ({
         disableEdit={isEmpty(curatedAssetsConfig)}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
+        icon={
+          sourceIcon && title ? (
+            sourceIcon
+          ) : (
+            <StarOutlinedIcon
+              data-testid="star-outlined-icon"
+              height={24}
+              width={24}
+            />
+          )
+        }
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}

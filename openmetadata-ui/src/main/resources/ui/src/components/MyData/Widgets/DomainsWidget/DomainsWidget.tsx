@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
+import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_LARGE,
@@ -209,6 +210,13 @@ const DomainsWidget = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
+          icon={
+            <DomainIcon
+              className="domains-widget-globe"
+              height={24}
+              width={24}
+            />
+          }
           isEditView={isEditView}
           selectedSortBy={selectedSortBy}
           sortOptions={DOMAIN_SORT_BY_OPTIONS}
