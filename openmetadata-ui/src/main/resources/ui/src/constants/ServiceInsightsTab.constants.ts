@@ -21,5 +21,3 @@ export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
 ];
 
 export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
-export const GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME =
-  'GlossaryTermApprovalWorkflow';

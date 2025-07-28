@@ -17,7 +17,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
-import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/ServiceInsightsTab.constants';
+import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
 import {
   GlossaryTerm,
   Status,
