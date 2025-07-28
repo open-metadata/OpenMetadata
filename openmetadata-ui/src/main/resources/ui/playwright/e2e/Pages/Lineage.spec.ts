@@ -84,7 +84,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
-  test.skip(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
+  test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
@@ -102,6 +102,8 @@ for (const EntityClass of entities) {
         await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
+        // enable fullscreen
+        await page.getByTestId('full-screen').click();
         await editLineage(page);
         await performZoomOut(page);
         for (const entity of entities) {
@@ -121,7 +123,6 @@ for (const EntityClass of entities) {
 
         // Check the Entity Drawer
         await performZoomOut(page);
-        await page.getByTestId('full-screen').click();
 
         for (const entity of entities) {
           const toNodeFqn = get(
