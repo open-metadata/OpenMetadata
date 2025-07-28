@@ -127,11 +127,9 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   };
 
   const popoverContent = useMemo(() => {
-    if (isTourOpen || !searchValue || !isSearchBoxOpen) {
-      return null;
-    }
-
-    return isInPageSearchAllowed(pathname) ? (
+    return !isTourOpen &&
+      (searchValue || isNLPActive) &&
+      isInPageSearchAllowed(pathname) ? (
       <SearchOptions
         isOpen={isSearchBoxOpen}
         options={inPageSearchOptions(pathname)}
@@ -195,7 +193,6 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
                 component={
                   isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
                 }
-                style={{ fontSize: '20px' }}
               />
             }
             type="text"
