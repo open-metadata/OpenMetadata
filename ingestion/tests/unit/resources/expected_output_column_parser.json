@@ -160,7 +160,7 @@
     {
       "dataType": "VARCHAR",
       "dataTypeDisplay": "VARCHAR",
-      "dataLength": "16777216"
+      "dataLength": 16777216
     },
     {
       "dataType": "DATE",
