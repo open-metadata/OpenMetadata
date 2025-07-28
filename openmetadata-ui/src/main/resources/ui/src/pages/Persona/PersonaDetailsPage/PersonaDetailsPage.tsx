@@ -108,7 +108,7 @@ export const PersonaDetailsPage = () => {
     }
   }, [fqn]);
 
-  const refetchCurrentUser = useCallback(async () => {
+  const fetchCurrentUser = useCallback(async () => {
     try {
       if (currentUser) {
         const user = await getUserById(currentUser.id, {
@@ -116,7 +116,7 @@ export const PersonaDetailsPage = () => {
           include: Include.All,
         });
 
-        setCurrentUser(user);
+        setCurrentUser({ ...currentUser, ...user });
       }
     } catch {
       return;
@@ -134,7 +134,7 @@ export const PersonaDetailsPage = () => {
         const response = await updatePersona(personaDetails?.id, diff);
         setPersonaDetails(response);
         if (shouldRefetch) {
-          refetchCurrentUser();
+          await fetchCurrentUser();
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -155,7 +155,7 @@ export const PersonaDetailsPage = () => {
   );
 
   const handleAfterDeleteAction = async () => {
-    await refetchCurrentUser();
+    await fetchCurrentUser();
     navigate(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 

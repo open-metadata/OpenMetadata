@@ -157,7 +157,7 @@ test.describe('Persona customize UI tab', async () => {
 
   test('should show all the customize options', async ({ adminPage }) => {
     await expect(adminPage.getByText('Navigation')).toBeVisible();
-    await expect(adminPage.getByText('Homepage')).toBeVisible();
+    await expect(adminPage.getByText('Home Page')).toBeVisible();
     await expect(adminPage.getByText('Governance')).toBeVisible();
     await expect(adminPage.getByText('Data Assets')).toBeVisible();
   });

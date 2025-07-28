@@ -53,7 +53,7 @@ export const AddEditPersonaForm = ({
     Form.useWatch<EntityReference[]>('users', form) ?? persona?.users ?? [];
   const isEditMode = !isEmpty(persona);
 
-  const refetchCurrentUser = useCallback(async () => {
+  const fetchCurrentUser = useCallback(async () => {
     try {
       if (currentUser) {
         const user = await getUserById(currentUser.id, {
@@ -61,7 +61,7 @@ export const AddEditPersonaForm = ({
           include: Include.All,
         });
 
-        setCurrentUser(user);
+        setCurrentUser({ ...currentUser, ...user });
       }
     } catch {
       return;
@@ -85,7 +85,7 @@ export const AddEditPersonaForm = ({
         } else {
           await createPersona({ ...data, users: usersList, domains });
         }
-        refetchCurrentUser();
+        await fetchCurrentUser();
         onSave();
       } catch (error) {
         showErrorToast(error as AxiosError);
