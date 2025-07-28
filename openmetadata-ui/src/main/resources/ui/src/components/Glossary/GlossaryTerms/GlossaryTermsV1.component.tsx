@@ -13,7 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -83,7 +83,7 @@ const GlossaryTermsV1 = ({
   isTabExpanded,
   toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useRequiredParams<{
+  const { tab: activeTab, version } = useRequiredParams<{
     tab: EntityTabs;
     version: string;
   }>();
@@ -108,10 +108,6 @@ const GlossaryTermsV1 = ({
       ? permissions
       : MOCK_GLOSSARY_NO_PERMISSIONS;
   }, [glossaryTerm, permissions]);
-
-  const activeTab = useMemo(() => {
-    return tab ?? EntityTabs.OVERVIEW;
-  }, [tab]);
 
   const activeTabHandler = (tab: string) => {
     navigate(
@@ -162,8 +158,8 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = useCallback(() => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
-    tab !== 'assets' && activeTabHandler('assets');
-  }, [assetTabRef, tab]);
+    activeTab !== EntityTabs.ASSETS && activeTabHandler(EntityTabs.ASSETS);
+  }, [assetTabRef, activeTab]);
 
   const onExtensionUpdate = useCallback(
     async (updatedTable: GlossaryTerm) => {
@@ -325,6 +321,20 @@ const GlossaryTermsV1 = ({
       getEntityFeedCount();
     }
   }, [glossaryFqn, isVersionView]);
+
+  useEffect(() => {
+    if (isUndefined(activeTab)) {
+      navigate(
+        {
+          pathname: getGlossaryTermDetailsPath(
+            glossaryFqn,
+            EntityTabs.OVERVIEW
+          ),
+        },
+        { replace: true }
+      );
+    }
+  }, [activeTab, glossaryFqn]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView
