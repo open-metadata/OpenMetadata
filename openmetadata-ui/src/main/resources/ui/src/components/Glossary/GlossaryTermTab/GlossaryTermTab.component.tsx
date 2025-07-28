@@ -20,6 +20,7 @@ import {
   Dropdown,
   MenuProps,
   Modal,
+  Popover,
   Row,
   Space,
   TableProps,
@@ -107,6 +108,7 @@ import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import WorkflowHistory from '../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -401,21 +403,29 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           );
 
           return (
-            <div>
-              {status === Status.InReview && permission ? (
-                <StatusAction
-                  dataTestId={record.name}
-                  onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
-                  onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
-                />
-              ) : (
-                <StatusBadge
-                  dataTestId={termFQN + '-status'}
-                  label={status}
-                  status={StatusClass[status]}
-                />
-              )}
-            </div>
+            <Popover
+              content={
+                <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+              }
+              overlayStyle={{ maxWidth: '400px' }}
+              placement="topLeft"
+              trigger="hover">
+              <div>
+                {status === Status.InReview && permission ? (
+                  <StatusAction
+                    dataTestId={record.name}
+                    onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
+                    onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
+                  />
+                ) : (
+                  <StatusBadge
+                    dataTestId={termFQN + '-status'}
+                    label={status}
+                    status={StatusClass[status]}
+                  />
+                )}
+              </div>
+            </Popover>
           );
         },
         onFilter: (value, record) => record.status === value,
