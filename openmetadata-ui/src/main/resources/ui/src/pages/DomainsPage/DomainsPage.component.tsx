@@ -17,12 +17,13 @@ import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb.component';
 import EntityTable from '../../components/common/EntityTable/EntityTable.component';
 import { EntityTableFilters } from '../../components/common/EntityTable/EntityTable.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderCard from '../../components/common/HeaderCard/HeaderCard.component';
 import AddEntityFormV2 from '../../components/Domains/AddEntityForm/AddEntityForm.component';
-import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
+import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
@@ -39,14 +40,11 @@ import { useDynamicEntitySearch } from '../../hooks/useDynamicEntitySearch';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDomains,
-  addFollower,
   getDomainByName,
   patchDomains,
-  removeFollower,
 } from '../../rest/domainAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { createFormConfig } from '../../utils/AddEntityFormUtils';
-import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -64,7 +62,6 @@ const DomainPage = () => {
     useDomainStore();
   const [isMainContentLoading, setIsMainContentLoading] = useState(false);
   const [activeDomain, setActiveDomain] = useState<Domain>();
-  const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
   const [isAddDomainPanelOpen, setIsAddDomainPanelOpen] = useState(false);
   const [isDomainFormLoading, setIsDomainFormLoading] = useState(false);
 
@@ -259,64 +256,22 @@ const DomainPage = () => {
     }
   };
 
-  const followDomain = async () => {
-    try {
-      if (!activeDomain?.id) {
-        return;
-      }
-      const res = await addFollower(activeDomain.id, currentUserId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setActiveDomain(
-        (prev) =>
-          ({
-            ...prev,
-            followers: [...(prev?.followers ?? []), ...newValue],
-          } as Domain)
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(activeDomain),
-        })
-      );
-    }
-  };
-
-  const unFollowDomain = async () => {
-    try {
-      if (!activeDomain?.id) {
-        return;
-      }
-      const res = await removeFollower(activeDomain.id, currentUserId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-      const filteredFollowers = activeDomain.followers?.filter(
-        (follower) => follower.id !== oldValue[0].id
-      );
-
-      setActiveDomain(
-        (prev) =>
-          ({
-            ...prev,
-            followers: filteredFollowers ?? [],
-          } as Domain)
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(activeDomain),
-        })
-      );
-    }
-  };
-
   useEffect(() => {
     if (domainFqn) {
       fetchDomainByName(domainFqn);
     }
   }, [domainFqn]);
+
+  // Breadcrumb items for the domains page
+  const breadcrumbItems = useMemo(
+    () => [
+      {
+        name: t('label.domain-plural'),
+        url: ROUTES.DOMAINS,
+      },
+    ],
+    [t]
+  );
 
   // Load domains when component mounts
   useEffect(() => {
@@ -366,14 +321,9 @@ const DomainPage = () => {
     );
   }
 
-  // Breadcrumbs for the page
-  const breadcrumbs = [
-    { label: t('label.home'), path: '/' },
-    { label: t('label.domain-plural'), path: '/domains' },
-  ];
-
   return (
     <div className="domains-page-container">
+      <Breadcrumb titleLinks={breadcrumbItems} />
       <HeaderCard
         addLabel={t('label.add-entity', {
           entity: t('label.domain'),

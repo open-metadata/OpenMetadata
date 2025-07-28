@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
-import { TitleLink } from '../../common/Breadcrumb/Breadcrumb.interface';
-import { Props as EntityHeaderProps } from './EntityHeader.component';
 
-export interface EntityHeaderV2Props
-  extends Omit<EntityHeaderProps, 'breadcrumb'> {
-  coverPhotoUrl?: string;
-  /**
-   * Optional action buttons or controls to render in the header (right side)
-   */
-  ActionButtons?: ReactNode;
-  breadcrumbItems?: Array<TitleLink>;
+import { LinkProps, NavigateOptions } from 'react-router-dom';
+
+export type TitleLink = {
+  name: string;
+  url: LinkProps['to'];
+  options?: NavigateOptions;
+  imgSrc?: string;
+  activeTitle?: boolean;
+};
+
+export interface BreadcrumbProps {
+  titleLinks: Array<TitleLink>;
+  showHomeIcon?: boolean;
+  className?: string;
+  separator?: string;
+  'data-testid'?: string;
 }

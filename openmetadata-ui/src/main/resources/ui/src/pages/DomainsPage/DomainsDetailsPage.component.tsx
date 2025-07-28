@@ -16,9 +16,7 @@ import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import DomainsDetailsPageComponent from '../../components/Domain/DomainsDetailsPage/DomainsDetailsPage.component';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import DomainDetailsPage from '../../components/Domain/DomainDetailsPage/DomainDetailsPage.component';
 import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -31,12 +29,7 @@ import {
   removeFollower,
 } from '../../rest/domainAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import Fqn from '../../utils/Fqn';
-import {
-  getDomainPath,
-  getDomainsDetailsPath,
-  getDomainsPath,
-} from '../../utils/RouterUtils';
+import { getDomainPath, getDomainsDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DomainsDetailsPage = () => {
@@ -66,29 +59,6 @@ const DomainsDetailsPage = () => {
       ),
     };
   }, [activeDomain?.followers, currentUserId]);
-
-  // Breadcrumbs for the page
-  const breadcrumbs = useMemo(() => {
-    if (!domainFqn) {
-      return [];
-    }
-
-    const arr = Fqn.split(domainFqn);
-    const dataFQN: Array<string> = [];
-
-    return [
-      { label: t('label.home'), path: '/' },
-      { label: t('label.domain-plural'), path: getDomainsPath() },
-      ...arr.map((d: string) => {
-        dataFQN.push(d);
-
-        return {
-          label: d,
-          path: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-        };
-      }),
-    ];
-  }, [domainFqn, t]);
 
   const fetchDomainByName = async (domainFqn: string) => {
     setIsMainContentLoading(true);
@@ -124,7 +94,7 @@ const DomainsDetailsPage = () => {
         setActiveDomain(response);
 
         if (activeDomain?.name !== updatedData.name) {
-          navigate(getDomainsPath(response.fullyQualifiedName));
+          navigate(getDomainPath(response.fullyQualifiedName));
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -132,8 +102,8 @@ const DomainsDetailsPage = () => {
     }
   };
 
-  const handleDomainDelete = (id: string) => {
-    navigate(getDomainsPath());
+  const handleDomainDelete = (_id: string) => {
+    navigate(getDomainPath());
   };
 
   const followDomain = async () => {
@@ -202,20 +172,18 @@ const DomainsDetailsPage = () => {
   }, [domainFqn]);
 
   if (isMainContentLoading || !activeDomain) {
-    return null; // Let the parent component handle loading states
+    return null;
   }
 
   return (
-    <PageLayoutV1 pageTitle={activeDomain.displayName || activeDomain.name}>
-      <DomainsDetailsPageComponent
-        domain={activeDomain}
-        handleFollowingClick={handleFollowingClick}
-        isFollowing={isFollowing}
-        isFollowingLoading={isFollowingLoading}
-        onDelete={handleDomainDelete}
-        onUpdate={handleDomainUpdate}
-      />
-    </PageLayoutV1>
+    <DomainDetailsPage
+      domain={activeDomain}
+      handleFollowingClick={handleFollowingClick}
+      isFollowing={isFollowing}
+      isFollowingLoading={isFollowingLoading}
+      onDelete={handleDomainDelete}
+      onUpdate={handleDomainUpdate}
+    />
   );
 };
 

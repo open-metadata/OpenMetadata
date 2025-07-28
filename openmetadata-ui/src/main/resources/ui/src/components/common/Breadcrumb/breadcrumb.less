@@ -1,0 +1,82 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../../styles/variables.less';
+
+.breadcrumb-navigation {
+  .breadcrumb-items {
+    display: flex;
+    align-items: center;
+    gap: @size-xs;
+    font-size: @font-size-base;
+    line-height: @size-mlg;
+  }
+
+  .breadcrumb-home-icon {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    width: @size-mlg;
+    height: @size-mlg;
+    color: @grey-600;
+
+    .breadcrumb-icon {
+      color: @grey-600;
+    }
+
+    &:hover {
+      .breadcrumb-icon {
+        color: @dark-blue-600;
+      }
+    }
+  }
+
+  .breadcrumb-item-icon {
+    width: @size-md;
+    height: @size-md;
+    margin-right: @size-xxs;
+  }
+
+  .breadcrumb-separator {
+    color: @navigation-text-color;
+    font-size: @size-sm;
+    font-weight: @font-regular;
+    user-select: none;
+    line-height: @size-smd;
+  }
+
+  .breadcrumb-link {
+    color: @grey-600;
+    text-decoration: none;
+    font-weight: @font-regular;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: @dark-blue-600;
+      text-decoration: none;
+    }
+
+    &:focus {
+      outline: 2px solid @dark-blue-600;
+      outline-offset: 2px;
+      border-radius: @border-radius-xs;
+    }
+  }
+
+  .breadcrumb-text {
+    color: @grey-500;
+
+    &.breadcrumb-text-current {
+      color: @dark-blue-600;
+    }
+  }
+}

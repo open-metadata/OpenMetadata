@@ -18,7 +18,7 @@ describe('EntityHeaderV2', () => {
   it('renders cover photo and entity name', () => {
     render(
       <EntityHeaderV2
-        breadcrumb={[]}
+        breadcrumbItems={[]}
         coverPhotoUrl="test-cover.jpg"
         entityData={{ name: 'TestEntity' }}
         entityType={EntityType.DOMAIN}

@@ -12,41 +12,34 @@
  */
 
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Breadcrumb } from '../../components/common/Breadcrumb/Breadcrumb.component';
 import EntityTable from '../../components/common/EntityTable/EntityTable.component';
 import { EntityTableFilters } from '../../components/common/EntityTable/EntityTable.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderCard from '../../components/common/HeaderCard/HeaderCard.component';
 import AddEntityFormV2 from '../../components/Domains/AddEntityForm/AddEntityForm.component';
-import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
+import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDynamicEntitySearch } from '../../hooks/useDynamicEntitySearch';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataProducts,
-  addFollower,
   deleteDataProduct,
   getDataProductByName,
-  patchDataProduct,
-  removeFollower,
 } from '../../rest/dataProductAPI';
 import { createFormConfig } from '../../utils/AddEntityFormUtils';
-import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
-import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 import './data-products-page.less';
@@ -54,13 +47,8 @@ import './data-products-page.less';
 const DataProductsPage = () => {
   const { fqn: dataProductFqn } = useFqn();
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { currentUser } = useApplicationStore();
-  const currentUserId = currentUser?.id ?? '';
   const { permissions } = usePermissionProvider();
   const [isMainContentLoading, setIsMainContentLoading] = useState(false);
-  const [activeDataProduct, setActiveDataProduct] = useState<DataProduct>();
-  const [isFollowingLoading, setIsFollowingLoading] = useState<boolean>(false);
   const [isAddDataProductPanelOpen, setIsAddDataProductPanelOpen] =
     useState(false);
   const [isDataProductFormLoading, setIsDataProductFormLoading] =
@@ -82,14 +70,6 @@ const DataProductsPage = () => {
     enableFilters: true,
     enableSearch: true,
   });
-
-  const { isFollowing } = useMemo(() => {
-    return {
-      isFollowing: activeDataProduct?.followers?.some(
-        ({ id }) => id === currentUserId
-      ),
-    };
-  }, [activeDataProduct?.followers, currentUserId]);
 
   const [
     createDataProductPermission,
@@ -114,6 +94,17 @@ const DataProductsPage = () => {
       ),
     ];
   }, [permissions]);
+
+  // Breadcrumb items for the data products page
+  const breadcrumbItems = useMemo(
+    () => [
+      {
+        name: t('label.data-product-plural'),
+        url: ROUTES.DATA_PRODUCTS,
+      },
+    ],
+    [t]
+  );
 
   const handleAddDataProductClick = useCallback(() => {
     setIsAddDataProductPanelOpen(true);
@@ -143,32 +134,6 @@ const DataProductsPage = () => {
     },
     [refetch]
   );
-
-  const handleDataProductUpdate = async (updatedData: DataProduct) => {
-    if (activeDataProduct) {
-      const jsonPatch = compare(activeDataProduct, updatedData);
-      try {
-        const response = await patchDataProduct(
-          activeDataProduct.id,
-          jsonPatch
-        );
-
-        setActiveDataProduct(response);
-
-        if (activeDataProduct?.name !== updatedData.name) {
-          navigate(
-            getEntityDetailsPath(
-              EntityType.DATA_PRODUCT,
-              response.fullyQualifiedName ?? ''
-            )
-          );
-          refetch();
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-  };
 
   const handleDataProductDelete = async (id: string) => {
     try {
@@ -208,7 +173,7 @@ const DataProductsPage = () => {
   const fetchDataProductByName = async (dataProductFqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDataProductByName(dataProductFqn, {
+      await getDataProductByName(dataProductFqn, {
         fields: [
           TabSpecificField.DOMAIN,
           TabSpecificField.OWNERS,
@@ -217,7 +182,6 @@ const DataProductsPage = () => {
           TabSpecificField.FOLLOWERS,
         ],
       });
-      setActiveDataProduct(data);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -227,59 +191,6 @@ const DataProductsPage = () => {
       );
     } finally {
       setIsMainContentLoading(false);
-    }
-  };
-
-  const followDataProduct = async () => {
-    try {
-      if (!activeDataProduct?.id) {
-        return;
-      }
-      const res = await addFollower(activeDataProduct.id, currentUserId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setActiveDataProduct(
-        (prev) =>
-          ({
-            ...prev,
-            followers: [...(prev?.followers ?? []), ...newValue],
-          } as DataProduct)
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(activeDataProduct),
-        })
-      );
-    }
-  };
-
-  const unFollowDataProduct = async () => {
-    try {
-      if (!activeDataProduct?.id) {
-        return;
-      }
-      const res = await removeFollower(activeDataProduct.id, currentUserId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-      const filteredFollowers = activeDataProduct.followers?.filter(
-        (follower) => follower.id !== oldValue[0].id
-      );
-
-      setActiveDataProduct(
-        (prev) =>
-          ({
-            ...prev,
-            followers: filteredFollowers ?? [],
-          } as DataProduct)
-      );
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(activeDataProduct),
-        })
-      );
     }
   };
 
@@ -334,6 +245,7 @@ const DataProductsPage = () => {
 
   return (
     <div className="data-products-page-container">
+      <Breadcrumb titleLinks={breadcrumbItems} />
       <HeaderCard
         addLabel={t('label.add-entity', {
           entity: t('label.data-product'),

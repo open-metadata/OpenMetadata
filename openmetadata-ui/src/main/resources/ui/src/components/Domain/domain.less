@@ -12,10 +12,74 @@
  */
 @import (reference) url('../../styles/variables.less');
 
+.domain-details {
+  row-gap: 12px;
+  background-color: @white;
+  padding: 24px;
+  border-bottom-left-radius: @size-sm;
+  border-bottom-right-radius: @size-sm;
+
+  .ant-tabs.tabs-new .ant-tabs-nav {
+    margin-bottom: 20px !important;
+  }
+
+  .ant-tabs-tabpane {
+    margin-top: 0px !important;
+  }
+
+  .ant-tabs.tabs-new .ant-tabs-nav .ant-tabs-nav-list .ant-tabs-tab {
+    padding: 4px 12px !important;
+  }
+
+  .ant-tabs-content-holder {
+    // To avoid unwanted scrollbar
+    width: calc(100% - 2px);
+  }
+
+  .react-grid-layout.grid-container.bg-grey {
+    background: inherit !important;
+
+    .grid-container > [id='KnowledgePanel.LeftPanel'] {
+      padding: 0px !important;
+      border: 0.5px solid @grey-50 !important;
+      box-shadow: none !important;
+
+      .dynamic-height-widget {
+        border: none !important;
+      }
+
+      .ant-card-head {
+        padding: 16px !important;
+        padding-top: 24px !important;
+
+        .ant-card-head-title.gap-2 {
+          gap: 20px !important;
+
+          .ant-space.ant-space-align-center {
+            gap: 16px !important;
+          }
+        }
+      }
+
+      .ant-card-body {
+        padding: 16px !important;
+        padding-bottom: 24px !important;
+      }
+    }
+  }
+}
+
 .domain-details-page-tabs {
   .ant-tabs-tabpane {
     height: @domain-page-height;
     overflow-y: auto;
+  }
+
+  .grid-container {
+    > [id='KnowledgePanel.LeftPanel'] {
+      padding: 0px !important;
+      border: 0.5px solid @grey-50 !important;
+    }
   }
 }
 

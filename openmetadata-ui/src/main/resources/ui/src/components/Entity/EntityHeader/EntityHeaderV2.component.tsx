@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Row } from 'antd';
+import { Breadcrumb } from '../../common/Breadcrumb/Breadcrumb.component';
 import { EntityHeader } from './EntityHeader.component';
 import { EntityHeaderV2Props } from './EntityHeaderV2.interface';
 import './EntityHeaderV2.less';
@@ -22,23 +23,35 @@ import './EntityHeaderV2.less';
  * @param props - EntityHeaderV2Props
  */
 export function EntityHeaderV2(props: EntityHeaderV2Props) {
-  const { coverPhotoUrl, icon, ActionButtons, ...entityHeaderProps } = props;
+  const {
+    coverPhotoUrl,
+    icon,
+    ActionButtons,
+    breadcrumbItems,
+    ...entityHeaderProps
+  } = props;
 
   return (
     <Row className="entity-header-v2">
-      <Col className="entity-header-v2-cover">
-        {coverPhotoUrl ? (
-          <img
-            alt="cover"
-            className="entity-header-v2-cover-img"
-            src={coverPhotoUrl}
-          />
-        ) : (
-          <div className="entity-header-v2-cover-default" />
-        )}
-      </Col>
+      {breadcrumbItems && (
+        <Breadcrumb
+          className="breadcrumbs-container"
+          titleLinks={breadcrumbItems}
+        />
+      )}
       <Row className="entity-v2-header-container">
-        <div className="entity-v2-title-row">
+        <Row className="entity-header-v2-cover">
+          {coverPhotoUrl ? (
+            <img
+              alt="cover"
+              className="entity-header-v2-cover-img"
+              src={coverPhotoUrl}
+            />
+          ) : (
+            <div className="entity-header-v2-cover-default" />
+          )}
+        </Row>
+        <Row className="entity-v2-title-row">
           <EntityHeader
             {...entityHeaderProps}
             hideBreadcrumb
@@ -50,7 +63,7 @@ export function EntityHeaderV2(props: EntityHeaderV2Props) {
               {ActionButtons}
             </div>
           )}
-        </div>
+        </Row>
       </Row>
     </Row>
   );

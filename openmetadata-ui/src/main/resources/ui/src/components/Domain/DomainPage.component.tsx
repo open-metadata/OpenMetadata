@@ -42,9 +42,10 @@ import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
-import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
+
+import './domain.less';
 
 const DomainPage = () => {
   const { fqn: domainFqn } = useFqn();
