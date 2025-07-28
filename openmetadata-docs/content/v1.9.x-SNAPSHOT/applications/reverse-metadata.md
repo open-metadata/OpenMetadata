@@ -26,6 +26,7 @@ The **Reverse Metadata Application** ensures real-time synchronization of metada
 | Redshift       | ✅ (Support all) | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/redshift#reverse-metadata) |
 | Snowflake      | ✅ (Support all) | ✅ (Schema, Table, Column) | ❌            | ✅                | [Link](/connectors/database/snowflake#reverse-metadata) |
 | Unity Catalog  | ✅ (Support all) | ✅ (Support all)  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/unity-catalog#reverse-metadata) |
+| Trino  | ✅ (Table) | ❌ | ❌ | ✅                | [Link](/connectors/database/trino#reverse-metadata) |
 
 ## Overview
 
