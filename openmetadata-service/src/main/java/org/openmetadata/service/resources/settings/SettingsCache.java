@@ -243,6 +243,7 @@ public class SettingsCache {
           new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
 
       Entity.getSystemRepository().createNewSetting(setting);
+    }
 
     Settings entityRulesSettings =
         Entity.getSystemRepository()

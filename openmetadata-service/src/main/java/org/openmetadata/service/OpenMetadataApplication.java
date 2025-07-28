@@ -237,7 +237,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SettingsCache.initialize(catalogConfig);
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
-            
+
     // Initialize Redis Cache if enabled
     initializeCache(catalogConfig, environment);
 
@@ -387,59 +387,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
     // Set up a Session Manager
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    SessionHandler sessionHandler = contextHandler.getSessionHandler();
     if (contextHandler.getSessionHandler() == null) {
-      contextHandler.setSessionHandler(new SessionHandler());
-    if (config.getAuthenticationConfiguration() != null
-        && config
-            .getAuthenticationConfiguration()
-            .getClientType()
-            .equals(ClientType.CONFIDENTIAL)) {
-      CommonHelper.assertNotNull(
-          "OidcConfiguration", config.getAuthenticationConfiguration().getOidcConfiguration());
-
-      // Set up a Session Manager
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      SessionHandler sessionHandler = contextHandler.getSessionHandler();
-      if (sessionHandler == null) {
-        sessionHandler = new SessionHandler();
-        contextHandler.setSessionHandler(sessionHandler);
-      }
-
-      SessionCookieConfig cookieConfig =
-          Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
-      cookieConfig.setHttpOnly(true);
-      cookieConfig.setSecure(isHttps(config));
-      cookieConfig.setMaxAge(
-          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
-      cookieConfig.setPath("/");
-      sessionHandler.setMaxInactiveInterval(
-          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
-
-      AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
-          new AuthenticationCodeFlowHandler(
-              config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
-
-      // Register Servlets
-      ServletHolder authLoginHolder =
-          new ServletHolder(new AuthLoginServlet(authenticationCodeFlowHandler));
-      authLoginHolder.setName("oauth_login");
-      environment.getApplicationContext().addServlet(authLoginHolder, "/api/v1/auth/login");
-
-      ServletHolder authCallbackHolder =
-          new ServletHolder(new AuthCallbackServlet(authenticationCodeFlowHandler));
-      authCallbackHolder.setName("auth_callback");
-      environment.getApplicationContext().addServlet(authCallbackHolder, "/callback");
-
-      ServletHolder authLogoutHolder =
-          new ServletHolder(new AuthLogoutServlet(authenticationCodeFlowHandler));
-      authLogoutHolder.setName("auth_logout");
-      environment.getApplicationContext().addServlet(authLogoutHolder, "/api/v1/auth/logout");
-
-      ServletHolder refreshHolder =
-          new ServletHolder(new AuthRefreshServlet(authenticationCodeFlowHandler));
-      refreshHolder.setName("auth_refresh");
-      environment.getApplicationContext().addServlet(refreshHolder, "/api/v1/auth/refresh");
+      sessionHandler = new SessionHandler();
+      contextHandler.setSessionHandler(sessionHandler);
     }
+
+    SessionCookieConfig cookieConfig =
+        Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
+    cookieConfig.setHttpOnly(true);
+    cookieConfig.setSecure(isHttps(config));
+    cookieConfig.setMaxAge(
+        config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+    cookieConfig.setPath("/");
+    sessionHandler.setMaxInactiveInterval(
+        config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
+
     // Register Servlets
     ServletHolder authLoginHolder = new ServletHolder(new AuthLoginServlet());
     authLoginHolder.setName("oauth_login");
