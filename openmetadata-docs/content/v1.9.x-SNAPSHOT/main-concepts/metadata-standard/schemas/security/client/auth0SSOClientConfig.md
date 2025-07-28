@@ -1,5 +1,6 @@
 ---
 title: auth0SSOClientConfig | OpenMetadata Auth0 SSO Client
+description: Configure SSO authentication via Auth0 with required client ID, secret, domain, and audience settings for secure access management.
 slug: /main-concepts/metadata-standard/schemas/security/client/auth0ssoclientconfig
 ---
 
