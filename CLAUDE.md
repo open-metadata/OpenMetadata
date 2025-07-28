@@ -110,3 +110,25 @@ yarn parse-schema              # Parse JSON schemas for frontend
 - Role-based access control defined in Java entities
 - Security configurations in `conf/openmetadata.yaml`
 - Never commit secrets - use environment variables or secure vaults
+
+## Code Generation Standards
+
+### Comments Policy
+- **Do NOT add unnecessary comments** - write self-documenting code
+- Only include comments for:
+    - Complex business logic that isn't obvious
+    - Non-obvious algorithms or workarounds
+    - Public API JavaDoc documentation
+    - TODO/FIXME with ticket references
+- Avoid obvious comments like `// increment counter` or `// create new user`
+
+### Java Code Requirements
+- **Always mention** running `mvn spotless:apply` when generating/modifying .java files
+- Use clear, descriptive variable and method names instead of comments
+- Follow existing project patterns and conventions
+- Generate production-ready code, not tutorial code
+
+### Response Format
+- Provide clean code blocks without unnecessary explanations
+- Assume readers are experienced developers
+- Focus on functionality over education

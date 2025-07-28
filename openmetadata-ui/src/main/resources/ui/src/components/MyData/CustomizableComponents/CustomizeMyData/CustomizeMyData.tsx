@@ -32,8 +32,8 @@ import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePag
 import '../../../../pages/MyDataPage/my-data.less';
 import {
   getAddWidgetHandler,
+  getLandingPageLayoutWithEmptyWidgetPlaceholder,
   getLayoutUpdateHandler,
-  getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
   getWidgetFromKey,
@@ -41,6 +41,7 @@ import {
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
 import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -62,11 +63,9 @@ function CustomizeMyData({
   const { t } = useTranslation();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getLayoutWithEmptyWidgetPlaceholder(
+    getLandingPageLayoutWithEmptyWidgetPlaceholder(
       (initialPageData?.layout as WidgetConfig[]) ??
-        customizeMyDataPageClassBase.defaultLayout,
-      2,
-      4
+        customizeMyDataPageClassBase.defaultLayout
     )
   );
 
@@ -134,6 +133,11 @@ function CustomizeMyData({
     [layout]
   );
 
+  const emptyWidgetPlaceholder = useMemo(
+    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
+    [layout]
+  );
+
   const disableSave = useMemo(() => {
     const filteredLayout = layout.filter((widget) =>
       widget.i.startsWith('KnowledgePanel')
@@ -152,13 +156,14 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            widgetConfig: widget,
+            currentLayout: layout,
+            handleLayoutUpdate: handleLayoutUpdate,
             handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
             handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
             handleRemoveWidget: handleRemoveWidget,
             isEditView: true,
-            handleLayoutUpdate: handleLayoutUpdate,
-            currentLayout: layout,
+            personaName: getEntityName(personaDetails),
+            widgetConfig: widget,
           })}
         </div>
       )),
@@ -187,10 +192,8 @@ function CustomizeMyData({
 
   const handleReset = useCallback(async () => {
     // Get default layout with the empty widget added at the end
-    const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout,
-      2,
-      4
+    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
+      customizeMyDataPageClassBase.defaultLayout
     );
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
@@ -201,15 +204,16 @@ function CustomizeMyData({
   useGridLayoutDirection();
 
   return (
-    <>
+    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
-        className="p-t-box customise-my-data"
+        className="p-box customise-my-data"
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
         <CustomizablePageHeader
           disableSave={disableSave}
           personaName={getEntityName(personaDetails)}
+          onAddWidget={handleOpenCustomiseHomeModal}
           onReset={handleReset}
           onSave={handleSave}
         />
@@ -230,14 +234,16 @@ function CustomizeMyData({
           <ReactGridLayout
             useCSSTransforms
             verticalCompact
-            className="grid-container"
+            className="grid-container layout"
             cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
+            compactType="horizontal"
             draggableHandle=".drag-widget-icon"
             isResizable={false}
             margin={[
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
+            maxRows={emptyWidgetPlaceholder?.y}
             preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
@@ -259,7 +265,7 @@ function CustomizeMyData({
           onHomePage={false}
         />
       )}
-    </>
+    </AdvanceSearchProvider>
   );
 }
 

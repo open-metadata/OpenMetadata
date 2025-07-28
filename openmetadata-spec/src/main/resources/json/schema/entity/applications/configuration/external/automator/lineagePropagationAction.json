@@ -43,9 +43,9 @@
       "type": "boolean",
       "default": false
     },
-    "propagateDomain": {
-      "title": "Propagate Domain",
-      "description": "Propagate domain from the parent through lineage",
+    "propagateDomains": {
+      "title": "Propagate Domains",
+      "description": "Propagate domains from the parent through lineage",
       "type": "boolean",
       "default": false
     },

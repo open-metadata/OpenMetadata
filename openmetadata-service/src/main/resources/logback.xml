@@ -19,6 +19,8 @@
     <logger name="es.org.elasticsearch.client" level="ERROR" />
     <logger name="os.org.elasticsearch.client" level="ERROR" />
     <logger name="org.openmetadata.service.Entity" level="ERROR" />
+    <!-- Add specific logger for SearchIndexApp and ReindexingJobLogger -->
+    <logger name="org.openmetadata.service.apps.bundles.searchIndex" level="INFO" />
     <root level="${LOG_LEVEL:-INFO}">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="file"/>

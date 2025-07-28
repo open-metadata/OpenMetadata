@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/removeDomainAction.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RemoveDomainAction",
-  "description": "Remove Owner Action Type",
+  "description": "Remove domains from the selected assets.",
   "type": "object",
   "definitions": {
     "removeDomainActionType": {
