@@ -5,6 +5,7 @@ import static org.openmetadata.service.migration.utils.v190.MigrationUtil.update
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v190.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -15,6 +16,11 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
+    // Data Insights
     updateServiceCharts();
+
+    // Automator
+    MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
+    migrationUtil.migrateAutomatorDomainToDomainsAction(handle);
   }
 }
