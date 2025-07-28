@@ -1,5 +1,6 @@
 ---
 title: Thread Schema | OpenMetadata Thread Schema and API Guide
+description: Store feed threads and discussions for collaborative data conversations and governance.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: storageMetadataLocalConfig
+title: storageMetadataLocalConfig | Official Documentation
+description: Configure Local Storage metadata ingestion to define path patterns, sync behaviors, and additional metadata tracking parameters.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagemetadatalocalconfig
 ---
 

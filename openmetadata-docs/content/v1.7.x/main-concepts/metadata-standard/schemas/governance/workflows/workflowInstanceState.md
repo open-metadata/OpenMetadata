@@ -1,5 +1,6 @@
 ---
-title: workflowInstanceState
+title: Workflowinstancestate | Official Documentation
+description: Schema for tracking workflow instance state, detailing execution phases, error handling, retry logic, and operational transitions.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/workflowinstancestate
 ---
 

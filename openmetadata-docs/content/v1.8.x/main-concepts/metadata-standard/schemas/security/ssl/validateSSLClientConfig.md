@@ -1,5 +1,6 @@
 ---
-title: validateSSLClientConfig
+title: validateSSLClientConfig | Official Documentation
+description: Validate SSL settings in client configuration to ensure certificate trust, expiration checking, and hostname verification.
 slug: /main-concepts/metadata-standard/schemas/security/ssl/validatesslclientconfig
 ---
 

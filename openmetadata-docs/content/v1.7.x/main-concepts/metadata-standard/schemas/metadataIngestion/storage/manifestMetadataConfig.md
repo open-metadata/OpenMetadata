@@ -1,5 +1,6 @@
 ---
-title: manifestMetadataConfig
+title: manifestMetadataConfig | Official Documentation
+description: Use this schema to define metadata ingestion from manifest files, including format, location, and load frequency for metadata extraction.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/manifestmetadataconfig
 ---
 

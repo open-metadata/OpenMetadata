@@ -1,5 +1,6 @@
 ---
 title: Test Case Result | OpenMetadata Test Results
+description: Track test case results and validations in feed to support data quality monitoring.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/testcaseresult
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Dashboard Service | OpenMetadata Dashboard Service
+description: Describe dashboard service configuration and metadata for integration and ingestion.
 slug: /main-concepts/metadata-standard/schemas/entity/services/dashboardservice
 ---
 

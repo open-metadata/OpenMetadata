@@ -1,5 +1,6 @@
 ---
-title: storageMetadataHttpConfig
+title: storageMetadataHttpConfig | Official Documentation
+description: Configure HTTP-based storage metadata ingestion with settings like metadata URL, credentials, and fetch intervals to enable efficient syncing.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagemetadatahttpconfig
 ---
 

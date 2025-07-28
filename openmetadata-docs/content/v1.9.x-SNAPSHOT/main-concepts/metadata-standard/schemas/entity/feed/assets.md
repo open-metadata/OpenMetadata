@@ -1,5 +1,6 @@
 ---
 title: Assets Schema | OpenMetadata Assets Schema and Management
+description: Record asset-related actions and changes in feed to enable metadata-driven collaboration.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/assets
 ---
 

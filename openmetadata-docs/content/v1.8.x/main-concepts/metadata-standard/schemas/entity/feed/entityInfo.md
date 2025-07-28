@@ -1,5 +1,6 @@
 ---
 title: Entity Info | OpenMetadata Entity Information Schema
+description: Track feed activity for entities to log edits, discussions, and ownership changes.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/entityinfo
 ---
 

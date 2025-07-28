@@ -1,5 +1,6 @@
 ---
 title: Suggestion Schema | OpenMetadata Suggestion
+description: Store suggestions in feed for metadata edits, enrichment, or governance recommendations.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/suggestion
 ---
 

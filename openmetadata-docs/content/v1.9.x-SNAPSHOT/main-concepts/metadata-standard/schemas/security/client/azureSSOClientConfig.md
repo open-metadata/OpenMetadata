@@ -1,5 +1,6 @@
 ---
 title: azureSSOClientConfig | OpenMetadata Azure SSO Client
+description: Set up Azure SSO using schema that supports tenant ID, client credentials, authority URL, and necessary access token scopes.
 slug: /main-concepts/metadata-standard/schemas/security/client/azuressoclientconfig
 ---
 

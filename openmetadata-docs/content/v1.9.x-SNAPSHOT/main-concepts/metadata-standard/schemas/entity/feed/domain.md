@@ -1,5 +1,6 @@
 ---
 title: Domain Feed | OpenMetadata Domain Feed and API
+description: Log domain-related changes in activity feed including updates to domain relationships.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/domain
 ---
 

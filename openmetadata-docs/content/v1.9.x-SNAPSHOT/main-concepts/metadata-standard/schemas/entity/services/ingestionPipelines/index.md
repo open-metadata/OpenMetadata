@@ -1,5 +1,6 @@
 ---
 title: Ingestion Pipelines | OpenMetadata Ingestion
+description: Define ingestion pipeline entities to manage configurations, status, and execution logs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipelines
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: oktaSSOClientConfig | OpenMetadata Okta SSO Client
+description: Configure Okta SSO client integration by specifying domain, client ID, client secret, and redirect details for OAuth 2.0 flows.
 slug: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconfig
 ---
 

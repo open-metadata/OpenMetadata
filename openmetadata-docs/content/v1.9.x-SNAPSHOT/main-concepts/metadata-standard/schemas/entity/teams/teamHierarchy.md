@@ -1,5 +1,6 @@
 ---
 title: Team Hierarchy | OpenMetadata Team Hierarchy
+description: Model team hierarchy including nested relationships to reflect organizational structure.
 slug: /main-concepts/metadata-standard/schemas/entity/teams/teamhierarchy
 ---
 

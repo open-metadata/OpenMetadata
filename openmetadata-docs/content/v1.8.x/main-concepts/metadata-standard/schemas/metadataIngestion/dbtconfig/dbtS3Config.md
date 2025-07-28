@@ -1,5 +1,6 @@
 ---
 title: dbtS3Config | OpenMetadata dbt S3 Config
+description: Define DBT S3 configuration to fetch DBT assets from AWS S3 for metadata ingestion.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbts3config
 ---
 

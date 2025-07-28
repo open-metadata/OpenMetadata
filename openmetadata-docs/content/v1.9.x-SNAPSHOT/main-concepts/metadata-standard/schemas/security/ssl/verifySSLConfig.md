@@ -1,5 +1,6 @@
 ---
 title: verifySSLConfig | OpenMetadata SSL Verify Config
+description: Define schema for verifying SSL configurations including trust store locations, protocols supported, and validation strategy.
 slug: /main-concepts/metadata-standard/schemas/security/ssl/verifysslconfig
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: dbtAzureConfig | OpenMetadata dbt Azure Config
+description: Represent DBT Azure configuration for reading files from Azure Blob Storage for ingestion.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtazureconfig
 ---
 

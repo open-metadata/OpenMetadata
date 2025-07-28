@@ -1,5 +1,6 @@
 ---
 title: entitiesCount | OpenMetadata Entity Count
+description: Summarize entity counts across the platform for usage metrics, inventory, and health insights.
 slug: /main-concepts/metadata-standard/schemas/entity/utils/entitiescount
 ---
 

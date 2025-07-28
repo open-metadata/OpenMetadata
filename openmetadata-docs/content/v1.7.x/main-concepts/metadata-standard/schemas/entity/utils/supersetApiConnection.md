@@ -1,5 +1,6 @@
 ---
-title: supersetApiConnection
+title: supersetApiConnection | Official Documentation
+description: Represent Superset API connection details and credentials for dashboard ingestion configuration.
 slug: /main-concepts/metadata-standard/schemas/entity/utils/supersetapiconnection
 ---
 

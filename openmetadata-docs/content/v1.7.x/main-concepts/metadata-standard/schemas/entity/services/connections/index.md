@@ -1,5 +1,6 @@
 ---
 title: Connections Schema | OpenMetadata Connections
+description: Model generic service connection metadata for all supported service types in the platform.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections
 ---
 

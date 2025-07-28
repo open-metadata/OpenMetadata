@@ -1,5 +1,6 @@
 ---
 title: ML Model Service | OpenMetadata ML Model Service
+description: Capture metadata for ML model services including endpoints, configuration, and lifecycle.
 slug: /main-concepts/metadata-standard/schemas/entity/services/mlmodelservice
 ---
 

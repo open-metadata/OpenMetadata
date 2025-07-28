@@ -1,5 +1,6 @@
 ---
 title: Description Schema | OpenMetadata Description
+description: Log description changes to entities in the feed with author and timestamp information.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/description
 ---
 

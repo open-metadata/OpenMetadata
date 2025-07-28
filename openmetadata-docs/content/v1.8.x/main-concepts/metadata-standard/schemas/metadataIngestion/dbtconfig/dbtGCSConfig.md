@@ -1,5 +1,6 @@
 ---
 title: dbtGCSConfig | OpenMetadata dbt GCS Config
+description: Store DBT GCS config for accessing DBT files from Google Cloud Storage during ingestion.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtgcsconfig
 ---
 

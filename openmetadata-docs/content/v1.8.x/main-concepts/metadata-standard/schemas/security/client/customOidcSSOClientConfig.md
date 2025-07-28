@@ -1,5 +1,6 @@
 ---
-title: customOidcSSOClientConfig
+title: customOidcSSOClientConfig | Official Documentation
+description: Define schema for integrating custom OIDC clients into SSO workflows using client credentials and redirect parameters.
 slug: /main-concepts/metadata-standard/schemas/security/client/customoidcssoclientconfig
 ---
 

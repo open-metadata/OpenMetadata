@@ -1,5 +1,6 @@
 ---
 title: Workflow Elements | OpenMetadata Workflow Elements Explained
+description: Metadata schema outlining core elements used in workflows such as tasks, events, gateways, and their configuration for execution logic.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements
 ---
 

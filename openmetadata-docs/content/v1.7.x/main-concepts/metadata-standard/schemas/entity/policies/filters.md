@@ -1,5 +1,6 @@
 ---
 title: Filters Schema | OpenMetadata Filters Schema and Usage
+description: Represent policy filters that define conditions and criteria for applying governance rules.
 slug: /main-concepts/metadata-standard/schemas/entity/policies/filters
 ---
 

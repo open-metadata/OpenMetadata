@@ -1,5 +1,6 @@
 ---
 title: Classification Schema | OpenMetadata Classification
+description: Define classification metadata to organize, secure, and govern data with taxonomy and labels.
 slug: /main-concepts/metadata-standard/schemas/entity/classification/classification
 ---
 

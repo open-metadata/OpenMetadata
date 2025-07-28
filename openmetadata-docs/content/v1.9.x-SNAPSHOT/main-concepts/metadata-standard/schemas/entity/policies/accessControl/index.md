@@ -1,5 +1,6 @@
 ---
 title: Access Control Schema | OpenMetadata Access Control
+description: Describe access control metadata to govern permissions, roles, and entity-level security.
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol
 ---
 

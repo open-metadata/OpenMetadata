@@ -1,5 +1,6 @@
 ---
 title: Owner Schema | OpenMetadata Owner Schema and API
+description: Track entity ownership updates in activity feed with user, entity, and timestamp metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/owner
 ---
 

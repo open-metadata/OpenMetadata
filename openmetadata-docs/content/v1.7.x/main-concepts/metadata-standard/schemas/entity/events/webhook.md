@@ -1,5 +1,6 @@
 ---
 title: Webhook Schema | OpenMetadata Webhook Schema Details
+description: Represent webhook configuration and events for real-time data sync and external system integration.
 slug: /main-concepts/metadata-standard/schemas/entity/events/webhook
 ---
 
