@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -32,12 +33,15 @@ import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
+import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -74,7 +78,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
   private final IngestionPipelineMapper ingestionPipelineMapper;
-  @Setter private PipelineServiceClientInterface pipelineServiceClient;
+  @Getter @Setter private PipelineServiceClientInterface pipelineServiceClient;
+
+  private static final List<TestCaseStatus> FAILED_DQ_STATUSES =
+      List.of(TestCaseStatus.Failed, TestCaseStatus.Aborted);
 
   public DataContractRepository(OpenMetadataApplicationConfig config) {
     super(
@@ -89,11 +96,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   @Override
   public void setFullyQualifiedName(DataContract dataContract) {
-    EntityReference entityRef = Entity.getEntityReferenceById(
-        dataContract.getEntity().getType(),
-        dataContract.getEntity().getId(),
-        Include.NON_DELETED
-    );
+    EntityReference entityRef =
+        Entity.getEntityReferenceById(
+            dataContract.getEntity().getType(),
+            dataContract.getEntity().getId(),
+            Include.NON_DELETED);
     String entityFQN = entityRef.getFullyQualifiedName();
     String name = dataContract.getName();
     dataContract.setFullyQualifiedName(entityFQN + ".dataContract_" + name);
@@ -250,9 +257,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
       // Collect test case references from quality expectations
       List<UUID> testCaseRefs =
-          dataContract.getQualityExpectations().stream()
-              .map(EntityReference::getId)
-              .toList();
+          dataContract.getQualityExpectations().stream().map(EntityReference::getId).toList();
 
       testCaseRepository.addTestCasesToLogicalTestSuite(testSuite, testCaseRefs);
 
@@ -320,7 +325,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return result;
   }
 
-  private void triggerAndDeployDQValidation(DataContract dataContract) {
+  public void triggerAndDeployDQValidation(DataContract dataContract) {
     if (dataContract.getTestSuite() == null) {
       throw DataContractValidationException.byMessage(
           String.format(
@@ -374,6 +379,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     } catch (Exception e) {
       LOG.error("Error during semantics validation", e);
     }
+
+    return validation;
+  }
+
+  private QualityValidation validateDQ(List<ResultSummary> testSummary) {
+    QualityValidation validation = new QualityValidation();
+    if (nullOrEmpty(testSummary)) {
+      return validation; // return the existing result without updates
+    }
+
+    List<ResultSummary> failedTests =
+        testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
+
+    validation
+        .withFailed(failedTests.size())
+        .withPassed(testSummary.size() - failedTests.size())
+        .withTotal(testSummary.size())
+        .withQualityScore(
+            (((testSummary.size() - failedTests.size()) / (double) testSummary.size())) * 100);
 
     return validation;
   }
@@ -433,7 +457,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // or if we're updating the same result with a newer status
     if (dataContract.getLatestResult() == null
         || dataContract.getLatestResult().getTimestamp() < result.getTimestamp()
-        || dataContract.getLatestResult().getResultId() == result.getId()) {
+        || dataContract.getLatestResult().getResultId().equals(result.getId())) {
       updateLatestResult(dataContract, result);
     }
 
@@ -447,10 +471,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       throw EntityNotFoundException.byMessage(
           String.format("Data contract not found for Test Suite %s", testSuite.getName()));
     }
-    // TODO: check if we have a running or failed resultId for the contract, check pending tests on
-    // the suite and update status.
-    // also if the DQ is created in the contract, we could set the DQ status in the result as
-    // running as well
+
     if (nullOrEmpty(dataContract.getQualityExpectations())) {
       throw DataContractValidationException.byMessage(
           String.format(
@@ -458,9 +479,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               dataContract.getFullyQualifiedName()));
     }
 
-    // DataContractResult result =
+    // Get the latest result or throw if none exists
+    DataContractResult result = getLatestResult(dataContract);
+    QualityValidation validation = validateDQ(testSuite.getTestCaseResultSummary());
 
-    return null;
+    result.withQualityValidation(validation);
+
+    compileResult(result, ContractExecutionStatus.Success);
+    // Update the last result in the data contract
+    addContractResult(dataContract, result);
+
+    return result;
   }
 
   public DataContractResult getLatestResult(DataContract dataContract) {
