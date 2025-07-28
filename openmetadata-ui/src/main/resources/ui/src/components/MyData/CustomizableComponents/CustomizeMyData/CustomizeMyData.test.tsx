@@ -49,13 +49,13 @@ jest.mock('../CustomiseHomeModal/CustomiseHomeModal', () => {
 });
 
 jest.mock(
-  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder',
+  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1',
   () => {
     return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
       <div>
-        EmptyWidgetPlaceholder{' '}
+        EmptyWidgetPlaceholderV1{' '}
         <button onClick={handleOpenAddWidgetModal}>
-          handleOpenAddWidgetModal
+          handleOpenAddWidgetModalV1
         </button>
       </div>
     ));
@@ -220,12 +220,12 @@ describe('CustomizeMyData component', () => {
     expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
   });
 
-  it('CustomizeMyData should display EmptyWidgetPlaceholder', async () => {
+  it('CustomizeMyData should display EmptyWidgetPlaceholderV1', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    expect(screen.getByText('EmptyWidgetPlaceholder')).toBeInTheDocument();
+    expect(screen.getByText('EmptyWidgetPlaceholderV1')).toBeInTheDocument();
   });
 
   it('CustomizeMyData should display CustomiseHomeModal after handleOpenAddWidgetModal is called', async () => {
@@ -233,7 +233,7 @@ describe('CustomizeMyData component', () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
+    const addWidgetButton = screen.getByText('handleOpenAddWidgetModalV1');
 
     fireEvent.click(addWidgetButton);
 
@@ -245,7 +245,7 @@ describe('CustomizeMyData component', () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
+    const addWidgetButton = screen.getByText('handleOpenAddWidgetModalV1');
 
     fireEvent.click(addWidgetButton);
 

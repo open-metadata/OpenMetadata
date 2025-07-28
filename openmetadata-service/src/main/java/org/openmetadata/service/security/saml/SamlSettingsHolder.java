@@ -28,6 +28,7 @@ import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 public class SamlSettingsHolder {
   private static volatile Saml2Settings saml2Settings;
@@ -50,9 +51,10 @@ public class SamlSettingsHolder {
   public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig)
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
-        catalogApplicationConfig.getAuthenticationConfiguration().getSamlConfiguration();
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration();
     tokenValidity = samlConfig.getSecurity().getTokenValidity();
-    domain = catalogApplicationConfig.getAuthorizerConfiguration().getPrincipalDomain();
+    domain =
+        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig().getPrincipalDomain();
     if (samlData == null) {
       samlData = new HashMap<>();
     }

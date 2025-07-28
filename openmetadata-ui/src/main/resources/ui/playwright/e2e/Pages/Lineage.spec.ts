@@ -69,13 +69,13 @@ const entities = [
 
 const pipeline = new PipelineClass();
 
-test.skip('Setup pre-requests', async ({ browser }) => {
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await pipeline.create(apiContext);
   await afterAction();
 });
 
-test.skip('Cleanup', async ({ browser }) => {
+test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await pipeline.delete(apiContext);
   await afterAction();
@@ -84,7 +84,7 @@ test.skip('Cleanup', async ({ browser }) => {
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
-  test.skip(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
+  test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
@@ -102,6 +102,8 @@ for (const EntityClass of entities) {
         await currentEntity.visitEntityPageWithCustomSearchBox(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
+        // enable fullscreen
+        await page.getByTestId('full-screen').click();
         await editLineage(page);
         await performZoomOut(page);
         for (const entity of entities) {
@@ -121,7 +123,6 @@ for (const EntityClass of entities) {
 
         // Check the Entity Drawer
         await performZoomOut(page);
-        await page.getByTestId('full-screen').click();
 
         for (const entity of entities) {
           const toNodeFqn = get(
@@ -187,7 +188,7 @@ for (const EntityClass of entities) {
   });
 }
 
-test.skip('Verify column lineage between tables', async ({ browser }) => {
+test('Verify column lineage between tables', async ({ browser }) => {
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -224,9 +225,7 @@ test.skip('Verify column lineage between tables', async ({ browser }) => {
   await afterAction();
 });
 
-test.skip('Verify column lineage between table and topic', async ({
-  browser,
-}) => {
+test('Verify column lineage between table and topic', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);
@@ -297,7 +296,7 @@ test.skip('Verify column lineage between table and topic', async ({
   await afterAction();
 });
 
-test.skip('Verify column lineage between topic and api endpoint', async ({
+test('Verify column lineage between topic and api endpoint', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);
@@ -334,7 +333,7 @@ test.skip('Verify column lineage between topic and api endpoint', async ({
   await afterAction();
 });
 
-test.skip('Verify column lineage between table and api endpoint', async ({
+test('Verify column lineage between table and api endpoint', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);
@@ -369,7 +368,7 @@ test.skip('Verify column lineage between table and api endpoint', async ({
   await afterAction();
 });
 
-test.skip('Verify function data in edge drawer', async ({ browser }) => {
+test('Verify function data in edge drawer', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);
@@ -447,7 +446,7 @@ test.skip('Verify function data in edge drawer', async ({ browser }) => {
   }
 });
 
-test.skip('Verify table search with special characters as handledd', async ({
+test('Verify table search with special characters as handledd', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);

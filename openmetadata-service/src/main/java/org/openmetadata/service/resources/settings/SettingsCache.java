@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
@@ -46,6 +48,8 @@ import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -218,6 +222,27 @@ public class SettingsCache {
                       .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialize Authentication Configuration
+    Settings storedAuthConfig =
+        Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
+    if (storedAuthConfig == null) {
+      AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+      Settings setting =
+          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
+
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialize Authorizer Configuration
+    Settings storedAuthzConfig =
+        Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
+    if (storedAuthzConfig == null) {
+      AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
+      Settings setting =
+          new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
+
+      Entity.getSystemRepository().createNewSetting(setting);
 
     Settings entityRulesSettings =
         Entity.getSystemRepository()

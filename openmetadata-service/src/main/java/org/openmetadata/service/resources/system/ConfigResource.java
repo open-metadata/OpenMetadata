@@ -36,6 +36,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -80,8 +81,9 @@ public class ConfigResource {
       })
   public AuthenticationConfiguration getAuthConfig() {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
-    if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
-      authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
+    if (SecurityConfigurationManager.getInstance().getCurrentAuthConfig() != null) {
+      authenticationConfiguration =
+          SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
       // Remove Ldap Configuration
       authenticationConfiguration.setLdapConfiguration(null);
 
