@@ -1,5 +1,6 @@
 ---
 title: dbtCloudConfig | OpenMetadata dbt Cloud Config
+description: Capture DBT Cloud configuration metadata including authentication and repository settings.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtcloudconfig
 ---
 

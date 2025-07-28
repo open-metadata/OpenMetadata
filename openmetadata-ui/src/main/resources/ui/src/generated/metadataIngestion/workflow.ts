@@ -409,6 +409,8 @@ export interface ConfigClass {
      * Client ID for DOMO
      *
      * client_id for Sigma.
+     *
+     * Azure Application (client) ID for service principal authentication.
      */
     clientId?: string;
     /**
@@ -417,6 +419,8 @@ export interface ConfigClass {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Azure Application client secret for service principal authentication.
      */
     clientSecret?: string;
     /**
@@ -739,6 +743,8 @@ export interface ConfigClass {
     scope?: string[];
     /**
      * Tenant ID for PowerBI.
+     *
+     * Azure Directory (tenant) ID for service principal authentication.
      */
     tenantId?: string;
     /**
@@ -1024,8 +1030,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -2149,6 +2156,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -4633,11 +4641,15 @@ export interface CollateAIAppConfig {
  *
  * Remove Tags Action Type
  *
- * Add an owner to the selected assets.
+ * Add domains to the selected assets.
+ *
+ * Remove domains from the selected assets.
+ *
+ * Add a Custom Property to the selected assets.
  *
  * Remove Owner Action Type
  *
- * Add a Custom Property to the selected assets.
+ * Add an owner to the selected assets.
  *
  * Add Test Cases to the selected assets.
  *
@@ -4678,8 +4690,8 @@ export interface Action {
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
      *
-     * Update the domain even if it is defined in the asset. By default, we will only apply the
-     * domain to assets without domain.
+     * Update the domains even if they are defined in the asset. By default, we will only apply
+     * the domains to assets without domains.
      *
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
@@ -4726,9 +4738,9 @@ export interface Action {
      */
     labels?: LabelElement[];
     /**
-     * Domain to apply
+     * Domains to apply
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Description to apply
      */
@@ -4774,9 +4786,9 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
-     * Propagate domain from the parent through lineage
+     * Propagate domains from the parent through lineage
      */
-    propagateDomain?: boolean;
+    propagateDomains?: boolean;
     /**
      * Propagate glossary terms through lineage
      */
@@ -4808,16 +4820,14 @@ export interface Action {
 }
 
 /**
- * Domain to apply
+ * Domains to apply
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners to apply
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -4907,16 +4917,14 @@ export enum MetadataAttribute {
  *
  * tier to apply
  *
- * Domain to apply
+ * Domains to apply
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners to apply
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -5130,7 +5138,7 @@ export interface TestCaseParameterValue {
  *
  * Remove Tags Action Type.
  *
- * Add Owner Action Type.
+ * Add Domain Action Type.
  *
  * Remove Domain Action Type
  *
@@ -5147,6 +5155,8 @@ export interface TestCaseParameterValue {
  * Add Test Case Action Type.
  *
  * Remove Test Case Action Type
+ *
+ * Add Owner Action Type.
  *
  * Remove Owner Action Type
  *
