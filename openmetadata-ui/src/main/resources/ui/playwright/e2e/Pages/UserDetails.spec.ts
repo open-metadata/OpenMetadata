@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test as base } from '@playwright/test';
+import { Domain } from '../../support/domain/Domain';
 import { TeamClass } from '../../support/team/TeamClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -22,6 +23,14 @@ import { redirectToUserPage } from '../../utils/userDetails';
 const user1 = new UserClass();
 const user2 = new UserClass();
 const admin = new AdminClass();
+const domain = new Domain({
+  name: `PW%domain`,
+  displayName: `PWDomain`,
+  description: 'playwright domain description',
+  domainType: 'Aggregate',
+  // eslint-disable-next-line no-useless-escape
+  fullyQualifiedName: `PW%domain`,
+});
 const team = new TeamClass({
   name: `a-new-team-${uuid()}`,
   displayName: `A New Team ${uuid()}`,
@@ -56,6 +65,7 @@ test.describe('User with different Roles', () => {
     await user2.create(apiContext);
 
     await team.create(apiContext);
+    await domain.create(apiContext);
 
     await afterAction();
   });
@@ -67,6 +77,7 @@ test.describe('User with different Roles', () => {
     await user2.delete(apiContext);
 
     await team.delete(apiContext);
+    await domain.delete(apiContext);
 
     await afterAction();
   });
@@ -96,6 +107,136 @@ test.describe('User with different Roles', () => {
     await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
       'Accounting'
     );
+  });
+
+  test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
+    adminPage,
+  }) => {
+    await redirectToUserPage(adminPage);
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
+
+    await adminPage.getByTestId('edit-teams-button').click();
+
+    await expect(adminPage.getByTestId('team-select')).toBeVisible();
+
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage.getByText(team.responseData.displayName).click();
+
+    const updateTeamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await adminPage.getByTestId('teams-edit-save-btn').click();
+
+    await updateTeamsResponse;
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      team.responseData.displayName
+    );
+
+    await adminPage.getByText(team.responseData.displayName).first().click();
+
+    await adminPage.waitForLoadState('networkidle');
+
+    const domainResponse = adminPage.waitForResponse((response) =>
+      response.url().includes('/api/v1/domains/hierarchy')
+    );
+
+    await adminPage.getByTestId('add-domain').click();
+
+    await domainResponse;
+
+    await adminPage.getByText(domain.responseData.displayName).click();
+
+    const teamsResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await adminPage.getByText('Update').click();
+
+    await teamsResponse;
+
+    await redirectToUserPage(adminPage);
+
+    await adminPage.waitForLoadState('networkidle');
+
+    await expect(adminPage.getByTestId('user-profile-teams')).toContainText(
+      team.responseData.displayName
+    );
+
+    await expect(
+      adminPage.locator('[data-testid="header-domain-container"]')
+    ).toContainText(domain.responseData.displayName);
+
+    const teamsListResponse = adminPage.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/hierarchy') &&
+        response.request().method() === 'GET'
+    );
+
+    await adminPage.getByTestId('edit-teams-button').click();
+
+    await teamsListResponse;
+    await adminPage.getByTestId('team-select').click();
+
+    await adminPage.waitForSelector('.ant-tree-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage
+      .locator('[title="' + team.responseData.displayName + '"]')
+      .nth(1)
+      .click();
+
+    const userProfileResponse = adminPage.waitForResponse((response) =>
+      response.url().includes('/api/v1/users/')
+    );
+
+    await adminPage.getByTestId('teams-edit-save-btn').click({ force: true });
+
+    await userProfileResponse;
+
+    await expect(
+      adminPage.locator('[data-testid="header-domain-container"]')
+    ).not.toContainText(domain.responseData.displayName);
+  });
+
+  test('User can search for a domain', async ({ adminPage }) => {
+    await redirectToUserPage(adminPage);
+
+    await expect(adminPage.getByTestId('edit-domains')).toBeVisible();
+
+    await adminPage.getByTestId('edit-domains').click();
+
+    await expect(adminPage.locator('.custom-domain-edit-select')).toBeVisible();
+
+    await adminPage.locator('.custom-domain-edit-select').click();
+
+    const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill('PWDomain');
+
+    await searchPromise;
+
+    await adminPage.waitForSelector('.domain-custom-dropdown-class', {
+      state: 'visible',
+    });
+
+    await expect(
+      adminPage.locator('.domain-custom-dropdown-class')
+    ).toContainText('PWDomain');
   });
 
   test('Admin user can get all the roles hierarchy and edit roles', async ({
@@ -141,8 +282,11 @@ test.describe('User with different Roles', () => {
     await userPage.waitForSelector('[role="dialog"].ant-modal', {
       state: 'visible',
     });
-    await userPage.fill('[data-testid="displayName"]', 'New Display Name');
-    await userPage.click('[data-testid="save-display-name"]');
+    await userPage.fill(
+      '[data-testid="displayName-input"]',
+      'New Display Name'
+    );
+    await userPage.getByText('Save').click();
 
     await expect(userPage.getByTestId('user-display-name')).toHaveText(
       'New Display Name'

@@ -1,5 +1,6 @@
 ---
-title: Create Tasks
+title: Create Tasks | OpenMetadata Collaboration Workflow
+description: Manage data collaboration tasks directly within the platform to assign ownership, review status, and track activity.
 slug: /how-to-guides/data-collaboration/tasks
 ---
 

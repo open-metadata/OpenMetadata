@@ -10,45 +10,111 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { ExtraInfo } from 'Models';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as MyDataEmptyIcon } from '../../../assets/svg/my-data-no-data-placeholder.svg';
+import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
+import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  ROUTES,
-} from '../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+  applySortToData,
+  getSortField,
+  getSortOrder,
+  MY_DATA_WIDGET_FILTER_OPTIONS,
+} from '../../../constants/Widgets.constant';
+import { SIZE } from '../../../enums/common.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { SearchSourceAlias } from '../../../interface/search.interface';
+import {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../rest/miscAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getUserPath } from '../../../utils/RouterUtils';
+import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
+import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
+import { CURATED_ASSETS_SORT_BY_KEYS } from '../Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import './my-data-widget.less';
 
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
   widgetKey,
+  handleLayoutUpdate,
+  currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
-  const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);
 
-  const fetchMyDataAssets = async () => {
+  const widgetData = useMemo(
+    () => currentLayout?.find((w) => w.i === widgetKey),
+    [currentLayout, widgetKey]
+  );
+  const [selectedFilter, setSelectedFilter] = useState<string>(
+    CURATED_ASSETS_SORT_BY_KEYS.LATEST
+  );
+
+  const handleFilterChange = useCallback(({ key }: { key: string }) => {
+    setSelectedFilter(key);
+  }, []);
+  // Check if widget is in expanded form (full size)
+  const isExpanded = useMemo(() => {
+    const currentWidget = currentLayout?.find(
+      (layout: WidgetConfig) => layout.i === widgetKey
+    );
+
+    return currentWidget?.w === 2;
+  }, [currentLayout, widgetKey]);
+
+  const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
+    const extraInfo: ExtraInfo[] = [];
+    // Add domain info
+    if (item.domain) {
+      extraInfo.push({
+        key: 'Domain',
+        value: getDomainPath(item.domain.fullyQualifiedName),
+        placeholderText: getEntityName(item.domain),
+        isLink: true,
+        openInNewTab: false,
+      });
+    }
+
+    // Add owner info
+    if (item.owners && item.owners.length > 0) {
+      extraInfo.push({
+        key: 'Owner',
+        value: (
+          <OwnerLabel
+            isCompactView={false}
+            owners={(item.owners as EntityReference[]) ?? []}
+            showLabel={false}
+          />
+        ),
+      });
+    }
+
+    return extraInfo;
+  };
+
+  const fetchMyDataAssets = useCallback(async () => {
     if (!isUndefined(currentUser)) {
       setIsLoading(true);
       try {
@@ -59,140 +125,190 @@ const MyDataWidgetInternal = ({
         ].join(' OR ');
 
         const queryFilter = `(${mergedIds})`;
+        const sortField = getSortField(selectedFilter);
+        const sortOrder = getSortOrder(selectedFilter);
+
         const res = await searchData(
           '',
           INITIAL_PAGING_VALUE,
           PAGE_SIZE,
           queryFilter,
-          '',
-          '',
+          sortField,
+          sortOrder,
           SearchIndex.ALL
         );
 
         // Extract useful details from the Response
-        const totalOwnedAssets = res?.data?.hits?.total.value ?? 0;
         const ownedAssets = res?.data?.hits?.hits;
+        const sourceData = ownedAssets.map((hit) => hit._source).slice(0, 8);
 
-        setData(ownedAssets.map((hit) => hit._source).slice(0, 8));
-        setTotalOwnedAssetsCount(totalOwnedAssets);
+        // Apply client-side sorting as well to ensure consistent results
+        const sortedData = applySortToData(sourceData, selectedFilter);
+        setData(sortedData);
       } catch {
         setData([]);
       } finally {
         setIsLoading(false);
       }
     }
-  };
-
-  const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
-  }, [widgetKey]);
+  }, [
+    currentUser,
+    selectedFilter,
+    getSortField,
+    getSortOrder,
+    applySortToData,
+  ]);
 
   useEffect(() => {
     fetchMyDataAssets();
-  }, [currentUser]);
+  }, [fetchMyDataAssets]);
 
-  return (
-    <Card
-      className="my-data-widget-container card-widget"
-      data-testid="my-data-widget"
-      loading={isLoading}>
-      <Row>
-        <Col span={24}>
-          <div className="d-flex justify-between m-b-xs">
-            <Typography.Text className="font-medium">
-              {t('label.my-data')}
-            </Typography.Text>
-            <Space>
-              {data.length ? (
-                <Link
-                  data-testid="view-all-link"
-                  to={getUserPath(currentUser?.name ?? '', 'mydata')}>
-                  <span className="text-grey-muted font-normal text-xs">
-                    {t('label.view-all')}{' '}
-                    <span data-testid="my-data-total-count">
-                      {`(${totalOwnedAssetsCount})`}
-                    </span>
-                  </span>
-                </Link>
-              ) : null}
-              {isEditView && (
-                <>
-                  <DragOutlined
-                    className="drag-widget-icon cursor-pointer"
-                    data-testid="drag-widget-button"
-                    size={14}
-                  />
-                  <CloseOutlined
-                    data-testid="remove-widget-button"
-                    size={14}
-                    onClick={handleCloseClick}
-                  />
-                </>
-              )}
-            </Space>
-          </div>
-        </Col>
-      </Row>
-      <EntityListSkeleton
-        dataLength={data.length !== 0 ? data.length : 5}
-        loading={Boolean(isLoading)}>
-        {isEmpty(data) ? (
-          <div className="flex-center h-full">
-            <ErrorPlaceHolder
-              className="border-none"
-              icon={
-                <MyDataEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />
-              }
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph
-                className="tw-max-w-md"
-                style={{ marginBottom: '0' }}>
-                <Transi18next
-                  i18nKey="message.no-owned-data"
-                  renderElement={<Link to={ROUTES.EXPLORE} />}
-                />
-              </Typography.Paragraph>
-            </ErrorPlaceHolder>
-          </div>
-        ) : (
-          <div className="entity-list-body">
-            {data.map((item) => {
-              return (
-                <div
-                  className="right-panel-list-item flex items-center justify-between"
-                  data-testid={`Recently Viewed-${getEntityName(item)}`}
-                  key={item.id}>
-                  <div className="d-flex items-center">
-                    <Link
-                      to={entityUtilClassBase.getEntityLink(
-                        item.entityType ?? '',
-                        item.fullyQualifiedName as string
-                      )}>
-                      <Button
-                        className="entity-button flex-center p-0 m--ml-1"
-                        icon={
-                          <div className="entity-button-icon m-r-xs">
-                            {searchClassBase.getEntityIcon(
-                              item.entityType ?? ''
-                            )}
-                          </div>
-                        }
-                        type="text">
+  const getEntityIcon = (item: SourceType) => {
+    if ('serviceType' in item && item.serviceType) {
+      return (
+        <img
+          alt={item.name}
+          className="w-8 h-8"
+          src={serviceUtilClassBase.getServiceTypeLogo({
+            serviceType: item.serviceType,
+          } as SearchSourceAlias)}
+        />
+      );
+    } else {
+      return searchClassBase.getEntityIcon(item.entityType ?? '');
+    }
+  };
+
+  const emptyState = useMemo(
+    () => (
+      <WidgetEmptyState
+        actionButtonLink={`users/${currentUser?.name}/mydata`}
+        actionButtonText={t('label.get-started')}
+        description={`${t('message.nothing-saved-yet')} ${t(
+          'message.no-owned-data'
+        )}`}
+        icon={
+          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+        }
+        title={t('message.curate-your-data-view')}
+      />
+    ),
+    []
+  );
+  const myDataContent = useMemo(() => {
+    return (
+      <div className="entity-list-body">
+        <div className="cards-scroll-container flex-1 overflow-y-auto">
+          {data.map((item) => {
+            const extraInfo = getEntityExtraInfo(item);
+
+            return (
+              <div
+                className="my-data-widget-list-item card-wrapper w-full p-xs border-radius-sm"
+                data-testid={`Recently Viewed-${getEntityName(item)}`}
+                key={item.id}>
+                <div className="d-flex items-center justify-between ">
+                  <Link
+                    className="item-link w-min-0"
+                    to={entityUtilClassBase.getEntityLink(
+                      item.entityType ?? '',
+                      item.fullyQualifiedName as string
+                    )}>
+                    <Button
+                      className="entity-button flex items-center gap-2 p-0 w-full"
+                      icon={
+                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
+                          {getEntityIcon(item)}
+                        </div>
+                      }
+                      type="text">
+                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                        {'serviceType' in item && item.serviceType && (
+                          <Typography.Text
+                            className="text-left text-sm font-regular"
+                            ellipsis={{ tooltip: true }}>
+                            {item.serviceType}
+                          </Typography.Text>
+                        )}
                         <Typography.Text
-                          className="text-left text-xs"
+                          className="text-left text-sm font-semibold"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
-                      </Button>
-                    </Link>
-                  </div>
+                      </div>
+                    </Button>
+                  </Link>
+                  {isExpanded && (
+                    <div className="d-flex items-center gap-3 flex-wrap">
+                      {extraInfo.map((info, i) => (
+                        <>
+                          <EntitySummaryDetails data={info} key={info.key} />
+                          {i !== extraInfo.length - 1 && (
+                            <span className="px-1.5 d-inline-block text-xl font-semibold">
+                              {t('label.middot-symbol')}
+                            </span>
+                          )}
+                        </>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </EntityListSkeleton>
-    </Card>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }, [data, isExpanded]);
+  const widgetContent = useMemo(() => {
+    return (
+      <div className="my-data-widget-container">
+        <WidgetHeader
+          currentLayout={currentLayout}
+          handleLayoutUpdate={handleLayoutUpdate}
+          handleRemoveWidget={handleRemoveWidget}
+          icon={<MyDataIcon height={24} width={24} />}
+          isEditView={isEditView}
+          selectedSortBy={selectedFilter}
+          sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
+          title={t('label.my-data')}
+          widgetKey={widgetKey}
+          widgetWidth={widgetData?.w}
+          onSortChange={(key) => handleFilterChange({ key })}
+        />
+        <div className="widget-content flex-1">
+          {isEmpty(data) ? emptyState : myDataContent}
+          <WidgetFooter
+            moreButtonLink={getUserPath(
+              currentUser?.name ?? '',
+              EntityTabs.ACTIVITY_FEED
+            )}
+            moreButtonText={t('label.view-more-count', {
+              count: String(data.length > 0 ? data.length : ''),
+            })} // if data is empty then show view more
+            showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
+          />
+        </div>
+      </div>
+    );
+  }, [
+    data,
+    isLoading,
+    currentUser,
+    currentLayout,
+    handleLayoutUpdate,
+    handleRemoveWidget,
+    widgetKey,
+    widgetData,
+    isEditView,
+  ]);
+
+  return (
+    <WidgetWrapper
+      dataLength={data.length > 0 ? data.length : 10}
+      loading={isLoading}>
+      {widgetContent}
+    </WidgetWrapper>
   );
 };
 

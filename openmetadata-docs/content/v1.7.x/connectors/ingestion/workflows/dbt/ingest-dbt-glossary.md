@@ -1,5 +1,6 @@
 ---
-title: Ingest Glossary from dbt
+title: Ingest Glossary from dbt | Official Documentation
+description: Import glossary definitions from dbt projects to align semantic metadata with business context and governance.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-glossary
 ---
 

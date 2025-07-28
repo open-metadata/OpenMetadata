@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { t } from 'i18next';
-import React, { useMemo } from 'react';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import TagButton from '../../common/TagButton/TagButton.component';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
@@ -32,6 +33,7 @@ export const ReviewerLabelV2 = <
   }
 >() => {
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
+  const { t } = useTranslation();
 
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -70,7 +72,7 @@ export const ReviewerLabelV2 = <
           data-testid="heading-name">
           {t('label.reviewer-plural')}
         </Typography.Text>
-        {hasEditReviewerAccess && hasReviewers && (
+        {hasEditReviewerAccess && (
           <UserTeamSelectableList
             previewSelected
             hasPermission={hasEditReviewerAccess}
@@ -80,14 +82,24 @@ export const ReviewerLabelV2 = <
             owner={assignedReviewers ?? []}
             popoverProps={{ placement: 'topLeft' }}
             onUpdate={handleReviewerSave}>
-            <EditIconButton
-              newLook
-              data-testid="edit-reviewer-button"
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.reviewer-plural'),
-              })}
-            />
+            {hasReviewers ? (
+              <EditIconButton
+                newLook
+                data-testid="edit-reviewer-button"
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.reviewer-plural'),
+                })}
+              />
+            ) : (
+              <PlusIconButton
+                data-testid="Add"
+                size="small"
+                title={t('label.add-entity', {
+                  entity: t('label.reviewer-plural'),
+                })}
+              />
+            )}
           </UserTeamSelectableList>
         )}
       </div>
@@ -100,34 +112,18 @@ export const ReviewerLabelV2 = <
       cardProps={{
         title: header,
       }}
-      dataTestId="glossary-reviewer">
-      <div data-testid="glossary-reviewer-name">
-        {getOwnerVersionLabel(
-          data,
-          isVersionView ?? false,
-          TabSpecificField.REVIEWERS,
-          hasEditReviewerAccess
-        )}
-      </div>
-
-      {hasEditReviewerAccess && !hasReviewers && (
-        <UserTeamSelectableList
-          previewSelected
-          hasPermission={hasEditReviewerAccess}
-          label={t('label.reviewer-plural')}
-          listHeight={200}
-          multiple={{ user: true, team: false }}
-          owner={assignedReviewers ?? []}
-          popoverProps={{ placement: 'topLeft' }}
-          onUpdate={handleReviewerSave}>
-          <TagButton
-            className="text-primary cursor-pointer"
-            icon={<PlusIcon height={16} name="plus" width={16} />}
-            label={t('label.add')}
-            tooltip=""
-          />
-        </UserTeamSelectableList>
-      )}
+      dataTestId="glossary-reviewer"
+      isExpandDisabled={!hasReviewers}>
+      {hasReviewers ? (
+        <div data-testid="glossary-reviewer-name">
+          {getOwnerVersionLabel(
+            data,
+            isVersionView ?? false,
+            TabSpecificField.REVIEWERS,
+            hasEditReviewerAccess
+          )}
+        </div>
+      ) : null}
     </ExpandableCard>
   );
 };

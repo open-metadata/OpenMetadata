@@ -1,5 +1,5 @@
 ---
-title: PowerBI
+title: PowerBI Connector | OpenMetadata Integration Documentation
 slug: /connectors/dashboard/powerbi
 ---
 
@@ -7,8 +7,8 @@ slug: /connectors/dashboard/powerbi
   name="PowerBI"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage", "Column Lineage"]
-  unavailableFeatures=["Owners", "Tags", "Usage"]
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage", "Column Lineage", "Owners"]
+  unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the PowerBI connector.

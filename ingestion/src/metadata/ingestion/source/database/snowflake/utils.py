@@ -41,6 +41,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_GET_VIEW_DDL,
     SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
@@ -188,7 +189,11 @@ def _get_query_map(
 
 
 def _get_query_parameters(
-    self, connection, schema: str, incremental: Optional[IncrementalConfig]
+    self,
+    connection,
+    schema: str,
+    incremental: Optional[IncrementalConfig],
+    account_usage: Optional[str] = None,
 ):
     """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {"schema": fqn.unquote_name(schema)}
@@ -199,6 +204,7 @@ def _get_query_parameters(
             **parameters,
             "date": incremental.start_timestamp,
             "database": database,
+            "account_usage": account_usage or "SNOWFLAKE.ACCOUNT_USAGE",
         }
 
     return parameters
@@ -207,9 +213,12 @@ def _get_query_parameters(
 def get_table_names(self, connection, schema: str, **kw):
     """Return the Table names to process based on the incremental setup."""
     incremental = kw.get("incremental")
+    account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
+    parameters = _get_query_parameters(
+        self, connection, schema, incremental, account_usage
+    )
 
     query = queries["default"]
 
@@ -234,9 +243,12 @@ def get_table_names(self, connection, schema: str, **kw):
 
 def get_view_names(self, connection, schema, **kw):
     incremental = kw.get("incremental")
+    account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
+    parameters = _get_query_parameters(
+        self, connection, schema, incremental, account_usage
+    )
 
     if kw.get("materialized_views"):
         query = queries["materialized_views"]
@@ -275,13 +287,29 @@ def get_stream_names(self, connection, schema, **kw):
 def get_view_definition(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
-    return get_view_definition_wrapper(
+    view_definition = get_view_definition_wrapper(
         self,
         connection,
         table_name=table_name,
         schema=schema,
         query=SNOWFLAKE_GET_VIEW_DEFINITION,
     )
+    if view_definition:
+        return view_definition
+
+    # If the view definition is not found via optimized query,
+    # we need to get the view definition from the view ddl
+
+    schema = schema or self.default_schema_name
+    view_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
 
 
 @reflection.cache

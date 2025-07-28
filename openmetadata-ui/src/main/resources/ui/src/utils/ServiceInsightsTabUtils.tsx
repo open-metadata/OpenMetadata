@@ -14,7 +14,7 @@ import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { first, isEmpty, last, round, sortBy, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { FunctionComponent } from 'react';
+import { FunctionComponent } from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';

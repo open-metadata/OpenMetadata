@@ -1,5 +1,6 @@
 ---
-title: Conversation Threads
+title: Conversation Threads | OpenMetadata Collaboration Guide
+description: Participate in conversations directly on data assets to resolve questions, clarify context, or suggest updates.
 slug: /how-to-guides/data-collaboration/conversation
 ---
 

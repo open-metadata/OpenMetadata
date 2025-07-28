@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import StyleModal from './StyleModal.component';
 import { StyleModalProps } from './StyleModal.interface';
 
@@ -48,7 +47,7 @@ describe('StyleModal component', () => {
 
   it('Should call onSubmit function, onClick of submit', async () => {
     render(<StyleModal {...mockProps} />);
-    const submitBtn = await screen.findByText('label.submit');
+    const submitBtn = await screen.findByText('label.save');
     const url = await screen.findByTestId('icon-url');
 
     expect(submitBtn).toBeInTheDocument();

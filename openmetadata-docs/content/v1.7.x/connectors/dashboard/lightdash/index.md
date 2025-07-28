@@ -1,5 +1,6 @@
 ---
-title: Lightdash
+title: Lightdash Connector | OpenMetadata Dashboard Integration
+description: Connect Lightdash to OpenMetadata with our comprehensive dashboard connector guide. Set up data lineage, metadata extraction, and BI integration easily.
 slug: /connectors/dashboard/lightdash
 ---
 

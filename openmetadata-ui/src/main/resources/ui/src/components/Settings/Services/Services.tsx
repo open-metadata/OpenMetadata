@@ -16,9 +16,9 @@ import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   DISABLED,
   INITIAL_PAGING_VALUE,
@@ -32,6 +32,7 @@ import {
   servicesDisplayName,
 } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -40,7 +41,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -79,9 +79,9 @@ const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    history.push(getAddServicePath(serviceName));
+    navigate(getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);
@@ -275,6 +275,9 @@ const Services = ({ serviceName }: ServicesProps) => {
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
+          permissionValue={t('label.create-entity', {
+            entity: `${servicesDisplayName[serviceName]}`,
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
         />

@@ -1,5 +1,6 @@
 ---
-title: Okta SSO
+title: Okta SSO | OpenMetadata Authentication Integration
+description: Use Okta’s implicit flow for browser-based apps to issue ID tokens directly to the frontend, enabling fast, lightweight user authentication.
 slug: /deployment/security/okta/implicit-flow
 collate: false
 ---

@@ -13,10 +13,8 @@
 
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -34,6 +32,7 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import {
   dataProductTableObject,
@@ -58,8 +57,8 @@ export const getServiceMainTabColumns = (
     width: 280,
     render: (_, record: ServicePageData) => (
       <DisplayName
-        allowRename={editDisplayNamePermission}
         displayName={record.displayName}
+        hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}

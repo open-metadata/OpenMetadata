@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addMetric,
   removeGranularity,
@@ -34,13 +36,24 @@ const metric4 = new MetricClass();
 const metric5 = new MetricClass();
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 test.describe('Metric Entity Special Test Cases', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
 
     await Promise.all([
       metric1.create(apiContext),
@@ -53,11 +66,12 @@ test.describe('Metric Entity Special Test Cases', () => {
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
-    await metric1.visitEntityPage(page);
+    await metric1.visitEntityPageWithCustomSearchBox(page);
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
 
     await Promise.all([
       metric1.delete(apiContext),
@@ -99,7 +113,9 @@ test.describe('Metric Entity Special Test Cases', () => {
 
 test.describe('Listing page and add Metric flow should work', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
 
     await Promise.all([metric4.create(apiContext), metric5.create(apiContext)]);
 
@@ -111,7 +127,8 @@ test.describe('Listing page and add Metric flow should work', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
 
     await Promise.all([metric4.delete(apiContext), metric5.delete(apiContext)]);
 

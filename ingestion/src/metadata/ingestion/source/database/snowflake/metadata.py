@@ -16,8 +16,9 @@ import traceback
 from datetime import datetime
 from typing import Iterable, List, Optional, Tuple
 
+import sqlalchemy.types as sqltypes
 import sqlparse
-from snowflake.sqlalchemy.custom_types import VARIANT
+from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
@@ -52,6 +53,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -123,15 +125,36 @@ from metadata.utils.sqlalchemy_utils import (
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
+
+class MAP(StructuredType):
+    __visit_name__ = "MAP"
+
+    # Default to VARCHAR for key and value types if not provided
+    # This is a workaround to avoid the error:
+    # sqlalchemy.exc.ArgumentError: Map type requires a key_type and value_type
+    # when creating a table with a MAP column.
+    def __init__(
+        self,
+        key_type: sqltypes.TypeEngine = sqltypes.VARCHAR,
+        value_type: sqltypes.TypeEngine = sqltypes.VARCHAR,
+        not_null: bool = False,
+    ):
+        self.key_type = key_type
+        self.value_type = value_type
+        self.not_null = not_null
+        super().__init__()
+
+
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
 ischema_names["VECTOR"] = create_sqlalchemy_type("VECTOR")
+ischema_names["MAP"] = MAP
 
 logger = ingestion_logger()
 
-
-SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
+# pylint: disable=protected-access
+SnowflakeDialect._json_deserializer = json.loads
 SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_stream_names = get_stream_names
@@ -141,15 +164,11 @@ SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
-SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
-    get_schema_columns
-)
+SnowflakeDialect._get_schema_columns = get_schema_columns
 Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
 Inspector.get_stream_names = get_stream_names_reflection
-SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
-    _current_database_schema
-)
+SnowflakeDialect._current_database_schema = _current_database_schema
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
@@ -159,6 +178,7 @@ Inspector.get_stream_definition = get_stream_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
+# pylint: disable=too-many-public-methods
 class SnowflakeSource(
     ExternalTableLineageMixin,
     CommonDbSourceService,
@@ -168,6 +188,8 @@ class SnowflakeSource(
     Implements the necessary methods to extract
     Database metadata from Snowflake Source
     """
+
+    service_connection: SnowflakeConnection
 
     def __init__(
         self,
@@ -492,6 +514,7 @@ class SnowflakeSource(
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
             incremental=self.incremental,
+            account_usage=self.service_connection.accountUsageSchema,
             **table_type_to_params_map[table_type],
         )
 
@@ -640,6 +663,7 @@ class SnowflakeSource(
         snowflake_views = self.inspector.get_view_names(
             schema=schema_name,
             incremental=self.incremental,
+            account_usage=self.service_connection.accountUsageSchema,
             materialized_views=materialized_views,
         )
 
@@ -683,24 +707,28 @@ class SnowflakeSource(
     def _get_stored_procedures_internal(
         self, query: str
     ) -> Iterable[SnowflakeStoredProcedure]:
-        results = self.engine.execute(
-            query.format(
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
-                account_usage=self.service_connection.accountUsageSchema,
-            )
-        ).all()
-        for row in results:
-            stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
-            if stored_procedure.definition is None:
-                logger.debug(
-                    f"Missing ownership permissions on procedure {stored_procedure.name}."
-                    " Trying to fetch description via DESCRIBE."
+        try:
+            results = self.engine.execute(
+                query.format(
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    account_usage=self.service_connection.accountUsageSchema,
                 )
-                stored_procedure.definition = self.describe_procedure_definition(
-                    stored_procedure
-                )
-            yield stored_procedure
+            ).all()
+            for row in results:
+                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+                if stored_procedure.definition is None:
+                    logger.debug(
+                        f"Missing ownership permissions on procedure {stored_procedure.name}."
+                        " Trying to fetch description via DESCRIBE."
+                    )
+                    stored_procedure.definition = self.describe_procedure_definition(
+                        stored_procedure
+                    )
+                yield stored_procedure
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error fetching stored procedures: {exc}")
 
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -720,19 +748,27 @@ class SnowflakeSource(
         Then, if the procedure is created with `EXECUTE AS CALLER`, we can still try to
         get the definition with a DESCRIBE.
         """
-        if stored_procedure.procedure_type == StoredProcedureType.StoredProcedure.value:
-            query = SNOWFLAKE_DESC_STORED_PROCEDURE
-        else:
-            query = SNOWFLAKE_DESC_FUNCTION
-        res = self.engine.execute(
-            query.format(
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
-                procedure_name=stored_procedure.name,
-                procedure_signature=stored_procedure.unquote_signature(),
+        try:
+            if (
+                stored_procedure.procedure_type
+                == StoredProcedureType.StoredProcedure.value
+            ):
+                query = SNOWFLAKE_DESC_STORED_PROCEDURE
+            else:
+                query = SNOWFLAKE_DESC_FUNCTION
+            res = self.engine.execute(
+                query.format(
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    procedure_name=stored_procedure.name,
+                    procedure_signature=stored_procedure.unquote_signature(),
+                )
             )
-        )
-        return dict(res.all()).get("body", "")
+            return dict(res.all()).get("body", "")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error fetching stored procedure definition: {exc}")
+            return ""
 
     def yield_stored_procedure(
         self, stored_procedure: SnowflakeStoredProcedure
@@ -882,3 +918,30 @@ class SnowflakeSource(
             logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
 
         return None
+
+    def get_life_cycle_query(self):
+        """
+        Get the life cycle query
+        """
+        return self.life_cycle_query.format(
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            account_usage=self.service_connection.accountUsageSchema,
+        )
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+
+        Snowflake uses a role-based ownership model, not a user-based one.
+        This means that ownership of database objects, such as tables, is assigned
+        to roles rather than individual users.
+
+        As OpenMetadata currently does not support role-based ownership assignment,
+        we are unable to retrieve or associate a meaningful table owner using this method.
+        Therefore, this function will return `None` or a placeholder, and ownership
+        metadata will not be populated in the OpenMetadata ingestion process.
+        """
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )

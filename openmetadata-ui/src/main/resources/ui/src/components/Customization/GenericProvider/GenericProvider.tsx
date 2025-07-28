@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, once } from 'lodash';
-import React, {
+import { once } from 'lodash';
+import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -21,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
@@ -40,6 +40,7 @@ import {
   updateWidgetHeightRecursively,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 
@@ -66,10 +67,13 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
   updateWidgetHeight: (widgetId: string, height: number) => void;
+  // Props to control the dropdown state of Tag/Glossary from the Generic Provider
+  activeTagDropdownKey: string | null;
+  updateActiveTagDropdownKey: (key: string | null) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  React.createContext({} as GenericContextType<T>)
+  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
@@ -91,12 +95,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
+  const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
@@ -138,6 +145,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [setFilteredKeys]
   );
 
+  const updateActiveTagDropdownKey = useCallback((key: string | null) => {
+    setActiveTagDropdownKey(key);
+  }, []);
+
   const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
     setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
   }, []);
@@ -152,30 +163,45 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   // Handle the left side panel expand collapse
   useEffect(() => {
     setLayout((prev) => {
-      if (!prev || !leftPanelWidget) {
+      // If layout is empty or no left panel widget, return as is
+      if (!prev?.length || !leftPanelWidget) {
+        return prev;
+      }
+
+      // Check if we need to update the layout
+      const currentLeftPanel = prev.find((widget) =>
+        widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+      );
+
+      const targetWidth = isTabExpanded ? 8 : 6;
+
+      // If the width is already what we want, don't update
+      if (currentLeftPanel?.w === targetWidth) {
         return prev;
       }
 
       if (isTabExpanded) {
-        const widget = leftPanelWidget;
-        widget.w = 8;
-
-        // Store the expanded layout
-        expandedLayout.current = prev;
-
-        return [widget];
-      } else {
-        const leftPanelWidget = expandedLayout.current.find((widget) =>
-          widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-        );
-
-        if (leftPanelWidget) {
-          leftPanelWidget.w = 6;
-        }
-
-        // Restore the collapsed layout
-        return isEmpty(expandedLayout.current) ? prev : expandedLayout.current;
+        // Store the current layout before modifying
+        expandedLayout.current = [...prev];
       }
+
+      // Get the source layout to modify
+      const sourceLayout = isTabExpanded
+        ? prev
+        : expandedLayout.current || prev;
+
+      if (isTabExpanded) {
+        // When expanded, only return the left panel widget with updated width
+        return leftPanelWidget ? [{ ...leftPanelWidget, w: targetWidth }] : [];
+      }
+
+      // When not expanded, return all widgets with original width
+      return sourceLayout.map((widget) => ({
+        ...widget,
+        w: widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+          ? targetWidth
+          : widget.w,
+      }));
     });
   }, [isTabExpanded, leftPanelWidget]);
 
@@ -200,6 +226,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       layout: filteredLayout,
       filterWidgets,
       updateWidgetHeight,
+      activeTagDropdownKey,
+      updateActiveTagDropdownKey,
     }),
     [
       data,
@@ -212,6 +240,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       filteredLayout,
       filterWidgets,
       updateWidgetHeight,
+      activeTagDropdownKey,
+      updateActiveTagDropdownKey,
     ]
   );
 

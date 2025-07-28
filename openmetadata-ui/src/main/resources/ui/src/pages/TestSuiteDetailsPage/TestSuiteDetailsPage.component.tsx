@@ -14,9 +14,9 @@
 import { Button, Col, Divider, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -56,7 +56,10 @@ import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../pages/DataQuality/DataQualityPage.interface';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCaseToLogicalTestSuite,
@@ -78,10 +81,10 @@ const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const afterDeleteAction = () => {
-    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 
@@ -136,7 +139,10 @@ const TestSuiteDetailsPage = () => {
     return [
       {
         name: t('label.test-suite-plural'),
-        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        url: getDataQualityPagePath(
+          DataQualityPageTabs.TEST_SUITES,
+          DataQualitySubTabs.BUNDLE_SUITES
+        ),
       },
       {
         name: getEntityName(testSuite),
@@ -232,7 +238,10 @@ const TestSuiteDetailsPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES,
+            DataQualitySubTabs.BUNDLE_SUITES
+          ),
         },
         {
           name: getEntityName(response),
@@ -431,7 +440,15 @@ const TestSuiteDetailsPage = () => {
   }
 
   if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-suite'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

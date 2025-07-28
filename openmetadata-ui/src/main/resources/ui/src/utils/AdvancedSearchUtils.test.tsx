@@ -48,7 +48,8 @@ import {
 } from './mocks/AdvancedSearchUtils.mock';
 
 // Mock QbUtils
-jest.mock('react-awesome-query-builder', () => ({
+jest.mock('@react-awesome-query-builder/antd', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/antd'),
   Utils: {
     uuid: jest.fn().mockReturnValue('test-uuid'),
   },

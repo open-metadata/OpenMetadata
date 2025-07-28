@@ -15,9 +15,9 @@ import { Button, Card, Form, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -41,7 +41,7 @@ const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const AddRulePage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
@@ -95,7 +95,7 @@ const AddRulePage = () => {
   };
 
   const handleBack = () => {
-    history.push(getPolicyWithFqnPath(fqn));
+    navigate(getPolicyWithFqnPath(fqn));
   };
 
   const handleSubmit = async () => {
@@ -170,7 +170,7 @@ const AddRulePage = () => {
               form="rule-form"
               htmlType="submit"
               type="primary">
-              {t('label.submit')}
+              {t('label.create')}
             </Button>
           </Space>
         </Form>

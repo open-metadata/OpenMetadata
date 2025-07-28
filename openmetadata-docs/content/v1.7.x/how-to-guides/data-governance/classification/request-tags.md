@@ -1,5 +1,6 @@
 ---
-title: How to Request for Classification Tags
+title: How to Request for Classification Tags | Official Documentation
+description: Use request tags to improve collaboration and feedback on data assets by enabling users to flag and annotate classification needs.
 slug: /how-to-guides/data-governance/classification/request-tags
 ---
 
@@ -69,6 +70,6 @@ caption="Conversation: Reply, React, Edit or Delete"
   color="violet-70"
   bold="Auto-Classification in OpenMetadata"
   icon="MdArrowForward"
-  href="/how-to-guides/data-governance/classification/auto"%}
+  href="/how-to-guides/data-governance/classification/auto-classification"%}
   Learn how OpenMetadata identifies PII data and auto tags or suggests the tags.
 {%/inlineCallout%}

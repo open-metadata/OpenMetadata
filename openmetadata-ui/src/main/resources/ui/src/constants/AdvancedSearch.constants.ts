@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { LabelType } from '../generated/type/tagLabel';
+import { t } from '../utils/i18next/LocalUtil';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
@@ -303,6 +305,8 @@ export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
 
 export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
 
+export const NULL_CHECK_OPERATORS = ['is_null', 'is_not_null'];
+
 export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
 
 export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
@@ -314,4 +318,32 @@ export const SEARCH_INDICES_WITH_COLUMNS_FIELD = [
   SearchIndex.DASHBOARD_DATA_MODEL,
   SearchIndex.DATA_ASSET,
   SearchIndex.ALL,
+];
+
+export const TAG_LABEL_TYPE_LIST_VALUES = {
+  [LabelType.Manual]: t('label.manual'),
+  [LabelType.Derived]: t('label.derived'),
+  [LabelType.Propagated]: t('label.propagated'),
+  [LabelType.Automated]: t('label.automated'),
+  [LabelType.Generated]: t('label.generated'),
+};
+
+export const CURATED_ASSETS_LIST = [
+  EntityType.ALL,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.CHART,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.GLOSSARY_TERM,
+  EntityType.METRIC,
+  EntityType.MLMODEL,
+  EntityType.PIPELINE,
+  EntityType.SEARCH_INDEX,
+  EntityType.STORED_PROCEDURE,
+  EntityType.TABLE,
+  EntityType.TOPIC,
 ];

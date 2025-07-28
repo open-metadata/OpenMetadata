@@ -34,9 +34,15 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { page, apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await domain.create(apiContext);
-  await table.visitEntityPage(page);
+  await table.visitEntityPageWithCustomSearchBox(page);
   await assignDomain(page, domain.data);
-  await assignTag(page, 'PersonalData.Personal');
+  await assignTag(
+    page,
+    'PersonalData.Personal',
+    'Add',
+    table.endpoint,
+    'KnowledgePanel.Tags'
+  );
   await afterAction();
 });
 

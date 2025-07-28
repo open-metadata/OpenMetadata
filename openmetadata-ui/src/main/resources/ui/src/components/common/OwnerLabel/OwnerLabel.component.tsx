@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { reverse } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
@@ -41,6 +42,8 @@ export const OwnerLabel = ({
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
   avatarSize = 32,
+  isAssignee = false,
+  onEditClick,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -87,9 +90,92 @@ export const OwnerLabel = ({
     className,
   ]);
 
+  const showMultipleTypeTeam = owners.filter(
+    (owner) => owner.type === OwnerType.TEAM
+  );
+  const showMultipleTypeVisibleUser = owners
+    .filter((owner) => owner.type === OwnerType.USER)
+    .slice(0, maxVisibleOwners)
+    .reverse();
+  const showMultipleTypeRemainingUser = owners
+    .filter((owner) => owner.type === OwnerType.USER)
+    .slice(maxVisibleOwners);
+  const renderMultipleType = useMemo(() => {
+    return (
+      <div className="flex-wrap w-max-full d-flex relative items-center">
+        <div className="flex w-full gap-2 flex-wrap relative">
+          {showMultipleTypeTeam.map((owner, index) => (
+            <div className="w-max-full" key={owner.id}>
+              <OwnerItem
+                avatarSize={avatarSize}
+                className={className}
+                isAssignee={isAssignee}
+                isCompactView={isCompactView}
+                owner={owner}
+                ownerDisplayName={ownerDisplayName?.[index]}
+              />
+            </div>
+          ))}
+          <div className="flex">
+            <div className="flex relative m-l-xs justify-end flex-row-reverse">
+              {showMultipleTypeVisibleUser.map((owner, index) => (
+                <div className="relative" key={owner.id}>
+                  <OwnerItem
+                    avatarSize={avatarSize}
+                    className={className}
+                    isAssignee={isAssignee}
+                    isCompactView={isCompactView}
+                    owner={owner}
+                    ownerDisplayName={ownerDisplayName?.[index]}
+                  />
+                </div>
+              ))}
+            </div>
+            {showMultipleTypeRemainingUser.length > 0 && (
+              <div className="m-l-xs">
+                <OwnerReveal
+                  avatarSize={isCompactView ? 24 : avatarSize}
+                  isCompactView={false}
+                  isDropdownOpen={isDropdownOpen}
+                  owners={showMultipleTypeRemainingUser}
+                  remainingCount={showMultipleTypeRemainingUser.length}
+                  setIsDropdownOpen={setIsDropdownOpen}
+                  setShowAllOwners={setShowAllOwners}
+                  showAllOwners={showAllOwners}
+                />
+              </div>
+            )}
+            {hasPermission && (
+              <Button
+                className="p-0 flex-center h-auto"
+                data-testid="edit-assignees"
+                icon={<EditIcon width="14px" />}
+                type="text"
+                onClick={onEditClick}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }, [
+    showMultipleTypeTeam,
+    showMultipleTypeVisibleUser,
+    showMultipleTypeRemainingUser,
+    avatarSize,
+    className,
+    isCompactView,
+    ownerDisplayName,
+    hasPermission,
+    onEditClick,
+    isDropdownOpen,
+    owners,
+    setIsDropdownOpen,
+    setShowAllOwners,
+    showAllOwners,
+  ]);
   const ownerElements = useMemo(() => {
     const hasOwners = owners && owners.length > 0;
-
     // Show all owners when "more" is clicked, regardless of view mode
     const visibleOwners = showAllOwners
       ? owners
@@ -118,19 +204,23 @@ export const OwnerLabel = ({
       );
     }
 
+    if (isAssignee) {
+      return renderMultipleType;
+    }
+
     return (
       <div
         className={classNames({
-          'owner-label-container d-flex flex-col items-start flex-start':
+          'owner-label-container w-full d-flex flex-col items-start flex-start':
             !isCompactView,
           'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
         {ownerElementsNonCompactView}
-        <div className="d-flex items-center flex-center">
+        <div className="d-flex w-max-full items-center  flex-center">
           <div
             className={classNames(
-              'avatar-group w-full  d-flex relative items-center m-l-xss',
+              'avatar-group w-full d-flex relative items-center m-l-xss',
               {
                 'gap-2 flex-wrap': isCompactView,
                 'flex-row-reverse': !isCompactView,
@@ -143,6 +233,7 @@ export const OwnerLabel = ({
                 <div
                   className={classNames({
                     'w-full': owner.type === OwnerType.TEAM,
+                    'w-max-full': isCompactView,
                   })}
                   key={owner.id}>
                   <OwnerItem

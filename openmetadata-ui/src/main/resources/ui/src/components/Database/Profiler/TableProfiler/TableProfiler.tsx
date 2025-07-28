@@ -13,10 +13,12 @@
 import { Menu, MenuProps, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import profilerClassBase from './ProfilerClassBase';
 import { TableProfilerProps } from './TableProfiler.interface';
@@ -24,7 +26,7 @@ import { TableProfilerProvider } from './TableProfilerProvider';
 
 const TableProfiler = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
 
   const { activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
@@ -42,19 +44,18 @@ const TableProfiler = (props: TableProfilerProps) => {
 
   const { viewTest, viewProfiler } = useMemo(() => {
     const { permissions } = props;
-    const viewPermission = permissions.ViewAll || permissions.ViewBasic;
 
     return {
-      viewTest: viewPermission || permissions.ViewTests,
-      viewProfiler: viewPermission || permissions.ViewDataProfile,
+      viewTest: getPrioritizedViewPermission(permissions, Operation.ViewTests),
+      viewProfiler: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewDataProfile
+      ),
     };
   }, [props.permissions]);
 
   const tabOptions: ItemType[] = useMemo(() => {
-    const profilerTabOptions = profilerClassBase.getProfilerTabOptions({
-      viewProfiler,
-      viewTest,
-    });
+    const profilerTabOptions = profilerClassBase.getProfilerTabOptions();
 
     return profilerTabOptions.map((tab) => {
       const SvgIcon = tab.icon;
@@ -74,7 +75,12 @@ const TableProfiler = (props: TableProfilerProps) => {
   }, [activeTab]);
 
   const handleTabChange: MenuProps['onClick'] = (value) => {
-    history.replace({ search: Qs.stringify({ activeTab: value.key }) });
+    navigate(
+      { search: Qs.stringify({ activeTab: value.key }) },
+      {
+        replace: true,
+      }
+    );
   };
 
   return (

@@ -1,5 +1,6 @@
 ---
 title: How to Create a Custom Property for a Data Asset
+description: Customize data asset pages by configuring fields, tabs, and layouts to match your organization’s metadata strategy.
 slug: /how-to-guides/guide-for-data-users/custom
 ---
 
@@ -55,6 +56,15 @@ Once the custom property has been created for a type of data asset, you can add 
 src="/images/v1.7/how-to-guides/discovery/custom3.png"
 alt="Enter the Value for a Custom Property"
 caption="Enter the Value for a Custom Property"
+/%}
+
+To delete a Custom Property for a particular asset, such as tables, navigate to **Settings >> Custom Properties >> Tables** and
+ click on **Delete Property** 
+
+{% image
+src="/images/v1.7/how-to-guides/discovery/custom4.png"
+alt="Delete a Custom Property"
+caption="Delete a Custom Property"
 /%}
 
 {%inlineCallout

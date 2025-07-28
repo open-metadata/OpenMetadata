@@ -19,23 +19,28 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugService;
+import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -47,10 +52,12 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "permissions")
 public class PermissionsResource {
   private final Authorizer authorizer;
+  private final PermissionDebugService debugService;
 
   @SuppressWarnings("unused")
   public PermissionsResource(Authorizer authorizer) {
     this.authorizer = authorizer;
+    this.debugService = new PermissionDebugService();
   }
 
   @GET
@@ -173,6 +180,28 @@ public class PermissionsResource {
   }
 
   @GET
+  @Path("/view/{entityType}")
+  @Operation(
+      operationId = "getEntityTypeFieldPermissions",
+      summary = "Get permissions for a given entity type at field level.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permissions for logged in user",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResourcePermissionList.class)))
+      })
+  public Map<String, MetadataOperation> getEntityTypeFieldPermissions(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Type of the entity", schema = @Schema(type = "String"))
+          @PathParam("entityType")
+          String entityType) {
+    return ResourceRegistry.getResourceFieldViewOperations(entityType);
+  }
+
+  @GET
   @Path("/policies")
   @Operation(
       operationId = "getPermissionsForPolicies",
@@ -204,5 +233,114 @@ public class PermissionsResource {
 
   static class ResourcePermissionList extends ResultList<ResourcePermission> {
     /* Required for serde */
+  }
+
+  @GET
+  @Path("/debug/user/{username}")
+  @Operation(
+      operationId = "debugUserPermissions",
+      summary = "Debug permissions for a user",
+      description =
+          "Get detailed information about a user's permissions including direct roles, "
+              + "team-based permissions, and inherited permissions with their sources. "
+              + "Only admins can debug other users' permissions.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permission debug information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PermissionDebugInfo.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Admin access required"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+      })
+  public PermissionDebugInfo debugUserPermissions(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Username of the user", schema = @Schema(type = "string"))
+          @PathParam("username")
+          String username) {
+    String currentUser = securityContext.getUserPrincipal().getName();
+
+    // Only allow if user is checking their own permissions or is an admin
+    if (!currentUser.equals(username)) {
+      // Must be admin to check other users' permissions
+      authorizer.authorizeAdmin(securityContext);
+    }
+
+    return debugService.debugUserPermissionsByName(username);
+  }
+
+  @GET
+  @Path("/debug/me")
+  @Operation(
+      operationId = "debugMyPermissions",
+      summary = "Debug permissions for the current user",
+      description =
+          "Get detailed information about your own permissions including direct roles, "
+              + "team-based permissions, and inherited permissions with their sources",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permission debug information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PermissionDebugInfo.class)))
+      })
+  public PermissionDebugInfo debugMyPermissions(@Context SecurityContext securityContext) {
+    String userName = securityContext.getUserPrincipal().getName();
+    return debugService.debugUserPermissionsByName(userName);
+  }
+
+  @GET
+  @Path("/debug/evaluate")
+  @Operation(
+      operationId = "debugPermissionEvaluation",
+      summary = "Debug permission evaluation for a specific operation",
+      description =
+          "Get step-by-step evaluation of permissions for a user attempting a specific "
+              + "operation on a resource, showing which policies were evaluated and why the decision was made. "
+              + "Only admins can debug other users' permission evaluations.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Permission evaluation debug information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PermissionEvaluationDebugInfo.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Admin access required")
+      })
+  public PermissionEvaluationDebugInfo debugPermissionEvaluation(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the user to evaluate permissions for", required = true)
+          @QueryParam("user")
+          String userName,
+      @Parameter(
+              description = "Type of resource (e.g., table, database, pipeline)",
+              required = true)
+          @QueryParam("resource")
+          String resourceType,
+      @Parameter(
+              description =
+                  "UUID or Fully Qualified Name (FQN) of the specific resource instance (optional)")
+          @QueryParam("resourceId")
+          String resourceId,
+      @Parameter(
+              description = "Operation to check (e.g., VIEW_ALL, EDIT_ALL, DELETE)",
+              required = true)
+          @QueryParam("operation")
+          MetadataOperation operation) {
+
+    String currentUser = securityContext.getUserPrincipal().getName();
+
+    // Only allow if user is checking their own permissions or is an admin
+    if (!currentUser.equals(userName)) {
+      // Must be admin to check other users' permissions
+      authorizer.authorizeAdmin(securityContext);
+    }
+
+    return debugService.debugPermissionEvaluation(userName, resourceType, resourceId, operation);
   }
 }

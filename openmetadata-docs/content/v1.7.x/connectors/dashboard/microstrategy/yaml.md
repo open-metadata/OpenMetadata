@@ -1,5 +1,6 @@
 ---
 title: Run the MicroStrategy Connector Externally
+description: Configure MicroStrategy dashboard integration with OpenMetadata using YAML. Step-by-step connector setup guide with examples and best practices.
 slug: /connectors/dashboard/microstrategy/yaml
 ---
 
@@ -7,8 +8,8 @@ slug: /connectors/dashboard/microstrategy/yaml
   name="MicroStrategy"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels"]
-  unavailableFeatures=["Tags", "Projects", "Lineage"]
+  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels", "Lineage"]
+  unavailableFeatures=["Tags", "Projects"]
 / %}
 
 In this section, we provide guides and references to use the MicroStrategy connector.

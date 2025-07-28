@@ -22,10 +22,10 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public class PipelineFormatter implements EntityFormatter {
   private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";

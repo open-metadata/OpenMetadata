@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
-import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { ServicesType } from '../../../../../interface/service.interface';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 
@@ -28,7 +28,7 @@ export interface MetadataAgentsWidgetProps {
   pipelineType?: PipelineType;
   isLoading?: boolean;
   searchText: string;
-  airflowInformation: UseAirflowStatusProps;
+  airflowInformation: AirflowStatusContextType;
   onIngestionWorkflowsUpdate: (
     paging?: Omit<Paging, 'total'>,
     limit?: number

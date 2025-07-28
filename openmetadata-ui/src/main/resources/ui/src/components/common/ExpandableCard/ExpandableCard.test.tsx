@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ExpandableCard from './ExpandableCard';
 
@@ -39,10 +38,6 @@ describe('ExpandableCard', () => {
 
       expect(screen.getByText('Test Card')).toBeInTheDocument();
       expect(screen.getByTestId('test-content')).toBeInTheDocument();
-      expect(screen.getByRole('button')).toHaveAttribute(
-        'title',
-        'label.collapse'
-      );
     });
 
     it('renders with custom data-testid', () => {
@@ -104,7 +99,6 @@ describe('ExpandableCard', () => {
       const expandButton = screen.getByRole('button');
 
       // Initial state (collapsed)
-      expect(expandButton).toHaveAttribute('title', 'label.collapse');
       expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
 
       // Click to collapse
@@ -112,7 +106,6 @@ describe('ExpandableCard', () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton).toHaveAttribute('title', 'label.expand');
       expect(expandButton.closest('.ant-card')).not.toHaveClass('collapsed');
 
       // Click to expand again
@@ -120,7 +113,6 @@ describe('ExpandableCard', () => {
         fireEvent.click(expandButton);
       });
 
-      expect(expandButton).toHaveAttribute('title', 'label.collapse');
       expect(expandButton.closest('.ant-card')).toHaveClass('expanded');
     });
 
@@ -239,8 +231,9 @@ describe('ExpandableCard', () => {
         fireEvent.click(expandButton);
       });
 
-      // Should not throw any errors
-      expect(expandButton).toHaveAttribute('title', 'label.expand');
+      const card = screen.getByRole('button').closest('.ant-card');
+
+      expect(card).not.toHaveClass('expanded');
     });
 
     it('works with minimal cardProps', () => {

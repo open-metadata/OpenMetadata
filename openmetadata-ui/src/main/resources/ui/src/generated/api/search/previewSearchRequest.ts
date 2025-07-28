@@ -48,6 +48,10 @@ export interface SearchSettings {
      */
     allowedFields?: AllowedSearchFields[];
     /**
+     * Configurations of allowed field value boost fields for each entity type
+     */
+    allowedFieldValueBoosts?: AllowedFieldValueBoostFields[];
+    /**
      * List of per-asset search configurations that override the global settings.
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
@@ -62,15 +66,35 @@ export interface SearchSettings {
     nlqConfiguration?: NlqConfiguration;
 }
 
+export interface AllowedFieldValueBoostFields {
+    /**
+     * Entity type this field value boost configuration applies to
+     */
+    entityType: string;
+    fields:     AllowedFieldValueBoostField[];
+}
+
+export interface AllowedFieldValueBoostField {
+    /**
+     * Detailed explanation of what this numeric field represents and how it can be used for
+     * boosting relevance
+     */
+    description: string;
+    /**
+     * Field name that can be used in fieldValueBoosts
+     */
+    name: string;
+}
+
 export interface AllowedSearchFields {
     /**
      * Entity type this field configuration applies to
      */
     entityType: string;
-    fields:     Field[];
+    fields:     AllowedFieldField[];
 }
 
-export interface Field {
+export interface AllowedFieldField {
     /**
      * Detailed explanation of what this field represents and how it affects search behavior
      */

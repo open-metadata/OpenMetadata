@@ -12,6 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -122,27 +123,23 @@ test.describe('Bulk Edit Entity', () => {
       );
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+
       // Click on first cell and edit
 
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
       await fillRowDetails(
         {
           ...databaseDetails,
@@ -194,20 +191,10 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.getByRole('link', {
-          name: EntityDataClass.user1.responseData?.[
-            'displayName'
-          ][0].toUpperCase(),
-          exact: true,
-        })
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
       ).toBeVisible();
       await expect(
-        page.getByRole('link', {
-          name: EntityDataClass.user2.responseData?.[
-            'displayName'
-          ][0].toUpperCase(),
-          exact: true,
-        })
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
@@ -270,26 +257,22 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+
       // click on last row first cell
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
 
       // Click on first cell and edit
       await fillRowDetails(
@@ -319,7 +302,7 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+      await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
       });
       const updateButtonResponse = page.waitForResponse(
@@ -420,22 +403,18 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+
       // Click on first cell and edit
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
       await fillRowDetails(
         {
           ...tableDetails1,
@@ -522,7 +501,7 @@ test.describe('Bulk Edit Entity', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow();
+    test.slow(true);
 
     const tableEntity = new TableClass();
 
@@ -530,28 +509,24 @@ test.describe('Bulk Edit Entity', () => {
     await tableEntity.create(apiContext);
 
     await test.step('Perform bulk edit action', async () => {
-      await tableEntity.visitEntityPage(page);
+      await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
-      // click on row first cell
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
-      await page.click('.InovuaReactDataGrid__cell--cell-active');
+      // click on row first cell
+      await page.click('.rdg-cell[role="gridcell"]');
+
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
 
       await pressKeyXTimes(page, 2, 'ArrowRight');
 
@@ -562,21 +537,21 @@ test.describe('Bulk Edit Entity', () => {
       await fillTagDetails(page, columnDetails1.tag);
 
       await page
-        .locator('.InovuaReactDataGrid__cell--cell-active')
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
         .press('ArrowRight', { delay: 100 });
       await fillGlossaryTermDetails(page, columnDetails1.glossary);
 
       // Reverse traves to first cell to fill the details
-      await page.click('.InovuaReactDataGrid__cell--cell-active');
+      await page.click(RDG_ACTIVE_CELL_SELECTOR);
       await page
-        .locator('.InovuaReactDataGrid__cell--cell-active')
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
         .press('ArrowDown', { delay: 100 });
 
       await page.click('[type="button"] >> text="Next"', { force: true });
 
       await validateImportStatus(page, {
-        passed: '7',
-        processed: '7',
+        passed: '9',
+        processed: '9',
         failed: '0',
       });
 
@@ -588,10 +563,10 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
 
+      await updateButtonResponse;
       await page.waitForSelector('.message-banner-wrapper', {
         state: 'detached',
       });
-      await updateButtonResponse;
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -633,22 +608,18 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
-
       // Adding some assertion to make sure that CSV loaded correctly
-      await expect(
-        page.locator('.InovuaReactDataGrid__header-layout')
-      ).toBeVisible();
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+
       // Click on first cell and edit
-      await page.click(
-        '.InovuaReactDataGrid__row--first > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-      );
+      await page.click('.rdg-cell[role="gridcell"]');
 
       // Click on first cell and edit
       await fillGlossaryRowDetails(
@@ -678,20 +649,22 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
-      await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+      await page.waitForSelector('.rdg-header-row', {
         state: 'visible',
       });
 
       const rowStatus = ['Entity updated'];
 
-      await expect(page.locator('[data-props-id="details"]')).toHaveText(
-        rowStatus
-      );
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await toastNotification(
         page,

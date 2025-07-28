@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  getByTestId,
-  render,
-  screen,
-  waitForElementToBeRemoved,
-} from '@testing-library/react';
-import React from 'react';
+import { act, render, screen } from '@testing-library/react';
+import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import ErrorPlaceHolderIngestion from './ErrorPlaceHolderIngestion';
 
 jest.mock('../AirflowMessageBanner/AirflowMessageBanner', () => {
@@ -26,12 +22,37 @@ jest.mock('../AirflowMessageBanner/AirflowMessageBanner', () => {
     .mockReturnValue(<div data-testid="airflow-message-banner" />);
 });
 
-describe('Test Error placeholder ingestion Component', () => {
-  it('Component should render', async () => {
-    const { container } = render(<ErrorPlaceHolderIngestion />);
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => {
+    return {
+      useAirflowStatus: jest.fn().mockReturnValue({
+        platform: PIPELINE_SERVICE_PLATFORM,
+        isFetchingStatus: false,
+      }),
+    };
+  }
+);
 
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+describe('ErrorPlaceholderIngestion', () => {
+  it('should show the error steps', async () => {
+    await act(async () => {
+      render(<ErrorPlaceHolderIngestion />);
+    });
 
-    expect(getByTestId(container, 'error-steps')).toBeInTheDocument();
+    expect(screen.getByTestId('error-steps')).toBeInTheDocument();
+  });
+
+  it('should show the loader when fetching status', async () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      platform: PIPELINE_SERVICE_PLATFORM,
+      isFetchingStatus: true,
+    });
+
+    await act(async () => {
+      render(<ErrorPlaceHolderIngestion />);
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 });

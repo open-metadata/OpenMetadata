@@ -12,9 +12,11 @@
  */
 import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
@@ -22,6 +24,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { addMultiOwner, removeOwner } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { addTagToTableColumn, submitForm, validateForm } from '../../utils/tag';
 
@@ -66,11 +69,20 @@ const tag = new TagClass({
   classification: classification.data.name,
 });
 
+const classification1 = new ClassificationClass();
+const tag1 = new TagClass({
+  classification: classification1.data.name,
+});
+const user1 = new UserClass();
+
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await classification.create(apiContext);
+  await classification1.create(apiContext);
   await tag.create(apiContext);
+  await tag1.create(apiContext);
+  await user1.create(apiContext);
   await afterAction();
 });
 
@@ -78,7 +90,10 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.delete(apiContext);
   await classification.delete(apiContext);
+  await classification1.delete(apiContext);
   await tag.delete(apiContext);
+  await tag1.delete(apiContext);
+  await user1.delete(apiContext);
   await afterAction();
 });
 
@@ -430,10 +445,95 @@ test.fixme('Classification Page', async ({ page }) => {
     await page.click('[data-testid="confirm-button"]');
     await deleteClassification;
 
+    await user1.visitPage(page);
+    await page.waitForLoadState('networkidle');
+
     await expect(
       page
         .locator('[data-testid="data-summary-container"]')
         .filter({ hasText: NEW_CLASSIFICATION.name })
     ).not.toBeVisible();
+  });
+});
+
+test('Search tag using classification display name should work', async ({
+  page,
+}) => {
+  const displayNameToSearch = tag.responseData.classification.displayName;
+
+  await table.visitEntityPageWithCustomSearchBox(page);
+
+  await page.waitForLoadState('networkidle');
+
+  const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
+
+  await page
+    .getByTestId('KnowledgePanel.Tags')
+    .getByTestId('tags-container')
+    .getByTestId('add-tag')
+    .first()
+    .click();
+
+  await initialQueryResponse;
+
+  const tagSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(displayNameToSearch)}*`
+  );
+
+  // Enter the display name in the search box
+  await page.fill('[data-testid="tag-selector"] input', displayNameToSearch);
+
+  const response = await tagSearchResponse;
+  const searchResults = await response.json();
+
+  // Verify that we got search results
+  expect(searchResults.hits.hits.length).toBeGreaterThan(0);
+
+  // Verify that the classification display name is shown in search input
+  await expect(
+    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+  ).toContainText(displayNameToSearch);
+
+  // Verify that the tag with matching display name is shown in dropdown
+  await expect(
+    page.locator('.ant-select-dropdown').getByText(tag.responseData.displayName)
+  ).toBeVisible();
+
+  // Verify the tag is selectable in the dropdown
+  await expect(
+    page.getByTestId(`tag-${tag.responseData.fullyQualifiedName}`)
+  ).toBeVisible();
+});
+
+test('Verify Owner Add Delete', async ({ page }) => {
+  await classification1.visitPage(page);
+  const OWNER1 = user1.getUserName();
+
+  await addMultiOwner({
+    page,
+    ownerNames: [OWNER1],
+    activatorBtnDataTestId: 'add-owner',
+    resultTestId: 'classification-owner-name',
+    endpoint: EntityTypeEndpoint.Classification,
+    isSelectableInsideForm: false,
+    type: 'Users',
+  });
+
+  await page.getByTestId(tag1.data.name).click();
+  await page.waitForLoadState('networkidle');
+
+  await expect(
+    page.locator(`[data-testid="tag-owner-name"]`).getByTestId(OWNER1)
+  ).toBeVisible();
+
+  await classification1.visitPage(page);
+  await page.waitForLoadState('networkidle');
+
+  await removeOwner({
+    page,
+    endpoint: EntityTypeEndpoint.Classification,
+    ownerName: OWNER1,
+    type: 'Users',
+    dataTestId: 'classification-owner-name',
   });
 });

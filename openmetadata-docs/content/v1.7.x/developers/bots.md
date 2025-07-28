@@ -1,5 +1,5 @@
 ---
-title: How to Set Up Bots
+title: How to Set Up Bots | OpenMetadata Developer Guide
 slug: /developers/bots
 ---
 

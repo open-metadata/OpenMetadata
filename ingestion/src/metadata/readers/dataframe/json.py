@@ -35,7 +35,11 @@ def _get_json_text(key: str, text: bytes, decode: bool) -> Union[str, bytes]:
         with zipfile.ZipFile(io.BytesIO(text)) as zip_file:
             processed_text = zip_file.read(zip_file.infolist()[0])
     if decode:
-        return processed_text.decode(UTF_8) if isinstance(text, bytes) else text
+        return (
+            processed_text.decode(UTF_8, errors="ignore")
+            if isinstance(text, bytes)
+            else text
+        )
     return processed_text
 
 

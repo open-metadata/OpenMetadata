@@ -1,5 +1,6 @@
 ---
-title: Database Services
+title: Database Services | OpenMetadata Connector Integration
+description: Discover OpenMetadata's database connectors to seamlessly integrate MySQL, PostgreSQL, Snowflake, and 50+ data sources for metadata management.
 slug: /connectors/database
 ---
 

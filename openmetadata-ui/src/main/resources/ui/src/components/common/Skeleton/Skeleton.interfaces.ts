@@ -33,14 +33,15 @@ export interface ButtonSkeletonProps
     Partial<Key> {}
 
 export interface LabelCountSkeletonProps extends SkeletonProps, Key {
-  isSelect?: boolean;
-  isLabel?: boolean;
-  isCount?: boolean;
-  labelProps?: SkeletonProps;
-  selectProps?: SkeletonProps;
   countProps?: SkeletonProps;
   firstColSize?: number;
+  isCount?: boolean;
+  isLabel?: boolean;
+  isSelect?: boolean;
+  labelProps?: SkeletonProps;
   secondColSize?: number;
+  selectProps?: SkeletonProps;
+  skeletonContainerStyle?: React.CSSProperties;
 }
 
 export type EntityListSkeletonProps = SkeletonInterface &

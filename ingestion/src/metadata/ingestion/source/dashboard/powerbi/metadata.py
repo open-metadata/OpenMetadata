@@ -54,11 +54,11 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
+    Dataflow,
     Dataset,
     Group,
     PowerBIDashboard,
@@ -78,6 +78,8 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -237,6 +239,7 @@ class PowerbiSource(DashboardServiceSource):
             self.workspace_data.append(workspace)
             self.context.get().workspace = workspace
             self.filtered_dashboards = []
+            self.filtered_datamodels = []
             for dashboard in self.get_dashboards_list() or []:
                 dashboard_details = self.get_dashboard_details(dashboard)
                 dashboard_name = self.get_dashboard_name(dashboard_details)
@@ -296,7 +299,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/reports/{dashboard_id}"
+            f"{workspace_id}/reports/{dashboard_id}/ReportSection?experience=power-bi"
         )
 
     def _get_chart_url(
@@ -452,7 +455,7 @@ class PowerbiSource(DashboardServiceSource):
                 measures.append(Column(**parsed_measure.model_dump()))
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error processing datamodel nested measure: {err}")
+                logger.debug(f"Error processing datamodel nested measure: {err}")
         return measures
 
     def _get_child_columns(self, table: PowerBiTable) -> List[Column]:
@@ -463,9 +466,9 @@ class PowerbiSource(DashboardServiceSource):
         for column in table.columns or []:
             try:
                 parsed_column = {
-                    "dataTypeDisplay": column.dataType
-                    if column.dataType
-                    else DataType.UNKNOWN.value,
+                    "dataTypeDisplay": (
+                        column.dataType if column.dataType else DataType.UNKNOWN.value
+                    ),
                     "dataType": ColumnTypeParser.get_column_type(
                         column.dataType if column.dataType else None
                     ),
@@ -486,11 +489,20 @@ class PowerbiSource(DashboardServiceSource):
         datasource_columns = []
         for table in dataset.tables or []:
             try:
+                table_display_name = None
+                if self.service_connection.displayTableNameFromSource:
+                    table_display_name = self.parse_table_name_from_source(table=table)
+                    if table_display_name:
+                        logger.debug(
+                            f"Parsed Table display name: {table_display_name} for table: {table.name}"
+                        )
+                if not table_display_name:
+                    table_display_name = table.name
                 parsed_table = {
                     "dataTypeDisplay": "PowerBI Table",
                     "dataType": DataType.TABLE,
                     "name": table.name,
-                    "displayName": table.name,
+                    "displayName": table_display_name,
                     "description": table.description,
                     "children": [],
                 }
@@ -506,11 +518,14 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def _get_datamodels_list(self) -> List[Dataset]:
+    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow]]:
         """
         Get All the Powerbi Datasets
         """
-        return self.context.get().workspace.datasets
+        return (
+            self.context.get().workspace.datasets
+            + self.context.get().workspace.dataflows
+        )
 
     def yield_datamodel(
         self, dashboard_details: Group
@@ -526,18 +541,32 @@ class PowerbiSource(DashboardServiceSource):
                     ):
                         self.status.filter(dataset.name, "Data model filtered out.")
                         continue
+                    self.filtered_datamodels.append(dataset)
+                    if isinstance(dataset, Dataset):
+                        data_model_type = DataModelType.PowerBIDataModel.value
+                        datamodel_columns = self._get_column_info(dataset)
+                    elif isinstance(dataset, Dataflow):
+                        data_model_type = DataModelType.PowerBIDataFlow.value
+                        datamodel_columns = []
+                    else:
+                        logger.warning(
+                            f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"
+                        )
+                        continue
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(dataset.id),
                         displayName=dataset.name,
-                        description=Markdown(dataset.description)
-                        if dataset.description
-                        else None,
+                        description=(
+                            Markdown(dataset.description)
+                            if dataset.description
+                            else None
+                        ),
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
-                        dataModelType=DataModelType.PowerBIDataModel.value,
+                        dataModelType=data_model_type,
                         serviceType=DashboardServiceType.PowerBI.value,
-                        columns=self._get_column_info(dataset),
+                        columns=datamodel_columns,
                         project=self.get_project_name(dashboard_details=dataset),
                         owners=self.get_owner_ref(dashboard_details=dataset),
                     )
@@ -589,7 +618,7 @@ class PowerbiSource(DashboardServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name="Lineage",
+                    name="Report and Dashboard Lineage",
                     error=f"Error to yield report and dashboard lineage details: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
@@ -597,12 +626,13 @@ class PowerbiSource(DashboardServiceSource):
 
     def create_datamodel_report_lineage(
         self,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         dashboard_details: PowerBIReport,
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         create the lineage between datamodel and report
         """
+
         try:
             report_fqn = fqn.build(
                 self.metadata,
@@ -614,14 +644,12 @@ class PowerbiSource(DashboardServiceSource):
                 entity=Dashboard,
                 fqn=report_fqn,
             )
-
-            dataset = self._fetch_dataset_from_workspace(dashboard_details.datasetId)
-            if dataset:
+            if dashboard_details.datasetId:
                 datamodel_fqn = fqn.build(
                     self.metadata,
                     entity_type=DashboardDataModel,
                     service_name=self.context.get().dashboard_service,
-                    data_model_name=dataset.id,
+                    data_model_name=dashboard_details.datasetId,
                 )
                 datamodel_entity = self.metadata.get_by_name(
                     entity=DashboardDataModel,
@@ -632,27 +660,18 @@ class PowerbiSource(DashboardServiceSource):
                     yield self._get_add_lineage_request(
                         to_entity=report_entity, from_entity=datamodel_entity
                     )
+            else:
+                logger.debug(
+                    f"Skipping datamodel and report lineage for"
+                    f" {dashboard_details.id} as datasetId is not found"
+                )
 
-                    for table in dataset.tables or []:
-                        yield self._get_table_and_datamodel_lineage(
-                            db_service_name=db_service_name,
-                            table=table,
-                            datamodel_entity=datamodel_entity,
-                        )
-
-                    # create the lineage between table and datamodel using the pbit files
-                    if self.client.file_client:
-                        yield from self.create_table_datamodel_lineage_from_files(
-                            db_service_name=db_service_name,
-                            datamodel_entity=datamodel_entity,
-                        )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=f"{db_service_name} Report Lineage",
+                    name=f"Datamodel and Report Lineage",
                     error=(
-                        "Error to yield datamodel and report lineage details for DB "
-                        f"service name [{db_service_name}]: {exc}"
+                        f"Error to yield datamodel and report lineage details: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
                 )
@@ -677,6 +696,71 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(f"Error to get data_model_column_fqn {exc}")
             logger.debug(traceback.format_exc())
 
+    def parse_table_name_from_source(self, table: PowerBiTable) -> Optional[str]:
+        """
+        Parse the snowflake table name
+        """
+        try:
+            if not isinstance(table.source, list):
+                return None
+            source_expression = table.source[0].expression
+            if not source_expression:
+                logger.debug(f"No source expression found for table: {table.name}")
+                return None
+
+            if "Snowflake.Databases" in source_expression:
+                # snowflake expression
+                table_match = re.search(
+                    r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
+                )
+                view_match = re.search(
+                    r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
+                )
+                table = table_match.group(1) if table_match else None
+                view = view_match.group(1) if view_match else None
+                return table if table else view
+
+            # other general expressions
+            table_match = re.findall(r'\[Name="([^"]+)"\]', source_expression)
+            table = None
+            if isinstance(table_match, list):
+                table = table_match[1] if len(table_match) > 1 else None
+            return table
+        except Exception as exc:
+            logger.debug(f"Error to parse display table name: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_snowflake_regex_exp(
+        self, match: re.Match, datamodel_entity: DashboardDataModel
+    ) -> Optional[str]:
+        """parse snowflake regex expression"""
+        try:
+            if not match:
+                return None
+            elif match.group(1):
+                return match.group(1)
+            elif match.group(2):
+                dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
+                if dataset and dataset.expressions:
+                    # find keyword from dataset expressions
+                    for dexpression in dataset.expressions:
+                        if not dexpression.expression:
+                            logger.debug(
+                                f"No expression value found inside dataset"
+                                f"({dataset.name}) expressions' name={dexpression.name}"
+                            )
+                            continue
+                        if dexpression.name == match.group(2):
+                            pattern = r'DefaultValue="([^"]+)"'
+                            kw_match = re.search(pattern, dexpression.expression)
+                            if kw_match:
+                                return kw_match.group(1)
+        except Exception as exc:
+            logger.debug(f"Error to parse snowflake regex expression: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_redshift_source(self, source_expression: str) -> Optional[dict]:
         try:
             db_match = re.search(
@@ -693,9 +777,7 @@ class PowerbiSource(DashboardServiceSource):
                 schema = schema_table_match[0] if len(schema_table_match) > 0 else None
                 table = schema_table_match[1] if len(schema_table_match) > 1 else None
 
-            if (
-                schema and table
-            ):  # atlease 2 entities schema and table should be fetched
+            if table:  # atlease table should be fetched
                 return {"database": database, "schema": schema, "table": table}
             return None
         except Exception as exc:
@@ -703,30 +785,32 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_snowflake_source(self, source_expression: str) -> Optional[dict]:
+    def _parse_snowflake_source(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[dict]:
         try:
             if "Snowflake.Databases" not in source_expression:
                 # Not a snowflake valid expression
                 return None
             db_match = re.search(
-                r'\[Name="([^"]+)",Kind="Database"\]', source_expression
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
             )
             schema_match = re.search(
-                r'\[Name="([^"]+)",Kind="Schema"\]', source_expression
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression
             )
-            view_match = re.search(r'\[Name="([^"]+)",Kind="View"\]', source_expression)
             table_match = re.search(
-                r'\[Name="([^"]+)",Kind="Table"\]', source_expression
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
+            )
+            view_match = re.search(
+                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
             )
 
-            database = db_match.group(1) if db_match else None
-            schema = schema_match.group(1) if schema_match else None
-            view = view_match.group(1) if view_match else None
-            table = table_match.group(1) if table_match else None
+            database = self._parse_snowflake_regex_exp(db_match, datamodel_entity)
+            schema = self._parse_snowflake_regex_exp(schema_match, datamodel_entity)
+            table = self._parse_snowflake_regex_exp(table_match, datamodel_entity)
+            view = self._parse_snowflake_regex_exp(view_match, datamodel_entity)
 
-            if schema and (
-                table or view
-            ):  # atlease 2 entities schema and table should be fetched
+            if table or view:  # atlease table or view should be fetched
                 return {
                     "database": database,
                     "schema": schema,
@@ -738,14 +822,20 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_table_info_from_source_exp(self, table: PowerBiTable) -> dict:
+    def _parse_table_info_from_source_exp(
+        self, table: PowerBiTable, datamodel_entity: DashboardDataModel
+    ) -> dict:
         try:
             if not isinstance(table.source, list):
                 return {}
             source_expression = table.source[0].expression
-
+            if not source_expression:
+                logger.debug(f"No source expression found for table: {table.name}")
+                return {}
             # parse snowflake source
-            table_info = self._parse_snowflake_source(source_expression)
+            table_info = self._parse_snowflake_source(
+                source_expression, datamodel_entity
+            )
             if isinstance(table_info, dict):
                 return table_info
             # parse redshift source
@@ -760,20 +850,60 @@ class PowerbiSource(DashboardServiceSource):
 
     def _get_table_and_datamodel_lineage(
         self,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         table: PowerBiTable,
         datamodel_entity: DashboardDataModel,
-    ) -> Optional[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels
         """
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+
         try:
-            table_info = self._parse_table_info_from_source_exp(table)
+            table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
+            table_name = table.name or table_info.get("table")
+            schema_name = table_info.get("schema")
+            database_name = table_info.get("database")
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
+                )
+                return
+
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {table_info.get('schema')} does not match prefix {prefix_schema_name}"
+                )
+                return
+
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
+                logger.debug(
+                    f"Database {table_info.get('database')} does not match prefix {prefix_database_name}"
+                )
+                return
+
             fqn_search_string = build_es_fqn_search_string(
-                database_name=table_info.get("database"),
-                schema_name=table_info.get("schema"),
-                service_name=db_service_name or "*",
-                table_name=table_info.get("table") or table.name,
+                service_name=prefix_service_name or "*",
+                table_name=(prefix_table_name or table_name),
+                schema_name=(prefix_schema_name or schema_name),
+                database_name=(prefix_database_name or database_name),
             )
             table_entity = self.metadata.search_in_any_service(
                 entity_type=Table,
@@ -784,13 +914,13 @@ class PowerbiSource(DashboardServiceSource):
                 column_lineage = self._get_column_lineage(
                     table_entity, datamodel_entity, columns_list
                 )
-                return self._get_add_lineage_request(
+                yield self._get_add_lineage_request(
                     to_entity=datamodel_entity,
                     from_entity=table_entity,
                     column_lineage=column_lineage,
                 )
         except Exception as exc:  # pylint: disable=broad-except
-            return Either(
+            yield Either(
                 left=StackTraceError(
                     name="DataModel Lineage for pbit files",
                     error=(
@@ -800,16 +930,17 @@ class PowerbiSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-        return None
 
     def create_table_datamodel_lineage_from_files(
         self,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str],
         datamodel_entity: Optional[DashboardDataModel],
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to create lineage between table and datamodels using pbit files
         """
+        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+
         try:
             # check if the datamodel_file_mappings is populated or not
             # if not, then populate the datamodel_file_mappings and process the lineage
@@ -829,8 +960,8 @@ class PowerbiSource(DashboardServiceSource):
 
             for datamodel_schema_file in datamodel_file_list:
                 for table in datamodel_schema_file.tables or []:
-                    yield self._get_table_and_datamodel_lineage(
-                        db_service_name=db_service_name,
+                    yield from self._get_table_and_datamodel_lineage(
+                        db_service_prefix=db_service_prefix,
                         table=table,
                         datamodel_entity=datamodel_entity,
                     )
@@ -840,27 +971,170 @@ class PowerbiSource(DashboardServiceSource):
                     name="DataModel Lineage",
                     error=(
                         "Error to yield datamodel lineage details for DB "
-                        f"service name [{db_service_name}]: {exc}"
+                        f"service name [{prefix_service_name}]: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
                 )
             )
 
+    def create_dataset_upstream_dataflow_lineage(
+        self, datamodel: Dataset, datamodel_entity: DashboardDataModel
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage between dataset and upstreamDataflow
+        """
+        for upstream_dataflow in datamodel.upstreamDataflows or []:
+            try:
+                if not upstream_dataflow.targetDataflowId:
+                    logger.debug(
+                        f"No targetDataflowId found for upstreamDataflow in "
+                        f"datamodel [{datamodel_entity.name.root}], "
+                        f"Moving to next upstreamDataflow"
+                    )
+                    continue
+                upstream_dataflow_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=upstream_dataflow.targetDataflowId,
+                )
+                upstream_dataflow_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=upstream_dataflow_fqn,
+                )
+                if upstream_dataflow_entity and datamodel_entity:
+                    yield self._get_add_lineage_request(
+                        from_entity=upstream_dataflow_entity,
+                        to_entity=datamodel_entity,
+                    )
+                else:
+                    logger.debug(
+                        f"No upstreamDataflow entity with id={str(upstream_dataflow.targetDataflowId)} "
+                        f"found for datamodel [{datamodel_entity.name.root}]"
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Dataset and UpstreamDataflow Lineage",
+                        error=(
+                            "Error to yield dataset and upstreamDataflow lineage "
+                            f"between [{datamodel_entity.name.root}, {str(upstream_dataflow.targetDataflowId)}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def create_dataset_upstream_dataset_lineage(
+        self, datamodel: Dataset, datamodel_entity: DashboardDataModel
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage between dataset and upstreamDataset
+        """
+        for upstream_dataset in datamodel.upstreamDatasets or []:
+            try:
+                if not upstream_dataset.targetDatasetId:
+                    logger.debug(
+                        f"No targetDatasetId found for upstreamDataset in "
+                        f"datamodel [{datamodel_entity.name.root}], "
+                        f"Moving to next upstreamDataset"
+                    )
+                    continue
+                upstream_dataset_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=upstream_dataset.targetDatasetId,
+                )
+                upstream_dataset_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=upstream_dataset_fqn,
+                )
+                if upstream_dataset_entity and datamodel_entity:
+                    yield self._get_add_lineage_request(
+                        from_entity=upstream_dataset_entity,
+                        to_entity=datamodel_entity,
+                    )
+                else:
+                    logger.debug(
+                        f"No upstreamDataset entity with id={str(upstream_dataset.targetDatasetId)} "
+                        f"found for datamodel [{datamodel_entity.name.root}]"
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Dataset and UpstreamDataset Lineage",
+                        error=(
+                            "Error to yield dataset and upstreamDataset lineage "
+                            f"between [{datamodel_entity.name.root}, {str(upstream_dataset.targetDatasetId)}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def create_dataflow_upstream_dataflow_lineage(
+        self, datamodel: Dataflow, datamodel_entity: DashboardDataModel
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage between dataflow and upstreamDataflow
+        """
+        for upstream_dataflow in datamodel.upstreamDataflows or []:
+            try:
+                if not upstream_dataflow.targetDataflowId:
+                    logger.debug(
+                        f"No targetDataflowId found for upstreamDataflow in "
+                        f"datamodel [{datamodel_entity.name.root}], "
+                        f"Moving to next upstreamDataflow"
+                    )
+                    continue
+                upstream_dataflow_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=upstream_dataflow.targetDataflowId,
+                )
+                upstream_dataflow_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=upstream_dataflow_fqn,
+                )
+                if upstream_dataflow_entity and datamodel_entity:
+                    yield self._get_add_lineage_request(
+                        from_entity=upstream_dataflow_entity,
+                        to_entity=datamodel_entity,
+                    )
+                else:
+                    logger.debug(
+                        f"No upstreamDataflow entity with id={str(upstream_dataflow.targetDataflowId)} "
+                        f"found for datamodel [{datamodel_entity.name.root}]"
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Dataflow and UpstreamDataflow Lineage",
+                        error=(
+                            f"Error to yield dataflow and upstreamDataflow lineage "
+                            f"between [{datamodel_entity.name.root}, {str(upstream_dataflow.targetDataflowId)}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Group,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
         """
+        (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+
         for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)
             try:
                 if isinstance(dashboard_details, PowerBIReport):
                     yield from self.create_datamodel_report_lineage(
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         dashboard_details=dashboard_details,
                     )
                 if isinstance(dashboard_details, PowerBIDashboard):
@@ -871,27 +1145,83 @@ class PowerbiSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Dashboard Lineage",
-                        error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                        error=f"Error to yield dashboard lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+        """
+        Iterate loop for filtered datamodels so datamodels which are not connected to 
+        any report but have tables would be eligible for a dataset-db_table lineage.
+        Also create below lineages: 
+        1. dataset-db_table
+        2. dataset-upstreamDataflow
+        3. dataset-upstreamDataset
+        4. dataflow-upstreamDataflow
+        """
+        for datamodel in self.filtered_datamodels or []:
+            try:
+                datamodel_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=datamodel.id,
+                )
+                datamodel_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=datamodel_fqn,
+                )
+                if datamodel_entity:
+                    if isinstance(datamodel, Dataset):
+                        # 1. datamodel-db_table lineage
+                        for table in datamodel.tables or []:
+                            yield from self._get_table_and_datamodel_lineage(
+                                db_service_prefix=db_service_prefix,
+                                table=table,
+                                datamodel_entity=datamodel_entity,
+                            )
+                        # 2. dataset-upstreamDataflow lineage
+                        yield from self.create_dataset_upstream_dataflow_lineage(
+                            datamodel, datamodel_entity
+                        )
+                        # 3. dataset-upstreamDataset lineage
+                        yield from self.create_dataset_upstream_dataset_lineage(
+                            datamodel, datamodel_entity
+                        )
+                        # create the lineage between table and datamodel using the pbit files
+                        if self.client.file_client:
+                            yield from self.create_table_datamodel_lineage_from_files(
+                                db_service_prefix=db_service_prefix,
+                                datamodel_entity=datamodel_entity,
+                            )
+                    elif isinstance(datamodel, Dataflow):
+                        # create dataflow-upstreamDataflow lineage
+                        yield from self.create_dataflow_upstream_dataflow_lineage(
+                            datamodel, datamodel_entity
+                        )
+                    else:
+                        logger.warning(
+                            f"Unknown datamodel type: {type(datamodel)}, name: {datamodel.name}"
+                        )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Datamodel Lineage",
+                        error=f"Error to yield datamodel lineage details for DB service name [{str(prefix_service_name)}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
 
-    def yield_dashboard_lineage(
-        self, dashboard_details: Group
-    ) -> Iterable[Either[OMetaLineageRequest]]:
+    def yield_datamodel_dashboard_lineage(
+        self,
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Yields lineage if config is enabled.
-
-        We will look for the data in all the services
-        we have informed.
+        Returns:
+            Lineage request between Data Models and Dashboards
         """
-        db_service_names = self.get_db_service_names()
-        if not db_service_names:
-            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
-        for db_service_name in db_service_names or []:
-            yield from self.yield_dashboard_lineage_details(
-                dashboard_details, db_service_name
-            ) or []
+        """
+            We're implementing this differently inside `yield_dashboard_lineage_details`
+            since we have report and dashboard both as dashboard.
+        """
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
@@ -953,29 +1283,83 @@ class PowerbiSource(DashboardServiceSource):
         Method to process the dashboard owners
         """
         try:
+            if not self.source_config.includeOwners:
+                logger.debug(
+                    f"Skipping owner processing for {dashboard_details.id} "
+                    f"as includeOwners is False"
+                )
+                return None
             owner_ref_list = []  # to assign multiple owners to entity if they exist
             for owner in dashboard_details.users or []:
-                if owner.email:
-                    owner_ref = None
-                    try:
-                        owner_email = EmailStr._validate(owner.email)
-                        owner_ref = self.metadata.get_reference_by_email(
-                            owner_email.lower()
-                        )
-                    except PydanticCustomError:
-                        logger.warning(
-                            f"Could not fetch owner data for email: {owner.email}"
-                        )
-                        if owner.displayName:
+                owner_ref = None
+                # put filtering conditions
+                if isinstance(dashboard_details, Dataset):
+                    access_right = owner.datasetUserAccessRight
+                elif isinstance(dashboard_details, Dataflow):
+                    access_right = owner.dataflowUserAccessRight
+                elif isinstance(dashboard_details, PowerBIReport):
+                    access_right = owner.reportUserAccessRight
+                elif isinstance(dashboard_details, PowerBIDashboard):
+                    access_right = owner.dashboardUserAccessRight
+
+                if owner.userType != "Member":
+                    logger.debug(
+                        f"User is not a member of {dashboard_details.id}:"
+                        f" ({owner.displayName}, {owner.email})"
+                    )
+                    continue
+                if access_right and any(
+                    keyword in access_right.lower()
+                    for keyword in OWNER_ACCESS_RIGHTS_KEYWORDS
+                ):
+                    if owner.email:
+                        try:
+                            owner_email = EmailStr._validate(owner.email)
+                        except PydanticCustomError:
+                            logger.debug(f"Invalid email for owner: {owner.email}")
+                            owner_email = None
+                        if owner_email:
+                            try:
+                                owner_ref = self.metadata.get_reference_by_email(
+                                    owner_email.lower()
+                                )
+                            except Exception as err:
+                                logger.debug(
+                                    f"Could not process owner data with email"
+                                    f" {owner.email} in {dashboard_details.id}: {err}"
+                                )
+                    elif owner.displayName:
+                        try:
                             owner_ref = self.metadata.get_reference_by_name(
                                 name=owner.displayName
                             )
-                    except Exception as err:
-                        logger.warning(
-                            f"Error processing current owner data in {dashboard_details.id}: {err}"
-                        )
+                        except Exception as err:
+                            logger.debug(
+                                f"Could not process owner data with name"
+                                f" {owner.displayName} in {dashboard_details.id}: {err}"
+                            )
                     if owner_ref:
                         owner_ref_list.append(owner_ref.root[0])
+                else:
+                    logger.debug(
+                        f"User does not have owner, admin or write access to"
+                        f" {dashboard_details.id}: ({owner.displayName}, {owner.email})"
+                    )
+            # check for last modified, configuredBy user
+            current_active_user = None
+            if isinstance(dashboard_details, Dataset):
+                current_active_user = dashboard_details.configuredBy
+            elif isinstance(dashboard_details, (Dataflow, PowerBIReport)):
+                current_active_user = dashboard_details.modifiedBy
+            if current_active_user:
+                try:
+                    owner_ref = self.metadata.get_reference_by_email(
+                        current_active_user.lower()
+                    )
+                    if owner_ref and owner_ref.root[0] not in owner_ref_list:
+                        owner_ref_list.append(owner_ref.root[0])
+                except Exception as err:
+                    logger.debug(f"Could not fetch current active user due to {err}")
             if len(owner_ref_list) > 0:
                 logger.debug(
                     f"Successfully fetched owners data for {dashboard_details.id}"

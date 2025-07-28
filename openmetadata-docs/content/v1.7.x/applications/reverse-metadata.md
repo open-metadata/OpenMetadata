@@ -6,6 +6,8 @@ collate: true
 
 # Reverse Metadata Application
 
+{% youtube videoId="EWYDfhCgW8k" start="0:00" end="2:16" width="800px" height="450px" /%}
+
 The **Reverse Metadata Application** enables seamless synchronization of metadata updates made in **Collate** back to the original data sources.  
 This ensures that Collate remains the single source of truth for metadata while maintaining consistency across platforms and reinforcing governance policies.
 

@@ -45,7 +45,7 @@ Security requirements for your **production** environment:
 {% image src="/images/v1.7/deployment/security/amazon-cognito-sso/create-server-credentials-4.png" alt="create-account" caption="Integrate your App" /%}
 
 - In the same step, select "Public client" for the Initial App client type and configure the Allowed callback URLs
-  with `http://localhost:8585/callback` as shown in the screenshot below. Note: For production deployments, the Allowed
+  with `https://{your-collate-domain}/callback` as shown in the screenshot below. Note: For production deployments, the Allowed
   callback URLs should be updated with the appropriate domain name.
 
 {% image src="/images/v1.7/deployment/security/amazon-cognito-sso/create-server-credentials-5.png" alt="create-account" caption="Configure the App Client" /%}

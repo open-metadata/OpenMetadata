@@ -1,5 +1,6 @@
 ---
-title: Data Insights Report
+title: Data Insights Report | OpenMetadata Reporting Guide
+description: Generate data usage reports across domains, ownership, or profiling health to track data engagement.
 slug: /how-to-guides/data-insights/report
 ---
 

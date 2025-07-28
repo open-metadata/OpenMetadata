@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
@@ -24,18 +25,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -55,11 +62,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
+    fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
 
   @Override
   public void setFields(DataProduct entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<DataProduct> entities) {
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (DataProduct entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetAssets(List<DataProduct> dataProducts, Fields fields) {
+    if (!fields.contains(FIELD_ASSETS) || dataProducts == null || dataProducts.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, dataProducts, batchFetchAssets(dataProducts), DataProduct::setAssets);
+  }
+
+  private void fetchAndSetExperts(List<DataProduct> dataProducts, Fields fields) {
+    if (!fields.contains("experts") || dataProducts == null || dataProducts.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, dataProducts, batchFetchExperts(dataProducts), DataProduct::setExperts);
   }
 
   @Override
@@ -147,6 +182,100 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return result;
   }
 
+  @Transaction
+  @Override
+  protected BulkOperationResult bulkAssetsOperation(
+      UUID entityId,
+      String fromEntity,
+      Relationship relationship,
+      BulkAssets request,
+      boolean isAdd) {
+    BulkOperationResult result =
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      removeCrossDomainDataProducts(ref, relationship);
+
+      if (isAdd) {
+        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+      } else {
+        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+      }
+
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      searchRepository.updateEntity(ref);
+    }
+
+    result.withSuccessRequest(success);
+
+    // Create a Change Event on successful addition/removal of assets
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      ChangeDescription change =
+          addBulkAddRemoveChangeDescription(
+              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+      ChangeEvent changeEvent =
+          getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    }
+
+    return result;
+  }
+
+  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
+    EntityReference domain =
+        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
+    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+
+    if (!dataProducts.isEmpty() && domain != null) {
+      // Map dataProduct -> domain
+      Map<UUID, UUID> associatedDomains =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(
+                  dataProducts.stream()
+                      .map(dp -> dp.getId().toString())
+                      .collect(Collectors.toList()),
+                  relationship.ordinal(),
+                  DOMAIN)
+              .stream()
+              .collect(
+                  Collectors.toMap(
+                      rec -> UUID.fromString(rec.getToId()),
+                      rec -> UUID.fromString(rec.getFromId())));
+
+      List<EntityReference> dataProductsToDelete =
+          dataProducts.stream()
+              .filter(
+                  dataProduct -> {
+                    UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
+                    return associatedDomainId != null && !associatedDomainId.equals(domain.getId());
+                  })
+              .collect(Collectors.toList());
+
+      if (!dataProductsToDelete.isEmpty()) {
+        daoCollection
+            .relationshipDAO()
+            .bulkRemoveFromRelationship(
+                dataProductsToDelete.stream()
+                    .map(EntityReference::getId)
+                    .collect(Collectors.toList()),
+                ref.getId(),
+                DATA_PRODUCT,
+                ref.getType(),
+                relationship.ordinal());
+        LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
+      }
+    }
+  }
+
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
     super.restorePatchAttributes(original, updated);
@@ -163,7 +292,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
     for (EntityReference assetRef : assetsMap.values()) {
       EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
-      searchRepository.updateEntity(asset);
+      searchRepository.updateEntityIndex(asset);
     }
   }
 
@@ -206,5 +335,65 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             false);
       }
     }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchAssets(List<DataProduct> dataProducts) {
+    Map<UUID, List<EntityReference>> assetsMap = new HashMap<>();
+    if (dataProducts == null || dataProducts.isEmpty()) {
+      return assetsMap;
+    }
+
+    // Initialize empty lists for all data products
+    for (DataProduct dataProduct : dataProducts) {
+      assetsMap.put(dataProduct.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all assets for all data products
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(
+                entityListToStrings(dataProducts), Relationship.HAS.ordinal(), Include.ALL);
+
+    // Group assets by data product ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID dataProductId = UUID.fromString(record.getFromId());
+      EntityReference assetRef =
+          Entity.getEntityReferenceById(
+              record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
+      assetsMap.get(dataProductId).add(assetRef);
+    }
+
+    return assetsMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {
+    Map<UUID, List<EntityReference>> expertsMap = new HashMap<>();
+    if (dataProducts == null || dataProducts.isEmpty()) {
+      return expertsMap;
+    }
+
+    // Initialize empty lists for all data products
+    for (DataProduct dataProduct : dataProducts) {
+      expertsMap.put(dataProduct.getId(), new ArrayList<>());
+    }
+
+    // Single batch query to get all expert relationships
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(dataProducts), Relationship.EXPERT.ordinal(), Entity.USER);
+
+    // Group experts by data product ID
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID dataProductId = UUID.fromString(record.getFromId());
+      EntityReference expertRef =
+          Entity.getEntityReferenceById(
+              Entity.USER, UUID.fromString(record.getToId()), NON_DELETED);
+      expertsMap.get(dataProductId).add(expertRef);
+    }
+
+    return expertsMap;
   }
 }

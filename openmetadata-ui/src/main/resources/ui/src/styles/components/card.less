@@ -12,8 +12,8 @@
  */
 
 @import (reference) url('../variables.less');
-@import (reference) url('antd/dist/antd.variable.less');
 @import (reference) url('../fonts.less');
+@import (reference) url('antd/dist/antd.variable.less');
 
 .scrollable-card-body-sm() {
   max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
@@ -40,6 +40,36 @@
 .card-padding-0 {
   .ant-card-body {
     padding: 0;
+  }
+}
+
+.card-padding-xss {
+  > .ant-card-body {
+    padding: @padding-xss;
+  }
+}
+
+.card-padding-xs {
+  > .ant-card-body {
+    padding: @padding-xs;
+  }
+}
+
+.card-padding-sm {
+  > .ant-card-body {
+    padding: @padding-sm;
+  }
+}
+
+.card-padding-md {
+  > .ant-card-body {
+    padding: @padding-md;
+  }
+}
+
+.card-padding-lg {
+  > .ant-card-body {
+    padding: @padding-lg;
   }
 }
 
@@ -77,7 +107,6 @@
 .ant-card.new-header-border-card {
   height: auto !important;
 
-  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
   .ant-card-head {
     background: @grey-50;
     border-radius: @border-radius-sm;
@@ -89,6 +118,8 @@
   .ant-card-body {
     height: auto !important;
     max-height: none !important;
+    transition: all 200ms ease;
+    transition-property: height, left, top;
   }
 
   .expand-collapse-icon {
@@ -120,5 +151,24 @@
     }
   }
 
+  .ant-card-extra {
+    margin-left: @size-sm;
+  }
+
   border: 1px solid @grey-15;
+}
+
+.bot-page-roles-card-header {
+  .ant-card-head {
+    background: @grey-50;
+    border-radius: @border-radius-sm;
+    .text-sm();
+    font-weight: 500;
+    border-bottom: none;
+  }
+
+  .ant-card-body {
+    height: auto !important;
+    max-height: none !important;
+  }
 }

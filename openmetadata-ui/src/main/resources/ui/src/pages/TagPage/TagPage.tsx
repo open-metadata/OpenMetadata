@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  Card,
   Col,
   Divider,
   Dropdown,
@@ -24,21 +25,14 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, startsWith } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
-import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -48,7 +42,10 @@ import StatusBadge from '../../components/common/StatusBadge/StatusBadge.compone
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -65,6 +62,7 @@ import {
   DE_ACTIVE_COLOR,
   ROUTES,
 } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -98,14 +96,16 @@ import {
   getTagImageSrc,
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
 
 const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
-  const history = useHistory();
-  const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
+  const navigate = useNavigate();
+  const { tab: activeTab = TagTabs.OVERVIEW } =
+    useRequiredParams<{ tab?: string }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
@@ -143,9 +143,12 @@ const TagPage = () => {
       : [];
   }, [tagItem]);
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const { editTagsPermission, editDescriptionPermission } = useMemo(() => {
     if (tagItem) {
@@ -218,7 +221,7 @@ const TagPage = () => {
       setIsLoading(true);
       if (tagFqn) {
         const response = await getTagByFqn(tagFqn, {
-          fields: TabSpecificField.DOMAIN,
+          fields: [TabSpecificField.DOMAIN, TabSpecificField.OWNERS],
         });
         setTagItem(response);
       }
@@ -231,12 +234,17 @@ const TagPage = () => {
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
-      history.replace({
-        pathname: getClassificationTagPath(
-          tagItem.fullyQualifiedName ?? '',
-          tab
-        ),
-      });
+      navigate(
+        {
+          pathname: getClassificationTagPath(
+            tagItem.fullyQualifiedName ?? '',
+            tab
+          ),
+        },
+        {
+          replace: true,
+        }
+      );
     }
   };
 
@@ -298,7 +306,7 @@ const TagPage = () => {
       setIsLoading(true);
 
       if (tagItem?.classification?.fullyQualifiedName) {
-        history.push(
+        navigate(
           getClassificationDetailsPath(
             tagItem.classification.fullyQualifiedName
           )
@@ -322,7 +330,7 @@ const TagPage = () => {
   };
 
   const handleAddTagClick = () => {
-    history.push(ROUTES.TAGS);
+    navigate(ROUTES.TAGS);
   };
 
   const fetchClassificationTagAssets = async () => {
@@ -433,46 +441,38 @@ const TagPage = () => {
         label: <TabsLabel id={TagTabs.OVERVIEW} name={t('label.overview')} />,
         key: 'overview',
         children: (
-          <ResizablePanels
-            className="tag-height-with-resizable-panel"
-            firstPanel={{
-              className: 'tag-resizable-panel-container',
-              children: (
-                <div className="tag-overview-tab">
-                  <Row>
-                    <Col span={24}>
-                      <DescriptionV1
-                        removeBlur
-                        description={tagItem?.description}
-                        entityName={getEntityName(tagItem)}
-                        entityType={EntityType.TAG}
-                        hasEditAccess={editDescriptionPermission}
-                        showActions={!tagItem?.deleted}
-                        showCommentsIcon={false}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                    </Col>
-                  </Row>
+          <GenericProvider<Tag>
+            data={tagItem as Tag}
+            isVersionView={false}
+            permissions={tagPermissions}
+            type={EntityType.TAG as CustomizeEntityType}
+            onUpdate={(updatedData: Tag) =>
+              Promise.resolve(updateTag(updatedData))
+            }>
+            <Row gutter={16}>
+              <Col span={18}>
+                <Card className="card-padding-md">
+                  <DescriptionV1
+                    removeBlur
+                    wrapInCard
+                    description={tagItem?.description}
+                    entityName={getEntityName(tagItem)}
+                    entityType={EntityType.TAG}
+                    hasEditAccess={editDescriptionPermission}
+                    showActions={!tagItem?.deleted}
+                    showCommentsIcon={false}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                  />
+                </Card>
+              </Col>
+              <Col span={6}>
+                <div className="d-flex flex-column gap-5">
+                  <DomainLabelV2 showDomainHeading />
+                  <OwnerLabelV2 dataTestId="tag-owner-name" />
                 </div>
-              ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-            }}
-            secondPanel={{
-              children: tagItem ? (
-                <DomainLabel
-                  showDomainHeading
-                  domain={tagItem.domain}
-                  entityFqn={tagItem.fullyQualifiedName ?? ''}
-                  entityId={tagItem.id ?? ''}
-                  entityType={EntityType.TAG}
-                  hasPermission={editTagsPermission}
-                />
-              ) : null,
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-              className:
-                'entity-resizable-right-panel-container tag-resizable-panel-container',
-            }}
-          />
+              </Col>
+            </Row>
+          </GenericProvider>
         ),
       },
       {
@@ -566,7 +566,7 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-  }, []);
+  }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
@@ -624,7 +624,7 @@ const TagPage = () => {
             {haveAssetEditPermission && (
               <Col className="p-x-md">
                 <div className="d-flex self-end">
-                  {!isCertificationClassification && (
+                  {!isCertificationClassification && !tagItem.disabled && (
                     <Button
                       data-testid="data-classification-add-button"
                       type="primary"
@@ -672,7 +672,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tabs-new"
+            className="tabs-new tag-page-tabs"
             items={tabItems}
             onChange={activeTabHandler}
           />

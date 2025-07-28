@@ -71,6 +71,8 @@ export enum EntityFields {
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
   SERVICE_NAME = 'service.name.keyword',
+  SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
+  TAGS_LABEL_TYPE = 'tags.labelType',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {

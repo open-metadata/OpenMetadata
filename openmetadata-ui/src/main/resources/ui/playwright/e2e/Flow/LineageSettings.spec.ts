@@ -13,15 +13,23 @@
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { createNewPage, getApiContext } from '../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import {
   addPipelineBetweenNodes,
   fillLineageConfigForm,
+  performCollapse,
   performExpand,
   performZoomOut,
   verifyColumnLayerActive,
@@ -43,6 +51,8 @@ test.describe('Lineage Settings Tests', () => {
     const dashboard = new DashboardClass();
     const mlModel = new MlModelClass();
     const searchIndex = new SearchIndexClass();
+    const container = new ContainerClass();
+    const metric = new MetricClass();
 
     try {
       await Promise.all([
@@ -51,15 +61,46 @@ test.describe('Lineage Settings Tests', () => {
         dashboard.create(apiContext),
         mlModel.create(apiContext),
         searchIndex.create(apiContext),
+        container.create(apiContext),
+        metric.create(apiContext),
       ]);
 
       await addPipelineBetweenNodes(page, table, topic);
       await addPipelineBetweenNodes(page, topic, dashboard);
       await addPipelineBetweenNodes(page, dashboard, mlModel);
       await addPipelineBetweenNodes(page, mlModel, searchIndex);
+      await addPipelineBetweenNodes(page, searchIndex, container);
+      await addPipelineBetweenNodes(page, container, metric);
 
       await test.step(
-        'Update global lineage config and verify lineage',
+        'Lineage config should throw error if upstream depth is less than 0',
+        async () => {
+          await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+
+          await page.getByTestId('field-upstream').fill('-1');
+          await page.getByTestId('field-downstream').fill('-1');
+          await page.getByTestId('save-button').click();
+
+          await expect(
+            page.getByText('Upstream Depth size cannot be less than 0')
+          ).toBeVisible();
+          await expect(
+            page.getByText('Downstream Depth size cannot be less than 0')
+          ).toBeVisible();
+
+          await page.getByTestId('field-upstream').fill('0');
+          await page.getByTestId('field-downstream').fill('0');
+
+          const saveRes = page.waitForResponse('/api/v1/system/settings');
+          await page.getByTestId('save-button').click();
+          await saveRes;
+
+          await toastNotification(page, /Lineage Config updated successfully/);
+        }
+      );
+
+      await test.step(
+        'Update global lineage config and verify lineage for column layer',
         async () => {
           await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
           await fillLineageConfigForm(page, {
@@ -87,9 +128,46 @@ test.describe('Lineage Settings Tests', () => {
       );
 
       await test.step(
+        'Update global lineage config and verify lineage for entity layer',
+        async () => {
+          await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+          await fillLineageConfigForm(page, {
+            upstreamDepth: 1,
+            downstreamDepth: 1,
+            layer: 'Entity Lineage',
+          });
+
+          await dashboard.visitEntityPage(page);
+          await visitLineageTab(page);
+
+          await verifyNodePresent(page, dashboard);
+          await verifyNodePresent(page, mlModel);
+          await verifyNodePresent(page, topic);
+
+          const tableNode = page.locator(
+            `[data-testid="lineage-node-${get(
+              table,
+              'entityResponseData.fullyQualifiedName'
+            )}"]`
+          );
+
+          const searchIndexNode = page.locator(
+            `[data-testid="lineage-node-${get(
+              searchIndex,
+              'entityResponseData.fullyQualifiedName'
+            )}"]`
+          );
+
+          await expect(tableNode).not.toBeVisible();
+          await expect(searchIndexNode).not.toBeVisible();
+        }
+      );
+
+      await test.step(
         'Verify Upstream and Downstream expand collapse buttons',
         async () => {
-          await dashboard.visitEntityPage(page);
+          await redirectToHomePage(page);
+          await dashboard.visitEntityPageWithCustomSearchBox(page);
           await visitLineageTab(page);
           const closeIcon = page.getByTestId('entity-panel-close-icon');
           if (await closeIcon.isVisible()) {
@@ -99,7 +177,17 @@ test.describe('Lineage Settings Tests', () => {
           await verifyNodePresent(page, topic);
           await verifyNodePresent(page, mlModel);
           await performExpand(page, mlModel, false, searchIndex);
-          await performExpand(page, topic, true);
+          await performExpand(page, searchIndex, false, container);
+          await performExpand(page, container, false, metric);
+          await performExpand(page, topic, true, table);
+
+          // perform collapse
+          await performCollapse(page, mlModel, false, [
+            searchIndex,
+            container,
+            metric,
+          ]);
+          await performCollapse(page, dashboard, true, [table, topic]);
         }
       );
 

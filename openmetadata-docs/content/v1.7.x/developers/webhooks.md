@@ -1,5 +1,5 @@
 ---
-title: Webhooks
+title: Webhooks | OpenMetadata Developer Integration Guide
 slug: /developers/webhooks
 ---
 

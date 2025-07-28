@@ -12,6 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 
+import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
@@ -36,6 +37,7 @@ import {
   fillRecursiveEntityTypeFQNDetails,
   fillRowDetails,
   fillStoredProcedureCode,
+  firstTimeGridAddRowAction,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -135,12 +137,12 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database service details', async () => {
-      await dbService.visitEntityPage(page);
+      await dbService.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbService.entity.name);
       await page.click('#submit-button');
       const download = await downloadPromise;
@@ -154,7 +156,7 @@ test.describe('Bulk Import Export', () => {
       async () => {
         await dbService.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + dbService.entity.name + '.csv',
@@ -164,21 +166,14 @@ test.describe('Bulk Import Export', () => {
         await page.waitForTimeout(500);
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(
-          page.locator('.InovuaReactDataGrid__header-layout')
-        ).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-        );
+        await firstTimeGridAddRowAction(page);
 
         // Add first database details
         await fillRowDetails(
@@ -204,12 +199,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -233,12 +228,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table and columns details
         await fillRowDetails(
@@ -263,12 +258,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRecursiveColumnDetails(
           {
@@ -282,12 +277,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 19, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -315,12 +310,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 18, 'ArrowLeft');
+        await pressKeyXTimes(page, 19, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -363,9 +358,7 @@ test.describe('Bulk Import Export', () => {
           'Entity created',
         ];
 
-        await expect(page.locator('[data-props-id="details"]')).toHaveText(
-          rowStatus
-        );
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -387,7 +380,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database', async ({ page }) => {
-    test.slow(true);
+    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -404,12 +398,12 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database details', async () => {
-      await dbEntity.visitEntityPage(page);
+      await dbEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbEntity.entity.name);
       await page.click('#submit-button');
 
@@ -424,7 +418,7 @@ test.describe('Bulk Import Export', () => {
       async () => {
         await dbEntity.visitEntityPage(page);
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbEntity.entity.name + '.csv',
@@ -434,22 +428,15 @@ test.describe('Bulk Import Export', () => {
         await page.waitForTimeout(500);
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(
-          page.locator('.InovuaReactDataGrid__header-layout')
-        ).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
+        await firstTimeGridAddRowAction(page);
 
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-        );
-        // Click on first cell and edit
         await fillRowDetails(
           {
             ...databaseSchemaDetails1,
@@ -473,12 +460,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table and columns details
         await fillRowDetails(
@@ -503,12 +490,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         await fillRecursiveColumnDetails(
           {
@@ -522,12 +509,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 17, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -548,11 +535,12 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
-        const loader = page.locator(
-          '.inovua-react-toolkit-load-mask__background-layer'
-        );
-
-        await loader.waitFor({ state: 'hidden' });
+        await page.waitForSelector('text=Import is in progress.', {
+          state: 'attached',
+        });
+        await page.waitForSelector('text=Import is in progress.', {
+          state: 'detached',
+        });
 
         await validateImportStatus(page, {
           passed: '13',
@@ -560,7 +548,7 @@ test.describe('Bulk Import Export', () => {
           failed: '0',
         });
 
-        await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+        await page.waitForSelector('.rdg-header-row', {
           state: 'visible',
         });
 
@@ -576,11 +564,10 @@ test.describe('Bulk Import Export', () => {
           'Entity created',
           'Entity created',
           'Entity updated',
+          'Entity created',
         ];
 
-        await expect(page.locator('[data-props-id="details"]')).toHaveText(
-          rowStatus
-        );
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -602,7 +589,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database Schema', async ({ page }) => {
-    test.slow(true);
+    // 4 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(240_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -619,11 +607,11 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database schema details', async () => {
-      await dbSchemaEntity.visitEntityPage(page);
+      await dbSchemaEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', dbSchemaEntity.entity.name);
       await page.click('#submit-button');
 
@@ -639,7 +627,7 @@ test.describe('Bulk Import Export', () => {
         await dbSchemaEntity.visitEntityPage(page);
 
         await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbSchemaEntity.entity.name + '.csv',
@@ -649,21 +637,14 @@ test.describe('Bulk Import Export', () => {
         await page.waitForTimeout(500);
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(
-          page.locator('.InovuaReactDataGrid__header-layout')
-        ).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-        );
+        await firstTimeGridAddRowAction(page);
 
         // First Table Details with one Column
         await fillRowDetails(
@@ -689,12 +670,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // Fill table columns details
         await fillRecursiveColumnDetails(
@@ -709,12 +690,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 16, 'ArrowLeft');
+        await pressKeyXTimes(page, 17, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -739,12 +720,12 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 12, 'ArrowLeft');
+        await pressKeyXTimes(page, 13, 'ArrowLeft');
 
         // fill second table columns details
         await fillRecursiveColumnDetails(
@@ -770,9 +751,7 @@ test.describe('Bulk Import Export', () => {
           'Entity updated',
         ];
 
-        await expect(page.locator('[data-props-id="details"]')).toHaveText(
-          rowStatus
-        );
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
@@ -794,18 +773,20 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
+    test.slow(true);
+
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
 
     await test.step('should export data table details', async () => {
-      await tableEntity.visitEntityPage(page);
+      await tableEntity.visitEntityPageWithCustomSearchBox(page);
 
       const downloadPromise = page.waitForEvent('download');
 
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
+      await page.click('[data-testid="export-button-title"]');
       await page.fill('#fileName', tableEntity.entity.name);
       await page.click('#submit-button');
 
@@ -820,7 +801,7 @@ test.describe('Bulk Import Export', () => {
       async () => {
         await tableEntity.visitEntityPage(page);
         await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
+        await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + tableEntity.entity.name + '.csv',
@@ -830,21 +811,14 @@ test.describe('Bulk Import Export', () => {
         await page.waitForTimeout(500);
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(
-          page.locator('.InovuaReactDataGrid__header-layout')
-        ).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await page.click('[data-testid="add-row-btn"]');
-
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-        );
+        await firstTimeGridAddRowAction(page);
 
         // Click on first cell and edit
         await fillColumnDetails(columnDetails1, page);
@@ -852,20 +826,20 @@ test.describe('Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
-        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page.click(RDG_ACTIVE_CELL_SELECTOR);
         await page
-          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .locator(RDG_ACTIVE_CELL_SELECTOR)
           .press('ArrowDown', { delay: 100 });
 
-        await pressKeyXTimes(page, 8, 'ArrowLeft');
+        await pressKeyXTimes(page, 9, 'ArrowLeft');
 
         await fillColumnDetails(columnDetails2, page);
 
-        await page.click('[type="button"] >> text="Next"', { force: true });
+        await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '9',
-          processed: '9',
+          passed: '11',
+          processed: '11',
           failed: '0',
         });
 
@@ -878,23 +852,21 @@ test.describe('Bulk Import Export', () => {
           'Entity updated',
           'Entity updated',
           'Entity updated',
+          'Entity updated',
+          'Entity updated',
         ];
 
-        await expect(page.locator('[data-props-id="details"]')).toHaveText(
-          rowStatus
-        );
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=true*`
         );
 
         await page.click('[type="button"] >> text="Update"', { force: true });
+        await updateButtonResponse;
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
-
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
         await toastNotification(page, /details updated successfully/);
       }
     );

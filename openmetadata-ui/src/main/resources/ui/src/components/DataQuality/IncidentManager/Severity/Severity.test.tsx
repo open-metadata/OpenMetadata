@@ -17,7 +17,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import Severity from './Severity.component';

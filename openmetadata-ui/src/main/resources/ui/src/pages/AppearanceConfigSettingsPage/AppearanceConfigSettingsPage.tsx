@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons';
 import {
-  Badge,
   Button,
   Card,
   Col,
@@ -25,9 +24,9 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share.svg';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -50,7 +49,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
 const AppearanceConfigSettingsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -364,17 +363,7 @@ const AppearanceConfigSettingsPage = () => {
               <Card
                 className="white-label-config-card"
                 title={
-                  <div className="d-flex items-center">
-                    <Typography.Text>{t('label.custom-theme')}</Typography.Text>
-
-                    <Badge
-                      className="custom-theme-beta-tag"
-                      count={t('label.beta')}
-                      data-testid="custom-theme-beta-tag"
-                      offset={[10, 0]}
-                      size="small"
-                    />
-                  </div>
+                  <Typography.Text>{t('label.custom-theme')}</Typography.Text>
                 }>
                 <Row className="w-full" gutter={[16, 16]}>
                   {themeFormFields.map((field) => {
@@ -450,7 +439,7 @@ const AppearanceConfigSettingsPage = () => {
               <Button
                 data-testid="cancel-btn"
                 type="link"
-                onClick={() => history.goBack()}>
+                onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button

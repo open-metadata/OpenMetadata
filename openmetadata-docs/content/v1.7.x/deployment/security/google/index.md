@@ -1,5 +1,6 @@
 ---
-title: Google SSO
+title: Google SSO | OpenMetadata Authentication Integration
+description: Set up Google OAuth as your identity provider to enable secure login, token exchange, and scoped user access in deployments.
 slug: /deployment/security/google
 collate: false
 ---

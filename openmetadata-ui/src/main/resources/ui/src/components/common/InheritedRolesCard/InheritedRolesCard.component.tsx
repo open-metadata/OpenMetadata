@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Card, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -25,7 +25,7 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
 
   return (
     <Card
-      className="new-header-border-card"
+      className="bot-page-roles-card-header"
       key="inherited-roles-card-component"
       title={t('label.inherited-role-plural')}>
       <Fragment>

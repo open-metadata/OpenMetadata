@@ -1,5 +1,6 @@
 ---
-title: Airflow Lineage Backend
+title: Airflow Lineage Backend | Official Documentation
+description: Integrate Airflow lineage backend to capture runtime metadata and execution traces for DAGs and tasks.
 slug: /connectors/pipeline/airflow/lineage-backend
 ---
 
@@ -116,7 +117,7 @@ t2 and t3 as downstream tasks.
 
 ### Adding Lineage
 
-Airflow [Operators](https://airflow.apache.org/docs/apache-airflow/stable/_api/airflow/models/baseoperator/index.html) 
+Airflow [Operators](https://airflow.apache.org/docs/apache-airflow/1.10.4/_api/airflow/models/baseoperator/index.html) 
 contain the attributes `inlets` and `outlets`. When creating our tasks, we can pass any of these two
 parameters as follows:
 

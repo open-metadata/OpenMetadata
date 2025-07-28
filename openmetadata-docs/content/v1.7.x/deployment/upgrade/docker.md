@@ -1,5 +1,6 @@
 ---
-title: Upgrade on Docker
+title: Upgrade on Docker | OpenMetadata Deployment Upgrade Guide
+description: Perform upgrades for Docker-based deployments by managing image versions, environment variables, and service configurations.
 slug: /deployment/upgrade/docker
 collate: false
 ---
@@ -15,7 +16,7 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 {% /note %}
 
-Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/100-to-110) for the specific details related to upgrading to 1.0.0
+Below we have highlighted the steps needed to upgrade to the latest version with Docker.
 
 {% partial file="/v1.7/deployment/upgrade/upgrade-prerequisites.md" /%}
 
@@ -30,19 +31,12 @@ docker compose down
 - Download the Docker Compose Service File from OpenMetadata GitHub Release page [here](https://github.com/open-metadata/OpenMetadata/releases/latest)
 - Replace the existing Docker Compose Service File with the one downloaded from the above step
 
-{% note %}
-
-Please make sure to go through [breaking changes and release highlights](/deployment/upgrade/versions/100-to-110).
-
-{% /note %}
-
 - Start the Docker Compose Service with the below command
 ```
 docker compose -f docker-compose.yml up -d
 ```
 
 {% partial file="/v1.7/deployment/upgrade/post-upgrade-steps.md" /%}
-
 
 # Troubleshooting
 

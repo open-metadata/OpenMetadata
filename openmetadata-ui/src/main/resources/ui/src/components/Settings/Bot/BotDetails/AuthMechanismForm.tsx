@@ -13,7 +13,7 @@
 
 import { Button, Form, FormProps, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
@@ -112,17 +112,7 @@ const AuthMechanismForm: FC<Props> = ({
           className="w-full"
           data-testid="token-expiry"
           placeholder={t('message.select-token-expiration')}>
-          {isBot
-            ? getJWTTokenExpiryOptions().map((option) => (
-                <Option key={option.value}>{option.label}</Option>
-              ))
-            : getJWTTokenExpiryOptions()
-                .filter((option) => option.value !== 'Unlimited')
-                .map((filteredOption) => (
-                  <Option key={filteredOption.value}>
-                    {filteredOption.label}
-                  </Option>
-                ))}
+          {getJWTTokenExpiryOptions(!isBot)}
         </Select>
       </Form.Item>
 

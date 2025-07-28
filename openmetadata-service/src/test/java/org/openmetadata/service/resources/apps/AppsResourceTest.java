@@ -1,13 +1,12 @@
 package org.openmetadata.service.resources.apps;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -17,6 +16,8 @@ import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -26,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -68,6 +67,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -84,7 +84,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.RetryableAssertionError;
 import org.openmetadata.service.util.TestUtils;
@@ -97,6 +96,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     super(Entity.APPLICATION, App.class, AppResource.AppList.class, "apps", AppResource.FIELDS);
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
+    supportsEtag = false;
   }
 
   public static final RetryRegistry APP_TRIGGER_RETRY =
@@ -318,7 +318,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // -------------------------------------------------
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
-    String clusterAlias = getSearchRepository().getClusterAlias();
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
     String endpointSuffix = "di-data-assets-*";
     String endpoint =
         !(clusterAlias == null || clusterAlias.isEmpty())
@@ -654,7 +654,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
       throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
     Response response =
-        SecurityUtil.addHeaders(target, authHeaders).post(javax.ws.rs.client.Entity.json(config));
+        SecurityUtil.addHeaders(target, authHeaders).post(jakarta.ws.rs.client.Entity.json(config));
     readResponse(response, OK.getStatusCode());
   }
 

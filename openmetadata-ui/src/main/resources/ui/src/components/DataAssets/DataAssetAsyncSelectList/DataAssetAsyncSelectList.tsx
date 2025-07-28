@@ -13,8 +13,7 @@
 import { Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
-import { PAGE_SIZE } from '../../../constants/constants';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -51,7 +50,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     handlePageChange,
     paging,
     pageSize,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
   const [options, setOptions] = useState<DataAssetOption[]>(

@@ -23,7 +23,7 @@ import {
 import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import React, {
+import {
   ChangeEvent,
   useCallback,
   useEffect,
@@ -39,6 +39,7 @@ import { deleteEntity } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import './delete-widget-modal.style.less';
 import {
   DeleteType,
@@ -69,7 +70,8 @@ const DeleteWidgetModal = ({
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { currentUser, onLogoutHandler } = useApplicationStore();
+  const { currentUser } = useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [deleteConfirmationText, setDeleteConfirmationText] =
     useState<string>('');

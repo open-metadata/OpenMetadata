@@ -2,8 +2,8 @@ package org.openmetadata.service.resources.feeds;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import jakarta.ws.rs.core.Response;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
 import org.openmetadata.schema.api.feed.CreateSuggestion;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.type.Include;

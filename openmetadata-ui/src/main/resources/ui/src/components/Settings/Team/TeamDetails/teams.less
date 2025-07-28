@@ -80,17 +80,11 @@
 .teams-layout {
   margin: -12px 0;
 
-  .ant-card-head-title {
-    padding-top: 0;
-    padding-bottom: 12px;
-  }
-
   .teams-profile {
     background-color: @team-avatar-bg;
   }
 
   .teams-profile-container {
-    background: @user-profile-background;
     .collapse-panel-container {
       padding: 20px;
     }
@@ -98,8 +92,14 @@
       background: none;
     }
 
-    .ant-collapse-header {
+    .ant-collapse-header,
+    .ant-collapse-content {
       padding: 0 35px 0 0;
+    }
+
+    .ant-collapse-content-box {
+      margin-top: 12px;
+      padding: 0;
     }
 
     .ant-collapse-arrow {

@@ -14,14 +14,15 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { TASK_TYPES } from '../../../constants/Task.constant';
 import {
   Post,
   Thread,
@@ -34,8 +35,6 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-
-import { TASK_TYPES } from '../../../constants/Task.constant';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
@@ -62,7 +61,7 @@ const TaskFeedCard = ({
   isActive,
   hidePopover = false,
 }: TaskFeedCardProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { showDrawer, setActiveThread } = useActivityFeedProvider();
   const [showActions, setShowActions] = useState(false);
@@ -112,9 +111,7 @@ const TaskFeedCard = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
-      pathname: getTaskDetailPath(feed),
-    });
+    navigate(getTaskDetailPath(feed));
     setActiveThread(feed);
   };
 
@@ -206,7 +203,7 @@ const TaskFeedCard = ({
           </Col>
           {!showThread ? (
             <Col span={24}>
-              <div className="d-flex items-start p-l-lg gap-2">
+              <div className="d-flex items-center p-l-lg gap-2">
                 {postLength > 0 && (
                   <>
                     <div className="thread-users-profile-pic">
@@ -237,7 +234,6 @@ const TaskFeedCard = ({
 
                 <Typography.Text
                   className={classNames(
-                    'p-t-xss',
                     postLength > 0
                       ? 'm-l-sm text-sm text-grey-muted'
                       : 'text-sm text-grey-muted'

@@ -12,29 +12,28 @@
  */
 import { Button, Empty, Select, Space, Tree } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { debounce } from 'lodash';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../assets/svg/ic-popover-save.svg';
+import { DEBOUNCE_TIMEOUT } from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
-import { listDomainHierarchy } from '../../../rest/domainAPI';
+import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
 import {
   convertDomainsToTreeOptions,
   isDomainExist,
 } from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { TagRenderer } from '../TagRenderer/TagRenderer';
@@ -56,7 +55,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
-  const [domains, setDomains] = useState<Domain[]>([]);
+  const [allDomains, setAllDomains] = useState<Domain[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
@@ -64,7 +63,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   const handleMultiDomainSave = async () => {
     const selectedFqns = selectedDomains
-      .map((domain) => domain.fullyQualifiedName)
+      .map((domain) => domain?.fullyQualifiedName)
       .sort((a, b) => (a ?? '').localeCompare(b ?? ''));
     const initialFqns = (value as string[]).sort((a, b) => a.localeCompare(b));
 
@@ -109,7 +108,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       const combinedData = [...data.data];
       initialDomains?.forEach((selectedDomain) => {
         const exists = combinedData.some((domain: Domain) =>
-          isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+          isDomainExist(domain, selectedDomain?.fullyQualifiedName ?? '')
         );
         if (!exists) {
           combinedData.push(selectedDomain as unknown as Domain);
@@ -117,7 +116,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       });
 
       setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
-      setDomains(combinedData);
+      setAllDomains(combinedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -130,7 +129,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       const selectedData = [];
       for (const item of selectedKeys) {
         selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
+          findItemByFqn(allDomains, item as string, false) as Domain
         );
       }
 
@@ -145,23 +144,49 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       const selectedData = [];
       for (const item of checked) {
         selectedData.push(
-          findItemByFqn(domains, item as string, false) as Domain
+          findItemByFqn(allDomains, item as string, false) as Domain
         );
       }
 
       setSelectedDomains(selectedData);
     } else {
       const selected = checked.checked.map(
-        (item) => findItemByFqn(domains, item as string, false) as Domain
+        (item) => findItemByFqn(allDomains, item as string, false) as Domain
       );
 
       setSelectedDomains(selected);
     }
   };
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
+
+  const onSearch = debounce(async (value: string) => {
+    setSearchTerm(value);
+    if (value) {
+      try {
+        setIsLoading(true);
+        const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
+        const results: Domain[] = await searchDomains(encodedValue);
+        const updatedTreeData = convertDomainsToTreeOptions(
+          results,
+          0,
+          isMultiple
+        );
+        setTreeData(updatedTreeData);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      const updatedTreeData = convertDomainsToTreeOptions(
+        allDomains,
+        0,
+        isMultiple
+      );
+      setTreeData(updatedTreeData);
+    }
+  }, DEBOUNCE_TIMEOUT);
 
   const treeContent = useMemo(() => {
     if (isLoading) {
@@ -206,7 +231,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   }, [visible]);
   const handleSelectChange = (selectedFqns: string[]) => {
     const selectedData = selectedFqns.map(
-      (fqn) => findItemByFqn(domains, fqn, false) as Domain
+      (fqn) => findItemByFqn(allDomains, fqn, false) as Domain
     );
     setSelectedDomains(selectedData);
   };
@@ -215,11 +240,11 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       setSelectedDomains(initialDomains as unknown as Domain[]);
     } else if (value) {
       const selectedData = (value as string[]).map(
-        (fqn) => findItemByFqn(domains, fqn, false) as Domain
+        (fqn) => findItemByFqn(allDomains, fqn, false) as Domain
       );
       setSelectedDomains(selectedData);
     }
-  }, [initialDomains, value, domains]);
+  }, [initialDomains, value, allDomains]);
 
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
@@ -228,6 +253,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}
           dropdownStyle={{ maxHeight: '200px' }}
+          filterOption={false}
           maxTagCount={3}
           maxTagPlaceholder={(omittedValues) => (
             <span className="max-tag-text">
@@ -235,28 +261,29 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
             </span>
           )}
           mode={isMultiple ? 'multiple' : undefined}
-          options={domains.map((domain) => ({
-            value: domain.fullyQualifiedName,
-            label: domain.name,
+          options={allDomains.map((domain) => ({
+            value: domain?.fullyQualifiedName,
+            label: domain?.name,
           }))}
           placeholder="Select a domain"
           popupClassName="domain-custom-dropdown-class"
-          ref={dropdownRef as any}
+          ref={dropdownRef}
           tagRender={TagRenderer}
           value={
             selectedDomains
-              ?.map((domain) => domain.fullyQualifiedName)
+              ?.map((domain) => domain?.fullyQualifiedName)
               .filter(Boolean) as string[]
           }
           onChange={handleSelectChange}
           onDropdownVisibleChange={handleDropdownChange}
+          onSearch={onSearch}
         />
       </div>
       <Space className="d-flex" size={8}>
         <Button
           className="profile-edit-save"
           data-testid="user-profile-domain-edit-save"
-          icon={<ClosePopoverIcon height={24} style={{ marginTop: '2px' }} />}
+          icon={<ClosePopoverIcon height={24} />}
           size="small"
           style={{
             width: '30px',
@@ -272,7 +299,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
         <Button
           className="profile-edit-cancel"
           data-testid="user-profile-domain-edit-cancel"
-          icon={<SavePopoverIcon height={24} style={{ marginTop: '2px' }} />}
+          icon={<SavePopoverIcon height={24} />}
           loading={isSubmitLoading}
           size="small"
           style={{

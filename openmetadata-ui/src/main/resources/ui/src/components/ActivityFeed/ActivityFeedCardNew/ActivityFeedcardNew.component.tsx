@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
+import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isUndefined, orderBy } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
@@ -55,6 +55,7 @@ interface ActivityFeedCardNewProps {
   showThread?: boolean;
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
+  isFeedWidget?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -66,6 +67,7 @@ const ActivityFeedCardNew = ({
   isActive,
   isForFeedTab,
   isOpenInDrawer = false,
+  isFeedWidget = false,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -75,10 +77,10 @@ const ActivityFeedCardNew = ({
   }, [feed.about]);
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { selectedThread, postFeed } = useActivityFeedProvider();
+  const { selectedThread, postFeed, updateFeed, isPostsLoading } =
+    useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
-  const { updateFeed } = useActivityFeedProvider();
   const [, , user] = useUserProfile({
     permission: true,
     name: feed.createdBy ?? '',
@@ -182,6 +184,147 @@ const ActivityFeedCardNew = ({
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };
+
+  const posts = useMemo(() => {
+    if (!showThread) {
+      return null;
+    }
+
+    if (isPostsLoading) {
+      return (
+        <Space className="m-y-md" direction="vertical" size={16}>
+          <Skeleton active />
+          <Skeleton active />
+          <Skeleton active />
+        </Space>
+      );
+    }
+
+    const posts = orderBy(feed.posts, ['postTs'], ['desc']);
+
+    return (
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {posts.map((reply, index, arr) => (
+          <CommentCard
+            closeFeedEditor={closeFeedEditor}
+            feed={feed}
+            isLastReply={index === arr.length - 1}
+            key={reply.id}
+            post={reply}
+          />
+        ))}
+      </Col>
+    );
+  }, [feed, showThread, closeFeedEditor, isPostsLoading]);
+
+  if (isFeedWidget) {
+    return (
+      <Card
+        className={classNames(
+          'relative activity-feed-card-new',
+          {
+            'activity-feed-card-new-right-panel m-0 gap-0':
+              showThread || isPost || isOpenInDrawer,
+          },
+          { 'activity-feed-reply-card': isPost },
+          { 'active-card is-active': isActive }
+        )}
+        data-testid="feed-card-v2-sidebar">
+        <Space align="start" className="w-full">
+          <Space className="d-flex" direction="vertical">
+            <div className="flex gap-2 items-start w-full relative">
+              <div className="relative z-10">
+                <UserPopOverCard
+                  profileWidth={24}
+                  userName={feed.createdBy ?? ''}
+                />
+              </div>
+
+              {/* Horizontal line connecting popover to end of container */}
+              <div className="horizontal-line " />
+
+              <div className="d-flex flex-col w-full">
+                <div className="d-flex flex-col align-start">
+                  <div
+                    className={classNames(
+                      'd-flex align-center w-full justify-between',
+                      {
+                        'header-container-card': !showThread,
+                        'header-container-right-panel': showThread,
+                      }
+                    )}>
+                    <div
+                      className={classNames('mr-2', {
+                        'activity-feed-user-name': !isPost,
+                        'reply-card-user-name': isPost,
+                      })}>
+                      <UserPopOverCard
+                        className={classNames('mr-2', {
+                          'activity-feed-user-name': !isPost,
+                          'reply-card-user-name': isPost,
+                        })}
+                        userName={feed.createdBy ?? ''}>
+                        <Link to={getUserPath(feed.createdBy ?? '')}>
+                          {getEntityName(user)}
+                        </Link>
+                      </UserPopOverCard>
+                    </div>
+                    {timestamp}
+                  </div>
+                  {!isPost && (
+                    <Space
+                      className={classNames('d-flex gap-1', {
+                        'header-container-card': !showThread,
+                        'flex-wrap':
+                          showThread &&
+                          feed.entityRef?.type !== EntityType.CONTAINER,
+                        'items-start':
+                          showThread &&
+                          feed.entityRef?.type === EntityType.CONTAINER,
+                        ' items-center':
+                          showThread &&
+                          feed.entityRef?.type !== EntityType.CONTAINER,
+                      })}>
+                      <Typography.Text
+                        className="card-style-feed-header text-sm"
+                        data-testid="headerText">
+                        {feedHeaderText}
+                      </Typography.Text>
+
+                      {renderEntityLink}
+                    </Space>
+                  )}
+                </div>
+                <FeedCardBodyNew
+                  feed={feed}
+                  isEditPost={isEditPost}
+                  isFeedWidget={isFeedWidget}
+                  isForFeedTab={isForFeedTab}
+                  isPost={isPost}
+                  message={
+                    !isPost
+                      ? feed.feedInfo?.entitySpecificInfo?.entity?.description
+                      : post?.message
+                  }
+                  showThread={showThread}
+                  onEditCancel={() => setIsEditPost(false)}
+                  onUpdate={onUpdate}
+                />
+              </div>
+            </div>
+          </Space>
+          {(isPost || (!showThread && !isPost)) && (
+            <FeedCardFooterNew
+              feed={feed}
+              isForFeedTab={isForFeedTab}
+              isPost={isPost}
+              post={post}
+            />
+          )}
+        </Space>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -310,11 +453,11 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <UserPopOverCard userName={getEntityName(currentUser)}>
+                <UserPopOverCard userName={currentUser?.name ?? ''}>
                   <div className="d-flex items-center">
                     <ProfilePicture
                       key={feed.id}
-                      name={getEntityName(currentUser)}
+                      name={currentUser?.name ?? ''}
                       width="32"
                     />
                   </div>
@@ -330,22 +473,7 @@ const ActivityFeedCardNew = ({
             </div>
           )}
 
-          {showThread && feed?.posts && feed?.posts?.length > 0 && (
-            <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-              {feed?.posts
-                ?.slice()
-                .sort((a, b) => (b.postTs as number) - (a.postTs as number))
-                .map((reply, index, arr) => (
-                  <CommentCard
-                    closeFeedEditor={closeFeedEditor}
-                    feed={feed}
-                    isLastReply={index === arr.length - 1}
-                    key={reply.id}
-                    post={reply}
-                  />
-                ))}
-            </Col>
-          )}
+          {posts}
         </div>
       )}
     </Card>

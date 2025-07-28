@@ -13,7 +13,6 @@
 
 import classNames from 'classnames';
 import { ImageShape } from 'Models';
-import React from 'react';
 import { getRandomColor } from '../../../utils/CommonUtils';
 
 const Avatar = ({

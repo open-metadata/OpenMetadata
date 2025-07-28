@@ -207,6 +207,8 @@ export interface DashboardConnection {
  * Qlik Cloud Connection Config
  *
  * Sigma Connection Config
+ *
+ * ThoughtSpot Connection Config
  */
 export interface Connection {
     /**
@@ -257,7 +259,7 @@ export interface Connection {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -270,12 +272,17 @@ export interface Connection {
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
+     *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      */
     hostPort?: string;
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?:       FilterPattern;
+    projectFilterPattern?: FilterPattern;
+    /**
+     * Supports Metadata Extraction.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -307,6 +314,10 @@ export interface Connection {
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
@@ -346,9 +357,11 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
+     *
+     * ThoughtSpot API version to use
      */
     apiVersion?: string;
     /**
@@ -356,21 +369,18 @@ export interface Connection {
      */
     authType?: AuthenticationTypeForTableau;
     /**
-     * Tableau Environment Name.
-     */
-    env?: string;
-    /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
     paginationLimit?: number;
     /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
+    /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:   string;
+    siteName?:  string;
     sslConfig?: CertificatesSSLConfig;
     verifySSL?: VerifySSL;
     /**
@@ -470,6 +480,15 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      */
     token?: string;
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authentication;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
 }
 
 /**
@@ -496,6 +515,28 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+}
+
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authentication {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 /**
@@ -719,6 +760,10 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -1209,6 +1254,7 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -1249,6 +1295,8 @@ export enum SpaceType {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Type of dashboard service such as Looker or Superset...
  *
  * Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode,
@@ -1271,6 +1319,7 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }
 
 /**
@@ -1384,6 +1433,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

@@ -34,6 +34,16 @@ import io.github.resilience4j.core.functions.CheckedRunnable;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
+import jakarta.validation.constraints.Size;
+import jakarta.ws.rs.ProcessingException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Form;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.text.DateFormat;
@@ -47,20 +57,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.json.JsonObject;
-import javax.validation.constraints.Size;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Form;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -217,6 +220,23 @@ public final class TestUtils {
               .retryExceptions(RetryableAssertionError.class)
               .build());
 
+  /**
+   * Simulates work by performing a CPU-intensive operation
+   * that takes approximately the specified milliseconds.
+   * This is more reliable than Thread.sleep() for testing
+   * as it doesn't block threads and is more predictable.
+   */
+  public static void simulateWork(long targetMillis) {
+    long startTime = System.nanoTime();
+    long targetNanos = targetMillis * 1_000_000L;
+
+    // Perform busy work until target time is reached
+    while ((System.nanoTime() - startTime) < targetNanos) {
+      // Perform some computation to consume CPU time
+      Math.sqrt(Math.random());
+    }
+  }
+
   public static void assertCustomProperties(
       List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -251,8 +271,20 @@ public final class TestUtils {
   private TestUtils() {}
 
   public static void readResponseError(Response response) throws HttpResponseException {
-    JsonObject error = response.readEntity(JsonObject.class);
-    throw new HttpResponseException(error.getInt("code"), error.getString("message"));
+    try {
+      Map<String, Object> error = response.readEntity(Map.class);
+      Object code = error.get("code");
+      Object message = error.get("message");
+
+      int statusCode = code instanceof Number ? ((Number) code).intValue() : response.getStatus();
+      String errorMessage = message != null ? message.toString() : "Unknown error";
+
+      throw new HttpResponseException(statusCode, errorMessage);
+    } catch (Exception e) {
+      // Fallback if we can't parse the error response
+      throw new HttpResponseException(
+          response.getStatus(), "Error reading response: " + e.getMessage());
+    }
   }
 
   public static void readResponse(Response response, int expectedResponse)
@@ -274,22 +306,199 @@ public final class TestUtils {
 
   public static void assertResponse(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
-    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertEquals(expectedReason, exception.getReasonPhrase());
+    Exception exception = assertThrows(Exception.class, executable);
+
+    int statusCode;
+    String reasonPhrase;
+
+    if (exception instanceof HttpResponseException) {
+      HttpResponseException httpException = (HttpResponseException) exception;
+      statusCode = httpException.getStatusCode();
+      reasonPhrase = httpException.getReasonPhrase();
+    } else if (exception instanceof WebApplicationException) {
+      WebApplicationException webException = (WebApplicationException) exception;
+      statusCode = webException.getResponse().getStatus();
+      reasonPhrase = webException.getMessage();
+    } else if (exception instanceof ProcessingException) {
+      // ProcessingException often wraps the actual HTTP error response
+      ProcessingException processingException = (ProcessingException) exception;
+      Throwable cause = processingException.getCause();
+
+      // Try to extract status from WebApplicationException in the cause chain
+      if (cause instanceof WebApplicationException) {
+        WebApplicationException webException = (WebApplicationException) cause;
+        statusCode = webException.getResponse().getStatus();
+        reasonPhrase = webException.getMessage();
+      } else {
+        // Fallback: try to parse from message or assume it's a client error
+        String message = processingException.getMessage();
+        if (message != null && message.contains("HTTP ")) {
+          // Try to extract status code from message like "HTTP 403"
+          try {
+            String[] parts = message.split("HTTP ");
+            if (parts.length > 1) {
+              String statusPart = parts[1].split(" ")[0];
+              statusCode = Integer.parseInt(statusPart);
+              reasonPhrase = message;
+            } else {
+              // Default to 500 for processing errors
+              statusCode = 500;
+              reasonPhrase = message;
+            }
+          } catch (NumberFormatException e) {
+            statusCode = 500;
+            reasonPhrase = message;
+          }
+        } else {
+          statusCode = 500;
+          reasonPhrase = processingException.getMessage();
+        }
+      }
+    } else {
+      throw new AssertionError("Unexpected exception type: " + exception.getClass(), exception);
+    }
+
+    assertEquals(expectedStatus.getStatusCode(), statusCode);
+
+    // Handle Apache HTTP client error message format: "Error reading response: status code: X,
+    // reason phrase: Y"
+    String actualReason = reasonPhrase;
+    if (reasonPhrase != null && reasonPhrase.startsWith("Error reading response: status code:")) {
+      // Extract the reason phrase from the wrapped format
+      String[] parts = reasonPhrase.split(", reason phrase: ");
+      if (parts.length > 1) {
+        actualReason = parts[1];
+      }
+    }
+
+    assertEquals(expectedReason, actualReason);
   }
 
   public static void assertResponse(
       Executable executable, Response.Status expectedStatus, List<String> expectedReasons) {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
-    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertTrue(expectedReasons.contains(exception.getReasonPhrase()));
+    Exception exception = assertThrows(Exception.class, executable);
+
+    int statusCode;
+    String reasonPhrase;
+
+    if (exception instanceof HttpResponseException) {
+      HttpResponseException httpException = (HttpResponseException) exception;
+      statusCode = httpException.getStatusCode();
+      reasonPhrase = httpException.getReasonPhrase();
+    } else if (exception instanceof WebApplicationException) {
+      WebApplicationException webException = (WebApplicationException) exception;
+      statusCode = webException.getResponse().getStatus();
+      reasonPhrase = webException.getMessage();
+    } else if (exception instanceof ProcessingException) {
+      // ProcessingException often wraps the actual HTTP error response
+      ProcessingException processingException = (ProcessingException) exception;
+      Throwable cause = processingException.getCause();
+
+      // Try to extract status from WebApplicationException in the cause chain
+      if (cause instanceof WebApplicationException) {
+        WebApplicationException webException = (WebApplicationException) cause;
+        statusCode = webException.getResponse().getStatus();
+        reasonPhrase = webException.getMessage();
+      } else {
+        // Fallback: try to parse from message or assume it's a client error
+        String message = processingException.getMessage();
+        if (message != null && message.contains("HTTP ")) {
+          // Try to extract status code from message like "HTTP 403"
+          try {
+            String[] parts = message.split("HTTP ");
+            if (parts.length > 1) {
+              String statusPart = parts[1].split(" ")[0];
+              statusCode = Integer.parseInt(statusPart);
+              reasonPhrase = message;
+            } else {
+              // Default to 500 for processing errors
+              statusCode = 500;
+              reasonPhrase = message;
+            }
+          } catch (NumberFormatException e) {
+            statusCode = 500;
+            reasonPhrase = message;
+          }
+        } else {
+          statusCode = 500;
+          reasonPhrase = processingException.getMessage();
+        }
+      }
+    } else {
+      throw new AssertionError("Unexpected exception type: " + exception.getClass(), exception);
+    }
+
+    assertEquals(expectedStatus.getStatusCode(), statusCode);
+
+    // Handle Apache HTTP client error message format: "Error reading response: status code: X,
+    // reason phrase: Y"
+    String actualReason = reasonPhrase;
+    if (reasonPhrase != null && reasonPhrase.startsWith("Error reading response: status code:")) {
+      // Extract the reason phrase from the wrapped format
+      String[] parts = reasonPhrase.split(", reason phrase: ");
+      if (parts.length > 1) {
+        actualReason = parts[1];
+      }
+    }
+
+    assertTrue(expectedReasons.contains(actualReason));
   }
 
   public static void assertResponseContains(
       Executable executable, Response.Status expectedStatus, String expectedReason) {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
-    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    Exception exception = assertThrows(Exception.class, executable);
+
+    int statusCode;
+    String reasonPhrase;
+
+    if (exception instanceof HttpResponseException) {
+      HttpResponseException httpException = (HttpResponseException) exception;
+      statusCode = httpException.getStatusCode();
+      reasonPhrase = httpException.getReasonPhrase();
+    } else if (exception instanceof WebApplicationException) {
+      WebApplicationException webException = (WebApplicationException) exception;
+      statusCode = webException.getResponse().getStatus();
+      reasonPhrase = webException.getMessage();
+    } else if (exception instanceof ProcessingException) {
+      // ProcessingException often wraps the actual HTTP error response
+      ProcessingException processingException = (ProcessingException) exception;
+      Throwable cause = processingException.getCause();
+
+      // Try to extract status from WebApplicationException in the cause chain
+      if (cause instanceof WebApplicationException) {
+        WebApplicationException webException = (WebApplicationException) cause;
+        statusCode = webException.getResponse().getStatus();
+        reasonPhrase = webException.getMessage();
+      } else {
+        // Fallback: try to parse from message or assume it's a client error
+        String message = processingException.getMessage();
+        if (message != null && message.contains("HTTP ")) {
+          // Try to extract status code from message like "HTTP 403"
+          try {
+            String[] parts = message.split("HTTP ");
+            if (parts.length > 1) {
+              String statusPart = parts[1].split(" ")[0];
+              statusCode = Integer.parseInt(statusPart);
+              reasonPhrase = message;
+            } else {
+              // Default to 500 for processing errors
+              statusCode = 500;
+              reasonPhrase = message;
+            }
+          } catch (NumberFormatException e) {
+            statusCode = 500;
+            reasonPhrase = message;
+          }
+        } else {
+          statusCode = 500;
+          reasonPhrase = processingException.getMessage();
+        }
+      }
+    } else {
+      throw new AssertionError("Unexpected exception type: " + exception.getClass(), exception);
+    }
+
+    assertEquals(expectedStatus.getStatusCode(), statusCode);
 
     // Strip "[" at the beginning and "]" at the end as actual reason may contain more than one
     // error messages
@@ -297,7 +506,7 @@ public final class TestUtils {
         expectedReason.startsWith("[")
             ? expectedReason.substring(1, expectedReason.length() - 1)
             : expectedReason;
-    String actualReason = exception.getReasonPhrase();
+    String actualReason = reasonPhrase;
     assertTrue(
         actualReason.contains(expectedReason), expectedReason + " not in actual " + actualReason);
   }
@@ -310,7 +519,15 @@ public final class TestUtils {
       assertEquals(limit, actual.getData().size());
     }
     for (int i = 0; i < actual.getData().size(); i++) {
-      assertEquals(allEntities.get(offset + i), actual.getData().get(i));
+      if (actual.getData().get(i) instanceof EntityTimeSeriesInterface) {
+        assertEquals(
+            ((EntityTimeSeriesInterface) allEntities.get(offset + i)).getId(),
+            ((EntityTimeSeriesInterface) actual.getData().get(i)).getId());
+      } else {
+        assertEquals(
+            ((EntityInterface) allEntities.get(offset + i)).getId(),
+            ((EntityInterface) actual.getData().get(i)).getId());
+      }
     }
     // Ensure total count returned in paging is correct
     assertEquals(allEntities.size(), actual.getPaging().getTotal());
@@ -358,6 +575,22 @@ public final class TestUtils {
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
+            .method(
+                "PATCH",
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+    return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <T> T patch(
+      WebTarget target,
+      JsonNode patch,
+      Class<T> clz,
+      Map<String, String> headers,
+      String ifMatchHeader)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .header("If-Match", ifMatchHeader)
             .method(
                 "PATCH",
                 Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
@@ -436,10 +669,11 @@ public final class TestUtils {
     assertEquals(Status.OK.getStatusCode(), response.getStatus());
   }
 
-  public static javax.ws.rs.core.Response deleteAsync(WebTarget target, Map<String, String> headers)
-      throws HttpResponseException {
+  public static jakarta.ws.rs.core.Response deleteAsync(
+      WebTarget target, Map<String, String> headers) throws HttpResponseException {
     try {
-      final javax.ws.rs.core.Response response = SecurityUtil.addHeaders(target, headers).delete();
+      final jakarta.ws.rs.core.Response response =
+          SecurityUtil.addHeaders(target, headers).delete();
       int status = response.getStatus();
 
       // For async operations, we expect 202 Accepted
@@ -690,8 +924,26 @@ public final class TestUtils {
   public static <T> String getEntityNameLengthError(Class<T> clazz) {
     try {
       Field field = clazz.getDeclaredField("name");
+
+      // Try javax.validation.constraints.Size first
       Size size = field.getAnnotation(Size.class);
-      return String.format("[name size must be between %d and %d]", size.min(), size.max());
+      if (size != null) {
+        return String.format(
+            "[query param name size must be between %d and %d]", size.min(), size.max());
+      }
+
+      // Try jakarta.validation.constraints.Size
+      jakarta.validation.constraints.Size jakartaSize =
+          field.getAnnotation(jakarta.validation.constraints.Size.class);
+      if (jakartaSize != null) {
+        return String.format(
+            "[query param name size must be between %d and %d]",
+            jakartaSize.min(), jakartaSize.max());
+      }
+
+      // Fallback if no Size annotation found
+      LOG.warn("No Size annotation found for name field in {}", clazz.getSimpleName());
+      return "[query param name size must be between 1 and 256]"; // Default values
     } catch (NoSuchFieldException e) {
       LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
     }

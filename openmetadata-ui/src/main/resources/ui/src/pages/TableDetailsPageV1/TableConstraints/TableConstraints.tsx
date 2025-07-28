@@ -13,13 +13,14 @@
 import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../../components/common/IconButtons/EditIconButton';
-import TagButton from '../../../components/common/TagButton/TagButton.component';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../../components/common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
@@ -31,7 +32,11 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-const TableConstraints = () => {
+const TableConstraints = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data, permissions, onUpdate } = useGenericContext<Table>();
@@ -63,30 +68,29 @@ const TableConstraints = () => {
         {t('label.table-constraints')}
       </Typography.Text>
 
-      {hasPermission && !isEmpty(data?.tableConstraints) && (
-        <EditIconButton
-          newLook
-          data-testid="edit-table-constraint-button"
-          size="small"
-          onClick={handleOpenEditConstraintModal}
-        />
-      )}
+      {hasPermission &&
+        (isEmpty(data?.tableConstraints) ? (
+          <PlusIconButton
+            data-testid="table-constraints-add-button"
+            size="small"
+            title={t('label.add-entity', {
+              entity: t('label.table-constraints'),
+            })}
+            onClick={handleOpenEditConstraintModal}
+          />
+        ) : (
+          <EditIconButton
+            newLook
+            data-testid="edit-table-constraint-button"
+            size="small"
+            onClick={handleOpenEditConstraintModal}
+          />
+        ))}
     </Space>
   );
 
-  const content = (
+  const content = isEmpty(data?.tableConstraints) ? null : (
     <Space className="w-full new-header-border-card" direction="vertical">
-      {hasPermission && isEmpty(data?.tableConstraints) && (
-        <TagButton
-          className="text-primary cursor-pointer"
-          dataTestId="table-constraints-add-button"
-          icon={<PlusIcon height={16} name="plus" width={16} />}
-          label={t('label.add')}
-          tooltip=""
-          onClick={handleOpenEditConstraintModal}
-        />
-      )}
-
       {data?.tableConstraints?.map(
         ({ constraintType, columns, referredColumns }) => {
           if (constraintType === ConstraintType.PrimaryKey) {
@@ -163,6 +167,22 @@ const TableConstraints = () => {
           return null;
         }
       )}
+    </Space>
+  );
+
+  return (
+    <>
+      {renderAsExpandableCard ? (
+        <ExpandableCard
+          cardProps={{
+            title: header,
+          }}
+          isExpandDisabled={isEmpty(data?.tableConstraints)}>
+          {content}
+        </ExpandableCard>
+      ) : (
+        content
+      )}
       {isModalOpen && (
         <TableConstraintsModal
           constraint={data?.tableConstraints}
@@ -171,16 +191,7 @@ const TableConstraints = () => {
           onSave={handleSubmit}
         />
       )}
-    </Space>
-  );
-
-  return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}>
-      {content}
-    </ExpandableCard>
+    </>
   );
 };
 

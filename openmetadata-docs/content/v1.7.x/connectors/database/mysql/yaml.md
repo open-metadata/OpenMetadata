@@ -1,5 +1,6 @@
 ---
 title: Run the MySQL Connector Externally
+description: Configure MySQL ingestion using YAML to automate schema, column, and profiling data collection.
 slug: /connectors/database/mysql/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mysql/yaml
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -271,7 +272,7 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 

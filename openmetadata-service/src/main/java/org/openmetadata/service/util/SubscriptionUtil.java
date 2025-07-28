@@ -20,6 +20,11 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,11 +35,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -148,7 +148,11 @@ public class SubscriptionUtil {
       List<Team> teams =
           ownerOrFollowers.stream()
               .filter(e -> TEAM.equals(e.getType()))
-              .map(team -> (Team) Entity.getEntity(TEAM, team.getId(), "", Include.NON_DELETED))
+              .map(
+                  team ->
+                      (Team)
+                          Entity.getEntity(
+                              TEAM, team.getId(), "id,profile,email", Include.NON_DELETED))
               .toList();
       data.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } catch (Exception ex) {
@@ -290,7 +294,19 @@ public class SubscriptionUtil {
               default -> null;
             };
         if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
-          return Optional.of(webhookConfig.getEndpoint().toString());
+          String endpointStr = webhookConfig.getEndpoint().toString();
+          // Validate URL before returning
+          try {
+            URLValidator.validateURL(endpointStr);
+            return Optional.of(endpointStr);
+          } catch (Exception e) {
+            LOG.warn(
+                "[GetWebhookUrlsFromProfile] Invalid webhook URL for owner with id {} type {}: {}",
+                id,
+                entityType,
+                e.getMessage());
+            return Optional.empty();
+          }
         } else {
           LOG.debug(
               "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is missing for type {}, webhookConfig {} ",
@@ -422,6 +438,9 @@ public class SubscriptionUtil {
   }
 
   public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
+    // Validate the URI to prevent SSRF attacks
+    URLValidator.validateURL(uri);
+
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(uri), authHeaders);
   }
@@ -439,9 +458,10 @@ public class SubscriptionUtil {
     long attemptTime = System.currentTimeMillis();
     Response response =
         (httpMethod == Webhook.HttpMethod.PUT)
-            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            ? target.put(
+                jakarta.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
             : target.post(
-                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+                jakarta.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
 
     LOG.debug(
         "Subscription Destination HTTP Operation {}:{} received response {}",
@@ -465,9 +485,10 @@ public class SubscriptionUtil {
       Webhook.HttpMethod httpMethod) {
     Response response =
         (httpMethod == Webhook.HttpMethod.PUT)
-            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            ? target.put(
+                jakarta.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
             : target.post(
-                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+                jakarta.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
 
     StatusContext statusContext = createStatusContext(response);
     handleTestDestinationStatus(destination, statusContext);

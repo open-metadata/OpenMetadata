@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { FixedType } from 'rc-table/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DISABLED,
@@ -25,6 +25,7 @@ import {
   NO_DATA_PLACEHOLDER,
   pagingObject,
 } from '../../../../../constants/constants';
+import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import {
   IngestionServicePermission,
@@ -34,7 +35,6 @@ import {
   IngestionPipeline,
   PipelineStatus,
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
   deleteIngestionPipelineById,
@@ -250,7 +250,7 @@ function IngestionListTable({
   }, [ingestionData]);
 
   const { isFetchingStatus, platform } = useMemo(
-    () => airflowInformation ?? ({} as UseAirflowStatusProps),
+    () => airflowInformation ?? ({} as AirflowStatusContextType),
     [airflowInformation]
   );
 

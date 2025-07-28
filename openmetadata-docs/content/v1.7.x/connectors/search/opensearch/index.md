@@ -1,5 +1,6 @@
 ---
-title: OpenSearch
+title: OpenSearch Connector | OpenMetadata Search Integration
+description: Connect OpenMetadata to OpenSearch with our comprehensive connector guide. Setup instructions, configuration options, and troubleshooting tips included.
 slug: /connectors/search/opensearch
 ---
 

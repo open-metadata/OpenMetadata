@@ -12,11 +12,10 @@
  */
 
 import { EntityTags } from 'Models';
-import { ReactElement } from 'react';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 
-export type TagsContainerV2Props = {
+export interface TagsContainerV2Props {
   permission: boolean;
   showTaskHandler?: boolean;
   selectedTags: EntityTags[];
@@ -26,10 +25,9 @@ export type TagsContainerV2Props = {
   columnData?: {
     fqn: string;
   };
-  showHeader?: boolean;
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
-  children?: ReactElement;
+  children?: React.ReactNode;
   displayType?: DisplayType;
   layoutType?: LayoutType;
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
@@ -37,4 +35,6 @@ export type TagsContainerV2Props = {
   defaultLabelType?: LabelType;
   sizeCap?: number;
   newLook?: boolean;
-};
+  // Props to control the dropdown state from the Generic Provider
+  useGenericControls?: boolean;
+}

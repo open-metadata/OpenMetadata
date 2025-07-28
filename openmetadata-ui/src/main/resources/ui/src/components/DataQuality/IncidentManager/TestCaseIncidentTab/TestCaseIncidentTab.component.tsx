@@ -13,13 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task-new.svg';
@@ -33,11 +27,11 @@ import {
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
+import ActivityFeedListV1New from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../common/Loader/Loader';
-import { TaskTab } from '../../../Entity/Task/TaskTab/TaskTab.component';
+import { TaskTabNew } from '../../../Entity/Task/TaskTab/TaskTabNew.component';
 import './test-case-incident-tab.style.less';
 
 const TestCaseIncidentTab = () => {
@@ -83,9 +77,11 @@ const TestCaseIncidentTab = () => {
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
-      setActiveThread(feed);
+      if (selectedThread?.id !== feed?.id) {
+        setActiveThread(feed);
+      }
     },
-    [setActiveThread]
+    [setActiveThread, selectedThread]
   );
 
   const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
@@ -140,7 +136,7 @@ const TestCaseIncidentTab = () => {
         className="left-container"
         data-testid="left-container"
         id="left-container">
-        <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
+        <div className="d-flex gap-4 p-sm p-x-lg">
           <Typography.Text
             className={classNames(
               'cursor-pointer p-l-xss d-flex items-center',
@@ -164,13 +160,14 @@ const TestCaseIncidentTab = () => {
           </Typography.Text>
         </div>
 
-        <ActivityFeedListV1
+        <ActivityFeedListV1New
           hidePopover
           activeFeedId={selectedThread?.id}
           emptyPlaceholderText={t('message.no-tasks-assigned')}
           feedList={threads}
           isForFeedTab={false}
           isLoading={false}
+          selectedThread={selectedThread}
           showThread={false}
           onFeedClick={handleFeedClick}
         />
@@ -187,7 +184,7 @@ const TestCaseIncidentTab = () => {
         {loader}
         {selectedThread && !loading && (
           <div id="task-panel">
-            <TaskTab
+            <TaskTabNew
               entityType={EntityType.TEST_CASE}
               isForFeedTab={false}
               owners={owners}

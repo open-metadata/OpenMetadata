@@ -12,7 +12,6 @@ import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
@@ -25,6 +24,7 @@ import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
+import jakarta.validation.Validator;
 import java.io.File;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import javax.validation.Validator;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -65,13 +64,18 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
@@ -94,6 +98,7 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -139,7 +144,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup'");
+    LOG.info(
+        "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
   }
 
@@ -708,6 +716,77 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "relationshipCleanup",
+      description =
+          "Cleans up orphaned entity relationships where referenced entities no longer exist, "
+              + "and broken service hierarchy entities. By default, runs in dry-run mode to only identify orphaned relationships.")
+  public Integer cleanupOrphanedRelationships(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned relationships and broken entities. Without this flag, the command only identifies orphaned relationships (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of relationships to process in each batch.")
+          int batchSize,
+      @Option(
+              names = {"--skip-hierarchy-cleanup"},
+              description =
+                  "Skip the service hierarchy cleanup and only perform generic relationship cleanup.",
+              defaultValue = "false")
+          boolean skipHierarchyCleanup) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info(
+          "Running Entity Relationship Cleanup. Dry run: {}, Batch size: {}, Skip hierarchy cleanup: {}",
+          dryRun,
+          batchSize,
+          skipHierarchyCleanup);
+      parseConfig();
+
+      if (skipHierarchyCleanup) {
+        // Only perform relationship cleanup
+        LOG.info("=== Entity Relationship Cleanup Only ===");
+        EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
+        EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(batchSize);
+
+        LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
+        LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
+        LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
+
+        if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
+          LOG.info("To actually delete these orphaned relationships, run with --delete");
+          return 1;
+        }
+      } else {
+        // Perform comprehensive cleanup (relationships + hierarchies)
+        EntityRelationshipCleanupUtil comprehensiveCleanup =
+            dryRun
+                ? EntityRelationshipCleanupUtil.forDryRun(collectionDAO, batchSize)
+                : EntityRelationshipCleanupUtil.forActualCleanup(collectionDAO, batchSize);
+
+        EntityRelationshipCleanupUtil.CleanupResult result =
+            comprehensiveCleanup.performComprehensiveCleanup();
+        comprehensiveCleanup.printComprehensiveResults(result);
+
+        if (dryRun && result.getTotalEntitiesDeleted() > 0) {
+          LOG.info(
+              "To actually delete these orphaned relationships and broken entities, run with --delete");
+          return 1;
+        }
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned relationships due to ", e);
+      return 1;
+    }
+  }
+
   @Command(name = "reindex", description = "Re Indexes data into search engine from command line.")
   public Integer reIndex(
       @Option(
@@ -761,14 +840,34 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum number of retries for failed search requests.")
           int retries,
       @Option(
+              names = {"--auto-tune"},
+              defaultValue = "false",
+              description =
+                  "Enable automatic performance tuning based on cluster capabilities and database entity count. When enabled, overrides manual parameter settings.")
+          boolean autoTune,
+      @Option(
+              names = {"--force"},
+              defaultValue = "false",
+              description = "Force reindexing even if no index mapping changes are detected.")
+          boolean force,
+      @Option(
               names = {"--entities"},
               defaultValue = "'all'",
               description =
                   "Entities to reindex. Passing --entities='table,dashboard' will reindex table and dashboard entities. Passing nothing will reindex everything.")
-          String entityStr) {
+          String entityStr,
+      @Option(
+              names = {"--slack-bot-token"},
+              description = "Optional Slack bot token for real-time progress updates in Slack.")
+          String slackBotToken,
+      @Option(
+              names = {"--slack-channel"},
+              description =
+                  "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general').")
+          String slackChannel) {
     try {
       LOG.info(
-          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}, Auto-tune: {}",
           entityStr,
           batchSize,
           payloadSize,
@@ -779,7 +878,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           backOff,
           maxBackOff,
           maxRequests,
-          retries);
+          retries,
+          autoTune);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
@@ -803,7 +903,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
           backOff,
           maxBackOff,
           maxRequests,
-          retries);
+          retries,
+          autoTune,
+          force,
+          slackBotToken,
+          slackChannel);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -842,9 +946,107 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int backOff,
       int maxBackOff,
       int maxRequests,
-      int retries) {
+      int retries,
+      boolean autoTune,
+      boolean force,
+      String slackBotToken,
+      String slackChannel) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
+
+    // Check for index mapping changes only when running from CLI
+    IndexMappingVersionTracker versionTracker = null;
+    boolean shouldUpdateVersions = false;
+    ReindexingProgressMonitor progressMonitor = null;
+
+    if (!force && recreateIndexes) {
+      try {
+        String version = System.getProperty("project.version", "1.8.0-SNAPSHOT");
+        versionTracker = new IndexMappingVersionTracker(collectionDAO, version, "system");
+
+        List<String> changedMappings = versionTracker.getChangedMappings();
+
+        if (changedMappings.isEmpty()) {
+          LOG.info("✅ Smart reindexing: No index mapping changes detected, skipping reindex");
+          recreateIndexes = false;
+
+          // Send Slack notification if configured
+          if (slackBotToken != null
+              && !slackBotToken.isEmpty()
+              && slackChannel != null
+              && !slackChannel.isEmpty()) {
+            try {
+              String instanceUrl = getInstanceUrlFromSettings();
+              SlackWebApiClient slackClient =
+                  new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
+              slackClient.sendNoChangesNotification();
+            } catch (Exception e) {
+              LOG.warn("Failed to send Slack notification for no changes", e);
+            }
+          }
+        } else {
+          shouldUpdateVersions = true;
+
+          // If 'all' entities were requested, only reindex changed ones
+          if (entities.contains("all")) {
+            entities = new HashSet<>(changedMappings);
+          } else {
+            // If specific entities were requested, check if any have changed mappings
+            Set<String> requestedAndChanged = new HashSet<>(entities);
+            requestedAndChanged.retainAll(changedMappings);
+            if (requestedAndChanged.isEmpty()) {
+              LOG.info(
+                  "✅ Smart reindexing: None of the requested entities have mapping changes, skipping reindex");
+              recreateIndexes = false;
+              shouldUpdateVersions = false;
+
+              // Send Slack notification if configured
+              if (slackBotToken != null
+                  && !slackBotToken.isEmpty()
+                  && slackChannel != null
+                  && !slackChannel.isEmpty()) {
+                try {
+                  String instanceUrl = getInstanceUrlFromSettings();
+                  SlackWebApiClient slackClient =
+                      new SlackWebApiClient(slackBotToken, slackChannel, instanceUrl);
+                  slackClient.sendNoChangesNotification();
+                } catch (Exception e) {
+                  LOG.warn("Failed to send Slack notification for no changes", e);
+                }
+              }
+            } else {
+              entities = requestedAndChanged;
+            }
+          }
+
+          // Initialize progress monitor for entities that will be reindexed
+          if (recreateIndexes) {
+            progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
+            progressMonitor.printInitialSummary();
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("⚠️  Smart reindexing unavailable: {}", e.getMessage());
+        LOG.info("🔄 Falling back to standard reindexing for all requested entities");
+      }
+    }
+
+    // Initialize progress monitor for force mode as well to get clean output
+    if (progressMonitor == null && recreateIndexes && force) {
+      progressMonitor = new ReindexingProgressMonitor(entities.stream().sorted().toList());
+      LOG.info("");
+      LOG.info("🔄 Force Reindexing");
+      LOG.info("═".repeat(80));
+      LOG.info("🎯 Entities to reindex: {}", String.join(", ", entities));
+      LOG.info("⏳ Reindexing in progress...");
+      LOG.info("");
+    }
+
+    // If recreateIndexes is false, we should not proceed with reindexing
+    if (!recreateIndexes) {
+      LOG.info("Reindexing skipped - no changes detected");
+      return 0; // Success - no reindexing needed
+    }
 
     EventPublisherJob config =
         (JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class))
@@ -858,13 +1060,40 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withInitialBackoff(backOff)
             .withMaxBackoff(maxBackOff)
             .withMaxConcurrentRequests(maxRequests)
-            .withMaxRetries(retries);
+            .withMaxRetries(retries)
+            .withAutoTune(autoTune)
+            .withForce(force)
+            .withSlackBotToken(slackBotToken)
+            .withSlackChannel(slackChannel);
+
+    // Log auto-tune behavior
+    if (autoTune) {
+      LOG.info(
+          "Auto-tune enabled: SearchIndexApp will analyze cluster capabilities and optimize parameters automatically");
+      LOG.info("Manual parameter settings will be overridden by auto-tuned values based on:");
+      LOG.info("  - OpenSearch/ElasticSearch cluster stats and settings");
+      LOG.info("  - Database entity counts");
+      LOG.info("  - Available cluster resources and capacity");
+      LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
+    }
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
 
-    int result = waitAndReturnReindexingAppStatus(app, currentTime);
+    int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
+
+    // Update mapping versions after successful reindexing
+    if (result == 0 && shouldUpdateVersions && versionTracker != null) {
+      try {
+        versionTracker.updateMappingVersions();
+        LOG.info(
+            "✅ Smart reindexing: Updated mapping versions in database for future change detection");
+      } catch (Exception e) {
+        LOG.warn("⚠️  Failed to update index mapping versions in database", e);
+        // Don't fail the operation if version update fails
+      }
+    }
 
     return result;
   }
@@ -949,6 +1178,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   @SneakyThrows
   private int waitAndReturnReindexingAppStatus(App searchIndexApp, long startTime) {
+    return waitAndReturnReindexingAppStatus(searchIndexApp, startTime, null);
+  }
+
+  @SneakyThrows
+  private int waitAndReturnReindexingAppStatus(
+      App searchIndexApp, long startTime, ReindexingProgressMonitor progressMonitor) {
     AppRunRecord appRunRecord = null;
     do {
       try {
@@ -956,53 +1191,69 @@ public class OpenMetadataOperations implements Callable<Integer> {
             (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
         appRunRecord = appRepository.getLatestAppRunsAfterStartTime(searchIndexApp, startTime);
         if (isRunCompleted(appRunRecord)) {
-          List<String> columns =
-              new ArrayList<>(
-                  List.of(
-                      "jobStatus",
-                      "startTime",
-                      "endTime",
-                      "executionTime",
-                      "successContext",
-                      "failureContext"));
-          List<List<String>> rows = new ArrayList<>();
+          // Only show the ugly table if we don't have a progress monitor
+          LOG.debug(
+              "Job completed. Progress monitor is: {}",
+              progressMonitor != null ? "present" : "null");
+          if (progressMonitor == null) {
+            List<String> columns =
+                new ArrayList<>(
+                    List.of(
+                        "jobStatus",
+                        "startTime",
+                        "endTime",
+                        "executionTime",
+                        "successContext",
+                        "failureContext"));
+            List<List<String>> rows = new ArrayList<>();
 
-          String startTimeofJob =
-              nullOrEmpty(appRunRecord.getStartTime())
-                  ? "Unavailable"
-                  : getDateStringEpochMilli(appRunRecord.getStartTime());
-          String endTimeOfJob =
-              nullOrEmpty(appRunRecord.getEndTime())
-                  ? "Unavailable"
-                  : getDateStringEpochMilli(appRunRecord.getEndTime());
-          String executionTime =
-              nullOrEmpty(appRunRecord.getExecutionTime())
-                  ? "Unavailable"
-                  : String.format("%d seconds", appRunRecord.getExecutionTime() / 1000);
-          rows.add(
-              Arrays.asList(
-                  getValueOrUnavailable(appRunRecord.getStatus().value()),
-                  getValueOrUnavailable(startTimeofJob),
-                  getValueOrUnavailable(endTimeOfJob),
-                  getValueOrUnavailable(executionTime),
-                  getValueOrUnavailable(appRunRecord.getSuccessContext()),
-                  getValueOrUnavailable(appRunRecord.getFailureContext())));
-          printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
+            String startTimeofJob =
+                nullOrEmpty(appRunRecord.getStartTime())
+                    ? "Unavailable"
+                    : getDateStringEpochMilli(appRunRecord.getStartTime());
+            String endTimeOfJob =
+                nullOrEmpty(appRunRecord.getEndTime())
+                    ? "Unavailable"
+                    : getDateStringEpochMilli(appRunRecord.getEndTime());
+            String executionTime =
+                nullOrEmpty(appRunRecord.getExecutionTime())
+                    ? "Unavailable"
+                    : String.format("%d seconds", appRunRecord.getExecutionTime() / 1000);
+            rows.add(
+                Arrays.asList(
+                    getValueOrUnavailable(appRunRecord.getStatus().value()),
+                    getValueOrUnavailable(startTimeofJob),
+                    getValueOrUnavailable(endTimeOfJob),
+                    getValueOrUnavailable(executionTime),
+                    getValueOrUnavailable(appRunRecord.getSuccessContext()),
+                    getValueOrUnavailable(appRunRecord.getFailureContext())));
+            printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
+          }
         }
       } catch (Exception ignored) {
       }
-      LOG.info(
-          "[Reindexing] Current Available Status : {}. Reindexing is still, waiting for 10 seconds to fetch the latest status again.",
-          JsonUtils.pojoToJson(appRunRecord));
-      Thread.sleep(10000);
+
+      if (!isRunCompleted(appRunRecord)) {
+        // Show clean progress updates instead of verbose JSON
+        if (progressMonitor != null) {
+          // Progress monitor will handle the display
+          LOG.debug("Waiting for reindexing completion...");
+        } else {
+          // Show simple status message for non-smart reindexing
+          LOG.info("⏳ Reindexing in progress... waiting for completion");
+        }
+        Thread.sleep(10000);
+      }
     } while (!isRunCompleted(appRunRecord));
 
     if (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
         || appRunRecord.getStatus().equals(AppRunRecord.Status.COMPLETED)) {
-      LOG.debug("Reindexing Completed Successfully.");
+      if (progressMonitor == null) {
+        LOG.info("✅ Reindexing completed successfully");
+      }
       return 0;
     }
-    LOG.error("Reindexing completed in Failure.");
+    LOG.error("❌ Reindexing failed");
     return 1;
   }
 
@@ -1125,11 +1376,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void parseConfig() throws Exception {
-    if (debug) {
-      Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-      root.setLevel(Level.DEBUG);
-    }
     ObjectMapper objectMapper = Jackson.newObjectMapper();
+    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
@@ -1139,6 +1387,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new SubstitutingSourceProvider(
                 new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
             configFilePath);
+    IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
@@ -1185,7 +1434,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
-    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
+    searchRepository =
+        new SearchRepository(
+            config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
 
     // Initialize secrets manager
     secretsManager =
@@ -1198,6 +1449,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
+    ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+    DatasourceConfig.initialize(connType.label);
   }
 
   private void promptUserForDelete() {
@@ -1271,6 +1524,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
   }
 
+  private void performServiceHierarchyCleanup(boolean dryRun) {
+    ServiceHierarchyCleanup hierarchyCleanup = new ServiceHierarchyCleanup(collectionDAO, dryRun);
+    ServiceHierarchyCleanup.HierarchyCleanupResult result =
+        hierarchyCleanup.performHierarchyCleanup();
+    hierarchyCleanup.printCleanupResults(result);
+  }
+
   private void printChangeLog() {
     MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
     List<MigrationDAO.ServerChangeLog> serverChangeLogs =
@@ -1299,6 +1559,25 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.warn("Failed to generate migration metrics due to", e);
     }
     printToAsciiTable(columns.stream().toList(), rows, "No Server Change log found");
+  }
+
+  private String getInstanceUrlFromSettings() {
+    try {
+      SystemRepository systemRepository = Entity.getSystemRepository();
+      if (systemRepository != null) {
+        Settings settings = systemRepository.getOMBaseUrlConfigInternal();
+        if (settings != null && settings.getConfigValue() != null) {
+          OpenMetadataBaseUrlConfiguration urlConfig =
+              (OpenMetadataBaseUrlConfiguration) settings.getConfigValue();
+          if (urlConfig != null && urlConfig.getOpenMetadataUrl() != null) {
+            return urlConfig.getOpenMetadataUrl();
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not get instance URL from SystemSettings", e);
+    }
+    return "http://localhost:8585";
   }
 
   public static void main(String... args) {

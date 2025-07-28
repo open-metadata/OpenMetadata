@@ -72,6 +72,10 @@ export interface MysqlConnection {
      * in Mysql.
      */
     username: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**

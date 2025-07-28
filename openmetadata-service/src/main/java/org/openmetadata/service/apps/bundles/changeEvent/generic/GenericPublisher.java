@@ -21,24 +21,26 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Invocation;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -46,7 +48,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private final Client client;
   private final Webhook webhook;
   private static final String TEST_MESSAGE_JSON =
-      "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
+      "{\"message\": \"This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.\"}";
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -57,6 +59,13 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       this.eventSubscription = eventSubscription;
       this.subscriptionDestination = subscriptionDestination;
       this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
+
+      // Validate webhook URL to prevent SSRF
+      if (this.webhook != null && this.webhook.getEndpoint() != null) {
+        org.openmetadata.service.util.URLValidator.validateURL(
+            this.webhook.getEndpoint().toString());
+      }
+
       this.client =
           getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
     } else {
@@ -95,7 +104,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  private void sendActionsToTargets(ChangeEvent event) throws Exception {
+  private void sendActionsToTargets(ChangeEvent event) {
     List<Invocation.Builder> targets =
         getTargetsForWebhookAlert(
             webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
@@ -117,6 +126,15 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     if (!nullOrEmpty(headers)) {
       headers.forEach(target::header);
     }
+  }
+
+  public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
+    if (!CommonUtil.nullOrEmpty(queryParams)) {
+      for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+        target = target.queryParam(entry.getKey(), entry.getValue());
+      }
+    }
+    return target;
   }
 
   private void handleException(long attemptTime, ChangeEvent event, Exception ex)
@@ -154,7 +172,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
   private Invocation.Builder getTarget() {
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
+    WebTarget target = client.target(webhook.getEndpoint());
+    target = addQueryParams(target, webhook.getQueryParams());
+    return SecurityUtil.addHeaders(target, authHeaders);
   }
 
   @Override

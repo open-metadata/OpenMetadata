@@ -1,5 +1,6 @@
 ---
-title: BigQuery
+title: BigQuery | OpenMetadata Connector Setup & Integration Guide
+description: Connect BigQuery to OpenMetadata seamlessly with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extrac...
 slug: /connectors/database/bigquery
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/bigquery
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -54,6 +55,10 @@ link="/connectors/database/bigquery/create-credentials"
 - Go to [https://console.cloud.google.com/apis/library/datacatalog.googleapis.com](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com)
 - Select the `GCP Project ID` that you want to enable the `Data Catalog API` on.
 - Click on `Enable API` which will enable the data catalog api on the respective project.
+
+{% note %}
+Access to the Google Data Catalog API is optional and only required if you want to retrieve policy tags from BigQuery. The BigQuery connector does not require this permission for general metadata ingestion.
+{% /note %}
 
 ### GCP Permissions
 
@@ -144,6 +149,13 @@ In this field you need to specify the location/region in which the taxonomy was 
 
 **Usage Location (Optional)**:
 Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data. You can pass multi-regions, such as `us` or `eu`, or your specific region such as `us-east1`. Australia and Asia multi-regions are not yet supported.
+
+**Cost Per TiB (Optional)**:
+The cost (in USD) per tebibyte (TiB) of data processed during BigQuery usage analysis. This value is used to estimate query costs when analyzing usage metrics from `INFORMATION_SCHEMA.JOBS_BY_PROJECT`.
+
+This setting does **not** affect actual billing—it is only used for internal reporting and visualization of estimated costs.
+
+The default value, if not set, may assume the standard on-demand BigQuery pricing (e.g., $5.00 per TiB), but you should adjust it according to your organization's negotiated rates or flat-rate pricing model.
 
 {% note %}
 If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -118,7 +118,7 @@ export const DomainLabelV2 = <
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-1" key={domain.id}>
+          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
             <Typography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
@@ -132,7 +132,8 @@ export const DomainLabelV2 = <
               domain,
               getEntityName(domain),
               true,
-              'text-primary domain-link'
+              'text-primary domain-link',
+              true
             )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
           </div>
@@ -182,7 +183,8 @@ export const DomainLabelV2 = <
                 {selectableList}
               </div>
             ),
-          }}>
+          }}
+          isExpandDisabled={!Array.isArray(domainLink)}>
           <div className="d-flex items-center gap-1 flex-wrap">
             {domainLink}
           </div>

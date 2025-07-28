@@ -308,6 +308,10 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
+    /**
      * Auth0 Client Secret Key.
      */
     responseType?: string;
@@ -323,6 +327,10 @@ export interface OidcClientConfig {
      * Server Url.
      */
     serverUrl?: string;
+    /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
     /**
      * Tenant in case of Azure.
      */

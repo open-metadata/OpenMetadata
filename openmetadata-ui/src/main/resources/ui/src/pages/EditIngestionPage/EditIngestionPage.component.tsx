@@ -15,9 +15,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -31,6 +31,7 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
@@ -40,7 +41,6 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
 import {
@@ -50,7 +50,6 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -59,16 +58,17 @@ import {
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const EditIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
   const { t } = useTranslation();
-  const { ingestionType, serviceCategory } = useParams<{
+  const { ingestionType, serviceCategory } = useRequiredParams<{
     ingestionType: string;
-    serviceCategory: string;
+    serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN, ingestionFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(
     {} as IngestionPipeline
@@ -215,11 +215,11 @@ const EditIngestionPage = () => {
   };
 
   const goToSettingsPage = () => {
-    history.push(getSettingsPathFromPipelineType(ingestionType));
+    navigate(getSettingsPathFromPipelineType(ingestionType as PipelineType));
   };
 
   const goToService = () => {
-    history.push(
+    navigate(
       getServiceDetailsPath(
         serviceFQN,
         serviceCategory,
@@ -243,7 +243,7 @@ const EditIngestionPage = () => {
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
       isSettingsPipeline,
-      ingestionType,
+      ingestionType as PipelineType,
       serviceCategory,
       serviceFQN,
       INGESTION_ACTION_TYPE.EDIT,
@@ -262,7 +262,7 @@ const EditIngestionPage = () => {
           handleCancelClick={handleCancelClick}
           handleViewServiceClick={handleCancelClick}
           heading={getIngestionHeadingName(
-            ingestionType,
+            ingestionType as PipelineType,
             INGESTION_ACTION_TYPE.EDIT
           )}
           ingestionAction={ingestionAction}
@@ -331,8 +331,4 @@ const EditIngestionPage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.edit-entity', {
-    entity: i18n.t('label.ingestion'),
-  })
-)(EditIngestionPage);
+export default withPageLayout(EditIngestionPage);
