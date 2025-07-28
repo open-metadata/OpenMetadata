@@ -1,5 +1,6 @@
 ---
 title: Topic Schema | OpenMetadata Topic Schema and Definitions
+description: Connect Topic to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/topic
 ---
 
