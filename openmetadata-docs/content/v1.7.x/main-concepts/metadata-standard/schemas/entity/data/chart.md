@@ -1,5 +1,6 @@
 ---
 title: Chart Schema | OpenMetadata Chart Schema and API Guide
+description: Connect Chart to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 ---
 
