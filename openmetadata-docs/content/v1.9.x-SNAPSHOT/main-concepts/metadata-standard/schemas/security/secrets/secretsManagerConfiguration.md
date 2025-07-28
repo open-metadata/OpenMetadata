@@ -1,5 +1,6 @@
 ---
-title: secretsManagerConfiguration
+title: SecretsManagerConfiguration | Official Documentation
+description: Define the structure for secrets manager configuration including provider type, encryption keys, and access credentials.
 slug: /main-concepts/metadata-standard/schemas/security/secrets/secretsmanagerconfiguration
 ---
 
