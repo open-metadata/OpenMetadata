@@ -27,11 +27,27 @@ jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
 });
 
+jest.mock('../../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_LIST: [],
+  SIDEBAR_NESTED_KEYS: {},
+}));
+
 jest.mock('../../../../constants/profiler.constant', () => ({
   SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME: [],
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
 }));
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 50,
+  PLACEHOLDER_ROUTE_TAB: ':tab',
+  ROUTES: {
+    OBSERVABILITY_ALERTS: '/observability/alerts',
+    DATA_INSIGHT: '/data-insights',
+    DATA_INSIGHT_WITH_TAB: '/data-insights/:tab',
+  },
 }));
 jest.mock('../../../../utils/EntityUtils', () => {
   return {
