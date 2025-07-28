@@ -1231,57 +1231,57 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
   }
 
   private List<Table> createTablesForDisplayNameSortTest(String testPrefix)
-          throws org.apache.http.client.HttpResponseException {
+      throws org.apache.http.client.HttpResponseException {
     List<Table> tables = new ArrayList<>();
 
     try {
       // Table 1: Has a proper displayName starting with 'A'
       CreateTable createTable1 =
-              tableResourceTest
-                      .createRequest(testPrefix + "_table1")
-                      .withName("zebra_analytics_table_" + testPrefix)
-                      .withDisplayName("Alpha Analytics Dashboard") // displayName starts with 'A'
-                      .withDescription("Table with proper displayName");
+          tableResourceTest
+              .createRequest(testPrefix + "_table1")
+              .withName("zebra_analytics_table_" + testPrefix)
+              .withDisplayName("Alpha Analytics Dashboard") // displayName starts with 'A'
+              .withDescription("Table with proper displayName");
 
       tables.add(tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS));
 
       // Table 2: Has null displayName (will fall back to name)
       CreateTable createTable2 =
-              tableResourceTest
-                      .createRequest(testPrefix + "_table2")
-                      .withName("alpha_data_table_" + testPrefix)
-                      .withDisplayName(null) // null displayName - should fall back to name
-                      .withDescription("Table with null displayName");
+          tableResourceTest
+              .createRequest(testPrefix + "_table2")
+              .withName("alpha_data_table_" + testPrefix)
+              .withDisplayName(null) // null displayName - should fall back to name
+              .withDescription("Table with null displayName");
 
       tables.add(tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS));
 
       // Table 3: Has empty displayName (will fall back to name)
       CreateTable createTable3 =
-              tableResourceTest
-                      .createRequest(testPrefix + "_table3")
-                      .withName("beta_metrics_table_" + testPrefix)
-                      .withDisplayName("") // empty displayName - should fall back to name
-                      .withDescription("Table with empty displayName");
+          tableResourceTest
+              .createRequest(testPrefix + "_table3")
+              .withName("beta_metrics_table_" + testPrefix)
+              .withDisplayName("") // empty displayName - should fall back to name
+              .withDescription("Table with empty displayName");
 
       tables.add(tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS));
 
       // Table 4: Has whitespace-only displayName (will fall back to name)
       CreateTable createTable4 =
-              tableResourceTest
-                      .createRequest(testPrefix + "_table4")
-                      .withName("gamma_reports_table_" + testPrefix)
-                      .withDisplayName("   ") // whitespace-only displayName - should fall back to name
-                      .withDescription("Table with whitespace displayName");
+          tableResourceTest
+              .createRequest(testPrefix + "_table4")
+              .withName("gamma_reports_table_" + testPrefix)
+              .withDisplayName("   ") // whitespace-only displayName - should fall back to name
+              .withDescription("Table with whitespace displayName");
 
       tables.add(tableResourceTest.createEntity(createTable4, ADMIN_AUTH_HEADERS));
 
       // Table 5: Has proper displayName starting with 'Z'
       CreateTable createTable5 =
-              tableResourceTest
-                      .createRequest(testPrefix + "_table5")
-                      .withName("omega_insights_table_" + testPrefix)
-                      .withDisplayName("Zebra Business Intelligence") // displayName starts with 'Z'
-                      .withDescription("Table with proper displayName starting with Z");
+          tableResourceTest
+              .createRequest(testPrefix + "_table5")
+              .withName("omega_insights_table_" + testPrefix)
+              .withDisplayName("Zebra Business Intelligence") // displayName starts with 'Z'
+              .withDescription("Table with proper displayName starting with Z");
 
       tables.add(tableResourceTest.createEntity(createTable5, ADMIN_AUTH_HEADERS));
 
@@ -1296,18 +1296,18 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void testDisplayNameSortingBehavior(String testPrefix, String sortOrder)
-          throws IOException {
+      throws IOException {
     // Use a simpler approach - search by a pattern in the name and filter by entity type
     // This avoids complex JSON encoding issues while still testing the sorting behavior
     WebTarget target =
-            getResource("search/query")
-                    .queryParam("q", testPrefix) // Search for our test prefix
-                    .queryParam("index", "table") // Use table index directly
-                    .queryParam("from", 0)
-                    .queryParam("size", 15)
-                    .queryParam("deleted", false)
-                    .queryParam("sort_field", "displayName.keyword")
-                    .queryParam("sort_order", sortOrder);
+        getResource("search/query")
+            .queryParam("q", testPrefix) // Search for our test prefix
+            .queryParam("index", "table") // Use table index directly
+            .queryParam("from", 0)
+            .queryParam("size", 15)
+            .queryParam("deleted", false)
+            .queryParam("sort_field", "displayName.keyword")
+            .queryParam("sort_order", sortOrder);
 
     String searchResult = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     ObjectMapper objectMapper = new ObjectMapper();
@@ -1346,13 +1346,13 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     for (String displayName : actualDisplayNames) {
       assertNotNull(displayName, "DisplayName should never be null in search results");
       assertFalse(
-              displayName.trim().isEmpty(),
-              "DisplayName should never be empty in search results due to fallback logic");
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty in search results due to fallback logic");
     }
   }
 
   private void verifyAscendingSortOrder(
-          List<String> displayNames, List<String> names, String testPrefix) {
+      List<String> displayNames, List<String> names, String testPrefix) {
     // Print actual results for debugging
     System.out.println("=== Actual Sort Results ===");
     for (int i = 0; i < displayNames.size(); i++) {
@@ -1369,12 +1369,13 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     for (String displayName : displayNames) {
       assertNotNull(displayName, "DisplayName should never be null");
       assertFalse(
-              displayName.trim().isEmpty(),
-              "DisplayName should never be empty (should fall back to name)");
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty (should fall back to name)");
     }
 
     // Verify the original issue is fixed: empty displayName doesn't sort to the top
-    assertNotEquals("", displayNames.getFirst(), "Empty displayName should not sort to the top in ASC order");
+    assertNotEquals(
+        "", displayNames.getFirst(), "Empty displayName should not sort to the top in ASC order");
 
     // Verify that entities with displayNames containing proper values are present
     boolean hasAlphaAnalytics = displayNames.contains("Alpha Analytics Dashboard");
@@ -1387,7 +1388,7 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void verifyDescendingSortOrder(
-          List<String> displayNames, List<String> names, String testPrefix) {
+      List<String> displayNames, List<String> names, String testPrefix) {
     // Print actual results for debugging
     System.out.println("=== Actual DESC Sort Results ===");
     for (int i = 0; i < displayNames.size(); i++) {
@@ -1400,8 +1401,8 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     for (String displayName : displayNames) {
       assertNotNull(displayName, "DisplayName should never be null in DESC order");
       assertFalse(
-              displayName.trim().isEmpty(),
-              "DisplayName should never be empty in DESC order (should fall back to name)");
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty in DESC order (should fall back to name)");
     }
 
     // Verify that entities with displayNames containing proper values are present
