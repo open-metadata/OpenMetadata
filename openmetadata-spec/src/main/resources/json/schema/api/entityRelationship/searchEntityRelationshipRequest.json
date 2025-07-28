@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/api/entityRelationship/searchEntityRelationshipRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchEntityRelationshipRequest",
+  "description": "Search Entity Relationship Request Schema to find entity relationships from Elastic Search.",
+  "javaType": "org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest",
+  "type": "object",
+  "properties": {
+    "fqn": {
+      "description": "Entity Fqn to search entity relationships",
+      "type": "string"
+    },
+    "direction": {
+      "$ref": "./entityRelationshipDirection.json"
+    },
+    "directionValue": {
+      "description": "Entity Relationship Direction Value.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "upstreamDepth": {
+      "description": "The upstream depth of the entity relationship",
+      "type": "integer",
+      "default": 3
+    },
+    "downstreamDepth": {
+      "description": "The downstream depth of the entity relationship",
+      "type": "integer",
+      "default": 3
+    },
+    "layerFrom": {
+      "description": "Layer to start the search from.",
+      "type": "integer",
+      "default": 0
+    },
+    "layerSize": {
+      "description": "Size of the search result.",
+      "type": "integer",
+      "default": 1000
+    },
+    "queryFilter": {
+      "description": "Query Filter",
+      "type": "string"
+    },
+    "includeDeleted": {
+      "description": "Include deleted entities",
+      "type": "boolean",
+      "default": null
+    },
+    "includeSourceFields": {
+      "description": "Include source fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": ["fqn", "direction"],
+  "additionalProperties": false
+} 

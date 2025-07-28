@@ -51,6 +51,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -836,18 +837,33 @@ public class DatabaseSchemaResource
                     mediaType = "application/json",
                     schema = @Schema(implementation = SearchResponse.class)))
       })
-  public Response searchSchemaEntityRelationship(
+  public SearchSchemaEntityRelationshipResult searchSchemaEntityRelationship(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
-      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
-      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
-          int downstreamDepth,
       @Parameter(
               description =
                   "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
           @QueryParam("query_filter")
           String queryFilter,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "Offset for pagination") @QueryParam("offset") @DefaultValue("0")
+          int offset,
+      @Parameter(description = "Limit the number of tables returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           @DefaultValue("false")
@@ -855,6 +871,7 @@ public class DatabaseSchemaResource
       throws IOException {
 
     return Entity.getSearchRepository()
-        .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+        .getSchemaEntityRelationship(
+            fqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
 }
