@@ -1,5 +1,6 @@
 ---
 title: Connection Basic Type | OpenMetadata Connection Types
+description: Define connection base types to outline fundamental structure for service connections across data systems.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/connectionbasictype
 ---
 
