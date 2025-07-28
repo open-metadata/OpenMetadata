@@ -25,6 +25,7 @@ import {
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
+import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -181,8 +182,8 @@ const TotalDataAssetsWidget = ({
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        actionButtonLink="/data-insights/data-assets"
-        actionButtonText="Explore Assets"
+        actionButtonLink={ROUTES.EXPLORE}
+        actionButtonText={t('label.browse-assets')}
         description={t('message.no-data-for-total-assets')}
         icon={
           <TotalDataAssetsEmptyIcon height={SIZE.LARGE} width={SIZE.LARGE} />
