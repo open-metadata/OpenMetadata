@@ -2395,6 +2395,80 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
   }
 
+  @Test
+  void test_GlossaryTermWorkflow_ReviewerCreatesTermAutoApproved(TestInfo test) throws Exception {
+    // Setup: Create a glossary with USER_WITH_CREATE_ACCESS as reviewer
+    Glossary glossary =
+        createGlossary(test, listOf(USER_WITH_CREATE_ACCESS.getEntityReference()), null);
+
+    // Create a workflow that has the isReviewer filter (like the default workflow)
+    String workflowFilter = "{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}";
+    patchWorkflowDefinition(
+        "GlossaryTermApprovalWorkflow",
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\""
+            + workflowFilter
+            + "\"}]");
+
+    // Test: Create a glossary term as the reviewer (USER_WITH_CREATE_ACCESS)
+    // Note: NOT setting reviewers explicitly to allow pure inheritance from glossary
+    CreateGlossaryTerm createRequest =
+        new CreateGlossaryTerm()
+            .withName("reviewerCreatedTerm")
+            .withDescription("Term created by reviewer")
+            .withGlossary(glossary.getFullyQualifiedName());
+
+    // Create the term as USER_WITH_CREATE_ACCESS (who is a reviewer of the glossary)
+    // Using createEntity instead of createAndCheckEntity to avoid reviewer validation issues with
+    // inheritance
+    GlossaryTerm createdTerm =
+        createEntity(createRequest, authHeaders(USER_WITH_CREATE_ACCESS.getName()));
+
+    // Verify: The term should be auto-approved (APPROVED status)
+    assertEquals(
+        Status.APPROVED,
+        createdTerm.getStatus(),
+        "Term created by reviewer should be auto-approved");
+
+    // Verify: The term should have inherited reviewers (not stored directly)
+    GlossaryTerm retrievedTerm = getEntity(createdTerm.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+
+    // The term should show inherited reviewers when fetched with reviewers field
+    assertNotNull(retrievedTerm.getReviewers(), "Term should have inherited reviewers");
+    assertEquals(1, retrievedTerm.getReviewers().size(), "Should have one inherited reviewer");
+    assertEquals(
+        USER_WITH_CREATE_ACCESS.getEntityReference().getId(),
+        retrievedTerm.getReviewers().getFirst().getId(),
+        "Should inherit reviewer from glossary");
+    assertTrue(
+        retrievedTerm.getReviewers().getFirst().getInherited(),
+        "Reviewer should be marked as inherited");
+
+    // Verify: No workflow task should be created since term was auto-approved
+    assertFalse(
+        wasWorkflowTaskCreated(createdTerm.getFullyQualifiedName(), 2000),
+        "No workflow task should be created for auto-approved term");
+
+    // Test: Create another term as a non-reviewer (USER2) - should go to DRAFT
+    CreateGlossaryTerm createRequest2 =
+        new CreateGlossaryTerm()
+            .withName("nonReviewerCreatedTerm")
+            .withDescription("Term created by non-reviewer")
+            .withGlossary(glossary.getFullyQualifiedName());
+
+    GlossaryTerm createdTerm2 = createEntity(createRequest2, ADMIN_AUTH_HEADERS);
+
+    // Verify: Term created by non-reviewer should be in DRAFT status
+    assertEquals(
+        Status.DRAFT,
+        createdTerm2.getStatus(),
+        "Term created by non-reviewer should be in DRAFT status");
+
+    // Verify: Workflow task should be created for non-reviewer
+    assertTrue(
+        wasWorkflowTaskCreated(createdTerm2.getFullyQualifiedName(), 30000L),
+        "Workflow task should be created for term created by non-reviewer");
+  }
+
   /**
    * Helper method to receive move entity message via WebSocket
    */
