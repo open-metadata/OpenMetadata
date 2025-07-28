@@ -90,3 +90,25 @@ export const getKPIChartType = (kpiFQN: DataInsightChart) => {
       return KPIChartType.Description;
   }
 };
+
+export const getYAxisTicks = (
+  kpiResults: Record<string, { count: number }[]>,
+  stepSize = 10
+): { domain: [number, number]; ticks: number[] } => {
+  const allCounts = Object.values(kpiResults)
+    .flat()
+    .map((d) => d.count);
+  const max = Math.max(...allCounts, 10); // fallback if no data
+
+  const roundedMax = Math.ceil(max / stepSize) * stepSize;
+
+  const ticks: number[] = [];
+  for (let i = 0; i <= roundedMax; i += stepSize) {
+    ticks.push(i);
+  }
+
+  return {
+    domain: [0, roundedMax],
+    ticks,
+  };
+};

@@ -27,7 +27,6 @@ import {
   getSortOrder,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -46,6 +45,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -184,6 +184,11 @@ function FollowingWidget({
     return followedData.length > 0 ? followedData.length.toString() : '';
   }, [followedData]);
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    [followedData, isLoadingOwnedData]
+  );
+
   const followingContent = useMemo(() => {
     return (
       <div className="entity-list-body">
@@ -248,7 +253,7 @@ function FollowingWidget({
         </div>
       </div>
     );
-  }, [followedData, emptyState]);
+  }, [followedData, emptyState, isExpanded]);
 
   const WidgetContent = useMemo(() => {
     return (
@@ -273,14 +278,12 @@ function FollowingWidget({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
+              UserPageTabs.FOLLOWING
             )}
             moreButtonText={t('label.view-more-count', {
               countValue: showMoreCount,
             })}
-            showMoreButton={
-              Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
-            }
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>
