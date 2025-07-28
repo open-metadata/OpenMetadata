@@ -73,14 +73,18 @@ public class SearchMetadataTool implements McpTool {
 
     String entityType =
         params.containsKey("entity_type") ? (String) params.get("entity_type") : null;
-    String index =
+    String entityIndex =
         (entityType != null && !entityType.isEmpty())
             ? mapEntityTypesToIndexNames(entityType)
             : Entity.TABLE;
 
+    // Get the actual alias name with cluster alias
+    String index = Entity.getSearchRepository().getIndexOrAliasName(entityIndex);
+
     LOG.info(
-        "Search query: {}, index: {}, limit: {}, includeDeleted: {}",
+        "Search query: {}, entityIndex: {}, actualIndex: {}, limit: {}, includeDeleted: {}",
         query,
+        entityIndex,
         index,
         limit,
         includeDeleted);
