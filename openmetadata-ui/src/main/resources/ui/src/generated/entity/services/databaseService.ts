@@ -268,6 +268,8 @@ export interface DatabaseConnection {
  * Cockroach Database Connection Config
  *
  * SSAS Metadata Database Connection Config
+ *
+ * Google Sheets Connection Config
  */
 export interface ConfigClass {
     /**
@@ -285,6 +287,8 @@ export interface ConfigClass {
     costPerTB?: number;
     /**
      * GCP Credentials
+     *
+     * GCP Credentials to connect to Google Sheets API
      */
     credentials?: GCPCredentials;
     /**
@@ -406,6 +410,9 @@ export interface ConfigClass {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use
+     * 'default'.
      */
     databaseName?: string;
     /**
@@ -955,6 +962,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Include sheets from shared drives
+     */
+    includeSharedDrives?: boolean;
+    /**
+     * Google Sheets API scopes
+     */
+    scopes?: string[];
 }
 
 /**
@@ -1439,6 +1454,8 @@ export interface ConnectionClass {
  *
  * GCP credentials configs.
  *
+ * GCP Credentials to connect to Google Sheets API
+ *
  * AWS credentials configs.
  */
 export interface SecurityConfigClass {
@@ -1660,6 +1677,8 @@ export interface SAPHanaConnection {
  * GCP Credentials
  *
  * GCP credentials configs.
+ *
+ * GCP Credentials to connect to Google Sheets API
  */
 export interface GCPCredentials {
     /**
@@ -1991,6 +2010,7 @@ export enum ConfigScheme {
     Doris = "doris",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
+    Googlesheets = "googlesheets",
     Hana = "hana",
     Hive = "hive",
     HiveHTTP = "hive+http",
@@ -2066,6 +2086,7 @@ export enum ConfigType {
     DynamoDB = "DynamoDB",
     Exasol = "Exasol",
     Glue = "Glue",
+    GoogleSheets = "GoogleSheets",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -2185,6 +2206,7 @@ export enum DatabaseServiceType {
     DynamoDB = "DynamoDB",
     Exasol = "Exasol",
     Glue = "Glue",
+    GoogleSheets = "GoogleSheets",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
