@@ -1,5 +1,6 @@
 ---
-title: Wherescape
+title: Wherescape Connector | Official Documentation
+description: Ingest metadata from WhereScape pipelines including task details, schedules, and lineage paths.
 slug: /connectors/pipeline/wherescape
 ---
 
@@ -27,7 +28,6 @@ To extract Wherescape metadata, we need the batabase connection details where th
 
 - `API` Permission ( While Creating the User, from Admin -> User )
 - To retrieve lineage data, the user must be granted [Component-level permissions](https://docs.matillion.com/metl/docs/2932106/#component).
-- To enable lineage tracking in Matillion, **Matillion Enterprise Mode** is required. For detailed setup instructions and further information, refer to the official documentation: [Matillion Lineage Documentation](https://docs.matillion.com/metl/docs/2881895/).
 
 ## Metadata Ingestion
 

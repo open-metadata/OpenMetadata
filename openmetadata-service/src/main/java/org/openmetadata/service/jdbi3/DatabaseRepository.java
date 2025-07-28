@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -26,10 +27,13 @@ import static org.openmetadata.service.Entity.TABLE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -79,7 +83,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("name", this::fetchAndSetService);
+    fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
+    fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
   }
 
   @Override
@@ -115,6 +124,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public EntityInterface getParentEntity(Database entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -139,7 +151,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
         schemaRepository.listAllForCSV(
-            schemaRepository.getFields("owners,tags,domain,extension"),
+            schemaRepository.getFields("owners,tags,domains,extension"),
             database.getFullyQualifiedName());
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
@@ -186,6 +198,66 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId())
               : null);
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Database> entities) {
+    // Always set default service field for all databases
+    fetchAndSetDefaultService(entities);
+
+    fetchAndSetFields(entities, fields);
+    fetchAndSetDatabaseSpecificFields(entities, fields);
+    setInheritedFields(entities, fields);
+
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private void fetchAndSetDatabaseSpecificFields(List<Database> databases, Fields fields) {
+    if (databases == null || databases.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains("databaseSchemas")) {
+      fetchAndSetDatabaseSchemas(databases, fields);
+    }
+
+    if (fields.contains(DATABASE_PROFILER_CONFIG)) {
+      fetchAndSetDatabaseProfilerConfigs(databases, fields);
+    }
+
+    if (fields.contains("usageSummary")) {
+      fetchAndSetUsageSummaries(databases, fields);
+    }
+  }
+
+  private void fetchAndSetDatabaseSchemas(List<Database> databases, Fields fields) {
+    if (!fields.contains("databaseSchemas") || databases == null || databases.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, databases, batchFetchDatabaseSchemas(databases), Database::setDatabaseSchemas);
+  }
+
+  private void fetchAndSetDatabaseProfilerConfigs(List<Database> databases, Fields fields) {
+    if (!fields.contains(DATABASE_PROFILER_CONFIG) || databases == null || databases.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        databases,
+        batchFetchDatabaseProfilerConfigs(databases),
+        Database::setDatabaseProfilerConfig);
+  }
+
+  private void fetchAndSetUsageSummaries(List<Database> databases, Fields fields) {
+    if (!fields.contains("usageSummary") || databases == null || databases.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        databases,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(databases)),
+        Database::setUsageSummary);
   }
 
   public void clearFields(Database database, Fields fields) {
@@ -258,10 +330,149 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return;
     }
 
-    EntityReference service = getContainer(entities.get(0).getId());
-    for (Database database : entities) {
-      database.setService(service);
+    // Use batch fetch to get correct service for each database
+    var serviceMap = batchFetchServices(entities);
+
+    // Set the correct service for each database
+    entities.forEach(
+        database -> {
+          EntityReference service = serviceMap.get(database.getId());
+          if (service != null) {
+            database.setService(service);
+          }
+        });
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
+    var schemasMap = new HashMap<UUID, List<EntityReference>>();
+    if (databases == null || databases.isEmpty()) {
+      return schemasMap;
     }
+
+    // Initialize empty lists for all databases
+    databases.forEach(database -> schemasMap.put(database.getId(), new ArrayList<>()));
+
+    // Single batch query to get all schemas for all databases
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(databases),
+                Relationship.CONTAINS.ordinal(),
+                DATABASE_SCHEMA,
+                Include.ALL);
+
+    // Collect all unique schema IDs first
+    var schemaIds = records.stream().map(rec -> UUID.fromString(rec.getToId())).distinct().toList();
+
+    // Batch fetch all schema entity references
+    var schemaRefs = Entity.getEntityReferencesByIds(DATABASE_SCHEMA, schemaIds, Include.ALL);
+    var schemaRefMap =
+        schemaRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Group schemas by database ID
+    records.forEach(
+        record -> {
+          var databaseId = UUID.fromString(record.getFromId());
+          var schemaId = UUID.fromString(record.getToId());
+          var schemaRef = schemaRefMap.get(schemaId);
+          if (schemaRef != null) {
+            schemasMap.get(databaseId).add(schemaRef);
+          }
+        });
+
+    return schemasMap;
+  }
+
+  private Map<UUID, DatabaseProfilerConfig> batchFetchDatabaseProfilerConfigs(
+      List<Database> databases) {
+    var configMap = new HashMap<UUID, DatabaseProfilerConfig>();
+    if (databases == null || databases.isEmpty()) {
+      return configMap;
+    }
+
+    // Use batch extension query for profiler configs
+    var records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsBatch(entityListToStrings(databases), DATABASE_PROFILER_CONFIG_EXTENSION);
+
+    records.forEach(
+        record -> {
+          try {
+            var config = JsonUtils.readValue(record.extensionJson(), DatabaseProfilerConfig.class);
+            configMap.put(record.id(), config);
+          } catch (Exception e) {
+            configMap.put(record.id(), null);
+          }
+        });
+
+    // Ensure all databases have an entry (null if no config found)
+    databases.forEach(
+        database -> {
+          if (!configMap.containsKey(database.getId())) {
+            configMap.put(database.getId(), null);
+          }
+        });
+
+    return configMap;
+  }
+
+  private void fetchAndSetDefaultService(List<Database> databases) {
+    if (databases == null || databases.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all databases
+    var serviceMap = batchFetchServices(databases);
+
+    // Set service for all databases
+    databases.forEach(database -> database.setService(serviceMap.get(database.getId())));
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<Database> databases) {
+    var serviceMap = new HashMap<UUID, EntityReference>();
+    if (databases == null || databases.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all databases
+    // Use Include.ALL to get all relationships including those for soft-deleted entities
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(databases), Relationship.CONTAINS.ordinal(), Include.ALL);
+
+    // Collect all unique service IDs first
+    var serviceIds =
+        records.stream()
+            .filter(rec -> Entity.DATABASE_SERVICE.equals(rec.getFromEntity()))
+            .map(rec -> UUID.fromString(rec.getFromId()))
+            .distinct()
+            .toList();
+
+    // Batch fetch all service entity references
+    var serviceRefs =
+        Entity.getEntityReferencesByIds(Entity.DATABASE_SERVICE, serviceIds, Include.ALL);
+    var serviceRefMap =
+        serviceRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
+
+    // Map databases to their services
+    records.forEach(
+        record -> {
+          if (Entity.DATABASE_SERVICE.equals(record.getFromEntity())) {
+            var databaseId = UUID.fromString(record.getToId());
+            var serviceId = UUID.fromString(record.getFromId());
+            var serviceRef = serviceRefMap.get(serviceId);
+            if (serviceRef != null) {
+              serviceMap.put(databaseId, serviceRef);
+            }
+          }
+        });
+
+    return serviceMap;
   }
 
   public class DatabaseUpdater extends EntityUpdater {
@@ -310,7 +521,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Table> tables =
             tableRepository.listAllForCSV(
-                tableRepository.getFields("owners,tags,domain,extension,columns"),
+                tableRepository.getFields("owners,tags,domains,extension,columns"),
                 schema.getFullyQualifiedName());
 
         // Add tables and their columns
@@ -327,7 +538,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
             (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
         List<StoredProcedure> storedProcedures =
             spRepository.listAllForCSV(
-                spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
+                spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
                 schema.getFullyQualifiedName());
 
         // Add stored procedures
@@ -361,11 +572,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
       addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
       addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
-      String domain =
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName();
-      addField(recordList, domain);
+      addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
       // Add entityType and fullyQualifiedName
       if (recursive) {
@@ -474,7 +681,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withCertification(certification)
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
         createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);

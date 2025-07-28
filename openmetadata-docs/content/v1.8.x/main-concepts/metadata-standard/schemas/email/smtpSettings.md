@@ -1,5 +1,6 @@
 ---
 title: SMTP Settings | OpenMetadata SMTP Config
+description: Connect Smtpsettings to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/email/smtpsettings
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Thread Count API | OpenMetadata Thread Count
+description: Get the total count of threads or posts associated with an entity, user, or discussion space.
 slug: /main-concepts/metadata-standard/schemas/api/feed/threadcount
 ---
 

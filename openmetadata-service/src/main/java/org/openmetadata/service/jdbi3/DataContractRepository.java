@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -34,9 +35,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,status,schema,qualityExpectations,contractUpdates,semantics";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,scheduleConfig";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,status,schema,qualityExpectations,contractUpdates,semantics";
+      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,scheduleConfig";
 
   public DataContractRepository() {
     super(
@@ -66,11 +67,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     EntityReference entityRef = dataContract.getEntity();
 
     if (!update) {
-      validateEntityLink(entityRef);
+      validateEntityReference(entityRef);
     }
     validateSchemaFieldsAgainstEntity(dataContract, entityRef);
     if (dataContract.getOwners() != null) {
       dataContract.setOwners(EntityUtil.populateEntityReferences(dataContract.getOwners()));
+    }
+    if (dataContract.getReviewers() != null) {
+      dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
   }
 
@@ -105,12 +109,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     Set<String> tableColumnNames =
         table.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
 
-    for (org.openmetadata.schema.type.Field field : dataContract.getSchema()) {
-      if (!tableColumnNames.contains(field.getName())) {
+    for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
+      if (!tableColumnNames.contains(column.getName())) {
         throw BadRequestException.of(
             String.format(
                 "Field '%s' specified in the data contract does not exist in table '%s'",
-                field.getName(), table.getName()));
+                column.getName(), table.getName()));
       }
     }
   }
@@ -127,12 +131,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     Set<String> topicFieldNames = extractFieldNames(topic.getMessageSchema().getSchemaFields());
 
-    for (org.openmetadata.schema.type.Field field : dataContract.getSchema()) {
-      if (!topicFieldNames.contains(field.getName())) {
+    for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
+      if (!topicFieldNames.contains(column.getName())) {
         throw BadRequestException.of(
             String.format(
                 "Field '%s' specified in the data contract does not exist in topic '%s'",
-                field.getName(), topic.getName()));
+                column.getName(), topic.getName()));
       }
     }
   }
@@ -152,6 +156,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return fieldNames;
   }
 
+  public DataContract loadEntityDataContract(EntityReference entity) {
+    return JsonUtils.readValue(
+        daoCollection
+            .dataContractDAO()
+            .getContractByEntityId(entity.getId().toString(), entity.getType()),
+        DataContract.class);
+  }
+
   @Override
   public void storeEntity(DataContract dataContract, boolean update) {
     store(dataContract, update);
@@ -167,6 +179,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         Relationship.HAS);
 
     storeOwners(dataContract, dataContract.getOwners());
+    storeReviewers(dataContract, dataContract.getReviewers());
   }
 
   @Override
@@ -179,18 +192,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withUpdatedBy(original.getUpdatedBy());
   }
 
-  private void validateEntityLink(EntityReference entity) {
+  private void validateEntityReference(EntityReference entity) {
     if (entity == null) {
       throw BadRequestException.of("Entity reference is required for data contract");
     }
 
+    // Check the entity exists
     Entity.getEntityReferenceById(entity.getType(), entity.getId(), Include.NON_DELETED);
+    DataContract existingContract = loadEntityDataContract(entity);
 
-    ListFilter filter =
-        new ListFilter(Include.NON_DELETED).addQueryParam("entity", entity.getId().toString());
-    List<DataContract> existingContracts = listAll(new Fields(Set.of("id")), filter);
-
-    if (!existingContracts.isEmpty()) {
+    if (existingContract != null) {
       throw BadRequestException.of(
           String.format(
               "A data contract already exists for entity '%s' with ID %s",

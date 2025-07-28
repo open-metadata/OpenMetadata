@@ -1,5 +1,6 @@
 ---
-title: Build Code and Run Tests
+title: Build Code and Run Tests | Official Documentation
+description: Guidelines for contributing to the codebase including test execution, UI setup, and build tools.
 slug: /developers/contribute/build-code-and-run-tests
 noindex: true
 nofollow: true

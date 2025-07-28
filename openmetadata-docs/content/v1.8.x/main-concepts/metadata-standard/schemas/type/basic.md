@@ -1,5 +1,6 @@
 ---
 title: Basic Schema | OpenMetadata Basic Schema Details
+description: Basic type schema includes fundamental metadata fields shared across multiple entities.
 slug: /main-concepts/metadata-standard/schemas/type/basic
 ---
 

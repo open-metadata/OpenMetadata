@@ -172,7 +172,7 @@ const ChangeParentHierarchy = ({
         loading: loadingState.isSaving,
         disabled: hasReviewers && !confirmCheckboxChecked,
       }}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       title={t('label.change-entity', { entity: t('label.parent') })}
       onCancel={onCancel}>
       <Form

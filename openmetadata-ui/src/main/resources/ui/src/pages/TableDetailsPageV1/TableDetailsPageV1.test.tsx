@@ -23,7 +23,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domain,dataProducts,votes,extension';
+  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -276,7 +276,7 @@ describe('TestDetailsPageV1 component', () => {
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
-    expect(await screen.findByText('label.schema')).toBeInTheDocument();
+    expect(await screen.findByText('label.column-plural')).toBeInTheDocument();
     expect(
       await screen.findByText('label.activity-feed-and-task-plural')
     ).toBeInTheDocument();

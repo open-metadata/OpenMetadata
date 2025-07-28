@@ -1,5 +1,6 @@
 ---
 title: emailAlertConfig | OpenMetadata Email Alert Config
+description: Connect Emailalertconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/emailalertconfig
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: DynamoDB Connector | OpenMetadata NoSQL Database Integration
+description: Connect DynamoDB to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/database/dynamodb
 ---
 
@@ -7,8 +8,8 @@ slug: /connectors/database/dynamodb
 name="DynamoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Auto-Classification"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
 / %}
 
 

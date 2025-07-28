@@ -70,6 +70,8 @@ import { t } from './i18next/LocalUtil';
 import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
 
+type EntityColumn = TableColumn | ContainerColumn | Field;
+
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
   diffObject?.added?.name ??
   diffObject?.deleted?.name ??
@@ -506,10 +508,9 @@ export function getEntityDescriptionDiff<A extends AssetsChildForVersionPages>(
   return entityList;
 }
 
-export function getEntityDisplayNameDiff<
-  A extends TableColumn | ContainerColumn | Field
->(
+export function getStringEntityDiff<A extends EntityColumn>(
   entityDiff: EntityDiffProps,
+  key: EntityField,
   changedEntityName?: string,
   entityList: A[] = []
 ) {
@@ -519,11 +520,11 @@ export function getEntityDisplayNameDiff<
   const formatEntityData = (arr: Array<A>) => {
     arr?.forEach((i) => {
       if (isEqual(i.name, changedEntityName)) {
-        i.displayName = getTextDiff(
+        i[key as keyof A] = getTextDiff(
           oldDisplayName ?? '',
           newDisplayName ?? '',
-          i.displayName
-        );
+          i[key as keyof typeof i] as unknown as string
+        ) as unknown as A[keyof A];
       } else {
         formatEntityData(i?.children as Array<A>);
       }
@@ -535,9 +536,11 @@ export function getEntityDisplayNameDiff<
   return entityList;
 }
 
-export function getEntityTagDiff<
-  A extends TableColumn | ContainerColumn | Field
->(entityDiff: EntityDiffProps, changedEntityName?: string, entityList?: A[]) {
+export function getEntityTagDiff<A extends EntityColumn>(
+  entityDiff: EntityDiffProps,
+  changedEntityName?: string,
+  entityList?: A[]
+) {
   const oldTags: TagLabel[] = JSON.parse(
     getChangedEntityOldValue(entityDiff) ?? '[]'
   );
@@ -606,19 +609,127 @@ export const getEntityReferenceDiffFromFieldName = (
   };
 };
 
+const getOwnerLabelName = (
+  reviewer: EntityReference,
+  operation: EntityChangeOperations
+) => {
+  switch (operation) {
+    case EntityChangeOperations.ADDED:
+      return getAddedDiffElement(getEntityName(reviewer));
+    case EntityChangeOperations.DELETED:
+      return getRemovedDiffElement(getEntityName(reviewer));
+    case EntityChangeOperations.UPDATED:
+    case EntityChangeOperations.NORMAL:
+    default:
+      return getEntityName(reviewer);
+  }
+};
+
+export const getOwnerDiff = (
+  defaultItems: EntityReference[],
+  changeDescription?: ChangeDescription,
+  ownerField = TabSpecificField.OWNERS
+) => {
+  const fieldDiff = getDiffByFieldName(
+    ownerField,
+    changeDescription as ChangeDescription
+  );
+
+  const addedItems: EntityReference[] = JSON.parse(
+    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  );
+  const deletedItems: EntityReference[] = JSON.parse(
+    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  );
+
+  const unchangedItems = defaultItems.filter(
+    (item: EntityReference) =>
+      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+  );
+
+  const allItems = [
+    ...unchangedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.NORMAL,
+    })),
+    ...addedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.ADDED,
+    })),
+    ...deletedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.DELETED,
+    })),
+  ];
+
+  return {
+    owners: allItems.map(({ item }) => item),
+    ownerDisplayName: allItems.map(({ item, operation }) =>
+      getOwnerLabelName(item, operation)
+    ),
+  };
+};
+
+export const getDomainDiff = (
+  defaultItems: EntityReference[],
+  changeDescription?: ChangeDescription,
+  domainField = TabSpecificField.DOMAINS
+) => {
+  const fieldDiff = getDiffByFieldName(
+    domainField,
+    changeDescription as ChangeDescription
+  );
+
+  const addedItems: EntityReference[] = JSON.parse(
+    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  );
+  const deletedItems: EntityReference[] = JSON.parse(
+    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  );
+
+  const unchangedItems = defaultItems.filter(
+    (item: EntityReference) =>
+      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+  );
+
+  const allItems = [
+    ...unchangedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.NORMAL,
+    })),
+    ...addedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.ADDED,
+    })),
+    ...deletedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.DELETED,
+    })),
+  ];
+
+  return {
+    domains: allItems.map(({ item }) => item),
+    domainDisplayName: allItems.map(({ item, operation }) =>
+      getOwnerLabelName(item, operation)
+    ),
+  };
+};
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owners?: EntityReference[],
   tier?: TagLabel,
-  domain?: EntityReference
+  domains?: EntityReference[]
 ) => {
   const { owners: ownerRef, ownerDisplayName } = getOwnerDiff(
     owners ?? [],
     changeDescription
   );
 
-  const { entityDisplayName: domainDisplayName } =
-    getEntityReferenceDiffFromFieldName('domain', changeDescription, domain);
+  const { domains: domainRef, domainDisplayName } = getDomainDiff(
+    domains ?? [],
+    changeDescription
+  );
 
   const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
   const newTier = [
@@ -643,6 +754,7 @@ export const getCommonExtraInfoForVersionDetails = (
   const extraInfo = {
     ownerRef,
     ownerDisplayName,
+    domainRef,
     domainDisplayName,
     tierDisplayName,
   };
@@ -822,7 +934,23 @@ export function getColumnsDataWithVersionChanges<
       ];
     } else if (isEndsWithField(EntityField.DISPLAYNAME, changedEntityName)) {
       newColumnsList = [
-        ...getEntityDisplayNameDiff(columnDiff, changedColName, colList),
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DISPLAYNAME,
+          changedColName,
+          colList
+        ),
+      ];
+    } else if (
+      isEndsWithField(EntityField.DATA_TYPE_DISPLAY, changedEntityName)
+    ) {
+      newColumnsList = [
+        ...getStringEntityDiff(
+          columnDiff,
+          EntityField.DATA_TYPE_DISPLAY,
+          changedColName,
+          colList
+        ),
       ];
     } else if (!isEndsWithField(EntityField.CONSTRAINT, changedEntityName)) {
       const changedEntity = changedEntityName
@@ -918,8 +1046,8 @@ export const getBasicEntityInfoFromVersionData = (
 ) => ({
   tier: getTierTags(currentVersionData.tags ?? []),
   owners: currentVersionData.owners,
-  domain: (currentVersionData as Exclude<VersionEntityTypes, MetadataService>)
-    .domain,
+  domains: (currentVersionData as Exclude<VersionEntityTypes, MetadataService>)
+    .domains,
   breadcrumbLinks: getEntityBreadcrumbs(currentVersionData, entityType),
   changeDescription:
     currentVersionData.changeDescription ?? ({} as ChangeDescription),
@@ -971,67 +1099,6 @@ export const renderVersionButton = (
       />
     </Fragment>
   );
-};
-
-const getOwnerLabelName = (
-  reviewer: EntityReference,
-  operation: EntityChangeOperations
-) => {
-  switch (operation) {
-    case EntityChangeOperations.ADDED:
-      return getAddedDiffElement(getEntityName(reviewer));
-    case EntityChangeOperations.DELETED:
-      return getRemovedDiffElement(getEntityName(reviewer));
-    case EntityChangeOperations.UPDATED:
-    case EntityChangeOperations.NORMAL:
-    default:
-      return getEntityName(reviewer);
-  }
-};
-
-export const getOwnerDiff = (
-  defaultItems: EntityReference[],
-  changeDescription?: ChangeDescription,
-  ownerField = TabSpecificField.OWNERS
-) => {
-  const fieldDiff = getDiffByFieldName(
-    ownerField,
-    changeDescription as ChangeDescription
-  );
-
-  const addedItems: EntityReference[] = JSON.parse(
-    getChangedEntityNewValue(fieldDiff) ?? '[]'
-  );
-  const deletedItems: EntityReference[] = JSON.parse(
-    getChangedEntityOldValue(fieldDiff) ?? '[]'
-  );
-
-  const unchangedItems = defaultItems.filter(
-    (item: EntityReference) =>
-      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
-  );
-
-  const allItems = [
-    ...unchangedItems.map((item) => ({
-      item,
-      operation: EntityChangeOperations.NORMAL,
-    })),
-    ...addedItems.map((item) => ({
-      item,
-      operation: EntityChangeOperations.ADDED,
-    })),
-    ...deletedItems.map((item) => ({
-      item,
-      operation: EntityChangeOperations.DELETED,
-    })),
-  ];
-
-  return {
-    owners: allItems.map(({ item }) => item),
-    ownerDisplayName: allItems.map(({ item, operation }) =>
-      getOwnerLabelName(item, operation)
-    ),
-  };
 };
 
 export const getChangedEntityStatus = (
@@ -1224,6 +1291,42 @@ export const getParameterValueDiffDisplay = (
       )}
     </>
   );
+};
+
+export const getComputeRowCountDiffDisplay = (
+  changeDescription: ChangeDescription,
+  fallbackValue?: boolean
+): React.ReactNode => {
+  const fieldDiff = getDiffByFieldName(
+    'computePassedFailedRowCount',
+    changeDescription,
+    true
+  );
+  const oldValue = getChangedEntityOldValue(fieldDiff);
+  const newValue = getChangedEntityNewValue(fieldDiff);
+
+  const isOldValueUndefined = isUndefined(oldValue);
+  const isNewValueUndefined = isUndefined(newValue);
+
+  // If there's no diff, return the fallback value as normal text
+  if (isOldValueUndefined && isNewValueUndefined) {
+    return toString(fallbackValue);
+  }
+
+  // If there's a diff, show the diff styling
+  if (!isOldValueUndefined && !isNewValueUndefined) {
+    // Field was updated
+    return getTextDiffElements(toString(oldValue), toString(newValue));
+  } else if (isOldValueUndefined && !isNewValueUndefined) {
+    // Field was added
+    return getAddedDiffElement(toString(newValue));
+  } else if (!isOldValueUndefined && isNewValueUndefined) {
+    // Field was deleted
+    return getRemovedDiffElement(toString(oldValue));
+  }
+
+  // Fallback
+  return toString(fallbackValue);
 };
 
 export const getOwnerVersionLabel = (

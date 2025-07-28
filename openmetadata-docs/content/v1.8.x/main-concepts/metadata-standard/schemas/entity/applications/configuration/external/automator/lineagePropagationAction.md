@@ -1,5 +1,6 @@
 ---
-title: lineagePropagationAction
+title: Lineagepropagationaction | Official Documentation
+description: Get started with lineagepropagationaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/lineagepropagationaction
 ---
 
@@ -14,6 +15,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration
 - **`propagateTags`** *(boolean)*: Propagate tags through lineage. Default: `true`.
 - **`propagateGlossaryTerms`** *(boolean)*: Propagate glossary terms through lineage. Default: `true`.
 - **`propagateTier`** *(boolean)*: Propagate tier from the parent. Default: `false`.
+- **`propagateDomain`** *(boolean)*: Propagate domain from the parent through lineage. Default: `false`.
 - **`propagateOwner`** *(boolean)*: Propagate owner from the parent. Default: `false`.
 - **`propagateColumnLevel`** *(boolean)*: Propagate the metadata to columns via column-level lineage. Default: `true`.
 - **`propagateParent`** *(boolean)*: Propagate the metadata to the parents (e.g., tables) via lineage. Default: `false`.

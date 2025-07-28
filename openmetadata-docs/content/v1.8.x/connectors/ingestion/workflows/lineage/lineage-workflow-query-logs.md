@@ -1,5 +1,6 @@
 ---
-title: Lineage Workflow Through Query Logs
+title: Lineage Workflow Through Query Logs | Official Documentation
+description: Capture lineage from query logs to build detailed, query-driven data flow between tables, dashboards, and metrics.
 slug: /connectors/ingestion/workflows/lineage/lineage-workflow-query-logs
 ---
 
@@ -67,9 +68,12 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: INFO
   openMetadataServerConfig:
     hostPort: <OpenMetadata host and port>
     authProvider: <OpenMetadata auth provider>
+    securityConfig:
+      jwtToken: "{bot_jwt_token}"
 ```
 
 The `serviceName` should be a service already ingested in OpenMetadata.

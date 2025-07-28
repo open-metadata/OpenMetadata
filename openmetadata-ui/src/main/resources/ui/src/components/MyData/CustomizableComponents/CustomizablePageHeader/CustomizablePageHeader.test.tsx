@@ -81,6 +81,18 @@ describe('CustomizablePageHeader', () => {
     });
   });
 
+  it('should disable buttons when disableSave is true', async () => {
+    render(
+      <MemoryRouter>
+        <CustomizablePageHeader {...mockProps} disableSave />
+      </MemoryRouter>
+    );
+
+    const saveButton = screen.getByTestId('save-button');
+
+    expect(saveButton).toBeDisabled();
+  });
+
   it('should disable buttons while saving', async () => {
     render(
       <MemoryRouter>
@@ -167,9 +179,7 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    expect(translation).toHaveBeenCalledWith('label.customize-entity', {
-      entity: 'label.landing-page',
-    });
+    expect(translation).toHaveBeenCalledWith('label.homepage');
   });
 
   it('should handle navigation link to persona details', () => {

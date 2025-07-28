@@ -1,5 +1,6 @@
 ---
-title: Enable Secrets Manager
+title: Enable Secrets Manager | Official Documentation
+description: Learn how to manage secrets and credentials used by connectors and services through centralized secrets manager setup.
 slug: /deployment/secrets-manager
 collate: false
 ---

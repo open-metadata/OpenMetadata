@@ -1,5 +1,6 @@
 ---
 title: dashboardServiceMetadataPipeline
+description: Connect Dashboardservicemetadatapipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dashboardservicemetadatapipeline
 ---
 
@@ -11,7 +12,7 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dashboardservic
 
 - **`type`**: Pipeline type. Refer to *[#/definitions/dashboardMetadataConfigType](#definitions/dashboardMetadataConfigType)*. Default: `"DashboardMetadata"`.
 - **`lineageInformation`** *(object)*: Details required to generate Lineage.
-  - **`dbServiceNames`** *(array)*: List of Database Service Names for creation of lineage.
+  - **`dbServicePrefixes`** *(array)*: List of Database Service Prefixes for creation of lineage.
     - **Items** *(string)*
 - **`dashboardFilterPattern`**: Regex to exclude or include dashboards that matches the pattern. Refer to *[../type/filterPattern.json#/definitions/filterPattern](#/type/filterPattern.json#/definitions/filterPattern)*.
 - **`chartFilterPattern`**: Regex exclude or include charts that matches the pattern. Refer to *[../type/filterPattern.json#/definitions/filterPattern](#/type/filterPattern.json#/definitions/filterPattern)*.

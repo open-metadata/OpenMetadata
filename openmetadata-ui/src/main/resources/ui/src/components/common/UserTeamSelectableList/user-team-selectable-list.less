@@ -94,6 +94,21 @@
     border-radius: 12px;
     padding: 2px 6px;
   }
+
+  .selectable-list-item:focus-visible {
+    outline: 2px solid @focus-outline-color;
+    background-color: @focus-outline-color;
+  }
+
+  [role='tab']:focus-visible {
+    outline: 2px solid @focus-outline-color;
+    background-color: @focus-outline-color;
+  }
+
+  [role='tabpanel']:focus {
+    outline: 2px solid @focus-outline-color;
+    background-color: @focus-outline-color;
+  }
 }
 
 .ant-btn.ant-btn-icon-only.edit-owner-button {

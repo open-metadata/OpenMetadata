@@ -35,6 +35,7 @@ export enum SettingType {
     CustomUIThemePreference = "customUiThemePreference",
     Elasticsearch = "elasticsearch",
     EmailConfiguration = "emailConfiguration",
+    EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
     JwtTokenConfiguration = "jwtTokenConfiguration",
@@ -515,6 +516,10 @@ export interface AssetTypeConfiguration {
      */
     highlightFields?: string[];
     /**
+     * Multipliers applied to different match types to control their relative importance.
+     */
+    matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
+    /**
      * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
@@ -629,6 +634,24 @@ export enum Modifier {
 }
 
 /**
+ * Multipliers applied to different match types to control their relative importance.
+ */
+export interface MatchTypeBoostMultipliers {
+    /**
+     * Multiplier for exact match queries (term queries on .keyword fields)
+     */
+    exactMatchMultiplier?: number;
+    /**
+     * Multiplier for fuzzy match queries
+     */
+    fuzzyMatchMultiplier?: number;
+    /**
+     * Multiplier for phrase match queries
+     */
+    phraseMatchMultiplier?: number;
+}
+
+/**
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -649,6 +672,24 @@ export interface FieldBoost {
      * Field name to search/boost.
      */
     field: string;
+    /**
+     * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+     * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+     * behavior.
+     */
+    matchType?: MatchType;
+}
+
+/**
+ * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+ * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+ * behavior.
+ */
+export enum MatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
 }
 
 export interface TermBoost {
@@ -1771,6 +1812,232 @@ export interface TitleSection {
      */
     title?: string;
     [property: string]: any;
+}
+
+/**
+=======
+ * Oidc Configuration for Confidential Client Type
+ *
+ * Oidc client security configs.
+ */
+export interface OidcClientConfig {
+    /**
+     * Callback Url.
+     */
+    callbackUrl?: string;
+    /**
+     * Client Authentication Method.
+     */
+    clientAuthenticationMethod?: ClientAuthenticationMethod;
+    /**
+     * Custom Params.
+     */
+    customParams?: { [key: string]: any };
+    /**
+     * Disable PKCE.
+     */
+    disablePkce?: boolean;
+    /**
+     * Discovery Uri for the Client.
+     */
+    discoveryUri?: string;
+    /**
+     * Client ID.
+     */
+    id?: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
+    /**
+     * Max Clock Skew
+     */
+    maxClockSkew?: string;
+    /**
+     * Preferred Jws Algorithm.
+     */
+    preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
+    /**
+     * Auth0 Client Secret Key.
+     */
+    responseType?: string;
+    /**
+     * Oidc Request Scopes.
+     */
+    scope?: string;
+    /**
+     * Client Secret.
+     */
+    secret?: string;
+    /**
+     * Server Url.
+     */
+    serverUrl?: string;
+    /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
+    /**
+     * Tenant in case of Azure.
+     */
+    tenant?: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    tokenValidity?: number;
+    /**
+     * IDP type (Example Google,Azure).
+     */
+    type?: string;
+    /**
+     * Use Nonce.
+     */
+    useNonce?: string;
+}
+
+/**
+ * Client Authentication Method.
+ */
+export enum ClientAuthenticationMethod {
+    ClientSecretBasic = "client_secret_basic",
+    ClientSecretJwt = "client_secret_jwt",
+    ClientSecretPost = "client_secret_post",
+    PrivateKeyJwt = "private_key_jwt",
+}
+
+/**
+ * This is used by auth provider provide response as either id_token or code.
+ *
+ * Response Type
+ */
+export enum ResponseType {
+    Code = "code",
+    IDToken = "id_token",
+}
+
+/**
+ * Saml Configuration that is applicable only when the provider is Saml
+ *
+ * SAML SSO client security configs.
+ */
+export interface SamlSSOClientConfig {
+    /**
+     * Get logs from the Library in debug mode
+     */
+    debugMode?: boolean;
+    idp:        Idp;
+    security?:  Security;
+    sp:         SP;
+}
+
+/**
+ * This schema defines defines the identity provider config.
+ */
+export interface Idp {
+    /**
+     * Authority URL to redirect the users on Sign In page
+     */
+    authorityUrl?: string;
+    /**
+     * Identity Provider Entity ID usually same as the SSO login URL.
+     */
+    entityId: string;
+    /**
+     * X509 Certificate
+     */
+    idpX509Certificate?: string;
+    /**
+     * Authority URL to redirect the users on Sign In page
+     */
+    nameId?: string;
+    /**
+     * SSO Login URL.
+     */
+    ssoLoginUrl: string;
+}
+
+/**
+ * This schema defines defines the security config for SAML.
+ */
+export interface Security {
+    /**
+     * KeyStore Alias
+     */
+    keyStoreAlias?: string;
+    /**
+     * KeyStore File Path
+     */
+    keyStoreFilePath?: string;
+    /**
+     * KeyStore Password
+     */
+    keyStorePassword?: string;
+    /**
+     * Encrypt Name Id while sending requests from SP.
+     */
+    sendEncryptedNameId?: boolean;
+    /**
+     * Sign the Authn Request while sending.
+     */
+    sendSignedAuthRequest?: boolean;
+    /**
+     * Want the Metadata of this SP to be signed.
+     */
+    signSpMetadata?: boolean;
+    /**
+     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     */
+    strictMode?: boolean;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    tokenValidity?: number;
+    /**
+     * In case of strict mode whether to validate XML format.
+     */
+    validateXml?: boolean;
+    /**
+     * SP requires the assertion received to be encrypted.
+     */
+    wantAssertionEncrypted?: boolean;
+    /**
+     * SP requires the assertions received to be signed.
+     */
+    wantAssertionsSigned?: boolean;
+    /**
+     * SP requires the messages received to be signed.
+     */
+    wantMessagesSigned?: boolean;
+}
+
+/**
+ * This schema defines defines the identity provider config.
+ */
+export interface SP {
+    /**
+     * Assertion Consumer URL.
+     */
+    acs: string;
+    /**
+     * Service Provider Entity ID usually same as the SSO login URL.
+     */
+    callback: string;
+    /**
+     * Service Provider Entity ID.
+     */
+    entityId: string;
+    /**
+     * Sp Private Key for Signing and Encryption Only
+     */
+    spPrivateKey?: string;
+    /**
+     * X509 Certificate
+     */
+    spX509Certificate?: string;
 }
 
 /**

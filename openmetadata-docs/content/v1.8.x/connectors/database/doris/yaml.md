@@ -1,5 +1,6 @@
 ---
 title: Run the Doris Connector Externally
+description: Use YAML to ingest metadata from Doris, including tables, partitions, and profiling.
 slug: /connectors/database/doris/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/doris/yaml
 name="Doris"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

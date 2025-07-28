@@ -1,5 +1,6 @@
 ---
-title: Minimum Requirements
+title: Minimum Requirements | Official Documentation
+description: Review system requirements including OS, CPU, memory, and dependencies to ensure a successful and stable deployment.
 slug: /deployment/minimum-requirements
 collate: false
 ---
@@ -41,7 +42,7 @@ Our minimum specs recommendation for ElasticSearch / OpenSearch deployment is
 OpenMetadata currently supports -
 
 - ElasticSearch version 8.X till 8.11.4
-- OpenSearch version 2.7
+- OpenSearch version 2.19
 
 These settings apply as well when using managed instances, such as AWS OpenSearch Service or Elastic Cloud on GCP, AWS, Azure.
 

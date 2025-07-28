@@ -845,7 +845,7 @@ export const changeTermHierarchyFromModal = async (
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
     .locator('[data-testid="change-parent-hierarchy-modal"]')
-    .getByRole('button', { name: 'Submit' })
+    .getByRole('button', { name: 'Save' })
     .click();
   await saveRes;
 
@@ -1518,7 +1518,10 @@ export const checkGlossaryTermDetails = async (
   ).toContainText(reviewer.responseData.displayName);
 };
 
-export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
+export const setupGlossaryDenyPermissionTest = async (
+  apiContext: any,
+  isGlossary?: boolean
+) => {
   // Create all necessary resources
   const dataConsumerUser = new UserClass();
   const id = uuid();
@@ -1573,7 +1576,7 @@ export const setupGlossaryDenyPermissionTest = async (apiContext: any) => {
   await dataConsumerTeam.create(apiContext);
 
   // Set domain ownership
-  await glossary1.patch(apiContext, [
+  await (isGlossary ? glossary1 : glossaryTerm1).patch(apiContext, [
     {
       op: 'add',
       path: '/tags/0',

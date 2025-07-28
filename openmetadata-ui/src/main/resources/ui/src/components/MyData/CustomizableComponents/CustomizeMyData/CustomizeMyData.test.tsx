@@ -39,25 +39,23 @@ jest.mock(
   }
 );
 
-jest.mock('../AddWidgetModal/AddWidgetModal', () => {
-  return jest.fn().mockImplementation(({ handleCloseAddWidgetModal }) => (
+jest.mock('../CustomiseHomeModal/CustomiseHomeModal', () => {
+  return jest.fn().mockImplementation(({ onClose }) => (
     <div>
-      AddWidgetModal{' '}
-      <button onClick={handleCloseAddWidgetModal}>
-        handleCloseAddWidgetModal
-      </button>
+      CustomiseHomeModal
+      <button onClick={onClose}>handleCloseCustomiseHomeModal</button>
     </div>
   ));
 });
 
 jest.mock(
-  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder',
+  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1',
   () => {
     return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
       <div>
-        EmptyWidgetPlaceholder{' '}
+        EmptyWidgetPlaceholderV1{' '}
         <button onClick={handleOpenAddWidgetModal}>
-          handleOpenAddWidgetModal
+          handleOpenAddWidgetModalV1
         </button>
       </div>
     ));
@@ -112,6 +110,7 @@ jest.mock('react-router-dom', () => ({
     pageFqn: PageType.LandingPage,
   })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('react-grid-layout', () => ({
@@ -153,6 +152,27 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({
+    AdvanceSearchProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="advance-search-provider">{children}</div>
+      )),
+  })
+);
+
+jest.mock('../CustomiseLandingPageHeader/CustomiseLandingPageHeader', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="customise-landing-page-header">
+        CustomiseLandingPageHeader
+      </div>
+    ))
+);
+
 describe('CustomizeMyData component', () => {
   it('CustomizeMyData should render the widgets in the page config', async () => {
     await act(async () => {
@@ -177,7 +197,9 @@ describe('CustomizeMyData component', () => {
 
     const resetButton = screen.getByTestId('reset-button');
 
-    fireEvent.click(resetButton);
+    await act(async () => {
+      fireEvent.click(resetButton);
+    });
 
     expect(mockProps.onSaveLayout).toHaveBeenCalled();
   });
@@ -198,41 +220,41 @@ describe('CustomizeMyData component', () => {
     expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
   });
 
-  it('CustomizeMyData should display EmptyWidgetPlaceholder', async () => {
+  it('CustomizeMyData should display EmptyWidgetPlaceholderV1', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    expect(screen.getByText('EmptyWidgetPlaceholder')).toBeInTheDocument();
+    expect(screen.getByText('EmptyWidgetPlaceholderV1')).toBeInTheDocument();
   });
 
-  it('CustomizeMyData should display AddWidgetModal after handleOpenAddWidgetModal is called', async () => {
+  it('CustomizeMyData should display CustomiseHomeModal after handleOpenAddWidgetModal is called', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
+    const addWidgetButton = screen.getByText('handleOpenAddWidgetModalV1');
 
     fireEvent.click(addWidgetButton);
 
-    expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
+    expect(screen.getByText('CustomiseHomeModal')).toBeInTheDocument();
   });
 
-  it('CustomizeMyData should not display AddWidgetModal after handleCloseAddWidgetModal is called', async () => {
+  it('CustomizeMyData should not display CustomiseHomeModal after handleCloseAddWidgetModal is called', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
+    const addWidgetButton = screen.getByText('handleOpenAddWidgetModalV1');
 
     fireEvent.click(addWidgetButton);
 
-    expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
+    expect(screen.getByText('CustomiseHomeModal')).toBeInTheDocument();
 
-    const closeWidgetButton = screen.getByText('handleCloseAddWidgetModal');
+    const closeWidgetButton = screen.getByText('handleCloseCustomiseHomeModal');
 
     fireEvent.click(closeWidgetButton);
 
-    expect(screen.queryByText('AddWidgetModal')).toBeNull();
+    expect(screen.queryByText('CustomiseHomeModal')).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 ---
 title: Events Schema | OpenMetadata Events Schema and API
+description: Schema representing event-based entities used for tracking system or user-triggered operations.
 slug: /main-concepts/metadata-standard/schemas/entity/events
 ---
 

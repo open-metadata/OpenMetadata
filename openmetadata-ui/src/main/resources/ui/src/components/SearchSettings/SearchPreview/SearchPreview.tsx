@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
+import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
@@ -32,7 +33,6 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './search-preview.less';
-
 interface SearchPreviewProps {
   searchConfig: SearchSettings;
   handleRestoreDefaults: () => void;
@@ -63,7 +63,11 @@ const SearchPreview = ({
     showPagination,
   } = usePaging();
 
-  const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
+  const entityType = useMemo(() => {
+    const entityKey = ENTITY_PATH[fqn as keyof typeof ENTITY_PATH];
+
+    return ENTITY_PATH_TO_SEARCH_INDEX[entityKey];
+  }, [fqn]);
 
   const fetchAssets = useCallback(
     async ({

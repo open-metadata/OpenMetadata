@@ -78,6 +78,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
+import { getSanitizeContent } from './sanitize.utils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -329,7 +330,7 @@ export const getBackendFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getFrontEndFormat = (message: string) => {
@@ -343,7 +344,7 @@ export const getFrontEndFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getUpdatedThread = (id: string) => {
@@ -626,6 +627,7 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
     [EntityField.EXPERTS]: t('label.expert-plural'),
     [EntityField.FIELDS]: t('label.field-plural'),
     [EntityField.PARAMETER_VALUES]: t('label.parameter-plural'),
+    [EntityField.DATA_TYPE_DISPLAY]: t('label.data-type-display'),
   };
 
   return isUndefined(fieldName) ? '' : fieldNameLabelMapping[fieldName];

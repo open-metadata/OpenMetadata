@@ -15,6 +15,7 @@ import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
@@ -26,6 +27,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import {
   getApiContext,
   getEntityTypeSearchIndexMapping,
+  redirectToHomePage,
   toastNotification,
 } from './common';
 import { parseCSV } from './entityImport';
@@ -196,6 +198,8 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
+  await page.waitForLoadState('networkidle');
+
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
   );
@@ -285,6 +289,7 @@ export const setupEntitiesForLineage = async (
     | SearchIndexClass
     | ApiEndpointClass
     | MetricClass
+    | DashboardDataModelClass
 ) => {
   const entities = [
     new TableClass(),
@@ -295,6 +300,7 @@ export const setupEntitiesForLineage = async (
     new SearchIndexClass(),
     new ApiEndpointClass(),
     new MetricClass(),
+    new DashboardDataModelClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
@@ -498,7 +504,8 @@ export const addPipelineBetweenNodes = async (
   pipelineItem?: PipelineClass,
   bVerifyPipeline = false
 ) => {
-  await sourceEntity.visitEntityPage(page);
+  await redirectToHomePage(page);
+  await sourceEntity.visitEntityPageWithCustomSearchBox(page);
   await visitLineageTab(page);
   await editLineage(page);
 
@@ -617,7 +624,8 @@ export const verifyExportLineageCSV = async (
     ContainerClass,
     SearchIndexClass,
     ApiEndpointClass,
-    MetricClass
+    MetricClass,
+    DashboardDataModelClass
   ],
   pipeline: PipelineClass
 ) => {

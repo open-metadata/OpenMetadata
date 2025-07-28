@@ -216,7 +216,7 @@ import os.org.opensearch.search.sort.SortOrder;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
-public class OpenSearchClient implements SearchClient {
+public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Getter protected final RestHighLevelClient client;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
@@ -480,11 +480,22 @@ public class OpenSearchClient implements SearchClient {
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
+
+      // Start search operation timing using Micrometer
+      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
       SearchResponse searchResponse =
           client.search(
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
+
+      // End search operation timing
+      if (searchTimerSample != null) {
+        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+            searchTimerSample);
+      }
       if (Boolean.FALSE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
@@ -498,8 +509,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     LOG.info("Searching with NLQ: {}", request.getQuery());
 
     if (nlqService != null) {
@@ -523,8 +533,18 @@ public class OpenSearchClient implements SearchClient {
           // Use DFS Query Then Fetch for consistent scoring across shards
           searchRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
 
+          // Start search operation timing using Micrometer
+          io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+              org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
+
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
+
+          // End search operation timing
+          if (searchTimerSample != null) {
+            org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+                searchTimerSample);
+          }
           if (response.getHits() != null
               && response.getHits().getTotalHits() != null
               && response.getHits().getTotalHits().value > 0) {
@@ -1381,10 +1401,140 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    try {
+      // Use the EXACT same search building logic as the regular search method
+      // to ensure consistency across all endpoints
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      OpenSearchSourceBuilderFactory searchBuilderFactory =
+          new OpenSearchSourceBuilderFactory(searchSettings);
+
+      // Build the search exactly as doSearch does
+      SearchSourceBuilder searchSourceBuilder =
+          searchBuilderFactory.getSearchSourceBuilder(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // No RBAC for now as per user's comment about it being disabled
+
+      // Apply query filter - use the same method as regular search
+      buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
+
+      // Apply post filter if specified
+      if (!nullOrEmpty(request.getPostFilter())) {
+        try {
+          XContentParser filterParser =
+              XContentType.JSON
+                  .xContent()
+                  .createParser(
+                      OsUtils.osXContentRegistry,
+                      LoggingDeprecationHandler.INSTANCE,
+                      request.getPostFilter());
+          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+          searchSourceBuilder.postFilter(filter);
+        } catch (Exception ex) {
+          LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
+        }
+      }
+
+      // Apply deleted filter - use the same logic as regular search
+      if (!nullOrEmpty(request.getDeleted())) {
+        String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+        if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+          BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+          boolQueryBuilder.should(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.existsQuery("deleted"))
+                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+          boolQueryBuilder.should(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .mustNot(QueryBuilders.existsQuery("deleted")));
+          searchSourceBuilder.query(boolQueryBuilder);
+        } else {
+          searchSourceBuilder.query(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        }
+      }
+
+      // We only want aggregations, not search results
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.from(0);
+      searchSourceBuilder.trackTotalHits(true);
+
+      // The entityType aggregation is already added by the search builder factory
+      // from the global aggregations configuration, so we don't need to add it again
+
+      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      // Execute the search
+      os.org.opensearch.action.search.SearchRequest osSearchRequest =
+          new os.org.opensearch.action.search.SearchRequest(resolvedIndex);
+      osSearchRequest.source(searchSourceBuilder);
+
+      LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
+      LOG.info(
+          "Query string: '{}', Query builder: {}",
+          request.getQuery(),
+          searchSourceBuilder.toString());
+      SearchResponse searchResponse = client.search(osSearchRequest, RequestOptions.DEFAULT);
+
+      // Convert to API response
+      String jsonResponse = searchResponse.toString();
+      return Response.status(OK).entity(jsonResponse).build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
+  }
+
+  @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+    // Check if query is JSON format or simple search query
+    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
+      // Try to parse as JSON first (for backward compatibility with filters)
+      if (request.getQuery().trim().startsWith("{")) {
+        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+      } else {
+        // Handle as a search query (including field:value syntax)
+        OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+        // Use getSearchSourceBuilder which properly handles field:value syntax
+        SearchSourceBuilder tempBuilder =
+            searchBuilderFactory.getSearchSourceBuilder(
+                request.getIndex(), request.getQuery(), 0, 10);
+        searchSourceBuilder.query(tempBuilder.query());
+      }
+    }
+
+    // Apply deleted filter if specified
+    if (request.getDeleted() != null) {
+      QueryBuilder currentQuery = searchSourceBuilder.query();
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+
+      if (currentQuery != null) {
+        boolQuery.must(currentQuery);
+      }
+      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+
+      searchSourceBuilder.query(boolQuery);
+    }
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
@@ -1590,8 +1740,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     if (isClientAvailable) {
       BulkRequest bulkRequest = new BulkRequest();
       for (Map<String, String> docAndId : docsAndIds) {
@@ -2434,6 +2583,11 @@ public class OpenSearchClient implements SearchClient {
     return client.getLowLevelClient();
   }
 
+  @Override
+  public RestHighLevelClient getHighLevelClient() {
+    return client;
+  }
+
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
@@ -2504,7 +2658,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public List<String> getDataStreams(String prefix) throws IOException {
+  public List<String> getDataStreams(String prefix) {
     try {
       GetDataStreamRequest request = new GetDataStreamRequest(prefix + "*");
       GetDataStreamResponse response =
@@ -2748,6 +2902,52 @@ public class OpenSearchClient implements SearchClient {
         LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
       } catch (Exception e) {
         LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+
+    Map<String, Object> params = new HashMap<>();
+
+    params.put("columnUpdates", originalUpdatedColumnFqnMap);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("deletedFQNs", deletedColumns);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateOpenSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
       }
     }
   }

@@ -1,5 +1,6 @@
 ---
 title: Run the Glue Pipeline Connector Externally
+description: Use the YAML config for Glue pipeline ingestion to define metadata patterns, connection parameters, and lineage capture logic.
 slug: /connectors/pipeline/glue-pipeline/yaml
 ---
 

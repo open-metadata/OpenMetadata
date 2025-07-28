@@ -36,10 +36,15 @@ export interface UICustomization {
     /**
      * List of Pages in the UI customization.
      */
-    pages:      Team[];
-    updatedAt?: number;
-    updatedBy?: string;
-    version?:   number;
+    pages: Team[];
+    /**
+     * Persona default preferences. Admin can customize certain UI elements per persona as base
+     * configuration.
+     */
+    personaPreferences?: PersonaPreferences[];
+    updatedAt?:          number;
+    updatedBy?:          string;
+    version?:            number;
 }
 
 /**
@@ -137,9 +142,9 @@ export interface NavigationItem {
  */
 export interface Team {
     /**
-     * Domain this page belongs to.
+     * Domains this page belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity Type.
      */
@@ -164,16 +169,14 @@ export interface Team {
 }
 
 /**
- * Domain this page belongs to.
+ * Domains this page belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * KnowledgePanels that are part of this Page.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -279,4 +282,38 @@ export interface Tab {
      * Name of the tab.
      */
     name: string;
+}
+
+/**
+ * User-specific preferences for a persona that override default persona UI customization.
+ * These are limited customizations that users can apply to personalize their experience
+ * while still inheriting the base persona configuration.
+ */
+export interface PersonaPreferences {
+    /**
+     * User's personal customizations for the landing page.
+     */
+    landingPageSettings?: LandingPageSettings;
+    /**
+     * UUID of the persona these preferences belong to.
+     */
+    personaId: string;
+    /**
+     * Name of the persona for quick reference and linking.
+     */
+    personaName: string;
+}
+
+/**
+ * User's personal customizations for the landing page.
+ */
+export interface LandingPageSettings {
+    /**
+     * Custom header background color for the landing page.
+     */
+    headerColor?: string;
+    /**
+     * Reference to a custom header background image (reserved for future use).
+     */
+    headerImage?: string;
 }

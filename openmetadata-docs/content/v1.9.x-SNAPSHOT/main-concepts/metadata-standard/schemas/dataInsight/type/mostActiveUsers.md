@@ -1,5 +1,6 @@
 ---
 title: Most Active Users | OpenMetadata User Activity
+description: Connect Mostactiveusers to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/mostactiveusers
 ---
 

@@ -37,6 +37,8 @@
         "workflowSettings",
         "scimConfiguration",
         "securityConfiguration"
+        "entityRulesSettings",
+        "scimConfiguration"
       ]
     }
   },

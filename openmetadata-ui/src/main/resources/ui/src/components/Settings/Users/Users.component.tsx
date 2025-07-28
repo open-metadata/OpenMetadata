@@ -49,6 +49,7 @@ import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
 import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './users.less';
+import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
@@ -58,8 +59,10 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
-    useRequiredParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } = useRequiredParams<{
+    tab: UserPageTabs;
+    subTab: ActivityFeedTabs;
+  }>();
   const { fqn: decodedUsername } = useFqn();
   const { isAdminUser } = useAuth();
   const navigate = useNavigate();
@@ -238,6 +241,22 @@ const Users = ({
           },
         }),
       },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.PERMISSIONS}
+            isActive={activeTab === UserPageTabs.PERMISSIONS}
+            name={t('label.permissions')}
+          />
+        ),
+        key: UserPageTabs.PERMISSIONS,
+        children: (
+          <UserPermissions
+            isLoggedInUser={isLoggedInUser}
+            username={userData.name}
+          />
+        ),
+      },
       ...(isLoggedInUser
         ? [
             {
@@ -260,11 +279,13 @@ const Users = ({
     [
       currentTab,
       userData.id,
+      userData.name,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
       subTab,
+      isLoggedInUser,
     ]
   );
 
@@ -301,7 +322,7 @@ const Users = ({
             />
             <DomainLabelNew
               multiple
-              domain={userData?.domains}
+              domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
               entityId={userData.id ?? ''}
               entityType={EntityType.USER}
