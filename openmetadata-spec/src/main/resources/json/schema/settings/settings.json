@@ -36,9 +36,8 @@
         "lineageSettings",
         "workflowSettings",
         "scimConfiguration",
-        "securityConfiguration"
-        "entityRulesSettings",
-        "scimConfiguration"
+        "securityConfiguration",
+        "entityRulesSettings"
       ]
     }
   },
