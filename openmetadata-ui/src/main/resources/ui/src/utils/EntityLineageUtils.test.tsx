@@ -302,6 +302,122 @@ describe('Test EntityLineageUtils utility', () => {
     expect(emptyResult.nodes).toEqual([]);
   });
 
+  it('getConnectedNodesEdges should filter out root nodes from child nodes', () => {
+    const selectedNode = {
+      id: '1',
+      position: { x: 0, y: 0 },
+      data: { node: { fullyQualifiedName: '1' } },
+    };
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '1' } },
+      },
+      {
+        id: '2',
+        position: { x: 0, y: 0 },
+        data: {
+          node: { fullyQualifiedName: '2' },
+          isRootNode: true, // This should be filtered out
+        },
+      },
+      {
+        id: '3',
+        position: { x: 0, y: 0 },
+        data: {
+          node: { fullyQualifiedName: '3' },
+          isRootNode: false, // This should be included
+        },
+      },
+      {
+        id: '4',
+        position: { x: 0, y: 0 },
+        data: {
+          node: { fullyQualifiedName: '4' },
+          // No isRootNode property - should be included
+        },
+      },
+    ];
+    const edges = [
+      { id: '1', source: '1', target: '2' },
+      { id: '2', source: '1', target: '3' },
+      { id: '3', source: '1', target: '4' },
+    ];
+    const direction = LineageDirection.Downstream;
+
+    const result = getConnectedNodesEdges(
+      selectedNode,
+      nodes,
+      edges,
+      direction
+    );
+
+    expect(result).toHaveProperty('nodes');
+    expect(result).toHaveProperty('edges');
+    expect(result).toHaveProperty('nodeFqn');
+
+    // Should only include nodes that are not root nodes
+    expect(result.nodes).toHaveLength(2);
+    expect(result.nodes.find((node) => node.id === '2')).toBeUndefined(); // Root node should be filtered out
+    expect(result.nodes.find((node) => node.id === '3')).toBeDefined(); // Non-root node should be included
+    expect(result.nodes.find((node) => node.id === '4')).toBeDefined(); // Node without isRootNode should be included
+
+    // Verify nodeFqn contains only the filtered nodes
+    expect(result.nodeFqn).toHaveLength(2);
+    expect(result.nodeFqn).toContain('3');
+    expect(result.nodeFqn).toContain('4');
+    expect(result.nodeFqn).not.toContain('2'); // Root node FQN should not be included
+  });
+
+  it('getConnectedNodesEdges should handle nodes with undefined isRootNode property', () => {
+    const selectedNode = {
+      id: '1',
+      position: { x: 0, y: 0 },
+      data: { node: { fullyQualifiedName: '1' } },
+    };
+    const nodes = [
+      {
+        id: '1',
+        position: { x: 0, y: 0 },
+        data: { node: { fullyQualifiedName: '1' } },
+      },
+      {
+        id: '2',
+        position: { x: 0, y: 0 },
+        data: {
+          node: { fullyQualifiedName: '2' },
+          isRootNode: undefined, // Should be treated as falsy and included
+        },
+      },
+      {
+        id: '3',
+        position: { x: 0, y: 0 },
+        data: {
+          node: { fullyQualifiedName: '3' },
+          isRootNode: null, // Should be treated as falsy and included
+        },
+      },
+    ];
+    const edges = [
+      { id: '1', source: '1', target: '2' },
+      { id: '2', source: '1', target: '3' },
+    ];
+    const direction = LineageDirection.Downstream;
+
+    const result = getConnectedNodesEdges(
+      selectedNode,
+      nodes,
+      edges,
+      direction
+    );
+
+    // Should include nodes with undefined/null isRootNode
+    expect(result.nodes).toHaveLength(2);
+    expect(result.nodes.find((node) => node.id === '2')).toBeDefined();
+    expect(result.nodes.find((node) => node.id === '3')).toBeDefined();
+  });
+
   it('should call addLineage with the provided edge', async () => {
     const edge = {
       edge: { fromEntity: {}, toEntity: {} },
