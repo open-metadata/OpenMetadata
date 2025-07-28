@@ -46,6 +46,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   applications: [],
   appPreferences: {},
   appVersion: undefined,
+  rdfEnabled: false,
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
@@ -152,5 +153,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setAppVersion: (version: string) => {
     set({ appVersion: version });
+  },
+  setRdfEnabled: (enabled: boolean) => {
+    set({ rdfEnabled: enabled });
   },
 }));

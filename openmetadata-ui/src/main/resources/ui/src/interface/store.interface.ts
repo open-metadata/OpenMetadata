@@ -53,6 +53,7 @@ export interface ApplicationStore
   inlineAlertDetails?: InlineAlertProps;
   applications: string[];
   appPreferences: AppPreferences;
+  rdfEnabled?: boolean;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
@@ -74,6 +75,7 @@ export interface ApplicationStore
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   setApplicationsName: (applications: string[]) => void;
   setAppVersion: (version: string) => void;
+  setRdfEnabled: (enabled: boolean) => void;
 }
 
 export interface DomainStore {

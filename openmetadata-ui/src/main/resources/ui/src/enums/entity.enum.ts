@@ -188,6 +188,7 @@ export enum EntityTabs {
   TABLE_QUERIES = 'table_queries',
   PROFILER = 'profiler',
   LINEAGE = 'lineage',
+  KNOWLEDGE_GRAPH = 'knowledge_graph',
   DBT = 'dbt',
   VIEW_DEFINITION = 'view_definition',
   SCHEMA_DEFINITION = 'schema_definition',

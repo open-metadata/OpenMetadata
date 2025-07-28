@@ -6,35 +6,40 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import javax.inject.Inject;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import javax.validation.constraints.NotEmpty;
-import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.rdf.sql2sparql.SqlToSparqlService;
+import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 
 @Path("/v1/rdf/sql")
 @Tag(name = "RDF SQL", description = "Execute SQL queries over RDF data")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Collection(name = "rdf-sql", order = 9)
 @Slf4j
 public class RdfSqlResource {
 
   @Context private UriInfo uriInfo;
-
   @Context private Authorizer authorizer;
 
-  private final SqlToSparqlService sqlToSparqlService;
-  private final boolean rdfEnabled;
+  private SqlToSparqlService sqlToSparqlService;
+  private boolean rdfEnabled;
+  private OpenMetadataApplicationConfig config;
 
-  @Inject
-  public RdfSqlResource(OpenMetadataApplicationConfig config) {
+  public RdfSqlResource() {
+    // Default constructor for resource creation
+  }
+
+  public void initialize(OpenMetadataApplicationConfig config) {
+    this.config = config;
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     this.rdfEnabled = rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled();
 

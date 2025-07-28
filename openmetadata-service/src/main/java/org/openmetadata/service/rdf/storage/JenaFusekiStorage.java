@@ -227,12 +227,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
           switch (format.toLowerCase()) {
             case "json":
+            case "application/json":
+            case "application/sparql-results+json":
               ByteArrayOutputStream out = new ByteArrayOutputStream();
               ResultSetFormatter.outputAsJSON(out, results);
               return out.toString();
             case "xml":
+            case "application/xml":
+            case "application/sparql-results+xml":
               return ResultSetFormatter.asXMLString(results);
             case "csv":
+            case "text/csv":
               ByteArrayOutputStream csvOut = new ByteArrayOutputStream();
               ResultSetFormatter.outputAsCSV(csvOut, results);
               return csvOut.toString();

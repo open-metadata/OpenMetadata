@@ -446,38 +446,11 @@ operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
   operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}
 
-# RDF/Knowledge Graph Configuration
 rdf:
-  # Enable or disable RDF support
-  enabled: ${RDF_ENABLED:-false}
-  
-  # Base URI for RDF resources
+  enabled: ${RDF_ENABLED:-true}
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
-  
-  # Storage type: FUSEKI or QLEVER (QLEVER not yet implemented)
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
-  
-  # Remote RDF store endpoint (required when enabled)
-  remoteEndpoint: ${RDF_REMOTE_ENDPOINT:-"http://openmetadata-fuseki:3030/openmetadata"}
-  
-  # Authentication for remote RDF store (optional)
-  remoteUsername: ${RDF_REMOTE_USERNAME:-}
-  remotePassword: ${RDF_REMOTE_PASSWORD:-}
-  
-  # Enable JSON-LD support in REST APIs
-  jsonLdEnabled: ${RDF_JSONLD_ENABLED:-true}
-  
-  # Enable SPARQL endpoint proxy (when enabled)
-  sparqlEndpointEnabled: ${RDF_SPARQL_ENABLED:-false}
-  
-  # Port for SPARQL endpoint proxy (when enabled)
-  sparqlPort: ${RDF_SPARQL_PORT:-3030}
-  
-  # Enable automatic RDF generation for entities
-  autoGenerateRdf: ${RDF_AUTO_GENERATE:-true}
-  
-  # Batch size for sync operations
-  syncBatchSize: ${RDF_SYNC_BATCH_SIZE:-100}
-  
-  # Enable inference (experimental)
-  enableInference: ${RDF_ENABLE_INFERENCE:-false}
+  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  username: ${RDF_REMOTE_USERNAME:-"admin"}
+  password: ${RDF_REMOTE_PASSWORD:-"admin"}
+  dataset: ${RDF_DATASET:-"openmetadata"}

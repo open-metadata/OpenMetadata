@@ -132,6 +132,7 @@ import SampleDataTableComponent from '../components/Database/SampleDataTable/Sam
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -158,6 +159,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
   FrequentlyJoinedTables,
@@ -899,6 +901,36 @@ export const getTableDetailPageBaseTabs = ({
           />
         </LineageProvider>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.KNOWLEDGE_GRAPH}
+          name={get(
+            labelMap,
+            EntityTabs.KNOWLEDGE_GRAPH,
+            t('label.knowledge-graph')
+          )}
+        />
+      ),
+      key: EntityTabs.KNOWLEDGE_GRAPH,
+      children: (
+        <KnowledgeGraph
+          depth={2}
+          entity={
+            tableDetails
+              ? {
+                  id: tableDetails.id,
+                  name: tableDetails.name,
+                  fullyQualifiedName: tableDetails.fullyQualifiedName,
+                  type: EntityType.TABLE,
+                }
+              : undefined
+          }
+          entityType={EntityType.TABLE}
+        />
+      ),
+      isHidden: !useApplicationStore.getState().rdfEnabled,
     },
     {
       label: (

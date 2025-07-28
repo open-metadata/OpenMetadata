@@ -119,8 +119,6 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
-import org.openmetadata.service.resources.rdf.RdfResource;
-import org.openmetadata.service.resources.rdf.RdfSqlResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -747,13 +745,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
-    // Register RDF resources if enabled
+    // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null
         && config.getRdfConfiguration().getEnabled() != null
-        && config.getRdfConfiguration().getEnabled()) {
-      environment.jersey().register(new RdfResource(authorizer, config));
-      environment.jersey().register(new RdfSqlResource(config));
-      LOG.info("RDF REST API endpoints registered");
+        && Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
+      LOG.info("RDF support is enabled and resources will be registered via CollectionRegistry");
+    } else {
+      LOG.info(
+          "RDF support is disabled - config: {}, enabled: {}",
+          config.getRdfConfiguration(),
+          config.getRdfConfiguration() != null
+              ? config.getRdfConfiguration().getEnabled()
+              : "null");
     }
 
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
