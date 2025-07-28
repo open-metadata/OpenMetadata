@@ -1,5 +1,6 @@
 ---
-title: storageMetadataADLSConfig
+title: Storagemetadataadlsconfig | Official Documentation
+description: Define schema for Azure Data Lake Storage metadata ingestion. Includes configuration of containers, credentials, and sync operations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagemetadataadlsconfig
 ---
 
