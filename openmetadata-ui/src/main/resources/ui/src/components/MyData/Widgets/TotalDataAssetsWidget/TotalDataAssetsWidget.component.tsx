@@ -23,7 +23,7 @@ import {
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
 } from 'recharts';
-import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-total-data-assets.svg';
+import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { GRAY_600 } from '../../../../constants/Color.constants';
@@ -217,7 +217,7 @@ const TotalDataAssetsWidget = ({
                     })
                   )}
                   dataKey="value"
-                  innerRadius={75}
+                  innerRadius={80}
                   nameKey="name"
                   outerRadius={117}
                   paddingAngle={1}>
