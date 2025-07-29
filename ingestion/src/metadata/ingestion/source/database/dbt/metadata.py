@@ -145,7 +145,7 @@ class DbtSource(DbtServiceSource):
         By default for DBT nothing is required to be prepared
         """
 
-        def get_dbt_owner(
+    def get_dbt_owner(
         self, manifest_node: Any, catalog_node: Optional[Any]
     ) -> Optional[EntityReferenceList]:
         """
