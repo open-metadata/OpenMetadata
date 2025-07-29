@@ -409,6 +409,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     fieldSupportMap.put(FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags));
     fieldSupportMap.put(FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners));
+    fieldSupportMap.put(FIELD_FOLLOWERS, Pair.of(supportsFollower, this::fetchAndSetFollowers));
     fieldSupportMap.put(FIELD_DOMAINS, Pair.of(supportsDomains, this::fetchAndSetDomains));
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
@@ -5018,6 +5019,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  private void fetchAndSetFollowers(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_FOLLOWERS) || !supportsFollower) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> followersMap = batchFetchFollowers(entities);
+    for (T entity : entities) {
+      entity.setFollowers(followersMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
   private void fetchAndSetTags(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || !supportsTags) {
       return;
@@ -5141,6 +5152,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return ownersMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<T> entities) {
+    if (entities.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> followerRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), Relationship.FOLLOWS.ordinal(), Include.ALL);
+
+    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : followerRecords) {
+      UUID entityId = UUID.fromString(record.getToId());
+      followersMap
+          .computeIfAbsent(entityId, k -> new ArrayList<>())
+          .add(
+              new EntityReference()
+                  .withId(UUID.fromString(record.getFromId()))
+                  .withType(record.getFromEntity()));
+    }
+
+    return followersMap;
   }
 
   /**

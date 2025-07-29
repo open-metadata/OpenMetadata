@@ -899,14 +899,36 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         }
 
         if (fields.contains("followers") && supportsFollowers) {
-          // Note: followers might be null if no followers exist, which is expected
-          List<?> bulkFollowers = (List<?>) getField(entity, "followers");
-          List<?> individualFollowers = (List<?>) getField(individualEntity, "followers");
+          // Get the actual followers from both bulk and individual loading
+          List<EntityReference> bulkFollowers = entity.getFollowers();
+          List<EntityReference> individualFollowers = individualEntity.getFollowers();
+
+          // The test should verify that followers are actually fetched and populated
+          // Previously this might have passed because both were null/empty due to missing field
+          // support
           assertEquals(
               listOrEmpty(bulkFollowers).size(),
               listOrEmpty(individualFollowers).size(),
               "Followers field should be consistently loaded in bulk operations for fields: "
                   + fields);
+
+          // Add verification that if followers exist, they have proper entity references
+          if (!listOrEmpty(bulkFollowers).isEmpty()) {
+            for (EntityReference follower : bulkFollowers) {
+              assertNotNull(follower.getId(), "Follower should have valid ID");
+              assertNotNull(follower.getName(), "Follower should have valid name");
+              assertNotNull(follower.getType(), "Follower should have valid type");
+            }
+          }
+
+          // Verify that the followers data matches between bulk and individual fetch
+          if (!listOrEmpty(bulkFollowers).isEmpty()
+              && !listOrEmpty(individualFollowers).isEmpty()) {
+            assertEquals(
+                bulkFollowers,
+                individualFollowers,
+                "Followers data should be identical between bulk and individual loading");
+          }
         }
       }
 
