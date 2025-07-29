@@ -13,6 +13,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ import {
 } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { updateUserDetail } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getImageWithResolutionAndFallback,
@@ -94,11 +96,8 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const {
-    currentUser,
-    selectedPersona,
-    setSelectedPersona: updateSelectedPersona,
-  } = useApplicationStore();
+  const { currentUser, selectedPersona, setCurrentUser } =
+    useApplicationStore();
   const { onLogoutHandler } = useAuthProvider();
 
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
@@ -120,7 +119,18 @@ export const UserProfileIcon = () => {
     if (!currentUser) {
       return;
     }
-    updateSelectedPersona(persona);
+
+    const isAlreadySelected = selectedPersona?.id === persona.id;
+
+    const updatedDetails = {
+      ...currentUser,
+      defaultPersona: isAlreadySelected ? undefined : persona,
+    };
+    const jsonPatch = compare(currentUser, updatedDetails);
+
+    const response = await updateUserDetail(currentUser?.id, jsonPatch);
+
+    setCurrentUser(response);
   };
 
   useEffect(() => {

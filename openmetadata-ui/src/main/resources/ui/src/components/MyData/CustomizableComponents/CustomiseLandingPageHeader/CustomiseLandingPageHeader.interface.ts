@@ -14,15 +14,16 @@ import { Document } from '../../../../generated/entity/docStore/document';
 
 export interface CustomiseLandingPageHeaderProps {
   addedWidgetsList?: string[];
+  backgroundColor?: string;
   handleAddWidget?: (
     newWidgetData: Document,
     placeholderWidgetKey: string,
     widgetSize: number
   ) => void;
   hideCustomiseButton?: boolean;
-  overlappedContainer?: boolean;
-  backgroundColor?: string;
+  isPreviewHeader?: boolean;
   onBackgroundColorUpdate?: (color: string) => Promise<void>;
-  placeholderWidgetKey?: string;
   onHomePage?: boolean;
+  overlappedContainer?: boolean;
+  placeholderWidgetKey?: string;
 }

@@ -70,7 +70,7 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     },
     {
       key: PageType.LandingPage,
-      label: i18n.t('label.homepage'),
+      label: i18n.t('label.home-page'),
       description: 'Customize the My data page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('Homepage')],
     },

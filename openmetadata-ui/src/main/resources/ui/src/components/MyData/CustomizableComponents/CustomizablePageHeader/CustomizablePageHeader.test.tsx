@@ -179,7 +179,7 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    expect(translation).toHaveBeenCalledWith('label.homepage');
+    expect(translation).toHaveBeenCalledWith('label.home-page');
   });
 
   it('should handle navigation link to persona details', () => {
