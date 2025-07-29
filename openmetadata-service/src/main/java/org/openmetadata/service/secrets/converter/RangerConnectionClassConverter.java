@@ -1,15 +1,15 @@
 package org.openmetadata.service.secrets.converter;
 
-import java.util.List;
+import org.openmetadata.schema.services.connections.security.ranger.RangerBasicAuth;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
-import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.utils.JsonUtils;
+
+import java.util.List;
 
 /** Converter class to get an `RangerConnection` object. */
 public class RangerConnectionClassConverter extends ClassConverter {
 
-  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(S3Connection.class, String.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(RangerBasicAuth.class);
 
   public RangerConnectionClassConverter() {
     super(RangerConnection.class);

@@ -11,29 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Apache Ranger Connection Config
- */
-export interface RangerConnection {
-    /**
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType: AuthenticationType;
-    /**
-     * Apache Ranger Admin URL.
-     */
-    hostPort: string;
-    /**
-     * Service Type
-     */
-    type?: RangerType;
-}
-
-/**
- * Authentication type to connect to Apache Ranger.
- *
  * Configuration for connecting to Ranger Basic Auth.
  */
-export interface AuthenticationType {
+export interface BasicAuth {
     /**
      * Ranger password to authenticate to the API.
      */
@@ -42,13 +22,4 @@ export interface AuthenticationType {
      * Ranger user to authenticate to the API.
      */
     username: string;
-}
-
-/**
- * Service Type
- *
- * Apache Ranger service type
- */
-export enum RangerType {
-    Ranger = "Ranger",
 }

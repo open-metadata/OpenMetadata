@@ -196,15 +196,16 @@ export interface RangerConnection {
 
 /**
  * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationType {
     /**
-     * Password to connect to Apache Ranger.
+     * Ranger password to authenticate to the API.
      */
     password: string;
     /**
-     * Username to connect to Apache Ranger. This user should have privileges to read all
-     * policies and metadata in Ranger.
+     * Ranger user to authenticate to the API.
      */
     username: string;
 }

@@ -14,28 +14,6 @@
         "Ranger"
       ],
       "default": "Ranger"
-    },
-    "basicAuth": {
-      "title": "Basic Auth",
-      "type": "object",
-      "properties": {
-        "username": {
-          "title": "Username",
-          "description": "Username to connect to Apache Ranger. This user should have privileges to read all policies and metadata in Ranger.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Password to connect to Apache Ranger.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": [
-        "username",
-        "password"
-      ],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -57,7 +35,7 @@
       "description": "Authentication type to connect to Apache Ranger.",
       "oneOf": [
         {
-          "$ref": "#/definitions/basicAuth"
+          "$ref": "ranger/basicAuth.json"
         }
       ]
     }

@@ -1945,6 +1945,8 @@ export enum AuthProvider {
  * AWS credentials configs.
  *
  * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthConfigurationType {
     /**
@@ -1954,7 +1956,7 @@ export interface AuthConfigurationType {
      *
      * Elastic Search Password for Login
      *
-     * Password to connect to Apache Ranger.
+     * Ranger password to authenticate to the API.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -1972,8 +1974,7 @@ export interface AuthConfigurationType {
      *
      * Elastic Search Username for Login
      *
-     * Username to connect to Apache Ranger. This user should have privileges to read all
-     * policies and metadata in Ranger.
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
