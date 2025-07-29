@@ -5,11 +5,12 @@ import uuid
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -30,9 +31,11 @@ from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauSource,
 )
 from metadata.ingestion.source.dashboard.tableau.models import (
+    DataSource,
     TableauBaseModel,
     TableauChart,
     TableauOwner,
+    UpstreamTable,
 )
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -470,6 +473,7 @@ class TableauUnitTest(TestCase):
             "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
         )
 
+
     def _setup_ssl_config(self, verify_ssl_value="no-ssl", ssl_config=None):
         """
         Helper method to set up SSL configuration for testing
@@ -603,3 +607,169 @@ class TableauUnitTest(TestCase):
         ) as mock_get_dashboards:
             list(self.tableau.get_dashboard())
             mock_get_dashboards.assert_called_once()
+
+    def test_get_datamodel_table_lineage_with_empty_from_entities(self):
+        """
+        Test that _get_datamodel_table_lineage handles empty from_entities gracefully
+        """
+        # Mock data for the test
+        mock_datamodel = DataSource(
+            id="datasource1",
+            name="Test Datasource",
+            upstreamDatasources=[
+                DataSource(
+                    id="upstream_datasource1",
+                    name="Upstream Datasource",
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table1",
+                            luid="table1_luid",
+                            name="test_table",
+                            referencedByQueries=[
+                                {
+                                    "id": "query1",
+                                    "name": "test_query",
+                                    "query": "SELECT * FROM test_table",
+                                }
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Test Data Model",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        mock_upstream_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Upstream Data Model",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        # Mock the client to return custom SQL queries
+        self.tableau.client.get_custom_sql_table_queries = MagicMock(
+            return_value=["SELECT * FROM test_table"]
+        )
+
+        # Mock the _get_datamodel method
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity
+        ):
+            # Mock the metadata search to return empty results (simulating no table entities found)
+            with patch.object(
+                self.tableau.metadata, "search_in_any_service", return_value=[]
+            ):
+                # Mock the _get_add_lineage_request method to avoid actual lineage creation
+                with patch.object(
+                    self.tableau, "_get_add_lineage_request"
+                ) as mock_lineage_request:
+                    # Call the method under test
+                    lineage_results = list(
+                        self.tableau._get_datamodel_table_lineage(
+                            datamodel=mock_datamodel,
+                            data_model_entity=mock_data_model_entity,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    # Verify that the method completes without throwing an error
+                    # Even though from_entities is empty, the method should handle it gracefully
+                    self.assertIsInstance(lineage_results, list)
+
+                    # Verify that the lineage request was called for the datamodel lineage
+                    # (but not for table lineage since from_entities was empty)
+                    mock_lineage_request.assert_called()
+
+                    # Verify that the method didn't throw any exceptions
+                    # The test passes if we reach this point without exceptions
+
+    def test_get_datamodel_table_lineage_with_none_from_entities(self):
+        """
+        Test that _get_datamodel_table_lineage handles None from_entities gracefully
+        """
+        # Mock data for the test
+        mock_datamodel = DataSource(
+            id="datasource2",
+            name="Test Datasource 2",
+            upstreamDatasources=[
+                DataSource(
+                    id="upstream_datasource2",
+                    name="Upstream Datasource 2",
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table2",
+                            luid="table2_luid",
+                            name="test_table_2",
+                            referencedByQueries=[
+                                {
+                                    "id": "query2",
+                                    "name": "test_query_2",
+                                    "query": "SELECT * FROM test_table_2",
+                                }
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Test Data Model 2",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        mock_upstream_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Upstream Data Model 2",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        # Mock the client to return custom SQL queries
+        self.tableau.client.get_custom_sql_table_queries = MagicMock(
+            return_value=["SELECT * FROM test_table_2"]
+        )
+
+        # Mock the _get_datamodel method
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity
+        ):
+            # Mock the metadata search to return None (simulating search failure)
+            with patch.object(
+                self.tableau.metadata, "search_in_any_service", return_value=None
+            ):
+                # Mock the _get_add_lineage_request method to avoid actual lineage creation
+                with patch.object(
+                    self.tableau, "_get_add_lineage_request"
+                ) as mock_lineage_request:
+                    # Call the method under test
+                    lineage_results = list(
+                        self.tableau._get_datamodel_table_lineage(
+                            datamodel=mock_datamodel,
+                            data_model_entity=mock_data_model_entity,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    # Verify that the method completes without throwing an error
+                    # Even though from_entities is None, the method should handle it gracefully
+                    self.assertIsInstance(lineage_results, list)
+
+                    # Verify that the lineage request was called for the datamodel lineage
+                    # (but not for table lineage since from_entities was None)
+                    mock_lineage_request.assert_called()
+
+                    # Verify that the method didn't throw any exceptions
+                    # The test passes if we reach this point without exceptions

@@ -88,10 +88,11 @@ function DataAssetsVersionHeader({
               {entityType !== EntityType.METADATA_SERVICE && (
                 <>
                   <DomainLabel
-                    domain={
-                      (currentVersionData as EntitiesWithDomainField).domain
-                    }
+                    multiple
                     domainDisplayName={domainDisplayName}
+                    domains={
+                      (currentVersionData as EntitiesWithDomainField).domains
+                    }
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}

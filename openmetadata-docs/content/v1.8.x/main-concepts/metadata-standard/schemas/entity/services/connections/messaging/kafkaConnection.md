@@ -1,5 +1,6 @@
 ---
 title: Kafka Connection | OpenMetadata Kafka Messaging Connection
+description: Kafka messaging connection schema for ingesting metadata from real-time event streaming services.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/kafkaconnection
 ---
 

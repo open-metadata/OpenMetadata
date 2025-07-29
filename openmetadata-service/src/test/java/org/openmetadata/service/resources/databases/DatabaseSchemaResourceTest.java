@@ -34,6 +34,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,8 +44,11 @@ import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -53,6 +57,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -60,8 +65,11 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -75,6 +83,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class DatabaseSchemaResourceTest
     extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
@@ -357,7 +366,7 @@ public class DatabaseSchemaResourceTest
             .withService(DATABASE.getService().getFullyQualifiedName())
             .withOwners(
                 List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
-            .withDomain(domain.getFullyQualifiedName());
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     Database database = databaseResourceTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Create multiple schemas - some with their own owners/domains, some without
@@ -391,7 +400,7 @@ public class DatabaseSchemaResourceTest
                     .withDomainType(DomainType.AGGREGATE)
                     .withDescription("Schema specific domain"),
                 ADMIN_AUTH_HEADERS);
-        createSchema.withDomain(schemaDomain.getFullyQualifiedName());
+        createSchema.withDomains(List.of(schemaDomain.getFullyQualifiedName()));
       }
 
       DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
@@ -411,7 +420,7 @@ public class DatabaseSchemaResourceTest
     // Test 1: Fetch schemas with pagination including inherited fields
     ResultList<DatabaseSchema> resultList =
         listEntities(
-            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domain"),
+            Map.of("database", database.getFullyQualifiedName(), "fields", "owners,domains"),
             ADMIN_AUTH_HEADERS);
 
     // Verify inheritance behavior
@@ -422,22 +431,23 @@ public class DatabaseSchemaResourceTest
           Integer.parseInt(fetchedSchema.getName().substring(fetchedSchema.getName().length() - 1));
 
       // Verify domain inheritance
-      assertNotNull(fetchedSchema.getDomain());
+      assertListNotNull(fetchedSchema.getDomains());
       if (index == 2) {
         // Schema 2 has its own domain
         assert schemaDomain != null;
         assertEquals(
             schemaDomain.getFullyQualifiedName(),
-            fetchedSchema.getDomain().getFullyQualifiedName());
+            fetchedSchema.getDomains().get(0).getFullyQualifiedName());
         assertNull(
-            fetchedSchema.getDomain().getInherited(),
+            fetchedSchema.getDomains().get(0).getInherited(),
             "Own domain should not be marked as inherited");
       } else {
         // Other schemas inherit from database
         assertEquals(
-            domain.getFullyQualifiedName(), fetchedSchema.getDomain().getFullyQualifiedName());
+            domain.getFullyQualifiedName(),
+            fetchedSchema.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedSchema.getDomain().getInherited(),
+            fetchedSchema.getDomains().get(0).getInherited(),
             "Domain should be marked as inherited from database");
       }
 
@@ -472,13 +482,14 @@ public class DatabaseSchemaResourceTest
       Table table =
           tableResourceTest.getEntityByName(
               schemas.getFirst().getFullyQualifiedName() + ".inherit_test_table",
-              "owners,domain",
+              "owners,domains",
               ADMIN_AUTH_HEADERS);
 
       // Table should inherit domain from database (schema 0 doesn't have its own domain)
-      assertNotNull(table.getDomain());
-      assertEquals(domain.getFullyQualifiedName(), table.getDomain().getFullyQualifiedName());
-      assertTrue(table.getDomain().getInherited(), "Table domain should be inherited");
+      assertListNotNull(table.getDomains());
+      assertEquals(
+          domain.getFullyQualifiedName(), table.getDomains().get(0).getFullyQualifiedName());
+      assertTrue(table.getDomains().get(0).getInherited(), "Table domain should be inherited");
 
       // Table should inherit owners from database (schema 0 doesn't have its own owners)
       assertListNotNull(table.getOwners());
@@ -613,7 +624,8 @@ public class DatabaseSchemaResourceTest
     assertTrue(listOrEmpty(updatedTable.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(
         listOrEmpty(updatedTable.getTags()).isEmpty(), "Tags should be empty after clearing");
-    assertNull(updatedTable.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedTable.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test
@@ -631,7 +643,7 @@ public class DatabaseSchemaResourceTest
             .withDescription("Initial Table Description");
 
     // Set column description
-    createTable.getColumns().getFirst().setDescription("Initial Column Description");
+    createTable.getColumns().get(0).setDescription("Initial Column Description");
 
     Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
@@ -642,7 +654,7 @@ public class DatabaseSchemaResourceTest
     List<String> csvLines = List.of(exportedCsv.split(CsvUtil.LINE_SEPARATOR));
     assertTrue(csvLines.size() > 1, "Export should contain schema, table, and column");
 
-    String header = csvLines.getFirst();
+    String header = csvLines.get(0);
     List<String> modified = new ArrayList<>();
     modified.add(header);
 
@@ -752,5 +764,254 @@ public class DatabaseSchemaResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Order(1)
+  @Test
+  void testSchemaServiceInheritanceFromDatabase(TestInfo test) throws IOException {
+    // This test verifies that schemas correctly inherit service from their database
+    // when fetched in bulk with the service field
+
+    // Use the existing DATABASE which already has a service set
+    Database database = DATABASE;
+    assertNotNull(database.getService(), "Test database should have a service");
+
+    // Create a schema in the database
+    String uniqueName = "serviceInheritanceTest" + System.currentTimeMillis();
+    CreateDatabaseSchema createSchema =
+        createRequest(uniqueName).withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Fetch schemas with the service field included
+    ResultList<DatabaseSchema> schemas =
+        listEntities(
+            Map.of(
+                "limit",
+                "10",
+                "fields",
+                "database,service",
+                "database",
+                database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(schemas.getData());
+    assertTrue(schemas.getData().size() >= 1);
+
+    // Find our created schema
+    DatabaseSchema foundSchema =
+        schemas.getData().stream()
+            .filter(s -> s.getId().equals(schema.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(foundSchema, "Created schema should be in the results");
+
+    // Verify the schema has the correct database and service
+    assertNotNull(foundSchema.getDatabase(), "Database should not be null");
+    assertEquals(database.getId(), foundSchema.getDatabase().getId());
+
+    assertNotNull(
+        foundSchema.getService(), "Service should not be null - should be inherited from database");
+    assertEquals(database.getService().getId(), foundSchema.getService().getId());
+    assertEquals(database.getService().getName(), foundSchema.getService().getName());
+
+    // Clean up
+    deleteEntity(schema.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  private SearchSchemaEntityRelationshipResult searchSchemaEntityRelationship(
+      String fqn, String queryFilter, boolean includeDeleted) throws HttpResponseException {
+    WebTarget target = getResource("databaseSchemas/entityRelationship");
+    if (fqn != null) {
+      target = target.queryParam("fqn", fqn);
+    }
+    if (queryFilter != null) {
+      target = target.queryParam("query_filter", queryFilter);
+    }
+    target = target.queryParam("includeDeleted", includeDeleted);
+
+    return TestUtils.get(target, SearchSchemaEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_schemaEntityRelationship() throws IOException {
+    // Create a schema for this test
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateDatabaseSchema createSchema = createRequest("er_test_schema_direction");
+    DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    String schemaFqn = schema.getFullyQualifiedName();
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("c1").withDataType(ColumnDataType.INT);
+    Column c2 = new Column().withName("c2").withDataType(ColumnDataType.INT);
+
+    Table upstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_upstream_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(c1)),
+            ADMIN_AUTH_HEADERS);
+
+    Table tableInSchema2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_table2_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(List.of(c2))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table upstreamRef =
+        tableTest.getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table table2Ref =
+        tableTest.getEntityByName(tableInSchema2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Create table with FK to upstream table
+    Column c1Local = new Column().withName("c1_local").withDataType(ColumnDataType.INT);
+    Column c1FkCol = new Column().withName("c1_fk").withDataType(ColumnDataType.INT);
+    Table tableInSchema1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_table1_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(List.of(c1Local, c1FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c1FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Create downstream table with FK to table2
+    Column c2Local = new Column().withName("c2_local").withDataType(ColumnDataType.INT);
+    Column c2FkCol = new Column().withName("c2_fk").withDataType(ColumnDataType.INT);
+    Table downstreamTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("er_downstream_fk")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(List.of(c2Local, c2FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c2FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Test the DatabaseSchema entityRelationship endpoint
+    SearchSchemaEntityRelationshipResult result =
+        searchSchemaEntityRelationship(schemaFqn, null, false);
+
+    // Debug: Print the full result and its key fields
+    System.out.println("Full result: " + result);
+    if (result != null && result.getData() != null) {
+      System.out.println("Full result nodes: " + result.getData().getNodes());
+      System.out.println("Full result upstreamEdges: " + result.getData().getUpstreamEdges());
+      System.out.println("Full result downstreamEdges: " + result.getData().getDownstreamEdges());
+      System.out.println("Full result paging: " + result.getPaging());
+    }
+
+    // Verify the response structure
+    assertNotNull(result);
+    assertNotNull(result.getData().getNodes());
+    assertNotNull(result.getData().getUpstreamEdges());
+    assertNotNull(result.getData().getDownstreamEdges());
+
+    // Verify we get the expected number of nodes (4 tables in the schema)
+    assertEquals(4, result.getData().getNodes().size());
+
+    // Verify we get the expected number of upstream edges (2 FK relationships)
+    assertEquals(2, result.getData().getUpstreamEdges().size());
+
+    // Verify we get no downstream edges (as expected for this setup)
+    assertEquals(2, result.getData().getDownstreamEdges().size());
+
+    // Verify all tables in the schema are present in the nodes
+    assertTrue(result.getData().getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(tableInSchema2.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertTrue(result.getData().getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+
+    // --- Pagination Test: offset=0, limit=2 ---
+    WebTarget pagedTarget1 =
+        getResource("databaseSchemas/entityRelationship")
+            .queryParam("fqn", schemaFqn)
+            .queryParam("limit", 2)
+            .queryParam("offset", 0);
+    SearchSchemaEntityRelationshipResult pagedResult1 =
+        TestUtils.get(pagedTarget1, SearchSchemaEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    // Debug: Print the paged result 1 and its key fields
+    System.out.println("Paged result 1: " + pagedResult1);
+    if (pagedResult1 != null && pagedResult1.getData() != null) {
+      System.out.println("Paged result 1 nodes: " + pagedResult1.getData().getNodes());
+      System.out.println(
+          "Paged result 1 upstreamEdges: " + pagedResult1.getData().getUpstreamEdges());
+      System.out.println(
+          "Paged result 1 downstreamEdges: " + pagedResult1.getData().getDownstreamEdges());
+      System.out.println("Paged result 1 paging: " + pagedResult1.getPaging());
+    }
+
+    assertNotNull(pagedResult1);
+    assertNotNull(pagedResult1.getData().getNodes());
+    assertEquals(2, pagedResult1.getData().getNodes().size(), "First page should return 2 nodes");
+    assertNotNull(pagedResult1.getData().getUpstreamEdges());
+    assertNotNull(pagedResult1.getData().getDownstreamEdges());
+    assertNotNull(pagedResult1.getPaging());
+    assertEquals(4, pagedResult1.getPaging().getTotal(), "Total results should be 4");
+
+    // --- Pagination Test: offset=2, limit=2 ---
+    WebTarget pagedTarget2 =
+        getResource("databaseSchemas/entityRelationship")
+            .queryParam("fqn", schemaFqn)
+            .queryParam("limit", 2)
+            .queryParam("offset", 2);
+    SearchSchemaEntityRelationshipResult pagedResult2 =
+        TestUtils.get(pagedTarget2, SearchSchemaEntityRelationshipResult.class, ADMIN_AUTH_HEADERS);
+
+    // Debug: Print the paged result 2 and its key fields
+    System.out.println("Paged result 2: " + pagedResult2);
+    if (pagedResult2 != null && pagedResult2.getData() != null) {
+      System.out.println("Paged result 2 nodes: " + pagedResult2.getData().getNodes());
+      System.out.println(
+          "Paged result 2 upstreamEdges: " + pagedResult2.getData().getUpstreamEdges());
+      System.out.println(
+          "Paged result 2 downstreamEdges: " + pagedResult2.getData().getDownstreamEdges());
+      System.out.println("Paged result 2 paging: " + pagedResult2.getPaging());
+    }
+
+    assertNotNull(pagedResult2);
+    assertNotNull(pagedResult2.getData().getNodes());
+    assertEquals(2, pagedResult2.getData().getNodes().size(), "Second page should return 2 nodes");
+    assertNotNull(pagedResult2.getData().getUpstreamEdges());
+    assertNotNull(pagedResult2.getData().getDownstreamEdges());
+    assertNotNull(pagedResult2.getPaging());
+
+    // Calculate total upstream and downstream edges across both pages (no filtering by nodes)
+    int totalUpstreamEdges =
+        pagedResult1.getData().getUpstreamEdges().size()
+            + pagedResult2.getData().getUpstreamEdges().size();
+    int totalDownstreamEdges =
+        pagedResult1.getData().getDownstreamEdges().size()
+            + pagedResult2.getData().getDownstreamEdges().size();
+    System.out.println("Total upstream edges: " + totalUpstreamEdges);
+    System.out.println("Total downstream edges: " + totalDownstreamEdges);
+    assertEquals(
+        2,
+        totalUpstreamEdges,
+        "Sum of upstream edges across pages should match total upstream edges");
+    assertEquals(
+        2,
+        totalDownstreamEdges,
+        "Sum of downstream edges across pages should match total downstream edges");
   }
 }

@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Check Entity Attributes
+description: Use this node to check attributes of entities and determine the next step in your data governance workflows based on conditions.
 slug: /how-to-guides/data-governance/workflows/elements/nodes/check-entity-attributes
 collate: true
 ---

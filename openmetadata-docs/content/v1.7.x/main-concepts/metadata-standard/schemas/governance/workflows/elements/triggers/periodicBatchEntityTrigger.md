@@ -1,5 +1,6 @@
 ---
-title: periodicBatchEntityTrigger
+title: Periodicbatchentitytrigger | Official Documentation
+description: Define periodic batch entity trigger to execute workflows at scheduled intervals or cycles.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/triggers/periodicbatchentitytrigger
 ---
 

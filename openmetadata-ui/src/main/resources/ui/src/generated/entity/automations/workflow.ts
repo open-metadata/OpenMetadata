@@ -35,10 +35,10 @@ export interface Workflow {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -172,9 +172,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  *
  * Service to be modified
  */
@@ -459,6 +456,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -724,6 +722,8 @@ export interface RequestConnection {
  *
  * Sigma Connection Config
  *
+ * ThoughtSpot Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -972,6 +972,8 @@ export interface ConfigClass {
      *
      * Sigma API url.
      *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -1066,8 +1068,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -1532,6 +1535,8 @@ export interface ConfigClass {
     /**
      * Client ID for DOMO
      *
+     * Azure Application (client) ID for service principal authentication.
+     *
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -1648,6 +1653,22 @@ export interface ConfigClass {
      */
     verifySSL?: boolean | VerifySSL;
     /**
+     * Azure Application client secret for service principal authentication.
+     *
+     * User's Client Secret.
+     *
+     * clientSecret for PowerBI.
+     *
+     * clientSecret for Sigma.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Tenant ID for PowerBI.
+     */
+    tenantId?: string;
+    /**
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
@@ -1659,14 +1680,6 @@ export interface ConfigClass {
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
-    /**
-     * User's Client Secret.
-     *
-     * clientSecret for PowerBI.
-     *
-     * clientSecret for Sigma.
-     */
-    clientSecret?: string;
     /**
      * Regex to exclude or include dashboards that matches the pattern.
      */
@@ -1705,10 +1718,6 @@ export interface ConfigClass {
      */
     scope?: string[];
     /**
-     * Tenant ID for PowerBI.
-     */
-    tenantId?: string;
-    /**
      * Fetch the PowerBI metadata using admin APIs
      */
     useAdminApis?: boolean;
@@ -1724,6 +1733,8 @@ export interface ConfigClass {
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
+     *
+     * ThoughtSpot API version to use
      *
      * Airbyte API version.
      *
@@ -1810,6 +1821,15 @@ export interface ConfigClass {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authenticationation;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -2259,6 +2279,8 @@ export enum AuthMechanismEnum {
  *
  * Access Token Auth Credentials
  *
+ * ThoughtSpot authentication configuration
+ *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -2471,6 +2493,30 @@ export enum NoConfigAuthenticationTypes {
     OAuth2 = "OAuth2",
 }
 
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Types of methods used to authenticate to the alation instance
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authenticationation {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
+}
+
 export interface AuthenticationModeObject {
     /**
      * Authentication from Connection String for AzureSQL.
@@ -2507,6 +2553,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -4096,6 +4143,8 @@ export enum TransactionMode {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -4230,6 +4279,7 @@ export enum RESTType {
     Synapse = "Synapse",
     Tableau = "Tableau",
     Teradata = "Teradata",
+    ThoughtSpot = "ThoughtSpot",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
@@ -4406,6 +4456,7 @@ export enum ServiceType {
     API = "Api",
     Dashboard = "Dashboard",
     Database = "Database",
+    Drive = "Drive",
     Messaging = "Messaging",
     Metadata = "Metadata",
     MlModel = "MlModel",

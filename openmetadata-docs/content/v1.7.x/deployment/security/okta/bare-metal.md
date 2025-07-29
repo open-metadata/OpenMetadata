@@ -1,5 +1,6 @@
 ---
-title: Okta SSO for Bare Metal
+title: Okta SSO for Bare Metal | Official Documentation
+description: Connect Bare Metal to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /deployment/security/okta/bare-metal
 collate: false
 ---

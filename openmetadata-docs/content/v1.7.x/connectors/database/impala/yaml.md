@@ -1,5 +1,6 @@
 ---
 title: Run the Impala Connector Externally
+description: Use YAML to configure Impala ingestion and extract schema, lineage, and profiling metadata.
 slug: /connectors/database/impala/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/impala/yaml
 name="Impala"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

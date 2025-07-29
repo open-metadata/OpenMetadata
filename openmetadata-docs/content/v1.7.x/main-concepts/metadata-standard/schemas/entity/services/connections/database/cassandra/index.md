@@ -1,5 +1,6 @@
 ---
 title: Cassandra Connection | OpenMetadata Cassandra
+description: Get started with cassandra. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandra
 ---
 

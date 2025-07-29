@@ -1,5 +1,6 @@
 ---
 title: Run the Delta Lake Connector Externally
+description: Configure Delta Lake ingestion using YAML to extract structured metadata, table properties, and data lineage.
 slug: /connectors/database/deltalake/yaml
 ---
 
@@ -8,7 +9,7 @@ name="Delta Lake"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Auto-Classification"]
 / %}
 
 In this section, we provide guides and references to use the Delta Lake connector.

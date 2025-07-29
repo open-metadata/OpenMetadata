@@ -70,7 +70,7 @@ export const getQueryFilterForDatabase = (
     },
   });
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {
@@ -139,7 +139,7 @@ export const getDatabasePageBaseTabs = ({
           count={schemaInstanceCount}
           id={EntityTabs.SCHEMAS}
           isActive={activeTab === EntityTabs.SCHEMAS}
-          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.schema-plural')}
+          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.database-schema')}
         />
       ),
       key: EntityTabs.SCHEMAS,

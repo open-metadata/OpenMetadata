@@ -45,12 +45,13 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   inlineAlertDetails: undefined,
   applications: [],
   appPreferences: {},
+  appVersion: undefined,
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
   },
 
-  setSelectedPersona: (persona: EntityReference) => {
+  setSelectedPersona: (persona: EntityReference | undefined) => {
     set({ selectedPersona: persona });
   },
 
@@ -59,13 +60,16 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setCurrentUser: (user) => {
     const { personas, defaultPersona } = user;
-    // Update selected Persona to fetch the customized pages
-    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
-      set({ selectedPersona: defaultPersona });
-    }
+
+    const doesDefaultPersonaExist = personas?.find(
+      (p) => p.id === defaultPersona?.id
+    );
 
     // Update the current user
-    set({ currentUser: user });
+    set({
+      currentUser: user,
+      selectedPersona: doesDefaultPersonaExist ? defaultPersona : undefined,
+    });
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
     set({ authConfig });
@@ -148,5 +152,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setApplicationsName: (applications: string[]) => {
     set({ applications: applications });
+  },
+  setAppVersion: (version: string) => {
+    set({ appVersion: version });
   },
 }));

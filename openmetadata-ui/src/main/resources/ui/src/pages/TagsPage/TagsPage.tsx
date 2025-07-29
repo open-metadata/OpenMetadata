@@ -82,7 +82,7 @@ const TagsPage = () => {
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -137,7 +137,7 @@ const TagsPage = () => {
         fields: [
           TabSpecificField.TERM_COUNT,
           TabSpecificField.OWNERS,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
         ],
         limit: 1000,
       });
@@ -170,7 +170,7 @@ const TagsPage = () => {
             TabSpecificField.OWNERS,
             TabSpecificField.USAGE_COUNT,
             TabSpecificField.TERM_COUNT,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
           ],
         });
         if (currentClassification) {

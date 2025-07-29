@@ -1,5 +1,6 @@
 ---
 title: MariaDB Connection | OpenMetadata MariaDB
+description: Get started with mariadbconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mariadbconnection
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: Governance Workflows - Triggers
+title: Governance Workflows - Triggers | Official Documentation
+description: Configure custom triggers in governance workflows to respond to metadata changes or schedule recurring logic.
 slug: /how-to-guides/data-governance/workflows/elements/triggers
 collate: true
 ---

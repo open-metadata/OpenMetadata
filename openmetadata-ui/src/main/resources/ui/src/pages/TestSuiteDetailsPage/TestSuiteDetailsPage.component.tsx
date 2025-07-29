@@ -56,7 +56,10 @@ import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../pages/DataQuality/DataQualityPage.interface';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCaseToLogicalTestSuite,
@@ -136,7 +139,10 @@ const TestSuiteDetailsPage = () => {
     return [
       {
         name: t('label.test-suite-plural'),
-        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+        url: getDataQualityPagePath(
+          DataQualityPageTabs.TEST_SUITES,
+          DataQualitySubTabs.BUNDLE_SUITES
+        ),
       },
       {
         name: getEntityName(testSuite),
@@ -226,13 +232,16 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+        fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
         include: Include.All,
       });
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+          url: getDataQualityPagePath(
+            DataQualityPageTabs.TEST_SUITES,
+            DataQualitySubTabs.BUNDLE_SUITES
+          ),
         },
         {
           name: getEntityName(response),
@@ -276,7 +285,7 @@ const TestSuiteDetailsPage = () => {
     async (updateDomain?: EntityReference | EntityReference[]) => {
       const updatedTestSuite: TestSuite = {
         ...testSuite,
-        domain: updateDomain,
+        domains: updateDomain,
       } as TestSuite;
 
       await updateTestSuiteData(updatedTestSuite);
@@ -426,6 +435,10 @@ const TestSuiteDetailsPage = () => {
     ]
   );
 
+  const selectedTestCases = useMemo(() => {
+    return testCaseResult.map((test) => test.name);
+  }, [testCaseResult]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -500,7 +513,8 @@ const TestSuiteDetailsPage = () => {
             <Col span={24}>
               <div className="d-flex flex-wrap gap-2">
                 <DomainLabel
-                  domain={testSuite?.domain}
+                  multiple
+                  domains={testSuite?.domains}
                   entityFqn={testSuite?.fullyQualifiedName ?? ''}
                   entityId={testSuite?.id ?? ''}
                   entityType={EntityType.TEST_SUITE}
@@ -546,6 +560,7 @@ const TestSuiteDetailsPage = () => {
             width={750}>
             <AddTestCaseList
               existingTest={testSuite?.tests ?? []}
+              selectedTest={selectedTestCases}
               onCancel={() => setIsTestCaseModalOpen(false)}
               onSubmit={handleAddTestCaseSubmit}
             />

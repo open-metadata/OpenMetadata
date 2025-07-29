@@ -1,5 +1,6 @@
 ---
 title: Run the Trino Connector Externally
+description: Configure OpenMetadata's Trino database connector with YAML. Step-by-step setup guide for seamless data catalog integration and metadata extraction.
 slug: /connectors/database/trino/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/trino/yaml
 name="Trino"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

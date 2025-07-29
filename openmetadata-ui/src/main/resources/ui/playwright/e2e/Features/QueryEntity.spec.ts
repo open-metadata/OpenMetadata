@@ -58,7 +58,7 @@ test('Query Entity', async ({ page }) => {
   test.slow(true);
 
   await redirectToHomePage(page);
-  await table1.visitEntityPage(page);
+  await table1.visitEntityPageWithCustomSearchBox(page);
 
   await test.step('Create a new query entity', async () => {
     const queryResponse = page.waitForResponse(
@@ -102,7 +102,10 @@ test('Query Entity', async ({ page }) => {
     await createQueryResponse;
     await page.waitForURL('**/table_queries**');
 
-    await expect(page.locator(`text=${queryData.query}`)).toBeVisible();
+    await page.waitForSelector(`text=${queryData.query}`, {
+      state: 'visible',
+      timeout: 10000,
+    });
   });
 
   await test.step('Update owner, description and tag', async () => {
@@ -159,7 +162,7 @@ test('Query Entity', async ({ page }) => {
     await page.getByTestId('add-tag').click();
     await page.locator('#tagsForm_tags').click();
     await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).click();
+    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
     const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -262,7 +265,7 @@ test('Query Entity', async ({ page }) => {
 
 test('Verify query duration', async ({ page }) => {
   await redirectToHomePage(page);
-  await table2.visitEntityPage(page);
+  await table2.visitEntityPageWithCustomSearchBox(page);
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );
@@ -276,6 +279,84 @@ test('Verify query duration', async ({ page }) => {
   );
 
   expect(durationText).toContain('6.199 sec');
+});
+
+test('Verify Query Pagination', async ({ page, browser }) => {
+  test.slow(true);
+
+  const { apiContext, afterAction } = await createNewPage(browser);
+
+  Array.from({ length: 26 }).forEach(async (_, index) => {
+    await table1.createQuery(
+      apiContext,
+      `select * from table ${table1.entity.name} ${index}`
+    );
+  });
+
+  await redirectToHomePage(page);
+  await table1.visitEntityPageWithCustomSearchBox(page);
+  const queryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index*'
+  );
+  await page.click(`[data-testid="table_queries"]`);
+  await queryResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+
+  const nextResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index&from=15&size=15**'
+  );
+  await page.click('[data-testid="next"]');
+  await nextResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('next')).toBeDisabled();
+
+  const previousResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=15**'
+  );
+  await page.click('[data-testid="previous"]');
+  await previousResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+
+  await expect(page.getByText('15 / page')).toBeVisible();
+
+  // Change page size to 25
+  await page.locator('.ant-pagination-options-size-changer').click();
+  const pageSizeResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&query_filter=**'
+  );
+  await page.getByTitle('25 / Page').click();
+  await pageSizeResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByText('25 / page')).toBeVisible();
+
+  // check if the page size list is same as the page size list in the dropdown
+  await page.locator('.ant-pagination-options-size-changer').click();
+
+  // This is to check in the options only 3 sizes are visible.
+  // 15, 25, 50  Derived from locator which is overall and not contain to check the exact text
+  await expect(page.locator('.ant-pagination-options')).toHaveText(
+    '25 / page15255015 / page25 / page50 / page'
+  );
+
+  await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {

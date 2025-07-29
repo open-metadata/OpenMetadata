@@ -1232,7 +1232,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertOwners(create.getOwners(), entity.getOwners());
+    assertReferenceList(create.getOwners(), entity.getOwners());
     assertEquals(updatedBy, entity.getUpdatedBy());
   }
 
@@ -1677,12 +1677,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
-  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException {
-    User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+  public User assertSingleDomainInheritance(
+      CreateUser createRequest, EntityReference expectedDomain) throws IOException {
+    User entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
@@ -2145,7 +2145,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_botActivityNotTracked() throws HttpResponseException, InterruptedException {
+  void test_botActivityNotTracked() throws HttpResponseException {
     // Test that bot activity is not tracked
     // We'll use a simple approach: update a bot user's activity time directly
     // and verify it doesn't show in online users (assuming the query filters out bots)

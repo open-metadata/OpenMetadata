@@ -85,8 +85,8 @@ public class RuleEvaluator {
       return false;
     }
     // If the Entity belongs to a domain , then user needs to be part of that domain
-    if (!nullOrEmpty(resourceContext.getDomain())) {
-      return subjectContext.hasDomain(resourceContext.getDomain());
+    if (!nullOrEmpty(resourceContext.getDomains())) {
+      return subjectContext.hasDomains(resourceContext.getDomains());
     }
     return true;
   }

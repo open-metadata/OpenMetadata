@@ -89,12 +89,6 @@ const TestSuiteDetailsPage = withSuspenseFallback(
   )
 );
 
-const AddDataQualityTestPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AddDataQualityTestPage/AddDataQualityTestPage')
-  )
-);
-
 const AddCustomProperty = withSuspenseFallback(
   React.lazy(
     () =>
@@ -225,12 +219,6 @@ const AddKPIPage = withSuspenseFallback(
 
 const EditKPIPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/KPIPage/EditKPIPage'))
-);
-
-const AddTestSuitePage = withSuspenseFallback(
-  React.lazy(
-    () => import('../DataQuality/TestSuite/TestSuiteStepper/TestSuiteStepper')
-  )
 );
 
 const QueryPage = withSuspenseFallback(
@@ -417,16 +405,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE} />
-      <Route
-        element={
-          <AddDataQualityTestPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.data-quality-test'),
-            })}
-          />
-        }
-        path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
-      />
+
       <Route
         element={
           <AdminProtectedRoute
@@ -522,6 +501,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
         }
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_SUITE,
+              permissions
+            )}>
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
       />
       <Route
         element={
@@ -690,7 +685,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.EDIT_KPI}
       />
-      <Route element={<AddTestSuitePage />} path={ROUTES.ADD_TEST_SUITES} />
+
       <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
       <Route
         element={

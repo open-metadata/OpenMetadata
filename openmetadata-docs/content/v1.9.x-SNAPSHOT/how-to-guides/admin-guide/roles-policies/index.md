@@ -1,5 +1,6 @@
 ---
 title: Advanced Guide for Roles and Policies
+description: Manage roles and policies to control permissions, ownership, and governance enforcement.
 slug: /how-to-guides/admin-guide/roles-policies
 ---
 
