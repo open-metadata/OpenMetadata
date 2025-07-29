@@ -1,5 +1,6 @@
 ---
-title: customPipelineConnection
+title: customPipelineConnection | Official Documentation
+description: Schema for connecting to custom pipeline orchestration tools to ingest task and dataflow metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/custompipelineconnection
 ---
 
