@@ -13,9 +13,12 @@
 @import (reference) url('../../../styles/variables.less');
 
 .delete-button {
-  background: transparent;
+  background: transparent !important;
+  border-color: @error-color !important;
+
   svg {
     width: 20px;
+    color: @error-color;
   }
 }
 

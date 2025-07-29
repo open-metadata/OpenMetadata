@@ -243,7 +243,6 @@ const ContractDetail: React.FC<{
                 className="delete-button"
                 icon={<DeleteIcon />}
                 size="small"
-                type="default"
                 onClick={onDelete}
               />
               <Button
