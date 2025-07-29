@@ -1,0 +1,185 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.domain-type-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 23px;
+  padding: 2.5px 6px;
+  border-radius: @size-xxs;
+  border: 1px solid;
+  gap: @size-xxs;
+  font-size: @size-sm;
+  font-weight: @font-medium;
+  line-height: @size-md;
+  white-space: nowrap;
+  width: fit-content;
+  transition: all 0.2s ease;
+
+  .domain-type-tag-content {
+    display: flex;
+    align-items: center;
+    gap: @size-xxs;
+  }
+
+  .domain-type-tag-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: @size-md;
+    height: @size-md;
+    flex-shrink: 0;
+  }
+
+  .domain-type-tag-label {
+    font-size: @size-sm;
+    font-weight: @font-medium;
+    line-height: @size-md;
+    margin: 0;
+  }
+
+  &.interactive {
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.8;
+      transform: translateY(-1px);
+      box-shadow: @box-shadow-default;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &.aggregate-domain-type {
+    background-color: @violet-50;
+    border-color: @violet-200;
+    color: @violet-600;
+
+    .domain-type-tag-label {
+      color: @violet-600;
+    }
+  }
+
+  &.consumer-aligned-domain-type {
+    background-color: @blue-50;
+    border-color: @blue-200;
+    color: @blue-700;
+
+    .domain-type-tag-label {
+      color: @blue-700;
+    }
+  }
+
+  &.source-aligned-domain-type {
+    background-color: @indigo-50;
+    border-color: @indigo-200;
+    color: @indigo-600;
+
+    .domain-type-tag-label {
+      color: @indigo-600;
+    }
+  }
+
+  .domain-type-tag-dropdown-icon {
+    width: @size-sm;
+    height: @size-sm;
+    color: @dark-grey;
+  }
+}
+
+.domain-type-tag-popover {
+  max-width: 184px !important;
+
+  .ant-popover-arrow {
+    display: none;
+  }
+
+  .ant-popover-inner {
+    border-radius: @size-sm;
+    border: 1px solid @border-color-5;
+    box-shadow: @box-shadow-default;
+
+    .ant-popover-inner-content {
+      padding: @size-sm;
+      .domain-type-options {
+        display: flex;
+        flex-direction: column;
+        gap: @size-xs;
+      }
+
+      .domain-type-option {
+        color: @grey-500;
+
+        // Default selected styles (when no hover is happening)
+        &.selected,
+        &:hover {
+          background-color: @primary-25;
+          color: @blue-600;
+          font-weight: @font-medium;
+          svg path {
+            stroke: @blue-600;
+          }
+
+          .consumer-aligned-domain-type-icon {
+            stroke-width: 0.5px;
+          }
+          cursor: default;
+        }
+
+        .domain-type-option-content {
+          display: flex;
+          align-items: center;
+          gap: @size-xxs;
+          padding: 2px 2px 2px 14px;
+          padding-left: @size-smd;
+          max-height: @size-lg;
+
+          .domain-type-option-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: @grey-500;
+            height: @size-md;
+            width: @size-md;
+          }
+
+          .domain-type-option-label {
+            font-size: @size-sm !important;
+            font-weight: @font-medium !important;
+            color: inherit !important;
+          }
+        }
+      }
+
+      // When any option is being hovered, remove selected styles from all selected items
+      &:hover .domain-type-option.selected:not(:hover) {
+        background-color: transparent;
+        color: @grey-500;
+        font-weight: normal;
+        svg path {
+          stroke: @grey-500;
+        }
+
+        .consumer-aligned-domain-type-icon {
+          stroke-width: normal;
+        }
+      }
+    }
+  }
+}

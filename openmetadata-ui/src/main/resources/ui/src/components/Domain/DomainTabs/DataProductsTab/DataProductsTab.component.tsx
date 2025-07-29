@@ -66,7 +66,7 @@ const DataProductsTab = forwardRef(
           '',
           1,
           PAGE_SIZE_LARGE,
-          `(domains.fullyQualifiedName:"${encodedFqn}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT

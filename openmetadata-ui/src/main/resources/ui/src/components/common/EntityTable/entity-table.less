@@ -1,0 +1,485 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../../styles/variables.less';
+
+// Utility classes for common patterns
+.flex-left-aligned {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.text-left-forced {
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+
+.entity-cell-base {
+  .flex-left-aligned;
+  gap: @size-sm;
+  padding: 8px 0;
+  height: auto;
+}
+
+.entity-icon-base {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.entity-table {
+  .ant-list {
+    box-sizing: border-box;
+    height: initial !important;
+    border-radius: @size-sm;
+    background-color: @white;
+    border: 1px solid @grey-200;
+    overflow: hidden;
+
+    .ant-list-header {
+      padding: @size-md;
+      border-radius: @size-xxs @size-xxs 0 0;
+    }
+  }
+
+  .entity-name-cell {
+    .entity-cell-base;
+    gap: 12px;
+
+    .entity-icon-container {
+      .entity-icon-base;
+
+      .entity-icon {
+        .entity-icon-base;
+        overflow: hidden;
+      }
+
+      .entity-icon-avatar {
+        .entity-icon-base;
+        background-color: #1470ef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .entity-icon-layers {
+        width: 21px;
+        height: 21px;
+        color: #ffffff;
+        stroke: #ffffff;
+        stroke-width: 2;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    .entity-info {
+      flex: 1;
+      min-width: 0;
+
+      .entity-name {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 20px;
+        color: #1f2937;
+        margin-bottom: 4px;
+      }
+
+      .entity-description {
+        font-size: 12px;
+        line-height: 16px;
+        color: #6b7280;
+        display: -webkit-box;
+        max-height: auto;
+      }
+    }
+  }
+
+  .owner-cell {
+    .entity-cell-base;
+    gap: 8px;
+
+    .owner-name {
+      font-size: 14px;
+      line-height: 20px;
+      color: #1f2937;
+    }
+  }
+
+  .text-grey-muted {
+    color: #9ca3af;
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  .mr-1 {
+    margin-right: 4px;
+  }
+
+  .entity-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 2px 8px 2px 6px;
+    border-radius: 4px;
+    border: 1px solid;
+    gap: @size-xxs;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+
+    &.aggregate-domain-type {
+      background-color: @violet-50;
+      border-color: @violet-200;
+      color: @violet-600;
+      svg path {
+        stroke: @violet-600;
+      }
+    }
+
+    &.consumer-aligned-domain-type {
+      background-color: @blue-light-50;
+      border-color: @blue-200;
+      color: @blue-700;
+      svg path {
+        stroke: @blue-700;
+      }
+    }
+
+    &.source-aligned-domain-type {
+      background-color: @indigo-50;
+      border-color: @indigo-200;
+      color: @indigo-600;
+      svg path {
+        stroke: @indigo-600;
+      }
+    }
+
+    .entity-type-dropdown-icon {
+      width: @size-sm;
+      height: @size-sm;
+      color: @dark-grey;
+    }
+  }
+
+  .table-tags-container {
+    .flex-left-aligned;
+    gap: @size-xs;
+    flex-wrap: wrap;
+  }
+
+  .first-column-header {
+    .flex-left-aligned;
+    gap: 8px;
+
+    .column-title {
+      text-align: left;
+    }
+  }
+
+  .first-column-content {
+    .flex-left-aligned;
+    gap: 10px;
+
+    .column-content {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .entity-table-header {
+    .entity-table-header-row {
+      align-items: center;
+      gap: @size-md;
+
+      .header-info {
+        .flex-left-aligned;
+        gap: @size-xxs;
+        margin-right: @size-xs;
+        border-radius: @size-md;
+
+        h4 {
+          margin-bottom: 0;
+          margin-right: @size-xs;
+        }
+
+        .header-count {
+          color: #175cd3;
+        }
+      }
+
+      .header-filters {
+        .flex-left-aligned;
+        gap: @size-md;
+        flex: 1;
+      }
+
+      .header-actions-row {
+        .flex-left-aligned;
+        gap: @size-xs;
+
+        .list-view-icon,
+        .grid-view-icon {
+          padding: 0px;
+          height: auto;
+          border: none;
+          margin: 0px;
+        }
+
+        .list-view-icon.active {
+          svg path {
+            stroke: @blue-17;
+            stroke-width: 0.6px;
+          }
+        }
+
+        .grid-view-icon.active {
+          svg path {
+            stroke: @blue-17;
+            stroke-width: 1.5px;
+          }
+        }
+      }
+    }
+
+    .header-search {
+      border: 1px solid #dfdfdf;
+      border-radius: 10px;
+      height: 38px;
+      width: 354px;
+
+      &:focus,
+      &.ant-input-affix-wrapper-focused {
+        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+      }
+
+      .ant-input {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+
+        &::placeholder {
+          color: #8c8c8c;
+        }
+      }
+    }
+
+    .search-loading-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+      text-align: center;
+      font-style: italic;
+    }
+  }
+
+  .table-container {
+    .pagination-container {
+      display: flex;
+      justify-content: space-between;
+    }
+  }
+
+  // Consolidated Ant Design table overrides
+  .ant-table-wrapper {
+    box-shadow: none !important;
+
+    .ant-table {
+      box-shadow: none !important;
+
+      .ant-table-thead {
+        .ant-table-cell {
+          background: @grey-50;
+          border-top: 1px solid @grey-200;
+          border-bottom: 1px solid #e5e7eb;
+          font-weight: 500;
+          color: #374151;
+          padding: 12px 16px;
+          .text-left-forced;
+          vertical-align: middle;
+        }
+      }
+
+      .ant-table-selection-column {
+        padding-right: 0px !important;
+        text-align: right !important;
+      }
+
+      .ant-table-tbody {
+        .ant-table-row {
+          &:hover {
+            background: #f9fafb;
+          }
+
+          .ant-table-cell {
+            border-bottom: 1px solid #f3f4f6;
+            padding: 12px 16px;
+            .text-left-forced;
+            vertical-align: middle;
+          }
+
+          .ant-table-selection-column {
+            text-align: right !important;
+          }
+        }
+      }
+    }
+  }
+
+  // Enhanced specificity for table cell alignment overrides
+  .ant-table-wrapper .ant-table {
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+      &:not(.ant-table-selection-column) {
+        .text-left-forced;
+      }
+
+      &.ant-table-selection-column {
+        padding-right: 0px !important;
+        padding-left: 24px !important;
+        text-align: right !important;
+      }
+
+      .ant-table-column-title,
+      .ant-table-column-sorters,
+      .ant-table-cell-content {
+        .text-left-forced;
+      }
+    }
+
+    // Force left alignment for all content within table cells
+    .ant-table-cell-content,
+    .ant-table-cell-content > div,
+    .ant-table-cell-content > span {
+      .text-left-forced;
+      display: flex !important;
+      align-items: center !important;
+    }
+  }
+}
+
+.domain-type-clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+}
+
+.badge-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+// Entity Grid Layout Styles
+.entity-grid-container {
+  .entity-grid {
+    margin-top: 16px;
+  }
+
+  .entity-grid-loading {
+    padding: 40px 0;
+    text-align: center;
+  }
+}
+
+.entity-card {
+  background: #ffffff;
+  border: 1px solid #e9eaeb;
+  border-radius: 12px;
+  padding: 24px 20px 20px 20px;
+  height: 224px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    border-color: #1570ef;
+    box-shadow: 0 1px 2px rgba(10, 13, 18, 0.06),
+      0 1px 3px rgba(10, 13, 18, 0.21);
+    transform: translateY(-2px);
+  }
+
+  .entity-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+
+    .entity-icon-container {
+      flex-shrink: 0;
+      width: 54px;
+      height: 54px;
+      border-radius: 5px;
+      border: 1px solid #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #bf4cf1;
+
+      .anticon,
+      svg {
+        width: 34px;
+        height: 34px;
+        color: #ffffff;
+      }
+    }
+
+    .entity-card-content {
+      flex: 1;
+      min-width: 0;
+      padding-top: 5px;
+
+      .entity-card-title {
+        display: block;
+        font-weight: 500;
+        font-size: 16px;
+        line-height: 24px;
+        color: #181d27;
+        margin-bottom: 2px;
+      }
+
+      .entity-card-description {
+        display: block;
+        font-size: 14px;
+        line-height: 18px;
+        color: #717680;
+      }
+    }
+  }
+}
+
+// View Toggle Styles
+.view-toggle {
+  .ant-segmented-item {
+    padding: 4px 8px;
+
+    .anticon {
+      font-size: 16px;
+    }
+  }
+}

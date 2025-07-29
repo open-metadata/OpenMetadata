@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +33,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
   isDescriptionExpanded = false,
   reducePreviewLineClass,
+  showTooltipOnTruncate = false,
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -47,6 +48,12 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     [enableSeeMoreVariant, markdown, maxLength]
   );
 
+  // whether to show tooltip or not
+  const shouldShowTooltip = useMemo(
+    () => showTooltipOnTruncate && hasReadMore && !readMore,
+    [showTooltipOnTruncate, hasReadMore, readMore]
+  );
+
   /**
    * if hasReadMore is true then value will be based on read more state
    * else value will be content
@@ -58,6 +65,18 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 
     return content;
   }, [hasReadMore, readMore, maxLength, content]);
+
+  const tooltipContent = useMemo(() => {
+    if (!shouldShowTooltip) {
+      return null;
+    }
+
+    return (
+      <div className="rich-text-tooltip-content">
+        <BlockEditor autoFocus={false} content={content} editable={false} />
+      </div>
+    );
+  }, [shouldShowTooltip, content]);
 
   useEffect(() => {
     setContent(formatContent(markdown, 'client'));
@@ -72,6 +91,18 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
   }
 
+  const renderContent = () => (
+    <div
+      className={classNames(
+        'markdown-parser',
+        textVariant,
+        readMore ? '' : reducePreviewLineClass
+      )}
+      data-testid="markdown-parser">
+      <BlockEditor autoFocus={false} content={viewerValue} editable={false} />
+    </div>
+  );
+
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
@@ -79,15 +110,17 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
       })}
       data-testid="viewer-container"
       dir={i18n.dir()}>
-      <div
-        className={classNames(
-          'markdown-parser',
-          textVariant,
-          readMore ? '' : reducePreviewLineClass
-        )}
-        data-testid="markdown-parser">
-        <BlockEditor autoFocus={false} content={viewerValue} editable={false} />
-      </div>
+      {shouldShowTooltip ? (
+        <Tooltip
+          mouseEnterDelay={0.5}
+          overlayClassName="rich-text-tooltip"
+          placement="topLeft"
+          title={tooltipContent}>
+          {renderContent()}
+        </Tooltip>
+      ) : (
+        renderContent()
+      )}
       {hasReadMore && showReadMoreBtn && (
         <Button
           className="text-xs text-right"

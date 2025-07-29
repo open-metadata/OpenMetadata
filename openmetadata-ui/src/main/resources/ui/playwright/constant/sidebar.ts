@@ -18,6 +18,8 @@ export enum SidebarItem {
   OBSERVABILITY_ALERT = 'observability-alert',
   DATA_INSIGHT = 'data-insight',
   DOMAIN = 'domain',
+  DOMAINS = 'domains',
+  DATA_PRODUCTS = 'data-products',
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   TAGS = 'tags',
@@ -29,6 +31,8 @@ export enum SidebarItem {
 }
 
 export const SIDEBAR_LIST_ITEMS = {
+  [SidebarItem.DOMAINS]: [SidebarItem.DOMAINS, SidebarItem.DOMAINS],
+  [SidebarItem.DATA_PRODUCTS]: [SidebarItem.DOMAINS, SidebarItem.DATA_PRODUCTS],
   [SidebarItem.DATA_QUALITY]: [
     SidebarItem.OBSERVABILITY,
     SidebarItem.DATA_QUALITY,

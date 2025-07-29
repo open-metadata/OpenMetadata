@@ -72,3 +72,5 @@ export const DOMAIN_DUMMY_DATA: Domain = {
     },
   ],
 };
+
+export const NEW_DOMAINS_PAGE = true;

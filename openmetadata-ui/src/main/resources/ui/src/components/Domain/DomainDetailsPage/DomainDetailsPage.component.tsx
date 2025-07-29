@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -31,6 +31,7 @@ import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as ChevronDownIcon } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -48,7 +49,9 @@ import {
   DE_ACTIVE_COLOR,
   ERROR_MESSAGE,
   PAGE_SIZE_LARGE,
+  ROUTES,
 } from '../../../constants/constants';
+import { NEW_DOMAINS_PAGE } from '../../../constants/Domain.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -93,6 +96,7 @@ import {
 import {
   getDomainDetailsPath,
   getDomainPath,
+  getDomainsDetailsPath,
   getDomainVersionsPath,
   getEntityDetailsPath,
 } from '../../../utils/RouterUtils';
@@ -107,14 +111,17 @@ import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { EntityHeaderV2 } from '../../Entity/EntityHeader/EntityHeaderV2.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
-import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
+
+import { TitleLink } from '../../common/Breadcrumb/Breadcrumb.interface';
+import '../domain.less';
 
 const DomainDetailsPage = ({
   domain,
@@ -175,23 +182,30 @@ const DomainDetailsPage = ({
     const arr = Fqn.split(domainFqn);
     const dataFQN: Array<string> = [];
 
-    return [
+    const breadcrumbItems: TitleLink[] = [
       {
-        name: 'Domains',
-        url: getDomainPath(arr[0]),
-        activeTitle: false,
+        name: t('label.domain-plural'),
+        url: ROUTES.DOMAINS,
       },
-      ...arr.slice(0, -1).map((d) => {
-        dataFQN.push(d);
-
-        return {
-          name: d,
-          url: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-          activeTitle: false,
-        };
-      }),
     ];
-  }, [domainFqn]);
+
+    arr.forEach((domainName, index) => {
+      dataFQN.push(domainName);
+      const isLastItem = index === arr.length - 1;
+
+      const breadcrumbItem: TitleLink = {
+        name: domainName,
+        activeTitle: isLastItem,
+        url: isLastItem
+          ? undefined
+          : getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
+      } as TitleLink;
+
+      breadcrumbItems.push(breadcrumbItem);
+    });
+
+    return breadcrumbItems;
+  }, [domainFqn, t]);
 
   const [name, displayName] = useMemo(() => {
     if (isVersionsView) {
@@ -359,7 +373,7 @@ const DomainDetailsPage = ({
           '',
           1,
           0,
-          `(domains.fullyQualifiedName:"${encodedFqn}")`,
+          `(domain.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -422,7 +436,11 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      navigate(getDomainDetailsPath(domainFqn, activeKey));
+      if (NEW_DOMAINS_PAGE) {
+        navigate(getDomainsDetailsPath(domainFqn, activeKey));
+      } else {
+        navigate(getDomainDetailsPath(domainFqn, activeKey));
+      }
     }
   };
 
@@ -652,108 +670,124 @@ const DomainDetailsPage = ({
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
     [tabs[0], activeTab]
   );
+
+  const ActionButtons = (
+    <div className="d-flex gap-3 justify-end">
+      {!isVersionsView && addButtonContent.length > 0 && (
+        <Dropdown
+          className="m-l-xs h-10"
+          data-testid="domain-details-add-button-menu"
+          menu={{ items: addButtonContent }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Button
+            className="domain-add-button"
+            data-testid="domain-details-add-button"
+            type="primary">
+            <Space>
+              {t('label.add')}
+              <ChevronDownIcon className="chevron-down-icon" />
+            </Space>
+          </Button>
+        </Dropdown>
+      )}
+
+      <ButtonGroup className="spaced" size="small">
+        {domain?.version && (
+          <Tooltip
+            title={t(
+              `label.${
+                isVersionsView
+                  ? 'exit-version-history'
+                  : 'version-plural-history'
+              }`
+            )}>
+            <Button
+              className={classNames('domain-history-button', {
+                'text-primary border-primary': version,
+              })}
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={handleVersionClick}>
+              <Typography.Text
+                className={classNames('', {
+                  'text-primary': version,
+                })}>
+                {toString(domain.version)}
+              </Typography.Text>
+            </Button>
+          </Tooltip>
+        )}
+
+        {!isVersionsView && manageButtonContent.length > 0 && (
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            className="m-l-xs"
+            menu={{ items: manageButtonContent }}
+            open={showActions}
+            overlayClassName="domain-manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip
+              placement="topRight"
+              title={t('label.manage-entity', {
+                entity: t('label.domain'),
+              })}>
+              <Button
+                className="domain-manage-dropdown-button tw-px-1.5"
+                data-testid="manage-button"
+                icon={
+                  <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                }
+                onClick={() => setShowActions(true)}
+              />
+            </Tooltip>
+          </Dropdown>
+        )}
+      </ButtonGroup>
+    </div>
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <>
+      <EntityHeaderV2
+        ActionButtons={ActionButtons}
+        breadcrumbItems={breadcrumbs}
+        entityData={{ ...domain, displayName, name }}
+        entityType={EntityType.DOMAIN}
+        handleFollowingClick={handleFollowingClick}
+        icon={iconData}
+        isFollowing={isFollowing}
+        isFollowingLoading={isFollowingLoading}
+        serviceName=""
+        titleColor={domain.style?.color}
+      />
       <Row
         className="domain-details"
         data-testid="domain-details"
         gutter={[0, 12]}>
-        <Col flex="auto">
-          <EntityHeader
-            breadcrumb={breadcrumbs}
-            entityData={{ ...domain, displayName, name }}
-            entityType={EntityType.DOMAIN}
-            handleFollowingClick={handleFollowingClick}
-            icon={iconData}
-            isFollowing={isFollowing}
-            isFollowingLoading={isFollowingLoading}
-            serviceName=""
-            titleColor={domain.style?.color}
-          />
-        </Col>
-        <Col flex="320px">
-          <div className="d-flex gap-3 justify-end">
-            {!isVersionsView && addButtonContent.length > 0 && (
-              <Dropdown
-                className="m-l-xs h-10"
-                data-testid="domain-details-add-button-menu"
-                menu={{
-                  items: addButtonContent,
-                }}
-                placement="bottomRight"
-                trigger={['click']}>
-                <Button data-testid="domain-details-add-button" type="primary">
-                  <Space>
-                    {t('label.add')}
-                    <DownOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
-            )}
-
-            <ButtonGroup className="spaced" size="small">
-              {domain?.version && (
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionsView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(domain.version)}
-                    </Typography.Text>
-                  </Button>
-                </Tooltip>
-              )}
-
-              {!isVersionsView && manageButtonContent.length > 0 && (
-                <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
-                  menu={{
-                    items: manageButtonContent,
-                  }}
-                  open={showActions}
-                  overlayClassName="domain-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
-                  <Tooltip
-                    placement="topRight"
-                    title={t('label.manage-entity', {
-                      entity: t('label.domain'),
-                    })}>
-                    <Button
-                      className="domain-manage-dropdown-button tw-px-1.5"
-                      data-testid="manage-button"
-                      icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                      }
-                      onClick={() => setShowActions(true)}
-                    />
-                  </Tooltip>
-                </Dropdown>
-              )}
-            </ButtonGroup>
-          </div>
-        </Col>
+        {!NEW_DOMAINS_PAGE && (
+          <Col flex="auto">
+            <EntityHeader
+              breadcrumb={breadcrumbs}
+              entityData={{ ...domain, displayName, name }}
+              entityType={EntityType.DOMAIN}
+              handleFollowingClick={handleFollowingClick}
+              icon={iconData}
+              isFollowing={isFollowing}
+              isFollowingLoading={isFollowingLoading}
+              serviceName=""
+              titleColor={domain.style?.color}
+            />
+          </Col>
+        )}
+        {!NEW_DOMAINS_PAGE && <Col flex="320px">{ActionButtons}</Col>}
 
         <GenericProvider<Domain>
           customizedPage={customizedPage}

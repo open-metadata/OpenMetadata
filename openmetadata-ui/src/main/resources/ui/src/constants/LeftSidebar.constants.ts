@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/data-product.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
@@ -86,6 +88,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       },
     ],
   },
+  // TODO: Remove this after new experience is fully complete
   {
     key: ROUTES.DATA_INSIGHT,
     title: 'label.insight-plural',
@@ -102,6 +105,28 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     redirect_url: ROUTES.DOMAIN,
     icon: DomainsIcon,
     dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+  },
+  {
+    key: `${SidebarItem.DOMAINS}-new`,
+    title: `${i18next.t('label.domain-plural')} (New)`,
+    icon: DomainsIcon,
+    dataTestId: `app-bar-item-${SidebarItem.DOMAINS}-new`,
+    children: [
+      {
+        key: ROUTES.DOMAINS,
+        title: i18next.t('label.domain'),
+        redirect_url: ROUTES.DOMAINS,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DOMAINS}`,
+      },
+      {
+        key: ROUTES.DATA_PRODUCTS,
+        title: i18next.t('label.data-product'),
+        redirect_url: ROUTES.DATA_PRODUCTS,
+        icon: DataProductIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCTS}`,
+      },
+    ],
   },
   {
     key: 'governance',
