@@ -109,7 +109,7 @@ export const dashboardVersionProps: DashboardVersionProp = {
   currentVersionData: mockDashboardData,
   isVersionLoading: false,
   owners: mockOwner,
-  domain: mockDomain,
+  domains: [mockDomain],
   dataProducts: [],
   tier: mockTier,
   slashedDashboardName: [

@@ -48,7 +48,7 @@ export interface Thread {
     /**
      * Domain the entity belongs to.
      */
-    domain?: string;
+    domains?: EntityReference[];
     /**
      * Reference to the entity in `about` that the thread belongs to.
      */
@@ -163,21 +163,19 @@ export interface ChatbotDetails {
 }
 
 /**
- * Reference to the entity in `about` that the thread belongs to.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
+ * Domain the entity belongs to.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Previous Domain.
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
- * Updated Domain.
+ * Reference to the entity in `about` that the thread belongs to.
  *
  * Test case that this result is for.
  *
@@ -277,13 +275,13 @@ export interface Info {
      */
     previousDescription?: string;
     /**
-     * Previous Domain.
+     * Previous Domains.
      */
-    previousDomain?: EntityReference;
+    previousDomains?: EntityReference[];
     /**
-     * Updated Domain.
+     * Updated Domains.
      */
-    updatedDomain?: EntityReference;
+    updatedDomains?: EntityReference[];
     /**
      * Entity Details in case of Creation , Soft Deletion and Deletion.
      */

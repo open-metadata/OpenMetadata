@@ -27,7 +27,6 @@ import {
   getSortOrder,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -46,6 +45,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -118,11 +118,11 @@ function FollowingWidget({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });
@@ -179,6 +179,16 @@ function FollowingWidget({
     ),
     []
   );
+
+  const showMoreCount = useMemo(() => {
+    return followedData.length > 0 ? followedData.length.toString() : '';
+  }, [followedData]);
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    [followedData, isLoadingOwnedData]
+  );
+
   const followingContent = useMemo(() => {
     return (
       <div className="entity-list-body">
@@ -206,16 +216,16 @@ function FollowingWidget({
                         </div>
                       }
                       type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                      <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
-                            className="text-left text-sm font-regular"
+                            className="text-left text-sm font-regular text-grey-600"
                             ellipsis={{ tooltip: true }}>
                             {item.serviceType}
                           </Typography.Text>
                         )}
                         <Typography.Text
-                          className="text-left text-sm font-semibold"
+                          className="text-left text-sm font-regular text-grey-800"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -243,7 +253,7 @@ function FollowingWidget({
         </div>
       </div>
     );
-  }, [followedData, emptyState]);
+  }, [followedData, emptyState, isExpanded]);
 
   const WidgetContent = useMemo(() => {
     return (
@@ -268,14 +278,12 @@ function FollowingWidget({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
+              UserPageTabs.FOLLOWING
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(followedData.length > 0 ? followedData.length : ''),
+              countValue: showMoreCount,
             })}
-            showMoreButton={
-              Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
-            }
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>
@@ -292,6 +300,7 @@ function FollowingWidget({
     widgetKey,
     widgetData,
     isEditView,
+    showMoreCount,
   ]);
 
   return (

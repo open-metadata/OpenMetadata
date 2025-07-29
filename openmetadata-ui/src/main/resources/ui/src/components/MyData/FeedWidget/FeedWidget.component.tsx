@@ -23,10 +23,11 @@ import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getAllFeeds } from '../../../rest/feedsAPI';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedListV1New from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -42,60 +43,67 @@ const MyFeedWidgetInternal = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const [loading, setLoading] = useState(false);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
   );
-  const {
-    loading,
-    entityThread: feedList,
-    getFeedData,
-  } = useActivityFeedProvider();
 
-  useEffect(() => {
-    if (feedList) {
-      const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
-      setEntityThread(updatedFeedList);
-    }
-  }, [feedList]);
-
-  useEffect(() => {
-    if (currentUser && getFeedData) {
-      getFeedData(
-        selectedFilter,
+  const getFeeds = useCallback(async (filter: FeedFilter) => {
+    try {
+      setLoading(true);
+      const { data } = await getAllFeeds(
+        undefined,
         undefined,
         ThreadType.Conversation,
+        filter,
         undefined,
         undefined,
-        undefined,
-        8
+        10
       );
+      const { updatedFeedList } = getFeedListWithRelativeDays(data);
+      setEntityThread(updatedFeedList);
+    } catch (error) {
+      showErrorToast(error as string);
+    } finally {
+      setLoading(false);
     }
-  }, [currentUser, getFeedData, selectedFilter]);
-
-  const handleFilterChange = useCallback(({ key }: { key: string }) => {
-    setSelectedFilter(key as FeedFilter);
   }, []);
+
+  const handleFilterChange = useCallback(
+    (key: string) => {
+      setSelectedFilter(key as FeedFilter);
+    },
+    [setSelectedFilter]
+  );
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
   const handleUpdateEntityDetails = useCallback(() => {
-    if (getFeedData) {
-      getFeedData();
-    }
-  }, [getFeedData]);
+    getAllFeeds();
+  }, [getAllFeeds]);
+
+  useEffect(() => {
+    getFeeds(selectedFilter);
+  }, [selectedFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
   );
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && entityThread?.length > 10,
+    [entityThread, loading]
+  );
+
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.get-started')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.activity-feed-no-data-placeholder')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
@@ -104,6 +112,10 @@ const MyFeedWidgetInternal = ({
       />
     );
   }, []);
+
+  const showMoreCount = useMemo(() => {
+    return entityThread.length > 0 ? entityThread.length.toString() : '';
+  }, [entityThread]);
 
   const widgetBody = useMemo(() => {
     return (
@@ -153,7 +165,7 @@ const MyFeedWidgetInternal = ({
           title={t('label.activity-feed')}
           widgetKey={widgetKey}
           widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange({ key })}
+          onSortChange={(key) => handleFilterChange(key)}
         />
         <div className="feed-content flex-1">
           {widgetBody}
@@ -163,9 +175,9 @@ const MyFeedWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(entityThread.length > 0 ? entityThread.length : ''),
+              countValue: showMoreCount,
             })}
-            showMoreButton={Boolean(!loading) && !isEmpty(entityThread)}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

@@ -79,7 +79,7 @@ export const getQueryFilterToIncludeDomain = (
       must: [
         {
           term: {
-            'domain.fullyQualifiedName': domainFqn,
+            'domains.fullyQualifiedName': domainFqn,
           },
         },
         {
@@ -117,7 +117,7 @@ export const getQueryFilterToExcludeDomainTerms = (
     ? [
         {
           term: {
-            'domain.fullyQualifiedName': parentFqn,
+            'domains.fullyQualifiedName': parentFqn,
           },
         },
       ]
@@ -132,7 +132,7 @@ export const getQueryFilterToExcludeDomainTerms = (
               must_not: [
                 {
                   term: {
-                    'domain.fullyQualifiedName': fqn,
+                    'domains.fullyQualifiedName': fqn,
                   },
                 },
               ],
@@ -153,12 +153,12 @@ export const getQueryFilterForDomain = (domainFqn: string) => ({
             should: [
               {
                 term: {
-                  'domain.fullyQualifiedName': domainFqn,
+                  'domains.fullyQualifiedName': domainFqn,
                 },
               },
               {
                 prefix: {
-                  'domain.fullyQualifiedName': `${domainFqn}.`,
+                  'domains.fullyQualifiedName': `${domainFqn}.`,
                 },
               },
             ],
@@ -277,16 +277,6 @@ export const initializeDomainEntityRef = (
   }
 
   return undefined;
-};
-
-export const getDomainFieldFromEntityType = (
-  entityType: EntityType
-): string => {
-  if (entityType === EntityType.TEAM || entityType === EntityType.USER) {
-    return 'domains';
-  } else {
-    return 'domain';
-  }
 };
 
 export const convertDomainsToTreeOptions = (
@@ -526,7 +516,13 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const getDomainIcon = (iconURL?: string) => {
   if (iconURL) {
-    return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
+    return (
+      <img
+        alt="domain icon"
+        className="domain-icon-url h-6 w-6"
+        src={iconURL}
+      />
+    );
   }
 
   return <DomainIcon className="domain-default-icon" />;

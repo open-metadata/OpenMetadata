@@ -1,5 +1,6 @@
 ---
-title: storageMetadataGCSConfig
+title: storageMetadataGCSConfig | Official Documentation
+description: Schema for Google Cloud Storage metadata ingestion. Set GCS config parameters for seamless integration and automatic metadata capture.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagemetadatagcsconfig
 ---
 

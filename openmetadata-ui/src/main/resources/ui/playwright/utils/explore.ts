@@ -91,16 +91,15 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  const queryResponseData = await queryRes;
-  const request = await queryResponseData.request();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await queryRes;
 
-  const queryParams = request.url().split('?')[1];
+  const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
 
-  const queryParamValue = queryParamsObj.get('query_filter');
-  const isQueryFilterPresent = queryParamValue === queryFilter;
+  const queryParamValue = queryParamsObj.get('quickFilter');
 
-  expect(isQueryFilterPresent).toBeTruthy();
+  expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
     await page.click(`[data-testid="clear-filters"]`);
@@ -220,4 +219,26 @@ export const verifyDatabaseAndSchemaInExploreTree = async (
   await expect(
     page.getByTestId(`explore-tree-title-${schemaName}`)
   ).toBeVisible();
+};
+
+export const validateBucketsForIndexAndSort = async (
+  page: Page,
+  asset: {
+    key: string;
+    label: string;
+    indexType: string;
+  },
+  docCount: number
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=pw&index=${asset.indexType}&from=0&size=15&deleted=false&sort_field=_score&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const totalCount = response.hits.total.value ?? 0;
+
+  expect(totalCount).toEqual(docCount);
 };
