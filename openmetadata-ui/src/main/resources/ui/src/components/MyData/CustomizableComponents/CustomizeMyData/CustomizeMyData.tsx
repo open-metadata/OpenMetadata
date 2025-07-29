@@ -133,11 +133,6 @@ function CustomizeMyData({
     [layout]
   );
 
-  const emptyWidgetPlaceholder = useMemo(
-    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
-    [layout]
-  );
-
   const disableSave = useMemo(() => {
     const filteredLayout = layout.filter((widget) =>
       widget.i.startsWith('KnowledgePanel')
