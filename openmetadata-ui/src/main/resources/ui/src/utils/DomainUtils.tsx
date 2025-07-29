@@ -516,7 +516,13 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const getDomainIcon = (iconURL?: string) => {
   if (iconURL) {
-    return <img alt="domain icon" className="domain-icon-url" src={iconURL} />;
+    return (
+      <img
+        alt="domain icon"
+        className="domain-icon-url h-6 w-6"
+        src={iconURL}
+      />
+    );
   }
 
   return <DomainIcon className="domain-default-icon" />;

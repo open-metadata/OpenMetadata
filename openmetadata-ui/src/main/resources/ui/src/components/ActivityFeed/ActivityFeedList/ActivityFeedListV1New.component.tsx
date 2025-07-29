@@ -121,7 +121,7 @@ const ActivityFeedListV1New = ({
   if (isEmpty(entityThread) && isEmpty(feedList) && !isLoading) {
     return (
       <div
-        className="p-x-md no-data-placeholder-container"
+        className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="feedData">
         <ErrorPlaceHolderNew

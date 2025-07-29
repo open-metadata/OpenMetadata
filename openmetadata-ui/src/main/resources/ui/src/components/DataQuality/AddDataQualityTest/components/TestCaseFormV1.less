@@ -26,6 +26,30 @@
     }
   }
 
+  .form-card-section .custom-select-test-type-style {
+    &.ant-form-item {
+      margin-bottom: @size-md;
+    }
+
+    position: relative;
+
+    .custom-test-type-container {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -8px;
+      display: flex;
+      align-items: center;
+      z-index: 1;
+
+      .test-type-label {
+        color: @grey-700;
+        font-weight: @font-medium;
+        font-size: @font-size-base;
+      }
+    }
+  }
+
   .ant-btn-icon-only.ant-btn-sm {
     &.list-add-btn {
       height: 24px;
@@ -43,7 +67,7 @@
 
   .form-card-section {
     background-color: @grey-26;
-    border-radius: @border-radius-sm;
+    border-radius: @border-rad-sm;
     margin-bottom: @size-mlg;
     border: none;
 

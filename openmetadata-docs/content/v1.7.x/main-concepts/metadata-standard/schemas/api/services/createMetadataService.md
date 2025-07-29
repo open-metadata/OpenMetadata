@@ -1,5 +1,6 @@
 ---
-title: createMetadataService
+title: createMetadataService | Official Documentation
+description: Create metadata for a service handling metadata collection, synchronization, and lineage tracking.
 slug: /main-concepts/metadata-standard/schemas/api/services/createmetadataservice
 ---
 

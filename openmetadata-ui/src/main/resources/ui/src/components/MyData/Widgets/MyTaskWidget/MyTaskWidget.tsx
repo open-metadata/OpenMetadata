@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { isEmpty, orderBy, toLower } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
-import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
-import { FeedFilter } from '../../../../enums/mydata.enum';
+import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
+import { SIZE } from '../../../../enums/common.enum';
+import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
 import {
-  Thread,
   ThreadTaskStatus,
   ThreadType,
 } from '../../../../generated/entity/feed/thread';
@@ -32,10 +32,6 @@ import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './my-task-widget.less';
-import {
-  MY_TASK_SORT_BY_KEYS,
-  MY_TASK_SORT_BY_OPTIONS,
-} from './MyTaskWidget.constants';
 
 const MyTaskWidget = ({
   isEditView = false,
@@ -46,9 +42,8 @@ const MyTaskWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [sortedData, setSortedData] = useState<Thread[]>([]);
-  const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    MY_TASK_SORT_BY_KEYS.LATEST
+  const [selectedFilter, setSelectedFilter] = useState<MyTaskFilter>(
+    MyTaskFilter.OWNER
   );
 
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
@@ -57,64 +52,40 @@ const MyTaskWidget = ({
     return currentLayout?.find((layout) => layout.i === widgetKey);
   }, [currentLayout, widgetKey]);
 
-  const handleSortData = useCallback((data: Thread[], sortBy: string) => {
-    let newSortedData = data;
-    if (sortBy === MY_TASK_SORT_BY_KEYS.LATEST) {
-      newSortedData = orderBy(data, ['updatedAt'], [SORT_ORDER.DESC]);
-    } else if (sortBy === MY_TASK_SORT_BY_KEYS.A_TO_Z) {
-      newSortedData = orderBy(
-        data,
-        [(item) => toLower(item?.feedInfo?.fieldName)],
-        [SORT_ORDER.ASC]
-      );
-    } else if (sortBy === MY_TASK_SORT_BY_KEYS.Z_TO_A) {
-      newSortedData = orderBy(
-        data,
-        [(item) => toLower(item?.feedInfo?.fieldName)],
-        [SORT_ORDER.DESC]
-      );
-    }
-    setSortedData(newSortedData);
-  }, []);
-
-  const handleSortByClick = useCallback((key: string) => {
-    setSelectedSortBy(key);
+  const handleSortByClick = useCallback((key: MyTaskFilter) => {
+    setSelectedFilter(key);
   }, []);
 
   useEffect(() => {
     getFeedData(
-      FeedFilter.OWNER,
+      selectedFilter as unknown as FeedFilter,
       undefined,
       ThreadType.Task,
       undefined,
       undefined,
       ThreadTaskStatus.Open
     );
-  }, [getFeedData]);
-
-  useEffect(() => {
-    if (entityThread.length > 0 && selectedSortBy) {
-      const tasks = entityThread.filter(
-        (thread) => thread.task?.status === ThreadTaskStatus.Open
-      );
-      handleSortData(tasks, selectedSortBy);
-    }
-  }, [entityThread, handleSortData, selectedSortBy]);
+  }, [getFeedData, selectedFilter]);
 
   const handleFeedFetchFromFeedList = useCallback(() => {
     getFeedData(
-      FeedFilter.OWNER,
+      selectedFilter as unknown as FeedFilter,
       undefined,
       ThreadType.Task,
       undefined,
       undefined,
       ThreadTaskStatus.Open
     );
-  }, [getFeedData]);
+  }, [getFeedData, selectedFilter]);
 
   const handleAfterTaskClose = () => {
     handleFeedFetchFromFeedList();
   };
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && entityThread?.length > 10,
+    [entityThread, loading]
+  );
 
   const widgetContent = (
     <div className="my-task-widget-container">
@@ -125,20 +96,18 @@ const MyTaskWidget = ({
         handleRemoveWidget={handleRemoveWidget}
         icon={<MyTaskIcon data-testid="task-icon" height={24} width={24} />}
         isEditView={isEditView}
-        selectedSortBy={selectedSortBy}
-        sortOptions={MY_TASK_SORT_BY_OPTIONS}
+        selectedSortBy={selectedFilter}
+        sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
         title={t('label.my-task-plural')}
         widgetKey={widgetKey}
         widgetWidth={myTaskData?.w}
-        onSortChange={handleSortByClick}
+        onSortChange={(key) => handleSortByClick(key as MyTaskFilter)}
       />
 
       {/* Widget Content */}
       <div className="widget-content flex-1">
-        {isEmpty(sortedData) ? (
+        {isEmpty(entityThread) ? (
           <WidgetEmptyState
-            actionButtonLink={`users/${currentUser?.name}/task`}
-            actionButtonText={t('label.view-all-task-plural')}
             dataTestId="my-task-empty-state"
             description={t('message.my-task-no-data-placeholder')}
             icon={
@@ -153,14 +122,14 @@ const MyTaskWidget = ({
         ) : (
           <>
             <div className="entity-list-body">
-              {sortedData.map((feed) => (
+              {entityThread.map((feed) => (
                 <FeedPanelBodyV1New
                   isForFeedTab
                   isFullWidth
                   feed={feed}
                   hideCardBorder={false}
                   hidePopover={isEditView}
-                  isOpenInDrawer={myTaskData?.w === 1 ? true : false}
+                  isOpenInDrawer={myTaskData?.w === 1}
                   key={feed.id}
                   showThread={false}
                   onAfterClose={handleAfterTaskClose}
@@ -172,7 +141,7 @@ const MyTaskWidget = ({
             <WidgetFooter
               moreButtonLink={`users/${currentUser?.name}/task`}
               moreButtonText={t('label.view-more')}
-              showMoreButton={Boolean(!loading) && !isEmpty(sortedData)}
+              showMoreButton={showWidgetFooterMoreButton}
             />
           </>
         )}
@@ -182,7 +151,7 @@ const MyTaskWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={sortedData.length > 0 ? sortedData.length : 10}
+      dataLength={entityThread.length > 0 ? entityThread.length : 10}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>
