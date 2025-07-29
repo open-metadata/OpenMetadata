@@ -1,5 +1,6 @@
 ---
-title: customMessagingConnection
+title: Custommessagingconnection | Official Documentation
+description: Schema for custom messaging connection setups, allowing ingestion from proprietary or unsupported brokers.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/custommessagingconnection
 ---
 

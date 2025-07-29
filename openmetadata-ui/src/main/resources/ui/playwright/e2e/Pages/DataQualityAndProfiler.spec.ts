@@ -956,15 +956,11 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     // get all the filters
     await page.click('[data-testid="advanced-filter"]');
-    await page.click('[value="tableFqn"]');
-    await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="testPlatforms"]');
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="lastRunRange"]');
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="serviceName"]');
-    await page.click('[data-testid="advanced-filter"]');
-    await page.click('[value="tags"]');
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="tier"]');
 
