@@ -186,10 +186,10 @@ CREATE INDEX idx_tag_classification_hash_deleted
   ON tag (classificationHash, deleted);
 
 
--- 1. Migrate root-level "domain" to "domains"
+-- 1. Migrate root-level domain to domains
 UPDATE thread_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
 
--- 2. Migrate nested "feedInfo.entitySpecificInfo.entity.domain" to "domains"
+-- 2. Migrate nested feedInfo.entitySpecificInfo.entity.domain to domains
 UPDATE thread_entity
 SET json = jsonb_set(
               json #- '{feedInfo,entitySpecificInfo,entity,domain}',
