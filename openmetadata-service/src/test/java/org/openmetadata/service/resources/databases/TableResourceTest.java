@@ -5743,4 +5743,113 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     e.getEntity().getId().equals(tableB.getId())
                         && e.getRelatedEntity().getId().equals(tableC.getId())));
   }
+
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel tableTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    List<Table> createdTables = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("col1_" + i, BIGINT, null).withTags(List.of(columnTagLabel)),
+              getColumn("col2_" + i, VARCHAR, null).withDataLength(50));
+
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withColumns(columns)
+              .withTags(List.of(tableTagLabel))
+              .withTableConstraints(null);
+
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      createdTables.add(table);
+    }
+
+    // Test pagination with fields=tags (should fetch table-level tags only)
+    WebTarget target =
+        getResource("tables")
+            .queryParam("fields", "tags")
+            .queryParam("limit", "50")
+            .queryParam(
+                "databaseSchema",
+                DATABASE_SCHEMA.getFullyQualifiedName()); // Filter by schema to get our tables
+
+    TableList tableList = TestUtils.get(target, TableList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(tableList.getData());
+
+    List<Table> ourTables =
+        tableList.getData().stream()
+            .filter(t -> createdTables.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTables.isEmpty(), "Should find at least one of our created tables in pagination");
+
+    for (Table table : ourTables) {
+      assertNotNull(
+          table.getTags(), "Table-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, table.getTags().size(), "Should have exactly one table-level tag");
+      assertEquals(tableTagLabel.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+      if (table.getColumns() != null) {
+        for (Column col : table.getColumns()) {
+          assertTrue(
+              col.getTags() == null || col.getTags().isEmpty(),
+              "Column tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    target =
+        getResource("tables")
+            .queryParam("fields", "columns,tags")
+            .queryParam("limit", "50")
+            .queryParam(
+                "databaseSchema",
+                DATABASE_SCHEMA.getFullyQualifiedName()); // Filter by schema to get our tables
+
+    tableList = TestUtils.get(target, TableList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(tableList.getData());
+
+    ourTables =
+        tableList.getData().stream()
+            .filter(t -> createdTables.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTables.isEmpty(), "Should find at least one of our created tables in pagination");
+
+    for (Table table : ourTables) {
+      assertNotNull(
+          table.getTags(), "Table-level tags should not be null in pagination with columns,tags");
+      assertEquals(1, table.getTags().size(), "Should have exactly one table-level tag");
+      assertEquals(tableTagLabel.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+      assertNotNull(table.getColumns(), "Columns should not be null when fields includes columns");
+      Column col1 =
+          table.getColumns().stream()
+              .filter(c -> c.getName().startsWith("col1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col1 column"));
+
+      assertNotNull(
+          col1.getTags(), "Column tags should not be null when fields=columns,tags in pagination");
+      assertTrue(col1.getTags().size() >= 1, "Column should have at least one tag");
+      // Check that our expected tag is present
+      boolean hasExpectedTag =
+          col1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(columnTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Column should have the expected tag: " + columnTagLabel.getTagFQN());
+
+      Column col2 =
+          table.getColumns().stream()
+              .filter(c -> c.getName().startsWith("col2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col2 column"));
+
+      assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
+    }
+  }
 }

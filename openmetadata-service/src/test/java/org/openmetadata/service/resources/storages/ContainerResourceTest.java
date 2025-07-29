@@ -6,6 +6,8 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -43,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -862,5 +865,125 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     List<ContainerFileFormat> actualFormats =
         JsonUtils.readObjects(actual, ContainerFileFormat.class);
     assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
+  }
+
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    // Use existing tags that are already set up in the test environment
+    TagLabel containerTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    // Create multiple containers with tags at both container and column levels
+    List<Container> createdContainers = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("col1_" + i, BIGINT, null).withTags(List.of(columnTagLabel)),
+              getColumn("col2_" + i, ColumnDataType.VARCHAR, null).withDataLength(50));
+
+      ContainerDataModel dataModel =
+          new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+      CreateContainer createContainer =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withDataModel(dataModel)
+              .withTags(List.of(containerTagLabel));
+
+      Container container = createEntity(createContainer, ADMIN_AUTH_HEADERS);
+      createdContainers.add(container);
+    }
+
+    // Test pagination with fields=tags (should fetch container-level tags only)
+    WebTarget target =
+        getResource("containers").queryParam("fields", "tags").queryParam("limit", "50");
+
+    ContainerList containerList = TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(containerList.getData());
+
+    // Verify at least one of our created containers is in the response
+    List<Container> ourContainers =
+        containerList.getData().stream()
+            .filter(c -> createdContainers.stream().anyMatch(cc -> cc.getId().equals(c.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourContainers.isEmpty(),
+        "Should find at least one of our created containers in pagination");
+
+    // Verify container-level tags are fetched
+    for (Container container : ourContainers) {
+      assertNotNull(
+          container.getTags(),
+          "Container-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, container.getTags().size(), "Should have exactly one container-level tag");
+      assertEquals(containerTagLabel.getTagFQN(), container.getTags().get(0).getTagFQN());
+
+      // Columns should not have tags when only fields=tags is specified
+      if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
+        for (Column col : container.getDataModel().getColumns()) {
+          assertTrue(
+              col.getTags() == null || col.getTags().isEmpty(),
+              "Column tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    // Test pagination with fields=dataModel,tags (should fetch both container and column tags)
+    target =
+        getResource("containers").queryParam("fields", "dataModel,tags").queryParam("limit", "50");
+
+    containerList = TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(containerList.getData());
+
+    // Verify at least one of our created containers is in the response
+    ourContainers =
+        containerList.getData().stream()
+            .filter(c -> createdContainers.stream().anyMatch(cc -> cc.getId().equals(c.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourContainers.isEmpty(),
+        "Should find at least one of our created containers in pagination");
+
+    // Verify both container-level and column-level tags are fetched
+    for (Container container : ourContainers) {
+      // Verify container-level tags
+      assertNotNull(
+          container.getTags(),
+          "Container-level tags should not be null in pagination with dataModel,tags");
+      assertEquals(1, container.getTags().size(), "Should have exactly one container-level tag");
+      assertEquals(containerTagLabel.getTagFQN(), container.getTags().get(0).getTagFQN());
+
+      // Verify column-level tags
+      assertNotNull(
+          container.getDataModel(), "DataModel should not be null when fields includes dataModel");
+      assertNotNull(container.getDataModel().getColumns(), "Columns should not be null");
+
+      Column col1 =
+          container.getDataModel().getColumns().stream()
+              .filter(c -> c.getName().startsWith("col1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col1 column"));
+
+      assertNotNull(
+          col1.getTags(),
+          "Column tags should not be null when fields=dataModel,tags in pagination");
+      assertTrue(col1.getTags().size() >= 1, "Column should have at least one tag");
+      // Check that our expected tag is present
+      boolean hasExpectedTag =
+          col1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(columnTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Column should have the expected tag: " + columnTagLabel.getTagFQN());
+
+      // col2 should not have tags
+      Column col2 =
+          container.getDataModel().getColumns().stream()
+              .filter(c -> c.getName().startsWith("col2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col2 column"));
+
+      assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
+    }
   }
 }
