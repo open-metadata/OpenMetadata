@@ -160,7 +160,6 @@ class ServiceUtilClassBase {
     PipelineServiceType.DataFactory,
     PipelineServiceType.Stitch,
     DashboardServiceType.PowerBIReportServer,
-    DatabaseServiceType.Ssas,
     DashboardServiceType.ThoughtSpot,
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,

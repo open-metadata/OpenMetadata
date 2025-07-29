@@ -429,7 +429,6 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
   PipelineServiceType.Ssis,
-  DatabaseServiceType.Ssas,
   DashboardServiceType.ThoughtSpot,
 ];
 
