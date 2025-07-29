@@ -1,0 +1,75 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../styles/variables.less');
+
+.contract-status-card-item {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid @border-color;
+  margin-bottom: 12px;
+
+  .contract-status-card-icon {
+    font-size: 20px;
+    color: @text-grey-muted;
+  }
+
+  .contract-status-card-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: @grey-900;
+  }
+
+  .contract-status-card-desc {
+    font-size: 12px;
+    font-weight: 500;
+    color: @grey-600;
+  }
+
+  .contract-status-card-time {
+    margin-left: 4px;
+    font-size: 10px;
+    font-weight: 300;
+    color: @grey-600;
+  }
+}
+
+.card-subtitle {
+  margin-bottom: 12px;
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: @grey-700;
+}
+
+.rule-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .rule-icon {
+    font-size: 20px;
+    margin-right: 4px;
+  }
+
+  .rule-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: @grey-900;
+  }
+
+  .rule-description {
+    font-size: 12px;
+    font-weight: 300;
+  }
+}

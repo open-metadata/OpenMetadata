@@ -13,6 +13,7 @@
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import { DataContract } from '../generated/entity/data/dataContract';
+import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
@@ -96,8 +97,19 @@ export const deleteContractById = async (contractId: string) => {
   return response.data;
 };
 
+export const getContractResultByResultId = async (
+  contractId: string,
+  resultId: string
+) => {
+  const response = await APIClient.get<DataContractResult>(
+    `/dataContracts/${contractId}/results/${resultId}`
+  );
+
+  return response.data;
+};
+
 export const getLatestContractResults = async (contractId: string) => {
-  const response = await APIClient.get<DataContract>(
+  const response = await APIClient.get<DataContractResult>(
     `/dataContracts/${contractId}/results`
   );
 
