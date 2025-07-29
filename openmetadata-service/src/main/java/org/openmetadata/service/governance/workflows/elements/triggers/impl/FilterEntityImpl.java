@@ -77,7 +77,7 @@ public class FilterEntityImpl implements JavaDelegate {
           (Boolean.TRUE.equals(
               RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity))));
     } else {
-      jsonFilter = true; // No filter means pass
+      jsonFilter = false; // No filter means pass
     }
 
     return !jsonFilter;

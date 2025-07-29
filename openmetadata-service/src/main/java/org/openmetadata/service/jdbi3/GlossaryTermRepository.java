@@ -77,8 +77,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -104,7 +102,6 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
-import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -119,7 +116,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
-  private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
 
   final FeedRepository feedRepository = Entity.getFeedRepository();
 
@@ -237,8 +233,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
     if (!update || entity.getStatus() == null) {
-      // Determine the correct status based on reviewers and workflow rules
-      setInitialStatusWithWorkflowRules(entity);
+      // Set default status to DRAFT for new terms - workflow will handle approval logic
+      entity.setStatus(Status.DRAFT);
     }
     if (!update) {
       checkDuplicateTerms(entity);
@@ -1422,82 +1418,5 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .getGlossaryTermCountIgnoreCase(
                 entity.getGlossary().getFullyQualifiedName(), entity.getName())
         > 0;
-  }
-
-  private void setInitialStatusWithWorkflowRules(GlossaryTerm entity) {
-    // Default to APPROVED status
-    entity.setStatus(Status.APPROVED);
-    try {
-      // Set Inherited fields to validate jsonLogic and workflow rules during creation
-      GlossaryTerm glossaryTermCopy = JsonUtils.deepCopy(entity, GlossaryTerm.class);
-      setInheritedFields(glossaryTermCopy, new Fields(allowedFields));
-
-      if (shouldAutoApproveGlossaryTerm(glossaryTermCopy)) {
-        entity.setStatus(Status.APPROVED);
-      } else {
-        entity.setStatus(Status.DRAFT);
-      }
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to evaluate workflow rules for glossary term {}, defaulting to auto-approve: {}",
-          entity.getFullyQualifiedName(),
-          e.getMessage());
-      // Fail-safe: auto-approve on error to ensure system keeps working
-      entity.setStatus(Status.APPROVED);
-    }
-  }
-
-  private boolean shouldAutoApproveGlossaryTerm(GlossaryTerm glossaryTerm) {
-    // If there are no reviewers, auto-approve regardless of workflow configuration
-    List<EntityReference> reviewers = glossaryTerm.getReviewers();
-    if (reviewers == null || reviewers.isEmpty()) {
-      LOG.debug(
-          "No reviewers found - auto-approving term: {}", glossaryTerm.getFullyQualifiedName());
-      return true;
-    }
-
-    WorkflowDefinition workflow = getGlossaryTermApprovalWorkflow();
-    if (workflow == null) {
-      LOG.debug(
-          "No glossary approval workflow found - auto-approving term: {}",
-          glossaryTerm.getFullyQualifiedName());
-      return true; // No workflow configured = no approval process needed
-    }
-    String workflowFilter = extractWorkflowFilter(workflow);
-    if (workflowFilter == null || workflowFilter.trim().isEmpty()) {
-      return false; // Workflow exists but no filter = always trigger workflow
-    }
-    Map<String, Object> context = JsonUtils.getMap(glossaryTerm);
-    context.put("updatedBy", glossaryTerm.getUpdatedBy());
-
-    // Evaluate the filter - if it returns true, then the status is set to APPROVED
-    Object result = RuleEngine.getInstance().apply(workflowFilter, context);
-    return Boolean.TRUE.equals(result);
-  }
-
-  private WorkflowDefinition getGlossaryTermApprovalWorkflow() {
-    try {
-      WorkflowDefinitionRepository workflowRepo =
-          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-
-      return workflowRepo.findByNameOrNull(GLOSSARY_TERM_APPROVAL_WORKFLOW, Include.NON_DELETED);
-    } catch (Exception e) {
-      LOG.warn("Failed to retrieve glossary term approval workflow: {}", e.getMessage());
-      return null;
-    }
-  }
-
-  private String extractWorkflowFilter(WorkflowDefinition workflow) {
-    try {
-      if (workflow != null && workflow.getTrigger() != null) {
-        Object triggerConfig = workflow.getTrigger().getConfig();
-        if (triggerConfig != null && ((Config) triggerConfig).getFilter() != null) {
-          return ((Config) triggerConfig).getFilter();
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to extract workflow filter: {}", e.getMessage());
-    }
-    return null;
   }
 }

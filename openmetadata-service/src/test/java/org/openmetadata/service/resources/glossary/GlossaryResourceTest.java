@@ -360,7 +360,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
-  void patch_moveGlossaryTerm(TestInfo test) throws IOException {
+  void patch_moveGlossaryTerm(TestInfo test) throws IOException, InterruptedException {
     //
     // These test move a glossary term to different parts of the glossary hierarchy and to different
     // glossaries
@@ -436,6 +436,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           GlossaryTerm newParentTerm = (GlossaryTerm) scenarios[i][j];
           newGlossary = newParentTerm.getGlossary();
           newParent = newParentTerm.getEntityReference();
+          newParent =
+              glossaryTermResourceTest
+                  .getEntity(newParentTerm.getId(), ADMIN_AUTH_HEADERS)
+                  .getEntityReference();
         }
         LOG.info(
             "Scenario iteration [{}, {}] move the term {} from glossary:parent {}:{} to {}:{}",
@@ -446,6 +450,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             getFqn(termToMove.getParent()),
             getFqn(newGlossary),
             getFqn(newParent));
+        java.lang.Thread.sleep(5000L); // Term should move to APPROVED by workflow
+        termToMove = glossaryTermResourceTest.getEntity(termToMove.getId(), ADMIN_AUTH_HEADERS);
         updatedTerm = moveGlossaryTermAndBack(newGlossary, newParent, termToMove, table);
         copyGlossaryTerm(updatedTerm, termToMove);
       }
@@ -464,7 +470,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
-  void test_patch_changeParent_UpdateHierarchy(TestInfo test) throws IOException {
+  void test_patch_changeParent_UpdateHierarchy(TestInfo test)
+      throws IOException, InterruptedException {
     CreateGlossary create = createRequest(getEntityName(test), "", "", null);
     Glossary glossary = createEntity(create, ADMIN_AUTH_HEADERS);
     //
@@ -1229,7 +1236,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   /** Change the parent of a glossary term to another glossary term then move it back to the previous hierarchy */
   private GlossaryTerm moveGlossaryTermAndBack(
       EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table)
-      throws IOException {
+      throws IOException, InterruptedException {
+    // Get the updated glossary Term
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    term = glossaryTermResourceTest.getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+
     EntityReference previousParent = term.getParent();
     EntityReference previousGlossary = term.getGlossary();
 
@@ -1241,7 +1252,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   private GlossaryTerm moveGlossaryTerm(
       EntityReference newGlossary, EntityReference newParent, GlossaryTerm term, Table table)
-      throws IOException {
+      throws IOException, InterruptedException {
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     String previousTermFqn = term.getFullyQualifiedName();
 

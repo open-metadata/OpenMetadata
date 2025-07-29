@@ -12,7 +12,7 @@
       "entityType": "glossaryTerm",
       "events": ["Created", "Updated"],
       "exclude": ["reviewers"],
-      "filter": "{\"or\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      "filter": "{\"and\":[]}"
     }
   },
   "nodes": [
@@ -21,6 +21,12 @@
       "subType": "startEvent",
       "name": "GlossaryTermCreated",
       "displayName": "Glossary Term Created or Updated"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutoApprovedByReviewerEnd",
+      "displayName": "Auto-Approved by Reviewer"
     },
     {
       "type": "endEvent",
@@ -45,6 +51,30 @@
       "subType": "endEvent",
       "name": "DraftEnd",
       "displayName": "Glossary Term Status: Draft"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "displayName": "Check if Glossary Term Updated By is Reviewer",
+      "config": {
+        "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApprovedByReviewer",
+      "displayName": "Set Status to 'Approved' (By Reviewer)",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
     },
     {
       "type": "automatedTask",
@@ -159,8 +189,22 @@
     },
     {
       "from": "CheckGlossaryTermHasReviewers",
-      "to": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "CheckIfGlossaryTermUpdatedByIsReviewer",
       "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "to": "SetGlossaryTermStatusToApprovedByReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "to": "CheckGlossaryTermIsReadyToBeReviewed",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedByReviewer",
+      "to": "AutoApprovedByReviewerEnd"
     },
     {
       "from": "CheckGlossaryTermIsReadyToBeReviewed",
