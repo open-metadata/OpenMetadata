@@ -1,5 +1,6 @@
 ---
 title: Looker Connection | OpenMetadata Looker Connection Details
+description: Looker dashboard connection schema including API key, URL, project name, and connection configs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/lookerconnection
 ---
 

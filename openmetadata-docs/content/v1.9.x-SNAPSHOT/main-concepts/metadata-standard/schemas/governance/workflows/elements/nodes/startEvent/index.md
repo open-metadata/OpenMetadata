@@ -1,5 +1,6 @@
 ---
 title: Start Event Node | OpenMetadata Start Event Node Overview
+description: Defines start node type in workflows to mark the beginning of automated or manual process flows.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/startevent
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Spark Connection | OpenMetadata Apache Spark Connection
+description: Define Spark pipeline connection to track job metadata, task lineage, and performance metrics across executions.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/sparkconnection
 ---
 

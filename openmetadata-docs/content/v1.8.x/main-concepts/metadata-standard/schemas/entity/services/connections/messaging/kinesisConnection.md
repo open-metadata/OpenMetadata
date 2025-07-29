@@ -1,5 +1,6 @@
 ---
 title: Kinesis Connection | OpenMetadata Kinesis
+description: Kinesis messaging connection schema to support ingestion of streaming data metadata into the platform.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/kinesisconnection
 ---
 

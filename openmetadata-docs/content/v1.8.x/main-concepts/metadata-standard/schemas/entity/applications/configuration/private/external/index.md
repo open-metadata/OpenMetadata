@@ -1,5 +1,6 @@
 ---
 title: Private External Config Schema | OpenMetadata Entity Config
+description: Reference schema for external private application configuration with security and custom integration details.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/private/external
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: SAP HANA DB Connection Schema | OpenMetadata Service Connections
+description: Schema for connecting to SAP HANA as a data source, extracting table metadata and business objects.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/saphana
 ---
 

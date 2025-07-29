@@ -1,5 +1,6 @@
 ---
 title: SSL Cert Paths | OpenMetadata SSL Certificate Paths
+description: Reference schema for specifying certificate file paths used in secure service integrations via SSL.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common/sslcertpaths
 ---
 

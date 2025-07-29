@@ -1,5 +1,6 @@
 ---
 title: SSL Config | OpenMetadata SSL Configurations
+description: Use this schema to apply SSL settings in service connections, including validation and trust configurations.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common/sslconfig
 ---
 

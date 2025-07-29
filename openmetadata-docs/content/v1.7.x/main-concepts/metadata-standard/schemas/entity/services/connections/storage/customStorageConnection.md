@@ -1,5 +1,6 @@
 ---
-title: customStorageConnection
+title: customStorageConnection | Official Documentation
+description: Set up configurations for custom storage integrations using this schema to ingest and manage metadata from external storage.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/customstorageconnection
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: GCS Connection | OpenMetadata Google Cloud Storage Connection
+description: Configure Google Cloud Storage connection settings to extract metadata and manage cloud-hosted datasets.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/gcsconnection
 ---
 

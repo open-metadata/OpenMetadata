@@ -1,5 +1,6 @@
 ---
 title: External Automator Config | OpenMetadata Entity Applications
+description: Schema for Automator service integration to enable workflow automation and metadata change triggers.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator
 ---
 

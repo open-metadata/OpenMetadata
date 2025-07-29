@@ -1,5 +1,6 @@
 ---
 title: PowerBI Connection | OpenMetadata PowerBI Integration
+description: Power BI connection schema including tenant ID, client secret, and authority URL setup.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbiconnection
 ---
 

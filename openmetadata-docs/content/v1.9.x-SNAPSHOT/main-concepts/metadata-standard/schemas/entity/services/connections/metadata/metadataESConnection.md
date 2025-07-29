@@ -1,5 +1,6 @@
 ---
-title: metadataESConnection
+title: metadataESConnection | Official Documentation
+description: Schema for metadata Elasticsearch connection configuration to integrate and index structured metadata records.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/metadataesconnection
 ---
 

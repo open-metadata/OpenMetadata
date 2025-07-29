@@ -1,5 +1,6 @@
 ---
-title: kafkaConnectConnection
+title: Kafkaconnectconnection | Official Documentation
+description: Set up Kafka Connect connections using this schema to ingest metadata from source and sink connectors.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/kafkaconnectconnection
 ---
 

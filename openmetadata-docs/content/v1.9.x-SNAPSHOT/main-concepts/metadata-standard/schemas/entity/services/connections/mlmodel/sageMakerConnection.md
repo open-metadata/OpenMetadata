@@ -1,5 +1,6 @@
 ---
-title: sageMakerConnection
+title: sageMakerConnection | Official Documentation
+description: Configure SageMaker integration using this schema to extract model metadata and lifecycle insights from AWS ML workflows.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sagemakerconnection
 ---
 

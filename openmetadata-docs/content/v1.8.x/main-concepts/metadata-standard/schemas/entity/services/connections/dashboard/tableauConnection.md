@@ -1,5 +1,6 @@
 ---
 title: Tableau Connection | OpenMetadata Tableau
+description: Set up Tableau dashboard connections using this schema to manage chart-level metadata, data sources, and lineage insights.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/tableauconnection
 ---
 

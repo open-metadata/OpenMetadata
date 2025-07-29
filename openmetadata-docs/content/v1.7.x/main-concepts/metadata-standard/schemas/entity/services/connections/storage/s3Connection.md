@@ -1,5 +1,6 @@
 ---
 title: S3 Connection | OpenMetadata Amazon S3 Storage Connection
+description: Schema for connecting to Amazon S3 storage, enabling metadata collection, lineage capture, and object tracking.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/s3connection
 ---
 

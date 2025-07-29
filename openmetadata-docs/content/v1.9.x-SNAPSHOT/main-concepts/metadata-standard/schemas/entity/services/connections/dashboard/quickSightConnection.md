@@ -1,5 +1,6 @@
 ---
 title: QuickSight Connection | OpenMetadata QuickSight
+description: QuickSight dashboard connection schema including AWS settings, user pool, and region configuration.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/quicksightconnection
 ---
 

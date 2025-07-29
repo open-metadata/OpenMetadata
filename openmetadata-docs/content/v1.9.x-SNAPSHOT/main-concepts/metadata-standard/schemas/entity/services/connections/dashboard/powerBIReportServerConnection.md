@@ -1,5 +1,6 @@
 ---
-title: powerBIReportServerConnection
+title: powerBIReportServerConnection | Official Documentation
+description: Power BI Report Server connection schema supporting on-premises dashboards with secure tokens.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbireportserverconnection
 ---
 

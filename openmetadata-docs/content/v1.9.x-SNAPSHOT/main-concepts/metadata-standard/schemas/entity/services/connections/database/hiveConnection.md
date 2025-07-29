@@ -1,5 +1,6 @@
 ---
 title: Hive Connection | OpenMetadata Hive Database Connection
+description: Define Hive connection schema to extract metadata from Hadoop-based data warehouses and Hive metastore.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection
 ---
 

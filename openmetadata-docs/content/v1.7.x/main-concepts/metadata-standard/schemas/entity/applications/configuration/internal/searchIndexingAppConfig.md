@@ -1,5 +1,6 @@
 ---
-title: searchIndexingAppConfig
+title: Searchindexingappconfig | Official Documentation
+description: Configuration schema for internal search indexing app settings used within platform applications.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/internal/searchindexingappconfig
 ---
 

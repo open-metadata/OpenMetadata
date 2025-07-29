@@ -1,5 +1,6 @@
 ---
 title: DeltaLake Config | OpenMetadata DeltaLake
+description: Delta Lake schema to ingest metadata for transactional data lakes supporting ACID capabilities.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/deltalake
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: PowerBI Dashboard | OpenMetadata PowerBI
+description: Power BI embedded schema for ingestion of assets with client ID and user delegation setup.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/powerbi
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Atlas Connection | OpenMetadata Apache Atlas Connection
+description: Configure Apache Atlas service connection to support metadata synchronization and lineage ingestion.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/atlasconnection
 ---
 

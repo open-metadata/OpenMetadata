@@ -1,5 +1,6 @@
 ---
 title: Athena Connection | OpenMetadata Athena Connection Details
+description: Configure Athena connection using this schema to ingest query execution metadata from Amazon Athena.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/athenaconnection
 ---
 

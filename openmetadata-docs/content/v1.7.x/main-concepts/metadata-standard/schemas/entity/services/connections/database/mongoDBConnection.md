@@ -1,5 +1,6 @@
 ---
 title: MongoDB Connection | OpenMetadata MongoDB
+description: Define MongoDB connection schema to support ingestion of document-based schema and performance metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodbconnection
 ---
 

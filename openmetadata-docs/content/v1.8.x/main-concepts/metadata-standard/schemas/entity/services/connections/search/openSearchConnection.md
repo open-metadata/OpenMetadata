@@ -1,5 +1,6 @@
 ---
-title: openSearchConnection
+title: openSearchConnection | Official Documentation
+description: Define OpenSearch connection configurations to enable metadata search and indexing with scalable, reliable search operations.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/opensearchconnection
 ---
 

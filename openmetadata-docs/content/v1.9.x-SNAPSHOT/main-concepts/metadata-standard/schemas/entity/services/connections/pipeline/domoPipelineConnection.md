@@ -1,5 +1,6 @@
 ---
-title: domoPipelineConnection
+title: domoPipelineConnection | Official Documentation
+description: Set up Domo pipeline connections using this schema to ingest pipeline metadata and monitor orchestration activity.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/domopipelineconnection
 ---
 

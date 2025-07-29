@@ -1,5 +1,6 @@
 ---
 title: Vertex AI Connection | OpenMetadata Vertex AI
+description: Vertex AI connection schema for ingesting metadata from ML models hosted and trained on Google Cloud Vertex AI.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/vertexaiconnection
 ---
 

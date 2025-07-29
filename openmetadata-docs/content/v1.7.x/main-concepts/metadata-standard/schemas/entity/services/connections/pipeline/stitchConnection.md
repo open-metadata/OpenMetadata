@@ -1,5 +1,6 @@
 ---
 title: Stitch Connection | OpenMetadata Stitch Pipeline Connection
+description: Configure Stitch pipeline connection schema to support metadata ingestion and pipeline data sync insights.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/stitchconnection
 ---
 

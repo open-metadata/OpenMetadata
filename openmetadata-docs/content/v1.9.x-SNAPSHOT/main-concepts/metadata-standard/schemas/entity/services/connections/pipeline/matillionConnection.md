@@ -1,5 +1,6 @@
 ---
 title: Matillion Connection | OpenMetadata Matillion
+description: Configure Matillion pipelines using this schema to capture transformation logic, task metadata, and orchestration flows.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/matillionconnection
 ---
 

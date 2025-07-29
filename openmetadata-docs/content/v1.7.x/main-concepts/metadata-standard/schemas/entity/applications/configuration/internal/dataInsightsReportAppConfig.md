@@ -1,5 +1,6 @@
 ---
-title: dataInsightsReportAppConfig
+title: dataInsightsReportAppConfig | Official Documentation
+description: Define configuration settings for internal data insights reporting application, managing metrics and visualization.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/internal/datainsightsreportappconfig
 ---
 

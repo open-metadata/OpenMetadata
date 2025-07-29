@@ -1,5 +1,6 @@
 ---
-title: createAppMarketPlaceDefinitionReq
+title: createAppMarketPlaceDefinitionReq | Official Documentation
+description: Schema for creating app marketplace entries including config, supported types, and metadata fields.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/marketplace/createappmarketplacedefinitionreq
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: MSSQL Connection | OpenMetadata Microsoft SQL Server Connection
+description: MSSQL connection schema for capturing database structure, stored procedures, and usage patterns.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mssqlconnection
 ---
 

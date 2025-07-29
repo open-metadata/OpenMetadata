@@ -1,5 +1,6 @@
 ---
 title: Amundsen Connection | OpenMetadata Amundsen
+description: Schema to connect with Amundsen metadata platform for syncing assets, lineage, and business glossary terms.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/amundsenconnection
 ---
 

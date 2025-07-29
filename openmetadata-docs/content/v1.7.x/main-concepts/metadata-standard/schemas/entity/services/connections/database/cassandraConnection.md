@@ -1,5 +1,6 @@
 ---
 title: Cassandra Connection | OpenMetadata Cassandra
+description: Cassandra connection schema for ingesting keyspace, table, and performance metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandraconnection
 ---
 

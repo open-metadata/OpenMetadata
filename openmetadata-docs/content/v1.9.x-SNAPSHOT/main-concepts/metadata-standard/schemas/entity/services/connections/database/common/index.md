@@ -1,5 +1,6 @@
 ---
 title: Common DB Connections | OpenMetadata Common Connections
+description: Base schema structure for defining common database connection fields like host, port, and credentials.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common
 ---
 

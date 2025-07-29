@@ -1,5 +1,6 @@
 ---
 title: Lightdash Connection | OpenMetadata Lightdash
+description: Define connection schema for Lightdash dashboards, supporting metadata ingestion and configuration for seamless reporting across your data platform.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/lightdashconnection
 ---
 

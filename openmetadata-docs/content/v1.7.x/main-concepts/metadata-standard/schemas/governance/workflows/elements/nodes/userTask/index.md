@@ -1,5 +1,6 @@
 ---
 title: User Task Node | OpenMetadata User Task Node Information
+description: User task node schema specifying manual interaction points in automated workflows.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/usertask
 ---
 
