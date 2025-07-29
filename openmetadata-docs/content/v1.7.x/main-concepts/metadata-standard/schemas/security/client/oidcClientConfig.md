@@ -1,5 +1,6 @@
 ---
 title: oidcClientConfig | OpenMetadata OIDC Client Config
+description: Define OIDC client config including issuer URL, client ID/secret, scopes, and redirect URIs to support OpenID Connect authentication.
 slug: /main-concepts/metadata-standard/schemas/security/client/oidcclientconfig
 ---
 

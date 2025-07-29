@@ -1,5 +1,6 @@
 ---
 title: Iceberg Connection | OpenMetadata Iceberg
+description: Iceberg metadata connection schema enabling ingestion of metadata for large-scale tabular datasets.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/icebergconnection
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: Redpanda Connection | OpenMetadata Redpanda
+description: Define Redpanda messaging connection settings to ingest real-time metadata and monitor stream activities.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging/redpandaconnection
 ---
 

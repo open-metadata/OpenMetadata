@@ -1,5 +1,6 @@
 ---
 title: Role | OpenMetadata Role API and Permissions
+description: Represent user roles with associated policies, permissions, and access control mappings.
 slug: /main-concepts/metadata-standard/schemas/entity/teams/role
 ---
 
