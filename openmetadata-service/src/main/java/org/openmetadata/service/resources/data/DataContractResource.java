@@ -871,7 +871,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return newResult
         .withId(newResult.getId() == null ? UUID.randomUUID() : newResult.getId())
         .withDataContractFQN(dataContract.getFullyQualifiedName());
-
   }
 
   public static class DataContractList extends ResultList<DataContract> {
