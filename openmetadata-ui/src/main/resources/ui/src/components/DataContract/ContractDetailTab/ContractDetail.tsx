@@ -13,7 +13,6 @@
 /* eslint-disable i18next/no-literal-string */
 import Icon, {
   CheckCircleTwoTone,
-  DeleteOutlined,
   EditOutlined,
   PlayCircleOutlined,
   PlusOutlined,
@@ -24,10 +23,10 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
+import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
-import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
-import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
-import { ReactComponent as TableIcon } from '../../../assets/svg/table-grey.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
+
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,6 +36,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import { getConstraintStatus } from '../../../utils/DataContract/DataContractUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -44,8 +44,8 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { OwnerAvatar } from '../../common/OwnerAvtar/OwnerAvatar';
-import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
+import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
 import './contract-detail.less';
 
@@ -132,55 +132,7 @@ const ContractDetail: React.FC<{
       return [];
     }
 
-    const statusArray = [];
-
-    // Add schema validation if it exists
-    if (latestContractResults.schemaValidation) {
-      const { passed, failed, total } = latestContractResults.schemaValidation;
-      statusArray.push({
-        label: t('label.schema'),
-        status: failed === 0 ? t('label.passed') : t('label.failed'),
-        desc:
-          failed === 0
-            ? t('message.passed-x-checks', { count: passed })
-            : t('message.failed-x-checks', { failed, count: total }),
-        time: getRelativeTime(latestContractResults.timestamp),
-        icon: TableIcon,
-      });
-    }
-
-    // Add semantics validation if it exists
-    if (latestContractResults.semanticsValidation) {
-      const { passed, failed, total } =
-        latestContractResults.semanticsValidation;
-      statusArray.push({
-        label: t('label.semantic-plural'),
-        status: failed === 0 ? t('label.passed') : t('label.failed'),
-        desc:
-          failed === 0
-            ? t('message.passed-x-checks', { count: passed })
-            : t('message.failed-x-checks', { failed, count: total }),
-        time: getRelativeTime(latestContractResults.timestamp),
-        icon: SemanticsIcon,
-      });
-    }
-
-    // Add quality validation if it exists
-    if (latestContractResults.qualityValidation) {
-      const { passed, failed, total } = latestContractResults.qualityValidation;
-      statusArray.push({
-        label: t('label.quality'),
-        status: failed === 0 ? t('label.passed') : t('label.failed'),
-        desc:
-          failed === 0
-            ? t('message.passed-x-checks', { count: passed })
-            : t('message.failed-x-checks', { failed, count: total }),
-        time: getRelativeTime(latestContractResults.timestamp),
-        icon: QualityIcon,
-      });
-    }
-
-    return statusArray;
+    return getConstraintStatus(latestContractResults);
   }, [latestContractResults]);
 
   // Dynamic contract status based on latestContractResults
@@ -262,11 +214,18 @@ const ContractDetail: React.FC<{
             </Title>
 
             <Text type="secondary">
-              Created 4 hour ago by {contract.updatedBy}
+              {t('message.created-time-ago-by', {
+                time: getRelativeTime(contract.updatedAt),
+                by: contract.updatedBy,
+              })}
             </Text>
 
-            <div>
-              <Tag color="blue">Active</Tag>
+            <div className="d-flex items-center gap-2 m-t-xs">
+              <StatusBadgeV2
+                externalIcon={FlagIcon}
+                label={t('label.active')}
+                status={StatusType.Success}
+              />
               <Text type="secondary">Version {contract.version}</Text>
             </div>
           </Col>
@@ -280,8 +239,11 @@ const ContractDetail: React.FC<{
                 {t('label.run-now')}
               </Button>
               <Button
-                icon={<DeleteOutlined />}
+                danger
+                className="delete-button"
+                icon={<DeleteIcon />}
                 size="small"
+                type="default"
                 onClick={onDelete}
               />
               <Button
@@ -380,9 +342,7 @@ const ContractDetail: React.FC<{
                             {item.label}
                           </Text>
                           <div>
-                            <Text
-                              className="contract-status-card-desc"
-                              type="secondary">
+                            <Text className="contract-status-card-desc">
                               {item.desc}
                             </Text>
                             <Text className="contract-status-card-time">
@@ -392,7 +352,7 @@ const ContractDetail: React.FC<{
                         </div>
                       </div>
 
-                      <StatusBadge
+                      <StatusBadgeV2
                         label={item.status}
                         status={getStatusType(item.status)}
                       />
