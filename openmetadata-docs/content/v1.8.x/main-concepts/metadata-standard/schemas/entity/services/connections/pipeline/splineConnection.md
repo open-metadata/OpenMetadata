@@ -1,5 +1,6 @@
 ---
 title: Spline Connection | OpenMetadata Spline Lineage Connection
+description: Define connection to Spline pipeline service using this schema to ingest lineage and pipeline execution metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/splineconnection
 ---
 
