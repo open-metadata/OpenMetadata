@@ -33,6 +33,7 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 
@@ -188,6 +189,7 @@ const DatePickerMenu = ({
   return (
     <Dropdown
       destroyPopupOnHide
+      getPopupContainer={getPopupContainer}
       menu={{
         items,
         triggerSubMenuAction: 'click',

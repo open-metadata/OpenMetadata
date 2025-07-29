@@ -133,6 +133,11 @@ test.describe('Add TestCase New Flow', () => {
   });
 
   test('Add Table & Column Test Case', async ({ page }) => {
+    const testCaseDetails = {
+      testType: 'table row count to equal',
+      testTypeId: 'tableRowCountToEqual',
+      paramsValue: '10',
+    };
     await visitDataQualityPage(page);
 
     await test.step('Create table-level test case', async () => {
@@ -141,13 +146,21 @@ test.describe('Add TestCase New Flow', () => {
       await selectTable(page, table1.entity.name);
       await createTestCase({
         page,
-        testType: 'table row count to equal',
-        testTypeId: 'tableRowCountToEqual',
-        paramsValue: '10',
+        ...testCaseDetails,
       });
+
+      await expect(page.getByTestId('entity-header-name')).toHaveText(
+        `${testCaseDetails.testTypeId}_test_case`
+      );
     });
 
     await test.step('Create column-level test case', async () => {
+      const testCaseDetails = {
+        testType: 'Column Values To Be Unique',
+        testTypeId: 'columnValuesToBeUnique',
+        expectSchedulerCard: false,
+      };
+      await visitDataQualityPage(page);
       // Create column-level test case
       await openTestCaseForm(page);
       await page
@@ -157,10 +170,6 @@ test.describe('Add TestCase New Flow', () => {
       await selectTable(page, table1.entity.name);
 
       await page.click('#testCaseFormV1_selectedColumn');
-      await page.fill(
-        '#testCaseFormV1_selectedColumn',
-        table1.entity.columns[0].name
-      );
       await page
         .locator(
           `.ant-select-dropdown [title="${table1.entity.columns[0].name}"]`
@@ -169,10 +178,12 @@ test.describe('Add TestCase New Flow', () => {
 
       await createTestCase({
         page,
-        testType: 'Column Values To Be Unique',
-        testTypeId: 'columnValuesToBeUnique',
-        expectSchedulerCard: false,
+        ...testCaseDetails,
       });
+
+      await expect(page.getByTestId('entity-header-name')).toHaveText(
+        `${testCaseDetails.testTypeId}_test_case`
+      );
     });
 
     await test.step('Validate test case in Entity Page', async () => {

@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { Form } from 'antd';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import {
@@ -23,15 +24,33 @@ import {
 } from '../../../../mocks/TestSuite.mock';
 import ParameterForm from './ParameterForm';
 
-jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
+jest.mock('../../../Database/SchemaEditor/CodeEditor', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div data-testid="code-editor">CodeEditor</div>);
 });
+
+jest.mock('../../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_LIST: [],
+  SIDEBAR_NESTED_KEYS: {},
+}));
 
 jest.mock('../../../../constants/profiler.constant', () => ({
   SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME: [],
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
 }));
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 50,
+  PLACEHOLDER_ROUTE_TAB: ':tab',
+  ROUTES: {
+    OBSERVABILITY_ALERTS: '/observability/alerts',
+    DATA_INSIGHT: '/data-insights',
+    DATA_INSIGHT_WITH_TAB: '/data-insights/:tab',
+  },
 }));
 jest.mock('../../../../utils/EntityUtils', () => {
   return {
@@ -53,10 +72,14 @@ jest.mock('../../../../rest/searchAPI', () => {
   };
 });
 
+const renderWithForm = (component: React.ReactElement) => {
+  return render(<Form>{component}</Form>);
+};
+
 describe('ParameterForm component test', () => {
   it('Select box should render if "columnName" field is present and table data provided', async () => {
     await act(async () => {
-      render(
+      renderWithForm(
         <ParameterForm
           definition={
             MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN as TestDefinition
@@ -77,7 +100,7 @@ describe('ParameterForm component test', () => {
 
   it('Select box should render if "column" field is present and table data provided', async () => {
     await act(async () => {
-      render(
+      renderWithForm(
         <ParameterForm
           definition={MOCK_TABLE_TEST_WITH_COLUMN as TestDefinition}
           table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
@@ -96,7 +119,7 @@ describe('ParameterForm component test', () => {
 
   it('Select box should not render if "columnName" field is present but table data is not provided', async () => {
     await act(async () => {
-      render(
+      renderWithForm(
         <ParameterForm
           definition={
             MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN as TestDefinition
@@ -116,7 +139,7 @@ describe('ParameterForm component test', () => {
 
   it('Select box should not render if "columnName" field is present but test definition is not "tableRowInsertedCountToBeBetween"', async () => {
     await act(async () => {
-      render(
+      renderWithForm(
         <ParameterForm
           definition={MOCK_TABLE_COLUMN_NAME_TO_EXIST as TestDefinition}
           table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
@@ -135,21 +158,21 @@ describe('ParameterForm component test', () => {
 
   it('Query editor should render if "sqlExpression" field is present', async () => {
     await act(async () => {
-      render(
+      renderWithForm(
         <ParameterForm
           definition={MOCK_TABLE_CUSTOM_SQL_QUERY as TestDefinition}
         />
       );
     });
 
-    const sqlEditor = await screen.findByText('SchemaEditor');
+    const codeEditor = await screen.findByTestId('code-editor');
 
-    expect(sqlEditor).toBeInTheDocument();
+    expect(codeEditor).toBeInTheDocument();
   });
 
   it('Should render select box if optionValues are provided', async () => {
     await act(async () => {
-      render(
+      renderWithForm(
         <ParameterForm
           definition={MOCK_TABLE_CUSTOM_SQL_QUERY as TestDefinition}
         />

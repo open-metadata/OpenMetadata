@@ -424,3 +424,6 @@ export const handleEntityCreationError = ({
     setInlineAlertDetails
   );
 };
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;

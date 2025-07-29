@@ -19,11 +19,21 @@
   }
 
   &.new-chip-style {
-    .ant-tag.tag-chip-content {
+    .ant-select-selector {
+      padding-top: @padding-xss;
+      padding-bottom: @padding-xss;
+    }
+    .ant-tag,
+    .ant-select-selection-item {
       border: 1px solid @blue-30;
       border-radius: @border-rad-xs;
       background: @blue-29;
-      height: unset;
+      height: 30px;
+    }
+
+    .ant-select-selection-item {
+      display: flex;
+      align-items: center;
     }
   }
 }

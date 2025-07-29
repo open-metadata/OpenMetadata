@@ -18,7 +18,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -36,29 +35,49 @@ jest.mock('./DataQualityProvider', () => {
 jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-const mockComponent = () => <div>TestSuites.component</div>;
+// Import DataQualityClassBase before mocking to avoid hoisting issues
 jest.mock('./DataQualityClassBase', () => {
+  const MockTestCasesComponent = () => <div>Test Cases Component</div>;
+  const MockTestSuitesComponent = () => <div>Test Suites Component</div>;
+  const MockDashboardComponent = () => <div>Dashboard Component</div>;
+
   return {
-    getLeftSideBar: jest.fn().mockReturnValue([
-      {
-        key: 'tables',
-        label: 'Tables',
-        icon: TableIcon,
-        iconProps: {
-          className: 'side-panel-icons',
+    __esModule: true,
+    default: {
+      getLeftSideBar: jest.fn().mockReturnValue([
+        {
+          key: 'tables',
+          label: 'Tables',
+          icon: jest.fn(),
+          iconProps: {
+            className: 'side-panel-icons',
+          },
         },
-      },
-    ]),
-    getDataQualityTab: jest.fn().mockReturnValue([
-      {
-        component: mockComponent,
-        key: 'tables',
-        path: '/data-quality/tables',
-      },
-    ]),
-    getDefaultActiveTab: jest.fn().mockReturnValue('tables'),
-    getManageExtraOptions: jest.fn().mockReturnValue([]),
-    getExportDataQualityDashboardButton: jest.fn().mockReturnValue(null),
+      ]),
+      getDataQualityTab: jest.fn().mockReturnValue([
+        {
+          component: MockTestCasesComponent,
+          key: 'test-cases',
+          label: 'Test Cases',
+          path: '/data-quality/test-cases',
+        },
+        {
+          component: MockTestSuitesComponent,
+          key: 'test-suites',
+          label: 'Test Suites',
+          path: '/data-quality/test-suites',
+        },
+        {
+          component: MockDashboardComponent,
+          key: 'dashboard',
+          label: 'Dashboard',
+          path: '/data-quality/dashboard',
+        },
+      ]),
+      getDefaultActiveTab: jest.fn().mockReturnValue('test-cases'),
+      getManageExtraOptions: jest.fn().mockReturnValue([]),
+      getExportDataQualityDashboardButton: jest.fn().mockReturnValue(null),
+    },
   };
 });
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
@@ -71,6 +90,7 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
 });
 
 jest.mock('../../hoc/withPageLayout', () => ({
+  __esModule: true,
   withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
 
@@ -100,6 +120,27 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       },
     },
   }),
+}));
+
+// Mock TabsLabel component
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ name }) => <span>{name}</span>),
+}));
+
+// Mock PageHeader component
+jest.mock('../../components/PageHeader/PageHeader.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ data }) => (
+    <div className="page-header-container" data-testid="page-header-container">
+      <h5 className="ant-typography heading" data-testid="heading">
+        {data?.header}
+      </h5>
+      <div className="ant-typography sub-heading" data-testid="sub-heading">
+        {data?.subHeader}
+      </div>
+    </div>
+  )),
 }));
 
 // Mock TestCaseFormV1 and BundleSuiteForm components
@@ -181,7 +222,7 @@ describe('DataQualityPage', () => {
       expect(
         await screen.findByTestId('add-test-case-btn')
       ).toBeInTheDocument();
-      expect(screen.getByText('label.add-entity')).toBeInTheDocument();
+      expect(screen.getByText('label.add-a-entity')).toBeInTheDocument();
     });
 
     it('should show "Add Test Suite" button on TEST_SUITES tab with Create permission', async () => {

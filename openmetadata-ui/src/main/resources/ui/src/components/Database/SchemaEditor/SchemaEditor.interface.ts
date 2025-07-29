@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 
 export type Mode = {
@@ -31,4 +32,5 @@ export interface SchemaEditorProps {
   showCopyButton?: boolean;
   onChange?: (value: string) => void;
   onFocus?: () => void;
+  title?: ReactNode;
 }

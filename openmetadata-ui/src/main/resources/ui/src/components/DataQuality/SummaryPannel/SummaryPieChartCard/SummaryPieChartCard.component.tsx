@@ -57,9 +57,9 @@ const SummaryPieChartCard = ({
                     className="legend-dot"
                     style={{ backgroundColor: item.color }}
                   />
-                  <Typography.Paragraph className="text-grey-muted m-b-0">
+                  <Typography.Paragraph className="legend-text m-b-0">
                     {item.name}{' '}
-                    <Typography.Text strong className="text-grey-muted">
+                    <Typography.Text strong className="legend-value">
                       {formatNumberWithComma(item.value)}
                     </Typography.Text>
                   </Typography.Paragraph>
