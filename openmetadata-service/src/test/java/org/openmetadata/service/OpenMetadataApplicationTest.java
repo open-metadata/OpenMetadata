@@ -53,6 +53,8 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -266,6 +268,8 @@ public abstract class OpenMetadataApplicationTest {
     workflow.runMigrationWorkflows();
     WorkflowHandler.initialize(config);
     SettingsCache.initialize(config);
+    ApplicationHandler.initialize(config);
+    ApplicationContext.initialize();
     Entity.cleanup();
   }
 
