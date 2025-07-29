@@ -158,7 +158,6 @@ const TotalDataAssetsWidget = ({
       const daysMap: Record<string, number> = {
         [DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS]: 7,
         [DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS]: 14,
-        [DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS]: 30,
       };
 
       const days = daysMap[selectedSortBy] ?? 7;
