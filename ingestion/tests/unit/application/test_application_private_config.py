@@ -96,7 +96,9 @@ class TestApplicationPrivateConfig(TestCase):
         self.assertEqual(private_config["limits"]["billingCycleStart"], "2024-10-23")
 
     @patch.object(SecretsManagerFactory, "get_secrets_manager")
-    def test_retrieve_app_private_config_with_secret_prefix(self, mock_get_secrets_manager):
+    def test_retrieve_app_private_config_with_secret_prefix(
+        self, mock_get_secrets_manager
+    ):
         """Test successful retrieval of private config with secret: prefix"""
         # Mock secrets manager
         mock_secrets_manager = MagicMock()
@@ -116,7 +118,9 @@ class TestApplicationPrivateConfig(TestCase):
         private_config = runner._retrieve_app_private_config(secret_key_with_prefix)
 
         # Verify secrets manager was called with secret key without prefix
-        mock_secrets_manager.get_string_value.assert_called_with("my-app-private-config")
+        mock_secrets_manager.get_string_value.assert_called_with(
+            "my-app-private-config"
+        )
 
         # Verify returned config
         self.assertIsNotNone(private_config)
@@ -171,7 +175,9 @@ class TestApplicationPrivateConfig(TestCase):
         self.assertIsNone(private_config)
 
     @patch.object(SecretsManagerFactory, "get_secrets_manager")
-    def test_retrieve_app_private_config_no_secret_found(self, mock_get_secrets_manager):
+    def test_retrieve_app_private_config_no_secret_found(
+        self, mock_get_secrets_manager
+    ):
         """Test when no secret is found in secrets manager"""
         # Mock secrets manager to return None
         mock_secrets_manager = MagicMock()
@@ -209,7 +215,9 @@ class TestApplicationPrivateConfig(TestCase):
         """Test when secrets manager raises an exception"""
         # Mock secrets manager to raise an exception
         mock_secrets_manager = MagicMock()
-        mock_secrets_manager.get_string_value.side_effect = Exception("Connection error")
+        mock_secrets_manager.get_string_value.side_effect = Exception(
+            "Connection error"
+        )
         mock_get_secrets_manager.return_value = mock_secrets_manager
 
         config = OpenMetadataApplicationConfig.model_validate(self.app_config)
