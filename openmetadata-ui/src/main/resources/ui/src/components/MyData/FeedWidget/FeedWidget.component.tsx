@@ -158,7 +158,7 @@ const MyFeedWidgetInternal = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon height={24} width={24} />}
+          icon={<ActivityFeedIcon height={22} width={22} />}
           isEditView={isEditView}
           selectedSortBy={selectedFilter}
           sortOptions={FEED_WIDGET_FILTER_OPTIONS}

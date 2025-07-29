@@ -94,7 +94,7 @@ const MyTaskWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<MyTaskIcon data-testid="task-icon" height={24} width={24} />}
+        icon={<MyTaskIcon data-testid="task-icon" height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
         sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
