@@ -1,5 +1,6 @@
 ---
 title: knowledgePanel | OpenMetadata Knowledge Panel
+description: Set up knowledge panel metadata for surfacing contextual data or suggestions in the application user interface.
 slug: /main-concepts/metadata-standard/schemas/system/ui/knowledgepanel
 ---
 
