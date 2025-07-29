@@ -217,7 +217,10 @@
     },
     "domains": {
       "description": "Domain the entity belongs to.",
-      "$ref": "../../type/entityReferenceList.json"
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      }
     },
     "generatedBy": {
       "description": "User or team that generated the thread.",

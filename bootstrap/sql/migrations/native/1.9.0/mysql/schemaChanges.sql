@@ -152,14 +152,7 @@ CREATE INDEX idx_tag_classification_hash_deleted
   ON tag (classificationHash, deleted);
 
 --- 1. Migrate root-level "domain" to "domains"
- UPDATE thread_entity
- SET json = JSON_SET(
-               JSON_REMOVE(json, '$.domain'),
-               '$.domains',
-               JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))
-           )
- WHERE JSON_CONTAINS_PATH(json, 'one', '$.domain')
-   AND JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+UPDATE thread_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
 
  -- 2. Migrate nested "feedInfo.entitySpecificInfo.entity.domain" to "domains"
  UPDATE thread_entity

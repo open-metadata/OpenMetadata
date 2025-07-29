@@ -187,13 +187,7 @@ CREATE INDEX idx_tag_classification_hash_deleted
 
 
 -- 1. Migrate root-level "domain" to "domains"
-UPDATE thread_entity
-SET json = jsonb_set(
-              json #- '{domain}',
-              '{domains}',
-              to_jsonb(ARRAY[json->'domain'])
-          )
-WHERE json ? 'domain' AND json->'domain' IS NOT NULL;
+UPDATE thread_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
 
 -- 2. Migrate nested "feedInfo.entitySpecificInfo.entity.domain" to "domains"
 UPDATE thread_entity
