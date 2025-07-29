@@ -1,5 +1,6 @@
 ---
 title: navigationItem | OpenMetadata Navigation Item
+description: Define a UI navigation item with title, path, and icon for integrating custom links in the application's navigation panel.
 slug: /main-concepts/metadata-standard/schemas/system/ui/navigationitem
 ---
 
