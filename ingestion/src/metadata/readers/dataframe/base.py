@@ -22,6 +22,8 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.readers.models import ConfigSource
 from metadata.utils.logger import ingestion_logger
 
+MAX_FILE_SIZE_FOR_PREVIEW = 50 * 1024 * 1024  # 50MB
+
 logger = ingestion_logger()
 
 
