@@ -857,7 +857,8 @@
         },
         "sparkTableProfilerConfig": {
           "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
-          "$ref": "#/definitions/sparkTableProfilerConfig"
+          "$ref": "#/definitions/sparkTableProfilerConfig",
+          "default": null
         }
       }
     },
