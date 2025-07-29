@@ -29,7 +29,7 @@ describe('PersonaUtils', () => {
         }),
         expect.objectContaining({
           key: PageType.LandingPage,
-          label: 'label.homepage',
+          label: 'label.home-page',
           icon: 'svg-mock',
         }),
         expect.objectContaining({

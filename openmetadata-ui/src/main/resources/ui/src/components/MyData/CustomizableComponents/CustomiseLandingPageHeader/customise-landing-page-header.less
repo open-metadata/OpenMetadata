@@ -76,6 +76,19 @@
       max-height: 125px;
     }
   }
+
+  .search-input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 1px solid @grey-25;
+    border-radius: @border-rad-sm;
+    background: @white;
+    padding: @padding-xs @padding-sm;
+
+    .ant-popover-inner {
+      border-radius: @border-rad-sm;
+    }
+  }
 }
 
 .landing-page-header-bg {
@@ -138,15 +151,6 @@
 
 .customise-search-container {
   width: 100%;
-}
-
-.search-input {
-  min-width: 0;
-  flex: 1 1 auto;
-  border: 1px solid @grey-25;
-  border-radius: @border-rad-sm;
-  background: @white;
-  padding: @padding-xs @padding-sm;
 }
 
 .domain-selector {

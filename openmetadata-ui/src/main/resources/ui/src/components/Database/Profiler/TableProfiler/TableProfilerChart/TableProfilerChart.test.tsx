@@ -78,8 +78,10 @@ jest.mock('../TableProfilerProvider', () => ({
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
-  getSystemProfileList: jest.fn(),
-  getTableProfilesList: jest.fn(),
+  getSystemProfileList: jest
+    .fn()
+    .mockResolvedValue({ data: [{ timestamp: Date.now() }] }),
+  getTableProfilesList: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
@@ -112,8 +114,35 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
     .mockImplementation(({ i18nKey }) => <div>{i18nKey}</div>),
 }));
 
+jest.mock('../../../../../utils/TableProfilerUtils', () => ({
+  calculateSystemMetrics: jest.fn().mockReturnValue({
+    operationMetrics: { information: [], data: [] },
+    operationDateMetrics: { information: [], data: [] },
+  }),
+  calculateRowCountMetrics: jest
+    .fn()
+    .mockReturnValue({ information: [], data: [] }),
+  calculateCustomMetrics: jest
+    .fn()
+    .mockReturnValue({ customMetrics: [], tableCustomMetricsProfiling: [] }),
+}));
+
 jest.mock('../../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
+}));
+
+jest.mock('../../ProfilerStateWrapper/ProfilerStateWrapper.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(
+      ({ children, dataTestId, profilerLatestValueProps }) => (
+        <div data-testid={dataTestId}>
+          {profilerLatestValueProps && <div>ProfilerLatestValue</div>}
+          {children}
+        </div>
+      )
+    ),
 }));
 
 describe('TableProfilerChart component test', () => {
