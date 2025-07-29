@@ -1,5 +1,6 @@
 ---
 title: End Event Node | OpenMetadata End Event Node Description
+description: Schema for end node in a workflow to finalize task execution and signal completion.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/endevent
 ---
 
