@@ -1,5 +1,6 @@
 ---
 title: Airflow Connection | OpenMetadata Airflow
+description: Define schema for connecting to Airflow pipelines to ingest DAGs, tasks, and lineage information from orchestration workflows.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airflowconnection
 ---
 

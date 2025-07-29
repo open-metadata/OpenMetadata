@@ -1,5 +1,6 @@
 ---
-title: alationSinkConnection
+title: alationSinkConnection | Official Documentation
+description: Setup schema for connecting to Alation Sink metadata services, enabling metadata push and sync with Alation platform.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/alationsinkconnection
 ---
 

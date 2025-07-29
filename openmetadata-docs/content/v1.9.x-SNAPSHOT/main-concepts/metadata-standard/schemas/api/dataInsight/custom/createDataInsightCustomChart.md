@@ -1,5 +1,6 @@
 ---
-title: createDataInsightCustomChart
+title: createDataInsightCustomChart | Official Documentation
+description: Define custom chart creation request for data insights including chart type, data fields, and filters.
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/custom/createdatainsightcustomchart
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: githubCredentials | OpenMetadata GitHub Credentials
+description: Define GitHub credentials schema including personal access token or OAuth token for secure repository interaction.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
 ---
 

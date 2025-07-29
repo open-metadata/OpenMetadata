@@ -1,5 +1,6 @@
 ---
 title: Rule Schema | OpenMetadata Rules Schema and API
+description: Define access control rule schema including effect, conditions, resources, and action types.
 slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/rule
 ---
 
