@@ -1,5 +1,6 @@
 ---
 title: Alation Connection | OpenMetadata Alation
+description: Set up Alation metadata connection to ingest and synchronize metadata assets and governance terms from Alation.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/alationconnection
 ---
 

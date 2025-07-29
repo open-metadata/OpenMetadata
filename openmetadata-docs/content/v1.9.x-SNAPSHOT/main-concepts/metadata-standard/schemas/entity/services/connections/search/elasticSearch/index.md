@@ -1,5 +1,6 @@
 ---
 title: Elasticsearch Connection | OpenMetadata Elasticsearch
+description: Reference structure for Elasticsearch metadata service connections, supporting efficient entity search and discovery processes.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch
 ---
 

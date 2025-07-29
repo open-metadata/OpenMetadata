@@ -1,5 +1,6 @@
 ---
 title: Fivetran Connection | OpenMetadata Fivetran
+description: Schema for connecting to Fivetran pipeline services to ingest transformation and sync metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/fivetranconnection
 ---
 

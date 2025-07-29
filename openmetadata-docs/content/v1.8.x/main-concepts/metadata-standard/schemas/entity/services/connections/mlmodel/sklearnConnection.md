@@ -1,5 +1,6 @@
 ---
 title: Sklearn Connection | OpenMetadata Sklearn
+description: Configure MLflow connection to support machine learning model metadata management, versioning, and lifecycle.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/sklearnconnection
 ---
 
