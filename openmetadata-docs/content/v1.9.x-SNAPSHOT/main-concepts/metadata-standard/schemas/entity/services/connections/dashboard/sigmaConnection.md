@@ -1,5 +1,6 @@
 ---
 title: Sigma Connection | OpenMetadata Sigma Dashboard Connection
+description: Sigma dashboard connection schema including credentials, workspace IDs, and API host configs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/sigmaconnection
 ---
 

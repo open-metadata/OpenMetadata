@@ -74,6 +74,7 @@ public class SlackWebApiClient {
   private boolean isSmartReindexing;
   private int totalEntities;
   private long startTime;
+  private Map<String, String> configurationDetails;
 
   public SlackWebApiClient(String botToken, String channel, String instanceUrl) {
     this.botToken = botToken;
@@ -84,6 +85,10 @@ public class SlackWebApiClient {
             .connectTimeout(Duration.ofSeconds(CONNECTION_TIMEOUT_SECONDS))
             .build();
     this.objectMapper = new ObjectMapper();
+  }
+
+  public void setConfigurationDetails(Map<String, String> configDetails) {
+    this.configurationDetails = configDetails;
   }
 
   public void sendStartNotification(String entities, boolean isSmartReindexing, int totalEntities) {
@@ -246,15 +251,24 @@ public class SlackWebApiClient {
     configSection.put(FIELD_TYPE, FIELD_SECTION);
     ObjectNode configText = objectMapper.createObjectNode();
     configText.put(FIELD_TYPE, FIELD_MRKDWN);
-    configText.put(
-        FIELD_TEXT,
+    StringBuilder configMsg = new StringBuilder();
+    configMsg.append("*Configuration*\n");
+    configMsg.append(
         String.format(
-            "*Configuration*\n"
-                + "• Type: `%s`\n"
-                + "• Entities: `%d` entities\n"
-                + "• Scope: %s\n"
-                + "• Status: ⏳ Initializing...",
-            isSmartReindexing ? "Smart Reindexing" : "Full Reindexing", totalEntities, entities));
+            "• Type: `%s`\n", isSmartReindexing ? "Smart Reindexing" : "Full Reindexing"));
+    configMsg.append(String.format("• Entities: `%d` entities\n", totalEntities));
+    configMsg.append(String.format("• Scope: %s\n", entities));
+
+    // Add configuration details if available
+    if (configurationDetails != null && !configurationDetails.isEmpty()) {
+      configMsg.append("\n*Settings*\n");
+      configurationDetails.forEach(
+          (key, value) -> configMsg.append(String.format("• %s: `%s`\n", key, value)));
+    }
+
+    configMsg.append("\n• Status: ⏳ Initializing...");
+
+    configText.put(FIELD_TEXT, configMsg.toString());
     configSection.set(FIELD_TEXT, configText);
     blocks.add(configSection);
 
@@ -666,8 +680,16 @@ public class SlackWebApiClient {
             "• Type: `%s`\n", isSmartReindexing ? "Smart Reindexing" : "Full Reindexing"));
     config.append(String.format("• Entities: `%d` entities\n", totalEntities));
     config.append(String.format("• Scope: %s\n", entities));
+
+    // Add configuration details if available
+    if (configurationDetails != null && !configurationDetails.isEmpty()) {
+      config.append("\n*Settings*\n");
+      configurationDetails.forEach(
+          (key, value) -> config.append(String.format("• %s: `%s`\n", key, value)));
+    }
+
     if (duration != null) {
-      config.append(String.format("• Duration: `%s`\n", duration));
+      config.append(String.format("\n• Duration: `%s`\n", duration));
     }
 
     configText.put(FIELD_TEXT, config.toString());

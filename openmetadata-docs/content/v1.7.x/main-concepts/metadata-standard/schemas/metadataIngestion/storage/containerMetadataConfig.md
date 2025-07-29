@@ -1,5 +1,6 @@
 ---
-title: containerMetadataConfig
+title: Containermetadataconfig | Official Documentation
+description: Define schema for container metadata config used to extract and manage metadata for containerized file structures during ingestion.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/containermetadataconfig
 ---
 
