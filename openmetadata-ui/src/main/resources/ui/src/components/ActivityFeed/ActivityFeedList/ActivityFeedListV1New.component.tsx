@@ -41,6 +41,7 @@ interface ActivityFeedListV1Props {
   handlePanelResize?: (isFullWidth: boolean) => void;
   isFullWidth?: boolean;
   isFeedWidget?: boolean;
+  isFullSizeWidget?: boolean;
 }
 
 const ActivityFeedListV1New = ({
@@ -62,6 +63,7 @@ const ActivityFeedListV1New = ({
   onUpdateEntityDetails,
   handlePanelResize,
   isFeedWidget = false,
+  isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -96,6 +98,7 @@ const ActivityFeedListV1New = ({
           isActive={activeFeedId === feed.id}
           isFeedWidget={isFeedWidget}
           isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
           isFullWidth={isFullWidth}
           key={feed.id}
           showThread={showThread}
@@ -112,6 +115,7 @@ const ActivityFeedListV1New = ({
       isForFeedTab,
       showThread,
       isFullWidth,
+      isFullSizeWidget,
     ]
   );
   if (isLoading) {

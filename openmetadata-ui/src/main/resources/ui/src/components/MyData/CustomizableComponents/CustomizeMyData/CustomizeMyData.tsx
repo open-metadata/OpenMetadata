@@ -40,7 +40,6 @@ import {
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
@@ -272,4 +271,4 @@ function CustomizeMyData({
   );
 }
 
-export default withActivityFeed(CustomizeMyData);
+export default CustomizeMyData;
