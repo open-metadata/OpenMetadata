@@ -1,5 +1,6 @@
 ---
-title: gluePipelineConnection
+title: Gluepipelineconnection | Official Documentation
+description: Set up Glue pipeline integration by configuring this schema to ingest workflow and data transformation metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/gluepipelineconnection
 ---
 

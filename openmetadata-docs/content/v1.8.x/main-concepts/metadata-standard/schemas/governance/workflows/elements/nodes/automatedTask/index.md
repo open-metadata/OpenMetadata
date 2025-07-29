@@ -1,5 +1,6 @@
 ---
 title: index | OpenMetadata Automated Task Node
+description: Schema defining automated workflow node that performs actions without human intervention.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/automatedtask
 ---
 

@@ -14,6 +14,7 @@
 // =============================================
 // IMPORTS
 // =============================================
+import { EditOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -88,7 +89,10 @@ import {
 } from '../../../../utils/CommonUtils';
 import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { generateFormFields } from '../../../../utils/formUtils';
+import {
+  generateFormFields,
+  getPopupContainer,
+} from '../../../../utils/formUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
@@ -193,6 +197,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   // Permission state - only need loading state
   const [isCheckingPermissions, setIsCheckingPermissions] =
     useState<boolean>(false);
+  const [isCustomQuery, setIsCustomQuery] = useState<boolean>(false);
 
   // =============================================
   // HOOKS - Form Watches
@@ -387,7 +392,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         id: 'root/tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
-          selectProps: { 'data-testid': 'tags-selector' },
+          selectProps: {
+            'data-testid': 'tags-selector',
+            getPopupContainer,
+            maxTagCount: 8,
+          },
           newLook: true,
         },
       },
@@ -398,7 +407,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         id: 'root/glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
-          selectProps: { 'data-testid': 'glossary-terms-selector' },
+          selectProps: {
+            'data-testid': 'glossary-terms-selector',
+            getPopupContainer,
+            maxTagCount: 8,
+          },
           open: false,
           hasNoActionButtons: true,
           newLook: true,
@@ -835,6 +848,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             : form.getFieldValue('selectedColumn'),
       });
       setSelectedTestDefinition(undefined);
+      setIsCustomQuery(false);
     }
   }, [selectedTestLevel, fetchTestDefinitions, form]);
 
@@ -996,14 +1010,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           </Form.Item>
           <Form.Item
             label={t('label.select-entity', {
-              entity: t('label.table-lowercase'),
+              entity: t('label.table'),
             })}
             name="selectedTable"
             rules={[
               {
                 required: true,
                 message: t('label.please-select-entity', {
-                  entity: t('label.table-lowercase'),
+                  entity: t('label.table'),
                 }),
               },
               {
@@ -1023,8 +1037,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               showSearch
               api={fetchTables}
               disabled={Boolean(table)}
+              getPopupContainer={getPopupContainer}
               placeholder={t('label.select-entity', {
-                entity: t('label.table-lowercase'),
+                entity: t('label.table'),
               })}
             />
           </Form.Item>
@@ -1032,14 +1047,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           {selectedTestLevel === TestLevel.COLUMN && selectedTable && (
             <Form.Item
               label={t('label.select-entity', {
-                entity: t('label.column-lowercase'),
+                entity: t('label.column'),
               })}
               name="selectedColumn"
               rules={[
                 {
                   required: true,
                   message: t('label.please-select-entity', {
-                    entity: t('label.column-lowercase'),
+                    entity: t('label.column'),
                   }),
                 },
               ]}>
@@ -1047,10 +1062,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 allowClear
                 showSearch
                 filterOption={filterSelectOptions}
+                getPopupContainer={getPopupContainer}
                 loading={!selectedTableData}
                 options={columnOptions}
                 placeholder={t('label.select-entity', {
-                  entity: t('label.column-lowercase'),
+                  entity: t('label.column'),
                 })}
               />
             </Form.Item>
@@ -1062,33 +1078,77 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         </Card>
 
         <Card className="form-card-section" data-testid="test-type-card">
-          <Form.Item
-            label={t('label.select-entity', {
-              entity: t('label.test-type-lowercase'),
-            })}
-            name="testTypeId"
-            rules={[
-              {
-                required: true,
-                message: t('label.please-select-entity', {
-                  entity: t('label.test-type-lowercase'),
-                }),
-              },
-            ]}
-            tooltip={selectedTestDefinition?.description}>
-            <Select
-              showSearch
-              data-testid="test-type"
-              filterOption={filterSelectOptions}
-              options={testTypeOptions}
-              placeholder={t('label.select-entity', {
-                entity: t('label.test-type-lowercase'),
-              })}
-              popupClassName="no-wrap-option"
-              onChange={handleTestDefinitionChange}
-            />
+          <Form.Item className="custom-select-test-type-style m-b-md">
+            {selectedTestLevel === TestLevel.TABLE && (
+              <div
+                className={classNames(
+                  'custom-test-type-container',
+                  isCustomQuery ? 'justify-between' : 'justify-end'
+                )}>
+                {isCustomQuery ? (
+                  <>
+                    <Typography.Text className="test-type-label">
+                      {t('label.test-type')}
+                    </Typography.Text>
+                    <Button
+                      className="text-primary custom-query-btn"
+                      data-testid="test-type-btn"
+                      icon={<EditOutlined />}
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        form.setFieldValue('testTypeId', undefined);
+                        // Manually trigger the change handlers
+                        handleTestDefinitionChange('');
+                        handleValuesChange({ testTypeId: undefined });
+                        setIsCustomQuery(false);
+                      }}>
+                      {t('label.select-test-type')}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    className="text-primary"
+                    data-testid="custom-query"
+                    icon={<EditOutlined />}
+                    size="small"
+                    type="link"
+                    onClick={() => {
+                      form.setFieldValue('testTypeId', 'tableCustomSQLQuery');
+                      // Manually trigger the change handlers
+                      handleTestDefinitionChange('tableCustomSQLQuery');
+                      handleValuesChange({ testTypeId: 'tableCustomSQLQuery' });
+                      setIsCustomQuery(true);
+                    }}>
+                    {t('label.custom-query')}
+                  </Button>
+                )}
+              </div>
+            )}
+            <Form.Item
+              hidden={isCustomQuery}
+              label={t('label.select-test-type')}
+              name="testTypeId"
+              requiredMark={false}
+              rules={[
+                {
+                  required: true,
+                  message: t('label.select-test-type'),
+                },
+              ]}
+              tooltip={selectedTestDefinition?.description}>
+              <Select
+                showSearch
+                data-testid="test-type"
+                filterOption={filterSelectOptions}
+                getPopupContainer={getPopupContainer}
+                options={testTypeOptions}
+                placeholder={t('label.select-test-type')}
+                popupClassName="no-wrap-option"
+                onChange={handleTestDefinitionChange}
+              />
+            </Form.Item>
           </Form.Item>
-
           {generateFormFields(
             testCaseClassBase.createFormAdditionalFields(
               selectedTestDefinition?.supportsDynamicAssertion ?? false
@@ -1124,6 +1184,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                     renderElement={<strong />}
                     values={{
                       entity: t('label.test-case-lowercase'),
+                      type: t('label.table-lowercase'),
                     }}
                   />
                 }

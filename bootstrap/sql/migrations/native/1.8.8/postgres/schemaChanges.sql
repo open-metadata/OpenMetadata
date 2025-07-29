@@ -10,3 +10,5 @@ CREATE TABLE IF NOT EXISTS security_service_entity (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+-- Add migrations to fetch updated searchSettings in 1.8.7
+DELETE FROM openmetadata_settings WHERE configType = 'searchSettings';
