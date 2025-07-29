@@ -1,5 +1,6 @@
 ---
 title: REST Connection | OpenMetadata REST Connections
+description: Define REST API service connection settings with this schema for accessing and managing API metadata across connected services.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/api/restconnection
 ---
 
