@@ -191,6 +191,14 @@ public class MigrationUtil {
                         .withFormula(
                             "unique(k='table.id.keyword',q='testCaseStatus.keyword: Failed OR testCaseStatus.keyword: Aborted')")))
             .withxAxisField("service.name.keyword"));
+
+    createChart(
+        "total_data_assets_live",
+        new LineChart()
+            .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
+            .withGroupBy("entityType")
+            .withxAxisField("service.name.keyword")
+            .withExcludeGroups(List.of("testSuite", "testCase")));
   }
 
   private final CollectionDAO collectionDAO;

@@ -66,7 +66,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
-  private static final String HEALTHY_DATA_ASSETS = "healthy_data_assets";
+  private static final Set IGNORE_OTHER_SERVICE_CHARTS =
+      Set.of("healthy_data_assets", "total_data_assets_live");
 
   public static final String ALL_SEARCH_INDEX = "all";
 
@@ -191,7 +192,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             }
           }
         }
-        if (chart.getName().equals(HEALTHY_DATA_ASSETS) && serviceName != null) {
+        if (IGNORE_OTHER_SERVICE_CHARTS.contains(chart.getName()) && serviceName != null) {
           HashMap chartDetails = (HashMap) chart.getChartDetails();
           chartDetails.put("includeXAxisFiled", serviceName);
         }
