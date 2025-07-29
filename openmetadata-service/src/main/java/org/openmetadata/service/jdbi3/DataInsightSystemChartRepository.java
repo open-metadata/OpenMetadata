@@ -66,6 +66,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
+  private static final String HEALTHY_DATA_ASSETS = "healthy_data_assets";
+
   public static final String ALL_SEARCH_INDEX = "all";
 
   public static final String FORMULA_FUNC_REGEX =
@@ -163,7 +165,12 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   public Map<String, DataInsightCustomChartResultList> listChartData(
-      String chartNames, long startTimestamp, long endTimestamp, String filter, boolean live)
+      String chartNames,
+      long startTimestamp,
+      long endTimestamp,
+      String filter,
+      boolean live,
+      String serviceName)
       throws IOException {
     HashMap<String, DataInsightCustomChartResultList> result = new HashMap<>();
     if (chartNames == null) {
@@ -183,6 +190,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               metrics.put("filter", filter);
             }
           }
+        }
+        if (chart.getName().equals(HEALTHY_DATA_ASSETS) && serviceName != null) {
+          HashMap chartDetails = (HashMap) chart.getChartDetails();
+          chartDetails.put("includeXAxisFiled", serviceName);
         }
         DataInsightCustomChartResultList data =
             searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
@@ -467,7 +478,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
       // Fetch chart data using the existing repository method
       Map<String, DataInsightCustomChartResultList> chartData =
-          listChartData(session.getChartNames(), startTime, endTime, session.getFilter(), true);
+          listChartData(
+              session.getChartNames(),
+              startTime,
+              endTime,
+              session.getFilter(),
+              true,
+              session.getServiceName());
 
       // Send the data to all users in the session
       sendMessageToAllUsers(session, "DATA", chartData, null, remainingTime, UPDATE_INTERVAL_MS);

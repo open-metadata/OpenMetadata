@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -43,6 +44,27 @@ public class MigrationUtil {
     } catch (Exception ex) {
       LOG.warn(ex.toString());
       LOG.warn(String.format("Error updating chart %s ", chart));
+    }
+  }
+
+  public static void createSummaryChart(String chartName, Object chartObject) {
+    DataInsightCustomChart chart =
+        new DataInsightCustomChart()
+            .withId(UUID.randomUUID())
+            .withName(chartName)
+            .withChartDetails(chartObject)
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy("ingestion-bot")
+            .withDeleted(false)
+            .withIsSystemChart(true);
+    dataInsightSystemChartRepository.prepareInternal(chart, false);
+    try {
+      dataInsightSystemChartRepository
+          .getDao()
+          .insert("fqnHash", chart, chart.getFullyQualifiedName());
+    } catch (Exception ex) {
+      LOG.warn(ex.toString());
+      LOG.warn(String.format("Chart %s exists", chart));
     }
   }
 
@@ -120,6 +142,55 @@ public class MigrationUtil {
             .withIncludeXAxisFiled("Tier.*|tier.*")
             .withGroupBy("tier.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
+
+    createChart(
+        "assets_with_description_live",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='descriptionStatus: COMPLETE')/count(k='id.keyword'))*100")))
+            .withxAxisField("service.name.keyword"));
+
+    createChart(
+        "assets_with_pii_live",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100")))
+            .withxAxisField("service.name.keyword"));
+
+    createChart(
+        "assets_with_tier_live",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("(count(q='tier.tagFQN: tier.*')/count(k='id.keyword'))*100")))
+            .withxAxisField("service.name.keyword"));
+
+    createChart(
+        "assets_with_owner_live",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")))
+            .withxAxisField("service.name.keyword"));
+
+    createChart(
+        "healthy_data_assets",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "unique(k='table.id.keyword',q='testCaseStatus.keyword: Failed OR testCaseStatus.keyword: Aborted')")))
+            .withxAxisField("service.name.keyword"));
   }
 
   private final CollectionDAO collectionDAO;
