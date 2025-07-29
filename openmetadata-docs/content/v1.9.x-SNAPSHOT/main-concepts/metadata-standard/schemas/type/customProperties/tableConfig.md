@@ -1,5 +1,6 @@
 ---
 title: Table Config | OpenMetadata Table Config Information
+description: Connect Tableconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/type/customproperties/tableconfig
 ---
 
