@@ -152,6 +152,20 @@ async function runParsers() {
     'schema/governance/workflows/elements/nodes',
     'src/jsons/governanceSchemas'
   );
+
+  await main(
+    'configTemp',
+    'schema/configuration',
+    'src/jsons/configuration',
+    true
+  );
+
+  await main(
+    'securityTemp',
+    'schema/security',
+    'src/jsons/configuration/security',
+    true
+  );
 }
 
 runParsers();
