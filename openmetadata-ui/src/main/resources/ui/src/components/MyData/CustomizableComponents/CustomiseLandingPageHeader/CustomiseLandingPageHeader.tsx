@@ -53,6 +53,7 @@ const CustomiseLandingPageHeader = ({
   backgroundColor,
   handleAddWidget,
   hideCustomiseButton = false,
+  isPreviewHeader = false,
   onBackgroundColorUpdate,
   onHomePage = false,
   overlappedContainer = false,
@@ -148,7 +149,7 @@ const CustomiseLandingPageHeader = ({
             })}>
             <Typography.Text className="welcome-user">
               {t('label.welcome', {
-                name: currentUser?.displayName ?? currentUser?.name,
+                name: currentUser?.displayName || currentUser?.name,
               })}
             </Typography.Text>
             {!hideCustomiseButton && (
@@ -216,7 +217,7 @@ const CustomiseLandingPageHeader = ({
                 </div>
               </DomainSelectableList>
             </div>
-            {recentlyViewData.length > 0 && (
+            {!isPreviewHeader && recentlyViewData.length > 0 && (
               <Carousel
                 arrows
                 className={classNames('recently-viewed-data-carousel', {
@@ -257,7 +258,8 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {showAnnouncements &&
+        {!isPreviewHeader &&
+          showAnnouncements &&
           !isAnnouncementLoading &&
           announcements.length > 0 && (
             <div className="announcements-container">

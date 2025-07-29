@@ -30,7 +30,6 @@ import {
 } from '../../utils/customizeDetails';
 import {
   checkDefaultStateForNavigationTree,
-  selectPersona,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import { settingClick } from '../../utils/sidebar';
@@ -232,7 +231,6 @@ test.describe('Persona customize UI tab', async () => {
 
         // Select navigation persona
         await redirectToHomePage(userPage);
-        await selectPersona(userPage, navigationPersona);
         await userPage.reload();
         await userPage.waitForLoadState('networkidle');
 
