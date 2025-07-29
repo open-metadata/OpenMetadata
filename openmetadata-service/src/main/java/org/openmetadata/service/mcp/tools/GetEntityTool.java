@@ -1,5 +1,6 @@
 package org.openmetadata.service.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 
 import java.io.IOException;
@@ -19,6 +20,9 @@ public class GetEntityTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
+    if (nullOrEmpty(params)) {
+      throw new IllegalArgumentException("Parameters cannot be null or empty");
+    }
     String entityType = (String) params.get("entity_type");
     String fqn = (String) params.get("fqn");
     authorizer.authorize(
