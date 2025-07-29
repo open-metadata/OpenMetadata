@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "Bir Sözlük, bir kuruluştaki kavramları ve terminolojiyi tanımlamak için kullanılan kontrollü bir kelime dağarcığıdır. Sözlükler belirli bir alana özgü olabilir (örneğin, İş Sözlüğü, Teknik Sözlük). Sözlükte, standart terimler ve kavramlar eş anlamlılar ve ilgili terimlerle birlikte tanımlanabilir. Sözlüğe kimlerin ve nasıl terim ekleyebileceği konusunda kontrol sağlanabilir.",
     "create-or-update-email-account-for-bot": "Hesap e-postasını değiştirmek, yeni bir bot kullanıcısını güncelleyecek veya oluşturacaktır.",
     "created-this-task-lowercase": "bu görevi oluşturdu",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "Haftanın Günü (DOW) bölümü >= 0 ve <= 6 olmalıdır",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

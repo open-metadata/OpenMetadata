@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "용어는 조직의 개념과 용어를 정의하는 데 사용되는 통제된 어휘입니다. 용어는 특정 도메인(예: 비즈니스 용어, 기술 용어)에 특화될 수 있습니다. 용어에서는 표준 용어와 개념을 동의어 및 관련 용어와 함께 정의할 수 있습니다. 용어에 용어를 추가하는 방법과 누가 추가할 수 있는지에 대한 통제를 설정할 수 있습니다.",
     "create-or-update-email-account-for-bot": "계정 이메일을 변경하면 새 봇 사용자를 업데이트하거나 생성합니다.",
     "created-this-task-lowercase": "이 작업을 생성했습니다",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "요일(DOW) 부분은 0 이상 6 이하여야 합니다",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "शब्दकोश ही नियंत्रित शब्दावली आहे जी संस्थेतील संकल्पना आणि शब्दावली परिभाषित करण्यासाठी वापरली जाते. शब्दकोश विशिष्ट डोमेनसाठी विशिष्ट असू शकतात (उदा., व्यवसाय शब्दकोश, तांत्रिक शब्दकोश). शब्दकोशात, मानक संज्ञा आणि संकल्पना समानार्थी शब्द आणि संबंधित संज्ञांसह परिभाषित केल्या जाऊ शकतात. शब्दकोशात संज्ञा कशा आणि कोण जोडू शकतात यावर नियंत्रण स्थापित केले जाऊ शकते.",
     "create-or-update-email-account-for-bot": "खाते ईमेल बदलल्याने नवीन बॉट वापरकर्ता अद्यतनित किंवा तयार होईल.",
     "created-this-task-lowercase": "हे कार्य तयार केले",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "DOW भाग >= 0 आणि <= 6 असणे आवश्यक आहे",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

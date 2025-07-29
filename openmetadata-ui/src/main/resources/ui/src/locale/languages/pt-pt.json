@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "Um Glossário é um vocabulário controlado usado para definir os conceitos e terminologias em uma organização. Os glossários podem ser específicos para um determinado domínio (por exemplo, Glossário de Negócios, Glossário Técnico). No glossário, os termos e conceitos padrão podem ser definidos juntamente com os sinónimos e termos relacionados. O controle pode ser estabelecido sobre como e quem pode adicionar os termos no glossário.",
     "create-or-update-email-account-for-bot": "Alterar o e-mail da conta atualizará ou criará um novo utilizador bot.",
     "created-this-task-lowercase": "criou esta tarefa",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "A parte DOW deve ser >= 0 e <= 6",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

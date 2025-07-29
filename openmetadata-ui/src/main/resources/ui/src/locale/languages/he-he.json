@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "מדוע לא ניתן לתת למשתמש האחרון את השאלה שלו?",
     "create-or-update-email-account-for-bot": "שינוי כתובת האימייל של החשבון יעדכן או ייצור משתמש בוט חדש.",
     "created-this-task-lowercase": "יצר משימה זו",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "חלק DOW חייב להיות >= 0 ו-<= 6",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

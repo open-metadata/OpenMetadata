@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "สารานุกรมคือคำศัพท์ที่ควบคุมใช้ในการกำหนดแนวคิดและคำศัพท์ในองค์กร สารานุกรมสามารถเฉพาะเจาะจงได้ตามโดเมนใดโดเมนหนึ่ง (เช่น สารานุกรมธุรกิจ, สารานุกรมเทคนิค) ในสารานุกรม คำศัพท์และแนวคิดมาตรฐานสามารถถูกกำหนดพร้อมกับคำพ้องและคำที่เกี่ยวข้อง ควบคุมสามารถถูกตั้งขึ้นเกี่ยวกับวิธีการและผู้ที่สามารถเพิ่มคำในสารานุกรม",
     "create-or-update-email-account-for-bot": "การเปลี่ยนแปลงอีเมลบัญชีจะอัปเดตหรือสร้างผู้ใช้บอทใหม่",
     "created-this-task-lowercase": "สร้างงานนี้",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "ส่วน DOW ต้องเป็น >= 0 และ <= 6",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

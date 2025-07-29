@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "یک فرهنگ لغت واژگان کنترل‌شده‌ای است که برای تعریف مفاهیم و اصطلاحات در یک سازمان استفاده می‌شود. فرهنگ لغت‌ها می‌توانند خاص یک دامنه خاص باشند (به عنوان مثال، فرهنگ لغت تجاری، فرهنگ لغت فنی). در فرهنگ لغت، اصطلاحات و مفاهیم استاندارد می‌توانند همراه با مترادف‌ها و اصطلاحات مرتبط تعریف شوند. کنترل می‌تواند بر نحوه و افرادی که می‌توانند اصطلاحات را به فرهنگ لغت اضافه کنند، برقرار شود.",
     "create-or-update-email-account-for-bot": "تغییر ایمیل حساب باعث به‌روزرسانی یا ایجاد یک کاربر ربات جدید خواهد شد.",
     "created-this-task-lowercase": "این وظیفه را ایجاد کرد",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "بخش DOW باید >= 0 و <= 6 باشد",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

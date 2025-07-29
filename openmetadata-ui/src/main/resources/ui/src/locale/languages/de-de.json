@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "Ein Glossar ist ein kontrolliertes Vokabular, das verwendet wird, um die Konzepte und Terminologie in einer Organisation zu definieren. Glossare können spezifisch für einen bestimmten Bereich sein (z. B. Business Glossar, Technisches Glossar). Im Glossar können die Standardbegriffe und Konzepte definiert werden, zusammen mit Synonymen und verwandten Begriffen. Es kann festgelegt werden, wie und von wem Begriffe im Glossar hinzugefügt werden können.",
     "create-or-update-email-account-for-bot": "Die Änderung der Kontaktemail aktualisiert oder erstellt einen neuen Bot-Benutzer.",
     "created-this-task-lowercase": "hat diese Aufgabe erstellt",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "Der DOW-Teil muss >= 0 und <= 6 sein",
     "cron-invalid-day-of-month-field": "Ungültiges Tag-des-Monats-Feld. Muss 1-31, *, */n oder kommagetrennte Werte sein",
     "cron-invalid-day-of-week-field": "Ungültiges Tag-des-Wochen-Feld. Muss 0-6, *, */n oder kommagetrennte Werte sein",

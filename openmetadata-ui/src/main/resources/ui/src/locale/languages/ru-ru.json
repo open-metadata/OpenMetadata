@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "Глоссарий — это контролируемый словарь, используемый для определения понятий и терминологии в организации. Глоссарии могут относиться к определенному домену (например, деловой глоссарий, технический глоссарий). В глоссарии стандартные термины и понятия могут быть определены вместе с синонимами и родственными терминами. Можно установить контроль над тем, как и кто может добавлять термины в глоссарий.",
     "create-or-update-email-account-for-bot": "Изменение адреса электронной почты учетной записи приведет к обновлению или созданию нового пользователя-бота.",
     "created-this-task-lowercase": "Задача создана",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "Часть DOW должна быть >= 0 и <= 6",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",

@@ -1827,6 +1827,7 @@
     "create-new-glossary-guide": "Een woordenboek is een gecontroleerde woordenlijst die wordt gebruikt om concepten en terminologie van een organisatie te definiëren. Woordenboeken kunnen domeinspecifiek zijn (bijv. Bedrijfswoordenboek, Technisch woordenboek). In het woordenboek kunnen standaardtermen en concepten worden gedefinieerd, samen met synoniemen en gerelateerde termen. Hoe en wie de termen in het woordenboek kan toevoegen, kan worden beheerd.",
     "create-or-update-email-account-for-bot": "Het wijzigen van het account-e-mailadres zal een nieuwe botgebruiker updaten of maken.",
     "created-this-task-lowercase": "heeft deze taak aangemaakt",
+    "created-time-ago-by": "Created {{time}} ago by {{by}}",
     "cron-dow-validation-failure": "DOW-deel moet >= 0 en <= 6 zijn",
     "cron-invalid-day-of-month-field": "Invalid day-of-month field. Must be 1-31, *, */n, or comma-separated values",
     "cron-invalid-day-of-week-field": "Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values",
