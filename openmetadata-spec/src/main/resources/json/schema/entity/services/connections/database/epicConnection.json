@@ -1,0 +1,220 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/epicConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "EpicConnection",
+    "description": "Epic FHIR Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.EpicConnection",
+    "definitions": {
+      "epicType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Epic"],
+        "default": "Epic"
+      },
+      "authType": {
+        "description": "Authentication type for Epic FHIR API",
+        "type": "string",
+        "enum": ["OAuth2", "BasicAuth", "SmartOnFhir"],
+        "default": "OAuth2"
+      },
+      "tagConfiguration": {
+        "description": "Configuration for creating and applying tags during ingestion",
+        "type": "object",
+        "properties": {
+          "enablePHITags": {
+            "title": "Enable PHI Tags",
+            "description": "Create and apply PHI (Protected Health Information) classification tags",
+            "type": "boolean",
+            "default": false
+          },
+          "enableClinicalTags": {
+            "title": "Enable Clinical Tags", 
+            "description": "Create and apply clinical data category tags",
+            "type": "boolean",
+            "default": false
+          },
+          "enableDataQualityTests": {
+            "title": "Enable Data Quality Tests",
+            "description": "Enable healthcare-specific data quality tests during ingestion",
+            "type": "boolean",
+            "default": false
+          },
+          "customClassifications": {
+            "title": "Custom Classifications",
+            "description": "Additional custom classifications to create during ingestion",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Classification name"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Classification description"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["name"]
+                  }
+                }
+              },
+              "required": ["name", "tags"]
+            }
+          }
+        }
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/epicType",
+        "default": "Epic"
+      },
+      "fhirServerUrl": {
+        "title": "FHIR Server URL",
+        "description": "Base URL of the Epic FHIR server (e.g., https://epicserver.org/fhir)",
+        "type": "string",
+        "format": "uri"
+      },
+      "authType": {
+        "title": "Authentication Type",
+        "description": "Type of authentication to use with Epic FHIR API",
+        "$ref": "#/definitions/authType"
+      },
+      "clientId": {
+        "title": "Client ID",
+        "description": "OAuth2 Client ID for Epic API authentication",
+        "type": "string"
+      },
+      "clientSecret": {
+        "title": "Client Secret",
+        "description": "OAuth2 Client Secret for Epic API authentication",
+        "type": "string",
+        "format": "password"
+      },
+      "tokenUrl": {
+        "title": "Token URL",
+        "description": "OAuth2 Token endpoint URL",
+        "type": "string",
+        "format": "uri"
+      },
+      "authorizeUrl": {
+        "title": "Authorize URL",
+        "description": "OAuth2 Authorization endpoint URL (for SMART on FHIR)",
+        "type": "string",
+        "format": "uri"
+      },
+      "scope": {
+        "title": "OAuth Scope",
+        "description": "OAuth2 scopes required for API access (e.g., patient/*.read, system/*.read)",
+        "type": "string",
+        "default": "system/*.read"
+      },
+      "username": {
+        "title": "Username",
+        "description": "Username for Basic Authentication (if applicable)",
+        "type": "string"
+      },
+      "password": {
+        "title": "Password",
+        "description": "Password for Basic Authentication (if applicable)",
+        "type": "string",
+        "format": "password"
+      },
+      "fhirVersion": {
+        "title": "FHIR Version",
+        "description": "FHIR specification version (R4, STU3, DSTU2)",
+        "type": "string",
+        "enum": ["R4", "STU3", "DSTU2"],
+        "default": "R4"
+      },
+      "resourceTypes": {
+        "title": "Resource Types",
+        "description": "List of FHIR resource types to ingest (e.g., Patient, Encounter, Observation)",
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "default": ["Patient", "Encounter", "Observation", "Condition", "Procedure", "MedicationRequest", "Practitioner", "Organization", "Location"]
+      },
+      "organizationId": {
+        "title": "Organization ID",
+        "description": "Epic Organization ID for filtering data",
+        "type": "string"
+      },
+      "databaseName": {
+        "title": "Database Name",
+        "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic' as the database name.",
+        "type": "string",
+        "default": "epic"
+      },
+      "tagConfiguration": {
+        "title": "Tag Configuration",
+        "description": "Configuration for creating and applying tags during ingestion",
+        "$ref": "#/definitions/tagConfiguration"
+      },
+      "enableDataMasking": {
+        "title": "Enable Data Masking",
+        "description": "Enable masking of sensitive health information (PHI)",
+        "type": "boolean",
+        "default": true
+      },
+      "pageSize": {
+        "title": "Page Size",
+        "description": "Number of resources to fetch per page",
+        "type": "integer",
+        "default": 100,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "requestTimeout": {
+        "title": "Request Timeout",
+        "description": "Timeout for API requests in seconds",
+        "type": "integer",
+        "default": 30
+      },
+      "sslConfig": {
+        "title": "SSL Configuration",
+        "description": "SSL Configuration details.",
+        "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+      },
+      "connectionOptions": {
+        "title": "Connection Options",
+        "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+      },
+      "connectionArguments": {
+        "title": "Connection Arguments",
+        "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+      },
+      "schemaFilterPattern": {
+        "title": "Schema Filter Pattern",
+        "description": "Regex to include/exclude FHIR resource categories",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "tableFilterPattern": {
+        "title": "Table Filter Pattern",
+        "description": "Regex to include/exclude FHIR resource types",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"  
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["fhirServerUrl", "authType"]
+  }
