@@ -1,0 +1,3 @@
+preview: ${HELLO_PIPELINES_PREVIEW:-false}
+parameters:
+  token: ${HELLO_PIPELINES_TOKEN:-"this is private"}
