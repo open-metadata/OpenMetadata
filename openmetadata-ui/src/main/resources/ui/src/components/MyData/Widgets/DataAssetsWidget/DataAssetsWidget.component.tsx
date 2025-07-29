@@ -155,6 +155,7 @@ const DataAssetsWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<DataAssetIcon height={24} width={24} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
           title={t('label.data-asset-plural')}

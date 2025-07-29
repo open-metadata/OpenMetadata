@@ -96,6 +96,9 @@ const MyTaskWidget = ({
         handleRemoveWidget={handleRemoveWidget}
         icon={<MyTaskIcon data-testid="task-icon" height={24} width={24} />}
         isEditView={isEditView}
+        redirectUrlOnTitleClick={
+          currentUser?.name && `users/${currentUser?.name}/task`
+        }
         selectedSortBy={selectedFilter}
         sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
         title={t('label.my-task-plural')}

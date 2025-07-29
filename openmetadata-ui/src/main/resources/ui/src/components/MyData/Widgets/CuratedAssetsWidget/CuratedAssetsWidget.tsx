@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import { ROUTES } from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
@@ -374,6 +375,7 @@ const CuratedAssetsWidget = ({
           )
         }
         isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.EXPLORE}
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={

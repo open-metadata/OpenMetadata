@@ -243,7 +243,6 @@ function CustomizeMyData({
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
-            maxRows={emptyWidgetPlaceholder?.y}
             preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
