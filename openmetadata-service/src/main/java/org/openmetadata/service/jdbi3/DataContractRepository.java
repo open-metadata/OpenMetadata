@@ -330,7 +330,37 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     pipelineRepository.create(null, pipeline);
   }
 
+  private void abortRunningValidation(DataContract dataContract) {
+    if (dataContract.getLatestResult() != null
+        && ContractExecutionStatus.Running.equals(dataContract.getLatestResult().getStatus())) {
+
+      LOG.info(
+          "Aborting running validation for data contract: {}",
+          dataContract.getFullyQualifiedName());
+
+      try {
+        DataContractResult runningResult = getLatestResult(dataContract);
+        runningResult
+            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+            .withResult(
+                runningResult.getResult() != null
+                    ? runningResult.getResult() + "; Aborted due to new validation request"
+                    : "Aborted due to new validation request");
+
+        addContractResult(dataContract, runningResult);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to abort running validation for data contract {}: {}",
+            dataContract.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+  }
+
   public DataContractResult validateContract(DataContract dataContract) {
+    // Check if there's a running validation and abort it before starting a new one
+    abortRunningValidation(dataContract);
+
     DataContractResult result =
         new DataContractResult()
             .withId(UUID.randomUUID())
@@ -351,12 +381,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       result.withSemanticsValidation(semanticsValidation);
     }
 
-    // If we don't have quality expectations, just flag the results based on schema and semantics
-    // validation
+    // If we don't have quality expectations, flag the results based on schema and semantics
     // Otherwise, keep it Running and wait for the DQ results to kick in
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      compileResult(result, ContractExecutionStatus.Running);
-      triggerAndDeployDQValidation(dataContract);
+      try {
+        triggerAndDeployDQValidation(dataContract);
+        compileResult(result, ContractExecutionStatus.Running);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to trigger DQ validation for data contract {}: {}",
+            dataContract.getFullyQualifiedName(),
+            e.getMessage());
+        result
+            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+            .withResult("Failed to trigger DQ validation: " + e.getMessage());
+        compileResult(result, ContractExecutionStatus.Aborted);
+      }
     } else {
       compileResult(result, ContractExecutionStatus.Success);
     }

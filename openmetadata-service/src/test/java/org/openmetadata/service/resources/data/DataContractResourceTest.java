@@ -2255,4 +2255,95 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Verify timestamps are in correct order (newer first)
     assertTrue(firstResult.getTimestamp() >= secondResult.getTimestamp());
   }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateDataContractAbortRunningValidation(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create passing semantics rules
+    List<SemanticsRule> passingSemantics =
+        List.of(
+            new SemanticsRule()
+                .withName("ID Field Exists")
+                .withDescription("Checks that the ID field exists")
+                .withRule("{\"!!\": {\"var\": \"id\"}}"));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSemantics(passingSemantics);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Get the repository and mock its PipelineServiceClient
+    DataContractRepository dataContractRepository =
+        (DataContractRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.DATA_CONTRACT);
+
+    PipelineServiceClientInterface originalPipelineClient =
+        dataContractRepository.getPipelineServiceClient();
+    PipelineServiceClientInterface mockPipelineClient = mock(PipelineServiceClientInterface.class);
+    dataContractRepository.setPipelineServiceClient(mockPipelineClient);
+
+    try {
+      DataContractResult firstResult = runValidate(dataContract);
+      assertNotNull(firstResult);
+      assertEquals(ContractExecutionStatus.Success, firstResult.getContractExecutionStatus());
+
+      // Manually set the first result to Running status to simulate ongoing validation
+      firstResult.withContractExecutionStatus(ContractExecutionStatus.Running);
+      dataContractRepository.addContractResult(dataContract, firstResult);
+
+      // Verify the contract shows running status
+      DataContract contractAfterFirst = getDataContract(dataContract.getId(), "");
+      assertNotNull(contractAfterFirst.getLatestResult());
+      assertEquals(
+          ContractExecutionStatus.Running, contractAfterFirst.getLatestResult().getStatus());
+      assertEquals(firstResult.getId(), contractAfterFirst.getLatestResult().getResultId());
+
+      // Start second validation - should abort the first running validation and create a new one
+      DataContractResult secondResult = runValidate(dataContract);
+      assertNotNull(secondResult);
+      assertEquals(ContractExecutionStatus.Success, secondResult.getContractExecutionStatus());
+
+      // Verify the latest result is now the second validation
+      DataContract contractAfterSecond = getDataContract(dataContract.getId(), "");
+      assertNotNull(contractAfterSecond.getLatestResult());
+      assertEquals(
+          ContractExecutionStatus.Success, contractAfterSecond.getLatestResult().getStatus());
+      assertEquals(secondResult.getId(), contractAfterSecond.getLatestResult().getResultId());
+
+      // Verify we have 2 results: one aborted, one successful
+      WebTarget listTarget = getResource(dataContract.getId()).path("/results");
+      Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
+      String jsonResponse =
+          TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+      ResultList<DataContractResult> allResults =
+          JsonUtils.readValue(
+              jsonResponse,
+              new com.fasterxml.jackson.core.type.TypeReference<
+                  ResultList<DataContractResult>>() {});
+
+      assertNotNull(allResults);
+      assertEquals(2, allResults.getData().size());
+
+      // The first result (most recent) should be the successful second validation
+      DataContractResult latestResult = allResults.getData().get(0);
+      assertEquals(ContractExecutionStatus.Success, latestResult.getContractExecutionStatus());
+      assertEquals(secondResult.getId(), latestResult.getId());
+
+      // The second result should be the aborted first validation
+      DataContractResult abortedResult = allResults.getData().get(1);
+      assertEquals(ContractExecutionStatus.Aborted, abortedResult.getContractExecutionStatus());
+      assertEquals(firstResult.getId(), abortedResult.getId());
+      assertTrue(abortedResult.getResult().contains("Aborted due to new validation request"));
+
+      // Verify timestamps are in correct order (newer first)
+      assertTrue(latestResult.getTimestamp() >= abortedResult.getTimestamp());
+
+    } finally {
+      // Restore the original PipelineServiceClient
+      dataContractRepository.setPipelineServiceClient(originalPipelineClient);
+    }
+  }
 }
