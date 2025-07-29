@@ -79,15 +79,12 @@ class TestApplicationPrivateConfig(TestCase):
         config = OpenMetadataApplicationConfig.model_validate(self.app_config)
         runner = MockAppRunner(config=config, metadata=self.mock_metadata)
 
-        # Test retrieval
-        private_config = runner._retrieve_app_private_config(
-            "OpenMetadata.CollateAIApplication"
-        )
+        # Test retrieval with secret key
+        secret_key = "external-app-collateaiapplication-private-config"
+        private_config = runner._retrieve_app_private_config(secret_key)
 
         # Verify secrets manager was called with correct secret ID
-        mock_secrets_manager.get_string_value.assert_called_with(
-            "external-app-collateaiapplication-private-config"
-        )
+        mock_secrets_manager.get_string_value.assert_called_with(secret_key)
 
         # Verify returned config
         self.assertIsNotNone(private_config)
@@ -97,3 +94,129 @@ class TestApplicationPrivateConfig(TestCase):
         self.assertEqual(private_config["collateURL"], "http://localhost:8585")
         self.assertEqual(private_config["token"].get_secret_value(), "test_token_123")
         self.assertEqual(private_config["limits"]["billingCycleStart"], "2024-10-23")
+
+    @patch.object(SecretsManagerFactory, "get_secrets_manager")
+    def test_retrieve_app_private_config_with_secret_prefix(self, mock_get_secrets_manager):
+        """Test successful retrieval of private config with secret: prefix"""
+        # Mock secrets manager
+        mock_secrets_manager = MagicMock()
+        mock_secrets_manager.get_string_value.return_value = json.dumps(
+            {
+                "token": "test_token_456",
+                "collateURL": "http://localhost:8585",
+            }
+        )
+        mock_get_secrets_manager.return_value = mock_secrets_manager
+
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test retrieval with secret: prefix
+        secret_key_with_prefix = "secret:my-app-private-config"
+        private_config = runner._retrieve_app_private_config(secret_key_with_prefix)
+
+        # Verify secrets manager was called with secret key without prefix
+        mock_secrets_manager.get_string_value.assert_called_with("my-app-private-config")
+
+        # Verify returned config
+        self.assertIsNotNone(private_config)
+        self.assertEqual(private_config["token"].get_secret_value(), "test_token_456")
+
+    def test_retrieve_app_private_config_with_dict(self):
+        """Test when private config is already a dictionary"""
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test with dictionary input
+        dict_config = {
+            "token": "test_token_789",
+            "collateURL": "http://localhost:8585",
+        }
+        private_config = runner._retrieve_app_private_config(dict_config)
+
+        # Should return the same dictionary
+        self.assertEqual(private_config, dict_config)
+
+    def test_retrieve_app_private_config_with_none(self):
+        """Test when private config is None"""
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test with None input
+        private_config = runner._retrieve_app_private_config(None)
+
+        # Should return None
+        self.assertIsNone(private_config)
+
+    def test_retrieve_app_private_config_with_empty_string(self):
+        """Test when private config is empty string"""
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test with empty string
+        private_config = runner._retrieve_app_private_config("")
+
+        # Should return None
+        self.assertIsNone(private_config)
+
+    def test_retrieve_app_private_config_with_invalid_type(self):
+        """Test when private config has invalid type"""
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test with invalid type (integer)
+        private_config = runner._retrieve_app_private_config(123)
+
+        # Should return None
+        self.assertIsNone(private_config)
+
+    @patch.object(SecretsManagerFactory, "get_secrets_manager")
+    def test_retrieve_app_private_config_no_secret_found(self, mock_get_secrets_manager):
+        """Test when no secret is found in secrets manager"""
+        # Mock secrets manager to return None
+        mock_secrets_manager = MagicMock()
+        mock_secrets_manager.get_string_value.return_value = None
+        mock_get_secrets_manager.return_value = mock_secrets_manager
+
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test retrieval when secret doesn't exist
+        private_config = runner._retrieve_app_private_config("non-existent-secret")
+
+        # Should return None
+        self.assertIsNone(private_config)
+
+    @patch.object(SecretsManagerFactory, "get_secrets_manager")
+    def test_retrieve_app_private_config_json_error(self, mock_get_secrets_manager):
+        """Test when secrets manager returns invalid JSON"""
+        # Mock secrets manager to return invalid JSON
+        mock_secrets_manager = MagicMock()
+        mock_secrets_manager.get_string_value.return_value = "invalid json content"
+        mock_get_secrets_manager.return_value = mock_secrets_manager
+
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test retrieval with invalid JSON
+        private_config = runner._retrieve_app_private_config("secret-with-invalid-json")
+
+        # Should return None due to JSON parsing error
+        self.assertIsNone(private_config)
+
+    @patch.object(SecretsManagerFactory, "get_secrets_manager")
+    def test_retrieve_app_private_config_exception(self, mock_get_secrets_manager):
+        """Test when secrets manager raises an exception"""
+        # Mock secrets manager to raise an exception
+        mock_secrets_manager = MagicMock()
+        mock_secrets_manager.get_string_value.side_effect = Exception("Connection error")
+        mock_get_secrets_manager.return_value = mock_secrets_manager
+
+        config = OpenMetadataApplicationConfig.model_validate(self.app_config)
+        runner = MockAppRunner(config=config, metadata=self.mock_metadata)
+
+        # Test retrieval when exception occurs
+        private_config = runner._retrieve_app_private_config("secret-key")
+
+        # Should return None due to exception
+        self.assertIsNone(private_config)
