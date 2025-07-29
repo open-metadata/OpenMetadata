@@ -62,7 +62,7 @@ public class ElasticSearchSummaryCardAggregator
     } else {
       searchRequest =
           new es.org.elasticsearch.action.search.SearchRequest(
-              DataInsightSystemChartRepository.getLiveSearchIndex());
+              DataInsightSystemChartRepository.getLiveSearchIndex(null));
     }
     searchRequest.source(searchSourceBuilder);
     return searchRequest;

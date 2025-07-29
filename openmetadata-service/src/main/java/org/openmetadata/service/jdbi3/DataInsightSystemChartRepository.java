@@ -67,7 +67,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
   private static final Set IGNORE_OTHER_SERVICE_CHARTS =
-      Set.of("healthy_data_assets", "total_data_assets_live");
+      Set.of("healthy_data_assets", "total_data_assets_live", "pipeline_status_live");
 
   public static final String ALL_SEARCH_INDEX = "all";
 
@@ -112,12 +112,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return DI_SEARCH_INDEX;
   }
 
-  public static String getLiveSearchIndex() {
+  public static String getLiveSearchIndex(String index) {
     String clusterAlias = Entity.getSearchRepository().getClusterAlias();
-    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
-      return String.format("%s_%s", clusterAlias, ALL_SEARCH_INDEX);
+    if (index == null) {
+      index = ALL_SEARCH_INDEX;
     }
-    return ALL_SEARCH_INDEX;
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s_%s", clusterAlias, index);
+    }
+    return index;
   }
 
   @Override

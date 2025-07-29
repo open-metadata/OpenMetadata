@@ -133,7 +133,7 @@ public class ElasticSearchLineChartAggregator
     } else {
       searchRequest =
           new es.org.elasticsearch.action.search.SearchRequest(
-              DataInsightSystemChartRepository.getLiveSearchIndex());
+              DataInsightSystemChartRepository.getLiveSearchIndex(lineChart.getSearchIndex()));
     }
     searchRequest.source(searchSourceBuilder);
     return searchRequest;

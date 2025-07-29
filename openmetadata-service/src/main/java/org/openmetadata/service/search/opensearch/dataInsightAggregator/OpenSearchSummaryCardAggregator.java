@@ -61,7 +61,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
     } else {
       searchRequest =
           new os.org.opensearch.action.search.SearchRequest(
-              DataInsightSystemChartRepository.getLiveSearchIndex());
+              DataInsightSystemChartRepository.getLiveSearchIndex(null));
     }
     searchRequest.source(searchSourceBuilder);
     return searchRequest;

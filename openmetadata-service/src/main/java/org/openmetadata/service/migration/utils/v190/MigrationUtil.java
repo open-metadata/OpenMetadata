@@ -199,6 +199,14 @@ public class MigrationUtil {
             .withGroupBy("entityType")
             .withxAxisField("service.name.keyword")
             .withExcludeGroups(List.of("testSuite", "testCase")));
+
+    createChart(
+        "pipeline_status_live",
+        new LineChart()
+            .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
+            .withGroupBy("pipelineStatuses.pipelineState")
+            .withxAxisField("service.name.keyword")
+            .withSearchIndex("ingestionPipeline"));
   }
 
   private final CollectionDAO collectionDAO;
