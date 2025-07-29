@@ -146,7 +146,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -1312,6 +1312,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to migrate secrets due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "drop-indexes", description = "Drop all indexes from Elasticsearch/OpenSearch.")
+  public Integer dropIndexes() {
+    try {
+      LOG.info("Dropping all indexes from search engine...");
+      parseConfig();
+      for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
+        LOG.info("Dropping index for entity type: {}", entityType);
+        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+      }
+      LOG.info("All indexes dropped successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop indexes due to ", e);
       return 1;
     }
   }

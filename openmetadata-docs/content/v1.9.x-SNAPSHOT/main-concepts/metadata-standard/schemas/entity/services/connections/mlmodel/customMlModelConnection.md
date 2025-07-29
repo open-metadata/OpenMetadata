@@ -1,5 +1,6 @@
 ---
-title: customMlModelConnection
+title: Custommlmodelconnection | Official Documentation
+description: Define a schema for connecting to custom ML model platforms, supporting ingestion of model lifecycle and metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/custommlmodelconnection
 ---
 

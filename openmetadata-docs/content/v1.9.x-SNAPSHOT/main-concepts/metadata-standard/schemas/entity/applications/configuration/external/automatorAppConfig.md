@@ -1,5 +1,6 @@
 ---
 title: Automator App Config | OpenMetadata Automator Config
+description: Configure Automator app using this schema to define automation rules, triggers, and data operations.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automatorappconfig
 ---
 

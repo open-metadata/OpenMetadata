@@ -51,12 +51,13 @@ import CustomiseSearchBar from './CustomiseSearchBar';
 
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
+  backgroundColor,
   handleAddWidget,
   hideCustomiseButton = false,
-  overlappedContainer = false,
-  onHomePage = false,
-  backgroundColor,
+  isPreviewHeader = false,
   onBackgroundColorUpdate,
+  onHomePage = false,
+  overlappedContainer = false,
   placeholderWidgetKey,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
@@ -68,7 +69,7 @@ const CustomiseLandingPageHeader = ({
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
-  const [showAnnouncements, setShowAnnouncements] = useState(true);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {
@@ -161,7 +162,7 @@ const CustomiseLandingPageHeader = ({
             })}>
             <Typography.Text className="welcome-user">
               {t('label.welcome', {
-                name: currentUser?.displayName ?? currentUser?.name,
+                name: currentUser?.displayName || currentUser?.name,
               })}
             </Typography.Text>
             {!hideCustomiseButton && (
@@ -229,7 +230,7 @@ const CustomiseLandingPageHeader = ({
                 </div>
               </DomainSelectableList>
             </div>
-            {recentlyViewData.length > 0 && (
+            {!isPreviewHeader && recentlyViewData.length > 0 && (
               <Carousel
                 arrows
                 className={classNames('recently-viewed-data-carousel', {
@@ -268,7 +269,8 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {showAnnouncements &&
+        {!isPreviewHeader &&
+          showAnnouncements &&
           !isAnnouncementLoading &&
           announcements.length > 0 && (
             <div className="announcements-container">
