@@ -68,7 +68,7 @@ public class SecurityServiceResource
     extends ServiceEntityResource<SecurityService, SecurityServiceRepository, SecurityConnection> {
   private final SecurityServiceMapper mapper = new SecurityServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/securityServices/";
-  public static final String FIELDS = "owners,tags,domain,followers";
+  public static final String FIELDS = "owners,tags,domains,followers";
 
   @Override
   public SecurityService addHref(UriInfo uriInfo, SecurityService service) {
