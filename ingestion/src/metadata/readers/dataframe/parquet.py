@@ -14,6 +14,8 @@ Generic Delimiter-Separated-Values implementation
 """
 from functools import singledispatchmethod
 
+from pyarrow.parquet import ParquetFile
+
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -26,12 +28,15 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     LocalConfig,
 )
-from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
+from metadata.readers.dataframe.base import (
+    MAX_FILE_SIZE_FOR_PREVIEW,
+    DataFrameReader,
+    FileFormatException,
+)
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
 from metadata.readers.models import ConfigSource
-from metadata.utils.constants import MAX_FILE_SIZE_FOR_PREVIEW
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -43,12 +48,15 @@ class ParquetDataFrameReader(DataFrameReader):
     from any source based on its init client.
     """
 
-    def _read_parquet_in_batches(self, parquet_file, batch_size: int = 10000):
+    def _read_parquet_in_batches(
+        self, parquet_file: ParquetFile, batch_size: int = 10000
+    ):
         """
         Read a large parquet file in batches to avoid memory issues.
+        Includes multiple fallback strategies for older PyArrow versions.
 
         Args:
-            parquet_file: PyArrow ParquetFile or similar object with read_batches method
+            parquet_file: PyArrow ParquetFile or similar object
             batch_size: Number of rows to read per batch
 
         Returns:
@@ -58,7 +66,7 @@ class ParquetDataFrameReader(DataFrameReader):
         batch_count = 0
 
         try:
-            # Try to use batched reading if available
+            # Method 1: iter_batches (PyArrow >= 3.0 - preferred)
             if hasattr(parquet_file, "iter_batches"):
                 logger.info(
                     "Reading large parquet file in batches to avoid memory issues"
@@ -72,16 +80,46 @@ class ParquetDataFrameReader(DataFrameReader):
                 logger.info(
                     f"Successfully processed {batch_count} batches from large parquet file"
                 )
-            else:
-                # Fallback to regular reading for smaller files or when batching not available
+                return chunks
+
+            # Method 2: Row group reading (PyArrow >= 0.15.0)
+            elif hasattr(parquet_file, "num_row_groups") and hasattr(
+                parquet_file, "read_row_group"
+            ):
                 logger.warning(
-                    "Batched reading not available, falling back to regular reading"
+                    "iter_batches not available, using row group reading as fallback"
                 )
-                df = parquet_file.read().to_pandas()
-                chunks.extend(dataframe_to_chunks(df))
+
+                for i in range(parquet_file.num_row_groups):
+                    try:
+                        row_group_table = parquet_file.read_row_group(i)
+                        df_chunk = row_group_table.to_pandas()
+                        if not df_chunk.empty:
+                            # Further chunk if row group is still too large
+                            if len(df_chunk) > batch_size:
+                                chunks.extend(dataframe_to_chunks(df_chunk))
+                            else:
+                                chunks.append(df_chunk)
+                            batch_count += 1
+                    except Exception as row_exc:
+                        logger.warning(f"Failed to read row group {i}: {row_exc}")
+                        continue
+
+                if chunks:
+                    logger.info(
+                        f"Successfully processed {batch_count} row groups from large parquet file"
+                    )
+                    return chunks
+
+            # Method 3: Regular reading (final fallback)
+            logger.warning(
+                "No chunking methods available, falling back to regular reading"
+            )
+            df = parquet_file.read().to_pandas()
+            chunks.extend(dataframe_to_chunks(df))
 
         except Exception as exc:
-            # If batching fails, try regular reading as fallback
+            # If all chunking fails, try regular reading as final fallback
             logger.warning(
                 f"Batched reading failed: {exc}. Falling back to regular reading - this may cause memory issues for large files"
             )
@@ -107,7 +145,6 @@ class ParquetDataFrameReader(DataFrameReader):
         """
         # pylint: disable=import-outside-toplevel
         from gcsfs import GCSFileSystem
-        from pyarrow.parquet import ParquetFile
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -120,7 +157,7 @@ class ParquetDataFrameReader(DataFrameReader):
             file = gcs.open(file_path)
             parquet_file = ParquetFile(file)
 
-            if file_size > MAX_FILE_SIZE_FOR_PREVIEW:
+            if self._should_use_chunking(file_size):
                 # Use batched reading for large files
                 return self._read_parquet_in_batches(parquet_file)
             else:
@@ -174,7 +211,7 @@ class ParquetDataFrameReader(DataFrameReader):
             file_info = s3_fs.get_file_info(bucket_uri)
             file_size = file_info.size if hasattr(file_info, "size") else 0
 
-            if file_size > MAX_FILE_SIZE_FOR_PREVIEW:
+            if self._should_use_chunking(file_size):
                 # Use ParquetFile for batched reading of large files
                 logger.info(
                     f"Large parquet file detected ({file_size} bytes > {MAX_FILE_SIZE_FOR_PREVIEW} bytes). "
@@ -202,7 +239,6 @@ class ParquetDataFrameReader(DataFrameReader):
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
         import pyarrow.fs as fs
-        from pyarrow.parquet import ParquetFile
 
         storage_options = return_azure_storage_options(self.config_source)
         account_url = AZURE_PATH.format(
@@ -220,7 +256,7 @@ class ParquetDataFrameReader(DataFrameReader):
             file_info = azure_fs.get_file_info("/")
             file_size = file_info.size if hasattr(file_info, "size") else 0
 
-            if file_size > MAX_FILE_SIZE_FOR_PREVIEW:
+            if self._should_use_chunking(file_size):
                 # Use PyArrow ParquetFile for batched reading of large files
                 parquet_file = ParquetFile(
                     account_url, filesystem=fs.AzureFileSystem(**storage_options)
@@ -248,13 +284,12 @@ class ParquetDataFrameReader(DataFrameReader):
         import os
 
         import pandas as pd  # pylint: disable=import-outside-toplevel
-        from pyarrow.parquet import ParquetFile
 
         # Check file size to determine reading strategy
         try:
             file_size = os.path.getsize(key)
 
-            if file_size > MAX_FILE_SIZE_FOR_PREVIEW:
+            if self._should_use_chunking(file_size):
                 # Use PyArrow ParquetFile for batched reading of large files
                 parquet_file = ParquetFile(key)
                 return self._read_parquet_in_batches(parquet_file)
@@ -274,3 +309,6 @@ class ParquetDataFrameReader(DataFrameReader):
                 self.config_source, key=key, bucket_name=bucket_name
             )
         )
+
+    def _should_use_chunking(self, file_size: int) -> bool:
+        return file_size > MAX_FILE_SIZE_FOR_PREVIEW or file_size == 0
