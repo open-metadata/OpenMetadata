@@ -97,7 +97,7 @@ $$
 $$section
 ### Database $(id="database")
 
-Initial Mssql database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
+Provide the name of the database which contains Wherescape tables.
 $$
 
 $$section
@@ -113,7 +113,7 @@ $$
 
 $$section
 ### Ingest All Databases $(id="ingestAllDatabases")
-If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
+Not applicable for Wherescape
 $$
 
 
