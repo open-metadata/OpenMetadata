@@ -206,9 +206,6 @@ function CustomizeMyData({
     <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
         className="p-box customise-my-data"
-        pageContainerStyle={{
-          margin: '0 20px',
-        }}
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>

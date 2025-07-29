@@ -38,6 +38,7 @@ import {
   CustomNextArrow,
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -134,6 +135,17 @@ const CustomiseLandingPageHeader = ({
     },
     [updateActiveDomain, navigate]
   );
+
+  const navigateToEntity = (data: {
+    entityType: string;
+    fullyQualifiedName: string;
+  }) => {
+    const path = entityUtilClassBase.getEntityLink(
+      data.entityType || '',
+      data.fullyQualifiedName
+    );
+    navigate(path);
+  };
 
   useEffect(() => {
     fetchAnnouncements();
@@ -236,11 +248,7 @@ const CustomiseLandingPageHeader = ({
                     key={index}
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      navigate(
-                        `/${data.entityType}/${data.fullyQualifiedName}`
-                      );
-                    }}>
+                    onClick={() => navigateToEntity(data)}>
                     <div
                       className="recent-item d-flex flex-col items-center gap-3"
                       key={data.name}>
