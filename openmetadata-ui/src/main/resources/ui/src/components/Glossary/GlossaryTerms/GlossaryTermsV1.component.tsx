@@ -295,7 +295,8 @@ const GlossaryTermsV1 = ({
     return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
-      EntityTabs.OVERVIEW
+      EntityTabs.OVERVIEW,
+      isVersionView
     );
   }, [
     customizedPage?.tabs,
@@ -323,7 +324,7 @@ const GlossaryTermsV1 = ({
   }, [glossaryFqn, isVersionView]);
 
   useEffect(() => {
-    if (isUndefined(activeTab)) {
+    if (isUndefined(activeTab) && !isVersionView) {
       navigate(
         {
           pathname: getGlossaryTermDetailsPath(
