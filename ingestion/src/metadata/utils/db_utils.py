@@ -60,6 +60,7 @@ def get_view_lineage(
     table_name = view.table_name
     schema_name = view.schema_name
     db_name = view.db_name
+    schema_fallback = False
     view_definition = view.view_definition
     table_fqn = fqn.build(
         metadata,
@@ -88,6 +89,7 @@ def get_view_lineage(
         if table_entity.serviceType == DatabaseServiceType.Postgres:
             # For Postgres, if schema is not defined, we need to use the public schema
             schema_name = PUBLIC_SCHEMA
+            schema_fallback = True
 
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
@@ -99,6 +101,7 @@ def get_view_lineage(
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                schema_fallback=schema_fallback,
             ) or []
 
         else:
@@ -112,6 +115,7 @@ def get_view_lineage(
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                schema_fallback=schema_fallback,
             ) or []
     except Exception as exc:
         logger.debug(traceback.format_exc())
