@@ -221,7 +221,8 @@ const WorkflowHistory = memo(
         <div
           className={classNames('workflow-history-widget', {
             'workflow-history-widget-rightPanel': !propGlossaryTerm,
-          })}>
+          })}
+          data-testid="workflow-history-widget">
           <div
             className=" cursor-pointer d-flex flex-col w-full gap-2"
             role="button"
