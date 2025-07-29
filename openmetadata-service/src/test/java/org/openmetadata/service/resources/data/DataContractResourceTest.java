@@ -77,6 +77,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
@@ -701,7 +702,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertResponseContains(
         () -> createDataContract(create),
         Status.BAD_REQUEST,
-        "Field 'non_existent_field' specified in the data contract does not exist in table");
+        "Schema validation failed. The following fields specified in the data contract do not exist in the table: non_existent_field");
   }
 
   @Test
@@ -892,11 +893,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSchema(columns);
 
-    // Should fail on the first invalid field encountered
+    // Should fail with both invalid fields listed
     assertResponseContains(
         () -> createDataContract(create),
         Status.BAD_REQUEST,
-        "Field 'invalid_field_1' specified in the data contract does not exist in table");
+        "Schema validation failed. The following fields specified in the data contract do not exist in the table: invalid_field_1, invalid_field_2");
   }
 
   /**
@@ -2032,7 +2033,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
 
-    // Get the repository and mock its PipelineServiceClient to avoid triggering actual DQ validation
+    // Get the repository and mock its PipelineServiceClient to avoid triggering actual DQ
+    // validation
     DataContractRepository dataContractRepository =
         (DataContractRepository)
             org.openmetadata.service.Entity.getEntityRepository(
@@ -2062,17 +2064,18 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       assertEquals(0, result.getSemanticsValidation().getFailed().intValue());
       assertEquals(2, result.getSemanticsValidation().getTotal().intValue());
 
-      // Manually update the TestSuite with TestCaseResultSummary as if DQ pipeline executed with FAILURES
+      // Manually update the TestSuite with TestCaseResultSummary as if DQ pipeline executed with
+      // FAILURES
       List<ResultSummary> testCaseResultSummary = new ArrayList<>();
       testCaseResultSummary.add(
           new ResultSummary()
               .withTestCaseName(testCase1.getFullyQualifiedName())
-              .withStatus(TestCaseStatus.Failed)  // This test case fails
+              .withStatus(TestCaseStatus.Failed) // This test case fails
               .withTimestamp(System.currentTimeMillis()));
       testCaseResultSummary.add(
           new ResultSummary()
               .withTestCaseName(testCase2.getFullyQualifiedName())
-              .withStatus(TestCaseStatus.Success)  // This test case passes
+              .withStatus(TestCaseStatus.Success) // This test case passes
               .withTimestamp(System.currentTimeMillis()));
 
       // Update the test suite with result summaries
@@ -2093,9 +2096,9 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
       // Verify quality validation details show failure
       assertNotNull(finalResult.getQualityValidation());
-      assertEquals(1, finalResult.getQualityValidation().getFailed().intValue());  // 1 failed test
-      assertEquals(1, finalResult.getQualityValidation().getPassed().intValue());  // 1 passed test
-      assertEquals(2, finalResult.getQualityValidation().getTotal().intValue());   // 2 total tests
+      assertEquals(1, finalResult.getQualityValidation().getFailed().intValue()); // 1 failed test
+      assertEquals(1, finalResult.getQualityValidation().getPassed().intValue()); // 1 passed test
+      assertEquals(2, finalResult.getQualityValidation().getTotal().intValue()); // 2 total tests
 
       // Verify semantics validation is still there and passed
       assertNotNull(finalResult.getSemanticsValidation());
@@ -2117,5 +2120,139 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       // Restore the original PipelineServiceClient
       dataContractRepository.setPipelineServiceClient(originalPipelineClient);
     }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateDataContractWithSchemaValidationFailure(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create schema fields that match the table's columns initially
+    List<Column> contractSchema = new ArrayList<>();
+    contractSchema.add(
+        new Column().withName(C1).withDescription("ID field").withDataType(ColumnDataType.INT));
+    contractSchema.add(
+        new Column()
+            .withName(C2)
+            .withDescription("Name field")
+            .withDataType(ColumnDataType.STRING));
+    contractSchema.add(
+        new Column()
+            .withName(EMAIL_COL)
+            .withDescription("Email field")
+            .withDataType(ColumnDataType.STRING));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSchema(contractSchema);
+
+    // Create data contract with schema that matches the table
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract was created properly
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getSchema());
+    assertEquals(3, dataContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(dataContract);
+
+    // Verify the initial validation passes
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+
+    // Verify schema validation details for initial success
+    assertNotNull(initialResult.getSchemaValidation());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue()); // 0 fields failed
+    assertEquals(3, initialResult.getSchemaValidation().getPassed().intValue()); // 3 fields passed
+    assertEquals(3, initialResult.getSchemaValidation().getTotal().intValue()); // 3 total fields
+
+    // Verify no failed fields
+    assertTrue(
+        initialResult.getSchemaValidation().getFailedFields() == null
+            || initialResult.getSchemaValidation().getFailedFields().isEmpty());
+
+    // Now let's "break" the table by modifying it to remove one of the columns that the contract
+    // expects
+    // We'll simulate this by updating the table to have fewer columns
+    String originalTableJson = JsonUtils.pojoToJson(table);
+
+    // Remove the EMAIL_COL from the table columns to break schema validation
+    List<org.openmetadata.schema.type.Column> updatedColumns = new ArrayList<>();
+    for (org.openmetadata.schema.type.Column col : table.getColumns()) {
+      if (!EMAIL_COL.equals(col.getName())) {
+        updatedColumns.add(col);
+      }
+    }
+    table.setColumns(updatedColumns);
+
+    // Patch the table to remove the email column using TableResourceTest
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table patchedTable =
+        tableResourceTest.patchEntity(table.getId(), originalTableJson, table, ADMIN_AUTH_HEADERS);
+
+    // Verify the email column was removed
+    assertEquals(
+        3, patchedTable.getColumns().size()); // Should now have 3 columns (id, name, description)
+    assertNull(
+        patchedTable.getColumns().stream()
+            .filter(col -> EMAIL_COL.equals(col.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(dataContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+    assertTrue(result.getResult().contains("Schema validation failed"));
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (email)
+    assertEquals(
+        2, result.getSchemaValidation().getPassed().intValue()); // 2 fields passed (id, name)
+    assertEquals(
+        3, result.getSchemaValidation().getTotal().intValue()); // 3 total fields in contract
+
+    // Verify the failed field is the email column
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals(EMAIL_COL, result.getSchemaValidation().getFailedFields().get(0));
+
+    // Verify the DataContract latestResult reflects the failed validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
+    assertEquals(
+        result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
+
+    // Finally, verify that we have 2 DataContractResults properly stored
+    WebTarget listTarget = getResource(dataContract.getId()).path("/results");
+    Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
+    String jsonResponse =
+        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    ResultList<DataContractResult> allResults =
+        JsonUtils.readValue(
+            jsonResponse,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContractResult>>() {});
+
+    assertNotNull(allResults);
+    assertEquals(2, allResults.getData().size());
+
+    // Verify the results are in chronological order (newest first)
+    DataContractResult firstResult = allResults.getData().get(0); // Most recent (failed)
+    DataContractResult secondResult = allResults.getData().get(1); // Earlier (successful)
+
+    // Verify the latest result is the failed one
+    assertEquals(ContractExecutionStatus.Failed, firstResult.getContractExecutionStatus());
+    assertEquals(result.getId(), firstResult.getId());
+
+    // Verify the earlier result is the successful one
+    assertEquals(ContractExecutionStatus.Success, secondResult.getContractExecutionStatus());
+    assertEquals(initialResult.getId(), secondResult.getId());
+
+    // Verify timestamps are in correct order (newer first)
+    assertTrue(firstResult.getTimestamp() >= secondResult.getTimestamp());
   }
 }

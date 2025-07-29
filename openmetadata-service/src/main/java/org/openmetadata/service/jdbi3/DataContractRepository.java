@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
+import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -119,7 +121,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!update) {
       validateEntityReference(entityRef);
     }
-    validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+
+    // Validate schema fields and throw exception if there are failures
+    SchemaValidation schemaValidation = validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+    if (schemaValidation.getFailed() != null && schemaValidation.getFailed() > 0) {
+      String failedFieldsStr = String.join(", ", schemaValidation.getFailedFields());
+      throw BadRequestException.of(
+          String.format(
+              "Schema validation failed. The following fields specified in the data contract do not exist in the %s: %s",
+              entityRef.getType(), failedFieldsStr));
+    }
+
     if (dataContract.getOwners() != null) {
       dataContract.setOwners(EntityUtil.populateEntityReferences(dataContract.getOwners()));
     }
@@ -134,32 +146,50 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  private void validateSchemaFieldsAgainstEntity(
+  private SchemaValidation validateSchemaFieldsAgainstEntity(
       DataContract dataContract, EntityReference entityRef) {
+    SchemaValidation validation = new SchemaValidation();
+
     if (dataContract.getSchema() == null || dataContract.getSchema().isEmpty()) {
-      return;
+      return validation.withPassed(0).withFailed(0).withTotal(0);
     }
 
     String entityType = entityRef.getType();
+    List<String> failedFields = new ArrayList<>();
 
     switch (entityType) {
       case Entity.TABLE:
-        validateFieldsAgainstTable(dataContract, entityRef);
+        failedFields = validateFieldsAgainstTable(dataContract, entityRef);
         break;
       case Entity.TOPIC:
-        validateFieldsAgainstTopic(dataContract, entityRef);
+        failedFields = validateFieldsAgainstTopic(dataContract, entityRef);
         break;
       default:
         break;
     }
+
+    int totalFields = dataContract.getSchema().size();
+    int failedCount = failedFields.size();
+    int passedCount = totalFields - failedCount;
+
+    return validation
+        .withPassed(passedCount)
+        .withFailed(failedCount)
+        .withTotal(totalFields)
+        .withFailedFields(failedFields);
   }
 
-  private void validateFieldsAgainstTable(DataContract dataContract, EntityReference tableRef) {
+  private List<String> validateFieldsAgainstTable(
+      DataContract dataContract, EntityReference tableRef) {
+    List<String> failedFields = new ArrayList<>();
     org.openmetadata.schema.entity.data.Table table =
         Entity.getEntity(Entity.TABLE, tableRef.getId(), "columns", Include.NON_DELETED);
 
     if (table.getColumns() == null || table.getColumns().isEmpty()) {
-      return;
+      // If table has no columns, all contract fields fail validation
+      return dataContract.getSchema().stream()
+          .map(org.openmetadata.schema.type.Column::getName)
+          .collect(Collectors.toList());
     }
 
     Set<String> tableColumnNames =
@@ -167,34 +197,37 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
       if (!tableColumnNames.contains(column.getName())) {
-        throw BadRequestException.of(
-            String.format(
-                "Field '%s' specified in the data contract does not exist in table '%s'",
-                column.getName(), table.getName()));
+        failedFields.add(column.getName());
       }
     }
+
+    return failedFields;
   }
 
-  private void validateFieldsAgainstTopic(DataContract dataContract, EntityReference topicRef) {
+  private List<String> validateFieldsAgainstTopic(
+      DataContract dataContract, EntityReference topicRef) {
+    List<String> failedFields = new ArrayList<>();
     Topic topic =
         Entity.getEntity(Entity.TOPIC, topicRef.getId(), "messageSchema", Include.NON_DELETED);
 
     if (topic.getMessageSchema() == null
         || topic.getMessageSchema().getSchemaFields() == null
         || topic.getMessageSchema().getSchemaFields().isEmpty()) {
-      return;
+      // If topic has no schema, all contract fields fail validation
+      return dataContract.getSchema().stream()
+          .map(org.openmetadata.schema.type.Column::getName)
+          .collect(Collectors.toList());
     }
 
     Set<String> topicFieldNames = extractFieldNames(topic.getMessageSchema().getSchemaFields());
 
     for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
       if (!topicFieldNames.contains(column.getName())) {
-        throw BadRequestException.of(
-            String.format(
-                "Field '%s' specified in the data contract does not exist in topic '%s'",
-                column.getName(), topic.getName()));
+        failedFields.add(column.getName());
       }
     }
+
+    return failedFields;
   }
 
   private Set<String> extractFieldNames(List<org.openmetadata.schema.type.Field> fields) {
@@ -306,12 +339,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .withTimestamp(System.currentTimeMillis());
     addContractResult(dataContract, result);
 
+    // Validate schema fields against the entity
+    if (dataContract.getSchema() != null && !dataContract.getSchema().isEmpty()) {
+      SchemaValidation schemaValidation =
+          validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
+      result.withSchemaValidation(schemaValidation);
+    }
+
     if (!nullOrEmpty(dataContract.getSemantics())) {
       SemanticsValidation semanticsValidation = validateSemantics(dataContract);
       result.withSemanticsValidation(semanticsValidation);
     }
 
-    // If we don't have quality expectations, just flag the results based on semantics validation
+    // If we don't have quality expectations, just flag the results based on schema and semantics
+    // validation
     // Otherwise, keep it Running and wait for the DQ results to kick in
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       compileResult(result, ContractExecutionStatus.Running);
@@ -405,11 +446,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public void compileResult(DataContractResult result, ContractExecutionStatus fallbackStatus) {
     result.withContractExecutionStatus(fallbackStatus);
 
+    if (!nullOrEmpty(result.getSchemaValidation())) {
+      if (result.getSchemaValidation().getFailed() > 0) {
+        result
+            .withContractExecutionStatus(ContractExecutionStatus.Failed)
+            .withResult("Schema validation failed");
+      }
+    }
+
     if (!nullOrEmpty(result.getSemanticsValidation())) {
       if (result.getSemanticsValidation().getFailed() > 0) {
         result
             .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult("Semantics validation failed");
+            .withResult(
+                result.getResult() != null
+                    ? result.getResult() + "; Semantics validation failed"
+                    : "Semantics validation failed");
       }
     }
 
