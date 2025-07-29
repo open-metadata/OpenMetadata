@@ -473,7 +473,6 @@ class TableauUnitTest(TestCase):
             "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
         )
 
-
     def _setup_ssl_config(self, verify_ssl_value="no-ssl", ssl_config=None):
         """
         Helper method to set up SSL configuration for testing
