@@ -1,5 +1,6 @@
 ---
 title: dbtLocalConfig | OpenMetadata dbt Local Config
+description: Define the DBT Local Config schema used to manage local dbt ingestion, including project path, profiles directory, and target specifications.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtlocalconfig
 ---
 
