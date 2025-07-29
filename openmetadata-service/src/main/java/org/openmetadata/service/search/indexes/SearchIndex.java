@@ -46,6 +46,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
@@ -59,6 +61,7 @@ public interface SearchIndex {
           "changeSummary");
 
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  static final Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
 
   default Map<String, Object> buildSearchIndexDoc() {
     // Build Index Doc
@@ -205,6 +208,16 @@ public interface SearchIndex {
           .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
         continue;
       }
+
+      // Validate constraint has required data
+      if (nullOrEmpty(tableConstraint.getColumns())
+          || nullOrEmpty(tableConstraint.getReferredColumns())) {
+        LOG.warn(
+            "Skipping invalid constraint for entity '{}': missing columns or referredColumns",
+            entity.getFullyQualifiedName());
+        continue;
+      }
+
       int columnIndex = 0;
       for (String referredColumn : listOrEmpty(tableConstraint.getReferredColumns())) {
         String relatedEntityFQN = getParentFQN(referredColumn);
@@ -314,20 +327,62 @@ public interface SearchIndex {
       String referredColumn,
       int columnIndex,
       Boolean updateForeignTableIndex) {
-    String columnFQN =
-        FullyQualifiedName.add(
-            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
 
-    Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", referredColumn);
-    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+    // Handle composite key scenarios gracefully
+    List<String> columns = tableConstraint.getColumns();
+    List<String> referredColumns = tableConstraint.getReferredColumns();
 
-    List<Map<String, Object>> presentColumns =
-        (List<Map<String, Object>>) presentConstraint.get("columns");
-    presentColumns.add(columnMap);
-    if (updateForeignTableIndex) {
-      updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
+    if (columns == null || columns.isEmpty()) {
+      LOG.warn(
+          "Table constraint has no local columns for entity: {}. Skipping constraint processing.",
+          entity.getFullyQualifiedName());
+      return;
+    }
+
+    // Detect composite foreign key constraints
+    if (referredColumns != null && columns.size() != referredColumns.size()) {
+      LOG.info(
+          "Composite foreign key constraint detected for table '{}': {} Table columns mapped to {} referred columns.",
+          entity.getFullyQualifiedName(),
+          columns.size(),
+          referredColumns.size());
+      return;
+    }
+
+    // Safe bounds checking for matching sizes
+    if (columnIndex >= columns.size()) {
+      LOG.warn(
+          "Column index {} is out of bounds for constraint columns of size {}. Skipping constraint update.",
+          columnIndex,
+          columns.size());
+      return;
+    }
+
+    try {
+      String columnFQN =
+          FullyQualifiedName.add(entity.getFullyQualifiedName(), columns.get(columnIndex));
+
+      Map<String, Object> columnMap = new HashMap<>();
+      columnMap.put("columnFQN", columnFQN);
+      columnMap.put("relatedColumnFQN", referredColumn);
+      columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+
+      List<Map<String, Object>> presentColumns =
+          (List<Map<String, Object>>) presentConstraint.get("columns");
+      presentColumns.add(columnMap);
+
+      if (updateForeignTableIndex) {
+        updateRelatedEntityIndex(destinationIndexName, relatedEntity, presentConstraint);
+      }
+
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to process constraint relationship for entity '{}', column index {}, referred column '{}'. "
+              + "Skipping this relationship to continue processing. Error: {}",
+          entity.getFullyQualifiedName(),
+          columnIndex,
+          referredColumn,
+          ex.getMessage());
     }
   }
 
@@ -341,20 +396,62 @@ public interface SearchIndex {
       String referredColumn,
       int columnIndex,
       Boolean updateForeignTableIndex) {
-    List<Map<String, Object>> columns = new ArrayList<>();
-    String columnFQN =
-        FullyQualifiedName.add(
-            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
 
-    Map<String, Object> columnMap = new HashMap<>();
-    columnMap.put("columnFQN", columnFQN);
-    columnMap.put("relatedColumnFQN", referredColumn);
-    columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-    columns.add(columnMap);
-    relationshipsMap.put("columns", columns);
-    constraints.add(JsonUtils.getMap(relationshipsMap));
-    if (updateForeignTableIndex) {
-      updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
+    // Handle composite key scenarios gracefully
+    List<String> columns = tableConstraint.getColumns();
+    List<String> referredColumns = tableConstraint.getReferredColumns();
+
+    if (columns == null || columns.isEmpty()) {
+      LOG.warn(
+          "Table constraint has no local columns for entity: {}. Skipping constraint creation.",
+          entity.getFullyQualifiedName());
+      return;
+    }
+
+    // Detect composite foreign key constraints
+    if (referredColumns != null && columns.size() != referredColumns.size()) {
+      LOG.info(
+          "Composite foreign key constraint detected for table '{}': {} Table columns mapped to {} referred columns.",
+          entity.getFullyQualifiedName(),
+          columns.size(),
+          referredColumns.size());
+      return;
+    }
+
+    // Safe bounds checking for matching sizes
+    if (columnIndex >= columns.size()) {
+      LOG.warn(
+          "Column index {} is out of bounds for constraint columns of size {}. Skipping constraint creation.",
+          columnIndex,
+          columns.size());
+      return;
+    }
+
+    try {
+      List<Map<String, Object>> columnsList = new ArrayList<>();
+      String columnFQN =
+          FullyQualifiedName.add(entity.getFullyQualifiedName(), columns.get(columnIndex));
+
+      Map<String, Object> columnMap = new HashMap<>();
+      columnMap.put("columnFQN", columnFQN);
+      columnMap.put("relatedColumnFQN", referredColumn);
+      columnMap.put("relationshipType", tableConstraint.getRelationshipType());
+      columnsList.add(columnMap);
+      relationshipsMap.put("columns", columnsList);
+      constraints.add(JsonUtils.getMap(relationshipsMap));
+
+      if (updateForeignTableIndex) {
+        updateRelatedEntityIndex(destinationIndexName, relatedEntity, relationshipsMap);
+      }
+
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to create constraint relationship for entity '{}', column index {}, referred column '{}'. "
+              + "Skipping this relationship to continue processing. Error: {}",
+          entity.getFullyQualifiedName(),
+          columnIndex,
+          referredColumn,
+          ex.getMessage());
     }
   }
 
