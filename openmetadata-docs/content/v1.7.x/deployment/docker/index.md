@@ -248,7 +248,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support
 
 - Amazon RDS (MySQL) engine version 8 or higher
-- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.7
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.19
 - Amazon RDS (PostgreSQL) engine version 12 or higher
 
 Note:-
