@@ -84,16 +84,27 @@ async function traverseDirectory(
   Directory,
   playDir,
   destDir,
-  shouldDereference = false
+  shouldDereference = false,
+  allowedFiles = []
 ) {
   const Files = fs.readdirSync(Directory);
   for (const File of Files) {
     const Absolute = path.join(Directory, File);
+
     if (fs.statSync(Absolute).isDirectory()) {
-      await traverseDirectory(Absolute, playDir, destDir, shouldDereference);
+      await traverseDirectory(
+        Absolute,
+        playDir,
+        destDir,
+        shouldDereference,
+        allowedFiles
+      );
     } else {
-      const name = Absolute.replace(playDir, destDir);
-      await parseSchema(Absolute, name, shouldDereference);
+      // If allowedFiles is empty, process all. Else process only allowed files.
+      if (allowedFiles.length === 0 || allowedFiles.includes(File)) {
+        const name = Absolute.replace(playDir, destDir);
+        await parseSchema(Absolute, name, shouldDereference);
+      }
     }
   }
 }
@@ -108,7 +119,13 @@ function copySourceFiles(rootDir) {
 }
 
 // Main function to handle schema parsing
-async function main(rootDir, srcDir, destDir, shouldDereference = false) {
+async function main(
+  rootDir,
+  srcDir,
+  destDir,
+  shouldDereference = false,
+  allowedFiles = []
+) {
   const playDir = `${rootDir}/${srcDir}`;
 
   try {
@@ -119,7 +136,13 @@ async function main(rootDir, srcDir, destDir, shouldDereference = false) {
 
     copySourceFiles(rootDir);
 
-    await traverseDirectory(playDir, playDir, destDir, shouldDereference);
+    await traverseDirectory(
+      playDir,
+      playDir,
+      destDir,
+      shouldDereference,
+      allowedFiles
+    );
   } catch (err) {
     console.log(err);
   } finally {
@@ -157,14 +180,8 @@ async function runParsers() {
     'configTemp',
     'schema/configuration',
     'src/jsons/configuration',
-    true
-  );
-
-  await main(
-    'securityTemp',
-    'schema/security',
-    'src/jsons/configuration/security',
-    true
+    true,
+    ['authenticationConfiguration.json', 'authorizerConfiguration.json']
   );
 }
 
