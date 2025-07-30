@@ -1166,8 +1166,8 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
       Improvements: `- Add missing database migrations for searchSettings changes introduced in version 1.8.7.
 - Add support for the SSAS (SQL Server Analysis Services) connector.
 - Memory management and ensured proper resource cleanup in the profiler.
-- Add support service account in Synapse Connector.
 - Update ometa logging for better clarity and debugging.
+- Add support service account in Synapse Connector. ${CollateIconWithLinkMD}
 - Implemented chunked reading of archived logs in Argo Workflows, improving performance and memory efficiency. ${CollateIconWithLinkMD}
 - Add external table reverse metadata for databricks and unitycatalog. ${CollateIconWithLinkMD}
 - Add Collate SaaS activity metrics with OpenSearch telemetry. ${CollateIconWithLinkMD}`,
