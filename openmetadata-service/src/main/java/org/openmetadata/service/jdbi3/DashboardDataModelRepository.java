@@ -203,6 +203,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       setDefaultFields(dataModel);
     }
 
+    fetchAndSetFields(dataModels, fields);
+    setInheritedFields(dataModels, fields);
+
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
   }
