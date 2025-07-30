@@ -164,6 +164,7 @@ class ServiceUtilClassBase {
     DashboardServiceType.ThoughtSpot,
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
+    DatabaseServiceType.Epic,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
