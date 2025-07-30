@@ -73,7 +73,7 @@ export const deleteContract = async (fqn: string) => {
 export const getContractByEntityId = async (
   entityId: string,
   entityType: EntityType = EntityType.TABLE,
-  fields: string[]
+  fields: string[] = []
 ) => {
   const response = await APIClient.get<DataContract>(
     `/dataContracts/entity?entityId=${entityId}&entityType=${entityType}&fields=${fields.join(

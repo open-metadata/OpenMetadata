@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import i18n from '../utils/i18next/LocalUtil';
 
 export enum EDataContractTab {
   CONTRACT_DETAIL,
@@ -18,22 +17,3 @@ export enum EDataContractTab {
   SEMANTICS,
   QUALITY,
 }
-
-export const CREATE_DATA_CONTRACT_TAB_ITEMS = [
-  {
-    label: i18n.t('label.contract-detail'),
-    key: EDataContractTab.CONTRACT_DETAIL,
-  },
-  {
-    label: i18n.t('label.schema'),
-    key: EDataContractTab.SCHEMA,
-  },
-  {
-    label: i18n.t('label.semantic-plural'),
-    key: EDataContractTab.SEMANTICS,
-  },
-  {
-    label: i18n.t('label.quality'),
-    key: EDataContractTab.QUALITY,
-  },
-];

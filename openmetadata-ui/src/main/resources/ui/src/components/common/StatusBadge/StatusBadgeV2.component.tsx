@@ -28,7 +28,7 @@ const StatusBadgeV2 = ({
 
   return (
     <div
-      className={classNames('status-badge', status, className)}
+      className={classNames('status-badge status-badge-v2', status, className)}
       data-testid={dataTestId}>
       {StatusIcon && <Icon component={StatusIcon} />}
       <span className={`status-badge-label ${status}`}>{label}</span>

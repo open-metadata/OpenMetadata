@@ -105,6 +105,7 @@ export const ContractQualityFormTab: React.FC<{
       </Typography.Text>
       <Card>
         <Radio.Group
+          className="m-b-sm"
           value={testType}
           onChange={(e) => setTestType(e.target.value)}>
           <Radio.Button value="table">{t('label.table')}</Radio.Button>

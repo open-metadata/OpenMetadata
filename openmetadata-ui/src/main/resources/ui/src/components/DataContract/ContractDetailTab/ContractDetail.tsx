@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
 import Icon, {
   EditOutlined,
   PlayCircleOutlined,
@@ -27,12 +26,6 @@ import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
 import { Cell, Pie, PieChart } from 'recharts';
-import {
-  GREEN_3,
-  GREY_200,
-  RED_3,
-  YELLOW_2,
-} from '../../../constants/Color.constants';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -48,7 +41,11 @@ import {
   getListTestCaseBySearch,
   getTestCaseExecutionSummary,
 } from '../../../rest/testAPI';
-import { getConstraintStatus } from '../../../utils/DataContract/DataContractUtils';
+import {
+  getConstraintStatus,
+  getContractStatusType,
+  getTestCaseSummaryChartItems,
+} from '../../../utils/DataContract/DataContractUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -62,21 +59,6 @@ import Table from '../../common/Table/Table';
 import './contract-detail.less';
 
 const { Title, Text } = Typography;
-
-const getStatusType = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case 'passed':
-    case 'success':
-      return StatusType.Success;
-    case 'failed':
-      return StatusType.Failure;
-    case 'issue':
-    case 'warning':
-      return StatusType.Warning;
-    default:
-      return StatusType.Pending;
-  }
-};
 
 const ContractDetail: React.FC<{
   contract?: DataContract | null;
@@ -182,64 +164,7 @@ const ContractDetail: React.FC<{
   }, [latestContractResults]);
 
   const testCaseSummaryChartItems = useMemo(() => {
-    const total = testCaseSummary?.total ?? 0;
-    const success = testCaseSummary?.success ?? 0;
-    const failed = testCaseSummary?.failed ?? 0;
-    const aborted = testCaseSummary?.aborted ?? 0;
-
-    const items = [
-      {
-        label: t('label.total-test-plural'),
-        value: total,
-        color: GREEN_3,
-        chartData: [
-          { name: 'Success', value: success, color: GREEN_3 },
-          { name: 'Aborted', value: failed, color: YELLOW_2 },
-          { name: 'Failed', value: aborted, color: RED_3 },
-        ],
-      },
-      {
-        label: t('label.success'),
-        value: success,
-        color: GREEN_3,
-        chartData: [
-          { name: 'Success', value: success, color: GREEN_3 },
-          {
-            name: 'Unknown',
-            value: total - success,
-            color: GREY_200,
-          },
-        ],
-      },
-      {
-        label: t('label.failed'),
-        value: failed,
-        color: RED_3,
-        chartData: [
-          { name: 'Failed', value: failed, color: RED_3 },
-          {
-            name: 'Unknown',
-            value: total - failed,
-            color: GREY_200,
-          },
-        ],
-      },
-      {
-        label: t('label.aborted'),
-        value: aborted,
-        color: YELLOW_2,
-        chartData: [
-          { name: 'Aborted', value: aborted, color: YELLOW_2 },
-          {
-            name: 'Unknown',
-            value: total - aborted,
-            color: GREY_200,
-          },
-        ],
-      },
-    ];
-
-    return items;
+    return getTestCaseSummaryChartItems(testCaseSummary);
   }, [testCaseSummary]);
 
   const handleRunNow = () => {
@@ -256,7 +181,7 @@ const ContractDetail: React.FC<{
   };
 
   useEffect(() => {
-    if (contract?.id) {
+    if (contract?.id && !contract?.latestResult?.resultId) {
       fetchLatestContractResults();
 
       if (contract?.testSuite?.id) {
@@ -311,7 +236,11 @@ const ContractDetail: React.FC<{
                 label={t('label.active')}
                 status={StatusType.Success}
               />
-              <Text type="secondary">Version {contract.version}</Text>
+              <Text type="secondary">
+                {t('label.version-number', {
+                  version: contract.version,
+                })}
+              </Text>
             </div>
           </Col>
           <Col>
@@ -439,7 +368,7 @@ const ContractDetail: React.FC<{
 
                         <StatusBadgeV2
                           label={item.status}
-                          status={getStatusType(item.status)}
+                          status={getContractStatusType(item.status)}
                         />
                       </div>
                     ))
@@ -495,50 +424,48 @@ const ContractDetail: React.FC<{
                   {isTestCaseLoading ? (
                     <Loading />
                   ) : (
-                    <Row gutter={[0, 8]}>
+                    <Row
+                      className="data-quality-card-container"
+                      gutter={[0, 8]}>
                       <Col span={24}>
                         <Row
                           align="middle"
-                          className="border border-radius-card p-md"
+                          className="data-quality-chart-container"
                           gutter={8}>
                           {testCaseSummaryChartItems.map((item) => (
                             <Col key={item.label} span={6}>
-                              <Row
-                                className="items-center"
-                                gutter={16}
+                              <div
+                                className="data-quality-chart-item"
                                 key={item.label}>
-                                <Col span={24}>
-                                  <Text>{item.label}</Text>
-                                </Col>
+                                <Text className="chart-label">
+                                  {item.label}
+                                </Text>
 
-                                <Col span={24}>
-                                  <PieChart height={120} width={120}>
-                                    <Pie
-                                      cx="50%"
-                                      cy="50%"
-                                      data={item.chartData}
-                                      dataKey="value"
-                                      innerRadius={45}
-                                      outerRadius={60}
-                                      paddingAngle={2}>
-                                      {item.chartData.map((entry, index) => (
-                                        <Cell
-                                          fill={entry.color}
-                                          key={`cell-${index}`}
-                                        />
-                                      ))}
-                                    </Pie>
-                                    <text
-                                      className="chart-center-text"
-                                      dominantBaseline="middle"
-                                      textAnchor="middle"
-                                      x="50%"
-                                      y="50%">
-                                      {item.value}
-                                    </text>
-                                  </PieChart>
-                                </Col>
-                              </Row>
+                                <PieChart height={120} width={120}>
+                                  <Pie
+                                    cx="50%"
+                                    cy="50%"
+                                    data={item.chartData}
+                                    dataKey="value"
+                                    innerRadius={40}
+                                    outerRadius={50}>
+                                    {item.chartData.map((entry, index) => (
+                                      <Cell
+                                        fill={entry.color}
+                                        key={`cell-${index}`}
+                                      />
+                                    ))}
+                                  </Pie>
+                                  <text
+                                    className="chart-center-text"
+                                    dominantBaseline="middle"
+                                    textAnchor="middle"
+                                    x="50%"
+                                    y="50%">
+                                    {item.value}
+                                  </text>
+                                </PieChart>
+                              </div>
                             </Col>
                           ))}
                         </Row>
@@ -550,8 +477,13 @@ const ContractDetail: React.FC<{
                               className="data-quality-item d-flex items-center"
                               key={item.id}>
                               <StatusBadgeV2
+                                className="data-quality-list-badge"
                                 label=""
-                                status={StatusType.Success}
+                                status={
+                                  item.testCaseStatus
+                                    ? getContractStatusType(item.testCaseStatus)
+                                    : StatusType.Pending
+                                }
                               />
                               <div className="data-quality-item-content">
                                 <Typography.Text className="data-quality-item-name">

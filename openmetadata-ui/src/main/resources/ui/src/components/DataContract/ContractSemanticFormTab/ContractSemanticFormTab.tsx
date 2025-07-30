@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
@@ -207,6 +211,7 @@ export const ContractSemanticFormTab: React.FC<{
                   <Button
                     className="m-t-md"
                     disabled={!!editingKey}
+                    icon={<PlusOutlined />}
                     type="primary"
                     onClick={() =>
                       add({

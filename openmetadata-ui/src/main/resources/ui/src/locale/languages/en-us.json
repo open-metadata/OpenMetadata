@@ -1872,6 +1872,7 @@
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "Data Asset has been {{actionType}}",
     "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-contract-saved-successfully": "Data contract saved successfully",
     "data-contract-schema-description": "Expected schema structure of this asset",
     "data-insight-alert-destination-description": "Send email notifications to admins or teams.",
     "data-insight-alert-trigger-description": "Trigger for real time or schedule it for daily, weekly or monthly.",

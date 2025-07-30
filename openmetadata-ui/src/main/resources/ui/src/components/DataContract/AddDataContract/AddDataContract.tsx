@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CodeOutlined, EditOutlined, TableOutlined } from '@ant-design/icons';
+import { CodeOutlined, EditOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -25,6 +25,10 @@ import { AxiosError } from 'axios';
 import { omit } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
+import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
+import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
+import { ReactComponent as TableIcon } from '../../../assets/svg/table-grey.svg';
 import { EDataContractTab } from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -38,6 +42,7 @@ import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFo
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
+
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -126,7 +131,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <ContractIcon className="contract-tab-icon" />
             <span>{t('label.contract-detail-plural')}</span>
           </div>
         ),
@@ -142,7 +147,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <TableIcon className="contract-tab-icon" />
             <span>{t('label.schema')}</span>
           </div>
         ),
@@ -162,7 +167,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <SemanticsIcon className="contract-tab-icon" />
             <span>{t('label.semantic-plural')}</span>
           </div>
         ),
@@ -179,7 +184,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <QualityIcon className="contract-tab-icon" />
             <span>{t('label.quality')}</span>
           </div>
         ),

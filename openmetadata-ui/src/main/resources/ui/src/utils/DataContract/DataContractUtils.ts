@@ -14,7 +14,15 @@ import i18next from 'i18next';
 import { ReactComponent as QualityIcon } from '../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/table-grey.svg';
+import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
+import {
+  GREEN_3,
+  GREY_200,
+  RED_3,
+  YELLOW_2,
+} from '../../constants/Color.constants';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
+import { TestSummary } from '../../generated/tests/testCase';
 import { getRelativeTime } from '../date-time/DateTimeUtils';
 
 export const getConstraintStatus = (
@@ -75,4 +83,80 @@ export const getConstraintStatus = (
   }
 
   return statusArray;
+};
+
+export const getContractStatusType = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'passed':
+    case 'success':
+      return StatusType.Success;
+    case 'failed':
+      return StatusType.Failure;
+    case 'issue':
+    case 'warning':
+      return StatusType.Warning;
+    default:
+      return StatusType.Pending;
+  }
+};
+
+export const getTestCaseSummaryChartItems = (testCaseSummary?: TestSummary) => {
+  const total = testCaseSummary?.total ?? 0;
+  const success = testCaseSummary?.success ?? 0;
+  const failed = testCaseSummary?.failed ?? 0;
+  const aborted = testCaseSummary?.aborted ?? 0;
+
+  const items = [
+    {
+      label: i18next.t('label.total-test-plural'),
+      value: total,
+      color: GREEN_3,
+      chartData: [
+        { name: 'success', value: success, color: GREEN_3 },
+        { name: 'aborted', value: failed, color: YELLOW_2 },
+        { name: 'failed', value: aborted, color: RED_3 },
+      ],
+    },
+    {
+      label: i18next.t('label.success'),
+      value: success,
+      color: GREEN_3,
+      chartData: [
+        { name: 'success', value: success, color: GREEN_3 },
+        {
+          name: 'unknown',
+          value: total - success,
+          color: GREY_200,
+        },
+      ],
+    },
+    {
+      label: i18next.t('label.failed'),
+      value: failed,
+      color: RED_3,
+      chartData: [
+        { name: 'failed', value: failed, color: RED_3 },
+        {
+          name: 'unknown',
+          value: total - failed,
+          color: GREY_200,
+        },
+      ],
+    },
+    {
+      label: i18next.t('label.aborted'),
+      value: aborted,
+      color: YELLOW_2,
+      chartData: [
+        { name: 'aborted', value: aborted, color: YELLOW_2 },
+        {
+          name: 'unknown',
+          value: total - aborted,
+          color: GREY_200,
+        },
+      ],
+    },
+  ];
+
+  return items;
 };
