@@ -4,17 +4,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class MigrationUtil {
@@ -27,6 +33,9 @@ public class MigrationUtil {
   private static final String PROPAGATE_DOMAINS_KEY = "propagateDomains";
   private static final String AUTOMATOR_APP_TYPE = "Automator";
   private static final int BATCH_SIZE = 100;
+  private static final String ADMIN_USER_NAME = "admin";
+
+  static WorkflowDefinitionRepository workflowDefinitionRepository;
 
   private final CollectionDAO collectionDAO;
 
@@ -35,41 +44,198 @@ public class MigrationUtil {
   }
 
   /**
-   * Update workflow definitions with fresh data from seed files instead of database.
-   * This ensures new nodes and edges are properly applied during migration.
+   * Update GlossaryTermApprovalWorkflow
    */
-  public static void updateWorkflowDefinitionsFromSeedData() {
+  public static void updateGlossaryTermApprovalWorkflow() {
     try {
-      LOG.info("Starting v190 workflow definition migration from seed data");
+      LOG.info(
+          "Starting v190 migration - adding reviewer auto-approval nodes to GlossaryTermApprovalWorkflow");
 
-      WorkflowDefinitionRepository workflowDefinitionRepository =
+      workflowDefinitionRepository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-      // Get fresh workflow definitions from seed data files instead of database
-      List<WorkflowDefinition> freshWorkflowDefinitions =
-          workflowDefinitionRepository.getEntitiesFromSeedData();
+      try {
+        WorkflowDefinition workflowDefinition =
+            workflowDefinitionRepository.getByName(
+                null, "GlossaryTermApprovalWorkflow", EntityUtil.Fields.EMPTY_FIELDS);
 
-      for (WorkflowDefinition workflowDefinition : freshWorkflowDefinitions) {
-        try {
-          LOG.info(
-              "Updating workflow definition '{}' with fresh seed data",
-              workflowDefinition.getName());
-          // Force update with fresh definition from seed data
-          workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, "admin");
+        LOG.info(
+            "Adding reviewer auto-approval nodes to workflow '{}'", workflowDefinition.getName());
 
-          LOG.info("Successfully updated workflow definition '{}'", workflowDefinition.getName());
-        } catch (Exception ex) {
-          LOG.error(
-              "Error updating workflow definition '{}': {}",
-              workflowDefinition.getName(),
-              ex.getMessage());
-          LOG.warn(ex.toString());
+        // Add new nodes if they don't already exist
+        List<WorkflowNodeDefinitionInterface> nodes =
+            new ArrayList<>(workflowDefinition.getNodes());
+        List<EdgeDefinition> edges = new ArrayList<>(workflowDefinition.getEdges());
+
+        // Check and add AutoApprovedByReviewerEnd node
+        if (nodes.stream().noneMatch(node -> "AutoApprovedByReviewerEnd".equals(node.getName()))) {
+          WorkflowNodeDefinitionInterface autoApprovedEndNode =
+              JsonUtils.readValue(
+                  """
+                      {
+                        "type": "endEvent",
+                        "subType": "endEvent",
+                        "name": "AutoApprovedByReviewerEnd",
+                        "displayName": "Auto-Approved by Reviewer"
+                      }
+                      """,
+                  WorkflowNodeDefinitionInterface.class);
+          nodes.add(autoApprovedEndNode);
+          LOG.info("Added new node: AutoApprovedByReviewerEnd");
+        }
+
+        // Check and add CheckIfGlossaryTermUpdatedByIsReviewer node
+        if (nodes.stream()
+            .noneMatch(node -> "CheckIfGlossaryTermUpdatedByIsReviewer".equals(node.getName()))) {
+          WorkflowNodeDefinitionInterface checkReviewerNode =
+              JsonUtils.readValue(
+                  """
+                      {
+                        "type": "automatedTask",
+                        "subType": "checkEntityAttributesTask",
+                        "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
+                        "displayName": "Check if Glossary Term Updated By is Reviewer",
+                        "config": {
+                          "rules": "{\\"and\\":[{\\"isReviewer\\":{\\"var\\":\\"updatedBy\\"}}]}"
+                        },
+                        "inputNamespaceMap": {
+                          "relatedEntity": "global"
+                        }
+                      }
+                      """,
+                  WorkflowNodeDefinitionInterface.class);
+          nodes.add(checkReviewerNode);
+          LOG.info("Added new node: CheckIfGlossaryTermUpdatedByIsReviewer");
+        }
+
+        // Check and add SetGlossaryTermStatusToApprovedByReviewer node
+        if (nodes.stream()
+            .noneMatch(
+                node -> "SetGlossaryTermStatusToApprovedByReviewer".equals(node.getName()))) {
+          WorkflowNodeDefinitionInterface setApprovedNode =
+              JsonUtils.readValue(
+                  """
+                      {
+                        "type": "automatedTask",
+                        "subType": "setGlossaryTermStatusTask",
+                        "name": "SetGlossaryTermStatusToApprovedByReviewer",
+                        "displayName": "Set Status to 'Approved' (By Reviewer)",
+                        "config": {
+                          "glossaryTermStatus": "Approved"
+                        },
+                        "inputNamespaceMap": {
+                          "relatedEntity": "global"
+                        }
+                      }
+                      """,
+                  WorkflowNodeDefinitionInterface.class);
+          nodes.add(setApprovedNode);
+          LOG.info("Added new node: SetGlossaryTermStatusToApprovedByReviewer");
+        }
+
+        // Update the existing edge: CheckGlossaryTermHasReviewers ->
+        // CheckGlossaryTermIsReadyToBeReviewed (true)
+        // Change it to: CheckGlossaryTermHasReviewers -> CheckIfGlossaryTermUpdatedByIsReviewer
+        // (true)
+        for (EdgeDefinition edge : edges) {
+          if ("CheckGlossaryTermHasReviewers".equals(edge.getFrom())
+              && "CheckGlossaryTermIsReadyToBeReviewed".equals(edge.getTo())
+              && "true".equals(edge.getCondition())) {
+            edge.setTo("CheckIfGlossaryTermUpdatedByIsReviewer");
+            LOG.info(
+                "Updated edge: CheckGlossaryTermHasReviewers -> CheckIfGlossaryTermUpdatedByIsReviewer");
+            break;
+          }
+        }
+
+        // Add new edges if they don't exist
+        addEdgeIfNotExists(
+            edges,
+            "CheckIfGlossaryTermUpdatedByIsReviewer",
+            "SetGlossaryTermStatusToApprovedByReviewer",
+            "true");
+        addEdgeIfNotExists(
+            edges,
+            "CheckIfGlossaryTermUpdatedByIsReviewer",
+            "CheckGlossaryTermIsReadyToBeReviewed",
+            "false");
+        addEdgeIfNotExists(
+            edges, "SetGlossaryTermStatusToApprovedByReviewer", "AutoApprovedByReviewerEnd", null);
+
+        // Add filter field to trigger config if it doesn't exist
+        addFilterToTriggerConfig(workflowDefinition);
+        workflowDefinition.setNodes(nodes);
+        workflowDefinition.setEdges(edges);
+
+        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+
+        LOG.info(
+            "Successfully added reviewer auto-approval nodes to workflow '{}'",
+            workflowDefinition.getName());
+
+      } catch (Exception ex) {
+        LOG.warn("GlossaryTermApprovalWorkflow not found or error updating: {}", ex.getMessage());
+        LOG.info("This might be expected if the workflow doesn't exist yet");
+      }
+
+      LOG.info("Completed v190 reviewer auto-approval nodes migration");
+    } catch (Exception e) {
+      LOG.error("Failed to add reviewer auto-approval nodes to workflow", e);
+    }
+  }
+
+  private static void addEdgeIfNotExists(
+      List<EdgeDefinition> edges, String from, String to, String condition) {
+    boolean exists =
+        edges.stream()
+            .anyMatch(
+                edge ->
+                    from.equals(edge.getFrom())
+                        && to.equals(edge.getTo())
+                        && Objects.equals(condition, edge.getCondition()));
+    if (!exists) {
+      EdgeDefinition newEdge = new EdgeDefinition().withFrom(from).withTo(to);
+      if (condition != null) {
+        newEdge.withCondition(condition);
+      }
+      edges.add(newEdge);
+      LOG.info("Added new edge: {} -> {} (condition: {})", from, to, condition);
+    }
+  }
+
+  // Add filter field to trigger config (new field in this branch)
+  private static void addFilterToTriggerConfig(WorkflowDefinition workflowDefinition) {
+    try {
+      if (workflowDefinition.getTrigger() != null) {
+        // Convert trigger to JSON, modify, and convert back
+        String triggerJson = JsonUtils.pojoToJson(workflowDefinition.getTrigger());
+        JsonNode triggerNode = JsonUtils.readTree(triggerJson);
+
+        if (triggerNode instanceof ObjectNode) {
+          ObjectNode triggerObj = (ObjectNode) triggerNode;
+
+          // Check if config exists and add filter if missing
+          if (triggerObj.has("config")) {
+            JsonNode configNode = triggerObj.get("config");
+            if (configNode instanceof ObjectNode) {
+              ObjectNode configObj = (ObjectNode) configNode;
+              if (!configObj.has("filter")) {
+                configObj.put("filter", "{\"and\":[]}");
+
+                // Convert back to trigger object using WorkflowTriggerInterface
+                WorkflowTriggerInterface updatedTrigger =
+                    JsonUtils.readValue(triggerObj.toString(), WorkflowTriggerInterface.class);
+                workflowDefinition.setTrigger(updatedTrigger);
+                LOG.info("Added filter field to trigger config: {\"and\":[]}");
+              } else {
+                LOG.info("Filter field already exists in trigger config");
+              }
+            }
+          }
         }
       }
-      LOG.info("Completed v190 workflow definition migration from seed data");
-    } catch (Exception ex) {
-      LOG.error("Fatal error during v190 workflow definition migration: {}", ex.getMessage(), ex);
-      throw new RuntimeException("Failed to update workflow definitions from seed data", ex);
+    } catch (Exception e) {
+      LOG.warn("Failed to add filter to trigger config: {}", e.getMessage());
     }
   }
 
