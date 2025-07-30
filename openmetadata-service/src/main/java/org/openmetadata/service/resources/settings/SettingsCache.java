@@ -252,9 +252,7 @@ public class SettingsCache {
     if (storedScimConfig == null) {
       ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
       Settings setting =
-          new Settings()
-              .withConfigType(AUTHENTICATION_CONFIGURATION)
-              .withConfigValue(scimConfiguration);
+          new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
       Entity.getSystemRepository().createNewSetting(setting);
     }
 

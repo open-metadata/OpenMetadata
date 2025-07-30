@@ -322,7 +322,10 @@ public class SystemRepository {
       } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
       } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
+        ScimConfiguration scimConfig =
+            JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
         JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
+        setting.setConfigValue(scimConfig);
       } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
         AuthenticationConfiguration authConfig =
             JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
