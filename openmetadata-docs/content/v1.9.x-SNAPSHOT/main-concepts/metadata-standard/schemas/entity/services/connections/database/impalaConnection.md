@@ -1,5 +1,6 @@
 ---
 title: Impala Connection | OpenMetadata Impala Database Connection
+description: Impala connection schema to extract metadata from distributed queries and database structures.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/impalaconnection
 ---
 

@@ -27,6 +27,7 @@ import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
+import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
@@ -460,6 +461,18 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_URL_CONFIG
+        )}
+      />
+
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DataAssetRulesPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.DATA_ASSET_RULES
         )}
       />
 

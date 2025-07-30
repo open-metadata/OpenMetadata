@@ -20,7 +20,7 @@ import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic
 import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
 import { ReactComponent as TestCaseSuccessIcon } from '../../../assets/svg/success-colored.svg';
 import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
-import { PRIMARY_COLOR } from '../../../constants/Color.constants';
+import { PRIMARY_COLOR, YELLOW_2 } from '../../../constants/Color.constants';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
 export const SummaryPanel: FC<SummaryPanelProps> = ({
@@ -69,7 +69,9 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           cardBackgroundClass="bg-aborted"
           isLoading={isLoading}
           title={t('label.aborted')}
-          titleIcon={<TestCaseAbortedIcon height={16} width={16} />}
+          titleIcon={
+            <TestCaseAbortedIcon color={YELLOW_2} height={16} width={16} />
+          }
           total={summary?.total ?? 0}
           type="aborted"
           value={summary?.aborted ?? 0}

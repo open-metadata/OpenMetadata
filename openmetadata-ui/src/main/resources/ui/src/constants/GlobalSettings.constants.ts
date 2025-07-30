@@ -37,6 +37,7 @@ export enum GlobalSettingOptions {
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
+  DATA_ASSET_RULES = 'dataAssetRules',
   MESSAGING = 'messaging',
   METADATA = 'metadata',
   DASHBOARDS = 'dashboards',

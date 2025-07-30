@@ -24,20 +24,22 @@ import java.security.cert.CertificateException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
+@Slf4j
 public class SamlSettingsHolder {
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
   private Map<String, Object> samlData;
   private SettingsBuilder builder;
   @Getter private String relayState;
-  @Getter private long tokenValidity;
-  @Getter private String domain;
 
   private SamlSettingsHolder() {
     samlData = new HashMap<>();
@@ -52,9 +54,6 @@ public class SamlSettingsHolder {
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
         SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration();
-    tokenValidity = samlConfig.getSecurity().getTokenValidity();
-    domain =
-        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig().getPrincipalDomain();
     if (samlData == null) {
       samlData = new HashMap<>();
     }
@@ -152,6 +151,65 @@ public class SamlSettingsHolder {
         throw new IllegalStateException("SAML settings have not been initialized");
       }
       return saml2Settings;
+    }
+  }
+
+  public long getTokenValidity() {
+    try {
+      AuthenticationConfiguration authConfig =
+          SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
+      LOG.debug("Retrieved auth config: {}", authConfig != null ? "present" : "null");
+
+      if (authConfig == null) {
+        LOG.error("AuthenticationConfiguration is null in getTokenValidity()");
+        return 3600; // Default fallback
+      }
+
+      SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+      LOG.debug("Retrieved SAML config: {}", samlConfig != null ? "present" : "null");
+
+      if (samlConfig == null) {
+        LOG.error("SamlConfiguration is null in getTokenValidity()");
+        return 3600; // Default fallback
+      }
+
+      SamlSecurityConfig securityConfig = samlConfig.getSecurity();
+      LOG.debug("Retrieved SAML security config: {}", securityConfig != null ? "present" : "null");
+
+      if (securityConfig == null) {
+        LOG.error(
+            "SAML SecurityConfig is null in getTokenValidity() - this should not happen if config is in DB");
+        return 3600; // Default fallback
+      }
+
+      long tokenValidity = securityConfig.getTokenValidity();
+      LOG.debug("Retrieved token validity: {}", tokenValidity);
+      return tokenValidity;
+
+    } catch (Exception e) {
+      LOG.error("Error retrieving token validity dynamically", e);
+      return 3600; // Default fallback
+    }
+  }
+
+  public String getDomain() {
+    try {
+      AuthorizerConfiguration authzConfig =
+          SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+      LOG.debug("Retrieved authorizer config: {}", authzConfig != null ? "present" : "null");
+
+      if (authzConfig == null) {
+        LOG.error("AuthorizerConfiguration is null in getDomain()");
+        return "openmetadata.org"; // Default fallback
+      }
+
+      String domain = authzConfig.getPrincipalDomain();
+      LOG.debug("Retrieved principal domain: {}", domain);
+      return domain != null ? domain : "openmetadata.org";
+
+    } catch (Exception e) {
+      LOG.error("Error retrieving domain dynamically", e);
+      return "openmetadata.org"; // Default fallback
     }
   }
 }

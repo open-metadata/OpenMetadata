@@ -323,7 +323,8 @@ public class SystemRepository {
       } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
         AuthenticationConfiguration authConfig =
             JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-        JsonUtils.validateJsonSchema(authConfig, AuthenticationConfiguration.class);
+        //       JsonUtils.validateJsonSchema(authConfig, AuthenticationConfiguration.class);
+        //        validateAuthenticationConfiguration(authConfig);
         setting.setConfigValue(authConfig);
       } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
         AuthorizerConfiguration authorizerConfig =
@@ -624,5 +625,145 @@ public class SystemRepository {
             String.format(
                 "Missing migrations that were not executed %s. Unexpected executed migrations %s",
                 missingVersions, unexpectedVersions));
+  }
+
+  private void validateAuthenticationConfiguration(AuthenticationConfiguration authConfig) {
+    if (authConfig == null) {
+      throw new IllegalArgumentException("Authentication configuration cannot be null");
+    }
+
+    try {
+      // Validate provider-specific configuration only if that provider is selected
+      if (authConfig.getProvider() != null) {
+        switch (authConfig.getProvider()) {
+          case LDAP -> {
+            if (authConfig.getLdapConfiguration() != null) {
+              LOG.info("Validating LDAP configuration since provider is LDAP");
+              JsonUtils.validateJsonSchema(
+                  authConfig.getLdapConfiguration(),
+                  org.openmetadata.schema.auth.LdapConfiguration.class);
+            } else {
+              LOG.warn("LDAP provider selected but no LDAP configuration provided");
+            }
+          }
+          case SAML -> {
+            if (authConfig.getSamlConfiguration() != null) {
+              LOG.info("Validating SAML configuration since provider is SAML");
+              JsonUtils.validateJsonSchema(
+                  authConfig.getSamlConfiguration(),
+                  org.openmetadata.catalog.security.client.SamlSSOClientConfig.class);
+            } else {
+              LOG.warn("SAML provider selected but no SAML configuration provided");
+            }
+          }
+          case CUSTOM_OIDC -> {
+            if (authConfig.getOidcConfiguration() != null) {
+              LOG.info("Validating OIDC configuration since provider is OIDC");
+              JsonUtils.validateJsonSchema(
+                  authConfig.getOidcConfiguration(),
+                  org.openmetadata.schema.security.client.OidcClientConfig.class);
+            } else {
+              LOG.warn("OIDC provider selected but no OIDC configuration provided");
+            }
+          }
+          default -> {
+            LOG.info(
+                "Provider {} requires no specific configuration validation",
+                authConfig.getProvider());
+          }
+        }
+      }
+
+      // Validate base authentication configuration fields
+      validateBaseAuthConfiguration(authConfig);
+
+      LOG.info(
+          "Successfully validated authentication configuration for provider: {}",
+          authConfig.getProvider());
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to validate authentication configuration for provider: {}",
+          authConfig.getProvider(),
+          e);
+      throw e;
+    }
+  }
+
+  private void validateBaseAuthConfiguration(AuthenticationConfiguration authConfig) {
+    // Always validate provider and providerName
+    if (authConfig.getProvider() == null) {
+      throw new IllegalArgumentException("Authentication provider is required");
+    }
+    if (authConfig.getProviderName() == null || authConfig.getProviderName().trim().isEmpty()) {
+      throw new IllegalArgumentException("Provider name is required");
+    }
+
+    // Validate fields based on provider type
+    switch (authConfig.getProvider()) {
+      case SAML -> validateSamlRequiredFields(authConfig);
+      case CUSTOM_OIDC -> validateOidcRequiredFields(authConfig);
+      case BASIC -> validateBasicRequiredFields(authConfig);
+      case LDAP -> validateLdapRequiredFields(authConfig);
+      default -> {
+        // For other providers (GOOGLE, OKTA, AUTH_0, etc.), validate minimal fields
+        LOG.info("Using minimal validation for provider: {}", authConfig.getProvider());
+        if (authConfig.getJwtPrincipalClaims() == null
+            || authConfig.getJwtPrincipalClaims().isEmpty()) {
+          throw new IllegalArgumentException("JWT principal claims are required");
+        }
+      }
+    }
+  }
+
+  private void validateSamlRequiredFields(AuthenticationConfiguration authConfig) {
+    LOG.info("Validating SAML-specific required fields");
+    // SAML only needs JWT principal claims from base config
+    // All other fields come from samlConfiguration
+    if (authConfig.getJwtPrincipalClaims() == null
+        || authConfig.getJwtPrincipalClaims().isEmpty()) {
+      throw new IllegalArgumentException("JWT principal claims are required for SAML");
+    }
+  }
+
+  private void validateOidcRequiredFields(AuthenticationConfiguration authConfig) {
+    LOG.info("Validating OIDC-specific required fields");
+    // OIDC needs all the traditional OAuth fields
+    if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
+      throw new IllegalArgumentException("Public key URLs are required for OIDC");
+    }
+    if (authConfig.getAuthority() == null || authConfig.getAuthority().trim().isEmpty()) {
+      throw new IllegalArgumentException("Authority is required for OIDC");
+    }
+    if (authConfig.getCallbackUrl() == null || authConfig.getCallbackUrl().trim().isEmpty()) {
+      throw new IllegalArgumentException("Callback URL is required for OIDC");
+    }
+    if (authConfig.getClientId() == null || authConfig.getClientId().trim().isEmpty()) {
+      throw new IllegalArgumentException("Client ID is required for OIDC");
+    }
+    if (authConfig.getJwtPrincipalClaims() == null
+        || authConfig.getJwtPrincipalClaims().isEmpty()) {
+      throw new IllegalArgumentException("JWT principal claims are required for OIDC");
+    }
+  }
+
+  private void validateBasicRequiredFields(AuthenticationConfiguration authConfig) {
+    LOG.info("Validating Basic authentication required fields");
+    // Basic auth needs minimal fields
+    if (authConfig.getJwtPrincipalClaims() == null
+        || authConfig.getJwtPrincipalClaims().isEmpty()) {
+      throw new IllegalArgumentException(
+          "JWT principal claims are required for Basic authentication");
+    }
+  }
+
+  private void validateLdapRequiredFields(AuthenticationConfiguration authConfig) {
+    LOG.info("Validating LDAP authentication required fields");
+    // LDAP needs minimal fields since it has its own ldapConfiguration
+    if (authConfig.getJwtPrincipalClaims() == null
+        || authConfig.getJwtPrincipalClaims().isEmpty()) {
+      throw new IllegalArgumentException(
+          "JWT principal claims are required for LDAP authentication");
+    }
   }
 }
