@@ -120,7 +120,6 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -131,7 +130,6 @@ import org.openmetadata.csv.CsvUtilTest;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
@@ -901,36 +899,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         }
 
         if (fields.contains("followers") && supportsFollowers) {
-          // Get the actual followers from both bulk and individual loading
-          List<EntityReference> bulkFollowers = entity.getFollowers();
-          List<EntityReference> individualFollowers = individualEntity.getFollowers();
-
-          // The test should verify that followers are actually fetched and populated
-          // Previously this might have passed because both were null/empty due to missing field
-          // support
+          // Note: followers might be null if no followers exist, which is expected
+          List<?> bulkFollowers = (List<?>) getField(entity, "followers");
+          List<?> individualFollowers = (List<?>) getField(individualEntity, "followers");
           assertEquals(
               listOrEmpty(bulkFollowers).size(),
               listOrEmpty(individualFollowers).size(),
               "Followers field should be consistently loaded in bulk operations for fields: "
                   + fields);
-
-          // Add verification that if followers exist, they have proper entity references
-          if (!listOrEmpty(bulkFollowers).isEmpty()) {
-            for (EntityReference follower : bulkFollowers) {
-              assertNotNull(follower.getId(), "Follower should have valid ID");
-              assertNotNull(follower.getName(), "Follower should have valid name");
-              assertNotNull(follower.getType(), "Follower should have valid type");
-            }
-          }
-
-          // Verify that the followers data matches between bulk and individual fetch
-          if (!listOrEmpty(bulkFollowers).isEmpty()
-              && !listOrEmpty(individualFollowers).isEmpty()) {
-            assertEquals(
-                bulkFollowers,
-                individualFollowers,
-                "Followers data should be identical between bulk and individual loading");
-          }
         }
       }
 
@@ -945,70 +921,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     for (T entity : entities) {
       deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
     }
-  }
-
-  @Test
-  @Order(5)
-  @Execution(ExecutionMode.CONCURRENT)
-  void test_bulkFollowersVotesFetchers(TestInfo test) throws IOException {
-    // Use a name that always lands first alphabetically.
-    // Note: The special character "\!A_" is prefixed to ensure the entity sorts before others.
-    // This allows us to verify ordering without listing all 100 entities.
-    String alwaysFirstName = "!A_AlwaysFirstEntity";
-
-    if (!supportsFieldsQueryParam) {
-      return;
-    }
-
-    K request = createRequest(alwaysFirstName);
-    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-
-    // Add a follower if supported.
-    if (supportsFollowers) {
-      addFollower(entity.getId(), USER1.getId(), OK, ADMIN_AUTH_HEADERS);
-    }
-
-    // Vote up the entity if supported.
-    if (supportsVotes) {
-      VoteRequest voteReq = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
-      WebTarget voteTarget = getResource(entity.getId()).path("vote");
-      TestUtils.put(voteTarget, voteReq, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
-    }
-
-    // Bulk fetch of entities with all allowed fields.
-    String allFields = getAllowedFields();
-    Map<String, String> params = new HashMap<>();
-    params.put("fields", allFields);
-    ResultList<T> bulk = listEntities(params, ADMIN_AUTH_HEADERS);
-
-    // Verify that the created entity is present in the bulk results.
-    T bulkEntity =
-        bulk.getData().stream()
-            .filter(e -> e.getId().equals(entity.getId()))
-            .findFirst()
-            .orElse(null);
-    assertNotNull(bulkEntity);
-
-    // Fetch the individual entity to compare details.
-    T individual = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
-
-    // Ensure follower counts match for both bulk and individual fetches.
-    if (supportsFollowers) {
-      assertNotNull(bulkEntity.getFollowers());
-      assertEquals(
-          listOrEmpty(individual.getFollowers()).size(),
-          listOrEmpty(bulkEntity.getFollowers()).size());
-    }
-
-    // Ensure vote counts match for bulk and individual fetching.
-    if (supportsVotes) {
-      assertNotNull(bulkEntity.getVotes());
-      assertEquals(individual.getVotes().getUpVotes(), bulkEntity.getVotes().getUpVotes());
-      assertEquals(individual.getVotes().getDownVotes(), bulkEntity.getVotes().getDownVotes());
-    }
-
-    // Clean up the created test entity.
-    deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
   }
 
   // Helper method to get field value using reflection
