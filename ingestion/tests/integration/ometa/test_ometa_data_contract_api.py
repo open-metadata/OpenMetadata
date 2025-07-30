@@ -66,7 +66,7 @@ from metadata.generated.schema.type.contractExecutionStatus import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from src._openmetadata_testutils.ometa import OM_JWT
+from _openmetadata_testutils.ometa import OM_JWT
 
 
 class OMetaDataContractTest(TestCase):
