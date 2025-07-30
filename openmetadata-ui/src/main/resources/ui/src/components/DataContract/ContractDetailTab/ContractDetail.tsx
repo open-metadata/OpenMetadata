@@ -12,7 +12,6 @@
  */
 /* eslint-disable i18next/no-literal-string */
 import Icon, {
-  CheckCircleTwoTone,
   EditOutlined,
   PlayCircleOutlined,
   PlusOutlined,
@@ -27,15 +26,28 @@ import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
+import { Cell, Pie, PieChart } from 'recharts';
+import {
+  GREEN_3,
+  GREY_200,
+  RED_3,
+  YELLOW_2,
+} from '../../../constants/Color.constants';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
+import { TestCase, TestSummary } from '../../../generated/tests/testCase';
 import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import {
+  getListTestCaseBySearch,
+  getTestCaseExecutionSummary,
+} from '../../../rest/testAPI';
 import { getConstraintStatus } from '../../../utils/DataContract/DataContractUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
@@ -74,8 +86,11 @@ const ContractDetail: React.FC<{
   const { t } = useTranslation();
   const [validateLoading, setValidateLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult | null>(null);
+  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
+  const [testCaseResult, setTestCaseResult] = useState<TestCase[]>([]);
 
   const fetchLatestContractResults = async () => {
     try {
@@ -89,6 +104,37 @@ const ContractDetail: React.FC<{
       showErrorToast(err as AxiosError);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchTestCaseSummary = async () => {
+    try {
+      const response = await getTestCaseExecutionSummary(
+        contract?.testSuite?.id
+      );
+      setTestCaseSummary(response);
+    } catch {
+      // silent fail
+    }
+  };
+
+  const fetchTestCases = async () => {
+    setIsTestCaseLoading(true);
+    try {
+      const response = await getListTestCaseBySearch({
+        testSuiteId: contract?.testSuite?.id,
+        ...DEFAULT_SORT_ORDER,
+        limit: 5,
+      });
+      setTestCaseResult(response.data);
+    } catch {
+      showErrorToast(
+        t('server.entity-fetch-error', {
+          entity: t('label.test-case-plural'),
+        })
+      );
+    } finally {
+      setIsTestCaseLoading(false);
     }
   };
 
@@ -135,32 +181,66 @@ const ContractDetail: React.FC<{
     return getConstraintStatus(latestContractResults);
   }, [latestContractResults]);
 
-  // Dynamic contract status based on latestContractResults
+  const testCaseSummaryChartItems = useMemo(() => {
+    const total = testCaseSummary?.total ?? 0;
+    const success = testCaseSummary?.success ?? 0;
+    const failed = testCaseSummary?.failed ?? 0;
+    const aborted = testCaseSummary?.aborted ?? 0;
 
-  const qualityStats = {
-    total: 100,
-    success: 60,
-    failed: 10,
-    aborted: 30,
-    assertions: [
+    const items = [
       {
-        label: t('label.probability-range'),
-        desc: t('message.churn-probability-range'),
+        label: t('label.total-test-plural'),
+        value: total,
+        color: GREEN_3,
+        chartData: [
+          { name: 'Success', value: success, color: GREEN_3 },
+          { name: 'Aborted', value: failed, color: YELLOW_2 },
+          { name: 'Failed', value: aborted, color: RED_3 },
+        ],
       },
       {
-        label: t('label.unique-event-id'),
-        desc: t('message.event-id-must-be-0'),
+        label: t('label.success'),
+        value: success,
+        color: GREEN_3,
+        chartData: [
+          { name: 'Success', value: success, color: GREEN_3 },
+          {
+            name: 'Unknown',
+            value: total - success,
+            color: GREY_200,
+          },
+        ],
       },
       {
-        label: t('label.daily-volume-threshold'),
-        desc: t('message.daily-volume-threshold'),
+        label: t('label.failed'),
+        value: failed,
+        color: RED_3,
+        chartData: [
+          { name: 'Failed', value: failed, color: RED_3 },
+          {
+            name: 'Unknown',
+            value: total - failed,
+            color: GREY_200,
+          },
+        ],
       },
       {
-        label: t('label.probability-range'),
-        desc: t('message.churn-probability-range'),
+        label: t('label.aborted'),
+        value: aborted,
+        color: YELLOW_2,
+        chartData: [
+          { name: 'Aborted', value: aborted, color: YELLOW_2 },
+          {
+            name: 'Unknown',
+            value: total - aborted,
+            color: GREY_200,
+          },
+        ],
       },
-    ],
-  };
+    ];
+
+    return items;
+  }, [testCaseSummary]);
 
   const handleRunNow = () => {
     if (contract?.id) {
@@ -178,8 +258,13 @@ const ContractDetail: React.FC<{
   useEffect(() => {
     if (contract?.id) {
       fetchLatestContractResults();
+
+      if (contract?.testSuite?.id) {
+        fetchTestCaseSummary();
+        fetchTestCases();
+      }
     }
-  }, [contract?.id]);
+  }, [contract]);
 
   if (!contract) {
     return (
@@ -391,48 +476,90 @@ const ContractDetail: React.FC<{
             <Col span={24}>
               <ExpandableCard
                 cardProps={{
-                  title: <Title level={5}>{t('label.quality')}</Title>,
+                  title: (
+                    <div>
+                      <Title level={5}>{t('label.quality')}</Title>,
+                      <Typography.Text type="secondary">
+                        {t('message.data-quality-test-contract-title')}
+                      </Typography.Text>
+                    </div>
+                  ),
                 }}>
-                <Row gutter={[0, 8]}>
-                  <Col span={24}>
-                    <Row align="middle" gutter={8}>
-                      <Col>
-                        <Text strong>{t('label.total-tests')}</Text>
-                      </Col>
-                      <Col>
-                        <Tag color="blue">{qualityStats.total}</Tag>
-                      </Col>
-                      <Col>
-                        <Text strong>{t('label.success')}</Text>
-                      </Col>
-                      <Col>
-                        <Tag color="green">{qualityStats.success}</Tag>
-                      </Col>
-                      <Col>
-                        <Text strong>{t('label.failed')}</Text>
-                      </Col>
-                      <Col>
-                        <Tag color="red">{qualityStats.failed}</Tag>
-                      </Col>
-                      <Col>
-                        <Text strong>{t('label.aborted')}</Text>
-                      </Col>
-                      <Col>
-                        <Tag color="orange">{qualityStats.aborted}</Tag>
-                      </Col>
-                    </Row>
-                  </Col>
-                  <Col span={24} style={{ marginTop: 8 }}>
-                    <Space direction="vertical">
-                      {qualityStats.assertions.map((a, i) => (
-                        <span key={i}>
-                          <CheckCircleTwoTone twoToneColor="#52c41a" />{' '}
-                          {a.label} <Text type="secondary">{a.desc}</Text>
-                        </span>
-                      ))}
-                    </Space>
-                  </Col>
-                </Row>
+                {isTestCaseLoading ? (
+                  <Loading />
+                ) : (
+                  <Row gutter={[0, 8]}>
+                    <Col span={24}>
+                      <Row
+                        align="middle"
+                        className="border border-radius-card p-md"
+                        gutter={8}>
+                        {testCaseSummaryChartItems.map((item) => (
+                          <Col key={item.label} span={6}>
+                            <Row
+                              className="items-center"
+                              gutter={16}
+                              key={item.label}>
+                              <Col span={24}>
+                                <Text>{item.label}</Text>
+                              </Col>
+
+                              <Col span={24}>
+                                <PieChart height={120} width={120}>
+                                  <Pie
+                                    cx="50%"
+                                    cy="50%"
+                                    data={item.chartData}
+                                    dataKey="value"
+                                    innerRadius={45}
+                                    outerRadius={60}
+                                    paddingAngle={2}>
+                                    {item.chartData.map((entry, index) => (
+                                      <Cell
+                                        fill={entry.color}
+                                        key={`cell-${index}`}
+                                      />
+                                    ))}
+                                  </Pie>
+                                  <text
+                                    className="chart-center-text"
+                                    dominantBaseline="middle"
+                                    textAnchor="middle"
+                                    x="50%"
+                                    y="50%">
+                                    {item.value}
+                                  </text>
+                                </PieChart>
+                              </Col>
+                            </Row>
+                          </Col>
+                        ))}
+                      </Row>
+                    </Col>
+                    <Col span={24} style={{ marginTop: 8 }}>
+                      <Space direction="vertical">
+                        {testCaseResult.map((item) => (
+                          <div
+                            className="data-quality-item d-flex items-center"
+                            key={item.id}>
+                            <StatusBadgeV2
+                              label=""
+                              status={StatusType.Success}
+                            />
+                            <div className="data-quality-item-content">
+                              <Typography.Text className="data-quality-item-name">
+                                {item.name}
+                              </Typography.Text>
+                              <Text className="data-quality-item-description">
+                                {item.description}
+                              </Text>
+                            </div>
+                          </div>
+                        ))}
+                      </Space>
+                    </Col>
+                  </Row>
+                )}
               </ExpandableCard>
             </Col>
           </Row>
