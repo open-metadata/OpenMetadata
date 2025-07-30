@@ -56,6 +56,7 @@ interface ActivityFeedCardNewProps {
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
   isFeedWidget?: boolean;
+  isFullSizeWidget?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -68,6 +69,7 @@ const ActivityFeedCardNew = ({
   isForFeedTab,
   isOpenInDrawer = false,
   isFeedWidget = false,
+  isFullSizeWidget = false,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -310,17 +312,19 @@ const ActivityFeedCardNew = ({
                   onEditCancel={() => setIsEditPost(false)}
                   onUpdate={onUpdate}
                 />
+                {isFullSizeWidget && (
+                  <div className="m-b-md">
+                    <FeedCardFooterNew
+                      isForFeedTab
+                      feed={feed}
+                      isPost={isPost}
+                      post={post}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </Space>
-          {(isPost || (!showThread && !isPost)) && (
-            <FeedCardFooterNew
-              feed={feed}
-              isForFeedTab={isForFeedTab}
-              isPost={isPost}
-              post={post}
-            />
-          )}
         </Space>
       </Card>
     );
