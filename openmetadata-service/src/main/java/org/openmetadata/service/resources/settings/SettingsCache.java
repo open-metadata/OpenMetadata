@@ -22,6 +22,7 @@ import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTING
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -56,6 +57,7 @@ import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -242,6 +244,17 @@ public class SettingsCache {
       Settings setting =
           new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
 
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    Settings storedScimConfig =
+        Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
+    if (storedScimConfig == null) {
+      ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
+      Settings setting =
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(scimConfiguration);
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
