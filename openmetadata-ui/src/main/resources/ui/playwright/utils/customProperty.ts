@@ -70,10 +70,7 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page
-    .locator(`div[data-state-props-id="${columnName}"]`)
-    .last()
-    .dblclick();
+  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
 
   await page
     .getByTestId('edit-table-type-property-modal')
@@ -81,7 +78,7 @@ export const fillTableColumnInputDetails = async (
     .fill(text);
 
   await page
-    .locator(`div[data-state-props-id="${columnName}"]`)
+    .locator(`div.rdg-cell-${columnName}`)
     .last()
     .press('Enter', { delay: 100 });
 };
@@ -230,6 +227,9 @@ export const setValueForProperty = async (data: {
     case 'table-cp': {
       const values = value.split(',');
       await page.locator('[data-testid="add-new-row"]').click();
+
+      // Editor grid to be visible
+      await page.waitForSelector('.om-rdg', { state: 'visible' });
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
@@ -784,7 +784,7 @@ export const editCreatedProperty = async (
       page.locator(
         `[data-row-key="${propertyName}"] [data-testid="${propertyName}-config"]`
       )
-    ).toContainText('["user","team","table"]');
+    ).toContainText('["user","team","metric","table"]');
   }
 };
 

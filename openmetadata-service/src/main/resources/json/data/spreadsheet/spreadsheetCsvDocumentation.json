@@ -1,0 +1,125 @@
+{
+  "summary": "Spreadsheet CSV file is used for importing and exporting spreadsheet metadata. The CSV file can be used to create new spreadsheets or update existing ones within directories.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name of the spreadsheet.",
+      "examples": [
+        "sales_data.xlsx", "Budget 2024"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the spreadsheet.",
+      "examples": [
+        "Sales Data Analysis", "Annual Budget 2024"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the spreadsheet in Markdown format.",
+      "examples": [
+        "This spreadsheet contains quarterly sales data analysis"
+      ]
+    },
+    {
+      "name": "directory",
+      "required": true,
+      "description": "Fully qualified name of the parent directory.",
+      "examples": [
+        "googleDrive.Finance", "sharepoint.Analytics"
+      ]
+    },
+    {
+      "name": "mimeType",
+      "required": false,
+      "description": "MIME type of the spreadsheet file (GoogleSheets, Excel, CSV, TSV, Other).",
+      "examples": [
+        "GoogleSheets", "Excel"
+      ]
+    },
+    {
+      "name": "path",
+      "required": false,
+      "description": "Full path to the spreadsheet file.",
+      "examples": [
+        "/Finance/Budgets/2024.xlsx"
+      ]
+    },
+    {
+      "name": "size",
+      "required": false,
+      "description": "File size in bytes (may be null for cloud-native files like Google Sheets).",
+      "examples": [
+        "1048576", "2097152"
+      ]
+    },
+    {
+      "name": "fileVersion",
+      "required": false,
+      "description": "File version information.",
+      "examples": [
+        "v1.0", "2024-01-15"
+      ]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners of the spreadsheet. Multiple owners are separated by ';'. Each owner is specified as 'type:name' format.",
+      "examples": [
+        "user:john.doe", "team:finance-team;user:jane.smith"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the spreadsheet separated by ';'.",
+      "examples": [
+        "Finance.Budget", "Confidential"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the spreadsheet separated by ';'.",
+      "examples": [
+        "Glossary.Finance", "Glossary.Accounting"
+      ]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Fully qualified names of the domains the spreadsheet belongs to, separated by ';'.",
+      "examples": [
+        "Finance", "Analytics;Operations"
+      ]
+    },
+    {
+      "name": "dataProducts",
+      "required": false,
+      "description": "List of fully qualified names of data products this spreadsheet is part of, separated by ';'.",
+      "examples": [
+        "FinancialReporting", "BudgetAnalysis"
+      ]
+    },
+    {
+      "name": "experts",
+      "required": false,
+      "description": "Subject matter experts for this spreadsheet. Multiple experts are separated by ';'.",
+      "examples": [
+        "user:finance.expert", "user:analyst1;user:analyst2"
+      ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers for this spreadsheet. Multiple reviewers are separated by ';'.",
+      "examples": [
+        "user:manager1", "user:manager1;team:finance-review"
+      ]
+    }
+  ]
+}

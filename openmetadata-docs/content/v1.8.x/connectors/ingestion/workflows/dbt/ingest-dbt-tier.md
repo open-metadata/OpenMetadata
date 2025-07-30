@@ -1,5 +1,6 @@
 ---
 title: Ingest Tiers from dbt | OpenMetadata Data Tiering Guide
+description: Ingest dbt tier metadata to support quality scoring and classification for critical datasets and models.
 slug: /connectors/ingestion/workflows/dbt/ingest-dbt-tier
 ---
 

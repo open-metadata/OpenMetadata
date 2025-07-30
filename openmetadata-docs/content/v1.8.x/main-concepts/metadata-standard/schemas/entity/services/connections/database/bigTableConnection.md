@@ -1,5 +1,6 @@
 ---
 title: BigTable Connection | OpenMetadata BigTable
+description: Bigtable connection schema to support ingestion of NoSQL metadata from Google Cloud Bigtable.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigtableconnection
 ---
 

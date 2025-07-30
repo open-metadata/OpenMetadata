@@ -174,13 +174,25 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setIsLoading(true);
         const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
         const results: Domain[] = await searchDomains(encodedValue);
+
+        const combinedData = [...results];
+
+        initialDomains?.forEach((selectedDomain) => {
+          const exists = combinedData.some((domain: Domain) =>
+            isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+          );
+          if (!exists) {
+            combinedData.push(selectedDomain as unknown as Domain);
+          }
+        });
+
         const updatedTreeData = convertDomainsToTreeOptions(
-          results,
+          combinedData,
           0,
           isMultiple
         );
         setTreeData(updatedTreeData);
-        setDomains(results);
+        setDomains(combinedData);
       } finally {
         setIsLoading(false);
       }
@@ -200,7 +212,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       return (
         <Empty
           description={t('label.no-entity-available', {
-            entity: t('label.domain'),
+            entity: t('label.domain-plural'),
           })}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
@@ -247,6 +259,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
       <Search
+        autoFocus
         data-testid="searchbar"
         placeholder="Search"
         style={{ marginBottom: 8 }}

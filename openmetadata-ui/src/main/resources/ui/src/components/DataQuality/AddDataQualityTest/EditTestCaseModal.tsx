@@ -325,7 +325,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       closable={false}
       confirmLoading={isLoadingOnSave}
       maskClosable={false}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       open={visible}
       title={`${t('label.edit')} ${testCase?.name}`}
       width={720}
@@ -403,14 +403,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
               }
             </Form.Item>
 
-            {!showOnlyParameter && (
-              <>
-                {generateFormFields(formField)}
-                {isComputeRowCountFieldVisible
-                  ? generateFormFields(formFields)
-                  : null}
-              </>
-            )}
+            {!showOnlyParameter && <>{generateFormFields(formField)}</>}
+            {isComputeRowCountFieldVisible
+              ? generateFormFields(formFields)
+              : null}
           </Form>
         )}
       </EntityAttachmentProvider>

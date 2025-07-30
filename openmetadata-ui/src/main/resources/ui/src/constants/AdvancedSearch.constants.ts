@@ -12,14 +12,15 @@
  */
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { LabelType } from '../generated/type/tagLabel';
 import { t } from '../utils/i18next/LocalUtil';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -49,8 +50,8 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -178,8 +179,8 @@ export const CONTAINER_DROPDOWN_ITEMS = [
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -201,8 +202,8 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
 
 export const TAG_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.classification'),
@@ -212,8 +213,8 @@ export const TAG_DROPDOWN_ITEMS = [
 
 export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -258,8 +259,8 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: t('label.domain'),
-    key: EntityFields.DOMAIN,
+    label: t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
   },
   {
     label: t('label.owner-plural'),
@@ -326,3 +327,23 @@ export const TAG_LABEL_TYPE_LIST_VALUES = {
   [LabelType.Automated]: t('label.automated'),
   [LabelType.Generated]: t('label.generated'),
 };
+
+export const CURATED_ASSETS_LIST = [
+  EntityType.ALL,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.CHART,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.GLOSSARY_TERM,
+  EntityType.METRIC,
+  EntityType.MLMODEL,
+  EntityType.PIPELINE,
+  EntityType.SEARCH_INDEX,
+  EntityType.STORED_PROCEDURE,
+  EntityType.TABLE,
+  EntityType.TOPIC,
+];

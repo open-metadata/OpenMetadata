@@ -13,6 +13,7 @@
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
+  Checkbox,
   Divider,
   Form,
   FormItemProps,
@@ -21,6 +22,7 @@ import {
   Select,
   Switch,
   TooltipProps,
+  Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
@@ -77,6 +79,7 @@ export const getField = (field: FieldProp) => {
     hasSeparator = false,
     formItemLayout = FormItemLayout.VERTICAL,
     isBeta = false,
+    newLook = false,
   } = field;
 
   let internalFormItemProps: FormItemProps = {};
@@ -138,6 +141,14 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = <Switch {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+
+      break;
+    case FieldTypes.CHECK_BOX:
+      fieldElement = <Checkbox {...props} id={id} />;
       internalFormItemProps = {
         ...internalFormItemProps,
         valuePropName: 'checked',
@@ -234,6 +245,40 @@ export const getField = (field: FieldProp) => {
       break;
   }
 
+  const formProps = {
+    id: id,
+    key: id,
+    name: name,
+    rules: fieldRules,
+    ...internalFormItemProps,
+    ...formItemProps,
+  };
+
+  const labelValue = (
+    <FormItemLabel
+      align={props.tooltipAlign as TooltipProps['align']}
+      helperText={helperText}
+      helperTextType={helperTextType}
+      isBeta={isBeta}
+      label={label}
+      overlayClassName={props.overlayClassName as string}
+      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
+      placement={props.tooltipPlacement as TooltipPlacement}
+      showHelperText={showHelperText}
+    />
+  );
+
+  if (type === FieldTypes.SWITCH && newLook) {
+    return (
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item className="m-b-0" {...formProps}>
+          <Switch />
+        </Form.Item>
+        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+      </div>
+    );
+  }
+
   return (
     <Fragment key={id}>
       <Form.Item
@@ -242,25 +287,8 @@ export const getField = (field: FieldProp) => {
           'form-item-vertical': formItemLayout === FormItemLayout.VERTICAL,
           'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
-        id={id}
-        key={id}
-        label={
-          <FormItemLabel
-            align={props.tooltipAlign as TooltipProps['align']}
-            helperText={helperText}
-            helperTextType={helperTextType}
-            isBeta={isBeta}
-            label={label}
-            overlayClassName={props.overlayClassName as string}
-            overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-            placement={props.tooltipPlacement as TooltipPlacement}
-            showHelperText={showHelperText}
-          />
-        }
-        name={name}
-        rules={fieldRules}
-        {...internalFormItemProps}
-        {...formItemProps}>
+        {...formProps}
+        label={labelValue}>
         {fieldElement}
       </Form.Item>
 
@@ -396,3 +424,6 @@ export const handleEntityCreationError = ({
     setInlineAlertDetails
   );
 };
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;

@@ -1,5 +1,6 @@
 ---
 title: customMetric | OpenMetadata Custom Metric
+description: Define a custom metric schema used to calculate specific quality checks across data assets during test executions.
 slug: /main-concepts/metadata-standard/schemas/tests/custommetric
 ---
 

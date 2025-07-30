@@ -58,10 +58,10 @@ export interface Table {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -604,9 +604,6 @@ export interface CustomMetric {
  * Reference to Database that contains this table.
  *
  * Reference to database schema that contains this table.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *

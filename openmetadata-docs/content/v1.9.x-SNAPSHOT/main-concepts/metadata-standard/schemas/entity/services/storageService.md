@@ -1,5 +1,6 @@
 ---
 title: Storage Service | OpenMetadata Storage Service
+description: Represent storage service configurations for connecting and ingesting bucketed data systems.
 slug: /main-concepts/metadata-standard/schemas/entity/services/storageservice
 ---
 

@@ -59,13 +59,13 @@ export const CUSTOM_PROPERTIES_WIDGET: CommonWidgetType = {
 
 export const DOMAIN_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.DOMAIN,
-  name: i18n.t('label.domain'),
+  name: i18n.t('label.domain-plural'),
   data: { gridSizes: ['small'] },
 };
 
 export const OWNER_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.OWNER,
-  name: i18n.t('label.owner'),
+  name: i18n.t('label.owner-plural'),
   data: { gridSizes: ['small'] },
 };
 

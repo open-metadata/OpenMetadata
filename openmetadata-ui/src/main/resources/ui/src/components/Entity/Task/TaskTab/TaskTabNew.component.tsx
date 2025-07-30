@@ -1193,7 +1193,7 @@ export const TaskTabNew = ({
           okButtonProps={{
             loading: isActionLoading,
           }}
-          okText={t('label.submit')}
+          okText={t('label.save')}
           open={showEditTaskModel}
           title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
           width={768}
@@ -1303,7 +1303,7 @@ export const TaskTabNew = ({
           okButtonProps={{
             loading: isActionLoading,
           }}
-          okText={t('label.submit')}
+          okText={t('label.save')}
           open={isEditAssignee}
           title={`${t('label.re-assign')} ${t('label.task')} #${
             taskDetails?.id

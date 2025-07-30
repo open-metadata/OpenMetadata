@@ -1,0 +1,91 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+
+.search-input {
+  position: relative;
+  background: @white;
+  border-radius: @size-xs;
+  padding: @size-xs;
+  box-shadow: @button-box-shadow-default;
+  border: 1px solid @grey-15;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: @button-box-shadow-hover;
+  }
+
+  .nlp-search-button {
+    border: 0.5px solid @nlp-border-color !important;
+    border-radius: @border-rad-xs;
+    padding: 0 4px;
+    transition: none;
+    background-color: @primary-button-background !important;
+
+    svg {
+      width: 14px;
+      height: 14px;
+      fill: transparent;
+    }
+
+    &.active {
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none !important;
+
+      svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+      }
+    }
+  }
+
+  .appbar-search {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    font-size: @font-size-base;
+    color: @text-color;
+    padding: @size-xs @size-sm;
+
+    &::placeholder {
+      color: @grey-4;
+    }
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+
+  .customise-search-overlay {
+    .ant-popover-inner-content {
+      border-radius: @size-xs;
+      box-shadow: @box-shadow-base;
+      max-height: 400px;
+      width: auto;
+      overflow-y: auto;
+    }
+
+    .ant-popover-arrow {
+      display: none;
+    }
+  }
+
+  .ant-popover {
+    left: 0 !important;
+  }
+}

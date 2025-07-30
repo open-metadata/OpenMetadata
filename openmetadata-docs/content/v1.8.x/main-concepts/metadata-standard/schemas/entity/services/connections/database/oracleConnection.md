@@ -1,5 +1,6 @@
 ---
 title: Oracle Connection | OpenMetadata Oracle Database Connection
+description: Define Oracle database connection schema for ingesting schema details, table metadata, and lineage.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/oracleconnection
 ---
 

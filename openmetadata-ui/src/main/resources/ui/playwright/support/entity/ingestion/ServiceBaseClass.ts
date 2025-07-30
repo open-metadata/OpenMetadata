@@ -26,6 +26,7 @@ import {
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
+  redirectToExplorePage,
   toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
@@ -557,6 +558,7 @@ class ServiceBaseClass {
     const description = `${this.entityName} description`;
 
     // Navigate to ingested table
+    await redirectToExplorePage(page);
     await visitEntityPage({
       page,
       searchTerm: this.entityFQN ?? this.entityName,
@@ -612,6 +614,7 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
 
     // Navigate to table name
+    await redirectToExplorePage(page);
     await visitEntityPage({
       page,
       searchTerm: this.entityFQN ?? this.entityName,
@@ -647,7 +650,9 @@ class ServiceBaseClass {
     if (this.serviceResponseData.fullyQualifiedName) {
       await executeWithRetry(async () => {
         await apiContext.delete(
-          `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
             this.serviceResponseData.fullyQualifiedName
           )}?recursive=true&hardDelete=true`
         );

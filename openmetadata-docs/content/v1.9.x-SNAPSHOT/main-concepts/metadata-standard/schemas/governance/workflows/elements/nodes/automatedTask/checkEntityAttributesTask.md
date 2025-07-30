@@ -1,5 +1,6 @@
 ---
-title: checkEntityAttributesTask
+title: Checkentityattributestask | Official Documentation
+description: Get started with checkentityattributestask. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodes/automatedtask/checkentityattributestask
 ---
 

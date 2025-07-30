@@ -13,24 +13,20 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.generic;
 
-import static org.openmetadata.common.utils.CommonUtil.calculateHMAC;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
-import jakarta.ws.rs.client.WebTarget;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -39,9 +35,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class GenericPublisher implements Destination<ChangeEvent> {
@@ -79,13 +72,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     long attemptTime = System.currentTimeMillis();
     try {
       String eventJson = JsonUtils.pojoToJson(event);
-      Invocation.Builder target = getTarget();
-
-      prepareHeaders(target, eventJson);
+      Invocation.Builder target = getTarget(client, webhook, eventJson);
       postWebhookMessage(this, target, eventJson, webhook.getHttpMethod());
-
       sendActionsToTargets(event);
-
     } catch (Exception ex) {
       handleException(attemptTime, event, ex);
     }
@@ -95,46 +84,27 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      Invocation.Builder target = getTarget();
-      prepareHeaders(target, TEST_MESSAGE_JSON);
+      Invocation.Builder target = getTarget(client, webhook, TEST_MESSAGE_JSON);
       deliverTestWebhookMessage(this, target, TEST_MESSAGE_JSON, webhook.getHttpMethod());
-
     } catch (Exception ex) {
       handleException(attemptTime, ex);
     }
   }
 
-  private void sendActionsToTargets(ChangeEvent event) throws Exception {
+  private void sendActionsToTargets(ChangeEvent event) throws EventPublisherException {
     List<Invocation.Builder> targets =
         getTargetsForWebhookAlert(
-            webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
+            webhook,
+            subscriptionDestination.getCategory(),
+            WEBHOOK,
+            client,
+            event,
+            JsonUtils.pojoToJson(event));
     String eventJson = JsonUtils.pojoToJson(event);
 
     for (Invocation.Builder actionTarget : targets) {
       postWebhookMessage(this, actionTarget, eventJson);
     }
-  }
-
-  private void prepareHeaders(Invocation.Builder target, String json) {
-    if (!nullOrEmpty(webhook.getSecretKey())) {
-      String hmac =
-          "sha256=" + calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
-      target.header(RestUtil.SIGNATURE_HEADER, hmac);
-    }
-
-    Map<String, String> headers = webhook.getHeaders();
-    if (!nullOrEmpty(headers)) {
-      headers.forEach(target::header);
-    }
-  }
-
-  public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
-    if (!CommonUtil.nullOrEmpty(queryParams)) {
-      for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-        target = target.queryParam(entry.getKey(), entry.getValue());
-      }
-    }
-    return target;
   }
 
   private void handleException(long attemptTime, ChangeEvent event, Exception ex)
@@ -170,13 +140,6 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  private Invocation.Builder getTarget() {
-    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    WebTarget target = client.target(webhook.getEndpoint());
-    target = addQueryParams(target, webhook.getQueryParams());
-    return SecurityUtil.addHeaders(target, authHeaders);
-  }
-
   @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
@@ -191,12 +154,5 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     if (client != null) {
       client.close();
     }
-  }
-
-  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
-    if (Fernet.getInstance().isKeyDefined()) {
-      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
-    }
-    return encryptedSecretkey;
   }
 }

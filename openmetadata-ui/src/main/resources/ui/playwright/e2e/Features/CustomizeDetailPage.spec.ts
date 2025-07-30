@@ -30,7 +30,6 @@ import {
 } from '../../utils/customizeDetails';
 import {
   checkDefaultStateForNavigationTree,
-  selectPersona,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import { settingClick } from '../../utils/sidebar';
@@ -157,7 +156,7 @@ test.describe('Persona customize UI tab', async () => {
 
   test('should show all the customize options', async ({ adminPage }) => {
     await expect(adminPage.getByText('Navigation')).toBeVisible();
-    await expect(adminPage.getByText('Homepage')).toBeVisible();
+    await expect(adminPage.getByText('Home Page')).toBeVisible();
     await expect(adminPage.getByText('Governance')).toBeVisible();
     await expect(adminPage.getByText('Data Assets')).toBeVisible();
   });
@@ -232,7 +231,6 @@ test.describe('Persona customize UI tab', async () => {
 
         // Select navigation persona
         await redirectToHomePage(userPage);
-        await selectPersona(userPage, navigationPersona);
         await userPage.reload();
         await userPage.waitForLoadState('networkidle');
 
@@ -415,7 +413,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPage(userPage);
+        await entity.visitEntityPageWithCustomSearchBox(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -510,7 +508,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPage(userPage);
+        await entity.visitEntityPageWithCustomSearchBox(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',

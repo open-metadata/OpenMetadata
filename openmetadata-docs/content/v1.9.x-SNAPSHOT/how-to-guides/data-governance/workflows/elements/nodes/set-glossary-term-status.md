@@ -1,5 +1,6 @@
 ---
 title: Governance Workflows - Set Glossary Term Status
+description: Automate glossary term status updates in workflows for streamlined term management, publishing, and review cycles.
 slug: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
 collate: true
 ---
@@ -7,7 +8,7 @@ collate: true
 # Governance Workflows - Set Glossary Term Status
 
 The **Set Glossary Term Status** node allows workflows to set the **Status** for a Glossary Term to a configured value.
-This is part of Collate's workflow automation tools and helps streamline the process of managing Glossary Terms,
+This is part of workflow automation tools and helps streamline the process of managing Glossary Terms,
 ensuring they are updated according to the desired governance policies.
 
 ## Configuration

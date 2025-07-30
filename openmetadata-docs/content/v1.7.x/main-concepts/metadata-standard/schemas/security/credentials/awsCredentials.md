@@ -1,5 +1,6 @@
 ---
 title: awsCredentials | OpenMetadata AWS Credentials
+description: Configure AWS credentials including access key, secret key, session token, and region for secure cloud service access.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/awscredentials
 ---
 

@@ -15,7 +15,6 @@ import es.org.elasticsearch.common.unit.ByteSizeUnit;
 import es.org.elasticsearch.common.unit.ByteSizeValue;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.xcontent.XContentType;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -39,7 +38,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 public class ElasticSearchBulkSink implements BulkSink {
 
   private final ElasticSearchClient searchClient;
-  private final SearchRepository searchRepository;
+  protected final SearchRepository searchRepository;
   private final BulkProcessor bulkProcessor;
   private final StepStats stats = new StepStats();
 
@@ -108,7 +107,17 @@ public class ElasticSearchBulkSink implements BulkSink {
                   for (var item : response.getItems()) {
                     if (item.isFailed()) {
                       failures++;
-                      LOG.warn("Failed to index document: {}", item.getFailureMessage());
+                      String failureMessage = item.getFailureMessage();
+                      // Log document_missing_exception differently as it indicates a race condition
+                      if (failureMessage != null
+                          && failureMessage.contains("document_missing_exception")) {
+                        LOG.warn(
+                            "Document missing error for {}: {} - This may occur during concurrent reindexing",
+                            item.getId(),
+                            failureMessage);
+                      } else {
+                        LOG.warn("Failed to index document {}: {}", item.getId(), failureMessage);
+                      }
                     }
                   }
                   int successes = numberOfActions - failures;
@@ -180,6 +189,11 @@ public class ElasticSearchBulkSink implements BulkSink {
       throw new IllegalArgumentException("Entity type is required in context data");
     }
 
+    Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
+
+    // Check if embeddings are enabled for this specific entity type
+    boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
+
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
@@ -192,12 +206,12 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
         for (EntityTimeSeriesInterface entity : tsEntities) {
-          addTimeSeriesEntity(entity, indexName);
+          addTimeSeriesEntity(entity, indexName, entityType);
         }
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName);
+          addEntity(entity, indexName, recreateIndex, embeddingsEnabled);
         }
       }
     } catch (Exception e) {
@@ -216,23 +230,36 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(EntityInterface entity, String indexName) throws Exception {
+  private void addEntity(
+      EntityInterface entity, String indexName, boolean recreateIndex, boolean embeddingsEnabled) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
     Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
     String json = JsonUtils.pojoToJson(searchIndexDoc);
 
-    UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
-    updateRequest.doc(json, XContentType.JSON);
-    updateRequest.docAsUpsert(true);
+    if (recreateIndex) {
+      // Use IndexRequest for fresh indexing to avoid document_missing_exception
+      IndexRequest indexRequest =
+          new IndexRequest(indexName).id(entity.getId().toString()).source(json, XContentType.JSON);
+      bulkProcessor.add(indexRequest);
+    } else {
+      // Use UpdateRequest with upsert for regular updates
+      UpdateRequest updateRequest = new UpdateRequest(indexName, entity.getId().toString());
+      updateRequest.doc(json, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      bulkProcessor.add(updateRequest);
+    }
 
-    // Add to bulk processor - it handles everything including size limits
-    bulkProcessor.add(updateRequest);
+    // If embeddings are enabled, also index to vector_search_index
+    if (embeddingsEnabled) {
+      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
+    }
   }
 
-  private void addTimeSeriesEntity(EntityTimeSeriesInterface entity, String indexName)
-      throws Exception {
-    String json = JsonUtils.pojoToJson(entity);
+  private void addTimeSeriesEntity(
+      EntityTimeSeriesInterface entity, String indexName, String entityType) {
+    Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+    String json = JsonUtils.pojoToJson(searchIndexDoc);
     String docId = entity.getId().toString();
 
     IndexRequest indexRequest =
@@ -263,7 +290,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     try {
       // Flush any pending requests
       bulkProcessor.flush();
@@ -308,4 +335,19 @@ public class ElasticSearchBulkSink implements BulkSink {
     this.maxConcurrentRequests = concurrentRequests;
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
+
+  /**
+   * Checks if vector embeddings are enabled for a specific entity type.
+   * This combines SearchRepository capability check with job configuration.
+   */
+  protected boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+    return false;
+  }
+
+  /**
+   * Adds entity to vector_search_index for embedding search.
+   * This method will only be called when embeddings are enabled for the entity type.
+   */
+  protected void addEntityToVectorIndex(
+      BulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
 }

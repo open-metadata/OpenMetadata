@@ -1,5 +1,6 @@
 ---
 title: Azure SSO for Docker | OpenMetadata Deployment Guide
+description: Set up Auth0’s implicit flow to enable client-side authentication for public-facing apps using direct token issuance and frontend validation.
 slug: /deployment/security/auth0/implicit-flow
 collate: false
 ---

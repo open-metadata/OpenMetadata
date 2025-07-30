@@ -1,5 +1,6 @@
 ---
 title: uiCustomization | OpenMetadata UI Customization
+description: Customize UI appearance using themes, font settings, and layout options for a consistent user experience.
 slug: /main-concepts/metadata-standard/schemas/system/ui/uicustomization
 ---
 

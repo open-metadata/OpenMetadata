@@ -1,14 +1,15 @@
 ---
-title: How-to Guides | OpenMetadata User Guides
+title: How-to Guides | Official Documentation to User Guides
+description: Step-by-step guidance for how to guides using Collate. Learn key actions, features, and best practices.
 slug: /how-to-guides
 ---
 
 # How-to Guides
 
-The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.  
+The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.  
 
 ## Agentic Metadata Management
-Use LLMs and GenAI agents for automation and intelligent data management within OpenMetadata
+Use LLMs and GenAI agents for automation and intelligent data management within {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}
 
 {% tilesContainer %}
 {% tile
@@ -18,9 +19,9 @@ Use LLMs and GenAI agents for automation and intelligent data management within 
     icon="discovery"
 /%}
 {% /tilesContainer %}
-## Features in OpenMetadata
+## Features in {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %}
 
-OpenMetadata is a complete package for data teams to break down team silos, share data assets from multiple sources securely, collaborate around reliable data, and build a documentation-first data culture in the organization.
+{% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} is a complete package for data teams to break down team silos, share data assets from multiple sources securely, collaborate around reliable data, and build a documentation-first data culture in the organization.
 
 {% tilesContainer %}
 {% tile
@@ -53,34 +54,64 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     link="/how-to-guides/data-insights"
     icon="discovery"
 /%}
+{% ossContent %}
 {% tile
     title="Data Governance"
     description="Enhance your data platform governance using OpenMetadata."
     link="/how-to-guides/data-governance"
     icon="governance"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% tile
+    title="Data Governance"
+    description="Enhance your data platform governance using Collate."
+    link="/how-to-guides/data-governance"
+    icon="governance"
+/%}
+{% /collateContent %}
 {% /tilesContainer %}
 
 ## Quick Start Guides
 
 {% tilesContainer %}
+{% ossContent %}
 {% tile
     title="Admin Guide"
     description="Admin users can get started with OpenMetadata with just three quick and easy steps & know-it-all with the advanced guides."
     link="/how-to-guides/admin-guide"
     icon="administration"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% tile
+    title="Admin Guide"
+    description="Admin users can get started with Collate with just three quick and easy steps & know-it-all with the advanced guides."
+    link="/how-to-guides/admin-guide"
+    icon="administration"
+/%}
+{% /collateContent %}
+{% ossContent %}
 {% tile
     title="Guide for Data Users"
     description="Get to know the basics of OpenMetadata and about the data assets that you can explore in the all-in-one platform."
     link="/how-to-guides/guide-for-data-users"
     icon="steward"
 /%}
+{% /ossContent %}
+{% collateContent %}
+{% tile
+    title="Guide for Data Users"
+    description="Get to know the basics of Collate and about the data assets that you can explore in the all-in-one platform."
+    link="/how-to-guides/guide-for-data-users"
+    icon="steward"
+/%}
+{% /collateContent %}
 {% /tilesContainer %}
 
-## How OpenMetadata helps Data Teams?
+## How {% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} helps Data Teams?
 
-OpenMetadata is a complete package for data teams to break down team silos, share data assets from multiple sources securely, collaborate around data, and build a documentation-first data culture in the organization.
+{% collateContent %}Collate{% /collateContent %}{% ossContent %}OpenMetadata{% /ossContent %} is a complete package for data teams to break down team silos, share data assets from multiple sources securely, collaborate around data, and build a documentation-first data culture in the organization.
 
 {% note %}
 

@@ -79,7 +79,7 @@ entities.forEach((EntityClass) => {
     }) => {
       await redirectToHomePage(adminPage);
 
-      await entity.visitEntityPage(adminPage);
+      await entity.visitEntityPageWithCustomSearchBox(adminPage);
 
       const entityName = entity.entityResponseData?.['displayName'];
 

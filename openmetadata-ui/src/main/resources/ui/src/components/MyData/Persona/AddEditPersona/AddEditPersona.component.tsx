@@ -21,13 +21,17 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../generated/entity/type';
+import { Include } from '../../../../generated/type/include';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { createPersona, updatePersona } from '../../../../rest/PersonaAPI';
+import { getUserById } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -42,11 +46,27 @@ export const AddEditPersonaForm = ({
 }: AddPersonaFormProps) => {
   const [form] = useForm();
   const [isSaving, setIsSaving] = useState(false);
+  const { currentUser, setCurrentUser } = useApplicationStore();
   const { t } = useTranslation();
 
   const usersList =
     Form.useWatch<EntityReference[]>('users', form) ?? persona?.users ?? [];
   const isEditMode = !isEmpty(persona);
+
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      if (currentUser) {
+        const user = await getUserById(currentUser.id, {
+          fields: [TabSpecificField.PERSONAS],
+          include: Include.All,
+        });
+
+        setCurrentUser({ ...currentUser, ...user });
+      }
+    } catch {
+      return;
+    }
+  }, [currentUser, setCurrentUser]);
 
   const handleSubmit = useCallback(
     async (data: Persona) => {
@@ -55,14 +75,17 @@ export const AddEditPersonaForm = ({
         const { users } = data;
 
         const usersList = users?.map((u) => u.id) ?? [];
-        const domain = data.domain?.fullyQualifiedName;
+        const domains = data.domains
+          ?.map((d) => d.fullyQualifiedName)
+          .filter(Boolean) as string[];
         if (persona && isEditMode) {
           const jsonPatch = compare(persona, data);
 
           await updatePersona(persona?.id, jsonPatch);
         } else {
-          await createPersona({ ...data, users: usersList, domain });
+          await createPersona({ ...data, users: usersList, domains });
         }
+        await fetchCurrentUser();
         onSave();
       } catch (error) {
         showErrorToast(error as AxiosError);

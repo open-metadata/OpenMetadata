@@ -14,7 +14,7 @@ Helper functions to handle SQL lineage operations
 import itertools
 import traceback
 from collections import defaultdict
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import networkx as nx
 from collate_sqllineage.core.models import Column, DataFunction
@@ -364,6 +364,7 @@ def get_table_entities_from_query(
     database_name: str,
     database_schema: str,
     table_name: str,
+    schema_fallback: bool = False,
 ) -> Optional[List[Table]]:
     """
     Fetch data from API and ES with a fallback strategy.
@@ -393,6 +394,17 @@ def get_table_entities_from_query(
 
     if table_entities:
         return table_entities
+
+    if schema_fallback:
+        table_entities = search_table_entities(
+            metadata=metadata,
+            service_name=service_name,
+            database=database_query if database_query else database_name,
+            database_schema=None,
+            table=table,
+        )
+        if table_entities:
+            return table_entities
 
     return None
 
@@ -516,6 +528,7 @@ def _create_lineage_by_table_name(
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: Optional[EntityReference] = None,
     graph: DiGraph = None,
+    schema_fallback: bool = False,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -527,6 +540,7 @@ def _create_lineage_by_table_name(
             database_name=database_name,
             database_schema=schema_name,
             table_name=from_table,
+            schema_fallback=schema_fallback,
         )
 
         to_table_entities = get_table_entities_from_query(
@@ -535,6 +549,7 @@ def _create_lineage_by_table_name(
             database_name=database_name,
             database_schema=schema_name,
             table_name=to_table,
+            schema_fallback=schema_fallback,
         )
 
         for table_name, entity in (
@@ -633,6 +648,7 @@ def get_lineage_by_query(
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     graph: DiGraph = None,
+    schema_fallback: bool = False,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -673,6 +689,7 @@ def get_lineage_by_query(
                         lineage_source=lineage_source,
                         procedure=procedure,
                         graph=graph,
+                        schema_fallback=schema_fallback,
                     )
             for target_table in lineage_parser.target_tables:
                 yield from _create_lineage_by_table_name(
@@ -685,6 +702,7 @@ def get_lineage_by_query(
                     masked_query=masked_query,
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
+                    schema_fallback=schema_fallback,
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -711,6 +729,7 @@ def get_lineage_by_query(
                             lineage_source=lineage_source,
                             procedure=procedure,
                             graph=graph,
+                            schema_fallback=schema_fallback,
                         )
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
@@ -740,6 +759,7 @@ def get_lineage_via_table_entity(
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     graph: DiGraph = None,
+    schema_fallback: bool = False,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
@@ -776,6 +796,7 @@ def get_lineage_via_table_entity(
                     lineage_source=lineage_source,
                     procedure=procedure,
                     graph=graph,
+                    schema_fallback=schema_fallback,
                 ) or []
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
@@ -894,7 +915,7 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
 
 
 def get_lineage_by_graph(
-    graph: DiGraph,
+    graph: Optional[DiGraph],
     metadata: OpenMetadata,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
@@ -922,3 +943,27 @@ def get_lineage_by_graph(
         subtree = graph.subgraph(component).copy()
         for path in _get_paths_from_subtree(subtree):
             yield from _process_sequence(path, subtree, metadata)
+
+
+def get_lineage_by_procedure_graph(
+    procedure_graph_map: Optional[Dict],
+    metadata: OpenMetadata,
+) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Generate lineage information from a directed graph.
+    """
+    if procedure_graph_map is None:
+        return
+
+    for procedure_and_procedure_graph in procedure_graph_map.values():
+        for either_lineage in get_lineage_by_graph(
+            graph=procedure_and_procedure_graph.graph,
+            metadata=metadata,
+        ):
+            if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
+                either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
+                    id=procedure_and_procedure_graph.procedure.id,
+                    type="storedProcedure",
+                )
+
+            yield either_lineage
