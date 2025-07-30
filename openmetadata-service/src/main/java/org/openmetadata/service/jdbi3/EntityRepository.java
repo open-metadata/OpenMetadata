@@ -5025,10 +5025,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void fetchAndSetFollowers(List<T> entities, Fields fields) {
-    LOG.info("DashboardDataModel allowedFields: {}", allowedFields);
-    LOG.info("DashboardDataModel supportsFollower: {}", supportsFollower);
-    LOG.info("fields {}", fields);
-    LOG.info("supportsFollower {}", supportsFollower);
     if (!fields.contains(FIELD_FOLLOWERS) || !supportsFollower) {
       return;
     }
@@ -5204,26 +5200,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
 
-    List<CollectionDAO.EntityRelationshipObject> followerRecords =
+    List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(entities), Relationship.FOLLOWS.ordinal(), Include.ALL);
-    LOG.info(
-        "batchFetchFollowers: Found {} owner relationships for {} entities",
-        followerRecords.size(),
-        entities.size());
 
     Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : followerRecords) {
-      UUID entityId = UUID.fromString(record.getToId());
-      followersMap
-          .computeIfAbsent(entityId, k -> new ArrayList<>())
-          .add(
-              new EntityReference()
-                  .withId(UUID.fromString(record.getFromId()))
-                  .withType(record.getFromEntity()));
-    }
+
+    List<UUID> followerIds =
+        records.stream()
+            .map(record -> UUID.fromString(record.getFromId()))
+            .collect(Collectors.toList());
+
+    Map<UUID, EntityReference> followerRefs =
+        Entity.getEntityReferencesByIds(USER, followerIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    records.forEach(
+        record -> {
+          UUID entityId = UUID.fromString(record.getToId());
+          UUID followerId = UUID.fromString(record.getFromId());
+          EntityReference followerRef = followerRefs.get(followerId);
+          followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+        });
 
     return followersMap;
   }
