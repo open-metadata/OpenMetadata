@@ -23,7 +23,9 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
+from metadata.generated.schema.entity.automations.workflow import (
+    WorkflowStatus,
+)
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,

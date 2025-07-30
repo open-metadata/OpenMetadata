@@ -13,13 +13,12 @@
 Test Exasol using the topology
 """
 from unittest import TestCase
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.source.database.exasol.metadata import ExasolSource
-
 
 mock_exasol_config = {
     "source": {
@@ -31,7 +30,7 @@ mock_exasol_config = {
                 "username": "username",
                 "password": "password",
                 "hostPort": "localhost:8563",
-                "tls": "disable-tls"
+                "tls": "disable-tls",
             }
         },
         "sourceConfig": {
