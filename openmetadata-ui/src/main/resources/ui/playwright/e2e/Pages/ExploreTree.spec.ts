@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -35,7 +36,9 @@ import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
 import {
+  Bucket,
   validateBucketsForIndex,
+  validateBucketsForIndexAndSort,
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
@@ -373,38 +376,39 @@ test.describe('Explore page', () => {
     await validateBucketsForIndex(page, 'all');
   });
 
-  // TODO: Fix asset count test
-  // DATA_ASSETS.forEach((asset) => {
-  //   test(`Check listing of ${asset.key} when sort is descending`, async ({
-  //     page,
-  //   }) => {
-  //     const { apiContext } = await getApiContext(page);
+  DATA_ASSETS.forEach((asset) => {
+    test.fixme(
+      `Check listing of ${asset.key} when sort is descending`,
+      async ({ page }) => {
+        const { apiContext } = await getApiContext(page);
 
-  //     const searchBox = page.getByTestId('searchBox');
-  //     await searchBox.fill('pw');
-  //     await searchBox.press('Enter');
+        const searchBox = page.getByTestId('searchBox');
+        await searchBox.fill('pw');
+        await searchBox.press('Enter');
 
-  //     const response = await apiContext
-  //       .get(
-  //         `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0
-  // &deleted=false&track_total_hits=true&fetch_source=false`
-  //       )
-  //       .then((res) => res.json());
+        const response = await apiContext
+          .get(
+            `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
+          )
+          .then((res) => res.json());
 
-  //     const buckets =
-  //       response.aggregations?.['sterms#entityType']?.buckets ?? [];
+        const buckets =
+          response.aggregations?.['sterms#entityType']?.buckets ?? [];
 
-  //     const assetDocCount = buckets.find(
-  //       (b: Bucket) => b.key === asset.key
-  //     )?.doc_count;
+        const assetDocCount = buckets.find(
+          (b: Bucket) => b.key === asset.key
+        )?.doc_count;
 
-  //     if (assetDocCount > 0) {
-  //       const tab = page.getByTestId(`${asset.label}-tab`);
-  //       await tab.click();
-  //       await validateBucketsForIndexAndSort(page, asset, assetDocCount);
-  //     } else {
-  //       await expect(page.getByTestId(`${asset.label}-tab`)).not.toBeVisible();
-  //     }
-  //   });
-  // });
+        if (assetDocCount > 0) {
+          const tab = page.getByTestId(`${asset.label}-tab`);
+          await tab.click();
+          await validateBucketsForIndexAndSort(page, asset, assetDocCount);
+        } else {
+          await expect(
+            page.getByTestId(`${asset.label}-tab`)
+          ).not.toBeVisible();
+        }
+      }
+    );
+  });
 });
