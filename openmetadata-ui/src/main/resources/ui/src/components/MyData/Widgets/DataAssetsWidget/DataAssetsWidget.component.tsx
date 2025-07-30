@@ -100,6 +100,10 @@ const DataAssetsWidget = ({
         return [...services].sort((a, b) => a.key.localeCompare(b.key));
       case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
         return [...services].sort((a, b) => b.key.localeCompare(a.key));
+      case DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW:
+        return [...services].sort((a, b) => b.doc_count - a.doc_count);
+      case DATA_ASSETS_SORT_BY_KEYS.LOW_TO_HIGH:
+        return [...services].sort((a, b) => a.doc_count - b.doc_count);
       default:
         return services;
     }
@@ -155,6 +159,7 @@ const DataAssetsWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<DataAssetIcon height={24} width={24} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
           title={t('label.data-asset-plural')}
