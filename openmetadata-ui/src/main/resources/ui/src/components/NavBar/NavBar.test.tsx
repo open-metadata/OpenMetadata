@@ -253,10 +253,8 @@ describe('Test NavBar Component', () => {
 
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('domain-selectable-list')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {

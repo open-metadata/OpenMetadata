@@ -102,6 +102,7 @@ const TableProfilerChart = ({
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isTableProfilerLoading, setIsTableProfilerLoading] = useState(true);
   const [isSystemProfilerLoading, setIsSystemProfilerLoading] = useState(true);
+  const [showSystemMetrics, setshowSystemMetrics] = useState(false);
   const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
@@ -176,11 +177,14 @@ const TableProfilerChart = ({
       setIsSystemProfilerLoading(true);
       try {
         const { data } = await getSystemProfileList(fqn, dateRangeObj);
-        const { operationMetrics: metricsData, operationDateMetrics } =
-          calculateSystemMetrics(data, operationMetrics);
+        if (data.length > 0) {
+          setshowSystemMetrics(true);
+          const { operationMetrics: metricsData, operationDateMetrics } =
+            calculateSystemMetrics(data, operationMetrics);
 
-        setOperationDateMetrics(operationDateMetrics);
-        setOperationMetrics(metricsData);
+          setOperationDateMetrics(operationDateMetrics);
+          setOperationMetrics(metricsData);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -341,8 +345,12 @@ const TableProfilerChart = ({
           title={t('label.data-volume')}
         />
       </Col>
-      <Col span={24}>{operationDateMetricsCard}</Col>
-      <Col span={24}>{operationMetricsCard}</Col>
+      {showSystemMetrics && (
+        <>
+          <Col span={24}>{operationDateMetricsCard}</Col>
+          <Col span={24}>{operationMetricsCard}</Col>
+        </>
+      )}
       <Col span={24}>
         <CustomMetricGraphs
           customMetrics={customMetrics}

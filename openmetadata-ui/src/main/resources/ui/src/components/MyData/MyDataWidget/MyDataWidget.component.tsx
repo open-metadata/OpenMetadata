@@ -281,6 +281,7 @@ const MyDataWidgetInternal = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<MyDataIcon height={24} width={24} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedFilter}
           sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
           title={t('label.my-data')}
