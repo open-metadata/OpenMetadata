@@ -1,5 +1,6 @@
 ---
 title: Email Request API | OpenMetadata Email Request
+description: Submit an email-based identity or verification request using this schema.
 slug: /main-concepts/metadata-standard/schemas/auth/emailrequest
 ---
 

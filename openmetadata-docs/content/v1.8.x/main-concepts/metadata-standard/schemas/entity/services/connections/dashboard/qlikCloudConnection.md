@@ -1,5 +1,6 @@
 ---
 title: Qlik Cloud Connection | OpenMetadata Qlik Cloud
+description: Qlik Cloud dashboard connection schema including credentials, host, and authentication type.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/qlikcloudconnection
 ---
 

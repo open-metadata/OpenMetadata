@@ -166,16 +166,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
-    EntityInterface parent = getParentEntity(glossaryTerm, "owners,domain,reviewers");
+    EntityInterface parent = getParentEntity(glossaryTerm, "owners,domains,reviewers");
     inheritOwners(glossaryTerm, fields, parent);
-    inheritDomain(glossaryTerm, fields, parent);
+    inheritDomains(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
   }
 
   @Override
   public void setInheritedFields(List<GlossaryTerm> glossaryTerms, Fields fields) {
     List<? extends EntityInterface> parents =
-        getParentEntities(glossaryTerms, "owners,domain,reviewers");
+        getParentEntities(glossaryTerms, "owners,domains,reviewers");
     Map<UUID, EntityInterface> parentMap =
         parents.stream().collect(Collectors.toMap(EntityInterface::getId, e -> e));
     for (GlossaryTerm glossaryTerm : glossaryTerms) {
@@ -186,7 +186,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         parent = parentMap.get(glossaryTerm.getGlossary().getId());
       }
       inheritOwners(glossaryTerm, fields, parent);
-      inheritDomain(glossaryTerm, fields, parent);
+      inheritDomains(glossaryTerm, fields, parent);
       inheritReviewers(glossaryTerm, fields, parent);
     }
   }

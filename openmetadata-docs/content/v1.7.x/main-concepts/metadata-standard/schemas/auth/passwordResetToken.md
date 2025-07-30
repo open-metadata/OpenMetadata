@@ -1,5 +1,6 @@
 ---
 title: Password Reset Token | OpenMetadata Password Reset
+description: Handle password reset requests via token-based recovery workflows.
 slug: /main-concepts/metadata-standard/schemas/auth/passwordresettoken
 ---
 

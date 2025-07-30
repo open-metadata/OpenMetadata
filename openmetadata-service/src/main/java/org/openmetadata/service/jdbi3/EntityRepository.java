@@ -35,7 +35,7 @@ import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -195,6 +195,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -260,7 +261,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .recordStats()
           .build(new EntityLoaderWithId());
   private final String collectionPath;
-  private final Class<T> entityClass;
+  @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   @Getter protected final CollectionDAO daoCollection;
@@ -277,7 +278,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
-  @Getter protected final boolean supportsDomain;
+  @Getter protected final boolean supportsDomains;
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
@@ -367,10 +368,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_VOTES);
       this.putFields.addField(allowedFields, FIELD_VOTES);
     }
-    this.supportsDomain = allowedFields.contains(FIELD_DOMAIN);
-    if (supportsDomain) {
-      this.patchFields.addField(allowedFields, FIELD_DOMAIN);
-      this.putFields.addField(allowedFields, FIELD_DOMAIN);
+    this.supportsDomains = allowedFields.contains(FIELD_DOMAINS);
+    if (supportsDomains) {
+      this.patchFields.addField(allowedFields, FIELD_DOMAINS);
+      this.putFields.addField(allowedFields, FIELD_DOMAINS);
     }
     this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
     if (supportsReviewers) {
@@ -408,7 +409,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     fieldSupportMap.put(FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags));
     fieldSupportMap.put(FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners));
-    fieldSupportMap.put(FIELD_DOMAIN, Pair.of(supportsDomain, this::fetchAndSetDomain));
+    fieldSupportMap.put(FIELD_DOMAINS, Pair.of(supportsDomains, this::fetchAndSetDomains));
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
     fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
@@ -503,9 +504,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    EntityInterface parent = supportsDomain ? getParentEntity(entity, "domain") : null;
+    EntityInterface parent = supportsDomains ? getParentEntity(entity, "domains") : null;
     if (parent != null) {
-      inheritDomain(entity, fields, parent);
+      inheritDomains(entity, fields, parent);
     }
   }
 
@@ -617,14 +618,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
     List<EntityReference> owners = validateOwners(request.getOwners());
-    EntityReference domain = validateDomain(request.getDomain());
+    List<EntityReference> domains = validateDomains(request.getDomains());
     validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
     entity.setDescription(request.getDescription());
     entity.setOwners(owners);
-    entity.setDomain(domain);
+    entity.setDomains(domains);
     entity.setTags(request.getTags());
     entity.setDataProducts(getEntityReferences(DATA_PRODUCT, request.getDataProducts()));
     entity.setLifeCycle(request.getLifeCycle());
@@ -632,6 +633,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setReviewers(request.getReviewers());
+
+    RuleEngine.getInstance().evaluate(entity);
     return entity;
   }
 
@@ -843,7 +846,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>
    * For efficient bulk processing, ensure all fields used in {@link #setFields}
    * have corresponding batch processing methods, such as {@code fetchAndSetXXX}. For instance,
-   * if handling a domain field, implement {@link #fetchAndSetDomain}.
+   * if handling a domain field, implement {@link #fetchAndSetDomains}.
    * <p>
    * Example implementation can be found in {@link GlossaryTermRepository#setFieldsInBulk}.
    */
@@ -1096,7 +1099,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void storeRelationshipsInternal(T entity) {
     storeOwners(entity, entity.getOwners());
     applyTags(entity);
-    storeDomain(entity, entity.getDomain());
+    storeDomains(entity, entity.getDomains());
     storeDataProducts(entity, entity.getDataProducts());
     storeReviewers(entity, entity.getReviewers());
     storeRelationships(entity);
@@ -1116,7 +1119,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
-    entity.setDomain(getDomain(entity));
+    entity.setDomains(getDomains(entity));
     entity.setDataProducts(
         fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
     entity.setFollowers(
@@ -1135,7 +1138,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
-    entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
+    entity.setDomains(fields.contains(FIELD_DOMAINS) ? entity.getDomains() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
@@ -1348,9 +1351,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
+    RuleEngine.getInstance().evaluateUpdate(original, updated);
+
     // Validate and populate owners
     List<EntityReference> validatedOwners = getValidatedOwners(updated.getOwners());
     updated.setOwners(validatedOwners);
+
+    // Validate and populate domain
+    List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
+    updated.setDomains(validatedDomains);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1366,6 +1375,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityUpdater.update();
     }
     if (entityUpdater.fieldsChanged()) {
+      // Refresh the entity fields from the database after the update
+      setFieldsInternal(updated, patchFields);
       setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
@@ -1923,7 +1934,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwners(null);
     entity.setChildren(null);
     entity.setTags(null);
-    entity.setDomain(null);
+    entity.setDomains(null);
     entity.setDataProducts(null);
     entity.setFollowers(null);
     entity.setExperts(null);
@@ -1940,7 +1951,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> owners = entity.getOwners();
     List<EntityReference> children = entity.getChildren();
     List<TagLabel> tags = entity.getTags();
-    EntityReference domain = entity.getDomain();
+    List<EntityReference> domains = entity.getDomains();
     List<EntityReference> dataProducts = entity.getDataProducts();
     List<EntityReference> followers = entity.getFollowers();
     List<EntityReference> experts = entity.getExperts();
@@ -1985,7 +1996,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwners(owners);
     entity.setChildren(children);
     entity.setTags(tags);
-    entity.setDomain(domain);
+    entity.setDomains(domains);
     entity.setDataProducts(dataProducts);
     entity.setFollowers(followers);
     entity.setExperts(experts);
@@ -2000,7 +2011,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> owners = entity.getOwners();
       List<EntityReference> children = entity.getChildren();
       List<TagLabel> tags = entity.getTags();
-      EntityReference domain = entity.getDomain();
+      List<EntityReference> domains = entity.getDomains();
       List<EntityReference> dataProducts = entity.getDataProducts();
       List<EntityReference> followers = entity.getFollowers();
       List<EntityReference> experts = entity.getExperts();
@@ -2013,7 +2024,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setOwners(owners);
       entity.setChildren(children);
       entity.setTags(tags);
-      entity.setDomain(domain);
+      entity.setDomains(domains);
       entity.setDataProducts(dataProducts);
       entity.setFollowers(followers);
       entity.setExperts(experts);
@@ -2498,41 +2509,36 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
-  private void removeCrossDomainDataProducts(EntityReference domain, T entity) {
+  private void removeCrossDomainDataProducts(List<EntityReference> removedDomains, T entity) {
     if (!supportsDataProducts) {
       return;
     }
 
     List<EntityReference> entityDataProducts = entity.getDataProducts();
-    if (entityDataProducts == null) {
+    if (entityDataProducts == null || nullOrEmpty(removedDomains)) {
+      // If no domains are being removed, nothing to do
       return;
     }
 
-    if (domain == null) {
-      entityDataProducts.clear();
-      LOG.info(
-          "Removed all data products from entity {} as no domain is provided",
-          entity.getEntityReference().getType());
-      return;
+    for (EntityReference domain : removedDomains) {
+      // Fetch domain data products
+      List<UUID> domainDataProductIds =
+          daoCollection
+              .relationshipDAO()
+              .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
+
+      entityDataProducts.removeIf(
+          dataProduct -> {
+            boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
+            if (isNotDomainDataProduct) {
+              LOG.info(
+                  "Removing data product {} from entity {}",
+                  dataProduct.getFullyQualifiedName(),
+                  entity.getEntityReference().getType());
+            }
+            return isNotDomainDataProduct;
+          });
     }
-
-    // Fetch domain data products
-    List<UUID> domainDataProductIds =
-        daoCollection
-            .relationshipDAO()
-            .findToIds(domain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
-
-    entityDataProducts.removeIf(
-        dataProduct -> {
-          boolean isNotDomainDataProduct = !domainDataProductIds.contains(dataProduct.getId());
-          if (isNotDomainDataProduct) {
-            LOG.info(
-                "Removing data product {} from entity {}",
-                dataProduct.getFullyQualifiedName(),
-                entity.getEntityReference().getType());
-          }
-          return isNotDomainDataProduct;
-        });
   }
 
   @Transaction
@@ -2880,10 +2886,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null) : null;
   }
 
-  protected EntityReference getDomain(T entity) {
-    return supportsDomain
-        ? getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false)
-        : null;
+  protected List<EntityReference> getDomains(T entity) {
+    return supportsDomains ? getFromEntityRefs(entity.getId(), Relationship.HAS, DOMAIN) : null;
   }
 
   private List<EntityReference> getDataProducts(T entity) {
@@ -2918,25 +2922,46 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return supportsExperts ? findTo(entity.getId(), entityType, Relationship.EXPERT, USER) : null;
   }
 
-  public final void inheritDomain(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_DOMAIN) && entity.getDomain() == null && parent != null) {
-      entity.setDomain(parent.getDomain() != null ? parent.getDomain().withInherited(true) : null);
+  public final void inheritDomains(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains()) && parent != null) {
+      entity.setDomains(
+          !nullOrEmpty(parent.getDomains()) ? parent.getDomains() : Collections.emptyList());
+      listOrEmpty(entity.getDomains()).forEach(domain -> domain.setInherited(true));
     }
   }
 
   public final void inheritOwners(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners()) && parent != null) {
-      entity.setOwners(
-          !nullOrEmpty(parent.getOwners()) ? parent.getOwners() : Collections.emptyList());
-      listOrEmpty(entity.getOwners()).forEach(owner -> owner.setInherited(true));
+      entity.setOwners(getInheritedOwners(entity, fields, parent));
     }
+  }
+
+  public final List<EntityReference> getInheritedOwners(
+      T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners()) && parent != null) {
+      List<EntityReference> owners =
+          !nullOrEmpty(parent.getOwners()) ? parent.getOwners() : Collections.emptyList();
+      owners.forEach(owner -> owner.setInherited(true));
+      return owners;
+    }
+    return entity.getOwners();
   }
 
   public final void inheritExperts(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts()) && parent != null) {
-      entity.setExperts(parent.getExperts());
-      listOrEmpty(entity.getExperts()).forEach(expert -> expert.withInherited(true));
+      entity.setExperts(getInheritedExperts(entity, fields, parent));
     }
+  }
+
+  public final List<EntityReference> getInheritedExperts(
+      T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_EXPERTS) && nullOrEmpty(entity.getExperts()) && parent != null) {
+      List<EntityReference> experts =
+          !nullOrEmpty(parent.getExperts()) ? parent.getExperts() : Collections.emptyList();
+      experts.forEach(expert -> expert.withInherited(true));
+      return experts;
+    }
+    return entity.getExperts();
   }
 
   public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
@@ -2958,6 +2983,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
       return owners;
+    }
+    refs.sort(Comparator.comparing(EntityReference::getName));
+    return refs;
+  }
+
+  protected List<EntityReference> getValidatedDomains(List<EntityReference> domains) {
+    if (nullOrEmpty(domains)) {
+      return domains;
+    }
+    // Check if owners are inherited. If so, ignore the validation
+    if (domains.stream()
+        .allMatch(domain -> domain.getInherited() != null && domain.getInherited())) {
+      return domains;
+    }
+
+    // populate owner entityRefs with all fields
+    List<EntityReference> refs = validateDomainsByRef(domains);
+    if (nullOrEmpty(refs)) {
+      return domains;
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
     return refs;
@@ -2987,15 +3031,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  protected void storeDomain(T entity, EntityReference domain) {
-    if (supportsDomain && domain != null) {
+  protected void storeDomains(T entity, List<EntityReference> domains) {
+    if (supportsDomains && !nullOrEmpty(domains)) {
+      validateDomainsByRef(domains);
       // Add relationship domain --- has ---> entity
-      LOG.info(
-          "Adding domain {} for entity {}:{}",
-          domain.getFullyQualifiedName(),
-          entityType,
-          entity.getId());
-      addRelationship(domain.getId(), entity.getId(), DOMAIN, entityType, Relationship.HAS);
+      for (EntityReference domain : domains) {
+        LOG.info(
+            "Adding domain {} for entity {}:{}",
+            domain.getFullyQualifiedName(),
+            entityType,
+            entity.getId());
+        addRelationship(domain.getId(), entity.getId(), DOMAIN, entityType, Relationship.HAS);
+        addDomainLineage(domain.getId(), entityType, domain);
+      }
     }
   }
 
@@ -3197,7 +3245,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(addedOwners) && nullOrEmpty(removedOwners)) {
       return;
     }
-    validateOwners(addedOwners);
     removeOwners(ownedEntity, removedOwners);
     storeOwners(ownedEntity, newOwners);
   }
@@ -3242,16 +3289,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
 
-    long teamCount = owners.stream().filter(owner -> owner.getType().equals(TEAM)).count();
-    long userCount = owners.size() - teamCount;
-
-    if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
-      throw new IllegalArgumentException(
-          teamCount > 1
-              ? CatalogExceptionMessage.onlyOneTeamAllowed()
-              : CatalogExceptionMessage.noTeamAndUserComboAllowed());
-    }
-
     return owners.stream()
         .map(
             owner -> {
@@ -3286,18 +3323,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final EntityReference validateDomain(String domainFqn) {
-    if (!supportsDomain || domainFqn == null) {
+  public final List<EntityReference> validateDomains(List<String> domainFqns) {
+    if (!supportsDomains || nullOrEmpty(domainFqns)) {
       return null;
     }
-    return Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED);
+
+    return domainFqns.stream()
+        .map(
+            domainFqn -> {
+              return Entity.getEntityReferenceByName(DOMAIN, domainFqn, NON_DELETED);
+            })
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
   }
 
-  public final void validateDomain(EntityReference domain) {
-    if (!supportsDomain) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAIN));
+  public final List<EntityReference> validateDomainsByRef(List<EntityReference> domains) {
+    if (!supportsDomains) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DOMAINS));
     }
-    getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED);
+    if (nullOrEmpty(domains)) {
+      return null;
+    }
+
+    return domains.stream()
+        .map(
+            domain -> {
+              return Entity.getEntityReferenceById(DOMAIN, domain.getId(), NON_DELETED);
+            })
+        .filter(Objects::nonNull)
+        .collect(Collectors.toList());
   }
 
   public final void validateDataProducts(List<EntityReference> dataProducts) {
@@ -3671,7 +3725,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateExtension(consolidatingChanges);
         updateTags(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomain();
+        updateDomains();
         updateDataProducts();
         updateExperts();
         updateReviewers();
@@ -3696,7 +3750,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateExtension(consolidatingChanges);
         updateTagsForImport(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomainForImport();
+        updateDomainsForImport();
         updateDataProducts();
         updateExperts();
         updateReviewers();
@@ -3932,87 +3986,103 @@ public abstract class EntityRepository<T extends EntityInterface> {
       storeExtension(updated);
     }
 
-    protected void updateDomain() {
-      EntityReference origDomain = getEntityReference(original.getDomain());
-      EntityReference updatedDomain = getEntityReference(updated.getDomain());
-      if (origDomain == updatedDomain) {
+    protected void updateDomains() {
+      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
+      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
+      List<EntityReference> addedDomains = new ArrayList<>();
+      List<EntityReference> removedDomains = new ArrayList<>();
+
+      if (origDomains == updatedDomains) {
         return;
       }
-      if (operation.isPut() && !nullOrEmpty(original.getDomain()) && updatedByBot()) {
+      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
         // Revert change to non-empty domain if it is being updated by a bot
         // This is to prevent bots from overwriting the domain. Domain need to be
         // updated with a PATCH request
-        updated.setDomain(original.getDomain());
+        updated.setDomains(original.getDomains());
         return;
       }
 
-      if ((operation.isPatch() || updatedDomain != null)
-          && recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch)) {
-        if (origDomain != null) {
-          LOG.info(
-              "Removing domain {} for entity {}",
-              origDomain.getFullyQualifiedName(),
-              original.getFullyQualifiedName());
-          removeDomainLineage(updated.getId(), entityType, origDomain);
-          deleteRelationship(
-              origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
-        }
-        if (updatedDomain != null) {
-          validateDomain(updatedDomain);
-          // Add relationship owner --- owns ---> ownedEntity
-          LOG.info(
-              "Adding domain {} for entity {}",
-              updatedDomain.getFullyQualifiedName(),
-              original.getFullyQualifiedName());
-          addRelationship(
-              updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
-          addDomainLineage(updated.getId(), entityType, updatedDomain);
-        }
-        updated.setDomain(updatedDomain);
-        // Clean up data products associated not associated with the updated domain
-        removeCrossDomainDataProducts(updated.getDomain(), updated);
+      if ((operation.isPatch() || !nullOrEmpty(updatedDomains))
+          && recordListChange(
+              FIELD_DOMAINS,
+              origDomains,
+              updatedDomains,
+              addedDomains,
+              removedDomains,
+              entityReferenceMatch)) {
+        updateDomains(original, origDomains, updatedDomains);
+        updated.setDomains(updatedDomains);
+        // Clean up data products associated with the domains we are removing
+        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
-        updated.setDomain(original.getDomain());
+        updated.setDomains(original.getDomains());
       }
     }
 
-    protected void updateDomainForImport() {
-      EntityReference origDomain = getEntityReference(original.getDomain());
-      EntityReference updatedDomain = getEntityReference(updated.getDomain());
+    @Transaction
+    public final void updateDomains(
+        T entity, List<EntityReference> originalDomains, List<EntityReference> newDomains) {
+      List<EntityReference> addedDomains =
+          diffLists(
+              newDomains,
+              originalDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+      List<EntityReference> removedDomains =
+          diffLists(
+              originalDomains,
+              newDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+      if (nullOrEmpty(addedDomains) && nullOrEmpty(removedDomains)) {
+        return;
+      }
+      removeDomains(entity, removedDomains);
+      storeDomains(entity, newDomains);
+    }
 
-      if (origDomain == updatedDomain) {
+    /** Remove domain relationship for a given entity */
+    @Transaction
+    private void removeDomains(T entity, List<EntityReference> domains) {
+      if (!nullOrEmpty(domains)) {
+        for (EntityReference domain : domains) {
+          LOG.info(
+              "Removing domain {}:{} for entity {}",
+              domain.getType(),
+              domain.getFullyQualifiedName(),
+              entity.getId());
+          removeDomainLineage(updated.getId(), entityType, domain);
+          deleteRelationship(domain.getId(), DOMAIN, entity.getId(), entityType, Relationship.HAS);
+        }
+      }
+    }
+
+    protected void updateDomainsForImport() {
+      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
+      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
+      List<EntityReference> addedDomains = new ArrayList<>();
+      List<EntityReference> removedDomains = new ArrayList<>();
+
+      if (origDomains == updatedDomains) {
         return;
       }
 
-      boolean domainChanged =
-          recordChange(FIELD_DOMAIN, origDomain, updatedDomain, true, entityReferenceMatch);
-
-      if (domainChanged) {
-        if (origDomain != null) {
-          LOG.info(
-              "Removing domain {} for entity {} (import)",
-              origDomain.getFullyQualifiedName(),
-              original.getFullyQualifiedName());
-          removeDomainLineage(updated.getId(), entityType, origDomain);
-          deleteRelationship(
-              origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
-        }
-
-        if (updatedDomain != null) {
-          validateDomain(updatedDomain);
-          LOG.info(
-              "Adding domain {} for entity {} (import)",
-              updatedDomain.getFullyQualifiedName(),
-              original.getFullyQualifiedName());
-          addRelationship(
-              updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
-          addDomainLineage(updated.getId(), entityType, updatedDomain);
-        }
-
-        updated.setDomain(updatedDomain);
-        removeCrossDomainDataProducts(updatedDomain, updated);
+      if (recordListChange(
+          FIELD_DOMAINS,
+          origDomains,
+          updatedDomains,
+          addedDomains,
+          removedDomains,
+          entityReferenceMatch)) {
+        updateDomains(original, origDomains, updatedDomains);
+        updated.setDomains(updatedDomains);
+        // Clean up data products associated with the domains we are removing
+        removeCrossDomainDataProducts(removedDomains, updated);
       } else {
-        updated.setDomain(original.getDomain());
+        updated.setDomains(original.getDomains());
       }
     }
 
@@ -4023,20 +4093,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       validateDataProducts(updatedDataProducts);
-      if (updated.getDomain() == null && !nullOrEmpty(updatedDataProducts)) {
+
+      if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
       }
+
+      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
+      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
+      List<EntityReference> removedDomains =
+          diffLists(
+              origDomains,
+              updatedDomains,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity());
+
       // Clean up data products associated with the old domain
-      if (original.getDomain() != null
-          && Objects.equals(original.getDomain(), updated.getDomain())
+      if (!nullOrEmpty(removedDomains)
           && recordChange(
               FIELD_DATA_PRODUCTS,
               origDataProducts,
               updatedDataProducts,
               true,
               entityReferenceListMatch)) {
-        removeCrossDomainDataProducts(updated.getDomain(), updated);
+        removeCrossDomainDataProducts(removedDomains, updated);
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
       updateFromRelationships(
@@ -4954,16 +5035,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void fetchAndSetDomain(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_DOMAIN) || !supportsDomain) {
+  private void fetchAndSetDomains(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_DOMAINS) || !supportsDomains) {
       return;
     }
 
-    Map<UUID, EntityReference> domainsMap = batchFetchDomain(entities);
+    Map<UUID, List<EntityReference>> domainsMap = batchFetchDomains(entities);
 
     for (T entity : entities) {
-      EntityReference domainRef = domainsMap.get(entity.getId());
-      entity.setDomain(domainRef);
+      entity.setDomains(domainsMap.getOrDefault(entity.getId(), Collections.emptyList()));
     }
   }
 
@@ -5097,15 +5177,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 }));
   }
 
-  private Map<UUID, EntityReference> batchFetchDomain(List<T> entities) {
-    var domainsMap = new HashMap<UUID, EntityReference>();
+  private Map<UUID, List<EntityReference>> batchFetchDomains(List<T> entities) {
+    Map<UUID, List<EntityReference>> domainsMap = new HashMap<>();
 
     if (entities == null || entities.isEmpty()) {
       return domainsMap;
     }
-    // Use Include.ALL to get all relationships including those for soft-deleted entities
-    // Also filter by DOMAIN entity type to avoid fetching unnecessary relationships
-    var records =
+    List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), Relationship.HAS.ordinal(), DOMAIN, ALL);
@@ -5119,24 +5197,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var domainRefMap =
         domainRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref));
 
-    // Map entities to their domains
-    records.forEach(
-        rec -> {
-          var toId = UUID.fromString(rec.getToId());
-          var fromId = UUID.fromString(rec.getFromId());
-          var domainRef = domainRefMap.get(fromId);
-
-          if (domainRef != null) {
-            // Since each entity can have only one domain, we can directly put it in the map
-            if (domainsMap.containsKey(toId)) {
-              // Handle the case where an entity has multiple domains (which shouldn't happen)
-              throw new IllegalStateException(
-                  String.format("Entity with ID %s has multiple domains", toId));
-            } else {
-              domainsMap.put(toId, domainRef);
-            }
-          }
-        });
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      UUID fromId = UUID.fromString(rec.getFromId());
+      EntityReference domainRef = domainRefMap.get(fromId);
+      domainsMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(domainRef);
+    }
 
     return domainsMap;
   }

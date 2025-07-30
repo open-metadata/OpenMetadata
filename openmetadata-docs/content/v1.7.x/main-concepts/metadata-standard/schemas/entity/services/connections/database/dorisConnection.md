@@ -1,5 +1,6 @@
 ---
 title: Doris Connection | OpenMetadata Doris Database Connection
+description: Doris connection schema for managing and extracting metadata from analytics-optimized OLAP databases.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/dorisconnection
 ---
 

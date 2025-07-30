@@ -1,5 +1,6 @@
 ---
 title: System Schema | OpenMetadata System Schema Overview
+description: System schema encapsulating metadata about environment configuration, deployment context, and platform-level entities.
 slug: /main-concepts/metadata-standard/schemas/system
 ---
 

@@ -13,6 +13,38 @@ CREATE TABLE IF NOT EXISTS drive_service_entity (
 );
 
 CREATE INDEX IF NOT EXISTS idx_drive_service_name ON drive_service_entity (name);
+-- Migrate domain to domains in all entity tables that had singular domain
+-- Using the correct table names from existing migrations and proper PostgreSQL JSON syntax
+UPDATE api_collection_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE api_endpoint_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE api_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE chart_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE dashboard_data_model_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE dashboard_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE dashboard_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE database_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE database_schema_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE dbservice_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE glossary_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE glossary_term_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE ingestion_pipeline_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE messaging_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE metadata_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE metric_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE ml_model_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE mlmodel_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE persona_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE pipeline_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE pipeline_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE query_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE report_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE search_index_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE search_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE storage_container_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE storage_service_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE stored_procedure_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE table_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+UPDATE topic_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
 
 -- Create Directory entity table
 CREATE TABLE IF NOT EXISTS directory_entity (
@@ -99,6 +131,10 @@ CREATE INDEX IF NOT EXISTS idx_directory_service ON directory_entity ((json -> '
 CREATE INDEX IF NOT EXISTS idx_file_directory ON file_entity ((json -> 'directory' ->> 'id'));
 CREATE INDEX IF NOT EXISTS idx_spreadsheet_directory ON spreadsheet_entity ((json -> 'directory' ->> 'id'));
 CREATE INDEX IF NOT EXISTS idx_worksheet_spreadsheet ON worksheet_entity ((json -> 'spreadsheet' ->> 'id'));
+-- Note: user_entity and team_entity already had domains array, so they are not migrated
+
+-- Clean old test connections
+TRUNCATE automations_workflow;
 
 -- Performance optimization indexes for entity_relationship table
 -- These indexes improve cascade deletion performance
@@ -134,3 +170,17 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
 -- Use btree index for entityFqn prefix matching
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_fqn ON entity_deletion_lock(entityFqn);
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_time ON entity_deletion_lock(lockedAt);
+
+-- Update columnValuesToBeInSet test definition to include BOOLEAN in supportedDataTypes and update parameterDefinition
+UPDATE test_definition
+  SET json = jsonb_set(json, '{supportedDataTypes}', '["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN"]'::jsonb)
+WHERE name in ('columnValuesToBeInSet', 'columnValuesToBeNotInSet');
+
+-- 1. Add classificationHash column to support fast lookup and grouping by classification fqnHash
+ALTER TABLE tag
+  ADD COLUMN classificationHash TEXT
+  GENERATED ALWAYS AS (SPLIT_PART(fqnhash, '.', 1)) STORED;
+
+-- 2. Create index on classificationHash + deleted
+CREATE INDEX idx_tag_classification_hash_deleted
+  ON tag (classificationHash, deleted);

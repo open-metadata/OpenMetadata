@@ -20,13 +20,14 @@ import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant'
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import { getAllFeeds } from '../../../rest/feedsAPI';
 import { getUserPath } from '../../../utils/RouterUtils';
 import ActivityFeedListV1New from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -42,60 +43,57 @@ const MyFeedWidgetInternal = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
   );
-  const {
-    loading,
-    entityThread: feedList,
-    getFeedData,
-  } = useActivityFeedProvider();
 
-  useEffect(() => {
-    if (feedList) {
-      const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
-      setEntityThread(updatedFeedList);
-    }
-  }, [feedList]);
-
-  useEffect(() => {
-    if (currentUser && getFeedData) {
-      getFeedData(
-        selectedFilter,
-        undefined,
-        ThreadType.Conversation,
-        undefined,
-        undefined,
-        undefined,
-        8
-      );
-    }
-  }, [currentUser, getFeedData, selectedFilter]);
-
-  const handleFilterChange = useCallback(({ key }: { key: string }) => {
-    setSelectedFilter(key as FeedFilter);
-  }, []);
+  const handleFilterChange = useCallback(
+    (key: string) => {
+      setSelectedFilter(key as FeedFilter);
+    },
+    [setSelectedFilter]
+  );
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
   const handleUpdateEntityDetails = useCallback(() => {
-    if (getFeedData) {
-      getFeedData();
-    }
-  }, [getFeedData]);
+    getAllFeeds();
+  }, [getAllFeeds]);
+
+  useEffect(() => {
+    getFeedData(
+      selectedFilter as unknown as FeedFilter,
+      undefined,
+      ThreadType.Conversation,
+      undefined,
+      undefined,
+      undefined,
+      10
+    );
+  }, [getFeedData, selectedFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
   );
+
+  const isFullSizeWidget = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
+  }, [currentLayout, widgetKey]);
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && entityThread?.length > 10,
+    [entityThread, loading]
+  );
+
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.get-started')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.activity-feed-no-data-placeholder')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
@@ -104,6 +102,10 @@ const MyFeedWidgetInternal = ({
       />
     );
   }, []);
+
+  const showMoreCount = useMemo(() => {
+    return entityThread.length > 0 ? entityThread.length.toString() : '';
+  }, [entityThread]);
 
   const widgetBody = useMemo(() => {
     return (
@@ -118,6 +120,7 @@ const MyFeedWidgetInternal = ({
                 emptyPlaceholderText={t('label.no-recent-activity')}
                 feedList={entityThread}
                 hidePopover={false}
+                isFullSizeWidget={isFullSizeWidget}
                 isLoading={loading}
                 onAfterClose={handleCloseClick}
                 onUpdateEntityDetails={handleUpdateEntityDetails}
@@ -134,6 +137,7 @@ const MyFeedWidgetInternal = ({
     handleCloseClick,
     handleUpdateEntityDetails,
     currentUser,
+    isFullSizeWidget,
   ]);
 
   return (
@@ -146,14 +150,15 @@ const MyFeedWidgetInternal = ({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon height={24} width={24} />}
+          icon={<ActivityFeedIcon height={22} width={22} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedFilter}
           sortOptions={FEED_WIDGET_FILTER_OPTIONS}
           title={t('label.activity-feed')}
           widgetKey={widgetKey}
           widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange({ key })}
+          onSortChange={(key) => handleFilterChange(key)}
         />
         <div className="feed-content flex-1">
           {widgetBody}
@@ -163,9 +168,9 @@ const MyFeedWidgetInternal = ({
               EntityTabs.ACTIVITY_FEED
             )}
             moreButtonText={t('label.view-more-count', {
-              count: String(entityThread.length > 0 ? entityThread.length : ''),
+              countValue: showMoreCount,
             })}
-            showMoreButton={Boolean(!loading) && !isEmpty(entityThread)}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>
@@ -173,4 +178,4 @@ const MyFeedWidgetInternal = ({
   );
 };
 
-export const MyFeedWidget = MyFeedWidgetInternal;
+export const MyFeedWidget = withActivityFeed(MyFeedWidgetInternal);

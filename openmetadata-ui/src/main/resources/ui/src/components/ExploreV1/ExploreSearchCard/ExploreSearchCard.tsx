@@ -84,16 +84,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
-        ...(source?.domain
-          ? [
-              {
-                key: 'Domain',
-                value: getDomainPath(source.domain.fullyQualifiedName),
-                placeholderText: getEntityName(source.domain),
-                isLink: true,
-                openInNewTab: false,
-              },
-            ]
+        ...(source?.domains
+          ? source.domains.map((domain) => ({
+              key: 'Domains',
+              value: getDomainPath(domain.fullyQualifiedName) ?? '',
+              placeholderText: getEntityName(domain),
+              isLink: true,
+              openInNewTab: false,
+            }))
           : !searchClassBase
               .getListOfEntitiesWithoutDomain()
               .includes(source?.entityType ?? '')

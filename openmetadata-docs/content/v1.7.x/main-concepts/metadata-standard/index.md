@@ -1,5 +1,6 @@
 ---
 title: Metadata Standard | OpenMetadata Core Schema Guide
+description: Overview of metadata standard schemas governing how entities, types, analytics, and governance structures are defined.
 slug: /main-concepts/metadata-standard
 ---
 

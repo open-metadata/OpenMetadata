@@ -1,5 +1,6 @@
 ---
 title: filterPattern | OpenMetadata Filter Pattern
+description: FilterPattern schema defines include/exclude filters for ingestion, search, and tagging.
 slug: /main-concepts/metadata-standard/schemas/type/filterpattern
 ---
 

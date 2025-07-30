@@ -53,10 +53,10 @@ export interface Tag {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Unique name of the tag of format `Classification.tag1.tag2`.
      */
@@ -194,9 +194,6 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Reference to the classification that this tag is part of.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  *
  * Reference to the parent tag. When null, the term is at the root of the Classification.
  */

@@ -1,5 +1,6 @@
 ---
-title: databricksPipelineConnection
+title: Databrickspipelineconnection | Official Documentation
+description: Set up connection to Databricks pipelines for ingesting task, run metadata, and lineage using this configuration schema.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/databrickspipelineconnection
 ---
 
