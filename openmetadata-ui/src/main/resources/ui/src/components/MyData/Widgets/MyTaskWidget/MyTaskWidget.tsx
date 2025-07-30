@@ -27,6 +27,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import FeedPanelBodyV1New from '../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -94,8 +95,11 @@ const MyTaskWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<MyTaskIcon data-testid="task-icon" height={24} width={24} />}
+        icon={<MyTaskIcon data-testid="task-icon" height={22} width={22} />}
         isEditView={isEditView}
+        redirectUrlOnTitleClick={
+          currentUser?.name && `users/${currentUser?.name}/task`
+        }
         selectedSortBy={selectedFilter}
         sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
         title={t('label.my-task-plural')}
@@ -108,8 +112,6 @@ const MyTaskWidget = ({
       <div className="widget-content flex-1">
         {isEmpty(entityThread) ? (
           <WidgetEmptyState
-            actionButtonLink={`users/${currentUser?.name}/task`}
-            actionButtonText={t('label.view-all-task-plural')}
             dataTestId="my-task-empty-state"
             description={t('message.my-task-no-data-placeholder')}
             icon={
@@ -160,4 +162,4 @@ const MyTaskWidget = ({
   );
 };
 
-export default MyTaskWidget;
+export default withActivityFeed(MyTaskWidget);

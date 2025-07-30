@@ -1,5 +1,6 @@
 ---
-title: elasticSearchConnection
+title: elasticSearchConnection | Official Documentation
+description: Schema for setting up and managing Elasticsearch search service connections to power indexing and discovery experiences.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearchconnection
 ---
 

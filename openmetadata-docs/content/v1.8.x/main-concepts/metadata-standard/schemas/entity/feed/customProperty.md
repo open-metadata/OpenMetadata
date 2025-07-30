@@ -1,5 +1,6 @@
 ---
 title: Custom Property Schema | OpenMetadata Custom Properties
+description: Model custom property activities within the feed to log attribute additions or changes.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/customproperty
 ---
 

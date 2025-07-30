@@ -1,5 +1,6 @@
 ---
-title: googleSSOClientConfig
+title: Googlessoclientconfig | Official Documentation
+description: Enable SSO via Google using client config schema that includes OAuth scopes, issuer settings, and domain verification details.
 slug: /main-concepts/metadata-standard/schemas/security/client/googlessoclientconfig
 ---
 

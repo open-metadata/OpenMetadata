@@ -1,5 +1,6 @@
 ---
-title: openLineageConnection
+title: Openlineageconnection | Official Documentation
+description: Use this schema to configure OpenLineage connections and retrieve job metadata for pipeline observability.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/openlineageconnection
 ---
 

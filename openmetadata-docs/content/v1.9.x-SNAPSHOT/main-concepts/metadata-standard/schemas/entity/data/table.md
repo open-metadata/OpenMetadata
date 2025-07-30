@@ -1,5 +1,6 @@
 ---
 title: Table Schema | OpenMetadata Table Schema and API Guide
+description: Connect Table to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/table
 ---
 
