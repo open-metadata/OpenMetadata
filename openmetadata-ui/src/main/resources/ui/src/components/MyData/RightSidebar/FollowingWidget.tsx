@@ -264,8 +264,9 @@ function FollowingWidget({
           currentLayout={currentLayout}
           handleLayoutUpdate={handleLayoutUpdate}
           handleRemoveWidget={handleRemoveWidget}
-          icon={<FollowingAssetsIcon height={24} width={24} />}
+          icon={<FollowingAssetsIcon height={22} width={22} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedEntityFilter}
           sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
           title={t('label.following-assets')}

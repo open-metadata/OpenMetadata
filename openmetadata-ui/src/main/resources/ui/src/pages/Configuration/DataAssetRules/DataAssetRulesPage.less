@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../styles/variables.less');
 
-.grid-container {
-  .react-grid-item.react-grid-placeholder {
-    background-color: @announcement-background-dark;
-  }
+@import (reference) url('../../../styles/variables.less');
+
+.data-asset-rules-header {
+  display: flex;
 }
 
-.customise-my-data {
-  background-color: @blue-22;
-  border-radius: @size-mlg;
-  box-shadow: @box-shadow-surface-default;
-  border: 1px solid @grey-15;
-  margin: 0 @margin-mlg !important;
+.data-asset-rules-add-button {
+  margin-left: auto;
 }
 
-.grid-wrapper {
-  .grid-container {
-    margin-top: -220px;
-  }
+.ant-btn.ant-btn-background-ghost.add-button {
+  padding: 0px 24px;
+  margin-top: 16px;
+  background-color: white;
 }
