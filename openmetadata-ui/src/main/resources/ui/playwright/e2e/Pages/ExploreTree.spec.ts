@@ -376,44 +376,36 @@ test.describe('Explore page', () => {
     await validateBucketsForIndex(page, 'all');
   });
 
-  test('Check listing of for each entity when sort is descending', async ({
-    page,
-  }) => {
-    const { apiContext } = await getApiContext(page);
+  DATA_ASSETS.forEach((asset) => {
+    test(`Check listing of ${asset.key} when sort is descending`, async ({
+      page,
+    }) => {
+      const { apiContext } = await getApiContext(page);
 
-    const searchBox = page.getByTestId('searchBox');
-    await searchBox.fill('pw');
-    await searchBox.press('Enter');
+      const searchBox = page.getByTestId('searchBox');
+      await searchBox.fill('pw');
+      await searchBox.press('Enter');
 
-    const response = await apiContext
-      .get(
-        `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
-      )
-      .then((res) => res.json());
+      const response = await apiContext
+        .get(
+          `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
+        )
+        .then((res) => res.json());
 
-    const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
+      const buckets =
+        response.aggregations?.['sterms#entityType']?.buckets ?? [];
 
-    const filteredAssets = DATA_ASSETS.filter((asset) =>
-      buckets.find((b: Bucket) => b.key === asset.key)
-    );
+      const assetDocCount = buckets.find(
+        (b: Bucket) => b.key === asset.key
+      )?.doc_count;
 
-    let i = 0;
-
-    do {
-      const asset = filteredAssets[i];
-      const bucket = buckets.find((b: Bucket) => b.key === asset.key);
-      const doc_count = Number(bucket.doc_count);
-      const tab = page.getByTestId(`${asset.label}-tab`);
-
-      if (i !== 0) {
+      if (assetDocCount > 0) {
+        const tab = page.getByTestId(`${asset.label}-tab`);
         await tab.click();
+        await validateBucketsForIndexAndSort(page, asset, assetDocCount);
+      } else {
+        await expect(page.getByTestId(`${asset.label}-tab`)).not.toBeVisible();
       }
-
-      await test.step(`Validate asset: ${asset.label}`, async () => {
-        await validateBucketsForIndexAndSort(page, asset, doc_count);
-      });
-
-      i++;
-    } while (i < filteredAssets.length);
+    });
   });
 });
