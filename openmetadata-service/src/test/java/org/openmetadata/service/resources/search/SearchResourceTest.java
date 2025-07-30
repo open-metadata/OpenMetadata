@@ -36,6 +36,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -863,12 +866,12 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void testSearchQueryPaginationConsistency() throws IOException {
-    // Create multiple entities to test pagination
-    String pattern = "pagination_test_" + System.currentTimeMillis();
-    // Create 15 tables to ensure we have enough for pagination
+    // Create multiple entities to test pagination - varied score
+    String pattern = "pagination_test";
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 15; i++) {
-      String tableName = pattern + "_table_" + String.format("%02d", i);
+      String minimalUUIDToBreakTies = UUID.randomUUID().toString().substring(0, 8);
+      String tableName = "pagination_test_" + i + "_" + UUID.randomUUID() + minimalUUIDToBreakTies;
       CreateTable createTable =
           tableResourceTest
               .createRequest(tableName)
@@ -929,6 +932,14 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
           Set<String> tablePage1Ids = extractEntityIds(tablePage1);
           Set<String> tablePage2Ids = extractEntityIds(tablePage2);
 
+          Map<String, String> idToNameMap = getIdNameMapFromTables(tables);
+
+          // Helper to format id → name
+          Function<Set<String>, Map<String, String>> extractNames =
+              ids -> ids.stream().collect(Collectors.toMap(id -> id, idToNameMap::get));
+          LOG.info("Pagination Test - Page1 Entities: {}", extractNames.apply(tablePage1Ids));
+          LOG.info("Pagination Test - Page2 Entities: {}", extractNames.apply(tablePage2Ids));
+
           // Ensure no overlap between pages
           Set<String> intersection = new HashSet<>(tablePage1Ids);
           intersection.retainAll(tablePage2Ids);
@@ -940,10 +951,15 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
                     Page 1 entities: %s
                     Page 2 entities: %s""",
                   intersection.size(), tablePage1Ids, tablePage2Ids));
-
           LOG.info(
               "Pagination test - Table total: {}, DataAsset total: {}", tableTotal, dataAssetTotal);
         });
+  }
+
+  // Get names from ids for logging
+  private Map<String, String> getIdNameMapFromTables(List<Table> tables) {
+    return tables.stream()
+        .collect(Collectors.toMap(table -> table.getId().toString(), Table::getName));
   }
 
   // Helper method to extract total hits from search response
