@@ -10,17 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
+
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Card, Radio, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
-import { QualityExpectation } from '../../../generated/api/data/createDataContract';
-import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table as TableType } from '../../../generated/entity/data/table';
 import { TestCase } from '../../../generated/tests/testCase';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { listTestCases, TestCaseType } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -28,16 +27,19 @@ import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
 export const ContractQualityFormTab: React.FC<{
-  onUpdate: (data: Partial<DataContract>) => void;
+  selectedQuality: string[];
+  onUpdate: (data: EntityReference[]) => void;
   onPrev: () => void;
   prevLabel?: string;
-}> = ({ onUpdate, onPrev, prevLabel }) => {
+}> = ({ selectedQuality, onUpdate, onPrev, prevLabel }) => {
   const [testType, setTestType] = useState<'table' | 'column'>('table');
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const { pageSize, handlePagingChange } = usePaging();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(
+    selectedQuality ?? []
+  );
   const { t } = useTranslation();
 
   const columns = useMemo(
@@ -85,34 +87,34 @@ export const ContractQualityFormTab: React.FC<{
       const testCase = allTestCases.find((test) => test.id === id);
 
       return {
-        definition: testCase?.description,
+        description: testCase?.description,
         name: testCase?.name,
-        testCase: { id: testCase?.id, type: EntityType.TEST_CASE },
-      } as QualityExpectation;
+        id: testCase?.id,
+        type: EntityType.TEST_CASE,
+      } as EntityReference;
     });
 
-    onUpdate({
-      qualityExpectations,
-    });
+    onUpdate(qualityExpectations);
   };
 
   return (
     <Card className="container bg-grey p-box">
       <Typography.Title level={5}>{t('label.quality')}</Typography.Title>
       <Typography.Text type="secondary">
-        {t('label.quality-description')}
+        {t('message.quality-contract-description')}
       </Typography.Text>
       <Card>
         <Radio.Group
           value={testType}
           onChange={(e) => setTestType(e.target.value)}>
-          <Radio.Button value="table">Table</Radio.Button>
-          <Radio.Button value="column">Column</Radio.Button>
+          <Radio.Button value="table">{t('label.table')}</Radio.Button>
+          <Radio.Button value="column">{t('label.column')}</Radio.Button>
         </Radio.Group>
         <Table
           columns={columns}
           dataSource={allTestCases}
           loading={isTestsLoading}
+          pagination={false}
           rowKey="id"
           rowSelection={{
             selectedRowKeys: selectedKeys,

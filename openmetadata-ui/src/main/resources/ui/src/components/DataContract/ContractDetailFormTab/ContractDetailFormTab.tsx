@@ -12,6 +12,7 @@
  */
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -40,9 +41,6 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
-      props: {
-        defaultValue: initialValues?.name ?? '',
-      },
     },
     {
       label: t('label.description'),
@@ -84,6 +82,16 @@ export const ContractDetailFormTab: React.FC<{
   const handleSubmit = () => {
     form.submit();
   };
+
+  useEffect(() => {
+    if (initialValues) {
+      form.setFieldsValue({
+        name: initialValues.name,
+        description: initialValues.description,
+        owners: initialValues.owners,
+      });
+    }
+  }, [initialValues]);
 
   return (
     <>

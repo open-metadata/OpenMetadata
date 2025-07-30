@@ -55,8 +55,8 @@ export const createContract = async (contract: CreateDataContract) => {
   return response.data;
 };
 
-export const updateContract = async (contract: DataContract) => {
-  const response = await APIClient.put<DataContract>(
+export const updateContract = async (contract: CreateDataContract) => {
+  const response = await APIClient.put<CreateDataContract>(
     `/dataContracts`,
     contract
   );

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { omit } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EDataContractTab } from '../../../constants/DataContract.constants';
@@ -77,7 +76,21 @@ const AddDataContract: React.FC<{
 
     try {
       await (contract
-        ? updateContract({ ...contract, ...formValues } as DataContract)
+        ? updateContract(
+            omit({ ...contract, ...formValues }, [
+              'id',
+              'name',
+              'fullyQualifiedName',
+              'version',
+              'updatedAt',
+              'updatedBy',
+              'testSuite',
+              'deleted',
+              'changeDescription',
+              'latestResult',
+              'incrementalChangeDescription',
+            ])
+          )
         : createContract({
             ...formValues,
             entity: {
@@ -93,7 +106,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [t, contract, formValues]);
+  }, [contract, formValues]);
 
   const onNext = useCallback(
     async (data: Partial<DataContract>) => {
@@ -101,7 +114,7 @@ const AddDataContract: React.FC<{
 
       setActiveTab((prev) => (Number(prev) + 1).toString());
     },
-    [activeTab, t, handleSave]
+    [activeTab, handleSave]
   );
 
   const onPrev = useCallback(() => {
@@ -120,6 +133,7 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
         children: (
           <ContractDetailFormTab
+            initialValues={formValues}
             nextLabel={t('label.schema')}
             onNext={onNext}
           />
@@ -173,9 +187,12 @@ const AddDataContract: React.FC<{
         children: (
           <ContractQualityFormTab
             prevLabel={t('label.semantic-plural')}
+            selectedQuality={formValues.qualityExpectations?.map(
+              (quality) => quality.id ?? ''
+            )}
             onPrev={onPrev}
-            onUpdate={(partialDataContract) =>
-              setFormValues((prev) => ({ ...prev, ...partialDataContract }))
+            onUpdate={(qualityExpectations) =>
+              setFormValues((prev) => ({ ...prev, qualityExpectations }))
             }
           />
         ),
@@ -227,7 +244,7 @@ const AddDataContract: React.FC<{
         </div>
       </div>
     );
-  }, [mode, t, handleModeChange, onCancel, handleSave, isSubmitting]);
+  }, [mode, handleModeChange, onCancel, handleSave, isSubmitting]);
 
   const cardContent = useMemo(() => {
     if (mode === 'YAML') {
