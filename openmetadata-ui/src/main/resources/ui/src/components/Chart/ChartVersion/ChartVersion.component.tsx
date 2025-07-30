@@ -44,7 +44,7 @@ export interface ChartVersionProp {
   currentVersionData: VersionData;
   isVersionLoading: boolean;
   owners: Chart['owners'];
-  domain: Chart['domain'];
+  domains: Chart['domains'];
   dataProducts: Chart['dataProducts'];
   tier: TagLabel;
   slashedChartName: string[];
@@ -60,7 +60,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedChartName,
@@ -84,9 +84,9 @@ const ChartVersion: FC<ChartVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const handleTabChange = (activeKey: string) => {
@@ -153,7 +153,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -190,7 +190,7 @@ const ChartVersion: FC<ChartVersionProp> = ({
         ),
       },
     ],
-    [description, tags, domain, dataProducts, t]
+    [description, tags, domains, dataProducts, t]
   );
 
   const versionComponent = () => {

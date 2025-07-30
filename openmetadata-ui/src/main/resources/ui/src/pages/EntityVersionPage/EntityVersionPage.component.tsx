@@ -757,7 +757,7 @@ const EntityVersionPage: FunctionComponent = () => {
             currentVersionData={currentVersionData as Chart}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
-            domain={domain}
+            domains={domains}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owners={owners}
