@@ -120,6 +120,7 @@ import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -947,30 +948,35 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
+  @Order(1)
   @Execution(ExecutionMode.CONCURRENT)
-  void test_bulkFollowersVotesFetching(TestInfo test) throws IOException {
-    if (!supportsFieldsQueryParam || (!supportsFollowers && !supportsVotes)) {
-      return;
-    }
-
-    K request = createRequest(test, 0);
+  void test_bulkFollowersVotesFetching_alwaysFirstName(TestInfo test) throws IOException {
+    // Use a name that always lands first alphabetically.
+    // Note: The special character "\!A_" is prefixed to ensure the entity sorts before others.
+    // This allows us to verify ordering without listing all 100 entities.
+    String alwaysFirstName = "!A_AlwaysFirstEntity";
+    K request = createRequest(alwaysFirstName);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
+    // Add a follower if supported.
     if (supportsFollowers) {
       addFollower(entity.getId(), USER1.getId(), OK, ADMIN_AUTH_HEADERS);
     }
 
+    // Vote up the entity if supported.
     if (supportsVotes) {
       VoteRequest voteReq = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
       WebTarget voteTarget = getResource(entity.getId()).path("vote");
       TestUtils.put(voteTarget, voteReq, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     }
 
+    // Bulk fetch of entities with all allowed fields.
     String allFields = getAllowedFields();
     Map<String, String> params = new HashMap<>();
     params.put("fields", allFields);
-
     ResultList<T> bulk = listEntities(params, ADMIN_AUTH_HEADERS);
+
+    // Verify that the created entity is present in the bulk results.
     T bulkEntity =
         bulk.getData().stream()
             .filter(e -> e.getId().equals(entity.getId()))
@@ -978,8 +984,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .orElse(null);
     assertNotNull(bulkEntity);
 
+    // Fetch the individual entity to compare details.
     T individual = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
 
+    // Ensure follower counts match for both bulk and individual fetches.
     if (supportsFollowers) {
       assertNotNull(bulkEntity.getFollowers());
       assertEquals(
@@ -987,12 +995,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           listOrEmpty(bulkEntity.getFollowers()).size());
     }
 
+    // Ensure vote counts match for bulk and individual fetching.
     if (supportsVotes) {
       assertNotNull(bulkEntity.getVotes());
       assertEquals(individual.getVotes().getUpVotes(), bulkEntity.getVotes().getUpVotes());
       assertEquals(individual.getVotes().getDownVotes(), bulkEntity.getVotes().getDownVotes());
     }
 
+    // Clean up the created test entity.
     deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
   }
 
