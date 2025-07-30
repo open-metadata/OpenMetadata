@@ -126,7 +126,7 @@ const SSOConfigurationFormRJSF = () => {
 
       // Ensure boolean fields are always included (only for relevant providers)
       if (authConfig.enableSelfSignup === undefined) {
-        authConfig.enableSelfSignup = false;
+        authConfig.enableSelfSignup = true;
       }
     }
 
