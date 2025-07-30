@@ -957,96 +957,6 @@ export enum ClientType {
 }
 
 /**
- * Semantics rule defined in the data contract.
- */
-export interface SemanticsRule {
-    /**
-     * Description of the semantics rule.
-     */
-    description: string;
-    /**
-     * Indicates if the semantics rule is enabled.
-     */
-    enabled: boolean;
-    /**
-     * Type of the entity to which this semantics rule applies.
-     */
-    entityType?: string;
-    /**
-     * Name of the semantics rule.
-     */
-    name: string;
-    /**
-     * Definition of the semantics rule.
-     */
-    rule: string;
-}
-
-/**
- * Used to set up the Workflow Executor Settings.
- */
-export interface ExecutorConfiguration {
-    /**
-     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
-     */
-    corePoolSize?: number;
-    /**
-     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
-     * jobs that takes too long to run being retried while running.
-     */
-    jobLockTimeInMillis?: number;
-    /**
-     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
-     */
-    maxPoolSize?: number;
-    /**
-     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
-     */
-    queueSize?: number;
-    /**
-     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
-     * more.
-     */
-    tasksDuePerAcquisition?: number;
-}
-
-export interface GlobalSettings {
-    /**
-     * List of global aggregations to include in the search query.
-     */
-    aggregations?: Aggregation[];
-    /**
-     * Flag to enable or disable RBAC Search Configuration globally.
-     */
-    enableAccessControl?: boolean;
-    /**
-     * Optional list of numeric field-based boosts applied globally.
-     */
-    fieldValueBoosts?: FieldValueBoost[];
-    /**
-     * Which fields to highlight by default.
-     */
-    highlightFields?:   string[];
-    maxAggregateSize?:  number;
-    maxAnalyzedOffset?: number;
-    maxResultHits?:     number;
-    /**
-     * List of field=value term-boost rules that apply only to this asset.
-     */
-    termBoosts?: TermBoost[];
-}
-
-/**
- * Used to set up the History CleanUp Settings.
- */
-export interface HistoryCleanUpConfiguration {
-    /**
-     * Cleans the Workflow Task that were finished, after given number of days.
-     */
-    cleanAfterNumberOfDays?: number;
-}
-
-/**
  * LDAP Configuration in case the Provider is LDAP
  *
  * LDAP Configuration
@@ -1515,6 +1425,32 @@ export interface AuthorizerConfiguration {
      * Use Roles from Provider
      */
     useRolesFromProvider?: boolean;
+}
+
+/**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * Name of the semantics rule.
+     */
+    name: string;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
 }
 
 /**
