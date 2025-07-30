@@ -21,7 +21,12 @@ import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
 import './workflow-array-field-template.less';
 
-const WorkflowArrayFieldTemplate = (props: FieldProps) => {
+interface WorkflowArrayFieldTemplateProps extends FieldProps {
+  showCopyButton?: boolean;
+  showFieldTitle?: boolean;
+}
+
+const WorkflowArrayFieldTemplate = (props: WorkflowArrayFieldTemplateProps) => {
   const { t } = useTranslation();
   const isFilterPatternField = (id: string) => {
     return /FilterPattern/.test(id);
@@ -110,12 +115,16 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
     [value, props.onChange]
   );
 
+  const shouldShowCopyButton = props.showCopyButton !== false;
+  const shouldShowFieldTitle =
+    props.showFieldTitle !== undefined
+      ? props.showFieldTitle
+      : props.schema.uniqueItems !== true;
+
   return (
     <Row>
       <Col span={24}>
-        {/* Display field title only if uniqueItems is not true to remove duplicate title set
-         automatically due to an unknown behavior */}
-        {props.schema.uniqueItems !== true && (
+        {shouldShowFieldTitle && (
           <Typography>{startCase(props.name)}</Typography>
         )}
       </Col>
@@ -149,22 +158,27 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           }}
         />
 
-        <div className="workflow-array-field-divider" />
-        <Tooltip
-          overlayClassName="custom-tooltip"
-          placement="top"
-          title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
-          <Button
-            className="workflow-array-field-copy-button remove-button-default-styling"
-            icon={<CopyLeft height={20} />}
-            size="small"
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy(e);
-            }}
-          />
-        </Tooltip>
+        {shouldShowCopyButton && (
+          <>
+            <div className="workflow-array-field-divider" />
+
+            <Tooltip
+              overlayClassName="custom-tooltip"
+              placement="top"
+              title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
+              <Button
+                className="workflow-array-field-copy-button remove-button-default-styling"
+                icon={<CopyLeft height={20} />}
+                size="small"
+                type="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopy(e);
+                }}
+              />
+            </Tooltip>
+          </>
+        )}
       </Col>
     </Row>
   );

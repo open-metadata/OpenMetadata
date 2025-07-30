@@ -228,9 +228,9 @@ const AccessTokenCard: FC<MockProps> = ({
     if (isAuthMechanismEdit || (isSCIMBot && !hasJWTToken)) {
       return (
         <AuthMechanismForm
-          isSCIMBot
           authenticationMechanism={authenticationMechanismData}
           isBot={isBot}
+          isSCIMBot={isSCIMBot}
           isUpdating={isUpdating}
           onCancel={() => setIsAuthMechanismEdit(false)}
           onSave={onSave}
@@ -241,9 +241,9 @@ const AccessTokenCard: FC<MockProps> = ({
     return (
       <AuthMechanism
         hasPermission
-        isSCIMBot
         authenticationMechanism={authenticationMechanismData}
         isBot={isBot}
+        isSCIMBot={isSCIMBot}
         onEdit={handleAuthMechanismEdit}
         onTokenRevoke={disabled ? noop : () => setIsModalOpen(true)}
       />
