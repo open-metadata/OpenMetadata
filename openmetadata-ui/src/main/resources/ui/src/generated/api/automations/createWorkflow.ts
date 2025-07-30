@@ -658,8 +658,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -1124,6 +1125,8 @@ export interface ConfigClass {
     /**
      * Client ID for DOMO
      *
+     * Azure Application (client) ID for service principal authentication.
+     *
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -1247,6 +1250,22 @@ export interface ConfigClass {
      */
     verifySSL?: boolean | VerifySSL;
     /**
+     * Azure Application client secret for service principal authentication.
+     *
+     * User's Client Secret.
+     *
+     * clientSecret for PowerBI.
+     *
+     * clientSecret for Sigma.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Tenant ID for PowerBI.
+     */
+    tenantId?: string;
+    /**
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
@@ -1258,14 +1277,6 @@ export interface ConfigClass {
      * Regex exclude or include charts that matches the pattern.
      */
     chartFilterPattern?: FilterPattern;
-    /**
-     * User's Client Secret.
-     *
-     * clientSecret for PowerBI.
-     *
-     * clientSecret for Sigma.
-     */
-    clientSecret?: string;
     /**
      * Regex to exclude or include dashboards that matches the pattern.
      */
@@ -1303,10 +1314,6 @@ export interface ConfigClass {
      * PowerBI secrets.
      */
     scope?: string[];
-    /**
-     * Tenant ID for PowerBI.
-     */
-    tenantId?: string;
     /**
      * Fetch the PowerBI metadata using admin APIs
      */
@@ -2206,6 +2213,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**

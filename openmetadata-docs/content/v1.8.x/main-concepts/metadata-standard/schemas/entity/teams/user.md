@@ -1,5 +1,6 @@
 ---
 title: User | OpenMetadata User API and Profiles
+description: Capture user metadata including roles, team associations, and activity for access and analytics.
 slug: /main-concepts/metadata-standard/schemas/entity/teams/user
 ---
 

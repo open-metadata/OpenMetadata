@@ -44,17 +44,12 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
-import { getEmptyJsonTree } from '../../../../../../utils/AdvancedSearchUtils';
-import {
-  elasticSearchFormat,
-  elasticSearchFormatForJSONLogic,
-} from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
+import { getEmptyJsonTreeForQueryBuilder } from '../../../../../../utils/AdvancedSearchUtils';
+import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
-  elasticsearchToJsonLogic,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
-  jsonLogicToElasticsearch,
   READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
@@ -165,20 +160,11 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
       onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
-      const outputEs = elasticSearchFormatForJSONLogic(nTree, config);
-      if (outputEs) {
-        const qFilter = {
-          query: outputEs,
-        };
-        try {
-          const jsonLogicData = elasticsearchToJsonLogic(qFilter.query);
-          onChange(JSON.stringify(jsonLogicData ?? ''));
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.log(e);
-        }
-      } else {
-        onChange(''); // Set empty string if outputEs is null, this happens when removing all the filters
+      try {
+        const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
+        onChange(JSON.stringify(jsonLogic.logic ?? ''));
+      } catch {
+        onChange('');
       }
     }
   };
@@ -202,40 +188,28 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        try {
-          const query = jsonLogicToElasticsearch(parsedValue, config.fields);
-          const updatedQ = {
-            query: query,
-          };
-          const parsedTree = getJsonTreeFromQueryFilter(
-            updatedQ,
-            config.fields
-          );
-
-          if (Object.keys(parsedTree).length > 0) {
-            const tree1 = QbUtils.Validation.sanitizeTree(
-              QbUtils.loadTree(parsedTree),
-              config
-            ).fixedTree;
-            if (tree1) {
-              onTreeUpdate(tree1, config);
-            }
-          }
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.log(e);
+        const tree = QbUtils.loadFromJsonLogic(parsedValue, config);
+        if (tree) {
+          const validatedTree = QbUtils.Validation.sanitizeTree(
+            tree,
+            config
+          ).fixedTree;
+          onTreeUpdate(validatedTree, config);
         }
       }
     } else {
-      const emptyJsonTree = getEmptyJsonTree(
+      const emptyJsonTree = getEmptyJsonTreeForQueryBuilder(
         outputType === SearchOutputType.JSONLogic
           ? EntityReferenceFields.OWNERS
           : EntityFields.OWNERS
       );
-      onTreeUpdate(
-        QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+
+      const tree = QbUtils.Validation.sanitizeTree(
+        QbUtils.loadTree(emptyJsonTree),
         config
-      );
+      ).fixedTree;
+
+      onTreeUpdate(tree, config);
     }
     setInitDone(true);
   }, [config, value, outputType]);
@@ -283,6 +257,9 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
               settings={{
                 ...config.settings,
                 ...(props.readonly ? READONLY_SETTINGS : {}),
+                removeEmptyGroupsOnLoad: false,
+                removeEmptyRulesOnLoad: false,
+                shouldCreateEmptyGroup: true,
               }}
               value={treeInternal}
               onChange={handleChange}
@@ -338,5 +315,4 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
 export default withAdvanceSearch(QueryBuilderWidget, {
   isExplorePage: false,
-  fieldOverrides: [{ field: 'extension', type: '!struct' }],
 });
