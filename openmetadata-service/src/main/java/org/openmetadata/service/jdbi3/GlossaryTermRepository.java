@@ -233,8 +233,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
     if (!update || entity.getStatus() == null) {
-      // Set default status to DRAFT for new terms - workflow will handle approval logic
-      entity.setStatus(Status.DRAFT);
+      // If parentTerm or glossary has reviewers set, the glossary term can only be created in
+      // `Draft` mode
+      entity.setStatus(!nullOrEmpty(parentReviewers) ? Status.DRAFT : Status.APPROVED);
     }
     if (!update) {
       checkDuplicateTerms(entity);

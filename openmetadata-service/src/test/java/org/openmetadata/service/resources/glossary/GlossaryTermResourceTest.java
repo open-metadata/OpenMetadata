@@ -377,7 +377,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void test_GlossaryTermApprovalWorkflow(TestInfo test) throws IOException, InterruptedException {
+  void test_GlossaryTermApprovalWorkflow(TestInfo test) throws IOException {
     //
     // glossary1 create without reviewers is created with Approved status
     //
@@ -385,13 +385,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         glossaryTest.createRequest(getEntityName(test, 1)).withReviewers(null);
     Glossary glossary1 = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
-    // Term always starts with 'DRAFT'
+    // term g1t1 under glossary1 is created in Approved mode without reviewers
     GlossaryTerm g1t1 = createTerm(glossary1, null, "g1t1");
-    assertEquals(Status.DRAFT, g1t1.getStatus());
-
-    // AFTER THE WORKFLOW, THE TERM IS MOVED TO 'APPROVED'
-    java.lang.Thread.sleep(5000L);
-    g1t1 = getEntity(g1t1.getId(), authHeaders(USER1.getName()));
     assertEquals(Status.APPROVED, g1t1.getStatus());
 
     //
@@ -546,12 +541,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         approvalTask1.getTask().getAssignees().stream()
             .anyMatch(assignee -> assignee.getId().equals(DATA_CONSUMER_REF.getId())),
         "The list of assignees does not contain the expected ID: " + DATA_CONSUMER_REF.getId());
-
-    // Resolve the task to complete the workflow and prevent EntityNotFoundException
-    taskTest.resolveTask(
-        approvalTask1.getTask().getId(),
-        new ResolveTask().withNewValue("Approved"),
-        authHeaders(USER1.getName()));
   }
 
   @Test
@@ -905,8 +894,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  public void test_buildGlossaryTermNestedHierarchy(TestInfo test)
-      throws HttpResponseException, InterruptedException {
+  public void test_buildGlossaryTermNestedHierarchy(TestInfo test) throws HttpResponseException {
     // Gives Nested Hierarchy for exact match of user input term
     CreateGlossaryTerm create =
         createRequest("parentGlossaryTerm", "", "", null)
@@ -923,7 +911,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withSynonyms(null)
             .withParent(parentGlossaryTerm.getFullyQualifiedName());
     GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
-    java.lang.Thread.sleep(10000L); // Wait for the glossary term to be APPROVED
     String response =
         getResponseFormSearchWithHierarchy("glossary_term_search_index", "*childGlossaryTerm*");
     List<EntityHierarchy> glossaries = JsonUtils.readObjects(response, EntityHierarchy.class);
@@ -975,7 +962,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void get_glossaryTermsWithPagination_200(TestInfo test) throws IOException, InterruptedException {
+  void get_glossaryTermsWithPagination_200(TestInfo test) throws IOException {
     // get Pagination results for same name entities
     boolean supportsSoftDelete = true;
     int numEntities = 5;
@@ -1006,9 +993,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                 .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
                 .withReviewers(glossary.getReviewers()),
             ADMIN_AUTH_HEADERS);
-    java.lang.Thread.sleep(10000L); // Wait for the glossary term to be APPROVED
-    GlossaryTerm glossaryTerm = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
-    deleteAndCheckEntity(glossaryTerm, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
     Predicate<GlossaryTerm> matchDeleted = e -> e.getId().equals(entity.getId());
 
@@ -1106,7 +1091,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         for (GlossaryTerm toBeDeleted : allEntities.getData()) {
           if (createdUUIDs.contains(toBeDeleted.getId())
               && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
-            deleteEntity(toBeDeleted.getId(), ADMIN_AUTH_HEADERS);
+            deleteAndCheckEntity(toBeDeleted, ADMIN_AUTH_HEADERS);
           }
         }
       }
@@ -1361,9 +1346,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   public GlossaryTerm moveGlossaryTerm(
       EntityReference newGlossary, EntityReference newParent, GlossaryTerm term)
-      throws IOException, InterruptedException {
-    // Get the updated instance of the term, the term might be updated by governance-bot
-    term = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+      throws IOException {
     EntityReference oldGlossary = term.getGlossary();
     EntityReference oldParent = term.getParent();
     String json = JsonUtils.pojoToJson(term);
@@ -1399,24 +1382,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     term.setFullyQualifiedName(FullyQualifiedName.add(parentFQN, term.getName()));
     term.setParent(newParent);
     term.setGlossary(newGlossary);
-
-    // Apply the patch - since workflow runs asynchronously, we'll validate basic functionality
-    // and let the workflow complete its process without strict change description validation
-    term = patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
-
-    // Wait for workflow to complete
-    java.lang.Thread.sleep(5000L); // Wait for the workflow to complete
-    term = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
-
-    // Validate that the core move operation worked correctly (regardless of workflow changes)
-    assertEquals(newGlossary.getId(), term.getGlossary().getId(), "Glossary should be updated");
-    if (newParent == null) {
-      assertNull(term.getParent(), "Parent should be null");
-    } else {
-      assertEquals(newParent.getId(), term.getParent().getId(), "Parent should be updated");
-    }
-    String expectedFqn = FullyQualifiedName.add(parentFQN, term.getName());
-    assertEquals(expectedFqn, term.getFullyQualifiedName(), "FQN should be updated correctly");
+    term = patchEntityAndCheck(term, json, ADMIN_AUTH_HEADERS, update, change);
     assertChildrenFqnChanged(term);
     return term;
   }
@@ -2195,12 +2161,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Create the term as admin (who is NOT a reviewer of the term)
     GlossaryTerm createdTerm = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-
-    // Verify: The term should be in DRAFT status initially
-    assertEquals(
-        Status.DRAFT,
-        createdTerm.getStatus(),
-        "Term created by non-reviewer should be in DRAFT status initially");
 
     // Verify: Workflow task should be created and term should move to IN_REVIEW
     waitForTaskToBeCreated(createdTerm.getFullyQualifiedName(), 30000L);
