@@ -8,10 +8,13 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
 @Slf4j
 public class MigrationUtil {
@@ -29,6 +32,45 @@ public class MigrationUtil {
 
   public MigrationUtil(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
+  }
+
+  /**
+   * Update workflow definitions with fresh data from seed files instead of database.
+   * This ensures new nodes and edges are properly applied during migration.
+   */
+  public static void updateWorkflowDefinitionsFromSeedData() {
+    try {
+      LOG.info("Starting v190 workflow definition migration from seed data");
+
+      WorkflowDefinitionRepository workflowDefinitionRepository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+
+      // Get fresh workflow definitions from seed data files instead of database
+      List<WorkflowDefinition> freshWorkflowDefinitions =
+          workflowDefinitionRepository.getEntitiesFromSeedData();
+
+      for (WorkflowDefinition workflowDefinition : freshWorkflowDefinitions) {
+        try {
+          LOG.info(
+              "Updating workflow definition '{}' with fresh seed data",
+              workflowDefinition.getName());
+          // Force update with fresh definition from seed data
+          workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, "admin");
+
+          LOG.info("Successfully updated workflow definition '{}'", workflowDefinition.getName());
+        } catch (Exception ex) {
+          LOG.error(
+              "Error updating workflow definition '{}': {}",
+              workflowDefinition.getName(),
+              ex.getMessage());
+          LOG.warn(ex.toString());
+        }
+      }
+      LOG.info("Completed v190 workflow definition migration from seed data");
+    } catch (Exception ex) {
+      LOG.error("Fatal error during v190 workflow definition migration: {}", ex.getMessage(), ex);
+      throw new RuntimeException("Failed to update workflow definitions from seed data", ex);
+    }
   }
 
   /**
