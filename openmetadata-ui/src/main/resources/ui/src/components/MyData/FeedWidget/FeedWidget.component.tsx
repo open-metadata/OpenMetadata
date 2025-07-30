@@ -152,6 +152,7 @@ const MyFeedWidgetInternal = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<ActivityFeedIcon height={22} width={22} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedFilter}
           sortOptions={FEED_WIDGET_FILTER_OPTIONS}
           title={t('label.activity-feed')}

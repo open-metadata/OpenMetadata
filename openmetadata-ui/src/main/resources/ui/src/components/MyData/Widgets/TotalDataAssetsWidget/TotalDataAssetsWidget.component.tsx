@@ -322,6 +322,7 @@ const TotalDataAssetsWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<TotalAssetsWidgetIcon height={24} width={24} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.DATA_INSIGHT}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
           title={t('label.data-insight-total-entity-summary')}
