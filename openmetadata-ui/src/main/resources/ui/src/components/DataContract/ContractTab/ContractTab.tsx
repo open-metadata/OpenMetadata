@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
   deleteContractById,
@@ -31,7 +32,9 @@ export const ContractTab = () => {
   const [contract, setContract] = useState<DataContract | null>(null);
 
   const fetchContract = async () => {
-    const contract = await getContractByEntityId(id);
+    const contract = await getContractByEntityId(id, EntityType.TABLE, [
+      TabSpecificField.OWNERS,
+    ]);
     setContract(contract);
   };
 

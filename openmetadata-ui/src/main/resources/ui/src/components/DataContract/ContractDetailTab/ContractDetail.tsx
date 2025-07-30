@@ -395,173 +395,181 @@ const ContractDetail: React.FC<{
           {/* Contract Status Card */}
 
           <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <ExpandableCard
-                cardProps={{
-                  title: (
-                    <div>
-                      <Title level={5}>{t('label.contract-status')}</Title>
-                      <Typography.Text type="secondary">
-                        {t('message.contract-status-description')}
-                      </Typography.Text>
-                    </div>
-                  ),
-                }}>
-                {isLoading ? (
-                  <Loading />
-                ) : (
-                  constraintStatus.map((item) => (
-                    <div
-                      className="contract-status-card-item d-flex justify-between items-center"
-                      key={item.label}>
-                      <div className="d-flex items-center">
-                        <Icon
-                          className="contract-status-card-icon"
-                          component={item.icon}
-                          data-testid={`${item.label}-icon`}
-                        />
-
-                        <div className="d-flex flex-column m-l-md">
-                          <Text className="contract-status-card-label">
-                            {item.label}
-                          </Text>
-                          <div>
-                            <Text className="contract-status-card-desc">
-                              {item.desc}
-                            </Text>
-                            <Text className="contract-status-card-time">
-                              {item.time}
-                            </Text>
-                          </div>
-                        </div>
+            {contract?.latestResult?.resultId && (
+              <Col span={24}>
+                <ExpandableCard
+                  cardProps={{
+                    title: (
+                      <div>
+                        <Title level={5}>{t('label.contract-status')}</Title>
+                        <Typography.Text type="secondary">
+                          {t('message.contract-status-description')}
+                        </Typography.Text>
                       </div>
+                    ),
+                  }}>
+                  {isLoading ? (
+                    <Loading />
+                  ) : (
+                    constraintStatus.map((item) => (
+                      <div
+                        className="contract-status-card-item d-flex justify-between items-center"
+                        key={item.label}>
+                        <div className="d-flex items-center">
+                          <Icon
+                            className="contract-status-card-icon"
+                            component={item.icon}
+                            data-testid={`${item.label}-icon`}
+                          />
 
-                      <StatusBadgeV2
-                        label={item.status}
-                        status={getStatusType(item.status)}
-                      />
-                    </div>
-                  ))
-                )}
-              </ExpandableCard>
-            </Col>
-
-            {/* Semantics Card */}
-            <Col span={24}>
-              <ExpandableCard
-                cardProps={{
-                  title: (
-                    <div>
-                      <Title level={5}>{t('label.semantic-plural')}</Title>
-                      <Typography.Text type="secondary">
-                        {t('message.semantics-description')}
-                      </Typography.Text>
-                    </div>
-                  ),
-                }}>
-                <Text className="card-subtitle">
-                  {t('label.custom-integrity-rules')}
-                </Text>
-                {(contract?.semantics ?? []).map((item) => (
-                  <div className="rule-item">
-                    <Icon className="rule-icon" component={CheckIcon} />
-                    <span className="rule-name">{item.name}</span>{' '}
-                    <span className="rule-description">{item.description}</span>
-                  </div>
-                ))}
-              </ExpandableCard>
-            </Col>
-
-            {/* Quality Card */}
-            <Col span={24}>
-              <ExpandableCard
-                cardProps={{
-                  title: (
-                    <div>
-                      <Title level={5}>{t('label.quality')}</Title>,
-                      <Typography.Text type="secondary">
-                        {t('message.data-quality-test-contract-title')}
-                      </Typography.Text>
-                    </div>
-                  ),
-                }}>
-                {isTestCaseLoading ? (
-                  <Loading />
-                ) : (
-                  <Row gutter={[0, 8]}>
-                    <Col span={24}>
-                      <Row
-                        align="middle"
-                        className="border border-radius-card p-md"
-                        gutter={8}>
-                        {testCaseSummaryChartItems.map((item) => (
-                          <Col key={item.label} span={6}>
-                            <Row
-                              className="items-center"
-                              gutter={16}
-                              key={item.label}>
-                              <Col span={24}>
-                                <Text>{item.label}</Text>
-                              </Col>
-
-                              <Col span={24}>
-                                <PieChart height={120} width={120}>
-                                  <Pie
-                                    cx="50%"
-                                    cy="50%"
-                                    data={item.chartData}
-                                    dataKey="value"
-                                    innerRadius={45}
-                                    outerRadius={60}
-                                    paddingAngle={2}>
-                                    {item.chartData.map((entry, index) => (
-                                      <Cell
-                                        fill={entry.color}
-                                        key={`cell-${index}`}
-                                      />
-                                    ))}
-                                  </Pie>
-                                  <text
-                                    className="chart-center-text"
-                                    dominantBaseline="middle"
-                                    textAnchor="middle"
-                                    x="50%"
-                                    y="50%">
-                                    {item.value}
-                                  </text>
-                                </PieChart>
-                              </Col>
-                            </Row>
-                          </Col>
-                        ))}
-                      </Row>
-                    </Col>
-                    <Col span={24} style={{ marginTop: 8 }}>
-                      <Space direction="vertical">
-                        {testCaseResult.map((item) => (
-                          <div
-                            className="data-quality-item d-flex items-center"
-                            key={item.id}>
-                            <StatusBadgeV2
-                              label=""
-                              status={StatusType.Success}
-                            />
-                            <div className="data-quality-item-content">
-                              <Typography.Text className="data-quality-item-name">
-                                {item.name}
-                              </Typography.Text>
-                              <Text className="data-quality-item-description">
-                                {item.description}
+                          <div className="d-flex flex-column m-l-md">
+                            <Text className="contract-status-card-label">
+                              {item.label}
+                            </Text>
+                            <div>
+                              <Text className="contract-status-card-desc">
+                                {item.desc}
+                              </Text>
+                              <Text className="contract-status-card-time">
+                                {item.time}
                               </Text>
                             </div>
                           </div>
-                        ))}
-                      </Space>
-                    </Col>
-                  </Row>
-                )}
-              </ExpandableCard>
-            </Col>
+                        </div>
+
+                        <StatusBadgeV2
+                          label={item.status}
+                          status={getStatusType(item.status)}
+                        />
+                      </div>
+                    ))
+                  )}
+                </ExpandableCard>
+              </Col>
+            )}
+
+            {/* Semantics Card */}
+            {contract?.semantics && contract?.semantics.length > 0 && (
+              <Col span={24}>
+                <ExpandableCard
+                  cardProps={{
+                    title: (
+                      <div>
+                        <Title level={5}>{t('label.semantic-plural')}</Title>
+                        <Typography.Text type="secondary">
+                          {t('message.semantics-description')}
+                        </Typography.Text>
+                      </div>
+                    ),
+                  }}>
+                  <Text className="card-subtitle">
+                    {t('label.custom-integrity-rules')}
+                  </Text>
+                  {(contract?.semantics ?? []).map((item) => (
+                    <div className="rule-item">
+                      <Icon className="rule-icon" component={CheckIcon} />
+                      <span className="rule-name">{item.name}</span>{' '}
+                      <span className="rule-description">
+                        {item.description}
+                      </span>
+                    </div>
+                  ))}
+                </ExpandableCard>
+              </Col>
+            )}
+
+            {/* Quality Card */}
+            {contract?.testSuite?.id && (
+              <Col span={24}>
+                <ExpandableCard
+                  cardProps={{
+                    title: (
+                      <div>
+                        <Title level={5}>{t('label.quality')}</Title>
+                        <Typography.Text type="secondary">
+                          {t('message.data-quality-test-contract-title')}
+                        </Typography.Text>
+                      </div>
+                    ),
+                  }}>
+                  {isTestCaseLoading ? (
+                    <Loading />
+                  ) : (
+                    <Row gutter={[0, 8]}>
+                      <Col span={24}>
+                        <Row
+                          align="middle"
+                          className="border border-radius-card p-md"
+                          gutter={8}>
+                          {testCaseSummaryChartItems.map((item) => (
+                            <Col key={item.label} span={6}>
+                              <Row
+                                className="items-center"
+                                gutter={16}
+                                key={item.label}>
+                                <Col span={24}>
+                                  <Text>{item.label}</Text>
+                                </Col>
+
+                                <Col span={24}>
+                                  <PieChart height={120} width={120}>
+                                    <Pie
+                                      cx="50%"
+                                      cy="50%"
+                                      data={item.chartData}
+                                      dataKey="value"
+                                      innerRadius={45}
+                                      outerRadius={60}
+                                      paddingAngle={2}>
+                                      {item.chartData.map((entry, index) => (
+                                        <Cell
+                                          fill={entry.color}
+                                          key={`cell-${index}`}
+                                        />
+                                      ))}
+                                    </Pie>
+                                    <text
+                                      className="chart-center-text"
+                                      dominantBaseline="middle"
+                                      textAnchor="middle"
+                                      x="50%"
+                                      y="50%">
+                                      {item.value}
+                                    </text>
+                                  </PieChart>
+                                </Col>
+                              </Row>
+                            </Col>
+                          ))}
+                        </Row>
+                      </Col>
+                      <Col span={24} style={{ marginTop: 8 }}>
+                        <Space direction="vertical">
+                          {testCaseResult.map((item) => (
+                            <div
+                              className="data-quality-item d-flex items-center"
+                              key={item.id}>
+                              <StatusBadgeV2
+                                label=""
+                                status={StatusType.Success}
+                              />
+                              <div className="data-quality-item-content">
+                                <Typography.Text className="data-quality-item-name">
+                                  {item.name}
+                                </Typography.Text>
+                                <Text className="data-quality-item-description">
+                                  {item.description}
+                                </Text>
+                              </div>
+                            </div>
+                          ))}
+                        </Space>
+                      </Col>
+                    </Row>
+                  )}
+                </ExpandableCard>
+              </Col>
+            )}
           </Row>
         </Col>
       </Row>
