@@ -61,7 +61,9 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
+)
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
