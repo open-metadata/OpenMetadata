@@ -140,26 +140,43 @@ const MyFeedWidgetInternal = ({
     isFullSizeWidget,
   ]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<ActivityFeedIcon height={22} width={22} />}
+        isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.EXPLORE}
+        selectedSortBy={selectedFilter}
+        sortOptions={FEED_WIDGET_FILTER_OPTIONS}
+        title={t('label.activity-feed')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleFilterChange(key)}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleFilterChange,
+    ]
+  );
+
   return (
     <WidgetWrapper
       data-testid="feed-widget"
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      header={widgetHeader}
       loading={loading}>
       <div className="feed-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon height={22} width={22} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedFilter}
-          sortOptions={FEED_WIDGET_FILTER_OPTIONS}
-          title={t('label.activity-feed')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange(key)}
-        />
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter

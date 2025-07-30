@@ -356,8 +356,8 @@ const CuratedAssetsWidget = ({
     [data, noDataState, entityListData]
   );
 
-  const widgetContent = (
-    <div className="curated-assets-widget-container">
+  const widgetHeader = useMemo(
+    () => (
       <WidgetHeader
         currentLayout={currentLayout}
         disableEdit={isEmpty(curatedAssetsConfig)}
@@ -392,6 +392,27 @@ const CuratedAssetsWidget = ({
         onEditClick={handleModalOpen}
         onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
       />
+    ),
+    [
+      currentLayout,
+      curatedAssetsConfig,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      sourceIcon,
+      title,
+      isEditView,
+      selectedSortBy,
+      isFullSize,
+      t,
+      widgetKey,
+      curatedAssetsWidth,
+      handleModalOpen,
+      handleSortByClick,
+    ]
+  );
+
+  const widgetContent = (
+    <div className="curated-assets-widget-container">
       <div className="widget-content flex-1">
         {isEditView && isEmpty(data) && isEmpty(selectedResource)
           ? emptyState
@@ -412,6 +433,7 @@ const CuratedAssetsWidget = ({
     <>
       <WidgetWrapper
         dataLength={data.length !== 0 ? data.length : 10}
+        header={widgetHeader}
         loading={isLoading}>
         {widgetContent}
       </WidgetWrapper>

@@ -150,32 +150,22 @@ const DataAssetsWidget = ({
     [services, loading]
   );
 
-  const widgetContent = useMemo(
+  const widgetHeader = useMemo(
     () => (
-      <div className="data-assets-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<DataAssetIcon height={24} width={24} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
-          title={t('label.data-asset-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={handleSortByClick}
-        />
-        <div className="widget-content flex-1">
-          {isEmpty(services) ? emptyState : dataAssetsContent}
-          <WidgetFooter
-            moreButtonLink={ROUTES.EXPLORE}
-            moreButtonText={t('label.view-more')}
-            showMoreButton={showWidgetFooterMoreButton}
-          />
-        </div>
-      </div>
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<DataAssetIcon height={24} width={24} />}
+        isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.EXPLORE}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        title={t('label.data-asset-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={handleSortByClick}
+      />
     ),
     [
       currentLayout,
@@ -186,15 +176,30 @@ const DataAssetsWidget = ({
       widgetKey,
       widgetData?.w,
       selectedSortBy,
-      emptyState,
-      dataAssetsContent,
-      services,
+      handleSortByClick,
     ]
+  );
+
+  const widgetContent = useMemo(
+    () => (
+      <div className="data-assets-widget-container">
+        <div className="widget-content flex-1">
+          {isEmpty(services) ? emptyState : dataAssetsContent}
+          <WidgetFooter
+            moreButtonLink={ROUTES.EXPLORE}
+            moreButtonText={t('label.view-more')}
+            showMoreButton={showWidgetFooterMoreButton}
+          />
+        </div>
+      </div>
+    ),
+    [emptyState, dataAssetsContent, services, showWidgetFooterMoreButton, t]
   );
 
   return (
     <WidgetWrapper
       dataLength={services.length !== 0 ? services.length : 10}
+      header={widgetHeader}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

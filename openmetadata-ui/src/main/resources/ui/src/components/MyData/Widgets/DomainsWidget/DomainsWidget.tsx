@@ -214,29 +214,40 @@ const DomainsWidget = ({
     [t, domains.length, loading]
   );
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={
+          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+        }
+        isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.DOMAIN}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DOMAIN_SORT_BY_OPTIONS}
+        title={t('label.domain-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={2}
+        onSortChange={handleSortByClick}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedSortBy,
+      t,
+      widgetKey,
+      handleSortByClick,
+    ]
+  );
+
   return (
-    <WidgetWrapper dataLength={10} loading={loading}>
+    <WidgetWrapper dataLength={10} header={widgetHeader} loading={loading}>
       <div className="domains-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={
-            <DomainIcon
-              className="domains-widget-globe"
-              height={22}
-              width={22}
-            />
-          }
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.DOMAIN}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DOMAIN_SORT_BY_OPTIONS}
-          title={t('label.domain-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={2}
-          onSortChange={handleSortByClick}
-        />
         <div className="widget-content flex-1">
           {error ? (
             <ErrorPlaceHolder

@@ -40,6 +40,7 @@ const WidgetSortFilter = ({
   const handleSortByClick = (e: MenuInfo) => {
     if (!isEditView) {
       onSortChange(e);
+      setIsOpen(false);
     }
   };
 

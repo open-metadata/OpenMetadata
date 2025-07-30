@@ -34,21 +34,19 @@
     overflow: hidden;
   }
 
-  .entity-list-body {
+  .entity-list-body,
+  .cards-scroll-container {
     flex: 1;
     padding: @size-mlg @size-mlg @size-xxs @size-mlg;
     margin: 0;
     overflow-y: auto;
     min-height: 0;
   }
-}
 
-.widget-footer {
-  flex-shrink: 0;
-  width: 100%;
-  background-color: @white;
-  border-bottom-right-radius: @size-sm;
-  border-bottom-left-radius: @size-sm;
+  .widget-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+  }
 }
 
 .cards-scroll-container {

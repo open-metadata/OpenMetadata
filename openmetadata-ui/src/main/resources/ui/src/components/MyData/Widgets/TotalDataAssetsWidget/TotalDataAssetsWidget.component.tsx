@@ -310,26 +310,43 @@ const TotalDataAssetsWidget = ({
     }
   }, [graphData]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        className="items-center"
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<TotalAssetsWidgetIcon height={24} width={24} />}
+        isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.DATA_INSIGHT}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        title={t('label.data-insight-total-entity-summary')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => setSelectedSortBy(key)}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedSortBy,
+      t,
+      widgetKey,
+      widgetData?.w,
+      setSelectedSortBy,
+    ]
+  );
+
   return (
     <WidgetWrapper
       dataLength={graphData.length > 0 ? graphData.length : 10}
+      header={widgetHeader}
       loading={isLoading}>
       <div className="total-data-assets-widget-container">
-        <WidgetHeader
-          className="items-center"
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<TotalAssetsWidgetIcon height={24} width={24} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.DATA_INSIGHT}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
-          title={t('label.data-insight-total-entity-summary')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => setSelectedSortBy(key)}
-        />
         <div className="widget-content flex-1 h-full">
           {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
         </div>

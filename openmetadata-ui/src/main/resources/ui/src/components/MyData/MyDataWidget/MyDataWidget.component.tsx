@@ -272,23 +272,39 @@ const MyDataWidgetInternal = ({
     [data, isLoading]
   );
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<MyDataIcon height={24} width={24} />}
+        isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.EXPLORE}
+        selectedSortBy={selectedFilter}
+        sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
+        title={t('label.my-data')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleFilterChange({ key })}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleFilterChange,
+    ]
+  );
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<MyDataIcon height={24} width={24} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedFilter}
-          sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
-          title={t('label.my-data')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(data) ? emptyState : myDataContent}
           <WidgetFooter
@@ -306,20 +322,18 @@ const MyDataWidgetInternal = ({
     );
   }, [
     data,
-    isLoading,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    emptyState,
+    myDataContent,
+    currentUser?.name,
     showMoreCount,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
       dataLength={data.length > 0 ? data.length : 10}
+      header={widgetHeader}
       loading={isLoading}>
       {widgetContent}
     </WidgetWrapper>

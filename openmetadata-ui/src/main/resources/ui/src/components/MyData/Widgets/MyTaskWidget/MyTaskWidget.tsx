@@ -88,9 +88,8 @@ const MyTaskWidget = ({
     [entityThread, loading]
   );
 
-  const widgetContent = (
-    <div className="my-task-widget-container">
-      {/* Widget Header */}
+  const widgetHeader = useMemo(
+    () => (
       <WidgetHeader
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
@@ -107,7 +106,23 @@ const MyTaskWidget = ({
         widgetWidth={myTaskData?.w}
         onSortChange={(key) => handleSortByClick(key as MyTaskFilter)}
       />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      currentUser?.name,
+      selectedFilter,
+      t,
+      widgetKey,
+      myTaskData?.w,
+      handleSortByClick,
+    ]
+  );
 
+  const widgetContent = (
+    <div className="my-task-widget-container">
       {/* Widget Content */}
       <div className="widget-content flex-1">
         {isEmpty(entityThread) ? (
@@ -156,6 +171,7 @@ const MyTaskWidget = ({
   return (
     <WidgetWrapper
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      header={widgetHeader}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

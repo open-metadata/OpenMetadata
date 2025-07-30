@@ -255,25 +255,41 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<FollowingAssetsIcon height={22} width={22} />}
+        isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.EXPLORE}
+        selectedSortBy={selectedEntityFilter}
+        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        title={t('label.following-assets')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleEntityFilterChange({ key })}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedEntityFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleEntityFilterChange,
+    ]
+  );
+
   const WidgetContent = useMemo(() => {
     return (
       <div
         className="following-widget-container"
         data-testId="following-widget">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<FollowingAssetsIcon height={22} width={22} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedEntityFilter}
-          sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
-          title={t('label.following-assets')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleEntityFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter
@@ -292,21 +308,17 @@ function FollowingWidget({
   }, [
     followedData,
     emptyState,
-    isExpanded,
-    isLoadingOwnedData,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    followingContent,
+    currentUser?.name,
     showMoreCount,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
       dataLength={followedData.length !== 0 ? followedData.length : 10}
+      header={widgetHeader}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>
