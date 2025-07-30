@@ -108,6 +108,24 @@ export const PersonaDetailsPage = () => {
     }
   }, [fqn]);
 
+  //   Add #customize-ui to URL if # doesn't exist
+  useEffect(() => {
+    if (location.hash) {
+      return;
+    }
+
+    if (!location.hash.includes('customize-ui')) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search,
+          hash: '#customize-ui',
+        },
+        { replace: true }
+      );
+    }
+  }, []);
+
   const fetchCurrentUser = useCallback(async () => {
     try {
       if (currentUser) {
