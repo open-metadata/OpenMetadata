@@ -759,6 +759,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return withHref(uriInfo, entityClone);
   }
 
+  public final Optional<T> getByNameOrNull(
+      UriInfo uriInfo, String fqn, Fields fields, Include include, boolean fromCache) {
+    try {
+      return Optional.of(getByName(uriInfo, fqn, fields, include, fromCache));
+    } catch (EntityNotFoundException e) {
+      return Optional.empty();
+    }
+  }
+
   public final EntityReference getReferenceByName(String fqn, Include include) {
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     return findByName(fqn, include).getEntityReference();

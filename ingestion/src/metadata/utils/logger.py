@@ -25,6 +25,9 @@ from metadata.data_quality.api.models import (
     TestCaseResults,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
@@ -299,6 +302,12 @@ def _(record: TableQueries) -> str:
 def _(record: QueryParserData) -> str:
     """Get the log of the ParsedData"""
     return f"Usage ParsedData [{len(record.parsedData)}]"
+
+
+@get_log_name.register
+def _(record: DataContractResult) -> str:
+    """Get the log of the DataContractResult"""
+    return f"DataContractResult for [{record.dataContractFQN.root}]; status: {record.contractExecutionStatus.value}]"
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

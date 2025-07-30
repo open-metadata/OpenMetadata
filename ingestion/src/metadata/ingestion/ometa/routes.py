@@ -38,6 +38,9 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createDataContract import (
+    CreateDataContractRequest,
+)
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
@@ -130,6 +133,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
@@ -289,4 +293,7 @@ ROUTES = {
     # Query Cost
     QueryCostRecord.__name__: "/queryCostRecord",
     CreateQueryCostRecordRequest.__name__: "/queryCostRecord",
+    # Data Contracts
+    DataContract.__name__: "/dataContracts",
+    CreateDataContractRequest.__name__: "/dataContracts",
 }

@@ -34,6 +34,10 @@ export interface TestSuite {
      */
     connection?: TestSuiteConnection;
     /**
+     * Reference to the data contract that this test suite is associated with.
+     */
+    dataContract?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -135,6 +139,8 @@ export interface TestSuite {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference to the data contract that this test suite is associated with.
  *
  * Domains the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
