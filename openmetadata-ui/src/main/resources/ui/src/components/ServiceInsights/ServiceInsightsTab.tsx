@@ -17,18 +17,16 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
-import {
-  PLATFORM_INSIGHTS_CHARTS,
-  PLATFORM_INSIGHTS_DI_CHARTS,
-} from '../../constants/ServiceInsightsTab.constants';
+import { PLATFORM_INSIGHTS_CHARTS } from '../../constants/ServiceInsightsTab.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import {
   getMultiChartsPreviewByName,
   setChartDataStreamConnection,
+  stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
 import {
   getCurrentDayStartGMTinMillis,
@@ -62,6 +60,7 @@ const ServiceInsightsTab = ({
   const { socket } = useWebSocketConnector();
   const [chartsResults, setChartsResults] = useState<ChartsResults>();
   const [isLoading, setIsLoading] = useState(false);
+  const sessionIdRef = useRef<string>();
 
   const serviceName = serviceDetails.name;
 
@@ -74,7 +73,7 @@ const ServiceInsightsTab = ({
       const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(6);
 
       const chartsList = [
-        ...PLATFORM_INSIGHTS_DI_CHARTS,
+        ...PLATFORM_INSIGHTS_CHARTS,
         ...(widgets.PIIDistributionWidget
           ? [SystemChartType.PIIDistribution]
           : []),
@@ -167,21 +166,34 @@ const ServiceInsightsTab = ({
   ]);
 
   const triggerSocketConnection = useCallback(async () => {
-    await setChartDataStreamConnection({
-      chartNames: PLATFORM_INSIGHTS_CHARTS,
-      serviceName,
-      startTime: getCurrentDayStartGMTinMillis(),
-      endTime: getCurrentDayStartGMTinMillis() + 360000000,
-    });
-  }, []);
+    if (isUndefined(sessionIdRef.current)) {
+      const { sessionId } = await setChartDataStreamConnection({
+        chartNames: PLATFORM_INSIGHTS_CHARTS,
+        serviceName,
+        startTime: getCurrentDayStartGMTinMillis(),
+        endTime: getCurrentDayStartGMTinMillis() + 360000000,
+      });
+
+      sessionIdRef.current = sessionId;
+    }
+  }, [serviceName, sessionIdRef.current]);
 
   useEffect(() => {
-    if (
-      workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
-    ) {
-      triggerSocketConnection();
-    }
+    // Start the socket connection if the workflow is running
+    // if (
+    //   workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+    // ) {
+    triggerSocketConnection();
+    // }
     fetchChartsData();
+
+    return () => {
+      // Stop the socket connection if it is started and set the sessionId to undefined
+      if (sessionIdRef.current) {
+        stopChartDataStreamConnection(sessionIdRef.current);
+        sessionIdRef.current = undefined;
+      }
+    };
   }, [workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {

@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export interface StartChartDataStreamConnectionResponse {
+  endTime: number;
+  message: string;
+  remainingDuration: string;
+  serviceName: string;
+  sessionId: string;
+  startTime: number;
+  status: string;
+  totalUsers: number;
+}
 
-import { SystemChartType } from '../enums/DataInsight.enum';
-
-export const PLATFORM_INSIGHTS_CHARTS: SystemChartType[] = [
-  SystemChartType.DescriptionCoverage,
-  SystemChartType.PIICoverage,
-  SystemChartType.TierCoverage,
-  SystemChartType.OwnersCoverage,
-  SystemChartType.HealthyDataAssets,
-];
-
-export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
+export interface StopChartDataStreamConnectionResponse {
+  message: string;
+  sessionId: string;
+  status: string;
+}
