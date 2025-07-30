@@ -16,10 +16,13 @@ import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ROUTES } from '../../../../constants/constants';
+import {
+  getSortField,
+  getSortOrder,
+} from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -44,11 +47,10 @@ const DataAssetsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_ASSETS_SORT_BY_KEYS.LATEST
+    DATA_ASSETS_SORT_BY_KEYS.A_TO_Z
   );
 
   const widgetData = useMemo(
@@ -61,7 +63,9 @@ const DataAssetsWidget = ({
   const fetchDataAssets = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await searchData('', 0, 0, '', 'updatedAt', '', [
+      const sortField = getSortField(selectedSortBy);
+      const sortOrder = getSortOrder(selectedSortBy);
+      const res = await searchData('', 0, 0, '', sortField, sortOrder, [
         SearchIndex.TABLE,
         SearchIndex.TOPIC,
         SearchIndex.DASHBOARD,
@@ -83,18 +87,6 @@ const DataAssetsWidget = ({
     fetchDataAssets();
   }, [fetchDataAssets]);
 
-  const sortedServices = useMemo(() => {
-    switch (selectedSortBy) {
-      case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
-        return [...services].sort((a, b) => a.key.localeCompare(b.key));
-      case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
-        return [...services].sort((a, b) => b.key.localeCompare(a.key));
-      case DATA_ASSETS_SORT_BY_KEYS.LATEST:
-      default:
-        return services;
-    }
-  }, [services, selectedSortBy]);
-
   const handleSortByClick = useCallback(
     (key: string) => {
       setSelectedSortBy(key);
@@ -102,21 +94,31 @@ const DataAssetsWidget = ({
     [setSelectedSortBy]
   );
 
+  const sortedServices = useMemo(() => {
+    switch (selectedSortBy) {
+      case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
+        return [...services].sort((a, b) => a.key.localeCompare(b.key));
+      case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
+        return [...services].sort((a, b) => b.key.localeCompare(a.key));
+      case DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW:
+        return [...services].sort((a, b) => b.doc_count - a.doc_count);
+      case DATA_ASSETS_SORT_BY_KEYS.LOW_TO_HIGH:
+        return [...services].sort((a, b) => a.doc_count - b.doc_count);
+      default:
+        return services;
+    }
+  }, [services, selectedSortBy]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonText={t('label.add-entity', {
-          entity: t('label.data-asset-plural'),
-        })}
-        description={t('message.no-data-assets-message')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
         title={t('message.no-data-assets-yet')}
-        onActionClick={() => navigate(ROUTES.EXPLORE)}
       />
     ),
-    [t, navigate]
+    [t]
   );
 
   const dataAssetsContent = useMemo(
@@ -140,7 +142,12 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
-    [sortedServices]
+    [sortedServices, isFullSize]
+  );
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && services?.length > 10,
+    [services, loading]
   );
 
   const widgetContent = useMemo(
@@ -152,6 +159,7 @@ const DataAssetsWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<DataAssetIcon height={24} width={24} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedSortBy}
           sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
           title={t('label.data-asset-plural')}
@@ -160,11 +168,11 @@ const DataAssetsWidget = ({
           onSortChange={handleSortByClick}
         />
         <div className="widget-content flex-1">
-          {isEmpty(sortedServices) ? emptyState : dataAssetsContent}
+          {isEmpty(services) ? emptyState : dataAssetsContent}
           <WidgetFooter
             moreButtonLink={ROUTES.EXPLORE}
             moreButtonText={t('label.view-more')}
-            showMoreButton={Boolean(!loading) && !isEmpty(sortedServices)}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>
@@ -180,13 +188,13 @@ const DataAssetsWidget = ({
       selectedSortBy,
       emptyState,
       dataAssetsContent,
-      sortedServices,
+      services,
     ]
   );
 
   return (
     <WidgetWrapper
-      dataLength={sortedServices.length !== 0 ? sortedServices.length : 10}
+      dataLength={services.length !== 0 ? services.length : 10}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

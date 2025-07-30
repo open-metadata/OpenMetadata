@@ -33,6 +33,12 @@ Object.defineProperty(window.navigator, 'clipboard', {
   writable: true,
 });
 
+// Set secure context to true by default
+Object.defineProperty(window, 'isSecureContext', {
+  value: true,
+  writable: true,
+});
+
 describe('Test CopyToClipboardButton Component', () => {
   it('Should render all child elements', async () => {
     render(<CopyToClipboardButton copyText={value} />);
@@ -45,7 +51,7 @@ describe('Test CopyToClipboardButton Component', () => {
     render(<CopyToClipboardButton copyText={value} onCopy={callBack} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('copy-secret'));
+      await fireEvent.click(screen.getByTestId('copy-secret'));
     });
 
     expect(callBack).toHaveBeenCalled();

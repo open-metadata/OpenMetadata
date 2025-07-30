@@ -1,5 +1,6 @@
 ---
 title: Domain Schema | OpenMetadata Domain Schema and Details
+description: Capture domain definitions for structuring metadata around business or organizational units.
 slug: /main-concepts/metadata-standard/schemas/entity/domains/domain
 ---
 

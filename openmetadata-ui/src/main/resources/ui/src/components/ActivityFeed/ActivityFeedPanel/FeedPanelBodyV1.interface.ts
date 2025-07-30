@@ -34,4 +34,5 @@ export interface FeedPanelBodyPropV1 {
   isFullWidth?: boolean;
   hideCardBorder?: boolean;
   isFeedWidget?: boolean;
+  isFullSizeWidget?: boolean;
 }

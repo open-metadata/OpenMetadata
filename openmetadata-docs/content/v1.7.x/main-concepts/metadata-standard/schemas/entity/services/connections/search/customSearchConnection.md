@@ -1,5 +1,6 @@
 ---
-title: customSearchConnection
+title: customSearchConnection | Official Documentation
+description: Use this schema to configure custom search service connections that fit unique organizational indexing and retrieval needs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/customsearchconnection
 ---
 

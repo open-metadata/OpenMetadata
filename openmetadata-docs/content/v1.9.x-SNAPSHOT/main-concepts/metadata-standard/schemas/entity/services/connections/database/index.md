@@ -1,5 +1,6 @@
 ---
 title: Database Connections | OpenMetadata Database Connections
+description: Define database connection schema including host, port, database name, credentials, and SSL configs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database
 ---
 

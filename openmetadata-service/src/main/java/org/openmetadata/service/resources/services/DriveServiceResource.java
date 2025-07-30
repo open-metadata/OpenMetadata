@@ -80,7 +80,7 @@ import org.openmetadata.service.util.ResultList;
 public class DriveServiceResource
     extends ServiceEntityResource<DriveService, DriveServiceRepository, DriveConnection> {
   public static final String COLLECTION_PATH = "v1/services/driveServices/";
-  public static final String FIELDS = "pipelines,owners,tags,domain,followers";
+  public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
   public DriveService addHref(UriInfo uriInfo, DriveService service) {

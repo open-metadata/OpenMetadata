@@ -1,5 +1,6 @@
 ---
 title: Team | OpenMetadata Team API and Management
+description: Define team entities including members, roles, and hierarchy for collaborative metadata management.
 slug: /main-concepts/metadata-standard/schemas/entity/teams/team
 ---
 

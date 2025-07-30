@@ -49,7 +49,7 @@ const CreateErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white'
+        'h-full flex-center border-default border-radius-sm bg-white w-full'
       )}
       data-testid={`create-error-placeholder-${heading}`}>
       <Space align="center" className="w-full" direction="vertical" size={10}>
