@@ -772,6 +772,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities;
   }
 
+  /**
+   * Get entity by name with all fields except the excluded ones.
+   * This is useful for CSV imports and bulk operations where you want to preserve
+   * existing fields that are not coming from the import data (like table constraints).
+   *
+   * @param uriInfo URI info for generating hrefs
+   * @param fqn Fully qualified name of the entity
+   * @param excludeFields Fields to exclude from fetching (e.g., "tags,owners,domains")
+   * @param include Include parameter for deleted/non-deleted entities
+   * @return Entity with all fields except the excluded ones
+   */
+  public final T getByNameWithExcludedFields(
+      UriInfo uriInfo, String fqn, String excludeFields, Include include) {
+    return getByNameWithExcludedFields(uriInfo, fqn, excludeFields, include, false);
+  }
+
+  /**
+   * Get entity by name with all fields except the excluded ones.
+   * This is useful for CSV imports and bulk operations where you want to preserve
+   * existing fields that are not coming from the import data (like table constraints).
+   *
+   * @param uriInfo URI info for generating hrefs
+   * @param fqn Fully qualified name of the entity
+   * @param excludeFields Fields to exclude from fetching (e.g., "tags,owners,domains")
+   * @param include Include parameter for deleted/non-deleted entities
+   * @param fromCache Whether to use cache
+   * @return Entity with all fields except the excluded ones
+   */
+  public final T getByNameWithExcludedFields(
+      UriInfo uriInfo, String fqn, String excludeFields, Include include, boolean fromCache) {
+    Fields fields = EntityUtil.Fields.createWithExcludedFields(allowedFields, excludeFields);
+    return getByName(uriInfo, fqn, fields, include, fromCache);
+  }
+
   public final T findByNameOrNull(String fqn, Include include) {
     try {
       return findByName(fqn, include);

@@ -388,6 +388,42 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
+    /**
+     * Create a Fields object by excluding specific fields from all allowed fields.
+     * This is useful for CSV imports and bulk operations where you want all fields
+     * except those that are coming from CSV (like tags, owners, domains).
+     *
+     * @param allowedFields All allowed fields for the entity
+     * @param excludeFields Fields to exclude from the result
+     * @return Fields object containing all allowed fields except the excluded ones
+     */
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, Set<String> excludeFields) {
+      Set<String> resultFields = new HashSet<>(allowedFields);
+      if (excludeFields != null) {
+        resultFields.removeAll(excludeFields);
+      }
+      return new Fields(allowedFields, resultFields);
+    }
+
+    /**
+     * Create a Fields object by excluding specific fields from all allowed fields.
+     * Convenience method that takes comma-separated excluded field names.
+     *
+     * @param allowedFields All allowed fields for the entity
+     * @param excludeFieldsParam Comma-separated field names to exclude
+     * @return Fields object containing all allowed fields except the excluded ones
+     */
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, String excludeFieldsParam) {
+      Set<String> excludeFields = new HashSet<>();
+      if (!nullOrEmpty(excludeFieldsParam)) {
+        excludeFields =
+            new HashSet<>(Arrays.asList(excludeFieldsParam.replace(" ", "").split(",")));
+      }
+      return createWithExcludedFields(allowedFields, excludeFields);
+    }
+
     @Override
     public String toString() {
       return String.join(",", fieldList);
