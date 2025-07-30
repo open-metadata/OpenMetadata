@@ -800,6 +800,7 @@
     "invalid-condition": "شرط نامعتبر",
     "invalid-name": "نام نامعتبر",
     "is": "Is",
+    "is-entity": "{{entity}} است",
     "is-not": "Is Not",
     "is-not-set": "Is Not Set",
     "is-ready-for-preview": "آماده پیش‌نمایش است",

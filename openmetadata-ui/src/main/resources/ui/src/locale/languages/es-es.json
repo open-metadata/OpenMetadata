@@ -800,6 +800,7 @@
     "invalid-condition": "Condición inválida",
     "invalid-name": "Nombre inválido",
     "is": "Es",
+    "is-entity": "Es {{entity}}",
     "is-not": "No Es",
     "is-not-set": "No Está Establecido",
     "is-ready-for-preview": "está listo para previsualización",

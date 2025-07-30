@@ -62,9 +62,11 @@
       overflow: hidden;
       opacity: 1;
     }
+
     &.qb-lite .group--header:not(.no--children):not(.hide--conjs) {
       position: static;
     }
+
     &.qb-lite .group--header:not(.no--children):not(.hide--conjs)::before {
       display: none;
     }
@@ -72,6 +74,7 @@
     .rule--body {
       text-align: left;
     }
+
     .rule--label {
       font-weight: normal; // override the default font-weight of 600
     }
@@ -90,11 +93,13 @@
           }
         }
       }
+
       & > .group--header + .group--children {
         padding-left: 0;
       }
     }
   }
+
   .group-or-rule-container.group-container {
     & > .group.group-or-rule {
       background-color: transparent;
@@ -110,6 +115,7 @@
           top: 0px;
           transform: translate(-50%, 16px);
           z-index: 1;
+
           .ant-btn-group button span {
             text-transform: uppercase;
           }
@@ -118,6 +124,7 @@
         .action.action--ADD-RULE {
           display: none;
         }
+
         .action.action--DELETE {
           position: absolute;
           top: 10px;
@@ -241,6 +248,7 @@
 .rule-container .ant-btn-group {
   visibility: hidden;
 }
+
 .rule-container + .rule-container .ant-btn-group {
   visibility: visible;
 }
@@ -252,6 +260,7 @@
     min-width: 100% !important; // override the inline min-width style of the select provided by antd
     max-width: 100%;
   }
+
   .ant-select-multiple {
     .ant-select-selection-item-content {
       .selectTextOverflow();
@@ -266,6 +275,7 @@
 
 .rule--operator {
   width: 120px;
+
   .ant-select {
     width: 100%;
   }
@@ -275,6 +285,7 @@
   .widget--valuesrc {
     display: none;
   }
+
   .ant-input-number {
     width: 100%;
   }
@@ -282,6 +293,7 @@
 
 .rule--widget {
   min-width: 180px;
+
   .ant-select,
   .widget--widget {
     min-width: 100% !important;

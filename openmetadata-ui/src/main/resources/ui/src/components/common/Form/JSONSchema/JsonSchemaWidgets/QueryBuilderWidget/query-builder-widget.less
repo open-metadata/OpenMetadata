@@ -39,6 +39,7 @@
           margin-top: 0;
           right: 0;
           top: -56px; // updating this as size of button is increased
+          display: block;
         }
       }
     }
@@ -259,5 +260,19 @@
     width: 10px;
     height: 1px;
     background-color: @border-color;
+  }
+}
+
+.query-builder-card.jsonlogic {
+  .query-builder-container
+    .group-or-rule-container.group-container
+    > .group.group-or-rule
+    > .group--header
+    .group--conjunctions {
+    top: -75px;
+  }
+
+  .rule_group--children .rule--field {
+    display: none;
   }
 }

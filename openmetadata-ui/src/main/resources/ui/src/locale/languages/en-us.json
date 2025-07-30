@@ -800,6 +800,7 @@
     "invalid-condition": "Invalid condition",
     "invalid-name": "Invalid Name",
     "is": "Is",
+    "is-entity": "Is {{entity}}",
     "is-not": "Is Not",
     "is-not-set": "Is Not Set",
     "is-ready-for-preview": "is ready for preview",

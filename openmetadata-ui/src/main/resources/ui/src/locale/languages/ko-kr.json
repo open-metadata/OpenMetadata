@@ -800,6 +800,7 @@
     "invalid-condition": "유효하지 않은 조건",
     "invalid-name": "유효하지 않은 이름",
     "is": "이다",
+    "is-entity": "는 {{entity}}입니다",
     "is-not": "아니다",
     "is-not-set": "설정되지 않음",
     "is-ready-for-preview": "미리보기 준비됨",
