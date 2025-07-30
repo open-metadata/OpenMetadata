@@ -220,7 +220,8 @@
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
-      }
+      },
+      "default": null
     },
     "generatedBy": {
       "description": "User or team that generated the thread.",
