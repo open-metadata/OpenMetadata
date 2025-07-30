@@ -802,6 +802,7 @@
     "invalid-condition": "תנאי לא תקין",
     "invalid-name": "שם לא תקין",
     "is": "הוא",
+    "is-entity": "הוא {{entity}}",
     "is-not": "אינו",
     "is-not-set": "לא הוגדר",
     "is-ready-for-preview": "מוכן לתצוגה מקדימה",

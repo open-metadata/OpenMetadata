@@ -802,6 +802,7 @@
     "invalid-condition": "Condição Inválida",
     "invalid-name": "Nome Inválido",
     "is": "É",
+    "is-entity": "É {{entity}}",
     "is-not": "Não É",
     "is-not-set": "Não Está Definido",
     "is-ready-for-preview": "está pronto para visualização",

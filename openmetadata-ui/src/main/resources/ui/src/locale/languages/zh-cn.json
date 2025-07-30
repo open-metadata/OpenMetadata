@@ -802,6 +802,7 @@
     "invalid-condition": "无效条件",
     "invalid-name": "无效名称",
     "is": "是",
+    "is-entity": "是{{entity}}",
     "is-not": "不是",
     "is-not-set": "未设置",
     "is-ready-for-preview": "可预览",
