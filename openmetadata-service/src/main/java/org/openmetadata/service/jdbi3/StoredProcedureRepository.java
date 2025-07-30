@@ -149,7 +149,6 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       }
     }
 
-
     super.setFieldsInBulk(fields, storedProcedures);
   }
 
