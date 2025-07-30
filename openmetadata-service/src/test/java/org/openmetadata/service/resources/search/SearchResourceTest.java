@@ -879,7 +879,7 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       tables.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
     // Wait for indexing
-    TestUtils.simulateWork(5);
+    TestUtils.simulateWork(15);
     // Test pagination consistency
     assertDoesNotThrow(
         () -> {
@@ -932,7 +932,14 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
           // Ensure no overlap between pages
           Set<String> intersection = new HashSet<>(tablePage1Ids);
           intersection.retainAll(tablePage2Ids);
-          assertTrue(intersection.isEmpty(), "No entities should appear in both pages");
+          assertTrue(
+              intersection.isEmpty(),
+              String.format(
+                  """
+                    No entities should appear in both pages, but found: %d
+                    Page 1 entities: %s
+                    Page 2 entities: %s""",
+                  intersection.size(), tablePage1Ids, tablePage2Ids));
 
           LOG.info(
               "Pagination test - Table total: {}, DataAsset total: {}", tableTotal, dataAssetTotal);
