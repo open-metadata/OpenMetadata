@@ -88,7 +88,9 @@ class EmailMessageDecoratorTest {
   void testComplexFqnEncoding() {
     String fqn = "Databricks.pro.silver.l0_purchase_order.POs con currency EUR pero debe ser USD";
     String encoded = encodeEntityFqnSafe(fqn);
-    assertEquals("Databricks.pro.silver.l0_purchase_order.POs%20con%20currency%20EUR%20pero%20debe%20ser%20USD", encoded);
+    assertEquals(
+        "Databricks.pro.silver.l0_purchase_order.POs%20con%20currency%20EUR%20pero%20debe%20ser%20USD",
+        encoded);
   }
 
   @Test
@@ -100,14 +102,15 @@ class EmailMessageDecoratorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {
-    "normal_fqn",
-    "fqn with spaces", 
-    "fqn#with@special$chars",
-    "fqn?with=params&other=values",
-    "fqn+with%encoded[chars]",
-    "fqn<with>brackets{and}pipes|here"
-  })
+  @ValueSource(
+      strings = {
+        "normal_fqn",
+        "fqn with spaces",
+        "fqn#with@special$chars",
+        "fqn?with=params&other=values",
+        "fqn+with%encoded[chars]",
+        "fqn<with>brackets{and}pipes|here"
+      })
   @DisplayName("Should handle various FQN formats with safe encoding")
   void testVariousFqnFormatsEncoding(String fqn) {
     String encoded = encodeEntityFqnSafe(fqn);
