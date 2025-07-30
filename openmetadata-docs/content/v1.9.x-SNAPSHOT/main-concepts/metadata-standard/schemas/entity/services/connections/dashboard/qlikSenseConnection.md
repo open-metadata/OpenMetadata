@@ -1,5 +1,6 @@
 ---
 title: Qlik Sense Connection | OpenMetadata Qlik Sense
+description: Qlik Sense connection schema defining credentials, access tokens, and root endpoint setup.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/qliksenseconnection
 ---
 

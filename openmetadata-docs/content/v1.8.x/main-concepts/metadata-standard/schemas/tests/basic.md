@@ -1,5 +1,6 @@
 ---
 title: Basic Test Schema Details | OpenMetadata Testing Framework
+description: Establish basic test parameters and outcomes for validating data integrity and system behaviors.
 slug: /main-concepts/metadata-standard/schemas/tests/basic
 ---
 

@@ -1,5 +1,6 @@
 ---
 title: SASL Schema | OpenMetadata SASL Schema Overview
+description: Connect Sasl to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/security/sasl
 ---
 

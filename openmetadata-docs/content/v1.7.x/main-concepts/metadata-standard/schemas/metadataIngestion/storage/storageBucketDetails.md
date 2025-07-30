@@ -1,5 +1,6 @@
 ---
 title: storageBucketDetails | OpenMetadata Storage Bucket Details
+description: Outline metadata schema for identifying and describing individual storage buckets, supporting structure, permissions, and sync behavior.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagebucketdetails
 ---
 

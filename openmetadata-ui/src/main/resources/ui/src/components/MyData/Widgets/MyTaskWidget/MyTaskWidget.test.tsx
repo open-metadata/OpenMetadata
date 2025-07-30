@@ -33,6 +33,10 @@ jest.mock('../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New', () =>
   jest.fn().mockImplementation(() => <div>FeedPanelBodyV1New</div>)
 );
 
+jest.mock('../../../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
+}));
+
 const mockProps = {
   isEditView: false,
   handleRemoveWidget: jest.fn(),
@@ -124,13 +128,6 @@ describe('MyTaskWidget', () => {
 
     expect(screen.getByTestId('my-task-empty-state')).toBeInTheDocument();
     expect(screen.getByText('label.no-tasks-yet')).toBeInTheDocument();
-  });
-
-  it('renders footer when tasks are available', () => {
-    renderMyTaskWidget();
-
-    expect(screen.getByTestId('widget-footer')).toBeInTheDocument();
-    expect(screen.getByText('label.view-more')).toBeInTheDocument();
   });
 
   it('renders widget wrapper', () => {

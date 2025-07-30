@@ -1,5 +1,6 @@
 ---
-title: singleStoreConnection
+title: singleStoreConnection | Official Documentation
+description: Use this schema to configure SingleStore database connections and extract table, column, and usage metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/singlestoreconnection
 ---
 

@@ -1133,8 +1133,14 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
-      stack.push(...childNodes);
-      outgoers.push(...childNodes);
+      // Removing the Root Node from the Child Nodes here, which comes when a cycle lineage is formed
+      // So while collapsing the cycle lineage, we need to prevent the Root Node not to be removed.
+      const finalChildNodeRemovingRootNode = childNodes.filter(
+        (item) => !item.data.isRootNode
+      );
+
+      stack.push(...finalChildNodeRemovingRootNode);
+      outgoers.push(...finalChildNodeRemovingRootNode);
       connectedEdges.push(...childEdges);
     }
   }
@@ -1275,7 +1281,7 @@ export const getExportEntity = (entity: LineageSourceType) => {
     entityType = '',
     direction = '',
     owners,
-    domain,
+    domains,
     tier,
     tags = [],
     depth = '',
@@ -1299,7 +1305,8 @@ export const getExportEntity = (entity: LineageSourceType) => {
     entityType,
     direction,
     owners: owners?.map((owner) => getEntityName(owner) ?? '').join(',') ?? '',
-    domain: domain?.fullyQualifiedName ?? '',
+    domains:
+      domains?.map((domain) => domain.fullyQualifiedName ?? '').join(',') ?? '',
     tags: classificationTags.join(', '),
     tier: (tier as EntityTags)?.tagFQN ?? '',
     glossaryTerms: glossaryTerms.join(', '),
@@ -1816,6 +1823,11 @@ export const getLineageEntityExclusionFilter = () => {
           {
             term: {
               entityType: EntityType.DATA_PRODUCT,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.KNOWLEDGE_PAGE,
             },
           },
         ],

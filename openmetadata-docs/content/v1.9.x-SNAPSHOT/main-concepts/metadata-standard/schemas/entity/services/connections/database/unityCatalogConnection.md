@@ -1,5 +1,6 @@
 ---
-title: unityCatalogConnection
+title: unityCatalogConnection | Official Documentation
+description: Unity Catalog database connection schema to ingest fine-grained metadata for Databricks managed catalogs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/unitycatalogconnection
 ---
 

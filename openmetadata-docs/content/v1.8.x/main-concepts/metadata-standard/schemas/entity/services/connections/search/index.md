@@ -1,5 +1,6 @@
 ---
 title: Search Connections | OpenMetadata Search
+description: Define configurations for search service connections including hosts, indexing settings, and credentials.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search
 ---
 

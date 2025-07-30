@@ -114,15 +114,17 @@ export const MOCK_SEARCH_INDEX: SearchIndex = {
     previousVersion: 0.3,
   },
   deleted: false,
-  domain: {
-    id: '52fc9c67-78b7-42bf-8147-69278853c230',
-    type: 'domain',
-    name: 'Design',
-    fullyQualifiedName: 'Design',
-    description: "Here' the description for Product Design",
-    displayName: 'Product Design ',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/52fc9c67-78b7-42bf-8147-69278853c230',
-  },
+  domains: [
+    {
+      id: '52fc9c67-78b7-42bf-8147-69278853c230',
+      type: 'domain',
+      name: 'Design',
+      fullyQualifiedName: 'Design',
+      description: "Here' the description for Product Design",
+      displayName: 'Product Design ',
+      href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/52fc9c67-78b7-42bf-8147-69278853c230',
+    },
+  ],
   dataProducts: [],
   votes: {
     upVotes: 0,

@@ -98,8 +98,7 @@ public interface MessageDecorator<T> {
       case Entity.TEST_CASE:
         if (entityInterface instanceof TestCase testCase) {
           entityUrl =
-              getEntityUrl(
-                  "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
+              getEntityUrl("test-case", testCase.getFullyQualifiedName(), "test-case-results");
         }
         break;
 
@@ -136,7 +135,7 @@ public interface MessageDecorator<T> {
       case Entity.TEST_CASE:
         if (entityInterface instanceof TestCase) {
           TestCase testCase = (TestCase) entityInterface;
-          entityUrl = getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
+          entityUrl = getEntityUrl("test-case", testCase.getFullyQualifiedName(), "issues");
         }
         break;
 
@@ -590,7 +589,10 @@ public interface MessageDecorator<T> {
     // build TEST_CASE_DETAILS
     builder
         .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.ID, testCase.getId())
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.NAME, testCase.getName())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.NAME,
+            testCase.getDisplayName() != null ? testCase.getDisplayName() : testCase.getName())
         .add(
             DQ_Template_Section.TEST_CASE_DETAILS,
             DQ_TestCaseDetailsKeys.OWNERS,
