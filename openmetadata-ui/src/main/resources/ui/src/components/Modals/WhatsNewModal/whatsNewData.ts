@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_7'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_8'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1154,6 +1154,34 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Fix domain custom property persistence improvements
 - Fix table query pagination showing incorrect pageSize 
 - Fix stored procedure temp table processing and lineage filtering with db & schema
+`,
+    },
+  },
+  {
+    id: 80,
+    version: 'v1.8.8',
+    description: 'Released on 30th July 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Add missing database migrations for searchSettings changes introduced in version 1.8.7.
+- Add support for the SSAS (SQL Server Analysis Services) connector.
+- Memory management and ensured proper resource cleanup in the profiler.
+- Add support service account in Synapse Connector.
+- Update ometa logging for better clarity and debugging.
+- Implemented chunked reading of archived logs in Argo Workflows, improving performance and memory efficiency. ${CollateIconWithLinkMD}
+- Add external table reverse metadata for databricks and unitycatalog. ${CollateIconWithLinkMD}
+- Add Collate SaaS activity metrics with OpenSearch telemetry. ${CollateIconWithLinkMD}`,
+      Fixes: `- Tableau CA certificate authentication to ensure secure connectivity.
+- Skipped creating indexes for foreign keys that reference the same column multiple times to avoid redundant index creation.
+- Fix dataLake ingestion to handle larger files without failures or timeouts.
+- Fix Tableau ingestion to properly handle None entities.
+- Ignore non-current columns for Iceberg tables in Glue and Athena.
+- Fix JSON processing issues related to Jakarta in the MCP Patch Tool.
+- Fix MCP SearchMetadataTool error with clusterAlias by applying proper alias resolution, ensuring compatibility across environments.
+- Fix collapsing of cyclic lineage nodes to prevent incorrect root node removal, with added unit and Playwright tests.
+- Fix Airflow ingestion compatibility for older Airflow versions.
+- Fix Trino column validation errors for highly complex fields, ensuring proper handling.
+- Fix alert to correctly display the test case name and URL on failure.
 `,
     },
   },
