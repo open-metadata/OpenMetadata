@@ -40,7 +40,6 @@ import {
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
@@ -130,11 +129,6 @@ function CustomizeMyData({
       layout
         .filter((widget) => widget.i.startsWith('KnowledgePanel'))
         .map((widget) => widget.i),
-    [layout]
-  );
-
-  const emptyWidgetPlaceholder = useMemo(
-    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
     [layout]
   );
 
@@ -243,7 +237,6 @@ function CustomizeMyData({
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
-            maxRows={emptyWidgetPlaceholder?.y}
             preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
@@ -269,4 +262,4 @@ function CustomizeMyData({
   );
 }
 
-export default withActivityFeed(CustomizeMyData);
+export default CustomizeMyData;
