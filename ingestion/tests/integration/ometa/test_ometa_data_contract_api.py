@@ -28,7 +28,6 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.dataContract import (
     ContractStatus,
     DataContract,
@@ -65,7 +64,6 @@ from metadata.generated.schema.type.contractExecutionStatus import (
     ContractExecutionStatus,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -87,14 +85,6 @@ class OMetaDataContractTest(TestCase):
     metadata = OpenMetadata(server_config)
 
     assert metadata.health_check()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(
-            name="data-contract-user", email="datacontract@user.com"
-        ),
-    )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
-
     service = CreateDatabaseServiceRequest(
         name="test-service-data-contract",
         serviceType=DatabaseServiceType.Mysql,

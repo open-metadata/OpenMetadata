@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -250,43 +251,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return null; // No quality expectations, no test suite needed
     }
     try {
-      String testSuiteName = dataContract.getName() + " - Data Contract Expectations";
-      TestSuiteRepository testSuiteRepository =
-          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+
       TestCaseRepository testCaseRepository =
           (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-
-      // Check if test suite already exists
-      TestSuite testSuite = null;
-      try {
-        testSuite =
-            testSuiteRepository.getByName(
-                null,
-                testSuiteName,
-                testSuiteRepository.getFields("tests,pipelines"),
-                Include.NON_DELETED,
-                false);
-      } catch (EntityNotFoundException e) {
-        LOG.debug(
-            "Test suite [{}] not found when initializing the Data Contract, creating a new one",
-            testSuiteName);
-      }
-
-      if (testSuite == null) {
-        // Create new test suite
-        CreateTestSuite createTestSuite =
-            new CreateTestSuite()
-                .withName(testSuiteName)
-                .withDisplayName(testSuiteName)
-                .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
-                .withDataContract(
-                    new EntityReference()
-                        .withId(dataContract.getId())
-                        .withFullyQualifiedName(dataContract.getFullyQualifiedName())
-                        .withType(Entity.DATA_CONTRACT));
-        TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-        testSuite = testSuiteRepository.create(null, newTestSuite);
-      }
+      TestSuite testSuite = getOrCreateTestSuite(dataContract);
 
       // Collect test case references from quality expectations
       List<UUID> testCaseRefs =
@@ -307,6 +275,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       LOG.error("Error creating/updating test suite for data contract", e);
       throw e;
     }
+  }
+
+  private TestSuite getOrCreateTestSuite(DataContract dataContract) {
+    String testSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+
+    // Check if test suite already exists
+    Optional<TestSuite> maybeTestSuite =
+        testSuiteRepository.getByNameOrNull(
+            null,
+            testSuiteName,
+            testSuiteRepository.getFields("tests,pipelines"),
+            Include.NON_DELETED,
+            false);
+
+    if (maybeTestSuite.isEmpty()) {
+      // Create new test suite
+      LOG.debug(
+          "Test suite [{}] not found when initializing the Data Contract, creating a new one",
+          testSuiteName);
+      CreateTestSuite createTestSuite =
+          new CreateTestSuite()
+              .withName(testSuiteName)
+              .withDisplayName(testSuiteName)
+              .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
+              .withDataContract(
+                  new EntityReference()
+                      .withId(dataContract.getId())
+                      .withFullyQualifiedName(dataContract.getFullyQualifiedName())
+                      .withType(Entity.DATA_CONTRACT));
+      TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
+      return testSuiteRepository.create(null, newTestSuite);
+    }
+
+    return maybeTestSuite.get();
   }
 
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution
