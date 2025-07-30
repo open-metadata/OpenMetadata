@@ -113,6 +113,10 @@ class GlobalSettingsClassBase {
       name: t('label.persona'),
       url: GlobalSettingsMenuCategory.PERSONA,
     },
+    [GlobalSettingsMenuCategory.SSO]: {
+      name: t('label.sso'),
+      url: GlobalSettingsMenuCategory.SSO,
+    },
   };
 
   protected updateSettingCategories(
@@ -743,6 +747,13 @@ class GlobalSettingsClassBase {
         isProtected: Boolean(isAdminUser),
         key: GlobalSettingOptions.PERSONA,
         icon: PersonasIcon,
+      },
+      {
+        category: t('label.sso'),
+        isProtected: Boolean(isAdminUser),
+        key: GlobalSettingOptions.SSO,
+        icon: UsersIcon,
+        description: t('message.sso-configuration-description'),
       },
     ];
   }

@@ -22,6 +22,7 @@ export enum GlobalSettingsMenuCategory {
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
   SEARCH = 'search',
+  SSO = 'sso',
 }
 
 export enum GlobalSettingOptions {
@@ -88,4 +89,5 @@ export enum GlobalSettingOptions {
   TEST_CASES = 'testCases',
   TAGS = 'tags',
   DOMAINS = 'domains',
+  SSO = 'sso',
 }

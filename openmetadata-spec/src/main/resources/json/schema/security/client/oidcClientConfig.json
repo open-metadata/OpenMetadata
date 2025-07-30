@@ -16,7 +16,8 @@
     },
     "secret": {
       "description": "Client Secret.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "scope": {
       "description": "Oidc Request Scopes.",
