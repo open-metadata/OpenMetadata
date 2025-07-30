@@ -1,7 +1,7 @@
 {
   "name": "Following",
   "displayName": "Following",
-  "description": "Following KnowledgePanel shows all the Assets that the User is Following.",
+  "description": "Lists data assets that the user is actively following and provides quick access.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.Following",
   "data": {

@@ -1,5 +1,6 @@
 ---
 title: Policy Schema | OpenMetadata Policy Schema and Management
+description: Represent policies for enforcing rules and controls over data access, ownership, and usage.
 slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
 ---
 
