@@ -800,6 +800,7 @@
     "invalid-condition": "अवैध अट",
     "invalid-name": "अवैध नाव",
     "is": "आहे",
+    "is-entity": "{{entity}} आहे",
     "is-not": "नाही",
     "is-not-set": "सेट नाही",
     "is-ready-for-preview": "पूर्वावलोकनासाठी तयार आहे",
