@@ -130,6 +130,7 @@ import org.openmetadata.csv.CsvUtilTest;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
@@ -943,6 +944,56 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     for (T entity : entities) {
       deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
     }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void test_bulkFollowersVotesFetching(TestInfo test) throws IOException {
+    if (!supportsFieldsQueryParam || (!supportsFollowers && !supportsVotes)) {
+      return;
+    }
+
+    K request = createRequest(test, 0);
+    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    if (supportsFollowers) {
+      addFollower(entity.getId(), USER1.getId(), OK, ADMIN_AUTH_HEADERS);
+    }
+
+    if (supportsVotes) {
+      VoteRequest voteReq = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
+      WebTarget voteTarget = getResource(entity.getId()).path("vote");
+      TestUtils.put(voteTarget, voteReq, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
+    }
+
+    String allFields = getAllowedFields();
+    Map<String, String> params = new HashMap<>();
+    params.put("fields", allFields);
+
+    ResultList<T> bulk = listEntities(params, ADMIN_AUTH_HEADERS);
+    T bulkEntity =
+        bulk.getData().stream()
+            .filter(e -> e.getId().equals(entity.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(bulkEntity);
+
+    T individual = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
+
+    if (supportsFollowers) {
+      assertNotNull(bulkEntity.getFollowers());
+      assertEquals(
+          listOrEmpty(individual.getFollowers()).size(),
+          listOrEmpty(bulkEntity.getFollowers()).size());
+    }
+
+    if (supportsVotes) {
+      assertNotNull(bulkEntity.getVotes());
+      assertEquals(individual.getVotes().getUpVotes(), bulkEntity.getVotes().getUpVotes());
+      assertEquals(individual.getVotes().getDownVotes(), bulkEntity.getVotes().getDownVotes());
+    }
+
+    deleteEntity(entity.getId(), ADMIN_AUTH_HEADERS);
   }
 
   // Helper method to get field value using reflection

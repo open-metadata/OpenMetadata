@@ -5025,6 +5025,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void fetchAndSetFollowers(List<T> entities, Fields fields) {
+    LOG.info("DashboardDataModel allowedFields: {}", allowedFields);
+    LOG.info("DashboardDataModel supportsFollower: {}", supportsFollower);
+    LOG.info("fields {}", fields);
+    LOG.info("supportsFollower {}", supportsFollower);
     if (!fields.contains(FIELD_FOLLOWERS) || !supportsFollower) {
       return;
     }
@@ -5196,7 +5200,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchFollowers(List<T> entities) {
-    if (entities.isEmpty()) {
+    if (entities == null || entities.isEmpty()) {
       return Collections.emptyMap();
     }
 
@@ -5205,6 +5209,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(entities), Relationship.FOLLOWS.ordinal(), Include.ALL);
+    LOG.info(
+        "batchFetchFollowers: Found {} owner relationships for {} entities",
+        followerRecords.size(),
+        entities.size());
 
     Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : followerRecords) {
