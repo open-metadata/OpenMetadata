@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import OM_JWT
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -66,7 +67,6 @@ from metadata.generated.schema.type.contractExecutionStatus import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from _openmetadata_testutils.ometa import OM_JWT
 
 
 class OMetaDataContractTest(TestCase):
