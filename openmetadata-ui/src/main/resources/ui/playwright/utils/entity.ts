@@ -45,86 +45,25 @@ export const visitEntityPage = async (data: {
 }) => {
   const { page, searchTerm, dataTestId } = data;
   await page.waitForLoadState('networkidle');
+
+  const isWelcomeScreenVisible = await page
+    .getByTestId('welcome-screen')
+    .isVisible();
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+  }
+
+  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
 
-  // Wait for the entity to be visible and clickable
-  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-    state: 'visible',
-    timeout: 15000,
-  });
-
-  // Try different ways to click on the entity
-  const entityElement = page.getByTestId(dataTestId);
-
-  // First try to click on data-name if it exists
-  const dataNameElement = entityElement.getByTestId('data-name');
-  const dataNameExists = await dataNameElement.isVisible().catch(() => false);
-
-  if (dataNameExists) {
-    await dataNameElement.click();
-  } else {
-    // If data-name doesn't exist, try clicking on the entity directly
-    await entityElement.click();
-  }
+  await page.getByTestId(dataTestId).getByTestId('data-name').click();
 
   await page.getByTestId('searchBox').clear();
-};
-
-export const visitEntityPageWithCustomSearchBox = async (data: {
-  page: Page;
-  searchTerm: string;
-  dataTestId: string;
-}) => {
-  const { page, searchTerm, dataTestId } = data;
-  await page.waitForLoadState('networkidle');
-  // Wait for welcome screen and close it if visible
-  const isWelcomeScreenVisible = await page
-    .waitForSelector('[data-testid="welcome-screen-img"]', {
-      state: 'visible',
-      timeout: 1000,
-    })
-    .catch(() => false);
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
-
-  const waitForSearchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*index=dataAsset*'
-  );
-  const customSearchBox = page.getByTestId('customise-searchbox');
-  await customSearchBox.fill(searchTerm);
-  await customSearchBox.press('Enter');
-  await waitForSearchResponse;
-  // Wait for the entity to be visible and clickable
-  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-    state: 'visible',
-    timeout: 15000,
-  });
-
-  // Try different ways to click on the entity
-  const entityElement = page.getByTestId(dataTestId);
-
-  // First try to click on data-name if it exists
-  const dataNameElement = entityElement.getByTestId('data-name');
-  const dataNameExists = await dataNameElement
-    .isVisible({ timeout: 5000 })
-    .catch(() => false);
-
-  if (dataNameExists) {
-    await dataNameElement.click();
-  } else {
-    // If data-name doesn't exist, try clicking on the entity directly
-    await entityElement.click();
-  }
-
-  const globalSearchBox = page.getByTestId('searchBox');
-
-  await globalSearchBox.clear();
 };
 
 export const addOwner = async ({
@@ -1817,57 +1756,6 @@ export const checkExploreSearchFilter = async (
   await page.click('[data-testid="clear-filters"]');
 
   await entity?.visitEntityPage(page);
-};
-
-export const checkExploreSearchFilterWithCustomSearchBox = async (
-  page: Page,
-  filterLabel: string,
-  filterKey: string,
-  filterValue: string,
-  entity?: EntityClass
-) => {
-  await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
-  await searchAndClickOnOption(
-    page,
-    {
-      label: filterLabel,
-      key: filterKey,
-      value: filterValue,
-    },
-    true
-  );
-
-  const rawFilterValue = (filterValue ?? '').replace(/ /g, '+').toLowerCase();
-
-  // Escape double quotes before encoding
-  const escapedValue = rawFilterValue.replace(/"/g, '\\"');
-
-  const filterValueForSearchURL =
-    filterKey === 'tier.tagFQN'
-      ? filterValue
-      : /["%]/.test(filterValue ?? '')
-      ? encodeURIComponent(escapedValue)
-      : rawFilterValue;
-
-  const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${filterKey}*${filterValueForSearchURL}*`;
-
-  const queryRes = page.waitForResponse(querySearchURL);
-  await page.click('[data-testid="update-btn"]');
-  await queryRes;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  await expect(
-    page.getByTestId(
-      `table-data-card_${
-        (entity as any)?.entityResponseData?.fullyQualifiedName
-      }`
-    )
-  ).toBeVisible();
-
-  await page.click('[data-testid="clear-filters"]');
-
-  await entity?.visitEntityPageWithCustomSearchBox(page);
 };
 
 export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {

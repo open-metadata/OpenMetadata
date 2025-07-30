@@ -25,19 +25,14 @@ import {
   clickOutside,
   descriptionBox,
   getApiContext,
-  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from '../../utils/common';
-import {
-  visitDataQualityTab,
-  visitDataQualityTabWithCustomSearchBox,
-} from '../../utils/dataQualityAndProfiler';
 import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { deleteTestCase } from '../../utils/testCases';
+import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -109,7 +104,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     field: 'testCase',
     description: 'New table test case for TableColumnNameToExist',
   };
-  await visitDataQualityTabWithCustomSearchBox(page, table1);
+  await visitDataQualityTab(page, table1);
 
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.click('[data-testid="table"]');
@@ -258,7 +253,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     description: 'New table test case for columnValueLengthsToBeBetween',
   };
 
-  await visitDataQualityTabWithCustomSearchBox(page, table1);
+  await visitDataQualityTab(page, table1);
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.click('[data-testid="column"]');
 
@@ -408,7 +403,6 @@ test(
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
-      await redirectToExplorePage(page);
       await visitEntityPage({
         page,
         searchTerm: DATA_QUALITY_TABLE.term,
@@ -507,7 +501,7 @@ test(
 
     const testCase = table2.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
-    await visitDataQualityTabWithCustomSearchBox(page, table2);
+    await visitDataQualityTab(page, table2);
 
     await test.step(
       'Array params value should be visible while editing the test case',
@@ -689,7 +683,7 @@ test(
       partitionValues: 'test',
     };
 
-    await table1.visitEntityPageWithCustomSearchBox(page);
+    await table1.visitEntityPage(page);
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
@@ -853,7 +847,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await domain.create(apiContext);
 
   // Add domain to table
-  await filterTable1.visitEntityPageWithCustomSearchBox(page);
+  await filterTable1.visitEntityPage(page);
   await assignDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,
