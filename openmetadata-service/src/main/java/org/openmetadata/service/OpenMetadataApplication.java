@@ -496,38 +496,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerSamlServlets(
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
-
-    if (SecurityConfigurationManager.getInstance().getCurrentAuthConfig() != null
-        && SecurityConfigurationManager.getInstance()
-            .getCurrentAuthConfig()
-            .getProvider()
-            .equals(AuthProvider.SAML)) {
-
-      // Ensure we have a session handler
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      if (contextHandler.getSessionHandler() == null) {
-        contextHandler.setSessionHandler(new SessionHandler());
-      }
-
-      // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
-      SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-      contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      contextHandler.addServlet(
-          new ServletHolder(
-              new SamlAssertionConsumerServlet(
-                  SecurityConfigurationManager.getInstance().getCurrentAuthzConfig())),
-          "/api/v1/saml/acs");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
-      contextHandler.addServlet(
-          new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
-      contextHandler.addServlet(
-          new ServletHolder(
-              new SamlLogoutServlet(
-                  SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
-                  SecurityConfigurationManager.getInstance().getCurrentAuthzConfig())),
-          "/api/v1/saml/logout");
+    // Ensure we have a session handler
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    if (contextHandler.getSessionHandler() == null) {
+      contextHandler.setSessionHandler(new SessionHandler());
     }
+
+    // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
+    SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+    contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+    contextHandler.addServlet(
+        new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+    contextHandler.addServlet(
+        new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
+    contextHandler.addServlet(
+        new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
+    contextHandler.addServlet(new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
   }
 
   @SneakyThrows
@@ -642,6 +626,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .updateConfiguration(
                 SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
                 SecurityConfigurationManager.getInstance().getCurrentAuthzConfig());
+      }
+
+      // Reinitialize SAML settings if SAML is enabled
+      if (SecurityConfigurationManager.getInstance().getCurrentAuthConfig() != null
+          && SecurityConfigurationManager.getInstance()
+              .getCurrentAuthConfig()
+              .getProvider()
+              .equals(AuthProvider.SAML)) {
+        LOG.info("Reinitializing SAML settings during authentication reinitialization");
+        SamlSettingsHolder.getInstance().initDefaultSettings(config);
       }
 
       LOG.info("Successfully reinitialized authentication system");
