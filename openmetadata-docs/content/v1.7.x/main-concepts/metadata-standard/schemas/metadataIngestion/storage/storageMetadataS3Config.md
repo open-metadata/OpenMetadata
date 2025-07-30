@@ -1,5 +1,6 @@
 ---
-title: storageMetadataS3Config
+title: StorageMetadataS3Config | Official Documentation
+description: Ingest metadata from AWS S3 using defined schema settings such as bucket details, authentication, prefix patterns, and sync frequency.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/storage/storagemetadatas3config
 ---
 
