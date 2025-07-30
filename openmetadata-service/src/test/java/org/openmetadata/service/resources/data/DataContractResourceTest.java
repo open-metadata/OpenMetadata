@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
+import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.AfterEach;
@@ -297,13 +300,31 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
 
+  private DataContract getDataContractByName(String name, String fields)
+      throws HttpResponseException {
+    WebTarget target = getResourceByName(name);
+    if (fields != null) {
+      target = target.queryParam("fields", fields);
+    }
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+  }
+
   private DataContract getDataContractByEntityId(UUID entityId, String entityType)
+      throws HttpResponseException {
+    return getDataContractByEntityId(entityId, entityType, null);
+  }
+
+  private DataContract getDataContractByEntityId(UUID entityId, String entityType, String fields)
       throws HttpResponseException {
     WebTarget target =
         getCollection()
             .path("/entity")
             .queryParam("entityId", entityId)
             .queryParam("entityType", entityType);
+    if (fields != null && !fields.isEmpty()) {
+      target = target.queryParam("fields", fields);
+    }
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
@@ -358,6 +379,10 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
   private WebTarget getResource(UUID id) {
     return getCollection().path("/" + id);
+  }
+
+  private WebTarget getResourceByName(String name) {
+    return getCollection().path("/name/" + name);
   }
 
   private String getDataContractUri() {
@@ -453,6 +478,182 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertEquals(ContractStatus.Active, updated.getStatus());
     assertEquals(created.getId(), updated.getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testUpdateDataContractWithSemanticsAndQualityExpectations(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Create initial semantics rules
+    List<SemanticsRule> initialSemantics =
+        List.of(
+            new SemanticsRule()
+                .withName("ID Field Exists")
+                .withDescription("Checks that the ID field exists")
+                .withRule("{\"!!\": {\"var\": \"id\"}}"));
+
+    // Create test cases for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> initialQualityExpectations = List.of(testCase1.getEntityReference());
+
+    // Update with semantics and quality expectations
+    create
+        .withStatus(ContractStatus.Active)
+        .withSemantics(initialSemantics)
+        .withQualityExpectations(initialQualityExpectations);
+
+    DataContract updated = updateDataContract(create);
+
+    // Verify all updates
+    assertEquals(ContractStatus.Active, updated.getStatus());
+    assertEquals(created.getId(), updated.getId());
+    assertNotNull(updated.getSemantics());
+    assertEquals(1, updated.getSemantics().size());
+    assertEquals("ID Field Exists", updated.getSemantics().get(0).getName());
+    assertNotNull(updated.getQualityExpectations());
+    assertEquals(1, updated.getQualityExpectations().size());
+    assertEquals(testCase1.getId(), updated.getQualityExpectations().get(0).getId());
+    assertNotNull(updated.getTestSuite());
+
+    // Now update with additional semantics and quality expectations
+    List<SemanticsRule> updatedSemantics =
+        List.of(
+            new SemanticsRule()
+                .withName("ID Field Exists")
+                .withDescription("Checks that the ID field exists")
+                .withRule("{\"!!\": {\"var\": \"id\"}}"),
+            new SemanticsRule()
+                .withName("Name Field Exists")
+                .withDescription("Checks that the name field exists")
+                .withRule("{\"!!\": {\"var\": \"name\"}}"));
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_validity_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> updatedQualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    create.withSemantics(updatedSemantics).withQualityExpectations(updatedQualityExpectations);
+
+    DataContract finalUpdated = updateDataContract(create);
+
+    // Verify final updates
+    assertEquals(ContractStatus.Active, finalUpdated.getStatus());
+    assertEquals(created.getId(), finalUpdated.getId());
+    assertNotNull(finalUpdated.getSemantics());
+    assertEquals(2, finalUpdated.getSemantics().size());
+    assertNotNull(finalUpdated.getQualityExpectations());
+    assertEquals(2, finalUpdated.getQualityExpectations().size());
+    assertNotNull(finalUpdated.getTestSuite());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateAndGetDataContractWithOwners(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create owners list with both user and team
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(USER1_REF);
+    owners.add(TEAM11_REF);
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withOwners(owners);
+
+    DataContract created = createDataContract(create);
+
+    // Verify owners were set during creation
+    assertNotNull(created.getOwners());
+    assertEquals(2, created.getOwners().size());
+
+    // Get the data contract by ID and verify owners are returned properly
+    DataContract retrieved = getDataContract(created.getId(), "owners");
+
+    assertNotNull(retrieved);
+    assertEquals(created.getId(), retrieved.getId());
+    assertNotNull(retrieved.getOwners());
+    assertEquals(2, retrieved.getOwners().size());
+
+    // Verify the owners contain the expected references
+    List<UUID> ownerIds = retrieved.getOwners().stream().map(EntityReference::getId).toList();
+    assertTrue(ownerIds.contains(USER1_REF.getId()));
+    assertTrue(ownerIds.contains(TEAM11_REF.getId()));
+
+    // Verify owner types are preserved
+    Map<String, String> ownerTypeMap =
+        retrieved.getOwners().stream()
+            .collect(Collectors.toMap(owner -> owner.getId().toString(), EntityReference::getType));
+    assertEquals(
+        org.openmetadata.service.Entity.USER, ownerTypeMap.get(USER1_REF.getId().toString()));
+    assertEquals(
+        org.openmetadata.service.Entity.TEAM, ownerTypeMap.get(TEAM11_REF.getId().toString()));
+
+    // Also test getting by name
+    DataContract retrievedByName =
+        getDataContractByName(retrieved.getFullyQualifiedName(), "owners");
+
+    assertNotNull(retrievedByName);
+    assertEquals(retrieved.getId(), retrievedByName.getId());
+    assertNotNull(retrievedByName.getOwners());
+    assertEquals(2, retrievedByName.getOwners().size());
+
+    // Verify owners are the same when retrieved by name
+    List<UUID> ownerIdsByName =
+        retrievedByName.getOwners().stream().map(EntityReference::getId).toList();
+    assertTrue(ownerIdsByName.contains(USER1_REF.getId()));
+    assertTrue(ownerIdsByName.contains(TEAM11_REF.getId()));
+
+    // Also test getting by entity ID with fields parameter
+    DataContract retrievedByEntityId =
+        getDataContractByEntityId(table.getId(), org.openmetadata.service.Entity.TABLE, "owners");
+
+    assertNotNull(retrievedByEntityId);
+    assertEquals(retrieved.getId(), retrievedByEntityId.getId());
+    assertNotNull(retrievedByEntityId.getOwners());
+    assertEquals(2, retrievedByEntityId.getOwners().size());
+
+    // Verify owners are the same when retrieved by entity ID
+    List<UUID> ownerIdsByEntityId =
+        retrievedByEntityId.getOwners().stream().map(EntityReference::getId).toList();
+    assertTrue(ownerIdsByEntityId.contains(USER1_REF.getId()));
+    assertTrue(ownerIdsByEntityId.contains(TEAM11_REF.getId()));
+
+    // Verify owner types are preserved when retrieved by entity ID
+    Map<String, String> ownerTypeMapByEntityId =
+        retrievedByEntityId.getOwners().stream()
+            .collect(Collectors.toMap(owner -> owner.getId().toString(), EntityReference::getType));
+    assertEquals(
+        org.openmetadata.service.Entity.USER,
+        ownerTypeMapByEntityId.get(USER1_REF.getId().toString()));
+    assertEquals(
+        org.openmetadata.service.Entity.TEAM,
+        ownerTypeMapByEntityId.get(TEAM11_REF.getId().toString()));
+
+    // Test that getting by entity ID without fields parameter returns contract without owners
+    DataContract retrievedByEntityIdNoFields =
+        getDataContractByEntityId(table.getId(), org.openmetadata.service.Entity.TABLE);
+
+    assertNotNull(retrievedByEntityIdNoFields);
+    assertEquals(retrieved.getId(), retrievedByEntityIdNoFields.getId());
+    // Owners should be null or empty when fields parameter is not specified
+    assertTrue(
+        retrievedByEntityIdNoFields.getOwners() == null
+            || retrievedByEntityIdNoFields.getOwners().isEmpty());
   }
 
   @Test

@@ -289,13 +289,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Entity Type to get the data contract for",
               schema = @Schema(type = "string", example = Entity.TABLE))
           @QueryParam("entityType")
-          String entityType) {
+          String entityType,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam) {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContextById(entityId));
-    return repository.loadEntityDataContract(
-        new EntityReference().withId(entityId).withType(entityType));
+    DataContract dataContract =
+        repository.loadEntityDataContract(
+            new EntityReference().withId(entityId).withType(entityType));
+    return addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
   }
 
   @GET
