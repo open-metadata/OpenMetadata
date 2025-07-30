@@ -29,7 +29,10 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
 
   const handleCardClick = useCallback(() => {
     if (persona.fullyQualifiedName) {
-      navigate(getPersonaDetailsPath(persona.fullyQualifiedName));
+      navigate({
+        pathname: getPersonaDetailsPath(persona.fullyQualifiedName),
+        hash: '#customize-ui',
+      });
     }
   }, [persona]);
 

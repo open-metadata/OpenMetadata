@@ -26,6 +26,7 @@ jest.mock('../../../../rest/searchAPI', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
   Link: jest.fn().mockImplementation(({ children, to }) => (
     <a data-testid="entity-link" href={to}>
       {children}

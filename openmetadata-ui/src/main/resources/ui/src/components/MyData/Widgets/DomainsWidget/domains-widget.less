@@ -72,24 +72,21 @@
   box-shadow: @button-box-shadow-default;
   position: relative;
   overflow: hidden;
-  height: @size-2xl;
+  height: 32px;
   border: 1px solid #dbe0e7;
   border-radius: @size-xs;
 }
 
 .domain-card-bar {
-  width: 6px;
   height: 100%;
-  border-radius: 6px 0 0 6px;
-  flex-shrink: 0;
-  background: @primary-color;
+  border-left: 6px solid @primary-color;
 }
 
 .domain-card-content {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 0 @size-md;
+  padding: 0 @size-xs;
   min-width: 0;
 }
 
@@ -97,33 +94,33 @@
   display: flex;
   align-items: center;
   gap: @size-xs;
-  font-size: @size-md;
+  font-size: @font-size-base;
   font-weight: @font-medium;
-  color: @text-color;
+  color: @grey-700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .domain-card-name {
-  max-width: 100%;
+  color: @grey-700 !important;
+  display: inline-block;
+  margin-bottom: 0 !important;
+  max-width: 150px !important;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
   vertical-align: middle;
-  color: @grey-700 !important;
+  white-space: nowrap;
 }
 
 .domain-card-count {
-  background: @grey-31;
-  color: @grey-32;
-  font-size: @font-size-base;
+  background: @grey-15;
+  color: @grey-700;
+  font-size: @size-sm;
   font-weight: @font-semibold;
   border-radius: @size-md;
-  padding: 2px @size-sm;
+  padding: 2px @size-xs;
   margin-left: @size-xs;
-  min-width: 40px;
   text-align: center;
   display: inline-block;
 }
@@ -134,11 +131,10 @@
   background: @white;
   border: 1px solid #dbe0e7;
   border-radius: @size-sm;
-  width: 340px;
-  height: 80px;
   box-shadow: @button-box-shadow-default;
+  height: 70px !important;
   padding: 0 @size-sm;
-  gap: @size-mlg;
+  gap: @size-sm;
 }
 
 .domain-card-full-icon {
@@ -151,6 +147,11 @@
   font-size: 32px;
   color: @white;
   padding: @size-xs;
+  background: @primary-color;
+
+  svg {
+    color: @white;
+  }
 }
 
 .domain-card-full-content {
@@ -166,18 +167,23 @@
   align-items: center;
   gap: @size-xs;
   margin-bottom: 2px;
+  color: @grey-700;
+
+  .ant-typography {
+    color: @grey-700;
+    max-width: 240px;
+  }
 }
 
 .domain-card-full-count {
-  background: @grey-30;
-  color: @blue-35;
+  background: @grey-15;
+  color: @grey-700;
   font-size: @size-sm;
-  font-weight: @font-regular;
-  border-radius: @size-xs;
+  font-weight: @font-semibold;
+  border-radius: @size-md;
   padding: 2px @size-xs;
   text-align: center;
   display: inline-block;
-  margin-left: 6px;
 }
 
 .domain-card-icon {

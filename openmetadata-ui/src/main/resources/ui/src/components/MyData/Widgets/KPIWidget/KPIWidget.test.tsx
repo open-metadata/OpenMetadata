@@ -90,6 +90,10 @@ jest.mock('./KPILegend/KPILegend', () =>
   jest.fn().mockReturnValue(<p>KPILegend.Component</p>)
 );
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
 

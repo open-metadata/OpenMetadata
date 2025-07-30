@@ -337,6 +337,7 @@ const KPIWidget = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<KPIIcon className="kpi-widget-icon" height={22} width={22} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.KPI_LIST}
           title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
           widgetKey={widgetKey}
           widgetWidth={widgetData?.w}
