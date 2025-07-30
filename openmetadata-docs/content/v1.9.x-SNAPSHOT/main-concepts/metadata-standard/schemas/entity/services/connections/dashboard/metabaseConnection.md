@@ -1,5 +1,6 @@
 ---
 title: Metabase Connection | OpenMetadata Metabase
+description: Metabase connection schema detailing host, credentials, and API setup for metadata ingestion.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/metabaseconnection
 ---
 
