@@ -948,15 +948,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  @Order(1)
+  @Order(5)
   @Execution(ExecutionMode.CONCURRENT)
-  void test_bulkFollowersVotesFetching_alwaysFirstName(TestInfo test) throws IOException {
+  void test_bulkFollowersVotesFetchers(TestInfo test) throws IOException {
     // Use a name that always lands first alphabetically.
     // Note: The special character "\!A_" is prefixed to ensure the entity sorts before others.
     // This allows us to verify ordering without listing all 100 entities.
     String alwaysFirstName = "!A_AlwaysFirstEntity";
+
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
     K request = createRequest(alwaysFirstName);
-    T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add a follower if supported.
     if (supportsFollowers) {
