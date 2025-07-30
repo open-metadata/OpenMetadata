@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +86,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTrigger();
+      updateConfig();
       updateNodes();
       updateEdges();
     }
@@ -94,6 +96,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         return;
       }
       recordChange("trigger", original.getTrigger(), updated.getTrigger());
+    }
+
+    private void updateConfig() {
+      if (Objects.equals(original.getConfig(), updated.getConfig())) {
+        return;
+      }
+      recordChange("config", original.getConfig(), updated.getConfig());
     }
 
     private void updateNodes() {
