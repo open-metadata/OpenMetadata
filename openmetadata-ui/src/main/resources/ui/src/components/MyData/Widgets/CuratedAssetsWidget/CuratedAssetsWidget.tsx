@@ -368,8 +368,8 @@ const CuratedAssetsWidget = ({
           ) : (
             <StarOutlinedIcon
               data-testid="star-outlined-icon"
-              height={24}
-              width={24}
+              height={22}
+              width={22}
             />
           )
         }

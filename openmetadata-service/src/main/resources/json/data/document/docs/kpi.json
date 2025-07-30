@@ -1,7 +1,7 @@
 {
   "name": "KPI",
   "displayName": "KPI",
-  "description": "KPI KnowledgePanel shows the Organization's KPIs on description, owner coverage.",
+  "description": "Visualizes key performance metrics of data assets in an intuitive graph format.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.KPI",
   "data": {

@@ -14,6 +14,8 @@
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,6 +34,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { getAllFeeds } from '../../../rest/feedsAPI';
+import * as ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { MyFeedWidget } from './FeedWidget.component';
 
 jest.mock('react-i18next', () => ({
@@ -87,7 +90,7 @@ jest.mock(
         <div data-testid="widget-header">
           <select
             data-testid="filter-select"
-            onChange={(e) => onSortChange({ key: e.target.value })}>
+            onChange={(e) => onSortChange(e.target.value)}>
             <option value={FeedFilter.ALL}>All</option>
             <option value={FeedFilter.OWNER}>Owner</option>
           </select>
@@ -127,6 +130,37 @@ jest.mock('../Widgets/Common/WidgetEmptyState/WidgetEmptyState', () => () => (
   <div data-testid="widget-empty-state">Empty State</div>
 ));
 
+jest.mock('../../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
+}));
+
+// Create a mock getFeedData function that can be tracked
+const mockGetFeedData = jest.fn();
+
+jest.mock(
+  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      loading: false,
+      entityThread: [
+        {
+          id: '1',
+          message: 'First post',
+          threadTs: 111,
+          type: ThreadType.Conversation,
+        },
+        {
+          id: '2',
+          message: 'Second post',
+          threadTs: 222,
+          type: ThreadType.Conversation,
+        },
+      ],
+      getFeedData: mockGetFeedData,
+    })),
+  })
+);
+
 const renderComponent = (overrides = {}) => {
   return render(
     <BrowserRouter>
@@ -159,7 +193,14 @@ describe('MyFeedWidget', () => {
   });
 
   it('should render empty state when no data is returned', async () => {
-    (getAllFeeds as jest.Mock).mockResolvedValueOnce({ data: [] });
+    // Mock provider to return empty data
+    (
+      ActivityFeedProvider.useActivityFeedProvider as jest.Mock
+    ).mockReturnValueOnce({
+      loading: false,
+      entityThread: [],
+      getFeedData: mockGetFeedData,
+    });
 
     renderComponent();
 
@@ -172,11 +213,11 @@ describe('MyFeedWidget', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(getAllFeeds).toHaveBeenCalledWith(
-        undefined,
+      expect(mockGetFeedData).toHaveBeenCalledWith(
+        FeedFilter.ALL,
         undefined,
         ThreadType.Conversation,
-        FeedFilter.ALL,
+        undefined,
         undefined,
         undefined,
         10
@@ -192,11 +233,11 @@ describe('MyFeedWidget', () => {
     });
 
     await waitFor(() => {
-      expect(getAllFeeds).toHaveBeenCalledWith(
-        undefined,
+      expect(mockGetFeedData).toHaveBeenCalledWith(
+        FeedFilter.OWNER,
         undefined,
         ThreadType.Conversation,
-        { key: FeedFilter.OWNER },
+        undefined,
         undefined,
         undefined,
         10

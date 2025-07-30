@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Card, Typography } from 'antd';
+import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
@@ -83,7 +84,7 @@ const WidgetCard = ({
       </div>
       <div className="p-t-md p-x-sm">
         <Typography.Text className="text-sm font-medium">
-          {widget.name}
+          {startCase(widget.name)}
         </Typography.Text>
         <Typography.Paragraph
           className="widget-desc m-t-xs text-xs font-regular"

@@ -1,10 +1,10 @@
 {
-    "name": "MyTask",
-    "displayName": "My Task",
-    "description": "View and manage all tasks that have been assigned to you.",
-    "entityType": "KnowledgePanel",
-    "fullyQualifiedName": "KnowledgePanel.MyTask",
-    "data": {
-      "gridSizes": ["small", "medium"]
-    }
+  "name": "MyTask",
+  "displayName": "My Task",
+  "description": "Displays a real-time feed of assigned tasks to help users track and manage their workload efficiently.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.MyTask",
+  "data": {
+    "gridSizes": ["small", "medium"]
   }
+}

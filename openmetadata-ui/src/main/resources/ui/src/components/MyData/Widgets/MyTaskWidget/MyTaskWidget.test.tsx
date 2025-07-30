@@ -33,6 +33,10 @@ jest.mock('../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New', () =>
   jest.fn().mockImplementation(() => <div>FeedPanelBodyV1New</div>)
 );
 
+jest.mock('../../../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
+}));
+
 const mockProps = {
   isEditView: false,
   handleRemoveWidget: jest.fn(),

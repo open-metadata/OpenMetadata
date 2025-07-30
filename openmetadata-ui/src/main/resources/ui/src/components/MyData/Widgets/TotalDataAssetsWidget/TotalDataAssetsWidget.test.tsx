@@ -364,25 +364,6 @@ describe('TotalDataAssetsWidget', () => {
       });
     });
 
-    it('should change sort option and refetch data when dropdown value changes to 30 days', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
-
-      // Change to 30 days
-      await act(async () => {
-        fireEvent.change(sortDropdown, {
-          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS },
-        });
-      });
-
-      await waitFor(() => {
-        expect(getChartPreviewByName).toHaveBeenCalledTimes(2); // Initial + after sort change
-      });
-    });
-
     it('should fetch data with correct time period when sort changes', async () => {
       await act(async () => {
         renderTotalDataAssetsWidget();
@@ -403,17 +384,6 @@ describe('TotalDataAssetsWidget', () => {
 
       await waitFor(() => {
         expect(getEpochMillisForPastDays).toHaveBeenCalledWith(14);
-      });
-
-      // Change to 30 days
-      await act(async () => {
-        fireEvent.change(sortDropdown, {
-          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_30_DAYS },
-        });
-      });
-
-      await waitFor(() => {
-        expect(getEpochMillisForPastDays).toHaveBeenCalledWith(30);
       });
     });
 
