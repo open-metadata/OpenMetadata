@@ -36,6 +36,7 @@ logger = utils_logger()
 
 class SupportedTypes(Enum):
     CSV = "csv"
+    CSVGZ = "csv.gz"
     TSV = "tsv"
     AVRO = "avro"
     PARQUET = "parquet"
@@ -53,6 +54,7 @@ class SupportedTypes(Enum):
 
 DF_READER_MAP = {
     SupportedTypes.CSV.value: CSVDataFrameReader,
+    SupportedTypes.CSVGZ.value: CSVDataFrameReader,
     SupportedTypes.TSV.value: TSVDataFrameReader,
     SupportedTypes.AVRO.value: AvroDataFrameReader,
     SupportedTypes.PARQUET.value: ParquetDataFrameReader,
@@ -79,7 +81,7 @@ def get_df_reader(
     Load the File Reader based on the Config Source
     """
     # If we have a DSV file, build a reader dynamically based on the received separator
-    if type_ in {SupportedTypes.CSV, SupportedTypes.TSV} and separator:
+    if type_ in {SupportedTypes.CSV, SupportedTypes.CSVGZ, SupportedTypes.TSV} and separator:
         return get_dsv_reader_by_separator(separator=separator)(
             config_source=config_source, client=client
         )
