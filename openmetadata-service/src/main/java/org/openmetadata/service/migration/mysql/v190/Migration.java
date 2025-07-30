@@ -1,7 +1,5 @@
 package org.openmetadata.service.migration.mysql.v190;
 
-import static org.openmetadata.service.migration.utils.v171.MigrationUtil.updateWorkflowDefinitions;
-
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -18,8 +16,10 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.migrateAutomatorDomainToDomainsAction(handle);
-    // Updating WorkflowDefinition
+    // Initialize WorkflowHandler
     initializeWorkflowHandler();
-    updateWorkflowDefinitions();
+    // Update WorkflowDefinitions from fresh seed data instead of database
+    // This ensures new nodes and edges are properly applied
+    MigrationUtil.updateWorkflowDefinitionsFromSeedData();
   }
 }

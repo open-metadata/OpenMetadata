@@ -16,5 +16,11 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.migrateAutomatorDomainToDomainsAction(handle);
+
+    // Initialize WorkflowHandler
+    initializeWorkflowHandler();
+    // Update WorkflowDefinitions from fresh seed data instead of database
+    // This ensures new nodes and edges are properly applied
+    MigrationUtil.updateWorkflowDefinitionsFromSeedData();
   }
 }
