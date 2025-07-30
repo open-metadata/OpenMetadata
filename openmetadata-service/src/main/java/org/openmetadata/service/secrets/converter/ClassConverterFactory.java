@@ -97,11 +97,11 @@ public final class ClassConverterFactory {
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
-            Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
+            Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
+            Map.entry(RangerConnection.class, new RangerConnectionClassConverter()));
     Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
     Map.entry(SSISConnection.class, new SsisConnectionClassConverter());
-    Map.entry(RangerConnection.class, new RangerConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
