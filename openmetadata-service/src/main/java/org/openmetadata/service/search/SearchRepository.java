@@ -83,6 +83,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -106,6 +108,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -225,9 +230,8 @@ public class SearchRepository {
   }
 
   public void createIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      createIndex(indexMapping);
-    }
+    RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
+    recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
   }
 
   public void updateIndexes() {
@@ -1308,6 +1312,10 @@ public class SearchRepository {
     return searchClient.aggregate(request);
   }
 
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    return searchClient.getEntityTypeCounts(request, index);
+  }
+
   public JsonObject aggregate(
       String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {
@@ -1395,7 +1403,7 @@ public class SearchRepository {
     String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>("entityRelationship.docId.keyword", relationDocId),
+        new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
         new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
   }
 
@@ -1415,5 +1423,66 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.error("Failed to initialize NLQ service", e);
     }
+  }
+
+  /**
+   * Creates a BulkSink instance with vector embedding configuration.
+   * This method can be overridden in subclasses to provide different implementations.
+   */
+  public BulkSink createBulkSink(
+      int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
+    ElasticSearchConfiguration.SearchType searchType = getSearchType();
+    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    } else {
+      return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    }
+  }
+
+  /**
+   * Creates a ReindexHandler instance for recreate operations during reindexing.
+   * This method can be overridden in subclasses to provide different implementations.
+   */
+  public RecreateIndexHandler createReindexHandler() {
+    return new DefaultRecreateHandler();
+  }
+
+  /**
+   * Checks if vector embedding is enabled.
+   * This method can be overridden in subclasses to provide different configurations.
+   */
+  @SuppressWarnings("unused")
+  public boolean isVectorEmbeddingEnabled() {
+    return false;
+  }
+
+  @SuppressWarnings("unused")
+  public <T> T getHighLevelClient() {
+    return (T) searchClient.getHighLevelClient();
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationshipWithDirection(entityRelationshipRequest);
+  }
+
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    return searchClient.searchEntityRelationship(entityRelationshipRequest);
+  }
+
+  public org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult
+      getSchemaEntityRelationship(
+          String schemaFqn,
+          String queryFilter,
+          String includeSourceFields,
+          int offset,
+          int limit,
+          int from,
+          int size,
+          boolean deleted)
+          throws IOException {
+    return searchClient.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
 }

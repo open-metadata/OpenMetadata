@@ -1,5 +1,6 @@
 ---
 title: SSL Cert Values | OpenMetadata SSL Values
+description: Define SSL certificate values as part of secure connection configurations for services requiring encrypted communication.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common/sslcertvalues
 ---
 

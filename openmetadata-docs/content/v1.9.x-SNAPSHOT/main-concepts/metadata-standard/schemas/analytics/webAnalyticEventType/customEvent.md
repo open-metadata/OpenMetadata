@@ -1,5 +1,6 @@
 ---
 title: Custom Event Schema | OpenMetadata Custom Analytics Event
+description: Connect Customevent to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/customevent
 ---
 

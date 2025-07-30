@@ -1,5 +1,6 @@
 ---
 title: ADLS Connection | OpenMetadata Azure Data Lake Storage Config
+description: Define connection settings for Azure Data Lake Storage to ingest metadata and manage file-based assets across cloud workloads.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage/adlsconnection
 ---
 

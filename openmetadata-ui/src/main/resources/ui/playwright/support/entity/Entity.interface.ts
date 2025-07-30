@@ -119,3 +119,11 @@ export interface EntityReference {
   href?: string;
   inherited?: boolean;
 }
+
+export interface ServiceEntity {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
+  };
+}

@@ -19,7 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   applySortToData,
   getSortField,
@@ -27,7 +31,6 @@ import {
   MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -45,6 +48,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -182,15 +186,13 @@ const MyDataWidgetInternal = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={`users/${currentUser?.name}/mydata`}
-        actionButtonText={t('label.get-started')}
-        description={`${t('message.nothing-saved-yet')} ${t(
-          'message.no-owned-data'
-        )}`}
+        actionButtonLink={ROUTES.EXPLORE}
+        actionButtonText={t('label.explore-assets')}
+        description={t('message.no-owned-data')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
-        title={t('message.curate-your-data-view')}
+        title={t('label.no-records')}
       />
     ),
     []
@@ -205,7 +207,7 @@ const MyDataWidgetInternal = ({
             return (
               <div
                 className="my-data-widget-list-item card-wrapper w-full p-xs border-radius-sm"
-                data-testid={`Recently Viewed-${getEntityName(item)}`}
+                data-testid={`My-Data-${getEntityName(item)}`}
                 key={item.id}>
                 <div className="d-flex items-center justify-between ">
                   <Link
@@ -225,13 +227,13 @@ const MyDataWidgetInternal = ({
                       <div className="d-flex w-max-full w-min-0 flex-column gap-1">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
-                            className="text-left text-sm font-regular"
+                            className="text-left text-xs font-regular text-grey-600"
                             ellipsis={{ tooltip: true }}>
                             {item.serviceType}
                           </Typography.Text>
                         )}
                         <Typography.Text
-                          className="text-left text-sm font-semibold"
+                          className="text-left text-sm font-regular text-grey-800"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -265,6 +267,11 @@ const MyDataWidgetInternal = ({
     return data.length > 0 ? data.length.toString() : '';
   }, [data]);
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoading) && data?.length > 10,
+    [data, isLoading]
+  );
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
@@ -274,6 +281,7 @@ const MyDataWidgetInternal = ({
           handleRemoveWidget={handleRemoveWidget}
           icon={<MyDataIcon height={24} width={24} />}
           isEditView={isEditView}
+          redirectUrlOnTitleClick={ROUTES.EXPLORE}
           selectedSortBy={selectedFilter}
           sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
           title={t('label.my-data')}
@@ -286,12 +294,12 @@ const MyDataWidgetInternal = ({
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
+              UserPageTabs.MY_DATA
             )}
             moreButtonText={t('label.view-more-count', {
               countValue: showMoreCount,
             })}
-            showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>

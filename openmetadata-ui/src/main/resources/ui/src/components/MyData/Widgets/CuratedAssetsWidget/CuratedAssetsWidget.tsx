@@ -12,7 +12,8 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import { get, isEmpty, orderBy, toLower } from 'lodash';
+import { AxiosError } from 'axios';
+import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
@@ -21,7 +22,12 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
-import { SIZE, SORT_ORDER } from '../../../../enums/common.enum';
+import { ROUTES } from '../../../../constants/constants';
+import {
+  getSortField,
+  getSortOrder,
+} from '../../../../constants/Widgets.constant';
+import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   SearchIndexSearchSourceMapping,
@@ -42,6 +48,7 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -63,9 +70,6 @@ const CuratedAssetsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const [data, setData] = useState<
-    Array<SearchIndexSearchSourceMapping[SearchIndex]>
-  >([]);
-  const [sortedData, setSortedData] = useState<
     Array<SearchIndexSearchSourceMapping[SearchIndex]>
   >([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -106,16 +110,24 @@ const CuratedAssetsWidget = ({
     [curatedAssetsConfig]
   );
 
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoading) && data?.length > 10,
+    [data, isLoading]
+  );
+
   const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
 
   const prepareData = useCallback(async () => {
     if (selectedResource?.[0]) {
       try {
         setIsLoading(true);
+        const sortField = getSortField(selectedSortBy);
+        const sortOrder = getSortOrder(selectedSortBy);
+
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
-          pageSize: 10,
+          pageSize: 20,
           searchIndex: selectedResource[0] as SearchIndex,
           includeDeleted: false,
           trackTotalHits: false,
@@ -124,6 +136,8 @@ const CuratedAssetsWidget = ({
             JSON.parse(queryFilter),
             selectedResource
           ),
+          sortField,
+          sortOrder,
         });
 
         const source = res.hits.hits.map((hit) => hit._source);
@@ -141,12 +155,12 @@ const CuratedAssetsWidget = ({
 
         setData(source);
       } catch (error) {
-        return;
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     }
-  }, [curatedAssetsConfig, selectedResource, queryFilter]);
+  }, [curatedAssetsConfig, selectedResource, queryFilter, selectedSortBy]);
 
   const handleSave = (value: WidgetConfig['config']) => {
     const hasCurrentCuratedAssets = currentLayout?.find(
@@ -171,32 +185,6 @@ const CuratedAssetsWidget = ({
 
     setCreateCuratedAssetsModalOpen(false);
   };
-
-  const handleSortData = useCallback(
-    (
-      data: Array<SearchIndexSearchSourceMapping[SearchIndex]>,
-      sortBy: string
-    ) => {
-      let newSortedData = data;
-      if (sortBy === CURATED_ASSETS_SORT_BY_KEYS.LATEST) {
-        newSortedData = orderBy(data, ['updatedAt'], [SORT_ORDER.DESC]);
-      } else if (sortBy === CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z) {
-        newSortedData = orderBy(
-          data,
-          [(item) => toLower(getEntityName(item))],
-          [SORT_ORDER.ASC]
-        );
-      } else if (sortBy === CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A) {
-        newSortedData = orderBy(
-          data,
-          [(item) => toLower(getEntityName(item))],
-          [SORT_ORDER.DESC]
-        );
-      }
-      setSortedData(newSortedData);
-    },
-    []
-  );
 
   const handleSortByClick = useCallback(
     (e: MenuInfo) => {
@@ -250,7 +238,12 @@ const CuratedAssetsWidget = ({
     if (!createCuratedAssetsModalOpen && !isEmpty(selectedResource)) {
       prepareData();
     }
-  }, [createCuratedAssetsModalOpen, selectedResource, prepareData]);
+  }, [
+    createCuratedAssetsModalOpen,
+    selectedResource,
+    prepareData,
+    selectedSortBy,
+  ]);
 
   const queryURL = useMemo(
     () =>
@@ -261,12 +254,6 @@ const CuratedAssetsWidget = ({
       }),
     [queryFilter, config, selectedResource]
   );
-
-  useEffect(() => {
-    if (data.length > 0 && selectedSortBy) {
-      handleSortData(data, selectedSortBy);
-    }
-  }, [data, handleSortData, selectedSortBy]);
 
   const noDataState = useMemo(
     () => (
@@ -346,33 +333,34 @@ const CuratedAssetsWidget = ({
     []
   );
 
+  const entityListData = useMemo(() => {
+    return isFullSize ? (
+      <Row className="curated-assets-grid">
+        {data.map((item) => (
+          <Col key={item.id} span={12}>
+            {entityListLinkItem(item)}
+          </Col>
+        ))}
+      </Row>
+    ) : (
+      data.map((item) => entityListLinkItem(item))
+    );
+  }, [data, isFullSize, entityListLinkItem]);
+
   const entityList = useMemo(
     () => (
       <div className="entity-list-body">
-        {sortedData.length > 0 ? (
-          isFullSize ? (
-            <Row className="curated-assets-grid">
-              {sortedData.map((item) => (
-                <Col key={item.id} span={12}>
-                  {entityListLinkItem(item)}
-                </Col>
-              ))}
-            </Row>
-          ) : (
-            sortedData.map((item) => entityListLinkItem(item))
-          )
-        ) : (
-          noDataState
-        )}
+        {data.length > 0 ? entityListData : noDataState}
       </div>
     ),
-    [sortedData, noDataState, isFullSize]
+    [data, noDataState, entityListData]
   );
 
   const widgetContent = (
     <div className="curated-assets-widget-container">
       <WidgetHeader
         currentLayout={currentLayout}
+        disableEdit={isEmpty(curatedAssetsConfig)}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
         icon={
@@ -381,12 +369,13 @@ const CuratedAssetsWidget = ({
           ) : (
             <StarOutlinedIcon
               data-testid="star-outlined-icon"
-              height={24}
-              width={24}
+              height={22}
+              width={22}
             />
           )
         }
         isEditView={isEditView}
+        redirectUrlOnTitleClick={ROUTES.EXPLORE}
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={
@@ -414,7 +403,7 @@ const CuratedAssetsWidget = ({
         moreButtonText={t('label.view-more-count', {
           countValue: viewMoreCount,
         })}
-        showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
+        showMoreButton={showWidgetFooterMoreButton}
       />
     </div>
   );

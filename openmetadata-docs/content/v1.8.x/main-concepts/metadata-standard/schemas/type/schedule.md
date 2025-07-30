@@ -1,5 +1,6 @@
 ---
 title: Schedule Schema | OpenMetadata Schedule Schema Details
+description: Schedule schema allows scheduling metadata tasks, automations, or workflows.
 slug: /main-concepts/metadata-standard/schemas/type/schedule
 ---
 

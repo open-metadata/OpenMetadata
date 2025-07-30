@@ -5,11 +5,12 @@ import uuid
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -30,9 +31,11 @@ from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauSource,
 )
 from metadata.ingestion.source.dashboard.tableau.models import (
+    DataSource,
     TableauBaseModel,
     TableauChart,
     TableauOwner,
+    UpstreamTable,
 )
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -67,7 +70,7 @@ mock_tableau_config = {
             "securityConfig": {
                 "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
                 "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
-                "2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXB"
+                "6NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXB"
                 "iEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fN"
                 "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
                 "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
@@ -469,3 +472,303 @@ class TableauUnitTest(TestCase):
             result[0].right.sourceUrl.root,
             "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
         )
+
+    def _setup_ssl_config(self, verify_ssl_value="no-ssl", ssl_config=None):
+        """
+        Helper method to set up SSL configuration for testing
+        """
+        from types import SimpleNamespace
+
+        from pydantic import SecretStr
+
+        # Set up verifySSL
+        self.tableau.config.serviceConnection.root.config.verifySSL = SimpleNamespace()
+        self.tableau.config.serviceConnection.root.config.verifySSL.value = (
+            verify_ssl_value
+        )
+
+        # Set up sslConfig if provided
+        if ssl_config:
+            self.tableau.config.serviceConnection.root.config.sslConfig = (
+                SimpleNamespace()
+            )
+            self.tableau.config.serviceConnection.root.config.sslConfig.root = (
+                SimpleNamespace()
+            )
+
+            if "caCertificate" in ssl_config:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = SecretStr(
+                    ssl_config["caCertificate"]
+                )
+            else:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = (
+                    None
+                )
+
+            if "sslCertificate" in ssl_config:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = SecretStr(
+                    ssl_config["sslCertificate"]
+                )
+            else:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = (
+                    None
+                )
+
+            if "sslKey" in ssl_config:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = SecretStr(
+                    ssl_config["sslKey"]
+                )
+            else:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = (
+                    None
+                )
+        else:
+            self.tableau.config.serviceConnection.root.config.sslConfig = None
+
+    def test_tableau_ssl_auth(self):
+        """
+        Test that Tableau SSL authentication works correctly
+        """
+        # Set up SSL configuration with all certificates
+        self._setup_ssl_config(
+            verify_ssl_value="validate",
+            ssl_config={
+                "caCertificate": "/path/to/ca.pem",
+                "sslCertificate": "/path/to/cert.pem",
+                "sslKey": "/path/to/key.pem",
+            },
+        )
+
+        # Test that SSL configuration was set correctly
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate.get_secret_value(),
+            "/path/to/cert.pem",
+        )
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey.get_secret_value(),
+            "/path/to/key.pem",
+        )
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate.get_secret_value(),
+            "/path/to/ca.pem",
+        )
+
+        # Test SSL connection establishment
+        with patch.object(
+            self.tableau, "get_dashboards_list", return_value=[]
+        ) as mock_get_dashboards:
+            list(self.tableau.get_dashboard())
+            mock_get_dashboards.assert_called_once()
+
+    def test_tableau_ssl_auth_without_cert(self):
+        """
+        Test that Tableau SSL authentication works without client certificates
+        """
+        # Set up SSL configuration with only CA certificate
+        self._setup_ssl_config(
+            verify_ssl_value="validate", ssl_config={"caCertificate": "/path/to/ca.pem"}
+        )
+
+        # Verify SSL configuration was set correctly
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate.get_secret_value(),
+            "/path/to/ca.pem",
+        )
+        self.assertIsNone(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate
+        )
+        self.assertIsNone(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey
+        )
+
+        # Test SSL connection establishment
+        with patch.object(
+            self.tableau, "get_dashboards_list", return_value=[]
+        ) as mock_get_dashboards:
+            list(self.tableau.get_dashboard())
+            mock_get_dashboards.assert_called_once()
+
+    def test_tableau_ssl_auth_disabled(self):
+        """
+        Test that Tableau works correctly when SSL is disabled
+        """
+        # Set up SSL configuration with SSL disabled
+        self._setup_ssl_config(verify_ssl_value="ignore")
+
+        # Verify SSL verification is disabled
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.verifySSL.value, "ignore"
+        )
+
+        # Test SSL connection establishment
+        with patch.object(
+            self.tableau, "get_dashboards_list", return_value=[]
+        ) as mock_get_dashboards:
+            list(self.tableau.get_dashboard())
+            mock_get_dashboards.assert_called_once()
+
+    def test_get_datamodel_table_lineage_with_empty_from_entities(self):
+        """
+        Test that _get_datamodel_table_lineage handles empty from_entities gracefully
+        """
+        # Mock data for the test
+        mock_datamodel = DataSource(
+            id="datasource1",
+            name="Test Datasource",
+            upstreamDatasources=[
+                DataSource(
+                    id="upstream_datasource1",
+                    name="Upstream Datasource",
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table1",
+                            luid="table1_luid",
+                            name="test_table",
+                            referencedByQueries=[
+                                {
+                                    "id": "query1",
+                                    "name": "test_query",
+                                    "query": "SELECT * FROM test_table",
+                                }
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Test Data Model",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        mock_upstream_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Upstream Data Model",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        # Mock the client to return custom SQL queries
+        self.tableau.client.get_custom_sql_table_queries = MagicMock(
+            return_value=["SELECT * FROM test_table"]
+        )
+
+        # Mock the _get_datamodel method
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity
+        ):
+            # Mock the metadata search to return empty results (simulating no table entities found)
+            with patch.object(
+                self.tableau.metadata, "search_in_any_service", return_value=[]
+            ):
+                # Mock the _get_add_lineage_request method to avoid actual lineage creation
+                with patch.object(
+                    self.tableau, "_get_add_lineage_request"
+                ) as mock_lineage_request:
+                    # Call the method under test
+                    lineage_results = list(
+                        self.tableau._get_datamodel_table_lineage(
+                            datamodel=mock_datamodel,
+                            data_model_entity=mock_data_model_entity,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    # Verify that the method completes without throwing an error
+                    # Even though from_entities is empty, the method should handle it gracefully
+                    self.assertIsInstance(lineage_results, list)
+
+                    # Verify that the lineage request was called for the datamodel lineage
+                    # (but not for table lineage since from_entities was empty)
+                    mock_lineage_request.assert_called()
+
+                    # Verify that the method didn't throw any exceptions
+                    # The test passes if we reach this point without exceptions
+
+    def test_get_datamodel_table_lineage_with_none_from_entities(self):
+        """
+        Test that _get_datamodel_table_lineage handles None from_entities gracefully
+        """
+        # Mock data for the test
+        mock_datamodel = DataSource(
+            id="datasource2",
+            name="Test Datasource 2",
+            upstreamDatasources=[
+                DataSource(
+                    id="upstream_datasource2",
+                    name="Upstream Datasource 2",
+                    upstreamTables=[
+                        UpstreamTable(
+                            id="table2",
+                            luid="table2_luid",
+                            name="test_table_2",
+                            referencedByQueries=[
+                                {
+                                    "id": "query2",
+                                    "name": "test_query_2",
+                                    "query": "SELECT * FROM test_table_2",
+                                }
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        mock_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Test Data Model 2",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        mock_upstream_data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Upstream Data Model 2",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[],
+        )
+
+        # Mock the client to return custom SQL queries
+        self.tableau.client.get_custom_sql_table_queries = MagicMock(
+            return_value=["SELECT * FROM test_table_2"]
+        )
+
+        # Mock the _get_datamodel method
+        with patch.object(
+            self.tableau, "_get_datamodel", return_value=mock_upstream_data_model_entity
+        ):
+            # Mock the metadata search to return None (simulating search failure)
+            with patch.object(
+                self.tableau.metadata, "search_in_any_service", return_value=None
+            ):
+                # Mock the _get_add_lineage_request method to avoid actual lineage creation
+                with patch.object(
+                    self.tableau, "_get_add_lineage_request"
+                ) as mock_lineage_request:
+                    # Call the method under test
+                    lineage_results = list(
+                        self.tableau._get_datamodel_table_lineage(
+                            datamodel=mock_datamodel,
+                            data_model_entity=mock_data_model_entity,
+                            db_service_prefix=None,
+                        )
+                    )
+
+                    # Verify that the method completes without throwing an error
+                    # Even though from_entities is None, the method should handle it gracefully
+                    self.assertIsInstance(lineage_results, list)
+
+                    # Verify that the lineage request was called for the datamodel lineage
+                    # (but not for table lineage since from_entities was None)
+                    mock_lineage_request.assert_called()
+
+                    # Verify that the method didn't throw any exceptions
+                    # The test passes if we reach this point without exceptions

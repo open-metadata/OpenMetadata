@@ -15,16 +15,26 @@ package org.openmetadata.service;
 
 import static java.lang.String.format;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
+import io.dropwizard.configuration.ConfigurationException;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.FileConfigurationSourceProvider;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
+import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.jackson.JacksonFeature;
+import io.dropwizard.jersey.validation.Validators;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import jakarta.validation.Validator;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
@@ -53,6 +63,11 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -65,6 +80,7 @@ import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
@@ -132,7 +148,7 @@ public abstract class OpenMetadataApplicationTest {
     if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
       elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
     }
-    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    OpenMetadataApplicationConfig config = readTestAppConfig(CONFIG_PATH);
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     LOG.info(
         "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
@@ -260,10 +276,27 @@ public abstract class OpenMetadataApplicationTest {
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
-    SettingsCache.initialize(config);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
+    WorkflowHandler.initialize(config);
+    SettingsCache.initialize(config);
+    ApplicationHandler.initialize(config);
+    ApplicationContext.initialize();
     Entity.cleanup();
+  }
+
+  protected OpenMetadataApplicationConfig readTestAppConfig(String path)
+      throws ConfigurationException, IOException {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    Validator validator = Validators.newValidator();
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    return factory.build(
+        new SubstitutingSourceProvider(
+            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+        path);
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -339,7 +372,9 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = getEsConfig();
-    SearchRepository searchRepository = new SearchRepository(esConfig, 50);
+    SearchRepository searchRepository =
+        SearchRepositoryFactory.createSearchRepository(esConfig, 50);
+    Entity.setSearchRepository(searchRepository);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
   }

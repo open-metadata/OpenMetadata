@@ -128,6 +128,8 @@ export const getAPIfromSource = (
       return patchMetric;
     case EntityType.DOMAIN:
       return patchDomains;
+    case EntityType.CHART:
+      return patchChartDetails;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -195,6 +197,8 @@ export const getEntityAPIfromSource = (
       return getMetricByFqn;
     case EntityType.DOMAIN:
       return getDomainByName;
+    case EntityType.CHART:
+      return getChartByFqn;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
