@@ -393,7 +393,7 @@ test(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page: adminPage, dataConsumerPage, dataStewardPage }) => {
-    test.slow();
+    test.slow(true);
 
     const DATA_QUALITY_TABLE = {
       term: 'dim_address',
