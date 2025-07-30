@@ -63,6 +63,12 @@ export const redirectToHomePage = async (page: Page) => {
   await page.waitForLoadState('networkidle');
 };
 
+export const redirectToExplorePage = async (page: Page) => {
+  await page.goto('/explore');
+  await page.waitForURL('**/explore');
+  await page.waitForLoadState('networkidle');
+};
+
 export const removeLandingBanner = async (page: Page) => {
   const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
   await page.click('[data-testid="welcome-screen-close-btn"]');

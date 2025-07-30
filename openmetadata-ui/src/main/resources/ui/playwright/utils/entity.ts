@@ -46,15 +46,20 @@ export const visitEntityPage = async (data: {
   const { page, searchTerm, dataTestId } = data;
   await page.waitForLoadState('networkidle');
 
+  await page
+    .getByRole('main')
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
     .isVisible();
 
   if (isWelcomeScreenVisible) {
     await page.getByTestId('welcome-screen-close-btn').click();
+    await page.waitForLoadState('networkidle');
   }
 
-  await page.waitForLoadState('networkidle');
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );

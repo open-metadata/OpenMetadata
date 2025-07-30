@@ -30,6 +30,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -358,6 +359,8 @@ test.describe('Domains', () => {
     const domain = new Domain();
     await domain.create(apiContext);
     await page.reload();
+
+    await redirectToExplorePage(page);
 
     await page.getByTestId('domain-dropdown').click();
 

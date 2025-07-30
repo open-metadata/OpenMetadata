@@ -25,6 +25,7 @@ import {
   clickOutside,
   descriptionBox,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -403,6 +404,7 @@ test(
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
+      await redirectToExplorePage(page);
       await visitEntityPage({
         page,
         searchTerm: DATA_QUALITY_TABLE.term,
