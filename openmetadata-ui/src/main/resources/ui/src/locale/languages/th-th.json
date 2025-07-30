@@ -1872,6 +1872,7 @@
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "สินทรัพย์ข้อมูลได้ทำการ {{actionType}}",
     "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-contract-saved-successfully": "Data contract saved successfully",
     "data-contract-schema-description": "โครงสร้างสคีมาที่คาดหวังของสินทรัพย์นี้",
     "data-insight-alert-destination-description": "ส่งการแจ้งเตือนทางอีเมลไปยังผู้ดูแลระบบหรือทีม",
     "data-insight-alert-trigger-description": "กระตุ้นสำหรับเวลาจริงหรือตั้งเวลาให้ทำทุกวัน, ทุกสัปดาห์ หรือทุกเดือน",

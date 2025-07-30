@@ -1872,6 +1872,7 @@
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "Объект данных был {{actionType}}",
     "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-contract-saved-successfully": "Data contract saved successfully",
     "data-contract-schema-description": "Ожидаемая структура схемы этого актива",
     "data-insight-alert-destination-description": "Отправляйте уведомления по электронной почте администраторам или командам.",
     "data-insight-alert-trigger-description": "Запускайте в режиме реального времени или запланируйте его на день, неделю или месяц.",
