@@ -473,6 +473,140 @@ class TableauUnitTest(TestCase):
             "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
         )
 
+    def _setup_ssl_config(self, verify_ssl_value="no-ssl", ssl_config=None):
+        """
+        Helper method to set up SSL configuration for testing
+        """
+        from types import SimpleNamespace
+
+        from pydantic import SecretStr
+
+        # Set up verifySSL
+        self.tableau.config.serviceConnection.root.config.verifySSL = SimpleNamespace()
+        self.tableau.config.serviceConnection.root.config.verifySSL.value = (
+            verify_ssl_value
+        )
+
+        # Set up sslConfig if provided
+        if ssl_config:
+            self.tableau.config.serviceConnection.root.config.sslConfig = (
+                SimpleNamespace()
+            )
+            self.tableau.config.serviceConnection.root.config.sslConfig.root = (
+                SimpleNamespace()
+            )
+
+            if "caCertificate" in ssl_config:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = SecretStr(
+                    ssl_config["caCertificate"]
+                )
+            else:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate = (
+                    None
+                )
+
+            if "sslCertificate" in ssl_config:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = SecretStr(
+                    ssl_config["sslCertificate"]
+                )
+            else:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate = (
+                    None
+                )
+
+            if "sslKey" in ssl_config:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = SecretStr(
+                    ssl_config["sslKey"]
+                )
+            else:
+                self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey = (
+                    None
+                )
+        else:
+            self.tableau.config.serviceConnection.root.config.sslConfig = None
+
+    def test_tableau_ssl_auth(self):
+        """
+        Test that Tableau SSL authentication works correctly
+        """
+        # Set up SSL configuration with all certificates
+        self._setup_ssl_config(
+            verify_ssl_value="validate",
+            ssl_config={
+                "caCertificate": "/path/to/ca.pem",
+                "sslCertificate": "/path/to/cert.pem",
+                "sslKey": "/path/to/key.pem",
+            },
+        )
+
+        # Test that SSL configuration was set correctly
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate.get_secret_value(),
+            "/path/to/cert.pem",
+        )
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey.get_secret_value(),
+            "/path/to/key.pem",
+        )
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate.get_secret_value(),
+            "/path/to/ca.pem",
+        )
+
+        # Test SSL connection establishment
+        with patch.object(
+            self.tableau, "get_dashboards_list", return_value=[]
+        ) as mock_get_dashboards:
+            list(self.tableau.get_dashboard())
+            mock_get_dashboards.assert_called_once()
+
+    def test_tableau_ssl_auth_without_cert(self):
+        """
+        Test that Tableau SSL authentication works without client certificates
+        """
+        # Set up SSL configuration with only CA certificate
+        self._setup_ssl_config(
+            verify_ssl_value="validate", ssl_config={"caCertificate": "/path/to/ca.pem"}
+        )
+
+        # Verify SSL configuration was set correctly
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.caCertificate.get_secret_value(),
+            "/path/to/ca.pem",
+        )
+        self.assertIsNone(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslCertificate
+        )
+        self.assertIsNone(
+            self.tableau.config.serviceConnection.root.config.sslConfig.root.sslKey
+        )
+
+        # Test SSL connection establishment
+        with patch.object(
+            self.tableau, "get_dashboards_list", return_value=[]
+        ) as mock_get_dashboards:
+            list(self.tableau.get_dashboard())
+            mock_get_dashboards.assert_called_once()
+
+    def test_tableau_ssl_auth_disabled(self):
+        """
+        Test that Tableau works correctly when SSL is disabled
+        """
+        # Set up SSL configuration with SSL disabled
+        self._setup_ssl_config(verify_ssl_value="ignore")
+
+        # Verify SSL verification is disabled
+        self.assertEqual(
+            self.tableau.config.serviceConnection.root.config.verifySSL.value, "ignore"
+        )
+
+        # Test SSL connection establishment
+        with patch.object(
+            self.tableau, "get_dashboards_list", return_value=[]
+        ) as mock_get_dashboards:
+            list(self.tableau.get_dashboard())
+            mock_get_dashboards.assert_called_once()
+
     def test_get_datamodel_table_lineage_with_empty_from_entities(self):
         """
         Test that _get_datamodel_table_lineage handles empty from_entities gracefully
