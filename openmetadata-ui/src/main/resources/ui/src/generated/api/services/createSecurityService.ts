@@ -29,9 +29,9 @@ export interface CreateSecurityService {
      */
     displayName?: string;
     /**
-     * Fully qualified names of the domains the Search Service belongs to.
+     * Fully qualified name of the domain the Search Service belongs to.
      */
-    domains?: string[];
+    domain?: string;
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
