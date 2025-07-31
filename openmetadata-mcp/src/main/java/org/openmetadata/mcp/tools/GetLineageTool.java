@@ -1,5 +1,7 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.IOException;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,9 @@ public class GetLineageTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     try {
+      if (nullOrEmpty(params)) {
+        throw new IllegalArgumentException("Parameters cannot be null or empty");
+      }
       String entityType = (String) params.get("entity_type");
       String fqn = (String) params.get("fqn");
       Integer upstreamDepth = (Integer) params.get("upstream_depth");
