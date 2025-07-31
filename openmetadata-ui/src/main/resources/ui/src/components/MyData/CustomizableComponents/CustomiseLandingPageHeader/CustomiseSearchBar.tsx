@@ -217,9 +217,9 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
           autoComplete="off"
           bordered={false}
           className="rounded-4 appbar-search"
-          data-testid="customise-searchbox"
+          data-testid="searchBox"
           disabled={disabled}
-          id="customise-searchbox"
+          id="searchBox"
           placeholder={t('label.search-for-type', {
             type: 'Tables, Database, Schema...',
           })}

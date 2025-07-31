@@ -144,17 +144,6 @@ export class DashboardServiceClass extends EntityClass {
     );
   }
 
-  async visitEntityPageWithCustomSearchBox(page: Page) {
-    await visitServiceDetailsPage(
-      page,
-      {
-        name: this.entity.name,
-        type: SERVICE_TYPE.Dashboard,
-      },
-      false
-    );
-  }
-
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/dashboardServices/name/${encodeURIComponent(

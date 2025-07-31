@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { redirectToExplorePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 
 // use the admin user to login
@@ -19,7 +19,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Frequently Joined', () => {
   test.beforeEach(async ({ page }) => {
-    await redirectToExplorePage(page);
+    await redirectToHomePage(page);
     await visitEntityPage({
       page,
       searchTerm: 'sample_data.ecommerce_db.shopify.fact_sale',

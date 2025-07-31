@@ -509,7 +509,7 @@ test('Search tag using classification display name should work', async ({
 }) => {
   const displayNameToSearch = tag.responseData.classification.displayName;
 
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
 
   await page.waitForLoadState('networkidle');
 

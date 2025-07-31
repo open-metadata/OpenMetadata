@@ -15,10 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import {
-  visitEntityPage,
-  visitEntityPageWithCustomSearchBox,
-} from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -135,14 +132,6 @@ export class DashboardDataModelClass extends EntityClass {
 
   async visitEntityPage(page: Page) {
     await visitEntityPage({
-      page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
-  }
-
-  async visitEntityPageWithCustomSearchBox(page: Page) {
-    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,

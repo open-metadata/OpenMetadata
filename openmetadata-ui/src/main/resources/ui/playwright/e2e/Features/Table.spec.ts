@@ -25,6 +25,8 @@ test.slow(true);
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table1.create(apiContext);
 
@@ -36,6 +38,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table1.delete(apiContext);
 
@@ -112,7 +116,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table page should show schema tab with count', async ({
     dataConsumerPage: page,
   }) => {
-    await table1.visitEntityPageWithCustomSearchBox(page);
+    await table1.visitEntityPage(page);
 
     await expect(page.getByRole('tab', { name: 'Columns' })).toContainText('4');
   });

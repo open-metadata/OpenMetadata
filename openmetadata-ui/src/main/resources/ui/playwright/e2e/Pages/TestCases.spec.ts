@@ -39,7 +39,7 @@ test('Table difference test case', async ({ page }) => {
     type: 'tableDiff',
   };
 
-  await table1.visitEntityPageWithCustomSearchBox(page);
+  await table1.visitEntityPage(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table1.entityResponseData?.['fullyQualifiedName']
@@ -190,7 +190,7 @@ test('Custom SQL Query', async ({ page }) => {
     type: 'tableCustomSQLQuery',
   };
 
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
   const profileResponse = page.waitForResponse(
     `/api/v1/tables/${encodeURIComponent(
       table.entityResponseData?.['fullyQualifiedName']

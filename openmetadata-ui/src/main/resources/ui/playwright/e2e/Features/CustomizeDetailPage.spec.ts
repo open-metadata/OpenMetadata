@@ -413,7 +413,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPageWithCustomSearchBox(userPage);
+        await entity.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -508,7 +508,7 @@ test.describe('Persona customization', () => {
         await redirectToHomePage(userPage);
 
         const entity = getCustomizeDetailsEntity(type);
-        await entity.visitEntityPageWithCustomSearchBox(userPage);
+        await entity.visitEntityPage(userPage);
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
