@@ -635,14 +635,15 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "matchDataContractStatus",
       input = "List of data contract statuses",
-      description = "Returns true if the change event is for a data contract with status in the given list.",
+      description =
+          "Returns true if the change event is for a data contract with status in the given list.",
       examples = {"matchDataContractStatus({'Failed', 'Aborted'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean matchDataContractStatus(List<String> statuses) {
     if (changeEvent.getEntityType().equals(DATA_CONTRACT)) {
       try {
-        DataContract dataContract = JsonUtils.readValue(
-            changeEvent.getEntity().toString(), DataContract.class);
+        DataContract dataContract =
+            JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
         if (dataContract.getLatestResult() != null) {
           String currentStatus = dataContract.getLatestResult().getStatus().value();
           return statuses.contains(currentStatus);
@@ -657,14 +658,15 @@ public class AlertsRuleEvaluator {
   @Function(
       name = "filterByEntityNameDataContractBelongsTo",
       input = "List of entity names",
-      description = "Returns true if the data contract belongs to an entity with name in the given list.",
+      description =
+          "Returns true if the data contract belongs to an entity with name in the given list.",
       examples = {"filterByEntityNameDataContractBelongsTo({'table1', 'table2'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityNames) {
     if (changeEvent.getEntityType().equals(DATA_CONTRACT)) {
       try {
-        DataContract dataContract = JsonUtils.readValue(
-            changeEvent.getEntity().toString(), DataContract.class);
+        DataContract dataContract =
+            JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
         if (dataContract.getEntity() != null) {
           String entityFqn = dataContract.getEntity().getFullyQualifiedName();
           return entityNames.stream().anyMatch(entityFqn::contains);
