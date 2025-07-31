@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -625,6 +626,59 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
+      recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
+      updateSchema(original, updated);
+      updateQualityExpectations(original, updated);
+      updateSemantics(original, updated);
+    }
+
+    private void updateSchema(DataContract original, DataContract updated) {
+      List<Column> addedColumns = new ArrayList<>();
+      List<Column> deletedColumns = new ArrayList<>();
+      recordListChange(
+          "schema",
+          original.getSchema(),
+          updated.getSchema(),
+          addedColumns,
+          deletedColumns,
+          EntityUtil.columnMatch);
+    }
+
+    private void updateQualityExpectations(DataContract original, DataContract updated) {
+      List<EntityReference> addedQualityExpectations = new ArrayList<>();
+      List<EntityReference> deletedQualityExpectations = new ArrayList<>();
+      recordListChange(
+          "qualityExpectations",
+          original.getQualityExpectations(),
+          updated.getQualityExpectations(),
+          addedQualityExpectations,
+          deletedQualityExpectations,
+          EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateSemantics(DataContract original, DataContract updated) {
+      List<SemanticsRule> addedSemantics = new ArrayList<>();
+      List<SemanticsRule> deletedSemantics = new ArrayList<>();
+      recordListChange(
+          "semantics",
+          original.getSemantics(),
+          updated.getSemantics(),
+          addedSemantics,
+          deletedSemantics,
+          this::semanticsRuleMatch);
+    }
+
+    private boolean semanticsRuleMatch(SemanticsRule rule1, SemanticsRule rule2) {
+      if (rule1 == null || rule2 == null) {
+        return false;
+      }
+      return Objects.equals(rule1.getName(), rule2.getName())
+          && Objects.equals(rule1.getRule(), rule2.getRule())
+          && Objects.equals(rule1.getDescription(), rule2.getDescription())
+          && Objects.equals(rule1.getEnabled(), rule2.getEnabled())
+          && Objects.equals(rule1.getEntityType(), rule2.getEntityType())
+          && Objects.equals(rule1.getProvider(), rule2.getProvider());
     }
   }
 
@@ -654,6 +708,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .dataContractDAO()
             .getContractByEntityId(entity.getId().toString(), entity.getType()),
         DataContract.class);
+  }
+
+  public DataContract getEntityDataContractSafely(EntityInterface entity) {
+    try {
+      return loadEntityDataContract(entity.getEntityReference());
+    } catch (Exception e) {
+      LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
+      return null;
+    }
   }
 
   @Override

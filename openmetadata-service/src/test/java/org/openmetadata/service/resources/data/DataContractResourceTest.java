@@ -526,6 +526,25 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(testCase1.getId(), updated.getQualityExpectations().get(0).getId());
     assertNotNull(updated.getTestSuite());
 
+    // GET the data contract and verify all fields are persisted correctly after first update
+    DataContract retrievedAfterFirstUpdate =
+        getDataContract(created.getId(), "semantics,qualityExpectations,testSuite,status,owners");
+    assertEquals(ContractStatus.Active, retrievedAfterFirstUpdate.getStatus());
+    assertEquals(created.getId(), retrievedAfterFirstUpdate.getId());
+    assertNotNull(retrievedAfterFirstUpdate.getSemantics());
+    assertEquals(1, retrievedAfterFirstUpdate.getSemantics().size());
+    assertEquals("ID Field Exists", retrievedAfterFirstUpdate.getSemantics().get(0).getName());
+    assertEquals(
+        "Checks that the ID field exists",
+        retrievedAfterFirstUpdate.getSemantics().get(0).getDescription());
+    assertEquals(
+        "{\"!!\": {\"var\": \"id\"}}", retrievedAfterFirstUpdate.getSemantics().get(0).getRule());
+    assertNotNull(retrievedAfterFirstUpdate.getQualityExpectations());
+    assertEquals(1, retrievedAfterFirstUpdate.getQualityExpectations().size());
+    assertEquals(
+        testCase1.getId(), retrievedAfterFirstUpdate.getQualityExpectations().get(0).getId());
+    assertNotNull(retrievedAfterFirstUpdate.getTestSuite());
+
     // Now update with additional semantics and quality expectations
     List<SemanticsRule> updatedSemantics =
         List.of(
@@ -560,6 +579,109 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(finalUpdated.getQualityExpectations());
     assertEquals(2, finalUpdated.getQualityExpectations().size());
     assertNotNull(finalUpdated.getTestSuite());
+
+    // GET the data contract and verify all fields are persisted correctly after final update
+    DataContract retrievedAfterFinalUpdate =
+        getDataContract(created.getId(), "semantics,qualityExpectations,testSuite,status,owners");
+    assertEquals(ContractStatus.Active, retrievedAfterFinalUpdate.getStatus());
+    assertEquals(created.getId(), retrievedAfterFinalUpdate.getId());
+    assertNotNull(retrievedAfterFinalUpdate.getSemantics());
+    assertEquals(2, retrievedAfterFinalUpdate.getSemantics().size());
+    assertEquals("ID Field Exists", retrievedAfterFinalUpdate.getSemantics().get(0).getName());
+    assertEquals(
+        "Checks that the ID field exists",
+        retrievedAfterFinalUpdate.getSemantics().get(0).getDescription());
+    assertEquals(
+        "{\"!!\": {\"var\": \"id\"}}", retrievedAfterFinalUpdate.getSemantics().get(0).getRule());
+    assertEquals("Name Field Exists", retrievedAfterFinalUpdate.getSemantics().get(1).getName());
+    assertEquals(
+        "Checks that the name field exists",
+        retrievedAfterFinalUpdate.getSemantics().get(1).getDescription());
+    assertEquals(
+        "{\"!!\": {\"var\": \"name\"}}", retrievedAfterFinalUpdate.getSemantics().get(1).getRule());
+    assertNotNull(retrievedAfterFinalUpdate.getQualityExpectations());
+    assertEquals(2, retrievedAfterFinalUpdate.getQualityExpectations().size());
+    assertEquals(
+        testCase1.getId(), retrievedAfterFinalUpdate.getQualityExpectations().get(0).getId());
+    assertEquals(
+        testCase2.getId(), retrievedAfterFinalUpdate.getQualityExpectations().get(1).getId());
+    assertNotNull(retrievedAfterFinalUpdate.getTestSuite());
+
+    // Now update with schema changes (add and remove columns)
+    List<org.openmetadata.schema.type.Column> initialSchema =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(ColumnDataType.BIGINT)
+                .withDisplayName("ID")
+                .withDescription("Primary key"),
+            new org.openmetadata.schema.type.Column()
+                .withName("name")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDisplayName("Name")
+                .withDescription("Entity name"));
+
+    create.withSchema(initialSchema);
+    DataContract schemaUpdated = updateDataContract(create);
+
+    // Verify schema was added
+    assertNotNull(schemaUpdated.getSchema());
+    assertEquals(2, schemaUpdated.getSchema().size());
+    assertEquals("id", schemaUpdated.getSchema().get(0).getName());
+    assertEquals("name", schemaUpdated.getSchema().get(1).getName());
+
+    // GET the data contract and verify schema is persisted
+    DataContract retrievedWithSchema =
+        getDataContract(created.getId(), "schema,semantics,qualityExpectations,testSuite,status");
+    assertNotNull(retrievedWithSchema.getSchema());
+    assertEquals(2, retrievedWithSchema.getSchema().size());
+    assertEquals("id", retrievedWithSchema.getSchema().get(0).getName());
+    assertEquals(ColumnDataType.BIGINT, retrievedWithSchema.getSchema().get(0).getDataType());
+    assertEquals("name", retrievedWithSchema.getSchema().get(1).getName());
+    assertEquals(ColumnDataType.VARCHAR, retrievedWithSchema.getSchema().get(1).getDataType());
+
+    // Now update schema: remove 'name' column and add 'email' column
+    List<org.openmetadata.schema.type.Column> updatedSchema =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(ColumnDataType.BIGINT)
+                .withDisplayName("ID")
+                .withDescription("Primary key"),
+            new org.openmetadata.schema.type.Column()
+                .withName("email")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDisplayName("Email")
+                .withDescription("User email address"));
+
+    create.withSchema(updatedSchema);
+    DataContract finalSchemaUpdated = updateDataContract(create);
+
+    // Verify schema changes
+    assertNotNull(finalSchemaUpdated.getSchema());
+    assertEquals(2, finalSchemaUpdated.getSchema().size());
+    assertEquals("id", finalSchemaUpdated.getSchema().get(0).getName());
+    assertEquals("email", finalSchemaUpdated.getSchema().get(1).getName());
+
+    // GET the final data contract and verify all schema changes are persisted
+    DataContract finalRetrieved =
+        getDataContract(created.getId(), "schema,semantics,qualityExpectations,testSuite,status");
+    assertNotNull(finalRetrieved.getSchema());
+    assertEquals(2, finalRetrieved.getSchema().size());
+    assertEquals("id", finalRetrieved.getSchema().get(0).getName());
+    assertEquals(ColumnDataType.BIGINT, finalRetrieved.getSchema().get(0).getDataType());
+    assertEquals("Primary key", finalRetrieved.getSchema().get(0).getDescription());
+    assertEquals("email", finalRetrieved.getSchema().get(1).getName());
+    assertEquals(ColumnDataType.VARCHAR, finalRetrieved.getSchema().get(1).getDataType());
+    assertEquals("User email address", finalRetrieved.getSchema().get(1).getDescription());
+
+    // Verify the other fields are still intact after schema changes
+    assertEquals(ContractStatus.Active, finalRetrieved.getStatus());
+    assertNotNull(finalRetrieved.getSemantics());
+    assertEquals(2, finalRetrieved.getSemantics().size());
+    assertNotNull(finalRetrieved.getQualityExpectations());
+    assertEquals(2, finalRetrieved.getQualityExpectations().size());
+    assertNotNull(finalRetrieved.getTestSuite());
   }
 
   @Test
@@ -2546,5 +2668,26 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
       // Restore the original PipelineServiceClient
       dataContractRepository.setPipelineServiceClient(originalPipelineClient);
     }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testGetDataContractByEntityWithoutContract(TestInfo test) throws IOException {
+    // Create a table that will NOT have a data contract associated
+    Table tableWithoutContract = createUniqueTable(test.getDisplayName());
+
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> getDataContractByEntityId(tableWithoutContract.getId(), "table", "owners"));
+
+    // Should return 404 since no data contract exists for this table
+    assertEquals(Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
+
+    // Verify the error message makes sense
+    String errorMessage = exception.getMessage();
+    assertTrue(
+        errorMessage.contains("DataContract") || errorMessage.contains("not found"),
+        "Error message should indicate that no data contract was found: " + errorMessage);
   }
 }
