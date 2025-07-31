@@ -119,9 +119,8 @@ test('Roles page should work properly', async ({ page }) => {
       .locator(`[data-row-key="${roleName}"] [data-testid="plus-more-count"]`)
       .click();
 
-    await expect(
-      page.getByRole('tooltip', { name: policies.dataStewardPolicy })
-    ).toBeVisible();
+    await expect(page.getByText(policies.dataStewardPolicy)).toBeVisible();
+    await expect(page.getByText(policies.dataConsumerPolicy)).toBeVisible();
   });
 
   await test.step('Add new role without selecting data', async () => {

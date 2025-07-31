@@ -66,7 +66,7 @@ test.describe('Metric Entity Special Test Cases', () => {
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
-    await metric1.visitEntityPageWithCustomSearchBox(page);
+    await metric1.visitEntityPage(page);
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
