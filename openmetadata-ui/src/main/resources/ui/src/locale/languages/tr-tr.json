@@ -800,6 +800,7 @@
     "invalid-condition": "Geçersiz koşul",
     "invalid-name": "Geçersiz Ad",
     "is": "Eşittir",
+    "is-entity": "{{entity}}'dir",
     "is-not": "Eşit Değildir",
     "is-not-set": "Ayarlanmadı",
     "is-ready-for-preview": "önizleme için hazır",
