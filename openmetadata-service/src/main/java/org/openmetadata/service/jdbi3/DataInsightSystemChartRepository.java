@@ -73,7 +73,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           "pipeline_status_live",
           "assets_with_pii_live",
           "assets_with_tier_live",
-          "assets_with_owner_live");
+          "assets_with_owner_live",
+          "assets_with_description_live");
 
   public static final String ALL_SEARCH_INDEX = "all";
 
