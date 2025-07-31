@@ -36,9 +36,10 @@ import './contract-semantic-form-tab.less';
 export const ContractSemanticFormTab: React.FC<{
   onNext: (data: Partial<DataContract>) => void;
   onPrev: () => void;
+  initialValues?: Partial<DataContract>;
   nextLabel?: string;
   prevLabel?: string;
-}> = ({ onNext, onPrev, nextLabel, prevLabel }) => {
+}> = ({ onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const semanticsData = Form.useWatch('semantics', form);
@@ -68,6 +69,14 @@ export const ContractSemanticFormTab: React.FC<{
       semantics: validSemantics,
     });
   };
+
+  useEffect(() => {
+    if (initialValues?.semantics) {
+      form.setFieldsValue({
+        semantics: initialValues.semantics,
+      });
+    }
+  }, [initialValues]);
 
   return (
     <>
@@ -192,6 +201,7 @@ export const ContractSemanticFormTab: React.FC<{
                         <div className="semantic-rule-editor-view-only">
                           {/* @ts-expect-error because Form.Item will provide value and onChange */}
                           <QueryBuilderWidget
+                            readonly
                             formContext={{
                               entityType: EntityType.TABLE,
                             }}

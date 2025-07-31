@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
@@ -19,6 +22,7 @@ import {
   getContractByEntityId,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
 import { ContractDetail } from '../ContractDetailTab/ContractDetail';
@@ -27,27 +31,38 @@ export const ContractTab = () => {
   const {
     data: { id },
   } = useGenericContext();
-  const [tabMode, setTabMode] = useState<'add' | 'edit' | 'view'>('view');
-  const [contract, setContract] = useState<DataContract | null>(null);
+  const { t } = useTranslation();
+  const [tabMode, setTabMode] = useState<DataContractTabMode>(
+    DataContractTabMode.VIEW
+  );
+  const [contract, setContract] = useState<DataContract>();
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchContract = async () => {
-    const contract = await getContractByEntityId(id, EntityType.TABLE, [
-      TabSpecificField.OWNERS,
-    ]);
-    setContract(contract);
+    try {
+      setIsLoading(true);
+      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+        TabSpecificField.OWNERS,
+      ]);
+      setContract(contract);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  useEffect(() => {
-    fetchContract();
-  }, [id]);
 
   const handleDelete = () => {
     if (contract?.id) {
       deleteContractById(contract.id)
         .then(() => {
-          showSuccessToast('Contract deleted successfully');
+          showSuccessToast(
+            t('message.entity-deleted-successfully', {
+              entity: t('label.contract'),
+            })
+          );
           fetchContract();
-          setTabMode('view');
+          setTabMode(DataContractTabMode.VIEW);
         })
         .catch((err) => {
           showErrorToast(err);
@@ -55,48 +70,54 @@ export const ContractTab = () => {
     }
   };
 
+  useEffect(() => {
+    fetchContract();
+  }, [id]);
+
   const content = useMemo(() => {
     switch (tabMode) {
-      case 'add':
+      case DataContractTabMode.ADD:
         return (
           <AddDataContract
-            contract={contract || undefined}
+            contract={contract}
             onCancel={() => {
-              setTabMode('view');
+              setTabMode(DataContractTabMode.VIEW);
             }}
             onSave={() => {
               fetchContract();
-              setTabMode('view');
+              setTabMode(DataContractTabMode.VIEW);
             }}
           />
         );
 
-      case 'edit':
+      case DataContractTabMode.EDIT:
         return (
           <AddDataContract
-            contract={contract || undefined}
+            contract={contract}
             onCancel={() => {
-              setTabMode('view');
+              setTabMode(DataContractTabMode.VIEW);
             }}
             onSave={() => {
               fetchContract();
-              setTabMode('view');
+              setTabMode(DataContractTabMode.VIEW);
             }}
           />
         );
 
-      case 'view':
+      case DataContractTabMode.VIEW:
         return (
           <ContractDetail
             contract={contract}
             onDelete={handleDelete}
             onEdit={() => {
-              setTabMode(contract ? 'edit' : 'add');
+              setTabMode(
+                contract ? DataContractTabMode.EDIT : DataContractTabMode.ADD
+              );
             }}
           />
         );
     }
   }, [tabMode, contract]);
 
-  return content;
+  return isLoading ? <Loader /> : content;
 };

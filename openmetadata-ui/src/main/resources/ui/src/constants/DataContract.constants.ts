@@ -11,6 +11,17 @@
  *  limitations under the License.
  */
 
+export enum DataContractMode {
+  YAML,
+  UI,
+}
+
+export enum DataContractTabMode {
+  ADD,
+  EDIT,
+  VIEW,
+}
+
 export enum EDataContractTab {
   CONTRACT_DETAIL,
   SCHEMA,

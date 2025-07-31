@@ -22,14 +22,16 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { omit } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-grey.svg';
-import { EDataContractTab } from '../../../constants/DataContract.constants';
+import {
+  DataContractMode,
+  EDataContractTab,
+} from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -43,6 +45,7 @@ import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualit
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
 
+import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -60,7 +63,7 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<'YAML' | 'UI'>('UI');
+  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [activeTab, setActiveTab] = useState(
     EDataContractTab.CONTRACT_DETAIL.toString()
@@ -81,21 +84,7 @@ const AddDataContract: React.FC<{
 
     try {
       await (contract
-        ? // since this is a PUT call and this API accept createDataContract object we are eliminating the fields that are not present in the createDataContract object. And restricting name to be changed since there will be only one contract per entity.
-          updateContract(
-            omit({ ...contract, ...formValues, name: contract?.name ?? '' }, [
-              'id',
-              'fullyQualifiedName',
-              'version',
-              'updatedAt',
-              'updatedBy',
-              'testSuite',
-              'deleted',
-              'changeDescription',
-              'latestResult',
-              'incrementalChangeDescription',
-            ])
-          )
+        ? updateContract(getUpdatedContractDetails(contract, formValues))
         : createContract({
             ...formValues,
             entity: {
@@ -174,6 +163,7 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SEMANTICS.toString(),
         children: (
           <ContractSemanticFormTab
+            initialValues={formValues}
             nextLabel={t('label.quality')}
             prevLabel={t('label.schema')}
             onNext={onNext}
@@ -228,8 +218,8 @@ const AddDataContract: React.FC<{
             <Radio.Group
               optionType="button"
               options={[
-                { label: <CodeOutlined />, value: 'YAML' },
-                { label: <EditOutlined />, value: 'UI' },
+                { label: <CodeOutlined />, value: DataContractMode.YAML },
+                { label: <EditOutlined />, value: DataContractMode.UI },
               ]}
               value={mode}
               onChange={handleModeChange}
@@ -254,7 +244,7 @@ const AddDataContract: React.FC<{
   }, [mode, handleModeChange, onCancel, handleSave, isSubmitting]);
 
   const cardContent = useMemo(() => {
-    if (mode === 'YAML') {
+    if (mode === DataContractMode.YAML) {
       return (
         <Card>
           <SchemaEditor

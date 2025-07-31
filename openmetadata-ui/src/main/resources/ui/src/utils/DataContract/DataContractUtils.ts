@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import i18next from 'i18next';
+import { omit } from 'lodash';
 import { ReactComponent as QualityIcon } from '../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/table-grey.svg';
@@ -21,6 +22,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { DataContract } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { TestSummary } from '../../generated/tests/testCase';
 import { getRelativeTime } from '../date-time/DateTimeUtils';
@@ -159,4 +161,25 @@ export const getTestCaseSummaryChartItems = (testCaseSummary?: TestSummary) => {
   ];
 
   return items;
+};
+
+//  since the value will be used in a PUT call and this API accept createDataContract object. so we are eliminating
+//  the fields that are not present in the createDataContract object. And restricting name to be changed since
+//  there will be only one contract per entity.
+export const getUpdatedContractDetails = (
+  contract: DataContract,
+  formValues: DataContract
+) => {
+  return omit({ ...contract, ...formValues, name: contract?.name ?? '' }, [
+    'id',
+    'fullyQualifiedName',
+    'version',
+    'updatedAt',
+    'updatedBy',
+    'testSuite',
+    'deleted',
+    'changeDescription',
+    'latestResult',
+    'incrementalChangeDescription',
+  ]);
 };
