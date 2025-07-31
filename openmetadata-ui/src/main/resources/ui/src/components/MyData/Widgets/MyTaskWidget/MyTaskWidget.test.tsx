@@ -151,7 +151,7 @@ describe('MyTaskWidget', () => {
       'Task',
       undefined,
       undefined,
-      'Open'
+      undefined
     );
   });
 });
