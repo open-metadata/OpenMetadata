@@ -224,7 +224,7 @@ const MyDataWidgetInternal = ({
                         </div>
                       }
                       type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                      <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
                             className="text-left text-xs font-regular text-grey-600"
