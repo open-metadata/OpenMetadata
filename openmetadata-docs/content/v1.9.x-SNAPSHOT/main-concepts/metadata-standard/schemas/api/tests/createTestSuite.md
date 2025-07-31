@@ -1,5 +1,6 @@
 ---
 title: Create Test Suite | OpenMetadata Test Suite API
+description: Define a test suite to group related test cases and run them together during metadata validation workflows.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestsuite
 ---
 

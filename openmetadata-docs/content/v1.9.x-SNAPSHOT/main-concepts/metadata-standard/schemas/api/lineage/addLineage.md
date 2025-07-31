@@ -1,5 +1,6 @@
 ---
 title: Add Lineage API | OpenMetadata Add Lineage
+description: Add lineage information to connect data sources and targets, helping visualize transformation flows and dependencies.
 slug: /main-concepts/metadata-standard/schemas/api/lineage/addlineage
 ---
 

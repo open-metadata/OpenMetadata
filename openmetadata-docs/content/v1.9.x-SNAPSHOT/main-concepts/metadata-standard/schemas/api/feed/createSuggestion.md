@@ -1,5 +1,6 @@
 ---
 title: Create Suggestion API | OpenMetadata Suggestion API
+description: Suggest metadata changes or additions like tags, descriptions, or classifications for entities under review.
 slug: /main-concepts/metadata-standard/schemas/api/feed/createsuggestion
 ---
 

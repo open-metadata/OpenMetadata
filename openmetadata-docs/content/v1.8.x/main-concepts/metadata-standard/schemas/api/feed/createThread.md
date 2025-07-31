@@ -1,5 +1,6 @@
 ---
 title: Create Thread API | OpenMetadata Thread API
+description: Start a new discussion thread related to a specific entity, topic, or question for collaborative resolution.
 slug: /main-concepts/metadata-standard/schemas/api/feed/createthread
 ---
 

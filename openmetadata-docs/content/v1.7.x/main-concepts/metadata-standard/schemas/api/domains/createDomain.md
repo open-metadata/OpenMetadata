@@ -1,5 +1,6 @@
 ---
 title: Create Domain API | OpenMetadata Domain API
+description: Register a domain to group related data assets, metrics, and business processes within your organization.
 slug: /main-concepts/metadata-standard/schemas/api/domains/createdomain
 ---
 
