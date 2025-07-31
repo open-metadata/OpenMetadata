@@ -409,10 +409,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     fieldSupportMap.put(FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags));
     fieldSupportMap.put(FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners));
+    fieldSupportMap.put(FIELD_FOLLOWERS, Pair.of(supportsFollower, this::fetchAndSetFollowers));
     fieldSupportMap.put(FIELD_DOMAINS, Pair.of(supportsDomains, this::fetchAndSetDomains));
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
     fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
+    fieldSupportMap.put(FIELD_VOTES, Pair.of(supportsVotes, this::fetchAndSetVotes));
+    fieldSupportMap.put(
+        FIELD_DATA_PRODUCTS, Pair.of(supportsDataProducts, this::fetchAndSetDataProducts));
+    fieldSupportMap.put(
+        FIELD_CERTIFICATION, Pair.of(supportsCertification, this::fetchAndSetCertification));
 
     for (Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
         fieldSupportMap.entrySet()) {
@@ -5027,6 +5033,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  private void fetchAndSetFollowers(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_FOLLOWERS) || !supportsFollower) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> followersMap = batchFetchFollowers(entities);
+    for (T entity : entities) {
+      entity.setFollowers(followersMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
   private void fetchAndSetTags(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || !supportsTags) {
       return;
@@ -5073,7 +5089,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void fetchAndSetChildren(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_CHILDREN) || entities == null || entities.isEmpty()) {
+    if (!fields.contains(FIELD_CHILDREN) || entities == null || nullOrEmpty(entities)) {
       return;
     }
 
@@ -5085,7 +5101,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void fetchAndSetReviewers(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || entities.isEmpty()) {
+    if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || nullOrEmpty(entities)) {
       return;
     }
 
@@ -5095,6 +5111,42 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> reviewers =
           reviewersMap.getOrDefault(entity.getId(), Collections.emptyList());
       entity.setReviewers(reviewers);
+    }
+  }
+
+  private void fetchAndSetVotes(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_VOTES) || !supportsVotes || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, Votes> votesMap = batchFetchVotes(entities);
+
+    for (T entity : entities) {
+      entity.setVotes(votesMap.getOrDefault(entity.getId(), new Votes()));
+    }
+  }
+
+  private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_DATA_PRODUCTS) || !supportsDataProducts || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> dataProductsMap = batchFetchDataProducts(entities);
+
+    for (T entity : entities) {
+      entity.setDataProducts(dataProductsMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
+  private void fetchAndSetCertification(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_CERTIFICATION) || !supportsCertification || nullOrEmpty(entities)) {
+      return;
+    }
+
+    Map<UUID, AssetCertification> certificationMap = batchFetchCertification(entities);
+
+    for (T entity : entities) {
+      entity.setCertification(certificationMap.get(entity.getId()));
     }
   }
 
@@ -5150,6 +5202,110 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return ownersMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<T> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), Relationship.FOLLOWS.ordinal(), Include.ALL);
+
+    Map<UUID, List<EntityReference>> followersMap = new HashMap<>();
+
+    List<UUID> followerIds =
+        records.stream()
+            .map(record -> UUID.fromString(record.getFromId()))
+            .collect(Collectors.toList());
+
+    Map<UUID, EntityReference> followerRefs =
+        Entity.getEntityReferencesByIds(USER, followerIds, ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    records.forEach(
+        record -> {
+          UUID entityId = UUID.fromString(record.getToId());
+          UUID followerId = UUID.fromString(record.getFromId());
+          EntityReference followerRef = followerRefs.get(followerId);
+          followersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(followerRef);
+        });
+
+    return followersMap;
+  }
+
+  private Map<UUID, Votes> batchFetchVotes(List<T> entities) {
+    var votesMap = new HashMap<UUID, Votes>();
+    if (entities == null || entities.isEmpty()) {
+      return votesMap;
+    }
+
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), Relationship.VOTED.ordinal(), Entity.USER, ALL);
+
+    var upVoterIds = new HashMap<UUID, List<UUID>>();
+    var downVoterIds = new HashMap<UUID, List<UUID>>();
+    records.forEach(
+        rec -> {
+          UUID entityId = UUID.fromString(rec.getToId());
+          UUID userId = UUID.fromString(rec.getFromId());
+          VoteType type = JsonUtils.readValue(rec.getJson(), VoteType.class);
+          if (type == VoteType.VOTED_UP) {
+            upVoterIds.computeIfAbsent(entityId, k -> new ArrayList<>()).add(userId);
+          } else if (type == VoteType.VOTED_DOWN) {
+            downVoterIds.computeIfAbsent(entityId, k -> new ArrayList<>()).add(userId);
+          }
+        });
+
+    Set<UUID> allUserIds = new HashSet<>();
+    upVoterIds.values().forEach(allUserIds::addAll);
+    downVoterIds.values().forEach(allUserIds::addAll);
+    Map<UUID, EntityReference> userRefs =
+        Entity.getEntityReferencesByIds(Entity.USER, new ArrayList<>(allUserIds), ALL).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+
+    for (T entity : entities) {
+      List<EntityReference> up =
+          upVoterIds.getOrDefault(entity.getId(), Collections.emptyList()).stream()
+              .map(userRefs::get)
+              .filter(Objects::nonNull)
+              .toList();
+      List<EntityReference> down =
+          downVoterIds.getOrDefault(entity.getId(), Collections.emptyList()).stream()
+              .map(userRefs::get)
+              .filter(Objects::nonNull)
+              .toList();
+      votesMap.put(
+          entity.getId(),
+          new Votes()
+              .withUpVotes(up.size())
+              .withDownVotes(down.size())
+              .withUpVoters(up)
+              .withDownVoters(down));
+    }
+
+    return votesMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchDataProducts(List<T> entities) {
+    return batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.DATA_PRODUCT);
+  }
+
+  private Map<UUID, AssetCertification> batchFetchCertification(List<T> entities) {
+    var result = new HashMap<UUID, AssetCertification>();
+    if (entities == null || entities.isEmpty()) {
+      return result;
+    }
+    for (T entity : entities) {
+      result.put(entity.getId(), getCertification(entity));
+    }
+    return result;
   }
 
   /**

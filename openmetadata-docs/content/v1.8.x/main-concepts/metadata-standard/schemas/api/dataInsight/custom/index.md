@@ -1,5 +1,6 @@
 ---
 title: Custom Data Insight | OpenMetadata Custom Insight
+description: Build a custom data insight report by selecting metrics, time frames, and visualization types.
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/custom
 ---
 
