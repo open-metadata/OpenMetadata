@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { filter, startCase } from 'lodash';
 import {
   SubscriptionCategory,
@@ -87,8 +88,8 @@ export const DATA_CONTRACT_ALERT_ACTIONS = [
 ];
 
 export const DATA_CONTRACT_STATUS_OPTIONS = [
-  { label: 'Success', value: 'Success' },
-  { label: 'Failed', value: 'Failed' },
-  { label: 'Running', value: 'Running' },
-  { label: 'Aborted', value: 'Aborted' },
+  { label: i18next.t('label.success'), value: 'Success' },
+  { label: i18next.t('label.failed'), value: 'Failed' },
+  { label: i18next.t('label.running'), value: 'Running' },
+  { label: i18next.t('label.aborted'), value: 'Aborted' },
 ];
