@@ -329,33 +329,29 @@ export const getDeleteEntityMessage = (
 };
 
 export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
-  if (type === 'messagingServices') {
-    return GlobalSettingOptions.MESSAGING;
+  switch (type) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return GlobalSettingOptions.MESSAGING;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return GlobalSettingOptions.DASHBOARDS;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return GlobalSettingOptions.PIPELINES;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return GlobalSettingOptions.MLMODELS;
+    case ServiceCategory.METADATA_SERVICES:
+      return GlobalSettingOptions.METADATA;
+    case ServiceCategory.STORAGE_SERVICES:
+      return GlobalSettingOptions.STORAGES;
+    case ServiceCategory.SEARCH_SERVICES:
+      return GlobalSettingOptions.SEARCH;
+    case ServiceCategory.API_SERVICES:
+      return GlobalSettingOptions.APIS;
+    case ServiceCategory.SECURITY_SERVICES:
+      return GlobalSettingOptions.SECURITY;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return GlobalSettingOptions.DATABASES;
   }
-  if (type === 'dashboardServices') {
-    return GlobalSettingOptions.DASHBOARDS;
-  }
-  if (type === 'pipelineServices') {
-    return GlobalSettingOptions.PIPELINES;
-  }
-  if (type === 'mlmodelServices') {
-    return GlobalSettingOptions.MLMODELS;
-  }
-  if (type === 'metadataServices') {
-    return GlobalSettingOptions.METADATA;
-  }
-  if (type === 'storageServices') {
-    return GlobalSettingOptions.STORAGES;
-  }
-  if (type === 'searchServices') {
-    return GlobalSettingOptions.SEARCH;
-  }
-
-  if (type === ServiceCategory.API_SERVICES) {
-    return GlobalSettingOptions.APIS;
-  }
-
-  return GlobalSettingOptions.DATABASES;
 };
 
 export const getResourceEntityFromServiceCategory = (
@@ -450,6 +446,8 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.SEARCH_SERVICES;
     case EntityType.API_SERVICE:
       return ServiceCategory.API_SERVICES;
+    case EntityType.SECURITY_SERVICE:
+      return ServiceCategory.SECURITY_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;
@@ -476,6 +474,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.SEARCH_SERVICE;
     case ServiceCategory.API_SERVICES:
       return EntityType.API_SERVICE;
+    case ServiceCategory.SECURITY_SERVICES:
+      return EntityType.SECURITY_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;

@@ -160,7 +160,7 @@ This sets or updates schema-level labels, such as sensitive classifications. Use
 1. Navigate to **Settings > Applications**.
 
 {% image
-src="/images/v1.9/applications/autopilot.png"
+src="/images/v1.8/applications/autopilot.png"
 alt="Install Reverse Metadata Application"
 caption="Install Reverse Metadata Application"
 /%}
@@ -169,7 +169,7 @@ caption="Install Reverse Metadata Application"
 3. After installation, configure the synchronization channels as described below in screenshot. The Filter section allows you to define which assets should be included in a sync channel by applying conditions based on  tables: the service, database or schema they belong to, their name, owners, domain, and even by Custom Properties!
 
 {% image
-src="/images/v1.9/applications/reverse/reverse-metadata-application.png"
+src="/images/v1.8/applications/reverse/reverse-metadata-application.png"
 alt="Configuration"
 caption="Configuration"
 /%}
@@ -188,13 +188,45 @@ You can define multiple channels for different services or metadata types.
 | **Update Descriptions** | Enable to sync updated entity descriptions from Collate to the source. |
 | **Update Owners**    | Enable to sync owner assignments from Collate. |
 | **Update Tags**      | Enable to sync tag assignments (e.g., PII) to the source system. |
+| **Sink Service**     | Optional. Specify a target service where metadata changes should be synced. Currently supports security services only. The service name must match exactly with the service name configured in OpenMetadata. |
 | **SQL Template**     | Optional. Specify a custom SQL template for updates. |
 
+## Sink Service Configuration
+
+The **Sink Service** parameter allows you to redirect metadata changes from one service to a different target service. This is particularly useful when you want to maintain metadata consistency across different systems.
+
+### Use Case Example
+
+**Scenario:** You have a Trino service configured in OpenMetadata, but you want to sync all metadata changes to your Apache Ranger security service for centralized governance.
+
+**Example Channel Setup:**
+
+| Field | Value |
+|-------|-------|
+| Channel Name | "Trino to Ranger Sync" |
+| Filter | Service: trino_prod
+| Update Tags | ✅ Enabled |
+| Sink Service | ranger_service |
+
+**How it works:**
+1. You update a table tags in the Trino service within Collate
+2. The reverse metadata application detects this change
+3. Instead of syncing back to Trino, it syncs to the specified Ranger service
+4. The Ranger service receives the updated metadata and applies governance policies
+
+{% note %}
+
+**Important Requirements:**
+- The sink service name must exactly match the service name configured in OpenMetadata
+- Currently, only security services are supported as sink services
+- Ensure the sink service has the necessary permissions and configurations to receive metadata updates
+
+{% /note %}
 
 ## Manual Execution and Workflow Management
 
 {% image
-src="/images/v1.9/applications/reverse/reverse-metadata-application1.png"
+src="/images/v1.8/applications/reverse/reverse-metadata-application1.png"
 alt="Scheduling"
 caption="Scheduling"
 /%}
@@ -233,7 +265,7 @@ You can track the status and progress of each individual workflow in the **Recen
 {% /note %}
 
 {% image
-src="/images/v1.9/applications/reverse/reverse-metadata-application2.png"
+src="/images/v1.8/applications/reverse/reverse-metadata-application2.png"
 alt="Recent Runs"
 caption="Recent Runs"
 /%}

@@ -14,12 +14,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
-import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceRouteFromServiceType,
+} from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
@@ -324,6 +329,7 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
+    expect(triggerOnDemandApp).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });
 
@@ -359,11 +365,10 @@ describe('AddServicePage', () => {
     expect(screen.getByText('Configure Service')).toBeInTheDocument();
   });
 
-  it.skip('should handle service creation failure', async () => {
-    (postService as jest.Mock).mockImplementation(() =>
-      Promise.reject('Some error')
+  it('should not trigger auto pilot application for security service', async () => {
+    (getEntityTypeFromServiceCategory as jest.Mock).mockReturnValue(
+      EntityType.SECURITY_SERVICE
     );
-
     await act(async () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
@@ -399,7 +404,7 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
-    expect(mockSetInlineAlertDetails).toHaveBeenCalled();
+    expect(triggerOnDemandApp).not.toHaveBeenCalled();
   });
 
   it('calls getExtraInfo', () => {
