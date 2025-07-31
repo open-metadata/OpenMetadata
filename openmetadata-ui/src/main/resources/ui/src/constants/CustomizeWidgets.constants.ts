@@ -87,6 +87,12 @@ export const REVIEWER_WIDGET: CommonWidgetType = {
   data: { gridSizes: ['small'] },
 };
 
+export const WORKFLOW_HISTORY_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
+  name: i18n.t('label.workflow-history'),
+  data: { gridSizes: ['small'] },
+};
+
 export const SYNONYMS_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
   name: i18n.t('label.synonym-plural'),

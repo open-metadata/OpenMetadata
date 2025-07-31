@@ -1581,6 +1581,70 @@ test.describe('Glossary tests', () => {
     await afterAction();
   });
 
+  test('Verify Glossary Term Workflow', async ({ browser }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossaryWorkflow = new Glossary();
+    const glossaryTermWorkflow = new GlossaryTerm(glossaryWorkflow);
+    const reviewerUser = new UserClass();
+    try {
+      await glossaryWorkflow.create(apiContext);
+      await glossaryTermWorkflow.create(apiContext);
+      await reviewerUser.create(apiContext);
+
+      await glossaryWorkflow.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/reviewers/0',
+          value: {
+            id: reviewerUser.responseData.id,
+            type: 'user',
+            displayName: reviewerUser.responseData.displayName,
+            fullyQualifiedName: reviewerUser.responseData.fullyQualifiedName,
+            name: reviewerUser.responseData.name,
+          },
+        },
+      ]);
+
+      await test.step(
+        'Navigate to glossary and verify workflow widget',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, glossaryWorkflow.data.displayName);
+
+          // Test workflow widget on hover
+          const escapedFqn =
+            glossaryTermWorkflow.data.fullyQualifiedName.replace(/"/g, '\\"');
+          const statusSelector = `[data-testid="${escapedFqn}-status"]`;
+          await page.hover(statusSelector);
+
+          await expect(
+            page.locator('[data-testid="workflow-history-widget"]')
+          ).toBeVisible();
+
+          await clickOutside(page);
+
+          // Test workflow widget on term details page
+          await selectActiveGlossaryTerm(
+            page,
+            glossaryTermWorkflow.data.displayName
+          );
+
+          await expect(
+            page.locator('[data-testid="workflow-history-widget"]')
+          ).toBeVisible();
+        }
+      );
+    } finally {
+      await glossaryWorkflow.delete(apiContext);
+      await glossaryTermWorkflow.delete(apiContext);
+      await reviewerUser.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test.afterAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user1.delete(apiContext);
