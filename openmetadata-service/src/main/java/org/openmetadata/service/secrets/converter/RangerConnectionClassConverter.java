@@ -3,7 +3,7 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
 import org.openmetadata.schema.services.connections.security.ranger.RangerBasicAuth;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.JsonUtils;
 
 /** Converter class to get an `RangerConnection` object. */
 public class RangerConnectionClassConverter extends ClassConverter {
