@@ -753,7 +753,7 @@ class GlobalSettingsClassBase {
         isProtected: Boolean(isAdminUser),
         key: GlobalSettingOptions.SSO,
         icon: UsersIcon,
-        description: t('message.sso-configuration-description'),
+        description: t('message.sso-configuration-directly-from-the-ui'),
       },
     ];
   }

@@ -197,6 +197,7 @@ export const PROVIDER_UI_SCHEMAS: Record<string, UISchemaObject> = {
   azure: STANDARD_OAUTH_UI_SCHEMA,
   okta: STANDARD_OAUTH_UI_SCHEMA,
   basic: STANDARD_OAUTH_UI_SCHEMA,
+  'aws-cognito': STANDARD_OAUTH_UI_SCHEMA,
 };
 
 // Bot principals visibility based on provider
@@ -204,6 +205,8 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   google: { 'ui:widget': 'hidden', 'ui:hideError': true },
   auth0: { 'ui:widget': 'hidden', 'ui:hideError': true },
   basic: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  azure: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Provider-specific field removal mapping for cleanup
@@ -223,6 +226,11 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
   azure: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
   okta: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
   basic: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  'aws-cognito': [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+  ],
 };
 
 // Common fields to always remove from authentication configuration
@@ -251,7 +259,13 @@ export const SAML_SECURITY_FIELDS_TO_REMOVE = [
 ];
 
 // Providers that should hide bot principals
-export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = ['google', 'auth0', 'basic'];
+export const PROVIDERS_WITHOUT_BOT_PRINCIPALS = [
+  'google',
+  'auth0',
+  'basic',
+  'azure',
+  'aws-cognito',
+];
 
 // Main SSO UI Schema generator
 export const getSSOUISchema = (provider: string) => {
