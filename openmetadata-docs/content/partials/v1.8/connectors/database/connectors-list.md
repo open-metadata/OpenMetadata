@@ -17,7 +17,7 @@
 {% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Epic" stage="PROD" href="/connectors/database/epic" platform="Collate" / %}
+{% connectorInfoCard name="Epic" stage="BETA" href="/connectors/database/epic" platform="Collate" / %}
 {% connectorInfoCard name="Exasol" stage="PROD" href="/connectors/database/exasol" platform="OpenMetadata" / %}
 {% connectorInfoCard name="GCS Datalake" stage="PROD" href="/connectors/database/gcs-datalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
