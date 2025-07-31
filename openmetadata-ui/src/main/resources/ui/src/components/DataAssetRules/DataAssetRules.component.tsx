@@ -12,7 +12,6 @@
  */
 
 import Icon, { PlusOutlined } from '@ant-design/icons';
-import { Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import {
   Button,
   Col,
@@ -33,8 +32,8 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-place
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { SIZE } from '../../enums/common.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import {
+  ProviderType,
   SemanticsRule,
   Settings,
   SettingType,
@@ -43,7 +42,6 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
-import { getTreeConfig } from '../../utils/AdvancedSearchUtils';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
@@ -325,28 +323,6 @@ export const useSemanticsRuleList = ({
     setDeleteSemanticsRule(null);
   };
 
-  const config = getTreeConfig({
-    searchIndex: SearchIndex.DATA_ASSET,
-    searchOutputType: SearchOutputType.JSONLogic,
-    isExplorePage: false,
-    tierOptions: Promise.resolve([]),
-  });
-  const getHumanStringRule = useCallback(
-    (semanticsRule: SemanticsRule) => {
-      const logic = JSON.parse(semanticsRule.rule);
-
-      const tree = QbUtils.loadFromJsonLogic(logic, config);
-      const humanString = tree ? QbUtils.queryString(tree, config) : '';
-
-      // remove all the .fullyQualifiedName, .name, .tagFQN from the humanString
-      return humanString?.replaceAll(
-        /\.fullyQualifiedName|\.name|\.tagFQN/g,
-        ''
-      );
-    },
-    [config]
-  );
-
   const columns = [
     {
       title: t('label.name'),
@@ -380,12 +356,14 @@ export const useSemanticsRuleList = ({
         <Space>
           <Button
             className="text-secondary p-0 remove-button-background-hover"
+            disabled={record.provider === ProviderType.System}
             icon={<Icon component={IconEdit} />}
             type="text"
             onClick={() => handleEditSemanticsRule(record)}
           />
           <Button
             className="text-secondary p-0 remove-button-background-hover"
+            disabled={record.provider === ProviderType.System}
             icon={<Icon component={IconDelete} />}
             type="text"
             onClick={() => handleDelete(record)}
