@@ -195,6 +195,7 @@ const DataAssetsWidget = ({
   return (
     <WidgetWrapper
       dataLength={services.length !== 0 ? services.length : 10}
+      dataTestId={widgetKey}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

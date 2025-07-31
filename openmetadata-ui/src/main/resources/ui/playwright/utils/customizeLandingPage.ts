@@ -39,6 +39,8 @@ export const navigateToCustomizeLandingPage = async (
 
   await page.getByTestId('LandingPage').click();
 
+  await page.waitForLoadState('networkidle');
+
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
   );
@@ -46,46 +48,28 @@ export const navigateToCustomizeLandingPage = async (
 
 export const removeAndCheckWidget = async (
   page: Page,
-  { widgetTestId, widgetKey }: { widgetTestId: string; widgetKey: string }
+  { widgetKey }: { widgetKey: string }
 ) => {
   // Click on remove widget button
-  await page.click(
-    `[data-testid="${widgetTestId}"] [data-testid="remove-widget-button"]`
-  );
+  await page
+    .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
+    .click();
 
-  // Check if widget does not exist
-  await page.waitForSelector(`[data-testid="${widgetTestId}"]`, {
-    state: 'detached',
-  });
+  await page.getByText('Remove').click();
 
-  // Check if empty widget placeholder is displayed in place of removed widget
-  await page.waitForSelector(
-    `[data-testid*="${widgetKey}"][data-testid$="EmptyWidgetPlaceholder"]`
-  );
-
-  // Remove empty widget placeholder
-  await page.click(
-    `[data-testid*="${widgetKey}"][data-testid$="EmptyWidgetPlaceholder"] [data-testid="remove-widget-button"]`
-  );
-
-  // Check if empty widget placeholder does not exist
-  await page.waitForSelector(
-    `[data-testid*="${widgetKey}"][data-testid$="EmptyWidgetPlaceholder"]`,
-    { state: 'detached' }
-  );
+  await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
 export const checkAllDefaultWidgets = async (
   page: Page,
   checkEmptyWidgetPlaceholder = false
 ) => {
-  await expect(page.getByTestId('activity-feed-widget')).toBeVisible();
-  await expect(page.getByTestId('following-widget')).toBeVisible();
-  await expect(page.getByTestId('recently-viewed-widget')).toBeVisible();
-  await expect(page.getByTestId('data-assets-widget')).toBeVisible();
-  await expect(page.getByTestId('my-data-widget')).toBeVisible();
-  await expect(page.getByTestId('kpi-widget')).toBeVisible();
-  await expect(page.getByTestId('total-assets-widget')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
+  await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
 
   if (checkEmptyWidgetPlaceholder) {
     await expect(
@@ -123,7 +107,7 @@ export const openAddCustomizeWidgetModal = async (page: Page) => {
   );
   await page
     .locator(
-      '[data-testid="ExtraWidget.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
+      '[data-testid="customize-landing-page-header"] [data-testid="add-widget-button"]'
     )
     .click();
 

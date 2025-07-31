@@ -412,6 +412,7 @@ const CuratedAssetsWidget = ({
     <>
       <WidgetWrapper
         dataLength={data.length !== 0 ? data.length : 10}
+        dataTestId={widgetKey}
         loading={isLoading}>
         {widgetContent}
       </WidgetWrapper>

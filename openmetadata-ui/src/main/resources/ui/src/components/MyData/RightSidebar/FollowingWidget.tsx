@@ -307,6 +307,7 @@ function FollowingWidget({
   return (
     <WidgetWrapper
       dataLength={followedData.length !== 0 ? followedData.length : 10}
+      dataTestId={widgetKey}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

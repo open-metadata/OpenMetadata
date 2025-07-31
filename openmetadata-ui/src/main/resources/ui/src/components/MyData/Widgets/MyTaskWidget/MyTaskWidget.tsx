@@ -156,6 +156,7 @@ const MyTaskWidget = ({
   return (
     <WidgetWrapper
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      dataTestId={widgetKey}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>
