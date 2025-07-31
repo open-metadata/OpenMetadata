@@ -165,6 +165,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetStorageService
   | DataAssetSearchService
   | DataAssetApiService
+  | DataAssetSecurityService
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
   | DataAssetMetric
@@ -280,6 +281,11 @@ export interface DataAssetMetric {
 export interface DataAssetChart {
   dataAsset: Chart;
   entityType: EntityType.CHART;
+}
+
+export interface DataAssetSecurityService {
+  dataAsset: ServicesType;
+  entityType: EntityType.SECURITY_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {
