@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export enum StatusType {
-  Success = 'success',
-  Warning = 'warning',
-  Failure = 'failure',
-  ActiveError = 'activeError',
-  Running = 'running',
-  Started = 'started',
-  Stopped = 'stopped',
-  Pending = 'pending',
-  InReview = 'inReview',
-  Deprecated = 'deprecated',
+
+export enum DataContractMode {
+  YAML,
+  UI,
 }
 
-export interface StatusBadgeProps {
-  label: string;
-  status: StatusType;
-  dataTestId?: string;
-  className?: string;
-  externalIcon?: SvgComponent;
+export enum DataContractTabMode {
+  ADD,
+  EDIT,
+  VIEW,
+}
+
+export enum EDataContractTab {
+  CONTRACT_DETAIL,
+  SCHEMA,
+  SEMANTICS,
+  QUALITY,
 }

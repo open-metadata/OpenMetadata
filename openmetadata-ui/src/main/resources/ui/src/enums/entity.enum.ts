@@ -78,6 +78,7 @@ export enum EntityType {
   METRIC = 'metric',
   WORKFLOW_DEFINITION = 'workflowDefinition',
   SERVICE = 'service',
+  DATA_CONTRACT = 'dataContract',
 }
 
 export enum EntityLineageDirection {
