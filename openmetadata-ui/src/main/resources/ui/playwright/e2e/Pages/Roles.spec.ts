@@ -120,7 +120,7 @@ test('Roles page should work properly', async ({ page }) => {
       .click();
 
     await expect(
-      page.getByRole('tooltip', { name: policies.dataStewardPolicy })
+      page.getByRole('tooltip', { name: policies.dataConsumerPolicy })
     ).toBeVisible();
   });
 
