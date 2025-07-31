@@ -67,7 +67,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
   private static final Set IGNORE_OTHER_SERVICE_CHARTS =
-      Set.of("healthy_data_assets", "total_data_assets_live", "pipeline_status_live");
+      Set.of(
+          "healthy_data_assets",
+          "total_data_assets_live",
+          "pipeline_status_live",
+          "assets_with_pii_live",
+          "assets_with_tier_live",
+          "assets_with_owner_live");
 
   public static final String ALL_SEARCH_INDEX = "all";
 
