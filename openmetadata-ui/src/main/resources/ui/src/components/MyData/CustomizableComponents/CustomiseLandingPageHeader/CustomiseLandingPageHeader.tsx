@@ -246,6 +246,7 @@ const CustomiseLandingPageHeader = ({
                     className={classNames('customise-recently-viewed-data', {
                       disabled: !onHomePage,
                     })}
+                    data-testid="recently-viewed-asset"
                     key={index}
                     role="button"
                     tabIndex={0}
