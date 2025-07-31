@@ -54,14 +54,17 @@ class DSVDataFrameReader(DataFrameReader):
         super().__init__(config_source, client)
 
     def read_from_pandas(
-        self, path: str, storage_options: Optional[Dict[str, Any]] = None, compression: Optional[str] = None
+        self,
+        path: str,
+        storage_options: Optional[Dict[str, Any]] = None,
+        compression: Optional[str] = None,
     ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         # Determine compression based on file extension if not provided
-        if compression is None and path.endswith('.gz'):
-            compression = 'gzip'
-        
+        if compression is None and path.endswith(".gz"):
+            compression = "gzip"
+
         chunk_list = []
         with pd.read_csv(
             path,
@@ -88,25 +91,25 @@ class DSVDataFrameReader(DataFrameReader):
         """
         # Determine compression based on file extension
         compression = None
-        if key.endswith('.gz'):
-            compression = 'gzip'
-        
+        if key.endswith(".gz"):
+            compression = "gzip"
+
         path = f"gs://{bucket_name}/{key}"
         return self.read_from_pandas(path=path, compression=compression)
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
-        
+
         # Determine compression based on file extension
         compression = None
-        if key.endswith('.gz'):
-            compression = 'gzip'
-        
+        if key.endswith(".gz"):
+            compression = "gzip"
+
         # Get the file content from S3
         response = self.client.get_object(Bucket=bucket_name, Key=key)
         file_content = response["Body"]
-        
+
         # Read the CSV data directly from the StreamingBody
         chunk_list = []
         with pd.read_csv(
@@ -124,9 +127,9 @@ class DSVDataFrameReader(DataFrameReader):
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         # Determine compression based on file extension
         compression = None
-        if key.endswith('.gz'):
-            compression = 'gzip'
-        
+        if key.endswith(".gz"):
+            compression = "gzip"
+
         storage_options = return_azure_storage_options(self.config_source)
         path = AZURE_PATH.format(
             bucket_name=bucket_name,
@@ -145,9 +148,9 @@ class DSVDataFrameReader(DataFrameReader):
     ) -> DatalakeColumnWrapper:
         # Determine compression based on file extension
         compression = None
-        if key.endswith('.gz'):
-            compression = 'gzip'
-        
+        if key.endswith(".gz"):
+            compression = "gzip"
+
         return self.read_from_pandas(path=key, compression=compression)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:

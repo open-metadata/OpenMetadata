@@ -458,15 +458,15 @@ class TestParquetDataFrameColumnParser(TestCase):
         # Test csv.gz file detection
         result = get_file_format_type("data.csv.gz")
         self.assertEqual(result, SupportedTypes.CSVGZ)
-        
+
         # Test regular csv file detection (should still work)
         result = get_file_format_type("data.csv")
         self.assertEqual(result, SupportedTypes.CSV)
-        
+
         # Test other gzipped files
         result = get_file_format_type("data.json.gz")
         self.assertEqual(result, SupportedTypes.JSONGZ)
-        
+
         # Test unsupported gzipped format
         result = get_file_format_type("data.txt.gz")
         self.assertEqual(result, False)
@@ -476,15 +476,15 @@ class TestParquetDataFrameColumnParser(TestCase):
         # Test with nested paths
         result = get_file_format_type("folder/subfolder/data.csv.gz")
         self.assertEqual(result, SupportedTypes.CSVGZ)
-        
+
         # Test with multiple dots
         result = get_file_format_type("data.backup.csv.gz")
         self.assertEqual(result, SupportedTypes.CSVGZ)
-        
+
         # Test with no extension
         result = get_file_format_type("data")
         self.assertEqual(result, False)
-        
+
         # Test with just .gz
         result = get_file_format_type("data.gz")
         self.assertEqual(result, False)
@@ -503,7 +503,7 @@ class TestParquetDataFrameColumnParser(TestCase):
             ("data.txt.gz", False),  # Unsupported
             ("data.unknown.gz", False),  # Unsupported
         ]
-        
+
         for filename, expected in test_cases:
             with self.subTest(filename=filename):
                 result = get_file_format_type(filename)
@@ -511,17 +511,17 @@ class TestParquetDataFrameColumnParser(TestCase):
 
     def test_csv_gz_reader_factory_integration(self):
         """test that csv.gz is properly integrated with reader factory"""
-        from metadata.readers.dataframe.reader_factory import get_df_reader, SupportedTypes
-        
+        from metadata.readers.dataframe.reader_factory import SupportedTypes
+
         # Test that CSVGZ is properly handled
         try:
             # Test that the enum value exists
             self.assertEqual(SupportedTypes.CSVGZ.value, "csv.gz")
-            
+
             # Test that it's different from regular CSV
             self.assertNotEqual(SupportedTypes.CSVGZ, SupportedTypes.CSV)
             self.assertNotEqual(SupportedTypes.CSVGZ.value, SupportedTypes.CSV.value)
-            
+
         except Exception as e:
             self.fail(f"CSVGZ enum test failed: {e}")
 
@@ -530,22 +530,24 @@ class TestParquetDataFrameColumnParser(TestCase):
         # Test that CSVGZ exists in the enum
         self.assertIn(SupportedTypes.CSVGZ, SupportedTypes)
         self.assertEqual(SupportedTypes.CSVGZ.value, "csv.gz")
-        
+
         # Test that it's different from regular CSV
         self.assertNotEqual(SupportedTypes.CSVGZ, SupportedTypes.CSV)
         self.assertNotEqual(SupportedTypes.CSVGZ.value, SupportedTypes.CSV.value)
 
     def test_csv_gz_dsv_reader_compression_detection(self):
         """test that DSV reader properly detects compression for csv.gz files"""
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
         from metadata.readers.dataframe.dsv import DSVDataFrameReader
-        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import LocalConfig
-        
+
         # Create a mock config
         local_config = LocalConfig()
-        
+
         # Create DSV reader
         reader = DSVDataFrameReader(config_source=local_config, client=None)
-        
+
         # Test compression detection logic (this is the same logic used in the dispatch methods)
         test_cases = [
             ("data.csv.gz", "gzip"),
@@ -554,28 +556,33 @@ class TestParquetDataFrameColumnParser(TestCase):
             ("data.txt.gz", "gzip"),
             ("data.unknown.gz", "gzip"),
         ]
-        
+
         for filename, expected_compression in test_cases:
             with self.subTest(filename=filename):
                 # Simulate the compression detection logic from the dispatch methods
                 compression = None
-                if filename.endswith('.gz'):
-                    compression = 'gzip'
-                
-                self.assertEqual(compression, expected_compression, 
-                               f"Compression detection failed for {filename}")
+                if filename.endswith(".gz"):
+                    compression = "gzip"
+
+                self.assertEqual(
+                    compression,
+                    expected_compression,
+                    f"Compression detection failed for {filename}",
+                )
 
     def test_csv_gz_integration_completeness(self):
         """test that csv.gz support is complete across all components"""
         # Test that CSVGZ is in the reader factory mapping
-        from metadata.readers.dataframe.reader_factory import DF_READER_MAP, SupportedTypes
-        
+        from metadata.readers.dataframe.reader_factory import (
+            DF_READER_MAP,
+            SupportedTypes,
+        )
+
         # Check that CSVGZ is mapped to CSVDataFrameReader
         self.assertIn(SupportedTypes.CSVGZ.value, DF_READER_MAP)
-        
+
         # Test that the get_df_reader function includes CSVGZ in DSV handling
-        from metadata.readers.dataframe.reader_factory import get_df_reader
-        
+
         # This should not raise an exception for CSVGZ
         try:
             # Test that CSVGZ is included in the DSV types

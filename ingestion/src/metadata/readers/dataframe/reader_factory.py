@@ -81,7 +81,10 @@ def get_df_reader(
     Load the File Reader based on the Config Source
     """
     # If we have a DSV file, build a reader dynamically based on the received separator
-    if type_ in {SupportedTypes.CSV, SupportedTypes.CSVGZ, SupportedTypes.TSV} and separator:
+    if (
+        type_ in {SupportedTypes.CSV, SupportedTypes.CSVGZ, SupportedTypes.TSV}
+        and separator
+    ):
         return get_dsv_reader_by_separator(separator=separator)(
             config_source=config_source, client=client
         )
