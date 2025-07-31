@@ -88,4 +88,5 @@ export enum GlobalSettingOptions {
   TEST_CASES = 'testCases',
   TAGS = 'tags',
   DOMAINS = 'domains',
+  SECURITY = 'security',
 }

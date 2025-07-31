@@ -136,6 +136,7 @@ export const getAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -203,6 +204,7 @@ export const getEntityAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 

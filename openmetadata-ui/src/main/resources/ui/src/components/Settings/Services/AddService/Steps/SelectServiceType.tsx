@@ -12,9 +12,9 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, Col, Row, Select } from 'antd';
+import { Badge, Button, Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
@@ -24,6 +24,7 @@ import {
   SERVICE_CATEGORY_OPTIONS,
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
@@ -31,6 +32,7 @@ import { MlModelServiceType } from '../../../../../generated/entity/services/mlm
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
 import { errorMsg, getServiceLogo } from '../../../../../utils/CommonUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
@@ -117,6 +119,17 @@ const SelectServiceType = ({
           onSearch={handleConnectorSearchTerm}
         />
 
+        {isEmpty(filteredConnectors) && (
+          <div className="flex-center">
+            <ErrorPlaceHolder
+              className="border-none"
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <Typography.Paragraph>
+                {t('message.no-connectors-available-for-service')}
+              </Typography.Paragraph>
+            </ErrorPlaceHolder>
+          </div>
+        )}
         <Row className="service-list-container" data-testid="select-service">
           {filteredConnectors.map((type) => (
             <Button
