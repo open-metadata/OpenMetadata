@@ -12,11 +12,7 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import {
-  Config,
-  JsonTree,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { Alert } from 'antd';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
@@ -155,7 +151,7 @@ export const getSelectedResourceCount = async ({
 };
 
 export const getModifiedQueryFilterWithSelectedAssets = (
-  queryFilterObject: Record<string, unknown>,
+  queryFilterObject: Record<string, any>,
   selectedResource?: Array<string>
 ) => {
   // Create entityType filter for selected resources
@@ -201,7 +197,7 @@ export const getExploreURLWithFilters = ({
 }: {
   queryFilter: string;
   selectedResource: Array<string>;
-  config: Config;
+  config: any;
 }) => {
   try {
     const queryFilterObject = JSON.parse(queryFilter || '{}');
