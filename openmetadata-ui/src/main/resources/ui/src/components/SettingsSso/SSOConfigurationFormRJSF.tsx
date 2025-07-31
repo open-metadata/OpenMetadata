@@ -165,6 +165,51 @@ const SSOConfigurationFormRJSF = () => {
       if (ldapConfig.sslEnabled === undefined) {
         ldapConfig.sslEnabled = false;
       }
+
+      // Clean up trustStoreConfig based on truststoreFormat
+      if (ldapConfig.trustStoreConfig && ldapConfig.truststoreFormat) {
+        const trustStoreConfig = ldapConfig.trustStoreConfig as Record<
+          string,
+          unknown
+        >;
+        const truststoreFormat = ldapConfig.truststoreFormat as string;
+
+        // Create a new clean trustStoreConfig object
+        const cleanTrustStoreConfig: Record<string, unknown> = {};
+
+        // Only include the configuration that matches the selected format
+        if (
+          truststoreFormat === 'CustomTrustStore' &&
+          trustStoreConfig.customTrustManagerConfig
+        ) {
+          cleanTrustStoreConfig.customTrustManagerConfig =
+            trustStoreConfig.customTrustManagerConfig;
+        }
+        if (
+          truststoreFormat === 'HostName' &&
+          trustStoreConfig.hostNameConfig
+        ) {
+          cleanTrustStoreConfig.hostNameConfig =
+            trustStoreConfig.hostNameConfig;
+        }
+        if (
+          truststoreFormat === 'JVMDefault' &&
+          trustStoreConfig.jvmDefaultConfig
+        ) {
+          cleanTrustStoreConfig.jvmDefaultConfig =
+            trustStoreConfig.jvmDefaultConfig;
+        }
+        if (
+          truststoreFormat === 'TrustAll' &&
+          trustStoreConfig.trustAllConfig
+        ) {
+          cleanTrustStoreConfig.trustAllConfig =
+            trustStoreConfig.trustAllConfig;
+        }
+
+        // Replace the original trustStoreConfig with the clean one
+        ldapConfig.trustStoreConfig = cleanTrustStoreConfig;
+      }
     }
 
     if (cleanedData.authenticationConfiguration?.samlConfiguration) {

@@ -59,24 +59,13 @@ export const LDAP_UI_SCHEMA = {
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
     authRolesMapping: { 'ui:title': 'Auth Roles Mapping' },
     authReassignRoles: { 'ui:title': 'Auth Reassign Roles' },
-    truststoreConfigType: { 'ui:title': 'Truststore Config Type' },
-    trustStoreConfig: {
-      'ui:title': 'Trust Store Configuration',
-      trustAllConfig: {
-        'ui:title': 'Trust All Configuration',
-        examineValidityDates: { 'ui:title': 'Examine Validity Dates' },
-      },
-    },
+    // Hide trustStore fields as they are not commonly used
+    truststoreConfigType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    trustStoreConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
   },
   // Hide other provider configs for LDAP
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Don't hide these fields for LDAP as they are being sent
-  // authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // clientId: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // SAML Configuration UI Schema
@@ -219,16 +208,7 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
 
 // Provider-specific field removal mapping for cleanup
 export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
-  ldap: [
-    'samlConfiguration',
-    'oidcConfiguration',
-    'authority',
-    'clientId',
-    'callbackUrl',
-    'publicKeyUrls',
-    'tokenValidationAlgorithm',
-    'jwtPrincipalClaims',
-  ],
+  ldap: ['samlConfiguration', 'oidcConfiguration'],
   saml: [
     'ldapConfiguration',
     'oidcConfiguration',
