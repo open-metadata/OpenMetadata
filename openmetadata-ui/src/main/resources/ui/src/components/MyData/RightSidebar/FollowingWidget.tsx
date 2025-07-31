@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
 import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
@@ -61,6 +61,7 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
@@ -263,13 +264,15 @@ function FollowingWidget({
         handleRemoveWidget={handleRemoveWidget}
         icon={<FollowingAssetsIcon height={22} width={22} />}
         isEditView={isEditView}
-        redirectUrlOnTitleClick={ROUTES.EXPLORE}
         selectedSortBy={selectedEntityFilter}
         sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
         widgetWidth={widgetData?.w}
         onSortChange={(key) => handleEntityFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
+        }
       />
     ),
     [

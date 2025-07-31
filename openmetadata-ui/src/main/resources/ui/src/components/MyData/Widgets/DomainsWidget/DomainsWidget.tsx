@@ -120,6 +120,10 @@ const DomainsWidget = ({
     setSelectedSortBy(key);
   }, []);
 
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.DOMAIN);
+  }, [navigate]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
@@ -224,13 +228,13 @@ const DomainsWidget = ({
           <DomainIcon className="domains-widget-globe" height={22} width={22} />
         }
         isEditView={isEditView}
-        redirectUrlOnTitleClick={ROUTES.DOMAIN}
         selectedSortBy={selectedSortBy}
         sortOptions={DOMAIN_SORT_BY_OPTIONS}
         title={t('label.domain-plural')}
         widgetKey={widgetKey}
         widgetWidth={2}
         onSortChange={handleSortByClick}
+        onTitleClick={handleTitleClick}
       />
     ),
     [
@@ -242,6 +246,7 @@ const DomainsWidget = ({
       t,
       widgetKey,
       handleSortByClick,
+      handleTitleClick,
     ]
   );
 

@@ -16,7 +16,7 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import {
@@ -64,6 +64,7 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
@@ -280,13 +281,15 @@ const MyDataWidgetInternal = ({
         handleRemoveWidget={handleRemoveWidget}
         icon={<MyDataIcon height={24} width={24} />}
         isEditView={isEditView}
-        redirectUrlOnTitleClick={ROUTES.EXPLORE}
         selectedSortBy={selectedFilter}
         sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
         title={t('label.my-data')}
         widgetKey={widgetKey}
         widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.MY_DATA))
+        }
       />
     ),
     [

@@ -18,7 +18,7 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
@@ -71,6 +71,7 @@ const CuratedAssetsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [data, setData] = useState<
     Array<SearchIndexSearchSourceMapping[SearchIndex]>
   >([]);
@@ -187,6 +188,10 @@ const CuratedAssetsWidget = ({
     selectedSortBy,
     getExpandedResourceList,
   ]);
+
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.EXPLORE);
+  }, [navigate]);
 
   const handleSave = (value: WidgetConfig['config']) => {
     const hasCurrentCuratedAssets = currentLayout?.find(
@@ -401,7 +406,6 @@ const CuratedAssetsWidget = ({
           )
         }
         isEditView={isEditView}
-        redirectUrlOnTitleClick={ROUTES.EXPLORE}
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={
@@ -417,6 +421,7 @@ const CuratedAssetsWidget = ({
         widgetWidth={curatedAssetsWidth}
         onEditClick={handleModalOpen}
         onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
+        onTitleClick={handleTitleClick}
       />
     ),
     [
@@ -434,6 +439,7 @@ const CuratedAssetsWidget = ({
       curatedAssetsWidth,
       handleModalOpen,
       handleSortByClick,
+      handleTitleClick,
     ]
   );
 

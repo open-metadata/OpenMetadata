@@ -255,6 +255,7 @@ test.describe.serial('Persona operations', () => {
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
 
+    await page.waitForLoadState('networkidle');
     await toastNotification(
       page,
       `"${PERSONA_DETAILS.displayName}" deleted successfully!`

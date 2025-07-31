@@ -13,6 +13,7 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
 import { ROUTES } from '../../../constants/constants';
@@ -42,6 +43,7 @@ const MyFeedWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
@@ -148,13 +150,13 @@ const MyFeedWidgetInternal = ({
         handleRemoveWidget={handleRemoveWidget}
         icon={<ActivityFeedIcon height={22} width={22} />}
         isEditView={isEditView}
-        redirectUrlOnTitleClick={ROUTES.EXPLORE}
         selectedSortBy={selectedFilter}
         sortOptions={FEED_WIDGET_FILTER_OPTIONS}
         title={t('label.activity-feed')}
         widgetKey={widgetKey}
         widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange(key)}
+        onTitleClick={() => navigate(ROUTES.EXPLORE)}
       />
     ),
     [
