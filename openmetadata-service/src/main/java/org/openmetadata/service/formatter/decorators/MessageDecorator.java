@@ -18,6 +18,7 @@ import static org.openmetadata.service.events.subscription.AlertUtil.convertInpu
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThreadEntity;
+import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getDataContractUrl;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
@@ -112,6 +113,10 @@ public interface MessageDecorator<T> {
 
       case Entity.INGESTION_PIPELINE:
         entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
+        break;
+
+      case Entity.DATA_CONTRACT:
+        entityUrl = getDataContractUrl(this, entityType, entityInterface);
         break;
 
       default:
