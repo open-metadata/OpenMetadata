@@ -12,7 +12,11 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import {
+  Config,
+  JsonTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/antd';
 import { Alert } from 'antd';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
@@ -151,29 +155,39 @@ export const getSelectedResourceCount = async ({
 };
 
 export const getModifiedQueryFilterWithSelectedAssets = (
-  queryFilterObject: Record<string, any>,
+  queryFilterObject: Record<string, unknown>,
   selectedResource?: Array<string>
 ) => {
+  // Create entityType filter for selected resources
+  const entityTypeFilter = {
+    bool: {
+      should: [
+        ...(selectedResource ?? []).map((resource) => ({
+          term: { entityType: resource },
+        })),
+      ],
+    },
+  };
+
+  // If no original query, return just the entityType filter
+  if (!queryFilterObject.query) {
+    return {
+      query: {
+        bool: {
+          must: [entityTypeFilter],
+        },
+      },
+    };
+  }
+
+  // If original query exists, combine it with entity type filter using AND logic
+  // This ensures the user's query conditions AND the entity type selection are both satisfied
   return {
     query: {
       bool: {
         must: [
-          {
-            bool: {
-              must: [
-                ...(queryFilterObject.query?.bool?.must?.[0]?.bool?.must ?? []),
-                {
-                  bool: {
-                    should: [
-                      ...(selectedResource ?? []).map((resource) => ({
-                        term: { entityType: resource },
-                      })),
-                    ],
-                  },
-                },
-              ],
-            },
-          },
+          queryFilterObject.query, // Preserve original query structure completely
+          entityTypeFilter, // Add entity type filter
         ],
       },
     },
@@ -187,7 +201,7 @@ export const getExploreURLWithFilters = ({
 }: {
   queryFilter: string;
   selectedResource: Array<string>;
-  config: any;
+  config: Config;
 }) => {
   try {
     const queryFilterObject = JSON.parse(queryFilter || '{}');

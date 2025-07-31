@@ -22,12 +22,14 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import { ROUTES } from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
+import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   SearchIndexSearchSourceMapping,
@@ -117,6 +119,16 @@ const CuratedAssetsWidget = ({
 
   const sourceIcon = searchClassBase.getEntityIcon(selectedResource?.[0] ?? '');
 
+  // Helper function to expand 'all' selection to all individual entity types
+  const getExpandedResourceList = useCallback((resources: Array<string>) => {
+    if (resources.includes(EntityType.ALL)) {
+      // Return all entity types except 'all' itself
+      return CURATED_ASSETS_LIST.filter((type) => type !== EntityType.ALL);
+    }
+
+    return resources;
+  }, []);
+
   const prepareData = useCallback(async () => {
     if (selectedResource?.[0]) {
       try {
@@ -124,17 +136,25 @@ const CuratedAssetsWidget = ({
         const sortField = getSortField(selectedSortBy);
         const sortOrder = getSortOrder(selectedSortBy);
 
+        // Expand 'all' selection to individual entity types for the API call
+        const expandedResources = getExpandedResourceList(selectedResource);
+
+        // Use SearchIndex.ALL when 'all' is selected, otherwise use the first selected resource
+        const searchIndex = selectedResource.includes(EntityType.ALL)
+          ? SearchIndex.ALL
+          : (selectedResource[0] as SearchIndex);
+
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
           pageSize: 20,
-          searchIndex: selectedResource[0] as SearchIndex,
+          searchIndex,
           includeDeleted: false,
           trackTotalHits: false,
           fetchSource: true,
           queryFilter: getModifiedQueryFilterWithSelectedAssets(
             JSON.parse(queryFilter),
-            selectedResource
+            expandedResources
           ),
           sortField,
           sortOrder,
@@ -144,7 +164,7 @@ const CuratedAssetsWidget = ({
 
         const totalResourceCounts = getTotalResourceCount(
           res.aggregations.entityType.buckets,
-          selectedResource
+          expandedResources
         );
 
         const count = String(
@@ -160,7 +180,13 @@ const CuratedAssetsWidget = ({
         setIsLoading(false);
       }
     }
-  }, [curatedAssetsConfig, selectedResource, queryFilter, selectedSortBy]);
+  }, [
+    curatedAssetsConfig,
+    selectedResource,
+    queryFilter,
+    selectedSortBy,
+    getExpandedResourceList,
+  ]);
 
   const handleSave = (value: WidgetConfig['config']) => {
     const hasCurrentCuratedAssets = currentLayout?.find(

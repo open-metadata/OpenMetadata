@@ -12,7 +12,7 @@
  */
 @import (reference) url('../../../../styles/variables.less');
 
-.customise-landing-page {
+.customise-landing-page-header {
   margin: 0;
   padding: @padding-mlg;
   border-radius: @border-rad-lg;
@@ -89,6 +89,11 @@
       border-radius: @border-rad-sm;
     }
   }
+
+  .disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 }
 
 .landing-page-header-bg {
@@ -142,11 +147,6 @@
     background-color: transparent;
     border: 1px solid @grey-25;
   }
-
-  .disabled {
-    cursor: not-allowed;
-    pointer-events: none;
-  }
 }
 
 .customise-search-container {
@@ -167,10 +167,6 @@
 
   .domain-title {
     color: @grey-700;
-  }
-
-  &.disabled {
-    cursor: not-allowed;
   }
 
   &:hover {
