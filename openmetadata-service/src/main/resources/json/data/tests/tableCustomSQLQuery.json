@@ -37,6 +37,7 @@
         "required": false
       }
     ],
+    "supportsRowLevelPassedFailed": true,
     "provider": "system",
     "dataQualityDimension": "SQL"
   }

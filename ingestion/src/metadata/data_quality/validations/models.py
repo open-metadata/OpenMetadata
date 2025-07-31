@@ -4,8 +4,9 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Column, TableProfilerConfig
+from metadata.generated.schema.entity.data.table import Column, Table, TableProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseServiceType,
 )
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
@@ -27,3 +28,8 @@ class TableDiffRuntimeParameters(BaseModel):
     extraColumns: List[str]
     whereClause: Optional[str]
     table_profile_config: Optional[TableProfilerConfig]
+
+
+class TableCustomSQLQueryRuntimeParameters(BaseModel):
+    conn_config: DatabaseConnection
+    entity: Table
