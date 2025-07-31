@@ -73,7 +73,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await table.create(apiContext);
 
     // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPageWithCustomSearchBox(page);
+    await EntityDataClass.table1.visitEntityPage(page);
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
