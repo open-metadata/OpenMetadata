@@ -30,6 +30,7 @@ import {
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
@@ -232,7 +233,11 @@ export const AdvanceSearchProvider = ({
 
       Object.entries(res).forEach(([resEntityType, fields]) => {
         // If entityType is specified, only include custom properties for that entity type
-        if (entityType && resEntityType !== entityType) {
+        if (
+          entityType &&
+          entityType !== EntityType.ALL &&
+          resEntityType !== entityType
+        ) {
           return;
         }
 
