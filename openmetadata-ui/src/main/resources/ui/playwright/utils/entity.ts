@@ -46,10 +46,17 @@ export const visitEntityPage = async (data: {
   const { page, searchTerm, dataTestId } = data;
   await page.waitForLoadState('networkidle');
 
-  await page
-    .getByRole('main')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await Promise.all([
+    page.getByRole('main').getByTestId('loader').waitFor({ state: 'detached' }),
+    page
+      .getByTestId('content-resizable-panel-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' }),
+    page
+      .getByTestId('content-height-with-resizable-panel')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' }),
+  ]);
 
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
