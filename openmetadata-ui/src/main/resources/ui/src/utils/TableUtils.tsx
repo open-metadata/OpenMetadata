@@ -959,17 +959,6 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
     },
-    // {
-    //   label: (
-    //     <TabsLabel
-    //       id={EntityTabs.CONTRACT}
-    //       isActive={activeTab === EntityTabs.CONTRACT}
-    //       name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
-    //     />
-    //   ),
-    //   key: EntityTabs.CONTRACT,
-    //   children: <ContractTab />,
-    // },
     {
       label: (
         <TabsLabel
