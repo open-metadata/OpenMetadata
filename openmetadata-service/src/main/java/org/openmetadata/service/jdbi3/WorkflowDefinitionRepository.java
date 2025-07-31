@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +86,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTrigger();
+      updateConfig();
       updateNodes();
       updateEdges();
     }
@@ -94,6 +96,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         return;
       }
       recordChange("trigger", original.getTrigger(), updated.getTrigger());
+    }
+
+    private void updateConfig() {
+      if (Objects.equals(original.getConfig(), updated.getConfig())) {
+        return;
+      }
+      recordChange("config", original.getConfig(), updated.getConfig());
     }
 
     private void updateNodes() {
@@ -134,5 +143,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*")))
             .getEntityReference();
     return workflowDefinitionReference.getId();
+  }
+
+  /**
+   * Efficiently retrieves WorkflowDefinition with minimal fields for stage processing.
+   * This returns the full object so callers can extract both ID and stage displayName without additional DB calls.
+   */
+  public WorkflowDefinition getByNameForStageProcessing(String workflowDefinitionName) {
+    return getByName(null, workflowDefinitionName, EntityUtil.Fields.EMPTY_FIELDS);
   }
 }
