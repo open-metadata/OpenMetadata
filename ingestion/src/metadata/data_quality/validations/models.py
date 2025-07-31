@@ -4,7 +4,11 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Column, Table, TableProfilerConfig
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Table,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,

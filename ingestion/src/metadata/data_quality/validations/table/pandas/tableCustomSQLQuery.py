@@ -13,7 +13,8 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional, List
+from typing import List, Optional
+
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )

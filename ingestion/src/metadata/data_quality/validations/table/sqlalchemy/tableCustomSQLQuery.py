@@ -14,25 +14,28 @@ Validator for table custom SQL Query test case
 """
 
 from typing import Optional, cast
-from metadata.profiler.processor.runner import QueryRunner
+
 from sqlalchemy import text
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.data_quality.validations.models import (
+    TableCustomSQLQueryRuntimeParameters,
+)
 from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
-from metadata.data_quality.validations.models import TableCustomSQLQueryRuntimeParameters
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.helpers import is_safe_sql_query
 
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
-    
+
     runtime_params: TableCustomSQLQueryRuntimeParameters
 
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
@@ -65,12 +68,12 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         self.runner = cast(QueryRunner, self.runner)
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(
-                dialect,
-                runner=self.runner,
-                metrics=[Metrics.ROW_COUNT],
-                conn_config=self.runtime_params.conn_config,
-                entity=self.runtime_params.entity,
-            )
+            dialect,
+            runner=self.runner,
+            metrics=[Metrics.ROW_COUNT],
+            conn_config=self.runtime_params.conn_config,
+            entity=self.runtime_params.entity,
+        )
         row = table_metric_computer.compute()
         if row:
             return row.get(Metrics.ROW_COUNT.value)

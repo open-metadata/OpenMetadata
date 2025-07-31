@@ -10,7 +10,9 @@
 #  limitations under the License.
 """Module that defines the TableCustomSQLQueryParamsSetter class."""
 
-from metadata.data_quality.validations.models import TableCustomSQLQueryRuntimeParameters
+from metadata.data_quality.validations.models import (
+    TableCustomSQLQueryRuntimeParameters,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )

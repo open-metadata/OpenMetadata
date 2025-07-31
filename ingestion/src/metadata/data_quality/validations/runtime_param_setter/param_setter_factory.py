@@ -19,11 +19,15 @@ from typing import Dict, Set, Type
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
-from metadata.data_quality.validations.runtime_param_setter.table_custom_sql_query_params_setter import TableCustomSQLQueryParamsSetter
+from metadata.data_quality.validations.runtime_param_setter.table_custom_sql_query_params_setter import (
+    TableCustomSQLQueryParamsSetter,
+)
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
-from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import TableCustomSQLQueryValidator
+from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
+    TableCustomSQLQueryValidator,
+)
 from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
     TableDiffValidator,
 )
@@ -62,7 +66,9 @@ class RuntimeParameterSetterFactory:
         """Set"""
         self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
-            validator_name(TableCustomSQLQueryValidator): {TableCustomSQLQueryParamsSetter},
+            validator_name(TableCustomSQLQueryValidator): {
+                TableCustomSQLQueryParamsSetter
+            },
         }
 
     def get_runtime_param_setters(
