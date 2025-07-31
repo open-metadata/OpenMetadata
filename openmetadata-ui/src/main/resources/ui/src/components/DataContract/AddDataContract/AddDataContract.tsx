@@ -81,10 +81,10 @@ const AddDataContract: React.FC<{
 
     try {
       await (contract
-        ? updateContract(
-            omit({ ...contract, ...formValues }, [
+        ? // since this is a PUT call and this API accept createDataContract object we are eliminating the fields that are not present in the createDataContract object. And restricting name to be changed since there will be only one contract per entity.
+          updateContract(
+            omit({ ...contract, ...formValues, name: contract?.name ?? '' }, [
               'id',
-              'name',
               'fullyQualifiedName',
               'version',
               'updatedAt',
@@ -192,9 +192,11 @@ const AddDataContract: React.FC<{
         children: (
           <ContractQualityFormTab
             prevLabel={t('label.semantic-plural')}
-            selectedQuality={formValues.qualityExpectations?.map(
-              (quality) => quality.id ?? ''
-            )}
+            selectedQuality={
+              formValues.qualityExpectations?.map(
+                (quality) => quality.id ?? ''
+              ) ?? []
+            }
             onPrev={onPrev}
             onUpdate={(qualityExpectations) =>
               setFormValues((prev) => ({ ...prev, qualityExpectations }))
