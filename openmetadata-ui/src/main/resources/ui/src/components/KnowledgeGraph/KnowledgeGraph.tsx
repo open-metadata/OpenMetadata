@@ -20,7 +20,16 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Empty, Select, Space, Spin, Tooltip } from 'antd';
+import {
+  Button,
+  Card,
+  Empty,
+  Select,
+  Slider,
+  Space,
+  Spin,
+  Tooltip,
+} from 'antd';
 import { AxiosError } from 'axios';
 import React, {
   useCallback,
@@ -72,7 +81,7 @@ interface GraphData {
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
   entityType,
-  depth = 2,
+  depth = 1,
 }) => {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,7 +89,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const [loading, setLoading] = useState(true);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [selectedDepth, setSelectedDepth] = useState(depth);
-  const [layout, setLayout] = useState<'hierarchical' | 'force'>('force');
+  const [layout, setLayout] = useState<'hierarchical' | 'force'>(
+    'hierarchical'
+  );
   const [, setHoveredNode] = useState<GraphNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 
@@ -89,15 +100,15 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       nodes: {
         shape: 'box',
         widthConstraint: {
-          minimum: 200,
-          maximum: 300,
+          minimum: 150,
+          maximum: 250,
         },
         heightConstraint: {
-          minimum: 80,
-          maximum: 120,
+          minimum: 60,
+          maximum: 80,
         },
         font: {
-          size: 14,
+          size: 12,
           color: '#262626',
           face: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial',
           multi: true,
@@ -113,10 +124,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           y: 2,
         },
         margin: {
-          top: 10,
-          bottom: 10,
-          left: 15,
-          right: 15,
+          top: 8,
+          bottom: 8,
+          left: 12,
+          right: 12,
         },
         borderRadius: 8,
       },
@@ -325,9 +336,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               hierarchical: {
                 direction: 'LR',
                 sortMethod: 'directed',
-                levelSeparation: 300,
-                nodeSpacing: 150,
-                treeSpacing: 200,
+                levelSeparation: 400,
+                nodeSpacing: 200,
+                treeSpacing: 250,
                 blockShifting: true,
                 edgeMinimization: true,
                 parentCentralization: true,
@@ -341,12 +352,12 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         enabled: layout === 'force',
         solver: 'forceAtlas2Based',
         forceAtlas2Based: {
-          gravitationalConstant: -150,
-          centralGravity: 0.005,
-          springLength: 250,
-          springConstant: 0.05,
-          damping: 0.4,
-          avoidOverlap: 1,
+          gravitationalConstant: -300,
+          centralGravity: 0.01,
+          springLength: 350,
+          springConstant: 0.04,
+          damping: 0.3,
+          avoidOverlap: 1.5,
         },
         stabilization: {
           enabled: true,
@@ -438,18 +449,18 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         label: nodeLabel,
         title: false, // Disable default HTML tooltip
         font: {
-          size: isCurrentEntity ? 14 : 12,
+          size: isCurrentEntity ? 12 : 11,
           multi: true,
           bold: {
-            size: isCurrentEntity ? 16 : 14,
+            size: isCurrentEntity ? 13 : 12,
           },
         },
         borderWidth: isCurrentEntity ? 3 : 1,
         margin: {
-          top: 15,
-          bottom: 15,
-          left: 20,
-          right: 20,
+          top: 10,
+          bottom: 10,
+          left: 15,
+          right: 15,
         },
         chosen: {
           node: function (values, id, selected, hovering) {
@@ -595,16 +606,24 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     <div className="knowledge-graph-container">
       <Card title={t('label.knowledge-graph')}>
         <div className="knowledge-graph-controls">
-          <Select
-            options={[
-              { label: `${t('label.depth')} 1`, value: 1 },
-              { label: `${t('label.depth')} 2`, value: 2 },
-              { label: `${t('label.depth')} 3`, value: 3 },
-            ]}
-            size="small"
-            value={selectedDepth}
-            onChange={handleDepthChange}
-          />
+          <div className="depth-slider-container">
+            <span className="depth-label">{t('label.depth')}</span>
+            <Slider
+              className="depth-slider"
+              marks={{
+                1: '1',
+                5: '5',
+                10: '10',
+              }}
+              max={10}
+              min={1}
+              tooltip={{
+                formatter: (value) => `${t('label.depth')}: ${value}`,
+              }}
+              value={selectedDepth}
+              onChange={handleDepthChange}
+            />
+          </div>
           <Select
             options={[
               {

@@ -1,7 +1,12 @@
 package org.openmetadata.service.rdf;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
@@ -56,9 +61,6 @@ public class RdfRepository {
     return config.getEnabled() != null && config.getEnabled() && storageService != null;
   }
 
-  /**
-   * Create or update entity in RDF store
-   */
   public void createOrUpdate(EntityInterface entity) {
     if (!isEnabled()) {
       return;
@@ -85,9 +87,6 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Delete entity from RDF store
-   */
   public void delete(EntityReference entityReference) {
     if (!isEnabled()) {
       return;
@@ -118,9 +117,6 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Add relationship to RDF store
-   */
   public void addRelationship(EntityRelationship relationship) {
     if (!isEnabled()) {
       return;
@@ -139,9 +135,6 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Remove relationship from RDF store
-   */
   public void removeRelationship(EntityRelationship relationship) {
     if (!isEnabled()) {
       return;
@@ -173,16 +166,12 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Get entity as JSON-LD
-   */
   public String getEntityAsJsonLd(String entityType, UUID entityId) throws IOException {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF/JSON-LD not enabled");
     }
 
     try {
-      // First get entity from primary store
       EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
       return translator.toJsonLdString(entity, true);
     } catch (EntityNotFoundException e) {
@@ -193,10 +182,7 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Get entity as RDF (various formats)
-   */
-  public String getEntityAsRdf(String entityType, UUID entityId, String format) throws IOException {
+  public String getEntityAsRdf(String entityType, UUID entityId, String format) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
     }
@@ -207,7 +193,6 @@ public class RdfRepository {
           String.format("Entity %s not found in RDF store", entityId));
     }
 
-    // Use SPARQL CONSTRUCT to get entity with all properties
     String entityUri = config.getBaseUri().toString() + "entity/" + entityType + "/" + entityId;
     String sparql =
         String.format("CONSTRUCT { <%s> ?p ?o } WHERE { <%s> ?p ?o }", entityUri, entityUri);
@@ -215,9 +200,6 @@ public class RdfRepository {
     return storageService.executeSparqlQuery(sparql, format);
   }
 
-  /**
-   * Execute SPARQL query
-   */
   public String executeSparqlQuery(String query, String format) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
@@ -226,9 +208,6 @@ public class RdfRepository {
     return storageService.executeSparqlQuery(query, format);
   }
 
-  /**
-   * Get entity graph data for visualization
-   */
   public String getEntityGraph(UUID entityId, String entityType, int depth) throws IOException {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF Repository is not enabled");
@@ -237,145 +216,39 @@ public class RdfRepository {
     String entityUri = config.getBaseUri().toString() + "entity/" + entityType + "/" + entityId;
 
     try {
-      // Use a simpler query that's less likely to have syntax errors
-      // First, get all relationships for this entity
-      String sparql =
-          "PREFIX om: <https://open-metadata.org/ontology/> "
-              + "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> "
-              + "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "
-              + "SELECT DISTINCT ?subject ?predicate ?object WHERE { "
-              + "  { "
-              + "    GRAPH ?g { <"
-              + entityUri
-              + "> ?predicate ?object . "
-              + "    FILTER(isIRI(?object) && "
-              + "           ?predicate != rdf:type && "
-              + "           ?predicate != rdfs:label) } "
-              + "    BIND(<"
-              + entityUri
-              + "> AS ?subject) "
-              + "  } UNION { "
-              + "    GRAPH ?g { ?subject ?predicate <"
-              + entityUri
-              + "> . "
-              + "    FILTER(isIRI(?subject) && "
-              + "           ?predicate != rdf:type && "
-              + "           ?predicate != rdfs:label) } "
-              + "    BIND(<"
-              + entityUri
-              + "> AS ?object) "
-              + "  } "
-              + "} LIMIT 100";
+      Set<String> visitedNodes = new HashSet<>();
+      Set<String> currentLevelNodes = new HashSet<>();
+      List<EdgeInfo> allEdges = new ArrayList<>();
 
-      LOG.debug("Executing SPARQL query for entity graph: {}", sparql);
+      currentLevelNodes.add(entityUri);
+      visitedNodes.add(entityUri);
 
-      String results = storageService.executeSparqlQuery(sparql, "application/sparql-results+json");
-      LOG.debug("SPARQL query results: {}", results);
+      for (int currentDepth = 0;
+          currentDepth < depth && !currentLevelNodes.isEmpty();
+          currentDepth++) {
+        Set<String> nextLevelNodes = new HashSet<>();
 
-      // Check if the result is actually JSON
-      if (results == null || results.trim().isEmpty()) {
-        LOG.warn("Empty results from SPARQL query");
-        return createEmptyGraphData();
+        // For each node at current level, get its relationships
+        for (String nodeUri : currentLevelNodes) {
+          String sparql = buildSingleNodeQuery(nodeUri);
+          String results =
+              storageService.executeSparqlQuery(sparql, "application/sparql-results+json");
+
+          if (results != null && !results.trim().isEmpty()) {
+            List<EdgeInfo> edges = parseEdgesFromResults(results, visitedNodes, nextLevelNodes);
+            allEdges.addAll(edges);
+          }
+        }
+
+        currentLevelNodes = nextLevelNodes;
+        visitedNodes.addAll(nextLevelNodes);
       }
 
-      if (!results.trim().startsWith("{") && !results.trim().startsWith("[")) {
-        LOG.error("Invalid JSON response from SPARQL query: {}", results);
-        return createEmptyGraphData();
-      }
-
-      return convertSimpleSparqlResultsToGraphData(results);
+      return convertEdgesToGraphData(allEdges);
     } catch (Exception e) {
       LOG.error("Error getting entity graph for {}", entityUri, e);
       throw new IOException("Failed to get entity graph", e);
     }
-  }
-
-  private String convertSparqlResultsToGraphData(String sparqlResults) throws IOException {
-    com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
-    com.fasterxml.jackson.databind.node.ObjectNode graphData =
-        JsonUtils.getObjectMapper().createObjectNode();
-    com.fasterxml.jackson.databind.node.ArrayNode nodes =
-        JsonUtils.getObjectMapper().createArrayNode();
-    com.fasterxml.jackson.databind.node.ArrayNode edges =
-        JsonUtils.getObjectMapper().createArrayNode();
-
-    java.util.Set<String> addedNodes = new java.util.HashSet<>();
-
-    if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
-      for (com.fasterxml.jackson.databind.JsonNode binding :
-          resultsJson.get("results").get("bindings")) {
-        String subjectUri = binding.get("subject").get("value").asText();
-        String subjectLabel =
-            binding.has("subjectLabel")
-                ? binding.get("subjectLabel").get("value").asText()
-                : extractEntityName(subjectUri);
-        String subjectType =
-            binding.has("subjectType")
-                ? extractTypeName(binding.get("subjectType").get("value").asText())
-                : "entity";
-
-        String objectUri = binding.get("object").get("value").asText();
-        String objectLabel =
-            binding.has("objectLabel")
-                ? binding.get("objectLabel").get("value").asText()
-                : extractEntityName(objectUri);
-        String objectType =
-            binding.has("objectType")
-                ? extractTypeName(binding.get("objectType").get("value").asText())
-                : "entity";
-
-        String predicate = extractPredicateName(binding.get("predicate").get("value").asText());
-
-        // Add subject node
-        if (!addedNodes.contains(subjectUri)) {
-          com.fasterxml.jackson.databind.node.ObjectNode subjectNode =
-              JsonUtils.getObjectMapper().createObjectNode();
-          subjectNode.put("id", subjectUri);
-          subjectNode.put("label", subjectLabel);
-          subjectNode.put("type", subjectType);
-          subjectNode.put("group", subjectType.toLowerCase());
-          subjectNode.put("title", subjectType + ": " + subjectLabel);
-          nodes.add(subjectNode);
-          addedNodes.add(subjectUri);
-        }
-
-        // Add object node
-        if (!addedNodes.contains(objectUri)) {
-          com.fasterxml.jackson.databind.node.ObjectNode objectNode =
-              JsonUtils.getObjectMapper().createObjectNode();
-          objectNode.put("id", objectUri);
-          objectNode.put("label", objectLabel);
-          objectNode.put("type", objectType);
-          objectNode.put("group", objectType.toLowerCase());
-          objectNode.put("title", objectType + ": " + objectLabel);
-          nodes.add(objectNode);
-          addedNodes.add(objectUri);
-        }
-
-        // Add edge
-        com.fasterxml.jackson.databind.node.ObjectNode edge =
-            JsonUtils.getObjectMapper().createObjectNode();
-        edge.put("from", subjectUri);
-        edge.put("to", objectUri);
-        edge.put("label", predicate);
-        edge.put("arrows", "to");
-        edges.add(edge);
-      }
-    }
-
-    graphData.set("nodes", nodes);
-    graphData.set("edges", edges);
-
-    return JsonUtils.pojoToJson(graphData);
-  }
-
-  private String extractTypeName(String typeUri) {
-    if (typeUri.contains("#")) {
-      return typeUri.substring(typeUri.lastIndexOf('#') + 1);
-    } else if (typeUri.contains("/")) {
-      return typeUri.substring(typeUri.lastIndexOf('/') + 1);
-    }
-    return typeUri;
   }
 
   private String extractPredicateName(String predicateUri) {
@@ -387,74 +260,6 @@ public class RdfRepository {
     return predicateUri;
   }
 
-  private String extractEntityName(String entityUri) {
-    // Extract entity name from URI like https://open-metadata.org/entity/table/uuid
-    if (entityUri.contains("/entity/")) {
-      String[] parts = entityUri.split("/entity/")[1].split("/");
-      if (parts.length >= 2) {
-        return parts[0] + ":" + parts[1];
-      }
-    }
-    return extractTypeName(entityUri);
-  }
-
-  private String convertSimpleSparqlResultsToGraphData(String sparqlResults) throws IOException {
-    com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
-    com.fasterxml.jackson.databind.node.ObjectNode graphData =
-        JsonUtils.getObjectMapper().createObjectNode();
-    com.fasterxml.jackson.databind.node.ArrayNode nodes =
-        JsonUtils.getObjectMapper().createArrayNode();
-    com.fasterxml.jackson.databind.node.ArrayNode edges =
-        JsonUtils.getObjectMapper().createArrayNode();
-
-    java.util.Set<String> addedNodes = new java.util.HashSet<>();
-    java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap =
-        new java.util.HashMap<>();
-
-    if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
-      for (com.fasterxml.jackson.databind.JsonNode binding :
-          resultsJson.get("results").get("bindings")) {
-        String subjectUri = binding.get("subject").get("value").asText();
-        String objectUri = binding.get("object").get("value").asText();
-        String predicate = extractPredicateName(binding.get("predicate").get("value").asText());
-
-        // Add subject node
-        if (!addedNodes.contains(subjectUri)) {
-          com.fasterxml.jackson.databind.node.ObjectNode subjectNode =
-              createNodeFromUri(subjectUri);
-          nodes.add(subjectNode);
-          nodeMap.put(subjectUri, subjectNode);
-          addedNodes.add(subjectUri);
-        }
-
-        // Add object node
-        if (!addedNodes.contains(objectUri)) {
-          com.fasterxml.jackson.databind.node.ObjectNode objectNode = createNodeFromUri(objectUri);
-          nodes.add(objectNode);
-          nodeMap.put(objectUri, objectNode);
-          addedNodes.add(objectUri);
-        }
-
-        // Add edge with formatted label
-        com.fasterxml.jackson.databind.node.ObjectNode edge =
-            JsonUtils.getObjectMapper().createObjectNode();
-        edge.put("from", subjectUri);
-        edge.put("to", objectUri);
-        edge.put("label", formatRelationshipLabel(predicate));
-        edge.put("arrows", "to");
-        edges.add(edge);
-      }
-    }
-
-    // Enhance nodes with entity details from database
-    enhanceNodesWithEntityDetails(nodeMap);
-
-    graphData.set("nodes", nodes);
-    graphData.set("edges", edges);
-
-    return JsonUtils.pojoToJson(graphData);
-  }
-
   private String extractEntityTypeFromUri(String entityUri) {
     // Extract entity type from URI like https://open-metadata.org/entity/table/uuid
     if (entityUri.contains("/entity/")) {
@@ -464,14 +269,6 @@ public class RdfRepository {
       }
     }
     return "entity";
-  }
-
-  private String createEmptyGraphData() throws IOException {
-    com.fasterxml.jackson.databind.node.ObjectNode graphData =
-        JsonUtils.getObjectMapper().createObjectNode();
-    graphData.set("nodes", JsonUtils.getObjectMapper().createArrayNode());
-    graphData.set("edges", JsonUtils.getObjectMapper().createArrayNode());
-    return JsonUtils.pojoToJson(graphData);
   }
 
   private com.fasterxml.jackson.databind.node.ObjectNode createNodeFromUri(String entityUri) {
@@ -512,21 +309,16 @@ public class RdfRepository {
       String entityType = node.get("type").asText();
 
       try {
-        // Fetch entity details from database
         EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "*", null);
-
-        // Update node with actual entity details
         node.put(
             "label", entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
         node.put("name", entity.getName());
         node.put("fullyQualifiedName", entity.getFullyQualifiedName());
 
-        // Add description
         if (entity.getDescription() != null && !entity.getDescription().isEmpty()) {
           node.put("description", entity.getDescription());
         }
 
-        // Add tags
         if (entity.getTags() != null && !entity.getTags().isEmpty()) {
           com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
               JsonUtils.getObjectMapper().createArrayNode();
@@ -543,7 +335,6 @@ public class RdfRepository {
           node.set("tags", tagsArray);
         }
 
-        // Create enhanced title for tooltip
         StringBuilder titleBuilder = new StringBuilder();
         titleBuilder
             .append("<div style='padding: 8px; min-width: 200px;'>")
@@ -570,83 +361,163 @@ public class RdfRepository {
 
       } catch (Exception e) {
         LOG.warn("Failed to fetch entity details for {}: {}", entityId, e.getMessage());
-        // Keep the basic information if entity details can't be fetched
         node.put("label", entityType + ": " + entityId);
       }
     }
   }
 
   private String formatRelationshipLabel(String relationship) {
-    // Format relationship labels to be more user-friendly
-    switch (relationship.toLowerCase()) {
-      case "contains":
-        return "Contains";
-      case "uses":
-        return "Uses";
-      case "relatedto":
-        return "Related To";
-      case "ownedby":
-        return "Owned By";
-      case "belongsto":
-        return "Belongs To";
-      case "derivedfrom":
-        return "Derived From";
-      case "upstream":
-        return "Upstream";
-      case "downstream":
-        return "Downstream";
-      case "taggedwith":
-        return "Tagged With";
-      case "classifiedas":
-        return "Classified As";
-      case "indomain":
-        return "In Domain";
-      case "hascolumn":
-        return "Has Column";
-      case "hastable":
-        return "Has Table";
-      case "hasglossaryterm":
-        return "Has Glossary Term";
-      case "termreference":
-        return "Term Reference";
-      case "synonymof":
-        return "Synonym Of";
-      case "antonymof":
-        return "Antonym Of";
-      case "ispartof":
-        return "Is Part Of";
-      case "hasdataproduct":
-        return "Has Data Product";
-      case "producedby":
-        return "Produced By";
-      case "consumedby":
-        return "Consumed By";
-      case "processedby":
-        return "Processed By";
-      case "hasdatabase":
-        return "Has Database";
-      case "hasschema":
-        return "Has Schema";
-      case "hastopic":
-        return "Has Topic";
-      case "hascontainer":
-        return "Has Container";
-      case "hasmodel":
-        return "Has Model";
-      case "hasstoredprocedure":
-        return "Has Stored Procedure";
-      case "hasindex":
-        return "Has Index";
-      default:
-        // Convert camelCase to Title Case
-        return relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(0, 1).toUpperCase()
-            + relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(1);
+    return switch (relationship.toLowerCase()) {
+      case "contains" -> "Contains";
+      case "uses" -> "Uses";
+      case "relatedto" -> "Related To";
+      case "ownedby" -> "Owned By";
+      case "belongsto" -> "Belongs To";
+      case "derivedfrom" -> "Derived From";
+      case "upstream" -> "Upstream";
+      case "downstream" -> "Downstream";
+      case "taggedwith" -> "Tagged With";
+      case "classifiedas" -> "Classified As";
+      case "indomain" -> "In Domain";
+      case "hascolumn" -> "Has Column";
+      case "hastable" -> "Has Table";
+      case "hasglossaryterm" -> "Has Glossary Term";
+      case "termreference" -> "Term Reference";
+      case "synonymof" -> "Synonym Of";
+      case "antonymof" -> "Antonym Of";
+      case "ispartof" -> "Is Part Of";
+      case "hasdataproduct" -> "Has Data Product";
+      case "producedby" -> "Produced By";
+      case "consumedby" -> "Consumed By";
+      case "processedby" -> "Processed By";
+      case "hasdatabase" -> "Has Database";
+      case "hasschema" -> "Has Schema";
+      case "hastopic" -> "Has Topic";
+      case "hascontainer" -> "Has Container";
+      case "hasmodel" -> "Has Model";
+      case "hasstoredprocedure" -> "Has Stored Procedure";
+      case "hasindex" -> "Has Index";
+      default ->
+      // Convert camelCase to Title Case
+      relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(0, 1).toUpperCase()
+          + relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(1);
+    };
+  }
+
+  private String buildSingleNodeQuery(String nodeUri) {
+    return "PREFIX om: <https://open-metadata.org/ontology/> "
+        + "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> "
+        + "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "
+        + "SELECT DISTINCT ?subject ?predicate ?object WHERE { "
+        + "  { "
+        + "    GRAPH ?g { <"
+        + nodeUri
+        + "> ?predicate ?object . "
+        + "    FILTER(isIRI(?object) && "
+        + "           ?predicate != rdf:type && "
+        + "           ?predicate != rdfs:label) } "
+        + "    BIND(<"
+        + nodeUri
+        + "> AS ?subject) "
+        + "  } UNION { "
+        + "    GRAPH ?g { ?subject ?predicate <"
+        + nodeUri
+        + "> . "
+        + "    FILTER(isIRI(?subject) && "
+        + "           ?predicate != rdf:type && "
+        + "           ?predicate != rdfs:label) } "
+        + "    BIND(<"
+        + nodeUri
+        + "> AS ?object) "
+        + "  } "
+        + "} LIMIT 200";
+  }
+
+  private List<EdgeInfo> parseEdgesFromResults(
+      String sparqlResults, Set<String> visitedNodes, Set<String> nextLevelNodes) {
+    List<EdgeInfo> edges = new ArrayList<>();
+    com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
+
+    if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
+      for (com.fasterxml.jackson.databind.JsonNode binding :
+          resultsJson.get("results").get("bindings")) {
+        String subjectUri = binding.get("subject").get("value").asText();
+        String objectUri = binding.get("object").get("value").asText();
+        String predicate = binding.get("predicate").get("value").asText();
+
+        EdgeInfo edge = new EdgeInfo(subjectUri, objectUri, extractPredicateName(predicate));
+        edges.add(edge);
+
+        if (!visitedNodes.contains(objectUri)) {
+          nextLevelNodes.add(objectUri);
+        }
+        if (!visitedNodes.contains(subjectUri)) {
+          nextLevelNodes.add(subjectUri);
+        }
+      }
+    }
+
+    return edges;
+  }
+
+  private static class EdgeInfo {
+    final String fromUri;
+    final String toUri;
+    final String relation;
+
+    EdgeInfo(String fromUri, String toUri, String relation) {
+      this.fromUri = fromUri;
+      this.toUri = toUri;
+      this.relation = relation;
     }
   }
 
-  /**
-   * Execute SPARQL update
-   */
+  private String convertEdgesToGraphData(List<EdgeInfo> edges) {
+    com.fasterxml.jackson.databind.node.ObjectNode graphData =
+        JsonUtils.getObjectMapper().createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode nodes =
+        JsonUtils.getObjectMapper().createArrayNode();
+    com.fasterxml.jackson.databind.node.ArrayNode graphEdges =
+        JsonUtils.getObjectMapper().createArrayNode();
+
+    Set<String> addedNodes = new HashSet<>();
+    Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap = new HashMap<>();
+
+    for (EdgeInfo edge : edges) {
+      String fromUri = edge.fromUri;
+      String toUri = edge.toUri;
+
+      if (!addedNodes.contains(fromUri)) {
+        com.fasterxml.jackson.databind.node.ObjectNode fromNode = createNodeFromUri(fromUri);
+        nodes.add(fromNode);
+        nodeMap.put(fromUri, fromNode);
+        addedNodes.add(fromUri);
+      }
+
+      if (!addedNodes.contains(toUri)) {
+        com.fasterxml.jackson.databind.node.ObjectNode toNode = createNodeFromUri(toUri);
+        nodes.add(toNode);
+        nodeMap.put(toUri, toNode);
+        addedNodes.add(toUri);
+      }
+
+      com.fasterxml.jackson.databind.node.ObjectNode graphEdge =
+          JsonUtils.getObjectMapper().createObjectNode();
+      graphEdge.put("from", fromUri);
+      graphEdge.put("to", toUri);
+      graphEdge.put("label", formatRelationshipLabel(edge.relation));
+      graphEdge.put("arrows", "to");
+      graphEdges.add(graphEdge);
+    }
+
+    enhanceNodesWithEntityDetails(nodeMap);
+
+    graphData.set("nodes", nodes);
+    graphData.set("edges", graphEdges);
+
+    return JsonUtils.pojoToJson(graphData);
+  }
+
   public void executeSparqlUpdate(String update) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
@@ -655,9 +526,6 @@ public class RdfRepository {
     storageService.executeSparqlUpdate(update);
   }
 
-  /**
-   * Get RDF statistics
-   */
   public RdfStatistics getStatistics() {
     if (!isEnabled()) {
       return new RdfStatistics(false, 0, 0, null);
@@ -670,9 +538,6 @@ public class RdfRepository {
         config.getStorageType().toString());
   }
 
-  /**
-   * Bulk sync entities (for migration/recovery)
-   */
   public void bulkSyncEntities(String entityType, List<? extends EntityInterface> entities) {
     if (!isEnabled()) {
       return;
@@ -696,9 +561,6 @@ public class RdfRepository {
     }
   }
 
-  /**
-   * Clear all data from RDF store
-   */
   public void clearAll() {
     if (!isEnabled()) {
       return;

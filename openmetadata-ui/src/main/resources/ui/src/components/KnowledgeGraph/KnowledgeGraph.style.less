@@ -23,9 +23,10 @@
     right: 16px;
     z-index: 1000;
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 12px;
     background: rgba(255, 255, 255, 0.98);
-    padding: 10px 12px;
+    padding: 8px 12px;
     border-radius: 10px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(20px);
@@ -33,10 +34,14 @@
 
     .ant-select {
       min-width: 120px;
+      height: 32px;
 
       .ant-select-selector {
+        height: 32px;
         border-radius: 8px !important;
         border-color: #e8e8e8;
+        display: flex;
+        align-items: center;
 
         &:hover {
           border-color: #d9d9d9;
@@ -45,9 +50,13 @@
     }
 
     .ant-btn {
+      height: 32px;
       border-radius: 8px;
       transition: all 0.2s ease;
       border-color: #e8e8e8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
 
       &:hover {
         transform: translateY(-1px);
@@ -57,6 +66,60 @@
 
       &:active {
         transform: translateY(0);
+      }
+    }
+
+    .ant-space-compact {
+      display: flex;
+      align-items: center;
+    }
+
+    .depth-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 200px;
+
+      .depth-label {
+        font-size: 13px;
+        color: #595959;
+        white-space: nowrap;
+        font-weight: 500;
+      }
+
+      .depth-slider {
+        flex: 1;
+        margin: 0 8px;
+
+        .ant-slider-track {
+          background-color: #1890ff;
+        }
+
+        .ant-slider-handle {
+          border-color: #1890ff;
+
+          &:hover {
+            border-color: #40a9ff;
+          }
+
+          &:focus {
+            border-color: #40a9ff;
+            box-shadow: 0 0 0 5px rgba(24, 144, 255, 0.12);
+          }
+        }
+
+        .ant-slider-mark-text {
+          font-size: 11px;
+          color: #8c8c8c;
+        }
+
+        .ant-slider-dot {
+          border-color: #d9d9d9;
+
+          &.ant-slider-dot-active {
+            border-color: #1890ff;
+          }
+        }
       }
     }
   }
@@ -296,14 +359,15 @@
   &:-webkit-full-screen,
   &:-moz-full-screen,
   &:-ms-fullscreen {
-    background: #fff;
+    background: #f5f5f5;
     padding: 0;
 
     .knowledge-graph-canvas {
-      height: calc(100vh - 80px);
+      height: 100vh;
       border-radius: 0;
       max-height: none;
       margin: 0;
+      background: #f5f5f5;
     }
 
     .ant-card {
@@ -311,26 +375,25 @@
       border-radius: 0;
       border: none;
       box-shadow: none;
+      background: transparent;
 
       .ant-card-head {
-        background: rgba(255, 255, 255, 0.98);
-        border-bottom: 1px solid #f0f0f0;
-        padding: 12px 24px;
+        display: none;
       }
 
       .ant-card-body {
-        height: calc(100vh - 57px);
+        height: 100vh;
         padding: 0;
       }
     }
 
     .knowledge-graph-controls {
-      top: 8px;
-      right: 24px;
+      top: 16px;
+      right: 16px;
     }
 
     .knowledge-graph-node-details {
-      top: 70px;
+      top: 16px;
     }
   }
 }
