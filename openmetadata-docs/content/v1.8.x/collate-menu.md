@@ -136,6 +136,12 @@ site_menu:
     url: /connectors/database/dynamodb/yaml
   - category: Connectors / Database / DynamoDB / Troubleshooting
     url: /connectors/database/dynamodb/troubleshooting
+  - category: Connectors / Database / Epic
+    url: /connectors/database/epic
+  - category: Connectors / Database / Epic / Run Externally
+    url: /connectors/database/epic/yaml
+  - category: Connectors / Database / Epic / Troubleshooting
+    url: /connectors/database/epic/troubleshooting
   - category: Connectors / Database / Exasol
     url: /connectors/database/exasol
   - category: Connectors / Database / Exasol / Run Externally
