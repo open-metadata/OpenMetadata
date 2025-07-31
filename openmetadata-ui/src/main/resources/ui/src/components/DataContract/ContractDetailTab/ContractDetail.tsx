@@ -144,7 +144,7 @@ const ContractDetail: React.FC<{
       render: (constraint: string) => (
         <div>
           {constraint ? (
-            <Tag color="red">{constraint}</Tag>
+            <Tag color="blue">{constraint}</Tag>
           ) : (
             <Typography.Text data-testid="no-constraints">
               {NO_DATA_PLACEHOLDER}
