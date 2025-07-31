@@ -22,5 +22,9 @@ public class Migration extends MigrationProcessImpl {
     // Automator
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.migrateAutomatorDomainToDomainsAction(handle);
+    // Initialize WorkflowHandler
+    initializeWorkflowHandler();
+    // Update WorkflowDefinitions for GlossaryTermApprovalWorkflow
+    MigrationUtil.updateGlossaryTermApprovalWorkflow();
   }
 }

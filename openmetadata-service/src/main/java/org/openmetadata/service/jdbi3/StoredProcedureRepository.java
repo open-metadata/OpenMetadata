@@ -149,12 +149,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       }
     }
 
-    // Bulk fetch followers if needed
-    if (fields.contains(FIELD_FOLLOWERS)) {
-      for (StoredProcedure sp : storedProcedures) {
-        sp.setFollowers(getFollowers(sp));
-      }
-    }
+    super.setFieldsInBulk(fields, storedProcedures);
   }
 
   private void setDefaultFields(StoredProcedure storedProcedure) {

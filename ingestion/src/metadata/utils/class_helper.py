@@ -80,6 +80,7 @@ SERVICE_TYPE_REF = {
     ServiceType.Metadata.value: "metadataService",
     ServiceType.Search.value: "searchService",
     ServiceType.Storage.value: "storageService",
+    ServiceType.Security.value: "securityService",
     # We use test suites as "services" for DQ Ingestion Pipelines
     TestSuiteServiceType.TestSuite.value: "testSuite",
 }

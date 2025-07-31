@@ -14,15 +14,20 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class MigrationUtil {
+  private static final String ADMIN_USER_NAME = "admin";
   private static final String ADD_DOMAIN_ACTION = "AddDomainAction";
   private static final String REMOVE_DOMAIN_ACTION = "RemoveDomainAction";
   private static final String LINEAGE_PROPAGATION_ACTION = "LineagePropagationAction";
@@ -31,6 +36,7 @@ public class MigrationUtil {
   private static final String PROPAGATE_DOMAIN_KEY = "propagateDomain";
   private static final String PROPAGATE_DOMAINS_KEY = "propagateDomains";
   private static final String AUTOMATOR_APP_TYPE = "Automator";
+  private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
   private static final int BATCH_SIZE = 100;
   static DataInsightSystemChartRepository dataInsightSystemChartRepository;
 
@@ -213,6 +219,40 @@ public class MigrationUtil {
 
   public MigrationUtil(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
+  }
+
+  /**
+   * Update workflow definitions to set storeStageStatus = true for GlossaryApprovalWorkflow only.
+   */
+  public static void updateGlossaryTermApprovalWorkflow() {
+    try {
+      LOG.info(
+          "Starting v190 workflow definition migration - updating storeStageStatus for GlossaryTermApprovalWorkflow");
+      WorkflowDefinitionRepository repository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      try {
+
+        WorkflowDefinition workflowDefinition =
+            repository.getByName(
+                null, GLOSSARY_TERM_APPROVAL_WORKFLOW, EntityUtil.Fields.EMPTY_FIELDS);
+        LOG.info("Updating workflow definition '{}'", workflowDefinition.getName());
+        if (workflowDefinition.getConfig() == null) {
+          workflowDefinition.setConfig(new WorkflowConfiguration().withStoreStageStatus(true));
+        } else {
+          // Update only storeStageStatus, preserve everything else
+          workflowDefinition.getConfig().setStoreStageStatus(true);
+        }
+        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+
+        LOG.info("Successfully updated workflow definition '{}'", workflowDefinition.getName());
+
+      } catch (Exception ex) {
+        LOG.warn("GlossaryTermApprovalWorkflow not found or error updating: {}", ex.getMessage());
+      }
+      LOG.info("Completed v190 workflow definition migration");
+    } catch (Exception e) {
+      LOG.error("Failed to update workflow definitions", e);
+    }
   }
 
   /**

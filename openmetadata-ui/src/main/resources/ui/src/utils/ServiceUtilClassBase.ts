@@ -121,6 +121,7 @@ import {
   MlModelServiceTypeSmallCaseType,
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
+  SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
@@ -134,6 +135,7 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
@@ -145,6 +147,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getSecurityConfig } from './SecurityServiceUtils';
 import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
@@ -166,6 +169,7 @@ class ServiceUtilClassBase {
     DashboardServiceType.ThoughtSpot,
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
+    SecurityServiceType.Ranger,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -212,6 +216,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     ApiServiceTypeSmallCaseType
   >(APIServiceType);
+
+  SecurityServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    SecurityServiceTypeSmallCaseType
+  >(SecurityServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -306,6 +315,9 @@ class ServiceUtilClassBase {
       ).sort(customServiceComparator),
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
+      ).sort(customServiceComparator),
+      securityServices: this.filterUnsupportedServiceType(
+        Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
@@ -607,6 +619,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_STORAGE_DEFAULT;
         } else if (serviceTypes.searchServices.includes(type)) {
           logo = CUSTOM_SEARCH_DEFAULT;
+        } else if (serviceTypes.securityServices.includes(type)) {
+          logo = DEFAULT_SERVICE;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -638,6 +652,7 @@ class ServiceUtilClassBase {
     const storage = this.StorageServiceTypeSmallCase;
     const search = this.SearchServiceTypeSmallCase;
     const api = this.ApiServiceTypeSmallCase;
+    const security = this.SecurityServiceTypeSmallCase;
 
     switch (true) {
       case Object.values(database).includes(
@@ -673,6 +688,11 @@ class ServiceUtilClassBase {
         serviceType as typeof api[keyof typeof api]
       ):
         return ExplorePageTabs.API_ENDPOINT;
+
+      case Object.values(security).includes(
+        serviceType as typeof security[keyof typeof security]
+      ):
+        return ExplorePageTabs.TABLES; // Security services don't have a specific tab, default to tables
 
       default:
         return ExplorePageTabs.TABLES;
@@ -713,6 +733,10 @@ class ServiceUtilClassBase {
 
   public getAPIServiceConfig(type: APIServiceType) {
     return getAPIConfig(type);
+  }
+
+  public getSecurityServiceConfig(type: SecurityServiceType) {
+    return getSecurityConfig(type);
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
