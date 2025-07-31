@@ -218,6 +218,7 @@ export const AddEditSemanticsRuleModal: React.FC<{
           ? t('label.edit-data-asset-rule')
           : t('label.add-data-asset-rule')
       }
+      width={800}
       onCancel={onCancel}
       onOk={handleSave}>
       <SemanticsRuleForm
@@ -358,15 +359,6 @@ export const useSemanticsRuleList = ({
       className: 'col-description',
       render: (description: string) => (
         <RichTextEditorPreviewerNew markdown={description} />
-      ),
-    },
-    {
-      title: t('label.rule'),
-      className: 'col-rule',
-      render: (_: string, record: SemanticsRule) => (
-        <RichTextEditorPreviewerNew
-          markdown={getHumanStringRule(record) || ''}
-        />
       ),
     },
     {
