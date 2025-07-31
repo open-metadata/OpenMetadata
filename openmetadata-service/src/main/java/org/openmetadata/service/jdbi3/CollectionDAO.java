@@ -126,6 +126,7 @@ import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -325,6 +326,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SearchServiceDAO searchServiceDAO();
+
+  @CreateSqlObject
+  SecurityServiceDAO securityServiceDAO();
 
   @CreateSqlObject
   ApiServiceDAO apiServiceDAO();
@@ -732,6 +736,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface SecurityServiceDAO extends EntityDAO<SecurityService> {
+    @Override
+    default String getTableName() {
+      return "security_service_entity";
+    }
+
+    @Override
+    default Class<SecurityService> getEntityClass() {
+      return SecurityService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
   interface ApiServiceDAO extends EntityDAO<ApiService> {
     @Override
     default String getTableName() {
@@ -910,6 +931,15 @@ public interface CollectionDAO {
                 value = "extension",
                 parts = {":extensionPrefix", ".%"})
             String extensionPrefix);
+
+    @SqlQuery(
+        "SELECT id, extension, json "
+            + "FROM entity_extension "
+            + "WHERE id IN (<ids>) AND extension = :extension "
+            + "ORDER BY id, extension")
+    @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
+    List<ExtensionRecordWithId> getExtensionBatch(
+        @BindList("ids") List<String> ids, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT id, extension, json, jsonschema "
@@ -5353,7 +5383,7 @@ public interface CollectionDAO {
                 + "    SELECT json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
-                + "ORDER BY timestamp ASC "
+                + "ORDER BY timestamp DESC "
                 + "LIMIT :limit OFFSET :paginationOffset",
         connectionType = POSTGRES)
     @RegisterRowMapper(EventResponseMapper.class)
