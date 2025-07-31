@@ -6,6 +6,11 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
+import com.unboundid.ldap.sdk.LDAPConnection;
+import com.unboundid.ldap.sdk.LDAPConnectionOptions;
+import com.unboundid.ldap.sdk.SearchResult;
+import com.unboundid.ldap.sdk.SearchScope;
+import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
@@ -17,25 +22,31 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
+import org.openmetadata.schema.system.ValidationResult;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -53,9 +64,13 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -329,8 +344,6 @@ public class SystemRepository {
       } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
         AuthenticationConfiguration authConfig =
             JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-        //       JsonUtils.validateJsonSchema(authConfig, AuthenticationConfiguration.class);
-        //        validateAuthenticationConfiguration(authConfig);
         setting.setConfigValue(authConfig);
       } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
         AuthorizerConfiguration authorizerConfig =
@@ -633,143 +646,357 @@ public class SystemRepository {
                 missingVersions, unexpectedVersions));
   }
 
-  private void validateAuthenticationConfiguration(AuthenticationConfiguration authConfig) {
-    if (authConfig == null) {
-      throw new IllegalArgumentException("Authentication configuration cannot be null");
-    }
+  public SecurityValidationResponse validateSecurityConfiguration(
+      SecurityConfiguration securityConfig, OpenMetadataApplicationConfig applicationConfig) {
+    List<ValidationResult> results = new ArrayList<>();
 
     try {
-      // Validate provider-specific configuration only if that provider is selected
-      if (authConfig.getProvider() != null) {
-        switch (authConfig.getProvider()) {
-          case LDAP -> {
-            if (authConfig.getLdapConfiguration() != null) {
-              LOG.info("Validating LDAP configuration since provider is LDAP");
-              JsonUtils.validateJsonSchema(
-                  authConfig.getLdapConfiguration(),
-                  org.openmetadata.schema.auth.LdapConfiguration.class);
-            } else {
-              LOG.warn("LDAP provider selected but no LDAP configuration provided");
-            }
-          }
-          case SAML -> {
-            if (authConfig.getSamlConfiguration() != null) {
-              LOG.info("Validating SAML configuration since provider is SAML");
-              JsonUtils.validateJsonSchema(
-                  authConfig.getSamlConfiguration(),
-                  org.openmetadata.catalog.security.client.SamlSSOClientConfig.class);
-            } else {
-              LOG.warn("SAML provider selected but no SAML configuration provided");
-            }
-          }
-          case CUSTOM_OIDC -> {
-            if (authConfig.getOidcConfiguration() != null) {
-              LOG.info("Validating OIDC configuration since provider is OIDC");
-              JsonUtils.validateJsonSchema(
-                  authConfig.getOidcConfiguration(),
-                  org.openmetadata.schema.security.client.OidcClientConfig.class);
-            } else {
-              LOG.warn("OIDC provider selected but no OIDC configuration provided");
-            }
-          }
-          default -> {
-            LOG.info(
-                "Provider {} requires no specific configuration validation",
-                authConfig.getProvider());
+      if (securityConfig.getAuthenticationConfiguration() != null) {
+        AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+
+        // First validate all required fields from AuthenticationConfiguration schema
+        results.add(validateAuthenticationConfigurationBaseFields(authConfig));
+
+        if (authConfig.getProvider() != null) {
+          switch (authConfig.getProvider()) {
+            case CUSTOM_OIDC:
+            case OKTA:
+            case AZURE:
+            case GOOGLE:
+            case AWS_COGNITO:
+            case AUTH_0:
+              if (authConfig.getOidcConfiguration() != null) {
+                results.add(
+                    validateOidcConfiguration(
+                        authConfig, securityConfig.getAuthorizerConfiguration()));
+              }
+              break;
+            case LDAP:
+              if (authConfig.getLdapConfiguration() != null) {
+                results.add(validateLdapConfiguration(authConfig.getLdapConfiguration()));
+              }
+              break;
+            case SAML:
+              if (authConfig.getSamlConfiguration() != null) {
+                results.add(
+                    validateSamlConfiguration(
+                        authConfig.getSamlConfiguration(), applicationConfig));
+              }
+              break;
+            default:
+              results.add(
+                  new ValidationResult()
+                      .withComponent("authentication")
+                      .withStatus("failed")
+                      .withMessage("Unknown authentication provider: " + authConfig.getProvider()));
           }
         }
       }
 
-      // Validate base authentication configuration fields
-      validateBaseAuthConfiguration(authConfig);
+      // Validate Authorizer configuration
+      if (securityConfig.getAuthorizerConfiguration() != null) {
+        results.add(validateAuthorizerConfiguration(securityConfig.getAuthorizerConfiguration()));
+      }
 
-      LOG.info(
-          "Successfully validated authentication configuration for provider: {}",
-          authConfig.getProvider());
+      boolean hasFailures = results.stream().anyMatch(r -> "failed".equals(r.getStatus()));
 
+      return new SecurityValidationResponse()
+          .withStatus(hasFailures ? "failed" : "success")
+          .withMessage(
+              hasFailures
+                  ? "Security configuration validation found issues"
+                  : "Security configuration validation completed successfully")
+          .withResults(results);
     } catch (Exception e) {
-      LOG.error(
-          "Failed to validate authentication configuration for provider: {}",
-          authConfig.getProvider(),
-          e);
-      throw e;
+      LOG.error("Security configuration validation failed", e);
+      return new SecurityValidationResponse()
+          .withStatus("failed")
+          .withMessage("Security configuration validation failed: " + e.getMessage())
+          .withResults(results);
     }
   }
 
-  private void validateBaseAuthConfiguration(AuthenticationConfiguration authConfig) {
-    // Always validate provider and providerName
-    if (authConfig.getProvider() == null) {
-      throw new IllegalArgumentException("Authentication provider is required");
-    }
-    if (authConfig.getProviderName() == null || authConfig.getProviderName().trim().isEmpty()) {
-      throw new IllegalArgumentException("Provider name is required");
-    }
+  private ValidationResult validateAuthenticationConfigurationBaseFields(
+      AuthenticationConfiguration authConfig) {
+    try {
+      // Validate all required fields from AuthenticationConfiguration schema
+      // Required: ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl",
+      // "clientId", "jwtPrincipalClaims"]
 
-    // Validate fields based on provider type
-    switch (authConfig.getProvider()) {
-      case SAML -> validateSamlRequiredFields(authConfig);
-      case CUSTOM_OIDC -> validateOidcRequiredFields(authConfig);
-      case BASIC -> validateBasicRequiredFields(authConfig);
-      case LDAP -> validateLdapRequiredFields(authConfig);
-      default -> {
-        // For other providers (GOOGLE, OKTA, AUTH_0, etc.), validate minimal fields
-        LOG.info("Using minimal validation for provider: {}", authConfig.getProvider());
-        if (authConfig.getJwtPrincipalClaims() == null
-            || authConfig.getJwtPrincipalClaims().isEmpty()) {
-          throw new IllegalArgumentException("JWT principal claims are required");
+      if (authConfig.getProvider() == null) {
+        throw new IllegalArgumentException("Authentication provider is required");
+      }
+
+      if (nullOrEmpty(authConfig.getProviderName())) {
+        throw new IllegalArgumentException("Authentication provider name is required");
+      }
+
+      if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
+        throw new IllegalArgumentException("Authentication public key URLs are required");
+      }
+
+      if (nullOrEmpty(authConfig.getAuthority())) {
+        throw new IllegalArgumentException("Authentication authority is required");
+      }
+
+      if (nullOrEmpty(authConfig.getCallbackUrl())) {
+        throw new IllegalArgumentException("Authentication callback URL is required");
+      }
+
+      if (nullOrEmpty(authConfig.getClientId())) {
+        throw new IllegalArgumentException("Authentication client ID is required");
+      }
+
+      if (authConfig.getJwtPrincipalClaims() == null
+          || authConfig.getJwtPrincipalClaims().isEmpty()) {
+        throw new IllegalArgumentException("Authentication JWT principal claims are required");
+      }
+
+      return new ValidationResult()
+          .withComponent("authentication-base")
+          .withStatus("success")
+          .withMessage("Authentication configuration base fields are valid");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("authentication-base")
+          .withStatus("failed")
+          .withMessage("Authentication base validation failed: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validateOidcConfiguration(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
+    try {
+      // Base authentication fields are validated separately, now validate OIDC-specific fields
+
+      // Validate OidcClientConfig if present (for confidential clients)
+      if (authConfig.getOidcConfiguration() != null) {
+        OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+
+        // Validate key OIDC client config fields
+        if (nullOrEmpty(oidcConfig.getId())) {
+          throw new IllegalArgumentException("OIDC client ID in oidcConfiguration is required");
+        }
+        if (nullOrEmpty(oidcConfig.getSecret())) {
+          throw new IllegalArgumentException(
+              "OIDC client secret is required for confidential clients");
+        }
+        if (nullOrEmpty(oidcConfig.getDiscoveryUri()) && nullOrEmpty(oidcConfig.getServerUrl())) {
+          throw new IllegalArgumentException(
+              "Either OIDC discovery URI or server URL must be provided");
         }
       }
+
+      // Use existing validation method to test actual connectivity
+      AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
+
+      return new ValidationResult()
+          .withComponent("oidc")
+          .withStatus("success")
+          .withMessage("OIDC configuration is valid and provider metadata successfully retrieved");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("oidc")
+          .withStatus("failed")
+          .withMessage("OIDC validation failed: " + e.getMessage());
     }
   }
 
-  private void validateSamlRequiredFields(AuthenticationConfiguration authConfig) {
-    LOG.info("Validating SAML-specific required fields");
-    // SAML only needs JWT principal claims from base config
-    // All other fields come from samlConfiguration
-    if (authConfig.getJwtPrincipalClaims() == null
-        || authConfig.getJwtPrincipalClaims().isEmpty()) {
-      throw new IllegalArgumentException("JWT principal claims are required for SAML");
+  private ValidationResult validateLdapConfiguration(LdapConfiguration ldapConfig) {
+    try {
+      // Validate required fields from JSON schema
+      if (nullOrEmpty(ldapConfig.getHost())) {
+        throw new IllegalArgumentException("LDAP host is required");
+      }
+      if (ldapConfig.getPort() == null
+          || ldapConfig.getPort() <= 0
+          || ldapConfig.getPort() > 65535) {
+        throw new IllegalArgumentException("Valid LDAP port (1-65535) is required");
+      }
+      if (nullOrEmpty(ldapConfig.getDnAdminPrincipal())) {
+        throw new IllegalArgumentException("LDAP admin DN is required");
+      }
+      if (nullOrEmpty(ldapConfig.getDnAdminPassword())) {
+        throw new IllegalArgumentException("LDAP admin password is required");
+      }
+      if (nullOrEmpty(ldapConfig.getUserBaseDN())) {
+        throw new IllegalArgumentException("LDAP user base DN is required");
+      }
+      if (nullOrEmpty(ldapConfig.getMailAttributeName())) {
+        throw new IllegalArgumentException("LDAP mail attribute name is required");
+      }
+
+      // Test LDAP connection
+      LDAPConnection connection = null;
+      try {
+        LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
+        connectionOptions.setConnectTimeoutMillis(5000);
+        connectionOptions.setResponseTimeoutMillis(5000);
+
+        if (Boolean.TRUE.equals(ldapConfig.getSslEnabled())) {
+          LdapUtil ldapUtil = new LdapUtil();
+          SSLUtil sslUtil =
+              new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfig, connectionOptions));
+          connection =
+              new LDAPConnection(
+                  sslUtil.createSSLSocketFactory(),
+                  connectionOptions,
+                  ldapConfig.getHost(),
+                  ldapConfig.getPort(),
+                  ldapConfig.getDnAdminPrincipal(),
+                  ldapConfig.getDnAdminPassword());
+        } else {
+          connection =
+              new LDAPConnection(
+                  connectionOptions,
+                  ldapConfig.getHost(),
+                  ldapConfig.getPort(),
+                  ldapConfig.getDnAdminPrincipal(),
+                  ldapConfig.getDnAdminPassword());
+        }
+
+        // Test user base DN exists
+        SearchResult searchResult =
+            connection.search(ldapConfig.getUserBaseDN(), SearchScope.BASE, "(objectClass=*)");
+        if (searchResult.getEntryCount() == 0) {
+          throw new IllegalArgumentException(
+              "User base DN does not exist: " + ldapConfig.getUserBaseDN());
+        }
+
+        // Test group base DN if provided
+        if (!nullOrEmpty(ldapConfig.getGroupBaseDN())) {
+          try {
+            SearchResult groupResult =
+                connection.search(ldapConfig.getGroupBaseDN(), SearchScope.BASE, "(objectClass=*)");
+            if (groupResult.getEntryCount() == 0) {
+              LOG.warn("Group base DN does not exist: " + ldapConfig.getGroupBaseDN());
+            }
+          } catch (Exception e) {
+            LOG.warn("Failed to validate group base DN: " + e.getMessage());
+          }
+        }
+
+        return new ValidationResult()
+            .withComponent("ldap")
+            .withStatus("success")
+            .withMessage("LDAP configuration is valid and connection successful");
+      } finally {
+        if (connection != null && connection.isConnected()) {
+          connection.close();
+        }
+      }
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("ldap")
+          .withStatus("failed")
+          .withMessage("LDAP validation failed: " + e.getMessage());
     }
   }
 
-  private void validateOidcRequiredFields(AuthenticationConfiguration authConfig) {
-    LOG.info("Validating OIDC-specific required fields");
-    // OIDC needs all the traditional OAuth fields
-    if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
-      throw new IllegalArgumentException("Public key URLs are required for OIDC");
-    }
-    if (authConfig.getAuthority() == null || authConfig.getAuthority().trim().isEmpty()) {
-      throw new IllegalArgumentException("Authority is required for OIDC");
-    }
-    if (authConfig.getCallbackUrl() == null || authConfig.getCallbackUrl().trim().isEmpty()) {
-      throw new IllegalArgumentException("Callback URL is required for OIDC");
-    }
-    if (authConfig.getClientId() == null || authConfig.getClientId().trim().isEmpty()) {
-      throw new IllegalArgumentException("Client ID is required for OIDC");
-    }
-    if (authConfig.getJwtPrincipalClaims() == null
-        || authConfig.getJwtPrincipalClaims().isEmpty()) {
-      throw new IllegalArgumentException("JWT principal claims are required for OIDC");
+  private ValidationResult validateSamlConfiguration(
+      SamlSSOClientConfig samlConfig, OpenMetadataApplicationConfig applicationConfig) {
+    try {
+      // Validate required SP fields from JSON schema
+      if (samlConfig.getSp() == null) {
+        throw new IllegalArgumentException("SAML SP configuration is required");
+      }
+      if (nullOrEmpty(samlConfig.getSp().getEntityId())) {
+        throw new IllegalArgumentException("SAML SP entity ID is required");
+      }
+      if (nullOrEmpty(samlConfig.getSp().getAcs())) {
+        throw new IllegalArgumentException("SAML SP ACS URL is required");
+      }
+      if (nullOrEmpty(samlConfig.getSp().getCallback())) {
+        throw new IllegalArgumentException("SAML SP callback URL is required");
+      }
+
+      // Validate required IdP fields from JSON schema
+      if (samlConfig.getIdp() == null) {
+        throw new IllegalArgumentException("SAML IdP configuration is required");
+      }
+      if (nullOrEmpty(samlConfig.getIdp().getEntityId())) {
+        throw new IllegalArgumentException("SAML IdP entity ID is required");
+      }
+      if (nullOrEmpty(samlConfig.getIdp().getSsoLoginUrl())) {
+        throw new IllegalArgumentException("SAML IdP SSO login URL is required");
+      }
+
+      // Validate certificates if security settings require them
+      if (samlConfig.getSecurity() != null) {
+        if (Boolean.TRUE.equals(samlConfig.getSecurity().getWantMessagesSigned())
+            || Boolean.TRUE.equals(samlConfig.getSecurity().getWantAssertionsSigned())) {
+          if (nullOrEmpty(samlConfig.getIdp().getIdpX509Certificate())) {
+            throw new IllegalArgumentException(
+                "SAML IdP X509 certificate is required when signature validation is enabled");
+          }
+        }
+
+        if (Boolean.TRUE.equals(samlConfig.getSecurity().getSendSignedAuthRequest())
+            || Boolean.TRUE.equals(samlConfig.getSecurity().getSignSpMetadata())) {
+          if (nullOrEmpty(samlConfig.getSp().getSpX509Certificate())) {
+            throw new IllegalArgumentException(
+                "SAML SP X509 certificate is required when signing is enabled");
+          }
+          if (nullOrEmpty(samlConfig.getSp().getSpPrivateKey())) {
+            throw new IllegalArgumentException(
+                "SAML SP private key is required when signing is enabled");
+          }
+        }
+      }
+
+      // Test SAML settings can be initialized
+      try {
+        SamlSettingsHolder holder = SamlSettingsHolder.getInstance();
+        holder.initDefaultSettings(applicationConfig);
+      } catch (Exception e) {
+        throw new IllegalArgumentException("Failed to initialize SAML settings: " + e.getMessage());
+      }
+
+      return new ValidationResult()
+          .withComponent("saml")
+          .withStatus("success")
+          .withMessage("SAML configuration is valid");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("saml")
+          .withStatus("failed")
+          .withMessage("SAML validation failed: " + e.getMessage());
     }
   }
 
-  private void validateBasicRequiredFields(AuthenticationConfiguration authConfig) {
-    LOG.info("Validating Basic authentication required fields");
-    // Basic auth needs minimal fields
-    if (authConfig.getJwtPrincipalClaims() == null
-        || authConfig.getJwtPrincipalClaims().isEmpty()) {
-      throw new IllegalArgumentException(
-          "JWT principal claims are required for Basic authentication");
-    }
-  }
+  private ValidationResult validateAuthorizerConfiguration(AuthorizerConfiguration authzConfig) {
+    try {
+      // Validate required fields
+      if (nullOrEmpty(authzConfig.getClassName())) {
+        throw new IllegalArgumentException("Authorizer class name is required");
+      }
 
-  private void validateLdapRequiredFields(AuthenticationConfiguration authConfig) {
-    LOG.info("Validating LDAP authentication required fields");
-    // LDAP needs minimal fields since it has its own ldapConfiguration
-    if (authConfig.getJwtPrincipalClaims() == null
-        || authConfig.getJwtPrincipalClaims().isEmpty()) {
-      throw new IllegalArgumentException(
-          "JWT principal claims are required for LDAP authentication");
+      // Validate admin principals
+      if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
+        throw new IllegalArgumentException("At least one admin principal must be configured");
+      }
+
+      // Try to instantiate the authorizer class
+      try {
+        Class<?> authorizerClass = Class.forName(authzConfig.getClassName());
+        if (!Authorizer.class.isAssignableFrom(authorizerClass)) {
+          throw new IllegalArgumentException(
+              "Class " + authzConfig.getClassName() + " does not implement Authorizer interface");
+        }
+      } catch (ClassNotFoundException e) {
+        throw new IllegalArgumentException(
+            "Authorizer class not found: " + authzConfig.getClassName());
+      }
+
+      return new ValidationResult()
+          .withComponent("authorizer")
+          .withStatus("success")
+          .withMessage("Authorizer configuration is valid");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("authorizer")
+          .withStatus("failed")
+          .withMessage("Authorizer validation failed: " + e.getMessage());
     }
   }
 }
