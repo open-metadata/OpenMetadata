@@ -18,5 +18,6 @@ export enum ContractExecutionStatus {
     Failed = "Failed",
     PartialSuccess = "PartialSuccess",
     Queued = "Queued",
+    Running = "Running",
     Success = "Success",
 }

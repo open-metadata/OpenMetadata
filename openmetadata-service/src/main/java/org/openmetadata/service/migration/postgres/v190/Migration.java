@@ -16,7 +16,6 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.migrateAutomatorDomainToDomainsAction(handle);
-
     // Initialize WorkflowHandler
     initializeWorkflowHandler();
     // Update WorkflowDefinitions for GlossaryTermApprovalWorkflow

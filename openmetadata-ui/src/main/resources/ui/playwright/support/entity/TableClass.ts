@@ -16,10 +16,7 @@ import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
-import {
-  visitEntityPage,
-  visitEntityPageWithCustomSearchBox,
-} from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -251,14 +248,6 @@ export class TableClass extends EntityClass {
 
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
-      page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
-  }
-
-  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
-    await visitEntityPageWithCustomSearchBox({
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,

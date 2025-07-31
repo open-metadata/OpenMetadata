@@ -43,7 +43,7 @@ test.describe('Topic entity specific tests ', () => {
   });
 
   test('Topic page should show schema tab with count', async ({ page }) => {
-    await topic.visitEntityPageWithCustomSearchBox(page);
+    await topic.visitEntityPage(page);
 
     await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('2');
   });
