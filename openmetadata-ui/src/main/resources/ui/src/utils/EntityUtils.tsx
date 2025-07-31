@@ -2636,4 +2636,5 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.WORKFLOW_DEFINITION]: t('label.workflow-definition'),
   [EntityType.SERVICE]: t('label.service'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.DATA_CONTRACT]: t('label.data-contract'),
 };
