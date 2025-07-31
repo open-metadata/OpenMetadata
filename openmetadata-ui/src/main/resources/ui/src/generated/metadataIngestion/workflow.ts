@@ -5621,15 +5621,24 @@ export interface ProcessingEngine {
     /**
      * The type of the engine configuration
      */
-    type: ProcessingEngineType;
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    config?: { [key: string]: any };
+    type:    ProcessingEngineType;
+    config?: Config;
     /**
      * Spark Connect Remote URL.
      */
     remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
 }
 
 /**
