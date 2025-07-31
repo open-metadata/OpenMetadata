@@ -379,12 +379,7 @@ const SSOConfigurationFormRJSF = () => {
             {t('label.sso-configuration')}
           </Typography.Text>
           <Typography.Paragraph className="card-description m-b-0 m-t-4">
-            {t(
-              'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
-            )}
-            <Typography.Link className="read-docs-link m-l-2" target="_blank">
-              {t('message.read-setup-docs')}
-            </Typography.Link>
+            {t('message.sso-configuration-directly-from-the-ui')}
           </Typography.Paragraph>
         </div>
         {!isEditMode ? (
@@ -426,7 +421,13 @@ const SSOConfigurationFormRJSF = () => {
             ObjectFieldTemplate: ObjectFieldTemplate,
           }}
           transformErrors={transformErrors}
-          uiSchema={uiSchema}
+          uiSchema={{
+            ...uiSchema,
+            'ui:submitButtonOptions': {
+              submitText: '',
+              norender: true,
+            },
+          }}
           validator={validator}
           onChange={handleOnChange}
         />

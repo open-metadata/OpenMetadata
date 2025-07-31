@@ -56,11 +56,17 @@ const WorkflowArrayFieldTemplate = (props: WorkflowArrayFieldTemplateProps) => {
 
     return undefined;
   };
-
+  const shouldShowCopyButton = props.showCopyButton !== false;
+  const shouldShowFieldTitle =
+    props.showFieldTitle !== undefined
+      ? props.showFieldTitle
+      : props.schema.uniqueItems !== true;
   const id = props.idSchema.$id;
   const value = props.formData ?? [];
   const placeholder = isFilterPatternField(id)
     ? t('message.filter-pattern-placeholder')
+    : shouldShowFieldTitle
+    ? t('label.enter-each-value-and-press-enter')
     : '';
   const options = generateOptions();
   const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
@@ -114,12 +120,6 @@ const WorkflowArrayFieldTemplate = (props: WorkflowArrayFieldTemplateProps) => {
     },
     [value, props.onChange]
   );
-
-  const shouldShowCopyButton = props.showCopyButton !== false;
-  const shouldShowFieldTitle =
-    props.showFieldTitle !== undefined
-      ? props.showFieldTitle
-      : props.schema.uniqueItems !== true;
 
   return (
     <Row>
