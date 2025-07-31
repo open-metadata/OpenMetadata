@@ -34,7 +34,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -45,7 +44,6 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.ValidationResponse;
-import org.openmetadata.schema.system.ValidationResult;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.util.EntitiesCount;
@@ -64,7 +62,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
-import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -594,46 +591,6 @@ public class SystemResource {
   public SecurityValidationResponse validateSecurityConfig(
       @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
-
-    List<ValidationResult> results = new ArrayList<>();
-
-    try {
-      if (securityConfig.getAuthenticationConfiguration() != null) {
-
-        if (securityConfig.getAuthenticationConfiguration().getOidcConfiguration() != null) {
-          try {
-            AuthenticationCodeFlowHandler.validateConfig(
-                securityConfig.getAuthenticationConfiguration(),
-                securityConfig.getAuthorizerConfiguration());
-            results.add(
-                new ValidationResult()
-                    .withComponent("oidc")
-                    .withStatus("success")
-                    .withMessage("OIDC configuration is valid"));
-          } catch (Exception e) {
-            results.add(
-                new ValidationResult()
-                    .withComponent("oidc")
-                    .withStatus("failed")
-                    .withMessage("OIDC configuration validation failed: " + e.getMessage()));
-          }
-        }
-      }
-
-      boolean hasFailures = results.stream().anyMatch(r -> "failed".equals(r.getStatus()));
-
-      return new SecurityValidationResponse()
-          .withStatus(hasFailures ? "failed" : "success")
-          .withMessage(
-              hasFailures
-                  ? "Security configuration validation found issues"
-                  : "Security configuration validation completed successfully")
-          .withResults(results);
-    } catch (Exception e) {
-      return new SecurityValidationResponse()
-          .withStatus("failed")
-          .withMessage("Security configuration validation failed: " + e.getMessage())
-          .withResults(results);
-    }
+    return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
   }
 }
