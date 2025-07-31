@@ -33,7 +33,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
 });
 
 test('Show and Hide Right Collapsable Panel', async ({ page }) => {
