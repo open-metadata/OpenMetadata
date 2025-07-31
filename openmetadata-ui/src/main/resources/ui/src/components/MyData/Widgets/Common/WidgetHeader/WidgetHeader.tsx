@@ -16,6 +16,7 @@ import { Button, Col, Row, Typography } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
@@ -33,6 +34,7 @@ export interface WidgetHeaderProps {
   isEditView?: boolean;
   onEditClick?: () => void;
   onSortChange?: (key: string) => void;
+  redirectUrlOnTitleClick?: string;
   selectedSortBy?: string;
   sortOptions?: Array<{
     key: string;
@@ -53,12 +55,14 @@ const WidgetHeader = ({
   isEditView = false,
   onEditClick,
   onSortChange,
+  redirectUrlOnTitleClick,
   selectedSortBy,
   sortOptions,
   title,
   widgetKey,
   widgetWidth = 2,
 }: WidgetHeaderProps) => {
+  const navigate = useNavigate();
   const handleSortByClick = (e: MenuInfo) => {
     onSortChange?.(e.key);
   };
@@ -83,6 +87,12 @@ const WidgetHeader = ({
     }
   };
 
+  const handleTitleClick = () => {
+    if (redirectUrlOnTitleClick) {
+      navigate(redirectUrlOnTitleClick);
+    }
+  };
+
   return (
     <Row
       className={`widget-header h-15 ${className}`}
@@ -90,13 +100,13 @@ const WidgetHeader = ({
       justify="space-between">
       <Col className="d-flex items-center h-full min-h-8">
         {icon && <div className="d-flex h-6 w-6 m-r-xs">{icon}</div>}
-
         <Typography.Paragraph
-          className="widget-title"
+          className="widget-title cursor-pointer"
           ellipsis={{ tooltip: true }}
           style={{
             maxWidth: widgetWidth === 1 ? '200px' : '525px',
-          }}>
+          }}
+          onClick={handleTitleClick}>
           {title}
         </Typography.Paragraph>
       </Col>

@@ -1,7 +1,7 @@
 {
   "name": "ActivityFeed",
   "displayName": "Activity Feed",
-  "description": "Activity Feed KnowledgePanel shows Activity Feed,Mentions and Tasks that are assigned to User.",
+  "description": "Aggregates platform activity including asset updates, comments, and task changes, keeping users informed.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.ActivityFeed",
   "data": {

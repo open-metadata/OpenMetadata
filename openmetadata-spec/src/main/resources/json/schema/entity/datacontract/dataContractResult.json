@@ -8,7 +8,7 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
   "properties": {
     "id": {
-      "description": "Unique identifier of this data contract result instance.",
+      "description": "Unique Data Contract validation execution identifier of this data contract result instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "dataContractFQN": {
