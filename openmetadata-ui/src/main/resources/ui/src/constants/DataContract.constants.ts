@@ -10,30 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * This schema defines the configuration for a Spark Engine runner.
- */
-export interface SparkEngineConfig {
-    config?: Config;
-    /**
-     * Spark Connect Remote URL.
-     */
-    remote: string;
-    type:   Type;
+
+export enum DataContractMode {
+  YAML,
+  UI,
 }
 
-export interface Config {
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    extraConfig?: { [key: string]: any };
-    /**
-     * Temporary path to store the data.
-     */
-    tempPath?: string;
-    [property: string]: any;
+export enum DataContractTabMode {
+  ADD,
+  EDIT,
+  VIEW,
 }
 
-export enum Type {
-    Spark = "Spark",
+export enum EDataContractTab {
+  CONTRACT_DETAIL,
+  SCHEMA,
+  SEMANTICS,
+  QUALITY,
 }
