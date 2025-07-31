@@ -12,7 +12,6 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
@@ -37,9 +36,6 @@ public class MigrationUtil {
   private static final String AUTOMATOR_APP_TYPE = "Automator";
   private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
   private static final int BATCH_SIZE = 100;
-  private static final String ADMIN_USER_NAME = "admin";
-
-  static WorkflowDefinitionRepository workflowDefinitionRepository;
 
   private final CollectionDAO collectionDAO;
 
@@ -53,23 +49,20 @@ public class MigrationUtil {
   public static void updateGlossaryTermApprovalWorkflow() {
     try {
       LOG.info(
-          "Starting v190 migration - adding reviewer auto-approval nodes to GlossaryTermApprovalWorkflow");
-
-      workflowDefinitionRepository =
+          "Starting v190 migration - Adding reviewer auto-approval nodes, setting storeStageStatus to true in GlossaryTermApprovalWorkflow");
+      WorkflowDefinitionRepository repository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
       try {
         WorkflowDefinition workflowDefinition =
-            workflowDefinitionRepository.getByName(
+            repository.getByName(
                 null, GLOSSARY_TERM_APPROVAL_WORKFLOW, EntityUtil.Fields.EMPTY_FIELDS);
-          if (workflowDefinition.getConfig() == null) {
-              workflowDefinition.setConfig(new WorkflowConfiguration().withStoreStageStatus(true));
-          } else {
-              // Update only storeStageStatus, preserve everything else
-              workflowDefinition.getConfig().setStoreStageStatus(true);
-          }
-          LOG.info("Updating workflow definition '{}'", workflowDefinition.getName());
-
+        if (workflowDefinition.getConfig() == null) {
+          workflowDefinition.setConfig(new WorkflowConfiguration().withStoreStageStatus(true));
+        } else {
+          // Update only storeStageStatus, preserve everything else
+          workflowDefinition.getConfig().setStoreStageStatus(true);
+        }
         LOG.info(
             "Adding reviewer auto-approval nodes to workflow '{}'", workflowDefinition.getName());
 
@@ -178,7 +171,7 @@ public class MigrationUtil {
         workflowDefinition.setNodes(nodes);
         workflowDefinition.setEdges(edges);
 
-        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
 
         LOG.info(
             "Successfully added reviewer auto-approval nodes to workflow '{}'",
