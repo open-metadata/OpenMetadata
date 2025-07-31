@@ -36,6 +36,7 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
       <div className="header-theme-container p-box bg-white">
         <CustomiseLandingPageHeader
           hideCustomiseButton
+          isPreviewHeader
           backgroundColor={selectedColor}
         />
       </div>

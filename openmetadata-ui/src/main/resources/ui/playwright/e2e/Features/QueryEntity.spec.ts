@@ -58,7 +58,7 @@ test('Query Entity', async ({ page }) => {
   test.slow(true);
 
   await redirectToHomePage(page);
-  await table1.visitEntityPageWithCustomSearchBox(page);
+  await table1.visitEntityPage(page);
 
   await test.step('Create a new query entity', async () => {
     const queryResponse = page.waitForResponse(
@@ -265,7 +265,7 @@ test('Query Entity', async ({ page }) => {
 
 test('Verify query duration', async ({ page }) => {
   await redirectToHomePage(page);
-  await table2.visitEntityPageWithCustomSearchBox(page);
+  await table2.visitEntityPage(page);
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );
@@ -294,7 +294,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   });
 
   await redirectToHomePage(page);
-  await table1.visitEntityPageWithCustomSearchBox(page);
+  await table1.visitEntityPage(page);
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );

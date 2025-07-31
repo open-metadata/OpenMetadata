@@ -1,5 +1,6 @@
 ---
 title: Create Custom Metric | OpenMetadata Custom Metric API
+description: Create a custom metric definition used in testing and data quality checks across datasets and columns.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createcustommetric
 ---
 
