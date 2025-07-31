@@ -98,6 +98,7 @@ import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
+import securitySafe from '../assets/svg/security-safe.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
@@ -117,6 +118,7 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
 import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
@@ -209,6 +211,7 @@ export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
 export const COCKROACH = cockroach;
+export const SECURITY_DEFAULT = securitySafe;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -223,6 +226,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'mlmodelServices',
   'storageServices',
   'apiServices',
+  'securityServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -235,6 +239,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
   apiServices: ServiceCategory.API_SERVICES,
+  security: ServiceCategory.SECURITY_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -267,6 +272,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   }),
   apiServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.api-uppercase'),
+  }),
+  securityServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.security'),
   }),
 };
 
@@ -407,6 +415,7 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
   [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
   [ServiceCategory.API_SERVICES]: ServiceType.API,
+  [ServiceCategory.SECURITY_SERVICES]: ServiceType.Security,
 };
 
 export const SERVICE_TYPES_ENUM = {
@@ -419,6 +428,7 @@ export const SERVICE_TYPES_ENUM = {
   [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
   [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
   [ServiceCategory.API_SERVICES]: APIServiceType,
+  [ServiceCategory.SECURITY_SERVICES]: SecurityServiceType,
 };
 
 export const BETA_SERVICES = [
@@ -431,6 +441,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Ssis,
   DashboardServiceType.ThoughtSpot,
   DatabaseServiceType.Ssas,
+  SecurityServiceType.Ranger,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -491,7 +502,10 @@ export const SERVICE_TYPES = [
   EntityType.STORAGE_SERVICE,
   EntityType.SEARCH_SERVICE,
   EntityType.API_SERVICE,
+  EntityType.SECURITY_SERVICE,
 ];
+
+export const EXCLUDE_AUTO_PILOT_SERVICE_TYPES = [EntityType.SECURITY_SERVICE];
 
 export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Metadata,

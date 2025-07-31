@@ -492,6 +492,7 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
             || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
           parentMatch = new ImmutablePair<>(SERVICE_ID, entityId);
         } else {
@@ -823,6 +824,7 @@ public class SearchRepository {
         || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
         || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
         || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+        || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
         || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
       return "service." + fieldName;
     } else {
@@ -971,7 +973,8 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          Entity.SEARCH_SERVICE,
+          Entity.SECURITY_SERVICE -> searchClient.deleteEntityByFields(
           indexMapping.getChildAliases(clusterAlias),
           List.of(new ImmutablePair<>("service.id", docId)));
       default -> {
@@ -996,7 +999,8 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> searchClient.softDeleteOrRestoreChildren(
+          Entity.SEARCH_SERVICE,
+          Entity.SECURITY_SERVICE -> searchClient.softDeleteOrRestoreChildren(
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));

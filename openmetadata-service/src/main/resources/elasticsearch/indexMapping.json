@@ -3,14 +3,31 @@
     "indexName": "table_search_index",
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",
     "alias": "table",
-    "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"],
-    "childAliases": ["testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "parentAliases": [
+      "database",
+      "databaseSchema",
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
+    "childAliases": [
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "storedProcedure": {
     "indexName": "stored_procedure_search_index",
     "indexMappingFile": "/elasticsearch/%s/stored_procedure_index_mapping.json",
     "alias": "storedProcedure",
-    "parentAliases": ["database", "databaseSchema", "databaseService", "all", "dataAsset"],
+    "parentAliases": [
+      "database",
+      "databaseSchema",
+      "databaseService",
+      "all",
+      "dataAsset"
+    ],
     "childAliases": []
   },
   "databaseSchema": {
@@ -18,14 +35,29 @@
     "indexMappingFile": "/elasticsearch/%s/database_schema_index_mapping.json",
     "alias": "databaseSchema",
     "parentAliases": ["database", "databaseService", "all", "dataAsset"],
-    "childAliases": ["table", "storedProcedure", "testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "childAliases": [
+      "table",
+      "storedProcedure",
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "database": {
     "indexName": "database_search_index",
     "alias": "database",
     "indexMappingFile": "/elasticsearch/%s/database_index_mapping.json",
     "parentAliases": ["databaseService", "all", "dataAsset"],
-    "childAliases": ["databaseSchema", "table", "storedProcedure", "testSuite","testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "childAliases": [
+      "databaseSchema",
+      "table",
+      "storedProcedure",
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "chart": {
     "indexName": "chart_search_index",
@@ -115,7 +147,7 @@
     "indexName": "data_product_search_index",
     "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
-    "parentAliases": ["domain","all", "dataAsset"],
+    "parentAliases": ["domain", "all", "dataAsset"],
     "childAliases": []
   },
   "domain": {
@@ -214,7 +246,16 @@
     "indexMappingFile": "/elasticsearch/%s/database_service_index_mapping.json",
     "alias": "databaseService",
     "parentAliases": ["all", "service"],
-    "childAliases": ["database", "databaseSchema", "storedProcedure", "table", "testSuite", "testCase", "testCaseResolutionStatus", "testCaseResult"]
+    "childAliases": [
+      "database",
+      "databaseSchema",
+      "storedProcedure",
+      "table",
+      "testSuite",
+      "testCase",
+      "testCaseResolutionStatus",
+      "testCaseResult"
+    ]
   },
   "messagingService": {
     "indexName": "messaging_service_search_index",
@@ -243,6 +284,13 @@
     "alias": "searchService",
     "parentAliases": ["all", "service"],
     "childAliases": ["searchIndex"]
+  },
+  "securityService": {
+    "indexName": "security_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/security_service_index_mapping.json",
+    "alias": "securityService",
+    "parentAliases": ["all", "service"],
+    "childAliases": []
   },
   "storageService": {
     "indexName": "storage_service_search_index",

@@ -81,6 +81,7 @@ public class SearchUtil {
           "pipeline_service_index",
           "storage_service_index",
           "search_service_index",
+          "security_service_index",
           "metadata_service_index" -> true;
       default -> false;
     };

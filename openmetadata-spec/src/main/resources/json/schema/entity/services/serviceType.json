@@ -14,7 +14,8 @@
     "Pipeline",
     "Storage",
     "Search",
-    "Api"
+    "Api",
+    "Security"
   ],
   "additionalProperties": false
 }

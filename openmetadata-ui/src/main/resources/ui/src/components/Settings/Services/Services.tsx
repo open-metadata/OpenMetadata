@@ -262,6 +262,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.SEARCH_SERVICES;
       case ServiceCategory.API_SERVICES:
         return PAGE_HEADERS.API_SERVICES;
+      case ServiceCategory.SECURITY_SERVICES:
+        return PAGE_HEADERS.SECURITY_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }

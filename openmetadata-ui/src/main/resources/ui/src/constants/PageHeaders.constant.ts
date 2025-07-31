@@ -91,6 +91,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.api-uppercase-plural'),
     subHeader: i18n.t('message.page-sub-header-for-apis'),
   },
+  SECURITY_SERVICES: {
+    header: i18n.t('label.security'),
+    subHeader: i18n.t('message.page-sub-header-for-security'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),

@@ -31,7 +31,10 @@ import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.com
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import {
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
+  SERVICE_TYPES,
+} from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import {
@@ -436,7 +439,10 @@ export const DataAssetsHeader = ({
   }, [serviceCategory, afterTriggerAction]);
 
   const triggerAutoPilotApplicationButton = useMemo(() => {
-    if (!SERVICE_TYPES.includes(entityType)) {
+    if (
+      !SERVICE_TYPES.includes(entityType) ||
+      EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(entityType)
+    ) {
       return null;
     }
 

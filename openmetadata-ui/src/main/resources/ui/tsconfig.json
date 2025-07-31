@@ -8,7 +8,7 @@
     "module": "esnext",
     "lib": ["dom", "dom.iterable", "ES2020.Promise", "es2021"],
     "allowJs": true,
-    "jsx": "react-jsx",
+    "jsx": "react",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
