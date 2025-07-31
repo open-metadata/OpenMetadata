@@ -73,3 +73,22 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
 };
 
 export const DEFAULT_READ_TIMEOUT = 12;
+
+export const DATA_CONTRACT_ALERT_FILTERS = [
+  'filterByFqn',
+  'filterByDomain',
+  'filterByOwner',
+  'filterByEntityName',
+];
+
+export const DATA_CONTRACT_ALERT_ACTIONS = [
+  'GetDataContractStatusUpdates',
+  'GetDataContractValidationFailures',
+];
+
+export const DATA_CONTRACT_STATUS_OPTIONS = [
+  { label: 'Success', value: 'Success' },
+  { label: 'Failed', value: 'Failed' },
+  { label: 'Running', value: 'Running' },
+  { label: 'Aborted', value: 'Aborted' },
+];

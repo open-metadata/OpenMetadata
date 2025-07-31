@@ -2373,6 +2373,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     dashboard: t('label.dashboard'),
     testCase: t('label.test-case'),
     testSuite: t('label.test-suite'),
+    dataContract: t('label.data-contract'),
     ingestionPipeline: t('label.ingestion-pipeline'),
     all: t('label.all'),
     announcement: t('label.announcement'),

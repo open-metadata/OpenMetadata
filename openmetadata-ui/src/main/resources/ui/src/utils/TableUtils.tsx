@@ -421,6 +421,7 @@ export const getEntityIcon = (
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.DATA_CONTRACT]: DataQualityIcon,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
     [EntityType.APPLICATION]: ApplicationIcon,
