@@ -12,7 +12,7 @@
 Profiler Processor Step
 """
 import traceback
-from typing import Optional, cast
+from typing import Optional, Type, cast
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -31,6 +31,11 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.source.model import ProfilerSourceAndEntity
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 
 
 class ProfilerProcessor(Processor):
@@ -39,11 +44,21 @@ class ProfilerProcessor(Processor):
     the OpenMetadataSource and compute the metrics.
     """
 
-    def __init__(self, config: OpenMetadataWorkflowConfig):
+    @inject
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,
+    ):
+        if profiler_config_class is None:
+            raise DependencyNotFoundError(
+                "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
+            )
+
         super().__init__()
 
         self.config = config
-        self.profiler_config = ProfilerProcessorConfig.model_validate(
+        self.profiler_config = profiler_config_class.model_validate(
             self.config.processor.model_dump().get("config")
         )
         self.source_config: DatabaseServiceProfilerPipeline = cast(
