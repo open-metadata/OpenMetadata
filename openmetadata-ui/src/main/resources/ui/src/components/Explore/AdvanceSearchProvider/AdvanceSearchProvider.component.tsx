@@ -13,12 +13,13 @@
 import {
   Config,
   Field,
+  FieldOrGroup,
   ImmutableTree,
   OldJsonTree,
   Utils as QbUtils,
   ValueSource,
 } from '@react-awesome-query-builder/antd';
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import { get, isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
@@ -224,7 +225,7 @@ export const AdvanceSearchProvider = ({
   }, [navigate, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
-    const subfields: Record<string, Field> = {};
+    const subfields: Record<string, FieldOrGroup> = {};
 
     try {
       const res = await getAllCustomProperties();
@@ -263,8 +264,11 @@ export const AdvanceSearchProvider = ({
                       resEntityType.charAt(0).toUpperCase() +
                       resEntityType.slice(1),
                     type: '!group',
-                    subfields: entitySubfields,
-                  } as Field;
+                    subfields: {
+                      ...get(subfields[resEntityType], 'subfields', {}),
+                      ...entitySubfields,
+                    },
+                  };
                 }
               }
             }
