@@ -49,6 +49,7 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
         EntityType.DATABASE_SCHEMA,
         EntityType.STORED_PROCEDURE,
         EntityType.TABLE,
+        EntityType.QUERY,
       ];
     case 'messagingServices':
       return [EntityType.TOPIC];
@@ -76,18 +77,22 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
 export const getTitleByChartType = (chartType: SystemChartType) => {
   switch (chartType) {
     case SystemChartType.DescriptionCoverage:
+    case SystemChartType.AssetsWithDescriptionLive:
       return t('label.entity-coverage', {
         entity: t('label.description'),
       });
     case SystemChartType.OwnersCoverage:
+    case SystemChartType.AssetsWithOwnerLive:
       return t('label.entity-coverage', {
         entity: t('label.ownership'),
       });
     case SystemChartType.PIICoverage:
+    case SystemChartType.AssetsWithPIILive:
       return t('label.entity-coverage', {
         entity: t('label.pii-uppercase'),
       });
     case SystemChartType.TierCoverage:
+    case SystemChartType.AssetsWithTierLive:
       return t('label.entity-coverage', {
         entity: t('label.tier'),
       });
@@ -95,6 +100,21 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
       return t('label.healthy-data-asset-plural');
     default:
       return '';
+  }
+};
+
+export const getChartTypeForWidget = (chartType: SystemChartType) => {
+  switch (chartType) {
+    case SystemChartType.AssetsWithDescriptionLive:
+      return SystemChartType.DescriptionCoverage;
+    case SystemChartType.AssetsWithOwnerLive:
+      return SystemChartType.OwnersCoverage;
+    case SystemChartType.AssetsWithPIILive:
+      return SystemChartType.PIICoverage;
+    case SystemChartType.AssetsWithTierLive:
+      return SystemChartType.TierCoverage;
+    default:
+      return chartType;
   }
 };
 
@@ -142,7 +162,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
     const isIncreased = (lastDayData ?? 0) >= (earliestDayData ?? 0);
 
     return {
-      chartType,
+      chartType: getChartTypeForWidget(chartType),
       isIncreased,
       percentageChange: percentageChangeOverall,
       currentPercentage: round(lastDayData ?? 0, 2),
@@ -212,6 +232,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
   switch (chartType) {
     case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
+    case SystemChartType.TotalDataAssetsLive:
       Icon = NoDataPlaceholderIcon;
       localizationKey = 'message.total-data-assets-widget-description';
       docsLink =
@@ -219,6 +240,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
       break;
     case SystemChartType.DescriptionCoverage:
+    case SystemChartType.AssetsWithDescriptionLive:
       Icon = DescriptionPlaceholderIcon;
       localizationKey = 'message.description-coverage-widget-description';
       docsLink =
@@ -227,6 +249,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
       break;
     case SystemChartType.OwnersCoverage:
+    case SystemChartType.AssetsWithOwnerLive:
       Icon = OwnersPlaceholderIcon;
       localizationKey = 'message.owners-coverage-widget-description';
       docsLink =
@@ -235,6 +258,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
       break;
     case SystemChartType.PIICoverage:
+    case SystemChartType.AssetsWithPIILive:
       Icon = PiiPlaceholderIcon;
       localizationKey = 'message.pii-coverage-widget-description';
       docsLink =

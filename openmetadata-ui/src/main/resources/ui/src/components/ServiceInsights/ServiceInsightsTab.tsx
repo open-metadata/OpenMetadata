@@ -19,7 +19,11 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
-import { PLATFORM_INSIGHTS_CHARTS } from '../../constants/ServiceInsightsTab.constants';
+import {
+  LIVE_CHARTS_LIST,
+  PLATFORM_INSIGHTS_CHARTS,
+  PLATFORM_INSIGHTS_LIVE_CHARTS,
+} from '../../constants/ServiceInsightsTab.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -168,7 +172,7 @@ const ServiceInsightsTab = ({
   const triggerSocketConnection = useCallback(async () => {
     if (isUndefined(sessionIdRef.current)) {
       const { sessionId } = await setChartDataStreamConnection({
-        chartNames: PLATFORM_INSIGHTS_CHARTS,
+        chartNames: LIVE_CHARTS_LIST,
         serviceName,
         startTime: getCurrentDayStartGMTinMillis(),
         endTime: getCurrentDayStartGMTinMillis() + 360000000,
@@ -202,7 +206,7 @@ const ServiceInsightsTab = ({
         if (newActivity) {
           const data = JSON.parse(newActivity);
 
-          const platformInsightsChart = PLATFORM_INSIGHTS_CHARTS.map(
+          const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
             getPlatformInsightsChartDataFormattingMethod(data.data)
           );
 

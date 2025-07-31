@@ -21,4 +21,18 @@ export const PLATFORM_INSIGHTS_CHARTS: SystemChartType[] = [
   SystemChartType.HealthyDataAssets,
 ];
 
+export const PLATFORM_INSIGHTS_LIVE_CHARTS: SystemChartType[] = [
+  SystemChartType.AssetsWithDescriptionLive,
+  SystemChartType.AssetsWithPIILive,
+  SystemChartType.AssetsWithTierLive,
+  SystemChartType.AssetsWithOwnerLive,
+  SystemChartType.HealthyDataAssets,
+];
+
+export const LIVE_CHARTS_LIST = [
+  ...PLATFORM_INSIGHTS_LIVE_CHARTS,
+  SystemChartType.TotalDataAssetsLive,
+  SystemChartType.PipelineStatusLive,
+];
+
 export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
