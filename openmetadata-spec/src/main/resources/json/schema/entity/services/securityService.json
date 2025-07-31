@@ -1,0 +1,149 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/securityService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Security Service",
+  "description": "This schema defines the Security Service entity, such as Apache Ranger.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.SecurityService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "securityServiceType": {
+      "title": "Security Service Type",
+      "description": "Type of security service - Apache Ranger, etc.",
+      "type": "string",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "enum": [
+        "Ranger"
+      ],
+      "javaEnums": [
+        {
+          "name": "Ranger"
+        }
+      ]
+    },
+    "securityConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SecurityConnection",
+      "description": "Security Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "./connections/security/rangerConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this security service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this security service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceType": {
+      "description": "Type of security service such as Apache Ranger...",
+      "$ref": "#/definitions/securityServiceType"
+    },
+    "description": {
+      "description": "Description of a security service instance.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this security service. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
+    "tags": {
+      "description": "Tags for this Security Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "connection": {
+      "$ref": "#/definitions/securityConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this security service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "owners": {
+      "description": "Owners of this security service.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this security service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains": {
+      "description": "Domains the security service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner": {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "serviceType"
+  ],
+  "additionalProperties": false
+}

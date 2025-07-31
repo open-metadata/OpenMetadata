@@ -1,5 +1,6 @@
 ---
-title: slackAppTokenConfiguration
+title: slackAppTokenConfiguration | Official Documentation
+description: Configure Slack App Token schema to support secure integrations for notification and collaboration within Slack.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/slackapptokenconfiguration
 ---
 
