@@ -23,7 +23,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../../utils/common';
-import { visitEntityPageWithCustomSearchBox } from '../../../utils/entity';
+import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -181,7 +181,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           `/api/v1/tables/name/*.order_items?**`
         );
 
-        await visitEntityPageWithCustomSearchBox({
+        await visitEntityPage({
           page,
           searchTerm: this.entityName,
           dataTestId: `${this.serviceName}-${this.entityName}`,
