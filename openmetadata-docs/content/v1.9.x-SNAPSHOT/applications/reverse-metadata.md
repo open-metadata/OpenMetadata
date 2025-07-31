@@ -73,7 +73,7 @@ Tag metadata (like `PII`, `sensitive`, `finance-related`, etc.) applied in **Col
 ## Key Features
 
 - **Dual Sync Modes:** 
-  Support both real-time automatic synchronization and manual batch processing of metadata updates (tags, owners, descriptions) from Collate to source systems.
+  Real-time automatic synchronization is the default behavior enabled simply by installing the application. Additionally, you can trigger manual batch processing on-demand to sync metadata updates (tags, owners, descriptions) from Collate to source systems.
 
 - **Configurable Channels:**  
   Create multiple sync channels to define exactly which asset or metadata types to sync. Changes can sync automatically in real-time or be processed in batches on-demand.
@@ -214,22 +214,7 @@ When you click **Run Now**, the system initiates a comprehensive batch processin
 
 ### Processing Logic
 
-The batch processing follows a matrix-based approach where each configured channel is evaluated against every database service in your environment:
-
-1. **Service Discovery:** The system identifies all database services configured in your OpenMetadata instance
-2. **Channel Iteration:** For each reverse metadata channel, the system checks if the service matches the channel's filter criteria
-3. **Workflow Triggering:** When a match is found, a dedicated workflow is triggered for that specific service-channel combination
-
-### Example Execution
-
-Consider a scenario with:
-- **5 Database Services:** PostgreSQL, MySQL, Snowflake, BigQuery, Databricks
-- **5 Configured Channels:** Each with different filters (e.g., by service name, by database name, tags)
-
-**Processing Flow:**
-- **Total Iterations:** 25 (5 services × 5 channels)
-- **Workflow Creation:** Each service-channel pair that matches the filter criteria gets its own dedicated workflow
-- **Isolation:** If one service connection fails, other workflows continue unaffected
+When multiple services are configured and match a channel's filter criteria, separate workflows will be triggered for each service. This ensures that each service is processed independently, so if one service fails, others continue unaffected.
 
 ### Monitoring and Tracking
 
