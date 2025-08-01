@@ -10,39 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import { EntityReference } from '../../../generated/type/entityReference';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 
-export const ContractDetailFormTab: React.FC = () => {
+export const ContractDetailFormTab: React.FC<{
+  initialValues?: Partial<DataContract>;
+  onNext: (formData: Partial<DataContract>) => Promise<void>;
+  nextLabel?: string;
+}> = ({ initialValues, onNext, nextLabel }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+
+  const owners = Form.useWatch<EntityReference[]>('owners', form);
 
   const fields: FieldProp[] = [
     {
       label: t('label.contract-title'),
-      id: 'contractTitle',
-      name: 'contractTitle',
+      id: 'name',
+      name: 'name',
       type: FieldTypes.TEXT,
       required: true,
     },
     {
       label: t('label.description'),
-      id: 'contractDescription',
-      name: 'contractDescription',
+      id: 'description',
+      name: 'description',
       type: FieldTypes.DESCRIPTION,
-      required: true,
+      required: false,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValues?.description ?? '',
+      },
     },
     {
-      label: t('label.owner'),
-      id: 'owner',
-      name: 'owner',
+      label: t('label.owner-plural'),
+      id: 'owners',
+      name: 'owners',
       type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
@@ -63,30 +77,50 @@ export const ContractDetailFormTab: React.FC = () => {
         trigger: 'onUpdate',
       },
     },
-    {
-      label: t('label.enable-incident-management'),
-      id: 'enableIncidentManagement',
-      name: 'enableIncidentManagement',
-      type: FieldTypes.CHECK_BOX,
-      required: true,
-    },
   ];
 
+  const handleSubmit = () => {
+    form.submit();
+  };
+
+  useEffect(() => {
+    if (initialValues) {
+      form.setFieldsValue({
+        name: initialValues.name,
+        description: initialValues.description,
+        owners: initialValues.owners,
+      });
+    }
+  }, [initialValues]);
+
   return (
-    <div className="container bg-grey">
-      <div>
-        <Typography.Title className="m-0" level={5}>
-          {t('label.contract-detail-plural')}
-        </Typography.Title>
-        <Typography.Paragraph className="m-0 text-sm" type="secondary">
-          {t('message.contract-detail-plural-description')}
-        </Typography.Paragraph>
-      </div>
-      <Card>
-        <Form form={form} layout="vertical" name="contract-detail-form">
+    <>
+      <Card className="container bg-grey p-box">
+        <div className="m-b-sm">
+          <Typography.Title className="m-0" level={5}>
+            {t('label.contract-detail-plural')}
+          </Typography.Title>
+          <Typography.Paragraph className="m-0 text-sm" type="secondary">
+            {t('message.contract-detail-plural-description')}
+          </Typography.Paragraph>
+        </div>
+
+        <Form
+          className="bg-white p-box"
+          form={form}
+          layout="vertical"
+          onFinish={onNext}>
           {generateFormFields(fields)}
+
+          {owners?.length > 0 && <OwnerLabel owners={owners} />}
         </Form>
       </Card>
-    </div>
+      <div className="d-flex justify-end m-t-md">
+        <Button htmlType="submit" type="primary" onClick={handleSubmit}>
+          {nextLabel ?? t('label.next')}
+          <ArrowRightOutlined />
+        </Button>
+      </div>
+    </>
   );
 };
