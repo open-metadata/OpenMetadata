@@ -14,7 +14,7 @@ Helpers module for db sources
 """
 
 import traceback
-from typing import Iterable, Union, List
+from typing import Iterable, List, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table

@@ -649,6 +649,7 @@ def get_lineage_by_query(
     lineage_source: LineageSource = LineageSource.QueryLineage,
     graph: DiGraph = None,
     schema_fallback: bool = False,
+    service_name: Optional[str] = None,  # backward compatibility for python sdk
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -658,7 +659,11 @@ def get_lineage_by_query(
     """
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
-
+    if service_name and isinstance(service_name, str):
+        service_names = [service_name]
+        logger.warning(
+            "Deprecated: service_name is deprecated, use service_names instead"
+        )
     if isinstance(service_names, str):
         service_names = [service_names]
     try:
