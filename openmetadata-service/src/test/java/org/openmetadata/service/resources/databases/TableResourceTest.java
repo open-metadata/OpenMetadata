@@ -2568,6 +2568,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
     // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest
@@ -2606,6 +2607,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyDomainsInSearch(
         table.getEntityReference(),
         List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    toggleMultiDomainSupport(true);
   }
 
   @Test
