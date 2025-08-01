@@ -114,7 +114,7 @@ describe('KPIWidget', () => {
   it('renders widget wrapper', async () => {
     render(<KPIWidget {...widgetProps} />);
 
-    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(await screen.findByTestId('KnowledgePanel.KPI')).toBeInTheDocument();
   });
 
   it('should fetch kpi list api initially', async () => {

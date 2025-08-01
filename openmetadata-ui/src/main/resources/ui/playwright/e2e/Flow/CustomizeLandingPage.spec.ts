@@ -200,11 +200,17 @@ test.describe('Customize Landing Page Flow', () => {
       await adminPage.waitForLoadState('networkidle');
 
       // Check if removed widgets are not present on the landing page
-      await expect(adminPage.getByText('Activity Feed')).not.toBeVisible();
-      await expect(adminPage.getByText('KPI')).not.toBeVisible();
+      await expect(
+        adminPage.getByTestId('KnowledgePanel.ActivityFeed')
+      ).not.toBeVisible();
+      await expect(
+        adminPage.getByTestId('KnowledgePanel.KPI')
+      ).not.toBeVisible();
 
       // Check if newly added widgets are present on the landing page
-      await expect(adminPage.getByText('Following Assets')).toBeVisible();
+      await expect(
+        adminPage.getByTestId('KnowledgePanel.Following')
+      ).toBeVisible();
     });
 
     await test.step(
@@ -213,8 +219,12 @@ test.describe('Customize Landing Page Flow', () => {
         test.slow(true);
 
         // Check if removed widgets are not present on landing page
-        await expect(adminPage.getByText('Activity Feed')).not.toBeVisible();
-        await expect(adminPage.getByText('KPI')).not.toBeVisible();
+        await expect(
+          adminPage.getByTestId('KnowledgePanel.ActivityFeed')
+        ).not.toBeVisible();
+        await expect(
+          adminPage.getByTestId('KnowledgePanel.KPI')
+        ).not.toBeVisible();
 
         await navigateToCustomizeLandingPage(adminPage, {
           personaName: persona.responseData.name,

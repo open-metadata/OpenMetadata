@@ -215,7 +215,10 @@ const DomainsWidget = ({
   );
 
   return (
-    <WidgetWrapper dataLength={10} loading={loading}>
+    <WidgetWrapper
+      dataLength={10}
+      dataTestId="KnowledgePanel.Domains"
+      loading={loading}>
       <div className="domains-widget-container">
         <WidgetHeader
           currentLayout={currentLayout}

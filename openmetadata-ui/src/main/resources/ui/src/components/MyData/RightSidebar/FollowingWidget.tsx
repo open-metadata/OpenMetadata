@@ -307,7 +307,7 @@ function FollowingWidget({
   return (
     <WidgetWrapper
       dataLength={followedData.length !== 0 ? followedData.length : 10}
-      dataTestId={widgetKey}
+      dataTestId="KnowledgePanel.Following"
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

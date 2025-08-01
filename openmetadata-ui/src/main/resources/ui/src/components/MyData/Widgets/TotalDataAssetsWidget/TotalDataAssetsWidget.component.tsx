@@ -313,7 +313,7 @@ const TotalDataAssetsWidget = ({
   return (
     <WidgetWrapper
       dataLength={graphData.length > 0 ? graphData.length : 10}
-      dataTestId={widgetKey}
+      dataTestId="KnowledgePanel.TotalAssets"
       loading={isLoading}>
       <div className="total-data-assets-widget-container">
         <WidgetHeader
