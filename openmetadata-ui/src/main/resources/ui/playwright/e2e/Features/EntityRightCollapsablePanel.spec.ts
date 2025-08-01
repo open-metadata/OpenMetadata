@@ -53,10 +53,6 @@ test('Show and Hide Right Collapsable Panel', async ({ page }) => {
   ).not.toBeVisible();
 
   await expect(
-    page.locator('[data-testid="KnowledgePanel.CustomProperties"]')
-  ).not.toBeVisible();
-
-  await expect(
     page.locator('[data-testid="KnowledgePanel.TableConstraints"]')
   ).not.toBeVisible();
 
@@ -73,10 +69,6 @@ test('Show and Hide Right Collapsable Panel', async ({ page }) => {
 
   await expect(
     page.locator('[data-testid="KnowledgePanel.GlossaryTerms"]')
-  ).toBeVisible();
-
-  await expect(
-    page.locator('[data-testid="KnowledgePanel.CustomProperties"]')
   ).toBeVisible();
 
   await expect(

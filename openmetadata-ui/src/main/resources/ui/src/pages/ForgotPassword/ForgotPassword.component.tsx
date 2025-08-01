@@ -13,9 +13,9 @@
 
 import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import bgImg from '../../assets/img/forgot-password.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
@@ -31,7 +31,7 @@ const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
   const { alert, resetAlert } = useAlertStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = useCallback(
@@ -55,7 +55,7 @@ const ForgotPassword = () => {
   );
 
   const handleLogin = () => {
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
     resetAlert();
   };
 
@@ -75,7 +75,7 @@ const ForgotPassword = () => {
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto"
-        style={{ maxWidth: '430px' }}>
+        style={{ maxWidth: '512px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
             <BrandImage
@@ -89,7 +89,7 @@ const ForgotPassword = () => {
             <Typography.Title level={3}>
               {t('label.forgot-your-password')}
             </Typography.Title>
-            <Typography.Text className="text-lg text-grey-muted">
+            <Typography.Text className="text-md text-grey-muted">
               {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
@@ -131,11 +131,11 @@ const ForgotPassword = () => {
             <Col className="m-t-md" span={24}>
               <Button
                 block
-                className="p-y-lg d-flex flex-center"
                 htmlType="submit"
                 loading={loading}
+                size="large"
                 type="primary">
-                {t('label.submit')}
+                {t('label.send-login-link')}
               </Button>
             </Col>
           </Form>

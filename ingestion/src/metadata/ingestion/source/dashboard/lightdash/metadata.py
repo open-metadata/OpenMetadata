@@ -11,7 +11,7 @@
 """Lightdash source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -32,16 +32,18 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.lightdash.models import (
     LightdashChart,
     LightdashDashboard,
+    LightdashSpace,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import clean_uri, replace_special_with
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -73,11 +75,16 @@ class LightdashSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
+        self.spaces: List[LightdashSpace] = []
         self.charts: List[LightdashChart] = []
 
     def prepare(self):
+        self.spaces = self.client.get_spaces()
         self.charts = self.client.get_charts_list()
         return super().prepare()
+
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+        return self.client.get_project_name(dashboard_details.projectUuid)
 
     def get_dashboards_list(self) -> Optional[List[LightdashDashboard]]:
         """
@@ -101,22 +108,27 @@ class LightdashSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: LightdashDashboard
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
         try:
             dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.uuid}-"
-                f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
+                f"{clean_uri(self.service_connection.hostPort)}/projects/{dashboard_details.projectUuid}"
+                f"/dashboards/{dashboard_details.uuid}/view"
             )
+            dashboard_charts = [chart.uuid for chart in dashboard_details.charts]
+
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.uuid),
                 sourceUrl=SourceUrl(dashboard_url),
+                project=self.client.get_project_name(dashboard_details.projectUuid),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -126,12 +138,12 @@ class LightdashSource(DashboardServiceSource):
                             chart_name=chart,
                         )
                     )
-                    for chart in self.context.get().charts or []
+                    for chart in dashboard_charts or []
                 ],
                 service=self.context.get().dashboard_service,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -140,8 +152,8 @@ class LightdashSource(DashboardServiceSource):
             )
 
     def yield_dashboard_chart(
-        self, dashboard_details: LightdashChart
-    ) -> Iterable[Optional[CreateChartRequest]]:
+        self, dashboard_details: LightdashDashboard
+    ) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -149,24 +161,32 @@ class LightdashSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = self.charts
-        for chart in charts:
+        # charts = self.charts
+        logger.info(
+            f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}"
+        )
+        for chart in dashboard_details.charts:
             try:
                 chart_url = (
-                    f"{clean_uri(self.service_connection.hostPort)}/question/{chart.uuid}-"
-                    f"{replace_special_with(raw=chart.name.lower(), replacement='-')}"
+                    f"{clean_uri(self.service_connection.hostPort)}/projects/{dashboard_details.projectUuid}"
+                    f"/saved/{chart.uuid}"
                 )
+                chart_type = get_standard_chart_type(chart.chartKind).value
+
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                yield CreateChartRequest(
-                    name=EntityName(chart.uuid),
-                    displayName=chart.name,
-                    description=Markdown(chart.description)
-                    if chart.description
-                    else None,
-                    sourceUrl=SourceUrl(chart_url),
-                    service=self.context.get().dashboard_service,
+                yield Either(
+                    right=CreateChartRequest(
+                        name=EntityName(chart.uuid),
+                        displayName=chart.name,
+                        description=(
+                            Markdown(chart.description) if chart.description else None
+                        ),
+                        sourceUrl=SourceUrl(chart_url),
+                        service=self.context.get().dashboard_service,
+                        chartType=chart_type,
+                    )
                 )
                 self.status.scanned(chart.name)
             except Exception as exc:  # pylint: disable=broad-except
@@ -176,7 +196,8 @@ class LightdashSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LightdashDashboard,
-        db_service_name: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,
+        _: Optional[str] = None,
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 

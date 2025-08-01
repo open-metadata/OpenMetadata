@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 
-import { get, isEmpty, isNil, isString } from 'lodash';
+import { get, isEmpty, isNil, isString, omit } from 'lodash';
 import Qs from 'qs';
-import React, {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -30,7 +24,6 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { PAGE_SIZE } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import {
   mockSearchData,
@@ -41,6 +34,7 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -52,26 +46,30 @@ import {
   generateTabItems,
   parseSearchParams,
 } from '../../utils/ExploreUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
-const ExplorePageV1: FunctionComponent = () => {
+const ExplorePageV1: FC<unknown> = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
+  const {
+    preferences: { globalPageSize },
+    setPreference,
+  } = useCurrentUserPreferences();
 
-  const { tab } = useParams<UrlParams>();
+  const { tab } = useRequiredParams<UrlParams>();
 
   const { searchCriteria } = useApplicationStore();
 
@@ -108,32 +106,37 @@ const ExplorePageV1: FunctionComponent = () => {
     size,
     showDeleted,
   } = useMemo(() => {
-    return parseSearchParams(location.search);
-  }, [location.search]);
+    return parseSearchParams(location.search, globalPageSize, queryFilter);
+  }, [location.search, queryFilter]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
-    history.push({
-      search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
+    setPreference({ globalPageSize: size ?? globalPageSize });
+    navigate({
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? globalPageSize,
+      }),
     });
   };
 
   const handleSortValueChange = (page: number, sortVal: string) => {
-    history.push({
+    navigate({
       search: Qs.stringify({
         ...parsedSearch,
         page,
-        size: size ?? PAGE_SIZE,
+        size,
         sort: sortVal,
       }),
     });
   };
 
   const handleSortOrderChange = (page: number, sortOrderVal: string) => {
-    history.push({
+    navigate({
       search: Qs.stringify({
         ...parsedSearch,
         page,
-        size: size ?? PAGE_SIZE,
+        size,
         sortOrder: sortOrderVal,
       }),
     });
@@ -181,7 +184,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void =
     useCallback(
       (nSearchIndex) => {
-        history.push(
+        navigate(
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
@@ -202,8 +205,8 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
   const handleQuickFilterChange = useCallback(
-    (quickFilter) => {
-      history.push({
+    (quickFilter?: QueryFilterInterface) => {
+      navigate({
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
@@ -217,8 +220,22 @@ const ExplorePageV1: FunctionComponent = () => {
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
-    history.push({
-      search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
+    // Removed existing showDeleted from the parsedSearch object
+    const filteredParsedSearch = omit(parsedSearch, 'showDeleted');
+
+    // Set the default search object with page as 1
+    const defaultSearchObject = {
+      ...filteredParsedSearch,
+      page: 1,
+    };
+
+    // If showDeleted is true, add it to the search object
+    const searchObject = showDeleted
+      ? { ...defaultSearchObject, showDeleted: true }
+      : defaultSearchObject;
+
+    navigate({
+      search: Qs.stringify(searchObject),
     });
   };
 
@@ -395,6 +412,4 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.explore'))(
-  withAdvanceSearch(ExplorePageV1)
-);
+export default withPageLayout(withAdvanceSearch(ExplorePageV1));

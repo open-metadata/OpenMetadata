@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
@@ -122,6 +122,32 @@ export const getCollapseHandle = (
   );
 };
 
+const getColumnNameContent = (column: Column, isLoading: boolean) => {
+  if (isLoading) {
+    return <Skeleton.Button active data-tesid="loader" size="small" />;
+  }
+
+  return (
+    <>
+      {column.dataType && (
+        <div className="custom-node-name-icon">
+          {getColumnDataTypeIcon({
+            dataType: column.dataType,
+            width: '14px',
+          })}
+        </div>
+      )}
+      <Typography.Text
+        className="custom-node-column-label"
+        ellipsis={{
+          tooltip: true,
+        }}>
+        {getEntityName(column)}
+      </Typography.Text>
+    </>
+  );
+};
+
 export const getColumnContent = (
   column: Column,
   isColumnTraced: boolean,
@@ -132,13 +158,13 @@ export const getColumnContent = (
   summary?: ColumnTestSummaryDefinition
 ) => {
   const { fullyQualifiedName } = column;
+  const columnNameContentRender = getColumnNameContent(column, isLoading);
 
   return (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced && 'custom-node-header-tracing',
-        showDataObservabilitySummary && 'p-r-md'
+        isColumnTraced && 'custom-node-header-tracing'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
@@ -152,33 +178,25 @@ export const getColumnContent = (
         'lineage-column-node-handle',
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
-      <Row gutter={24}>
-        <Col
-          className="custom-node-name-container"
-          span={showDataObservabilitySummary ? 8 : 12}>
-          <div className="custom-node-name-icon">
-            {getColumnDataTypeIcon({
-              dataType: column.dataType,
-              width: '14px',
-            })}
-          </div>
-          <Typography.Text
-            className="custom-node-column-label"
-            ellipsis={{ tooltip: true }}>
-            {getEntityName(column)}
-          </Typography.Text>
+      <Row className="items-center" gutter={12}>
+        <Col className="custom-node-name-container" flex="1">
+          {/* Use isLoading to show skeleton, to avoid flickering and typography truncation issue, 
+          due to showDataObservabilitySummary conditional rendering */}
+          {columnNameContentRender}
         </Col>
 
-        <Col
-          className={classNames(
-            'custom-node-constraint',
-            showDataObservabilitySummary ? 'text-left' : 'text-right'
-          )}
-          span={showDataObservabilitySummary ? 8 : 12}>
-          {column.constraint}
-        </Col>
+        {column.constraint && (
+          <Col
+            className={classNames(
+              'custom-node-constraint',
+              showDataObservabilitySummary ? 'text-left' : 'text-right'
+            )}
+            flex="80px">
+            {column.constraint}
+          </Col>
+        )}
         {showDataObservabilitySummary && (
-          <Col span={8}>
+          <Col flex="80px">
             <TestSuiteSummaryWidget
               isLoading={isLoading}
               size="small"
@@ -190,3 +208,22 @@ export const getColumnContent = (
     </div>
   );
 };
+
+export function getNodeClassNames({
+  isSelected,
+  showDqTracing,
+  isTraced,
+}: {
+  isSelected: boolean;
+  showDqTracing: boolean;
+  isTraced: boolean;
+}) {
+  return classNames(
+    'lineage-node p-0',
+    isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
+    {
+      'data-quality-failed-custom-node-header': showDqTracing,
+      'custom-node-header-tracing': isTraced,
+    }
+  );
+}

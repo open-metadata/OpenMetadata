@@ -1,5 +1,6 @@
 ---
 title: Run the ingestion from your Airflow
+description: Deploy ingestion externally using Airflow for scalable orchestration of metadata pipelines across environments.
 slug: /deployment/ingestion/external/airflow
 collate: false
 ---
@@ -142,6 +143,18 @@ with models.DAG(
 {% note %}
 
 Make sure to tune out the DAG configurations (`schedule_interval`, `start_date`, etc.) as your use case requires.
+
+{% /note %}
+
+{% note %}
+
+If you encounter issues such as missing task instances or Airflow failing to locate a deployed DAG (e.g., `Dag '<DAG_ID>' could not be found`), this may be due to a **timezone mismatch** in your Airflow configuration. To resolve this, set the following in your `airflow.cfg`:
+
+```ini
+default_timezone = system
+```
+
+This ensures that Airflow uses the system timezone, which is particularly important when OpenMetadata and Airflow are running on the same server.
 
 {% /note %}
 

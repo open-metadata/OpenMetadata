@@ -10,18 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Empty, Space, Tree, Typography } from 'antd';
+import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
@@ -105,8 +98,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         );
         retn = [domain];
       }
-      await onSubmit(retn);
-      setIsSubmitLoading(false);
+      try {
+        await onSubmit(retn);
+      } finally {
+        setIsSubmitLoading(false);
+      }
     } else {
       onCancel();
     }
@@ -178,13 +174,25 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setIsLoading(true);
         const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
         const results: Domain[] = await searchDomains(encodedValue);
+
+        const combinedData = [...results];
+
+        initialDomains?.forEach((selectedDomain) => {
+          const exists = combinedData.some((domain: Domain) =>
+            isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+          );
+          if (!exists) {
+            combinedData.push(selectedDomain as unknown as Domain);
+          }
+        });
+
         const updatedTreeData = convertDomainsToTreeOptions(
-          results,
+          combinedData,
           0,
           isMultiple
         );
         setTreeData(updatedTreeData);
-        setDomains(results);
+        setDomains(combinedData);
       } finally {
         setIsLoading(false);
       }
@@ -193,7 +201,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   }, 300);
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
@@ -204,30 +212,32 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       return (
         <Empty
           description={t('label.no-entity-available', {
-            entity: t('label.domain'),
+            entity: t('label.domain-plural'),
           })}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       );
     } else {
       return (
-        <Tree
-          blockNode
-          checkStrictly
-          defaultExpandAll
-          showLine
-          autoExpandParent={Boolean(searchTerm)}
-          checkable={isMultiple}
-          className="domain-selectable-tree"
-          defaultCheckedKeys={isMultiple ? value : []}
-          defaultExpandedKeys={value}
-          defaultSelectedKeys={isMultiple ? [] : value}
-          multiple={isMultiple}
-          switcherIcon={switcherIcon}
-          treeData={treeData}
-          onCheck={onCheck}
-          onSelect={onSelect}
-        />
+        <Spin indicator={<Loader size="small" />} spinning={isSubmitLoading}>
+          <Tree
+            blockNode
+            checkStrictly
+            defaultExpandAll
+            showLine
+            autoExpandParent={Boolean(searchTerm)}
+            checkable={isMultiple}
+            className="domain-selectable-tree"
+            defaultCheckedKeys={isMultiple ? value : []}
+            defaultExpandedKeys={value}
+            defaultSelectedKeys={isMultiple ? [] : value}
+            multiple={isMultiple}
+            switcherIcon={switcherIcon}
+            treeData={treeData}
+            onCheck={onCheck}
+            onSelect={onSelect}
+          />
+        </Spin>
       );
     }
   }, [isLoading, treeData, value, onSelect, isMultiple, searchTerm]);
@@ -238,10 +248,18 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       fetchAPI();
     }
   }, [visible]);
+  const handleAllDomainKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // To pass Sonar test
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleMyDomainsClick();
+    }
+  };
 
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
       <Search
+        autoFocus
         data-testid="searchbar"
         placeholder="Search"
         style={{ marginBottom: 8 }}
@@ -259,7 +277,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             }
           )}
           data-testid="all-domains-selector"
-          onClick={handleMyDomainsClick}>
+          role="button"
+          tabIndex={0}
+          onClick={handleMyDomainsClick}
+          onKeyDown={handleAllDomainKeyPress}>
           <DomainIcon height={20} name="domain" width={20} />
           <Typography.Text
             className={classNames({

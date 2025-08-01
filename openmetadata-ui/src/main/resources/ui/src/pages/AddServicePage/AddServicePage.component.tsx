@@ -15,9 +15,9 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -27,13 +27,12 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
-import { AIRFLOW_HYBRID } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
-import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -43,7 +42,6 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   getAddServicePath,
   getServiceDetailsPath,
@@ -57,14 +55,15 @@ import {
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 
 const AddServicePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
-  const { platform } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
@@ -102,12 +101,12 @@ const AddServicePage = () => {
       ...prev,
       serviceType: '',
     }));
-    history.push(getAddServicePath(category));
+    navigate(getAddServicePath(category));
   };
 
   // Select service
   const handleSelectServiceCancel = () => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
         getServiceRouteFromServiceType(serviceCategory)
@@ -187,7 +186,13 @@ const AddServicePage = () => {
     try {
       const serviceDetails = await postService(serviceCategory, configData);
 
-      await triggerTheAutoPilotApplication(serviceDetails);
+      if (
+        !EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(
+          getEntityTypeFromServiceCategory(serviceCategory)
+        )
+      ) {
+        await triggerTheAutoPilotApplication(serviceDetails);
+      }
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,
@@ -200,7 +205,7 @@ const AddServicePage = () => {
       });
     } finally {
       setSaveServiceState('initial');
-      history.push(getServiceDetailsPath(configData.name, serviceCategory));
+      navigate(getServiceDetailsPath(configData.name, serviceCategory));
     }
   };
 
@@ -306,10 +311,8 @@ const AddServicePage = () => {
   );
 
   useEffect(() => {
-    if (platform === AIRFLOW_HYBRID) {
-      serviceUtilClassBase.getExtraInfo();
-    }
-  }, [platform]);
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
 
   return (
     <ResizablePanels
@@ -340,8 +343,4 @@ const AddServicePage = () => {
   );
 };
 
-export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.service'),
-  })
-)(AddServicePage);
+export default withPageLayout(AddServicePage);

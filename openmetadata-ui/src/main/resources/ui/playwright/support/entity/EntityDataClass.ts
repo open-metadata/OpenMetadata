@@ -15,6 +15,7 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
+import { ClassificationClass } from '../tag/ClassificationClass';
 import { TagClass } from '../tag/TagClass';
 import { TeamClass } from '../team/TeamClass';
 import { UserClass } from '../user/UserClass';
@@ -55,6 +56,19 @@ export class EntityDataClass {
   static readonly team2 = new TeamClass();
   static readonly tierTag1 = new TagClass({ classification: 'Tier' });
   static readonly tierTag2 = new TagClass({ classification: 'Tier' });
+  static readonly certificationTag1 = new TagClass({
+    classification: 'Certification',
+  });
+  static readonly certificationTag2 = new TagClass({
+    classification: 'Certification',
+  });
+  static readonly classification1 = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  static readonly tag1 = new TagClass({
+    classification: this.classification1.data.name,
+  });
   static readonly table1 = new TableClass();
   static readonly table2 = new TableClass(undefined, 'MaterializedView');
   static readonly topic1 = new TopicClass();
@@ -87,9 +101,9 @@ export class EntityDataClass {
   static readonly pipelineService = new PipelineServiceClass();
   static readonly searchIndexService = new SearchIndexServiceClass();
   static readonly storageService = new StorageServiceClass();
-  static readonly dataProduct1 = new DataProduct(this.domain1);
-  static readonly dataProduct2 = new DataProduct(this.domain1);
-  static readonly dataProduct3 = new DataProduct(this.domain2);
+  static readonly dataProduct1 = new DataProduct([this.domain1]);
+  static readonly dataProduct2 = new DataProduct([this.domain1]);
+  static readonly dataProduct3 = new DataProduct([this.domain2]);
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,
@@ -112,6 +126,9 @@ export class EntityDataClass {
             this.team2.create(apiContext),
             this.tierTag1.create(apiContext),
             this.tierTag2.create(apiContext),
+            this.certificationTag1.create(apiContext),
+            this.certificationTag2.create(apiContext),
+            this.classification1.create(apiContext),
           ]
         : [];
 
@@ -199,6 +216,7 @@ export class EntityDataClass {
         this.dataProduct1.create(apiContext),
         this.dataProduct2.create(apiContext),
         this.dataProduct3.create(apiContext),
+        this.tag1.create(apiContext),
       ]);
     }
   }
@@ -224,6 +242,10 @@ export class EntityDataClass {
             this.team2.delete(apiContext),
             this.tierTag1.delete(apiContext),
             this.tierTag2.delete(apiContext),
+            this.certificationTag1.delete(apiContext),
+            this.certificationTag2.delete(apiContext),
+            this.classification1.delete(apiContext),
+            this.tag1.delete(apiContext),
             this.dataProduct1.delete(apiContext),
             this.dataProduct2.delete(apiContext),
             this.dataProduct3.delete(apiContext),

@@ -1,5 +1,6 @@
 ---
-title: Presto
+title: Presto Connector | OpenMetadata Distributed SQL Guide
+description: Connect Presto to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction for seamless integration.
 slug: /connectors/database/presto
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/presto
 name="Presto"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 

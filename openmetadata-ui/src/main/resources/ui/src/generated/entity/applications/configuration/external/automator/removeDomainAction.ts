@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * Remove Owner Action Type
+ * Remove domains from the selected assets.
  */
 export interface RemoveDomainAction {
     /**

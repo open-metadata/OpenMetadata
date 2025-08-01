@@ -9,13 +9,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.*;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.*;
-import javax.ws.rs.core.*;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -44,7 +44,7 @@ public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   private final StoredProcedureMapper mapper = new StoredProcedureMapper();
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
+  static final String FIELDS = "owners,tags,followers,votes,extension,domains,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -95,9 +95,9 @@ public class StoredProcedureResource
           String databaseSchemaParam,
       @Parameter(description = "Limit the number schemas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
           int limitParam,
       @Parameter(
               description = "Returns list of schemas before this cursor",

@@ -25,6 +25,7 @@ class LookMlField(BaseModel):
     label: Optional[str] = Field(None, description="Field display name")
     type: Optional[str] = Field(None, description="Field type to be mapped to OM")
     name: str = Field(..., description="Field name")
+    sql: Optional[str] = Field(None, description="Field SQL")
 
 
 class LookMlDerivedTableField(BaseModel):
@@ -51,6 +52,7 @@ class LookMlView(BaseModel):
     derived_table: Optional[LookMlDerivedTableField] = Field(
         None, description="To track lineage with the source"
     )
+    tags: Optional[List[str]] = Field(None, description="Tags for the view")
 
 
 class LkmlFile(BaseModel):

@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
@@ -197,27 +196,6 @@ describe('EntityRightPanel component test', () => {
     expect(spy).toHaveBeenCalled();
 
     expect(screen.queryByText('KnowledgeArticles')).not.toBeInTheDocument();
-  });
-
-  it('should render CustomPropertyTable when mockCustomProperties is not null', () => {
-    render(
-      <EntityRightPanel
-        editGlossaryTermsPermission
-        editTagPermission
-        viewAllPermission
-        customProperties={mockCustomProperties}
-        editCustomAttributePermission={editPermission}
-        entityType={EntityType.TABLE}
-        selectedTags={mockSelectedTags}
-        showDataProductContainer={false}
-        onTagSelectionChange={mockOnTagSelectionChange}
-      />
-    );
-
-    expect(screen.getByTestId('custom-properties-table')).toBeVisible();
-    expect(
-      screen.queryByText('message.no-access-placeholder')
-    ).not.toBeInTheDocument();
   });
 
   it('should not render CustomPropertyTable when no custom properties', () => {

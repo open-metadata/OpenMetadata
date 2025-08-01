@@ -15,16 +15,17 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { PagingResponse } from 'Models';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 
 export type SelectOption = {
   label: string;
   value: string;
-  data?: Tag | GlossaryTerm;
+  data?: Tag | GlossaryTerm | TagLabel;
 };
 
 export interface AsyncSelectListProps {
   mode?: 'multiple';
+  newLook?: boolean;
   optionClassName?: string;
   placeholder?: string;
   debounceTimeout?: number;

@@ -21,6 +21,11 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -30,11 +35,6 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
@@ -97,8 +97,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owners,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
@@ -122,7 +123,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());
     Entity.withHref(uriInfo, entity.getChildren());
-    Entity.withHref(uriInfo, entity.getDomain());
+    Entity.withHref(uriInfo, entity.getDomains());
     Entity.withHref(uriInfo, entity.getDataProducts());
     return entity;
   }
@@ -387,6 +388,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       JsonPatch patch,
       ChangeSource changeSource) {
+    // Get If-Match header from ThreadLocal set by ETagRequestFilter
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
@@ -394,7 +408,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(
-            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeSource);
+            uriInfo,
+            id,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            changeSource,
+            ifMatchHeader);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -424,6 +443,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String fqn,
       JsonPatch patch,
       ChangeSource changeSource) {
+    // Get If-Match header from ThreadLocal set by ETagRequestFilter
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
@@ -431,7 +463,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(
-            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeSource);
+            uriInfo,
+            fqn,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            changeSource,
+            ifMatchHeader);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -519,7 +556,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+        repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(
@@ -663,10 +700,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     String jobId = UUID.randomUUID().toString();
+    CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
+    Response response =
+        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
           try {
+            WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
                 importCsvInternal(securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
@@ -677,8 +718,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, e.getMessage());
           }
         });
-    CSVImportResponse response = new CSVImportResponse(jobId, "Import is in progress.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+
+    return response;
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
@@ -755,7 +796,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owners,followers,votes,tags,extension,domain,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

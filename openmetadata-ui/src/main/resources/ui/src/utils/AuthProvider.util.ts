@@ -61,18 +61,11 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const {
-    authority,
-    clientId,
-    callbackUrl,
-    responseType = 'id_token',
-    scope,
-  } = authClient;
+  const { authority, clientId, callbackUrl, scope } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -296,26 +289,6 @@ export const getNameFromUserData = (
   return { name: userName, email: email, picture: user.picture };
 };
 
-export const isProtectedRoute = (pathname: string) => {
-  return (
-    [
-      ROUTES.SIGNUP,
-      ROUTES.SIGNIN,
-      ROUTES.FORGOT_PASSWORD,
-      ROUTES.CALLBACK,
-      ROUTES.SILENT_CALLBACK,
-      ROUTES.SAML_CALLBACK,
-      ROUTES.REGISTER,
-      ROUTES.RESET_PASSWORD,
-      ROUTES.ACCOUNT_ACTIVATION,
-      ROUTES.HOME,
-      ROUTES.AUTH_CALLBACK,
-      ROUTES.NOT_FOUND,
-      ROUTES.LOGOUT,
-    ].indexOf(pathname) === -1
-  );
-};
-
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
 };
@@ -439,4 +412,25 @@ export const parseMSALResponse = (response: AuthenticationResult): OidcUser => {
   setOidcToken(idToken);
 
   return user;
+};
+
+export const requiredAuthFields = [
+  'authority',
+  'clientId',
+  'callbackUrl',
+  'provider',
+];
+
+export const validateAuthFields = (
+  configJson: AuthenticationConfigurationWithScope,
+  t: (key: string, options?: any) => string
+) => {
+  requiredAuthFields.forEach((field) => {
+    const value =
+      configJson[field as keyof AuthenticationConfigurationWithScope];
+    if (isEmpty(value)) {
+      // eslint-disable-next-line no-console
+      console.warn(t('message.missing-config-value', { field }));
+    }
+  });
 };

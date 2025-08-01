@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
@@ -28,30 +28,30 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -125,13 +125,13 @@ public class LineageResource {
           String id,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("upstreamDepth")
           int upstreamDepth,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
@@ -171,13 +171,13 @@ public class LineageResource {
           String fqn,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("upstreamDepth")
           int upstreamDepth,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(3)
           @QueryParam("downstreamDepth")
           int downStreamDepth) {
@@ -743,7 +743,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getDomain() {
+    public List<EntityReference> getDomains() {
       return null;
     }
   }

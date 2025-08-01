@@ -1,0 +1,93 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../styles/variables.less';
+
+.certification-value {
+  min-width: 80%;
+
+  .certification-tag-with-name {
+    width: fit-content;
+    color: @grey-700;
+  }
+}
+
+.certification-card-popover {
+  max-width: 350px !important;
+
+  .ant-popover-inner-content {
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .certification-card {
+    .ant-card-head {
+      padding: 0px;
+      width: 100%;
+      border: none;
+    }
+
+    .ant-card-body {
+      padding: 0px;
+
+      .ant-radio-group {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        .ant-collapse-item {
+          width: 100%;
+          border: 1px solid @grey-200;
+          border-radius: 12px;
+          padding: 16px;
+        }
+      }
+
+      .certification-radio-top-right {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+      }
+
+      .certification-card-item {
+        position: relative;
+        padding: 16px 16px 16px 12px;
+        border: 1px solid @grey-200;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+      }
+
+      .certification-card-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+
+        img {
+          width: 40px;
+          height: 40px;
+          object-fit: contain;
+          flex-shrink: 0;
+        }
+      }
+    }
+
+    .ant-card-head-title {
+      padding: 0px;
+    }
+  }
+
+  .certification-icon {
+    padding: 6px;
+  }
+}

@@ -11,12 +11,25 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import { Input } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { FC, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
+import { CertificationInputType } from '../../../../../enums/PasswordWidget.enum';
 import FileUploadWidget from './FileUploadWidget';
+import './password-widget.less';
 
 const PasswordWidget: FC<WidgetProps> = (props) => {
+  const { t } = useTranslation();
+  const [inputType, setInputType] = useState<CertificationInputType>(
+    props.schema.uiFieldType === 'fileOrInput'
+      ? CertificationInputType.FILE_UPLOAD
+      : CertificationInputType.FILE_PATH
+  );
+
+  const isInputTypeFile = props.schema.uiFieldType === 'file';
+  const isInputTypeFileOrInput = props.schema.uiFieldType === 'fileOrInput';
+
   const passwordWidgetValue = useMemo(() => {
     if (ALL_ASTERISKS_REGEX.test(props.value)) {
       return undefined; // Do not show the password if it is masked
@@ -25,29 +38,72 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
     }
   }, [props.value]);
 
-  if (props.schema.uiFieldType === 'file') {
+  const getPasswordInput = useCallback(
+    (disabled?: boolean) => (
+      <Input.Password
+        autoComplete="off"
+        autoFocus={props.autofocus}
+        data-testid={`password-input-widget-${props.id}`}
+        disabled={disabled || props.disabled}
+        id={props.id}
+        name={props.name}
+        placeholder={props.placeholder}
+        readOnly={props.readonly}
+        required={props.required}
+        value={passwordWidgetValue}
+        onBlur={() => props.onBlur(props.id, props.value)}
+        onChange={(e) => props.onChange(e.target.value)}
+        onFocus={() => props.onFocus(props.id, props.value)}
+      />
+    ),
+    [props]
+  );
+
+  const onRadioChange = (e: RadioChangeEvent) => {
+    setInputType(e.target.value);
+  };
+
+  if (isInputTypeFile) {
     return <FileUploadWidget {...props} />;
   }
 
-  const { onFocus, onBlur, onChange, ...rest } = props;
+  if (isInputTypeFileOrInput) {
+    return (
+      <Radio.Group
+        className="password-widget"
+        data-testid={`password-input-radio-group-${props.id}`}
+        value={inputType}
+        onChange={onRadioChange}>
+        <Row>
+          <Col span={8}>
+            <Radio
+              className="widget-radio-option"
+              data-testid={`radio-${CertificationInputType.FILE_UPLOAD}`}
+              value={CertificationInputType.FILE_UPLOAD}>
+              <Typography.Text>{t('message.upload-file')}</Typography.Text>
+              <FileUploadWidget
+                {...props}
+                disabled={inputType === CertificationInputType.FILE_PATH}
+              />
+            </Radio>
+          </Col>
+          <Col span={16}>
+            <Radio
+              className="widget-radio-option"
+              data-testid={`radio-${CertificationInputType.FILE_PATH}`}
+              value={CertificationInputType.FILE_PATH}>
+              <Typography.Text>{t('label.enter-file-content')}</Typography.Text>
+              {getPasswordInput(
+                inputType === CertificationInputType.FILE_UPLOAD
+              )}
+            </Radio>
+          </Col>
+        </Row>
+      </Radio.Group>
+    );
+  }
 
-  return (
-    <Input.Password
-      autoComplete="off"
-      autoFocus={rest.autofocus}
-      data-testid="password-input-widget"
-      disabled={rest.disabled}
-      id={rest.id}
-      name={rest.name}
-      placeholder={rest.placeholder}
-      readOnly={rest.readonly}
-      required={rest.required}
-      value={passwordWidgetValue}
-      onBlur={() => onBlur(rest.id, rest.value)}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={() => onFocus(rest.id, rest.value)}
-    />
-  );
+  return getPasswordInput();
 };
 
 export default PasswordWidget;

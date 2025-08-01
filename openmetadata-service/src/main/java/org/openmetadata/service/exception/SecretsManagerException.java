@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class SecretsManagerException extends WebServiceException {
@@ -28,6 +28,10 @@ public class SecretsManagerException extends WebServiceException {
 
   public SecretsManagerException(Response.Status status, String message) {
     super(status.getStatusCode(), SECRETS_MANAGER_ERROR, message);
+  }
+
+  public SecretsManagerException(String message, Throwable cause) {
+    super(Response.Status.INTERNAL_SERVER_ERROR, SECRETS_MANAGER_ERROR, message, cause);
   }
 
   public static SecretsManagerException byMessage(

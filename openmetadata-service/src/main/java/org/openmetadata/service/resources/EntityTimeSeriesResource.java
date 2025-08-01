@@ -1,9 +1,9 @@
 package org.openmetadata.service.resources;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.List;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.service.Entity;

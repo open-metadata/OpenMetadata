@@ -53,10 +53,10 @@ export interface Tag {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Unique name of the tag of format `Classification.tag1.tag2`.
      */
@@ -68,7 +68,7 @@ export interface Tag {
     /**
      * Unique identifier of this entity instance.
      */
-    id?: string;
+    id: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -86,6 +86,10 @@ export interface Tag {
      * Name of the tag.
      */
     name: string;
+    /**
+     * Owners of this glossary term.
+     */
+    owners?: EntityReference[];
     /**
      * Reference to the parent tag. When null, the term is at the root of the Classification.
      */
@@ -191,9 +195,6 @@ export interface FieldChange {
  *
  * Reference to the classification that this tag is part of.
  *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
- *
  * Reference to the parent tag. When null, the term is at the root of the Classification.
  */
 export interface EntityReference {
@@ -242,9 +243,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }

@@ -27,6 +27,7 @@ server:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
+      maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
@@ -224,6 +225,7 @@ authenticationConfiguration:
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
     prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -372,7 +374,7 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp", "kubernetes"
   prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
   tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
@@ -388,6 +390,10 @@ secretsManagerConfiguration:
     vaultName: ${OM_SM_VAULT_NAME:-""}
     ## For GCP
     projectId: ${OM_SM_PROJECT_ID:-""}
+    ## For Kubernetes
+    namespace: ${OM_SM_NAMESPACE:-"default"}
+    kubeconfigPath: ${OM_SM_KUBECONFIG_PATH:-""}
+    inCluster: ${OM_SM_IN_CLUSTER:-"false"}
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -439,10 +445,6 @@ web:
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
   operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-
-mcpConfiguration:
-  enabled: ${MCP_ENABLED:-true}
-  path: ${MCP_PATH:-"/mcp"}
-  mcpServerVersion: ${MCP_SERVER_VERSION:-"1.0.0"}  
+    
     
   

@@ -1,5 +1,6 @@
 ---
-title: Databricks Pipeline
+title: Databricks Pipeline | OpenMetadata Integration Guide
+description: Configure metadata ingestion from Databricks pipelines for job flows, dependencies, and structured datasets.
 slug: /connectors/pipeline/databricks-pipeline
 ---
 

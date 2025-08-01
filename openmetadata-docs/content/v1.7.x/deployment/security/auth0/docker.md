@@ -1,5 +1,6 @@
 ---
-title: Auth0 SSO for Docker
+title: Azure SSO | OpenMetadata Security Integration
+description: Configure Auth0 inside Docker containers to manage secure user logins with backend token validation and low-latency identity workflows.
 slug: /deployment/security/auth0/docker
 collate: false
 ---

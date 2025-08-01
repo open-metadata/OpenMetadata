@@ -12,7 +12,7 @@
  */
 import { Button, Modal, Tooltip } from 'antd';
 import { isNil } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -73,7 +73,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         .map((user) => (user as PromiseFulfilledResult<User>).value);
 
       setAdditionalUsersDetails(filteredUser);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsDetailsLoading(false);
@@ -131,8 +131,11 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
           emptyText: (
             <ErrorPlaceHolder
               permission
-              className="p-y-md"
+              className="p-y-md border-none"
               heading={t('label.user')}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.user'),
+              })}
               type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
             />
           ),

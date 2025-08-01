@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,
@@ -34,6 +35,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -64,7 +66,7 @@ const DataProductsTab = forwardRef(
           '',
           1,
           PAGE_SIZE_LARGE,
-          `(domain.fullyQualifiedName:"${encodedFqn}")`,
+          `(domains.fullyQualifiedName:"${encodedFqn}")`,
           '',
           '',
           SearchIndex.DATA_PRODUCT
@@ -78,7 +80,8 @@ const DataProductsTab = forwardRef(
         if (data.length > 0) {
           setSelectedCard(data[0]);
         }
-      } catch {
+      } catch (err) {
+        showErrorToast(err as AxiosError);
         setDataProducts({
           data: [],
           paging: { total: 0 },
@@ -111,6 +114,9 @@ const DataProductsTab = forwardRef(
         <ErrorPlaceHolder
           heading={t('label.data-product')}
           permission={permissions.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.data-product'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={onAddDataProduct}
         />

@@ -1,0 +1,25 @@
+{
+  "name": "McpApplication",
+  "displayName": "MCP Server",
+  "description": "MCP Server for OpenMetadata.",
+  "features": "Sets up a embedded server for MCP (Metadata Collection Protocol) to interact with OpenMetadata via SSE/Streamable-Http transport.",
+  "appType": "internal",
+  "appScreenshots": ["McpApplication.png"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "NoSchedule",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.mcp.McpApplication",
+  "runtime": {
+    "enabled": true
+  },
+  "supportsInterrupt": true,
+  "appConfiguration": {
+    "originValidationEnabled": false,
+    "originHeaderUri": "http://localhost"
+  }
+}
+
+

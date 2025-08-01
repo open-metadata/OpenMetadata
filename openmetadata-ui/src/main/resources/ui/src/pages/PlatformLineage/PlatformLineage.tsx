@@ -14,9 +14,9 @@ import { Col, Row, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
@@ -35,24 +35,24 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineageUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
   const platformView =
     queryParams.get('platformView') ?? LineagePlatformView.Service;
-  const { entityType } = useParams<{ entityType: EntityType }>();
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [loading, setLoading] = useState(false);
@@ -65,13 +65,13 @@ const PlatformLineage = () => {
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
-      history.push(
-        `/lineage/${(value as SourceType).entityType}/${
-          value.fullyQualifiedName
-        }`
+      navigate(
+        `/lineage/${(value as SourceType).entityType}/${getEncodedFqn(
+          value.fullyQualifiedName ?? ''
+        )}`
       );
     },
-    [history]
+    [navigate]
   );
   const debouncedSearch = useCallback(
     debounce(async (value: string) => {
@@ -88,6 +88,7 @@ const PlatformLineage = () => {
           searchIndex: searchIndices,
           pageSize: PAGE_SIZE_BASE,
           queryFilter: getLineageEntityExclusionFilter(),
+          includeDeleted: false,
         });
 
         setOptions(

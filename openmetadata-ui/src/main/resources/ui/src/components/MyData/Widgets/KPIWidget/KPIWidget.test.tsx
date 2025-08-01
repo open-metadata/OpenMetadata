@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
-import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { MOCK_KPI_LIST_RESPONSE } from '../../../../pages/KPIPage/KPIMock.mock';
 import { getListKPIs } from '../../../../rest/KpiAPI';
 import KPIWidget from './KPIWidget.component';
@@ -22,10 +20,15 @@ jest.mock('../../../../constants/DataInsight.constants', () => ({
   DATA_INSIGHT_GRAPH_COLORS: ['#E7B85D'],
 }));
 
-jest.mock('../../../../constants/constants', () => ({
-  CHART_WIDGET_DAYS_DURATION: 14,
-  GRAPH_BACKGROUND_COLOR: '#000000',
-}));
+jest.mock('../../../../constants/constants', () => {
+  const actualConstants = jest.requireActual('../../../../constants/constants');
+
+  return {
+    ...actualConstants,
+    CHART_WIDGET_DAYS_DURATION: 14,
+    GRAPH_BACKGROUND_COLOR: '#000000',
+  };
+});
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   customFormatDateTime: jest.fn().mockReturnValue('Dec 05, 11:54'),
@@ -83,30 +86,41 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<p>ErrorPlaceHolder.Component</p>)
 );
 
+jest.mock('./KPILegend/KPILegend', () =>
+  jest.fn().mockReturnValue(<p>KPILegend.Component</p>)
+);
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
 const mockHandleRemoveWidget = jest.fn();
+const mockHandleLayoutUpdate = jest.fn();
 
 const widgetProps = {
-  selectedGridSize: WidgetWidths.medium,
   isEditView: true,
   widgetKey: 'testWidgetKey',
   handleRemoveWidget: mockHandleRemoveWidget,
+  handleLayoutUpdate: mockHandleLayoutUpdate,
 };
 
 describe('KPIWidget', () => {
+  it('renders widget with header', async () => {
+    render(<KPIWidget {...widgetProps} />);
+
+    expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
+  });
+
+  it('renders widget wrapper', async () => {
+    render(<KPIWidget {...widgetProps} />);
+
+    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+  });
+
   it('should fetch kpi list api initially', async () => {
     render(<KPIWidget {...widgetProps} />);
 
     expect(getListKPIs).toHaveBeenCalledWith({ fields: 'dataInsightChart' });
-  });
-
-  it('should handle close click when in edit view', async () => {
-    await act(async () => {
-      render(<KPIWidget {...widgetProps} />);
-    });
-
-    fireEvent.click(screen.getByTestId('remove-widget-button'));
-
-    expect(mockHandleRemoveWidget).toHaveBeenCalledWith(widgetProps.widgetKey);
   });
 
   it('should render charts and data if present', async () => {
@@ -114,23 +128,8 @@ describe('KPIWidget', () => {
       render(<KPIWidget {...widgetProps} />);
     });
 
-    expect(screen.getByText('label.kpi-title')).toBeInTheDocument();
-    expect(
-      screen.getByText('KPILatestResultsV1.Component')
-    ).toBeInTheDocument();
-  });
-
-  it('should not render data if selectedGridSize is small', async () => {
-    await act(async () => {
-      render(
-        <KPIWidget {...widgetProps} selectedGridSize={WidgetWidths.small} />
-      );
-    });
-
-    expect(screen.getByText('label.kpi-title')).toBeInTheDocument();
-    expect(
-      screen.queryByText('KPILatestResultsV1.Component')
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('label.kpi')).toBeInTheDocument();
+    expect(screen.getByText('KPILegend.Component')).toBeInTheDocument();
   });
 
   it('should render ErrorPlaceholder if no data there', async () => {

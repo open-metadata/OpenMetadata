@@ -28,9 +28,9 @@ export interface CreatePipelineService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Pipeline Service belongs to.
+     * Fully qualified names of the domains the Pipeline Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
@@ -69,6 +69,8 @@ export interface PipelineConnection {
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
+ *
+ * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -147,7 +149,11 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
-    awsConfig?:          AWSCredentials;
+    /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
+    awsConfig?:         AWSCredentials;
     /**
      * Airbyte API version.
      */
@@ -231,6 +237,10 @@ export interface ConfigClass {
      */
     sourcePythonClass?:   string;
     connectionArguments?: { [key: string]: any };
+    /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
     /**
      * Databricks compute resources URL.
      */
@@ -511,6 +521,10 @@ export interface MetadataDatabaseConnection {
      */
     username?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
     classificationName?: string;
@@ -568,6 +582,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -842,6 +858,37 @@ export interface NifiCredentialsConfiguration {
 }
 
 /**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
+}
+
+/**
  * SASL Configuration details.
  *
  * SASL client configuration.
@@ -910,6 +957,7 @@ export enum PipelineServiceType {
     OpenLineage = "OpenLineage",
     Spark = "Spark",
     Spline = "Spline",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Wherescape = "Wherescape",
 }

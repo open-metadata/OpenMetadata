@@ -14,7 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -31,19 +30,26 @@ const CreateErrorPlaceHolder = ({
   doc,
   buttonId,
   placeholderText,
+  permissionValue,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
 
   if (!permission) {
-    return <PermissionErrorPlaceholder className={className} size={size} />;
+    return (
+      <PermissionErrorPlaceholder
+        className={className}
+        permissionValue={permissionValue}
+        size={size}
+      />
+    );
   }
 
   return (
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm'
+        'h-full flex-center border-default border-radius-sm bg-white w-full'
       )}
       data-testid={`create-error-placeholder-${heading}`}>
       <Space align="center" className="w-full" direction="vertical" size={10}>

@@ -32,9 +32,9 @@ export interface CreateAppRequest {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Application belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Name of the Application.
      */
@@ -62,7 +62,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",

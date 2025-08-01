@@ -18,7 +18,10 @@ import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -32,6 +35,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -41,7 +45,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
@@ -54,6 +58,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
   }
 
   @Override
@@ -156,19 +163,51 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+    setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
-    if (dashboardDataModel.getService() == null) {
-      dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
+  }
+
+  private void setDefaultFields(DashboardDataModel dashboardDataModel) {
+    EntityReference service = getContainer(dashboardDataModel.getId());
+    dashboardDataModel.withService(service);
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetColumnTags(List<DashboardDataModel> dataModels, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || dataModels == null || dataModels.isEmpty()) {
+      return;
     }
+    // Use bulk tag fetching to avoid N+1 queries
+    bulkPopulateEntityFieldTags(
+        dataModels,
+        entityType,
+        DashboardDataModel::getColumns,
+        DashboardDataModel::getFullyQualifiedName);
   }
 
   @Override
-  public void clearFields(DashboardDataModel dashboardDataModel, Fields fields) {
-    /* Nothing to do */
+  public void clearFields(DashboardDataModel dashboardDataModel, Fields fields) {}
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<DashboardDataModel> dataModels) {
+    if (dataModels.isEmpty()) {
+      return;
+    }
+
+    // Set default fields (service) for all data models
+    for (DashboardDataModel dataModel : dataModels) {
+      setDefaultFields(dataModel);
+    }
+
+    fetchAndSetFields(dataModels, fields);
+    setInheritedFields(dataModels, fields);
+
+    // Bulk fetch tags for columns if needed
+    fetchAndSetColumnTags(dataModels, fields);
   }
 
   @Override
@@ -187,6 +226,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, ALL);
   }
 
@@ -220,5 +262,123 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("sql", original.getSql(), updated.getSql());
     }
+  }
+
+  public ResultList<Column> getDataModelColumns(
+      UUID dataModelId, int limit, int offset, String fieldsParam, Include include) {
+    DashboardDataModel dataModel = find(dataModelId, include);
+    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam);
+  }
+
+  public ResultList<Column> getDataModelColumnsByFQN(
+      String fqn, int limit, int offset, String fieldsParam, Include include) {
+    DashboardDataModel dataModel = findByName(fqn, include);
+    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam);
+  }
+
+  private ResultList<Column> getDataModelColumnsInternal(
+      DashboardDataModel dataModel, int limit, int offset, String fieldsParam) {
+    // For paginated column access, we need to load the data model with columns
+    // but we'll optimize the field loading to only process what we need
+    DashboardDataModel fullDataModel =
+        get(null, dataModel.getId(), getFields(Set.of("columns")), Include.NON_DELETED, false);
+
+    List<Column> allColumns = fullDataModel.getColumns();
+    if (allColumns == null || allColumns.isEmpty()) {
+      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+    }
+
+    // Apply pagination
+    int total = allColumns.size();
+    int fromIndex = Math.min(offset, total);
+    int toIndex = Math.min(offset + limit, total);
+
+    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
+
+    // Apply field processing if needed
+    if (fieldsParam != null && fieldsParam.contains("tags")) {
+      populateEntityFieldTags(
+          entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
+    }
+
+    // Calculate pagination metadata
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = toIndex < total ? String.valueOf(toIndex) : null;
+
+    return new ResultList<>(paginatedColumns, before, after, total);
+  }
+
+  public ResultList<Column> searchDataModelColumnsById(
+      UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
+    DashboardDataModel dataModel = get(null, id, getFields(fieldsParam), include, false);
+    return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
+  }
+
+  public ResultList<Column> searchDataModelColumnsByFQN(
+      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+    DashboardDataModel dataModel = getByName(null, fqn, getFields(fieldsParam), include, false);
+    return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
+  }
+
+  private ResultList<Column> searchDataModelColumnsInternal(
+      DashboardDataModel dataModel, String query, int limit, int offset, String fieldsParam) {
+    List<Column> allColumns = dataModel.getColumns();
+    if (allColumns == null || allColumns.isEmpty()) {
+      return new ResultList<>(List.of(), null, null, 0);
+    }
+
+    // Flatten nested columns for search
+    List<Column> flattenedColumns = flattenColumns(allColumns);
+
+    List<Column> matchingColumns;
+    if (query == null || query.trim().isEmpty()) {
+      matchingColumns = flattenedColumns;
+    } else {
+      String searchTerm = query.toLowerCase().trim();
+      matchingColumns =
+          flattenedColumns.stream()
+              .filter(
+                  column -> {
+                    if (column.getName() != null
+                        && column.getName().toLowerCase().contains(searchTerm)) {
+                      return true;
+                    }
+                    if (column.getDisplayName() != null
+                        && column.getDisplayName().toLowerCase().contains(searchTerm)) {
+                      return true;
+                    }
+                    return column.getDescription() != null
+                        && column.getDescription().toLowerCase().contains(searchTerm);
+                  })
+              .toList();
+    }
+
+    int total = matchingColumns.size();
+    int startIndex = Math.min(offset, total);
+    int endIndex = Math.min(offset + limit, total);
+
+    List<Column> paginatedResults =
+        startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
+
+    Fields fields = getFields(fieldsParam);
+    if (fields.contains("tags") || fields.contains("*")) {
+      populateEntityFieldTags(
+          entityType, paginatedResults, dataModel.getFullyQualifiedName(), true);
+    }
+
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = endIndex < total ? String.valueOf(endIndex) : null;
+    return new ResultList<>(paginatedResults, before, after, total);
+  }
+
+  private List<Column> flattenColumns(List<Column> columns) {
+    List<Column> flattened = new ArrayList<>();
+    for (Column column : columns) {
+      flattened.add(column);
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        flattened.addAll(flattenColumns(column.getChildren()));
+      }
+    }
+    return flattened;
   }
 }

@@ -12,11 +12,11 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -36,12 +36,13 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-page.less';
 
 const ServicesPage = () => {
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const queryParams = qs.parse(
@@ -125,9 +126,7 @@ const ServicesPage = () => {
                   ]
                 : []),
             ]}
-            onChange={(activeKey) =>
-              history.push({ search: `tab=${activeKey}` })
-            }
+            onChange={(activeKey) => navigate({ search: `tab=${activeKey}` })}
           />
         </Col>
       </Row>
@@ -137,6 +136,9 @@ const ServicesPage = () => {
       <Col span={24}>
         <ErrorPlaceHolder
           className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: startCase(serviceName),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </Col>

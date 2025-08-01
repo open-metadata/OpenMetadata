@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Form, Input, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import IconAuth0 from '../../assets/img/icon-auth0.png';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import AlertBar from '../../components/AlertBar/AlertBar';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
-import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
+import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
@@ -34,14 +35,14 @@ import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './login.style.less';
-import LoginCarousel from './LoginCarousel';
 
 const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const history = useHistory();
-  const { authConfig, onLoginHandler, isAuthenticated } = useApplicationStore();
+  const navigate = useNavigate();
+  const { authConfig, isAuthenticated } = useApplicationStore();
+  const { onLoginHandler } = useAuthProvider();
   const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();
@@ -63,7 +64,7 @@ const SignInPage = () => {
     onLoginHandler && onLoginHandler();
   };
 
-  const getSignInButton = (): JSX.Element => {
+  const signInButton = useMemo(() => {
     let ssoBrandLogo;
     let ssoBrandName;
     switch (authConfig?.provider) {
@@ -129,13 +130,13 @@ const SignInPage = () => {
         onClick={handleSignIn}
       />
     );
-  };
+  }, [authConfig?.provider, handleSignIn]);
 
   useEffect(() => {
     // If the user is already logged in or if security is disabled
     // redirect the user to the home page.
     if (isAuthenticated) {
-      history.push(ROUTES.HOME);
+      navigate(ROUTES.HOME);
     }
   }, [isAuthenticated]);
 
@@ -156,138 +157,132 @@ const SignInPage = () => {
   };
 
   const onClickSignUp = () => {
-    history.push(ROUTES.REGISTER);
+    navigate(ROUTES.REGISTER);
     resetAlert();
   };
 
   const onClickForgotPassword = () => {
-    history.push(ROUTES.FORGOT_PASSWORD);
+    navigate(ROUTES.FORGOT_PASSWORD);
     resetAlert();
   };
 
   return (
-    <>
-      <DocumentTitle title={t('label.sign-in')} />
-      <Row className="login-form-container" data-testid="signin-page">
-        <Col span={10}>
-          <div
-            className={classNames('form-item', {
-              'sso-container': !isAuthProviderBasic,
-            })}>
-            <BrandImage isMonoGram height="auto" width={50} />
-            <Typography.Title className="header-text" level={3}>
-              {t('label.welcome-to')} {brandName}
-            </Typography.Title>
-            {alert && (
-              <div className="login-alert">
-                <AlertBar
-                  defafultExpand
-                  message={alert?.message}
-                  type={alert?.type}
-                />
-              </div>
-            )}
+    <CarouselLayout pageTitle={t('label.sign-in')}>
+      <div className="login-form-container" data-testid="login-form-container">
+        <div
+          className={classNames('login-box', {
+            'sso-container': !isAuthProviderBasic,
+          })}>
+          <BrandImage isMonoGram height="auto" width={50} />
+          <Typography.Title className="header-text display-sm" level={3}>
+            {t('label.welcome-to')} {brandName}
+          </Typography.Title>
+          {alert && (
+            <div className="login-alert">
+              <AlertBar
+                defafultExpand
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </div>
+          )}
 
-            {isAuthProviderBasic ? (
-              <div className="login-form ">
-                <Form
-                  className="w-full"
-                  form={form}
-                  layout="vertical"
-                  validateMessages={VALIDATION_MESSAGES}
-                  onFinish={handleSubmit}>
-                  <Form.Item
-                    data-testid="email"
-                    label={t('label.email')}
-                    name="email"
-                    requiredMark={false}
-                    rules={[
-                      { required: true },
-                      {
-                        pattern: EMAIL_REG_EX,
-                        type: 'email',
-                        message: t('message.field-text-is-invalid', {
-                          fieldText: t('label.email'),
-                        }),
-                      },
-                    ]}>
-                    <Input
-                      autoFocus
-                      className="input-field"
-                      placeholder={t('label.email')}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    data-testid="password"
-                    label={
-                      <div className="label-flex">
-                        <Typography.Text className="mr-1">
-                          {t('label.password')}
-                        </Typography.Text>
-                        <Typography.Link
-                          className="forgot-password-link"
-                          data-testid="forgot-password"
-                          onClick={onClickForgotPassword}>
-                          {t('label.forgot-password')}
-                        </Typography.Link>
-                      </div>
-                    }
-                    name="password"
-                    requiredMark={false}
-                    rules={[{ required: true }]}>
-                    <Input.Password
-                      autoComplete="off"
-                      className="input-field"
-                      placeholder={t('label.password')}
-                    />
-                  </Form.Item>
+          {isAuthProviderBasic ? (
+            <div className="login-form ">
+              <Form
+                className="w-full"
+                form={form}
+                layout="vertical"
+                validateMessages={VALIDATION_MESSAGES}
+                onFinish={handleSubmit}>
+                <Form.Item
+                  data-testid="email"
+                  label={t('label.email')}
+                  name="email"
+                  rules={[
+                    { required: true },
+                    {
+                      pattern: EMAIL_REG_EX,
+                      type: 'email',
+                      message: t('message.field-text-is-invalid', {
+                        fieldText: t('label.email'),
+                      }),
+                    },
+                  ]}>
+                  <Input
+                    autoFocus
+                    className="input-field"
+                    placeholder={t('label.email')}
+                  />
+                </Form.Item>
+                <Form.Item
+                  data-testid="password"
+                  label={
+                    <>
+                      <Typography.Text className="mr-1">
+                        {t('label.password')}
+                      </Typography.Text>
+                      <Typography.Link
+                        className="forgot-password-link"
+                        data-testid="forgot-password"
+                        onClick={onClickForgotPassword}>
+                        {t('label.forgot-password')}
+                      </Typography.Link>
+                    </>
+                  }
+                  name="password"
+                  rules={[{ required: true }]}>
+                  <Input.Password
+                    autoComplete="off"
+                    className="input-field"
+                    placeholder={t('label.password')}
+                  />
+                </Form.Item>
 
-                  <Button
-                    className="w-full p-y-lg d-flex flex-center login-btn"
-                    data-testid="login"
-                    disabled={loading}
-                    htmlType="submit"
-                    loading={loading}
-                    type="primary">
-                    {t('label.login')}
-                  </Button>
-                </Form>
-                {!isAuthProviderLDAP && (
-                  <>
-                    {authConfig?.enableSelfSignup && (
-                      <div className="mt-4 d-flex flex-center signup-text">
-                        <Typography.Text>
-                          {t('message.new-to-the-platform')}
-                        </Typography.Text>
-                        <Button
-                          className="link-btn"
-                          data-testid="signup"
-                          type="link"
-                          onClick={onClickSignUp}>
-                          {t('label.create-entity', {
-                            entity: t('label.account'),
-                          })}
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="m-t-md">
-                <Typography.Text className="text-xl text-grey-muted m-t-lg">
-                  {t('message.om-description')}
-                </Typography.Text>
-                <div className="sso-signup">{getSignInButton()}</div>
-              </div>
-            )}
-          </div>
-        </Col>
-        <Col className="form-carousel-container" span={14}>
-          <LoginCarousel />
-        </Col>
-      </Row>
-    </>
+                <Button
+                  block
+                  className="login-btn"
+                  data-testid="login"
+                  disabled={loading}
+                  htmlType="submit"
+                  loading={loading}
+                  size="large"
+                  type="primary">
+                  {t('label.sign-in')}
+                </Button>
+              </Form>
+              {!isAuthProviderLDAP && (
+                <>
+                  {authConfig?.enableSelfSignup && (
+                    <div className="mt-4 d-flex flex-center signup-text">
+                      <Typography.Text>
+                        {t('message.new-to-the-platform')}
+                      </Typography.Text>
+                      <Button
+                        className="link-btn"
+                        data-testid="signup"
+                        type="link"
+                        onClick={onClickSignUp}>
+                        {t('label.create-entity', {
+                          entity: t('label.account'),
+                        })}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className=" login-form">
+              <Typography.Text className="text-xl text-grey-muted m-t-lg">
+                {t('message.om-description')}
+              </Typography.Text>
+              <div className="sso-signup">{signInButton}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </CarouselLayout>
   );
 };
 

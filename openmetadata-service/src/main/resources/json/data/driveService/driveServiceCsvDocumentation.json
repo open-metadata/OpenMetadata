@@ -1,0 +1,69 @@
+{
+  "summary": "Drive Service CSV file is used for importing and exporting directory metadata from and to a drive service. The CSV file can be used to create new directories or update existing ones.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name of the directory.",
+      "examples": [
+        "Documents", "Shared Files"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the directory.",
+      "examples": [
+        "My Documents", "Team Shared Files"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the directory in Markdown format.",
+      "examples": [
+        "This directory contains all project documents"
+      ]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners of the directory. Multiple owners are separated by ';'. Each owner is specified as 'type:name' format.",
+      "examples": [
+        "user:john.doe", "team:data-team;user:jane.smith"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the directory separated by ';'.",
+      "examples": [
+        "PII.Sensitive", "PII.Sensitive;PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the directory separated by ';'.",
+      "examples": [
+        "Glossary.Finance", "Glossary.Finance;Glossary.Accounting"
+      ]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Fully qualified names of the domains the directory belongs to, separated by ';'.",
+      "examples": [
+        "Engineering", "Finance;Operations"
+      ]
+    },
+    {
+      "name": "extension",
+      "required": false,
+      "description": "Custom properties for the directory in JSON format.",
+      "examples": [
+        "{\"key1\":\"value1\",\"key2\":\"value2\"}"
+      ]
+    }
+  ]
+}

@@ -90,7 +90,7 @@ export interface ExploreProps {
   sortOrder: string;
   onChangeSortOder: (sortOder: SORT_ORDER) => void;
 
-  showDeleted: boolean;
+  showDeleted?: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
 
   onChangePage?: (page: number, size?: number) => void;

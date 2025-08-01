@@ -139,7 +139,7 @@ class ProfilerTest(TestCase):
         Check our pre-cooked profiler
         """
         simple = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
         )
         simple.compute_metrics()
 
@@ -297,7 +297,7 @@ class ProfilerTest(TestCase):
         )
 
         simple = DefaultProfiler(
-            profiler_interface=sqa_profiler_interface,
+            profiler_interface=sqa_profiler_interface, metrics_registry=Metrics
         )
 
         with pytest.raises(TimeoutError):
@@ -316,7 +316,7 @@ class ProfilerTest(TestCase):
         )  # type: ignore
 
         default_profiler = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
         )
 
         column_metrics = default_profiler._prepare_column_metrics()

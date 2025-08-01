@@ -1,5 +1,6 @@
 ---
 title: How to Deploy a Lineage Workflow
+description: Build data lineage using workflows to extract upstream and downstream dependencies.
 slug: /how-to-guides/data-lineage/workflow
 ---
 
@@ -19,10 +20,10 @@ If the database has views, then the view lineage would be generated automaticall
  caption="View Lineage through Metadata Ingestion"
  /%}
 
-## Lineage Ingestion from UI
-Apart from the Metadata ingestion, we can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Lineage Ingestion will be in charge of obtaining this data. The metadata ingestion will only bring in the View lineage queries, whereas the lineage ingestion workflow will be bring in all those queries that can be used to generate lineage information.
+## Lineage Agent from UI
+Apart from the Metadata ingestion, we can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. The Lineage Agent will be in charge of obtaining this data. The metadata ingestion will only bring in the View lineage queries, whereas the Lineage Agent workflow will be bring in all those queries that can be used to generate lineage information.
 
-### 1. Add a Lineage Ingestion
+### 1. Add a Lineage Agent
 
 Navigate to **Settings >> Services >> Databases**. Select the required service
  {% image
@@ -43,20 +44,20 @@ Navigate to **Settings >> Services >> Databases**. Select the required service
  caption="Select the Database"
  /%}
 
-Go the the **Ingestions** tab. Click on **Add Ingestion** and select **Add Lineage Ingestion**.
+Go the the **Agents** tab. Click on **Add Agent** and select **Add Lineage Agent**.
  {% image
  src="/images/v1.7/how-to-guides/lineage/wkf2.png"
- alt="Add a Lineage Ingestion"
- caption="Add a Lineage Ingestion"
+ alt="Add a Lineage Agent"
+ caption="Add a Lineage Agent"
  /%}
 
-### 2. Configure the Lineage Ingestion
+### 2. Configure the Lineage Agent
 
-Here you can enter the Lineage Ingestion details:
+Here you can enter the Lineage Agent details:
  {% image
  src="/images/v1.7/how-to-guides/lineage/wkf3.png"
- alt="Configure the Lineage Ingestion"
- caption="Configure the Lineage Ingestion"
+ alt="Configure the Lineage Agent"
+ caption="Configure the Lineage Agent"
  /%}
 
 ### Lineage Options
@@ -74,8 +75,8 @@ Here you can enter the Lineage Ingestion details:
 After clicking Next, you will be redirected to the Scheduling form. This will be the same as the Metadata Ingestion. Select your desired schedule and click on Deploy to find the lineage pipeline being added to the Service Ingestions.
  {% image
  src="/images/v1.7/how-to-guides/lineage/wkf4.png"
- alt="Schedule and Deploy the Lineage Ingestion"
- caption="Schedule and Deploy the Lineage Ingestion"
+ alt="Schedule and Deploy the Lineage Agent"
+ caption="Schedule and Deploy the Lineage Agent"
  /%}
 
 ## Run Lineage Workflow Externally

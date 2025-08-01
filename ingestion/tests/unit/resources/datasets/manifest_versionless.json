@@ -19540,7 +19540,162 @@
             "block_contents": "### Welcome!\n\nWelcome to the auto-generated documentation for your dbt project!\n\n### Navigation\n\nYou can use the `Project` and `Database` navigation tabs on the left side of the window to explore the models\nin your project.\n\n#### Project Tab\nThe `Project` tab mirrors the directory structure of your dbt project. In this tab, you can see all of the\nmodels defined in your dbt project, as well as models imported from dbt packages.\n\n#### Database Tab\nThe `Database` tab also exposes your models, but in a format that looks more like a database explorer. This view\nshows relations (tables and views) grouped into database schemas. Note that ephemeral models are _not_ shown\nin this interface, as they do not exist in the database.\n\n### Graph Exploration\nYou can click the blue icon on the bottom-right corner of the page to view the lineage graph of your models.\n\nOn model pages, you'll see the immediate parents and children of the model you're exploring. By clicking the `Expand`\nbutton at the top-right of this lineage pane, you'll be able to see all of the models that are used to build,\nor are built from, the model you're exploring.\n\nOnce expanded, you'll be able to use the `--select` and `--exclude` model selection syntax to filter the\nmodels in the graph. For more information on model selection, check out the [dbt docs](https://docs.getdbt.com/docs/model-selection-syntax).\n\nNote that you can also right-click on models to interactively filter and explore the graph.\n\n---\n\n### More information\n\n- [What is dbt](https://docs.getdbt.com/docs/introduction)?\n- Read the [dbt viewpoint](https://docs.getdbt.com/docs/viewpoint)\n- [Installation](https://docs.getdbt.com/docs/installation)\n- Join the [dbt Community](https://www.getdbt.com/community/) for questions and discussion"
         }
     },
-    "exposures": {},
+  "exposures": {
+    "exposure.dbt_tutorial.forecast_sales": {
+      "name": "forecast_sales",
+      "resource_type": "exposure",
+      "package_name": "dbt_tutorial",
+      "path": "warehouse/fact_sales.yml",
+      "original_file_path": "models/warehouse/fact_sales.yml",
+      "unique_id": "exposure.dbt_tutorial.forecast_sales",
+      "fqn": [
+        "dbt_tutorial",
+        "warehouse",
+        "forecast_sales"
+      ],
+      "type": "dashboard",
+      "owner": {
+        "email": "gorskimariusz13@gmail.com",
+        "name": "Mariusz G\u00f3rski"
+      },
+      "description": "Exemplary OM API Endpoint.\n",
+      "label": "asd",
+      "maturity": "high",
+      "meta": {
+        "open_metadata_fqn": "mlflow_svc.forecast_sales"
+      },
+      "tags": [],
+      "config": {
+        "enabled": true,
+        "tags": [],
+        "meta": {
+          "open_metadata_fqn": "mlflow_svc.forecast_sales"
+        }
+      },
+      "unrendered_config": {},
+      "url": "https://docs.open-metadata.org/api/v1/tables",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "model.dbt_tutorial.fact_sales",
+          "model.dbt_tutorial.dim_product"
+        ]
+      },
+      "refs": [
+        {
+          "name": "fact_sales",
+          "package": null,
+          "version": null
+        },
+        {
+          "name": "dim_product",
+          "package": null,
+          "version": null
+        }
+      ],
+      "sources": [],
+      "metrics": [],
+      "created_at": 1751007276.544977
+    },
+    "exposure.dbt_tutorial.create_table_endpoint": {
+      "name": "create_table_endpoint",
+      "resource_type": "exposure",
+      "package_name": "dbt_tutorial",
+      "path": "warehouse/fact_sales.yml",
+      "original_file_path": "models/warehouse/fact_sales.yml",
+      "unique_id": "exposure.dbt_tutorial.create_table_endpoint",
+      "fqn": [
+        "dbt_tutorial",
+        "warehouse",
+        "create_table_endpoint"
+      ],
+      "type": "application",
+      "owner": {
+        "email": "gorskimariusz13@gmail.com",
+        "name": "Mariusz G\u00f3rski"
+      },
+      "description": "Exemplary OM API Endpoint.\n",
+      "label": "asd",
+      "maturity": "high",
+      "meta": {
+        "open_metadata_fqn": "ometa_api_service.tables.createTable"
+      },
+      "tags": [],
+      "config": {
+        "enabled": true,
+        "tags": [],
+        "meta": {
+          "open_metadata_fqn": "ometa_api_service.tables.createTable"
+        }
+      },
+      "unrendered_config": {},
+      "url": "https://docs.open-metadata.org/api/v1/tables",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "model.dbt_tutorial.fact_sales"
+        ]
+      },
+      "refs": [
+        {
+          "name": "fact_sales",
+          "package": null,
+          "version": null
+        }
+      ],
+      "sources": [],
+      "metrics": [],
+      "created_at": 1751007276.5458581
+    },
+    "exposure.dbt_tutorial.looker_orders": {
+      "name": "looker_orders",
+      "resource_type": "exposure",
+      "package_name": "dbt_tutorial",
+      "path": "warehouse/fact_sales.yml",
+      "original_file_path": "models/warehouse/fact_sales.yml",
+      "unique_id": "exposure.dbt_tutorial.looker_orders",
+      "fqn": [
+        "dbt_tutorial",
+        "warehouse",
+        "looker_orders"
+      ],
+      "type": "dashboard",
+      "owner": {
+        "email": "gorskimariusz13@gmail.com",
+        "name": "Mariusz G\u00f3rski"
+      },
+      "description": "Exemplary OM Looker Dashboard.\n",
+      "label": "zxc",
+      "maturity": "high",
+      "meta": {
+          "open_metadata_fqn": "dummy"
+      },
+      "tags": [],
+      "config": {
+        "enabled": true,
+        "tags": [],
+        "meta": {}
+      },
+      "unrendered_config": {},
+      "url": "http://localhost:808/looker/dashboard/8/",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "model.dbt_tutorial.fact_sales"
+        ]
+      },
+      "refs": [
+        {
+          "name": "fact_sales",
+          "package": null,
+          "version": null
+        }
+      ],
+      "sources": [],
+      "metrics": [],
+      "created_at": 1751007451.077749
+    }
+  },
     "metrics": {},
     "groups": {},
     "selectors": {},

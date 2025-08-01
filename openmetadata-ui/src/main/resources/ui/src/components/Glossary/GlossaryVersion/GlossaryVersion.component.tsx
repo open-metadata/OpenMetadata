@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -31,6 +31,7 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -42,18 +43,19 @@ interface GlossaryVersionProps {
 }
 
 const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const {
     version,
     tab = 'overview',
     id,
-  } = useParams<{ version: string; tab: string; id: string }>();
+  } = useRequiredParams<{ version: string; tab: string; id: string }>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
   const { setActiveGlossary } = useGlossaryStore();
+  const { t } = useTranslation();
 
   const fetchVersionsInfo = async () => {
     try {
@@ -87,12 +89,12 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     const path = isGlossary
       ? getGlossaryVersionsPath(id, selectedVersion)
       : getGlossaryTermsVersionsPath(id, selectedVersion, tab);
-    history.push(path);
+    navigate(path);
   };
 
   const onBackHandler = () => {
     const path = getGlossaryPath(selectedData?.fullyQualifiedName);
-    history.push(path);
+    navigate(path);
   };
 
   useEffect(() => {

@@ -138,7 +138,7 @@ export const getAlertEventsFromId = async ({
   params,
 }: {
   id: string;
-  params?: { status?: TypedEventStatus; limit?: number };
+  params?: { status?: TypedEventStatus; limit?: number; paginationOffset?: number };
 }) => {
   const response = await axiosClient.get<PagingResponse<TypedEvent[]>>(
     `${BASE_URL}/id/${id}/listEvents`,

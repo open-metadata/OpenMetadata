@@ -1,5 +1,6 @@
 ---
 title: Run the Greenplum Connector Externally
+description: Use YAML to ingest Greenplum database metadata including profiling and schema lineage.
 slug: /connectors/database/greenplum/yaml
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/greenplum/yaml
 name="Greenplum"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "view Lineage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "view Lineage", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 

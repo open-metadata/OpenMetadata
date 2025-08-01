@@ -40,6 +40,9 @@ logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
 
+# Default maximum number of elements to extract from array columns to prevent OOM
+DEFAULT_MAX_ARRAY_ELEMENTS = 10
+
 
 def _object_value_for_elem(self, elem):
     """
@@ -71,6 +74,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         self._table = self.build_table_orm(
             self.entity, self.service_connection_config, self.ometa_client
         )
+        self.session_factory = create_and_bind_thread_safe_session(self.connection)
 
     @property
     def raw_dataset(self):
@@ -78,8 +82,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_client(self):
         """Build the SQA Client"""
-        session_factory = create_and_bind_thread_safe_session(self.connection)
-        return session_factory()
+        return self.session_factory()
 
     def set_tablesample(self, selectable: Table):
         """Set the tablesample for the table. To be implemented by the child SQA sampler class
@@ -87,6 +90,36 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             selectable (Table): a selectable table
         """
         return selectable
+
+    def _get_max_array_elements(self) -> int:
+        """Get the maximum number of array elements from config or use default"""
+        if (
+            self.sample_config
+            and hasattr(self.sample_config, "maxArrayElements")
+            and self.sample_config.maxArrayElements
+        ):
+            return self.sample_config.maxArrayElements
+        return DEFAULT_MAX_ARRAY_ELEMENTS
+
+    def _handle_array_column(self, column: Column) -> bool:
+        """Check if a column is an array type"""
+        # Implement this method in the child classes
+        return False
+
+    def _process_array_value(self, value):
+        """Process array values to convert numpy arrays to Python lists"""
+        import numpy as np  # pylint: disable=import-outside-toplevel
+
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        return value
+
+    def _get_slice_expression(self, column: Column):
+        """Generate SQL expression to slice array elements at query level
+        By default, we return the column as is.
+        Child classes can override this method to return a different expression.
+        """
+        return column
 
     def _base_sample_query(self, column: Optional[Column], label=None):
         """Base query for sampling
@@ -99,17 +132,17 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
         selectable = self.set_tablesample(self.raw_dataset.__table__)
-        client = self.get_client()
 
-        entity = selectable if column is None else selectable.c.get(column.key)
-        if label is not None:
-            query = client.query(entity, label)
-        else:
-            query = client.query(entity)
+        with self.session_factory() as client:
+            entity = selectable if column is None else selectable.c.get(column.key)
+            if label is not None:
+                query = client.query(entity, label)
+            else:
+                query = client.query(entity)
 
-        if self.partition_details:
-            query = self.get_partitioned_query(query)
-        return query
+            if self.partition_details:
+                query = self.get_partitioned_query(query)
+            return query
 
     def get_sampler_table_name(self) -> str:
         """Get the base name of the SQA table for sampling.
@@ -124,32 +157,34 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
-        client = self.get_client()
-        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
-            rnd = self._base_sample_query(
-                column,
-                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-            ).cte(f"{self.get_sampler_table_name()}_rnd")
-            session_query = client.query(rnd)
-            return session_query.where(
-                rnd.c.random <= self.sample_config.profileSample
-            ).cte(f"{self.get_sampler_table_name()}_sample")
+        with self.session_factory() as client:
+            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+                rnd = self._base_sample_query(
+                    column,
+                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+                ).cte(f"{self.get_sampler_table_name()}_rnd")
+                session_query = client.query(rnd)
+                return session_query.where(
+                    rnd.c.random <= self.sample_config.profileSample
+                ).cte(f"{self.get_sampler_table_name()}_sample")
 
-        table_query = client.query(self.raw_dataset)
-        session_query = self._base_sample_query(
-            column,
-            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
-            if self.sample_config.randomizedSample
-            else None,
-        )
-        query = (
-            session_query.order_by(RANDOM_LABEL)
-            if self.sample_config.randomizedSample
-            else session_query
-        )
-        return query.limit(self.sample_config.profileSample).cte(
-            f"{self.get_sampler_table_name()}_rnd"
-        )
+            table_query = client.query(self.raw_dataset)
+            if self.partition_details:
+                table_query = self.get_partitioned_query(table_query)
+            session_query = self._base_sample_query(
+                column,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+                if self.sample_config.randomizedSample
+                else None,
+            )
+            query = (
+                session_query.order_by(RANDOM_LABEL)
+                if self.sample_config.randomizedSample
+                else session_query
+            )
+            return query.limit(self.sample_config.profileSample).cte(
+                f"{self.get_sampler_table_name()}_rnd"
+            )
 
     def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
         """
@@ -197,17 +232,50 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
-        with self.get_client() as client:
+        with self.session_factory() as client:
+
+            # Handle array columns with special query modification
+            max_elements = self._get_max_array_elements()
+            select_columns = []
+            has_array_columns = False
+
+            for col in sqa_columns:
+                if self._handle_array_column(col):
+                    slice_expression = self._get_slice_expression(col)
+                    select_columns.append(slice_expression)
+                    logger.debug(
+                        f"Limiting array column {col.name} to {max_elements} elements to prevent OOM"
+                    )
+                    has_array_columns = True
+                else:
+                    select_columns.append(col)
+
+            # Create query with modified columns
             sqa_sample = (
-                client.query(*sqa_columns)
+                client.query(*select_columns)
                 .select_from(ds)
                 .limit(self.sample_limit)
                 .all()
             )
 
+        # Process array columns manually if we used text() expressions
+        processed_rows = []
+        if has_array_columns:
+            for row in sqa_sample:
+                processed_row = []
+                for i, col in enumerate(sqa_columns):
+                    value = row[i]
+                    if self._handle_array_column(col):
+                        processed_value = self._process_array_value(value)
+                        processed_row.append(processed_value)
+                    else:
+                        processed_row.append(value)
+                processed_rows.append(processed_row)
+        else:
+            processed_rows = [list(row) for row in sqa_sample]
         return TableData(
             columns=[column.name for column in sqa_columns],
-            rows=[list(row) for row in sqa_sample],
+            rows=processed_rows,
         )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
@@ -215,7 +283,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        with self.get_client() as client:
+        with self.session_factory() as client:
             rnd = client.execute(f"{self.sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
@@ -233,11 +301,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         stmt = text(f"{self.sample_query}")
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
-        return (
-            self.get_client()
-            .query(stmt.subquery())
-            .cte(f"{self.get_sampler_table_name()}_user_sampled")
-        )
+
+        with self.session_factory() as client:
+            return client.query(stmt.subquery()).cte(
+                f"{self.get_sampler_table_name()}_user_sampled"
+            )
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
@@ -254,7 +322,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         if query is not None:
             return query.filter(partition_filter)
-        return self.get_client().query(self.raw_dataset).filter(partition_filter)
+
+        with self.session_factory() as client:
+            return client.query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
@@ -262,5 +332,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def close(self):
         """Close the connection"""
-        self.get_client().close()
-        self.connection.pool.dispose()
+        try:
+            self.connection.pool.dispose()
+        except Exception as e:
+            logger.warning(f"Error disposing connection pool: {e}")
+
+    def __del__(self):
+        """Destructor to ensure cleanup when object is garbage collected"""
+        try:
+            self.close()
+        except Exception:
+            # Ignore errors during cleanup in destructor
+            pass

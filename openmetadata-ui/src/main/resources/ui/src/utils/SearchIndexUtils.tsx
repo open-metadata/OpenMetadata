@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -33,10 +31,11 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import SearchIndexFieldsTab from '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
+import { t } from './i18next/LocalUtil';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const makeData = (
   columns: SearchIndexField[] = []
@@ -110,7 +109,13 @@ export const getSearchIndexDetailsTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children: !viewSampleDataPermission ? (
         <div className="m-t-xlg">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          <ErrorPlaceHolder
+            className="border-none"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.sample-data'),
+            })}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
         </div>
       ) : (
         <SampleDataWithMessages
@@ -151,6 +156,7 @@ export const getSearchIndexDetailsTabs = ({
       key: EntityTabs.SEARCH_INDEX_SETTINGS,
       children: (
         <QueryViewer
+          isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
           sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
           title={t('label.search-index-setting-plural')}
         />

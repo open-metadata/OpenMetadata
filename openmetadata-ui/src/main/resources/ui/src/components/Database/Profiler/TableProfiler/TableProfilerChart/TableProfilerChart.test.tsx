@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -22,9 +21,10 @@ import TableProfilerChart from './TableProfilerChart';
 const mockFQN = 'testFQN';
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
-  useHistory: jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useParams: jest.fn().mockReturnValue({ fqn: mockFQN }),
 }));
+
 jest.mock('../../../../../rest/tableAPI');
 jest.mock('../../ProfilerLatestValue/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
@@ -70,14 +70,18 @@ jest.mock('../TableProfilerProvider', () => ({
     permissions: {
       EditAll: true,
       EditDataProfile: true,
+      ViewDataProfile: true,
+      ViewAll: true,
     },
     isTableDeleted: false,
   }),
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
-  getSystemProfileList: jest.fn(),
-  getTableProfilesList: jest.fn(),
+  getSystemProfileList: jest
+    .fn()
+    .mockResolvedValue({ data: [{ timestamp: Date.now() }] }),
+  getTableProfilesList: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
@@ -110,13 +114,43 @@ jest.mock('../../../../../utils/CommonUtils', () => ({
     .mockImplementation(({ i18nKey }) => <div>{i18nKey}</div>),
 }));
 
+jest.mock('../../../../../utils/TableProfilerUtils', () => ({
+  calculateSystemMetrics: jest.fn().mockReturnValue({
+    operationMetrics: { information: [], data: [] },
+    operationDateMetrics: { information: [], data: [] },
+  }),
+  calculateRowCountMetrics: jest
+    .fn()
+    .mockReturnValue({ information: [], data: [] }),
+  calculateCustomMetrics: jest
+    .fn()
+    .mockReturnValue({ customMetrics: [], tableCustomMetricsProfiling: [] }),
+}));
+
+jest.mock('../../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
+}));
+
+jest.mock('../../ProfilerStateWrapper/ProfilerStateWrapper.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(
+      ({ children, dataTestId, profilerLatestValueProps }) => (
+        <div data-testid={dataTestId}>
+          {profilerLatestValueProps && <div>ProfilerLatestValue</div>}
+          {children}
+        </div>
+      )
+    ),
+}));
+
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
-    act(() => {
-      render(<TableProfilerChart />);
-    });
+
+    render(<TableProfilerChart />);
 
     expect(
       await screen.findByTestId('table-profiler-chart-container')

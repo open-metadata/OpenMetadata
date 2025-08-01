@@ -131,3 +131,15 @@ ingestion/tests/cli_e2e/**/*test.yaml
 # Cursor rules
 .cursorrules
 .cursor/
+
+# Nox
+ingestion/.nox/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp 

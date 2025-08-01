@@ -16,9 +16,9 @@ import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   DISABLED,
   INITIAL_PAGING_VALUE,
@@ -79,9 +79,9 @@ const Services = ({ serviceName }: ServicesProps) => {
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    history.push(getAddServicePath(serviceName));
+    navigate(getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);
@@ -262,6 +262,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.SEARCH_SERVICES;
       case ServiceCategory.API_SERVICES:
         return PAGE_HEADERS.API_SERVICES;
+      case ServiceCategory.SECURITY_SERVICES:
+        return PAGE_HEADERS.SECURITY_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
@@ -275,6 +277,9 @@ const Services = ({ serviceName }: ServicesProps) => {
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
+          permissionValue={t('label.create-entity', {
+            entity: `${servicesDisplayName[serviceName]}`,
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
         />

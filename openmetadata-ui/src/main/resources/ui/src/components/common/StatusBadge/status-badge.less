@@ -14,7 +14,7 @@
 @import (reference) url('../../../styles/variables.less');
 
 .status-badge {
-  border-radius: @border-radius-md;
+  border-radius: @border-rad-md;
   padding: @padding-xss @padding-xs;
   text-align: center;
   max-width: fit-content;
@@ -31,13 +31,15 @@
   }
 
   &.stopped,
-  &.failure {
+  &.failure,
+  &.failed {
     color: @red-10;
     background-color: @red-9;
     border-color: @red-10;
   }
 
-  &.pending {
+  &.pending,
+  &.aborted {
     color: @yellow-11;
     background-color: @yellow-10;
     border-color: @yellow-11;
@@ -77,4 +79,12 @@
   font-weight: 500;
   font-size: 12px;
   line-height: 20px;
+}
+
+.status-badge-v2 {
+  &.success {
+    .anticon {
+      color: transparent;
+    }
+  }
 }

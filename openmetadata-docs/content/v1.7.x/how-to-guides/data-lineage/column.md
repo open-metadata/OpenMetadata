@@ -1,5 +1,6 @@
 ---
-title: How Column-Level Lineage Works
+title: How Column-Level Lineage Works | Official Documentation
+description: View column-level lineage to trace transformations and dependencies for data quality, debugging, and impact analysis.
 slug: /how-to-guides/data-lineage/column
 ---
 
@@ -15,7 +16,7 @@ caption="Column-Level Data Lineage in OpenMetadata"
 
 {% note noteType="Tip" %} **Quick Tip:** Drilldown to view all the available columns for a table when viewing column-level lineage. {% /note %}
 
-You can generate the column-level lineage automatically by running the **Lineage Ingestion**.
+You can generate the column-level lineage automatically by running the **Lineage Agent**.
 
 {% image
 src="/images/v1.7/how-to-guides/lineage/ingestion.png"

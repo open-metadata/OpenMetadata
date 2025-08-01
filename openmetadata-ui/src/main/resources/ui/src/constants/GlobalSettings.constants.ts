@@ -27,13 +27,16 @@ export enum GlobalSettingsMenuCategory {
 export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
+  ONLINE_USERS = 'online-users',
   TEAMS = 'teams',
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  PERMISSION_DEBUGGER = 'permission-debugger',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
+  DATA_ASSET_RULES = 'dataAssetRules',
   MESSAGING = 'messaging',
   METADATA = 'metadata',
   DASHBOARDS = 'dashboards',
@@ -85,4 +88,5 @@ export enum GlobalSettingOptions {
   TEST_CASES = 'testCases',
   TAGS = 'tags',
   DOMAINS = 'domains',
+  SECURITY = 'security',
 }

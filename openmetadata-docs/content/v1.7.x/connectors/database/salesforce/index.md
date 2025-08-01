@@ -1,5 +1,6 @@
 ---
-title: Salesforce
+title: Salesforce Connector | OpenMetadata CRM Integration Guide
+description: Connect Salesforce to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extraction made easy.
 slug: /connectors/database/salesforce
 ---
 
@@ -8,7 +9,7 @@ name="Salesforce"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Owners", "Tags", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Owners", "Tags", "Sample Data", "Auto-Classification"]
 / %}
 
 

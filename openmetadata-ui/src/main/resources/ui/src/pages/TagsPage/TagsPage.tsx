@@ -16,15 +16,9 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omit } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
@@ -63,7 +57,6 @@ import {
 } from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -77,7 +70,7 @@ import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
@@ -89,8 +82,7 @@ const TagsPage = () => {
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isUpdateLoading, setIsUpdateLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -142,14 +134,18 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: TabSpecificField.TERM_COUNT,
+        fields: [
+          TabSpecificField.TERM_COUNT,
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+        ],
         limit: 1000,
       });
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
 
-        history.push(getTagPath(response.data[0].fullyQualifiedName));
+        navigate(getTagPath(response.data[0].fullyQualifiedName));
       }
     } catch (error) {
       const errMsg = getErrorText(
@@ -170,7 +166,12 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
-          fields: [TabSpecificField.USAGE_COUNT, TabSpecificField.TERM_COUNT],
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_COUNT,
+            TabSpecificField.TERM_COUNT,
+            TabSpecificField.DOMAINS,
+          ],
         });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
@@ -200,7 +201,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
-        setCurrentClassification({ name: fqn, description: '' });
+        setCurrentClassification(undefined);
         setIsLoading(false);
       }
     }
@@ -211,7 +212,7 @@ const TagsPage = () => {
     try {
       const res = await createClassification(data);
       await fetchClassifications();
-      history.push(getTagPath(res.fullyQualifiedName));
+      navigate(getTagPath(res.fullyQualifiedName));
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -250,7 +251,7 @@ const TagsPage = () => {
       );
       const updatedCurrentClassification = renamingClassification[0];
       setClassifications(renamingClassification);
-      history.push(
+      navigate(
         getTagPath(
           updatedCurrentClassification?.fullyQualifiedName ??
             updatedCurrentClassification?.name
@@ -318,8 +319,6 @@ const TagsPage = () => {
   const handleUpdateClassification = useCallback(
     async (updatedClassification: Classification) => {
       if (!isUndefined(currentClassification)) {
-        setIsUpdateLoading(true);
-
         const patchData = compare(currentClassification, updatedClassification);
         try {
           const response = await patchClassification(
@@ -349,7 +348,7 @@ const TagsPage = () => {
               updatedClassification.fullyQualifiedName ||
             currentClassification?.name !== updatedClassification.name
           ) {
-            history.push(getTagPath(response.fullyQualifiedName));
+            navigate(getTagPath(response.fullyQualifiedName));
           }
         } catch (error) {
           if (
@@ -370,8 +369,6 @@ const TagsPage = () => {
               })
             );
           }
-        } finally {
-          setIsUpdateLoading(false);
         }
       }
     },
@@ -512,7 +509,7 @@ const TagsPage = () => {
   const onClickClassifications = (category: Classification) => {
     setCurrentClassification(category);
 
-    history.push(getTagPath(category.fullyQualifiedName));
+    navigate(getTagPath(category.fullyQualifiedName));
   };
 
   const handleAddTagSubmit = useCallback(
@@ -716,23 +713,19 @@ const TagsPage = () => {
         secondPanel={{
           children: (
             <>
-              {isUpdateLoading ? (
-                <Loader />
-              ) : (
-                <ClassificationDetails
-                  classificationPermissions={classificationPermissions}
-                  currentClassification={currentClassification}
-                  deleteTags={deleteTags}
-                  disableEditButton={disableEditButton}
-                  handleActionDeleteTag={handleActionDeleteTag}
-                  handleAddNewTagClick={handleAddNewTagClick}
-                  handleAfterDeleteAction={handleAfterDeleteAction}
-                  handleEditTagClick={handleEditTagClick}
-                  handleUpdateClassification={handleUpdateClassification}
-                  isAddingTag={isAddingTag}
-                  ref={classificationDetailsRef}
-                />
-              )}
+              <ClassificationDetails
+                classificationPermissions={classificationPermissions}
+                currentClassification={currentClassification}
+                deleteTags={deleteTags}
+                disableEditButton={disableEditButton}
+                handleActionDeleteTag={handleActionDeleteTag}
+                handleAddNewTagClick={handleAddNewTagClick}
+                handleAfterDeleteAction={handleAfterDeleteAction}
+                handleEditTagClick={handleEditTagClick}
+                handleUpdateClassification={handleUpdateClassification}
+                isAddingTag={isAddingTag}
+                ref={classificationDetailsRef}
+              />
 
               {/* Classification Form */}
               {isAddingClassification && (
@@ -788,4 +781,4 @@ const TagsPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.tag-plural'))(TagsPage);
+export default withPageLayout(TagsPage);

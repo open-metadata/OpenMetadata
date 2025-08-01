@@ -48,10 +48,10 @@ export interface Container {
      */
     displayName?: string;
     /**
-     * Domain the Container belongs to. When not set, the Container inherits the domain from the
-     * storage service it belongs to.
+     * Domains the Container belongs to. When not set, the Container inherits the domain from
+     * the storage service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -338,9 +338,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Container belongs to. When not set, the Container inherits the domain from the
- * storage service it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to the parent container under which this entity sits, if not top level.
@@ -518,6 +515,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -527,12 +525,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",

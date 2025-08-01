@@ -32,7 +32,7 @@ export type OidcUser = {
 
 export interface AuthenticatorRef {
   invokeLogin: () => void;
-  invokeLogout: () => void;
+  invokeLogout: () => Promise<void>;
   renewIdToken: () =>
     | Promise<string>
     | Promise<AccessTokenResponse>
@@ -46,14 +46,9 @@ export interface IAuthContext {
   authorizerConfig?: AuthorizerConfiguration;
   isSigningUp: boolean;
   setIsSigningUp: (isSigningUp: boolean) => void;
-  onLoginHandler: () => void;
-  onLogoutHandler: () => void;
   currentUser?: User;
   newUser?: UserProfile;
   updateNewUser: (user: UserProfile) => void;
-  handleSuccessfulLogin: (user: OidcUser) => void;
-  handleFailedLogin: () => void;
-  updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;
   jwtPrincipalClaims: string[];
   jwtPrincipalClaimsMapping: string[];

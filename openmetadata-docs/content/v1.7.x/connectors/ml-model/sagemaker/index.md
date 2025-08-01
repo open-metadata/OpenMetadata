@@ -1,5 +1,6 @@
 ---
-title: Sagemaker
+title: Sagemaker Connector | OpenMetadata ML Model Services
+description: Connect your AWS SageMaker ML models to OpenMetadata for complete model lineage, metadata management, and data governance. Easy setup guide included.
 slug: /connectors/ml-model/sagemaker
 ---
 

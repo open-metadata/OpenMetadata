@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { first, isEmpty, isUndefined } from 'lodash';
-import React, { ReactElement, useMemo, useRef, useState } from 'react';
+import { ReactElement, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -178,9 +178,9 @@ function TestSummaryGraph({
 
   // Todo: need to find better approach to create dynamic scale for graph, need to work with @TeddyCr for the same!
   const formatYAxis = (value: number) => {
-    // table freshness will always have output value in seconds
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? convertMillisecondsToHumanReadableFormat(value, 2)
+      ? // table freshness will always have output value in seconds, so we need to convert it to milliseconds
+        convertMillisecondsToHumanReadableFormat(value * 1000, 2)
       : axisTickFormatter(value);
   };
 

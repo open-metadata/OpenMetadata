@@ -13,7 +13,7 @@
 import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
@@ -32,7 +32,11 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-const TableConstraints = () => {
+const TableConstraints = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
+}) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { data, permissions, onUpdate } = useGenericContext<Table>();
@@ -168,13 +172,17 @@ const TableConstraints = () => {
 
   return (
     <>
-      <ExpandableCard
-        cardProps={{
-          title: header,
-        }}
-        isExpandDisabled={isEmpty(data?.tableConstraints)}>
-        {content}
-      </ExpandableCard>
+      {renderAsExpandableCard ? (
+        <ExpandableCard
+          cardProps={{
+            title: header,
+          }}
+          isExpandDisabled={isEmpty(data?.tableConstraints)}>
+          {content}
+        </ExpandableCard>
+      ) : (
+        content
+      )}
       {isModalOpen && (
         <TableConstraintsModal
           constraint={data?.tableConstraints}

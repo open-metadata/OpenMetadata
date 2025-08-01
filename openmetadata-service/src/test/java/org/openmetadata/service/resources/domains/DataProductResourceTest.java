@@ -11,12 +11,12 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.core.Response.Status;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -36,7 +37,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -47,13 +47,15 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         DataProductList.class,
         "dataProducts",
         DataProductResource.FIELDS);
+    supportsPatchDomains = false; // we can't change the domain of a data product
   }
 
   public void setupDataProducts(TestInfo test) throws HttpResponseException {
     DOMAIN_DATA_PRODUCT = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN_DATA_PRODUCT =
         createEntity(
-            createRequest(getEntityName(test, 1)).withDomain(SUB_DOMAIN.getFullyQualifiedName()),
+            createRequest(getEntityName(test, 1))
+                .withDomains(List.of(SUB_DOMAIN.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
   }
 
@@ -151,10 +153,14 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         domainTest
             .createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS)
             .getFullyQualifiedName();
-    DataProduct p1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
-    DataProduct p2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
-    DataProduct p3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
-    DataProduct p4 = createEntity(createRequest(test, 4).withDomain(domain2), ADMIN_AUTH_HEADERS);
+    DataProduct p1 =
+        createEntity(createRequest(test, 1).withDomains(List.of(domain1)), ADMIN_AUTH_HEADERS);
+    DataProduct p2 =
+        createEntity(createRequest(test, 2).withDomains(List.of(domain1)), ADMIN_AUTH_HEADERS);
+    DataProduct p3 =
+        createEntity(createRequest(test, 3).withDomains(List.of(domain2)), ADMIN_AUTH_HEADERS);
+    DataProduct p4 =
+        createEntity(createRequest(test, 4).withDomains(List.of(domain2)), ADMIN_AUTH_HEADERS);
 
     Map<String, String> params = new HashMap<>();
     params.put("domain", domain1);
@@ -197,30 +203,30 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Create data product corresponding to parent domain
     CreateDataProduct create =
         createRequestWithoutExpertsOwners(getEntityName(test, 1))
-            .withDomain(parentDomain.getFullyQualifiedName());
+            .withDomains(List.of(parentDomain.getFullyQualifiedName()));
     DataProduct dataProduct = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    assertOwners(dataProduct.getOwners(), parentDomain.getOwners());
+    assertReferenceList(dataProduct.getOwners(), parentDomain.getOwners());
     assertEntityReferences(dataProduct.getExperts(), parentDomain.getExperts());
 
     // Create subdomain with no owners and experts
     CreateDomain subDomainReq =
-        domainResourceTest
-            .createRequestWithoutOwnersExperts(getEntityName(test, 2))
-            .withDomain(parentDomain.getFullyQualifiedName());
+        domainResourceTest.createRequestWithoutOwnersExperts(getEntityName(test, 2));
+    subDomainReq.setDomains(List.of(parentDomain.getFullyQualifiedName()));
+
     Domain subDomain = domainResourceTest.createEntity(subDomainReq, ADMIN_AUTH_HEADERS);
     subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
 
     // Create data product corresponding to subdomain
     CreateDataProduct subDomainDataProductCreate =
         createRequestWithoutExpertsOwners(getEntityName(test, 2))
-            .withDomain(subDomain.getFullyQualifiedName());
+            .withDomains(List.of(subDomain.getFullyQualifiedName()));
     DataProduct subDomainDataProduct =
         createAndCheckEntity(subDomainDataProductCreate, ADMIN_AUTH_HEADERS);
 
     // Subdomain and its data product should inherit owners and experts from parent domain
-    assertOwners(subDomain.getOwners(), parentDomain.getOwners());
+    assertReferenceList(subDomain.getOwners(), parentDomain.getOwners());
     assertEntityReferences(subDomain.getExperts(), parentDomain.getExperts());
-    assertOwners(subDomainDataProduct.getOwners(), parentDomain.getOwners());
+    assertReferenceList(subDomainDataProduct.getOwners(), parentDomain.getOwners());
     assertEntityReferences(subDomainDataProduct.getExperts(), parentDomain.getExperts());
 
     // Add owner and expert to subdomain
@@ -245,7 +251,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     subDomain = domainResourceTest.getEntity(subDomain.getId(), "*", ADMIN_AUTH_HEADERS);
 
     // Data product of subdomain should also have the same changes as its corresponding domain
-    assertOwners(subDomainDataProduct.getOwners(), subDomain.getOwners());
+    assertReferenceList(subDomainDataProduct.getOwners(), subDomain.getOwners());
     assertEntityReferences(subDomainDataProduct.getExperts(), subDomain.getExperts());
   }
 
@@ -266,7 +272,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     return new CreateDataProduct()
         .withName(name)
         .withDescription(name)
-        .withDomain(DOMAIN.getFullyQualifiedName())
+        .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
         .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
@@ -276,7 +282,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     return new CreateDataProduct()
         .withName(name)
         .withDescription(name)
-        .withDomain(DOMAIN.getFullyQualifiedName())
+        .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
         .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
@@ -285,7 +291,8 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   public void validateCreatedEntity(
       DataProduct createdEntity, CreateDataProduct request, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
+    assertEquals(
+        request.getDomains().get(0), createdEntity.getDomains().get(0).getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertEntityReferences(request.getAssets(), createdEntity.getAssets());
     assertStyle(request.getStyle(), createdEntity.getStyle());
@@ -295,7 +302,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   public void compareEntities(
       DataProduct expected, DataProduct updated, Map<String, String> authHeaders) {
     // Entity specific validation
-    assertReference(expected.getDomain(), updated.getDomain());
+    assertReference(expected.getDomains().get(0), updated.getDomains().get(0));
     assertEntityReferences(expected.getExperts(), updated.getExperts());
     assertEntityReferences(expected.getAssets(), updated.getAssets());
   }
@@ -308,13 +315,13 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(getDataProduct.getOwners(), getDataProduct.getExperts());
-    String fields = "owners,domain,experts,assets,tags";
+    String fields = "owners,domains,experts,assets,tags,followers";
     getDataProduct =
         byName
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(getDataProduct.getId(), fields, ADMIN_AUTH_HEADERS);
     // Fields requested are received
-    assertReference(dataProduct.getDomain(), getDataProduct.getDomain());
+    assertReference(dataProduct.getDomains().get(0), getDataProduct.getDomains().get(0));
     assertEntityReferences(dataProduct.getExperts(), getDataProduct.getExperts());
     assertEntityReferences(dataProduct.getAssets(), getDataProduct.getAssets());
 

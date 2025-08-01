@@ -202,6 +202,5 @@ class AmundsenUnitTest(TestCase):
             original.updatedAt = expected.updatedAt = datetime.datetime.now()
             original.version = expected.version = 2.5
             original.changeDescription = None
-            print(original)
-            print(expected)
+            original.incrementalChangeDescription = None
             self.assertEqual(expected, original)

@@ -12,7 +12,7 @@
  */
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -86,6 +86,9 @@ const SubDomainsTable = ({
         className="p-md p-b-lg"
         heading={t('label.sub-domain')}
         permission={permissions.Create}
+        permissionValue={t('label.create-entity', {
+          entity: t('label.sub-domain'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={onAddSubDomain}
       />

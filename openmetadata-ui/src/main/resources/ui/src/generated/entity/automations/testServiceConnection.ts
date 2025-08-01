@@ -58,6 +58,8 @@ export interface TestServiceConnection {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface TestServiceConnectionConnection {
     config?: ConfigClass;
@@ -155,6 +157,8 @@ export interface TestServiceConnectionConnection {
  *
  * Cockroach Database Connection Config
  *
+ * SSAS Metadata Database Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -188,6 +192,8 @@ export interface TestServiceConnectionConnection {
  *
  * Sigma Connection Config
  *
+ * ThoughtSpot Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -200,6 +206,8 @@ export interface TestServiceConnectionConnection {
  * Airflow Metadata Database Connection Config
  *
  * Wherescape Metadata Database Connection Config
+ *
+ * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -272,6 +280,8 @@ export interface TestServiceConnectionConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -327,7 +337,11 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: ConfigType;
+    /**
+     * Billing Project ID
+     */
+    billingProjectId?: string;
     /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
@@ -430,6 +444,8 @@ export interface ConfigClass {
      *
      * Sigma API url.
      *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -452,6 +468,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
@@ -524,8 +542,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -616,6 +635,8 @@ export interface ConfigClass {
      * Password to connect to Azure Synapse.
      *
      * Password to connect to Exasol.
+     *
+     * Password
      *
      * Password to connect to Metabase.
      *
@@ -718,6 +739,8 @@ export interface ConfigClass {
      * Username to connect to Cockroach. This user should have privileges to read all the
      * metadata in Cockroach.
      *
+     * Username
+     *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
      *
@@ -779,8 +802,10 @@ export interface ConfigClass {
      * The maximum amount of time (in seconds) to wait for a successful connection to the data
      * source. If the connection attempt takes longer than this timeout period, an error will be
      * returned.
+     *
+     * Connection timeout in seconds.
      */
-    connectionTimeout?: number;
+    connectionTimeout?: number | number;
     /**
      * Databricks compute resources URL.
      */
@@ -789,6 +814,10 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?: string;
     /**
      * License to connect to DB2.
      */
@@ -838,6 +867,8 @@ export interface ConfigClass {
      * Types of methods used to authenticate to the tableau instance
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
     /**
@@ -846,6 +877,10 @@ export interface ConfigClass {
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -976,6 +1011,8 @@ export interface ConfigClass {
     /**
      * Client ID for DOMO
      *
+     * Azure Application (client) ID for service principal authentication.
+     *
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -1092,14 +1129,8 @@ export interface ConfigClass {
      */
     verifySSL?: boolean | VerifySSL;
     /**
-     * Client SSL/TLS settings.
-     */
-    tls?: SSLTLSSettings;
-    /**
-     * Regex exclude or include charts that matches the pattern.
-     */
-    chartFilterPattern?: FilterPattern;
-    /**
+     * Azure Application client secret for service principal authentication.
+     *
      * User's Client Secret.
      *
      * clientSecret for PowerBI.
@@ -1107,6 +1138,24 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      */
     clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Tenant ID for PowerBI.
+     */
+    tenantId?: string;
+    /**
+     * Client SSL/TLS settings.
+     */
+    tls?: SSLTLSSettings;
+    /**
+     * HTTP Link for SSAS ACCESS
+     */
+    httpConnection?: string;
+    /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
     /**
      * Regex to exclude or include dashboards that matches the pattern.
      */
@@ -1129,6 +1178,10 @@ export interface ConfigClass {
      */
     authorityURI?: string;
     /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
+    /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
     pagination_entity_per_page?: number;
@@ -1141,10 +1194,6 @@ export interface ConfigClass {
      */
     scope?: string[];
     /**
-     * Tenant ID for PowerBI.
-     */
-    tenantId?: string;
-    /**
      * Fetch the PowerBI metadata using admin APIs
      */
     useAdminApis?: boolean;
@@ -1156,6 +1205,23 @@ export interface ConfigClass {
      * Version of the Redash instance
      */
     redashVersion?: string;
+    /**
+     * Tableau API version. If not provided, the version will be used from the tableau server.
+     *
+     * Sigma API version.
+     *
+     * ThoughtSpot API version to use
+     *
+     * Airbyte API version.
+     *
+     * OpenMetadata server API version to use.
+     */
+    apiVersion?: string;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
     /**
      * Tableau Site Name.
      */
@@ -1232,13 +1298,14 @@ export interface ConfigClass {
      */
     spaceTypes?: SpaceType[];
     /**
-     * Sigma API version.
-     *
-     * Airbyte API version.
-     *
-     * OpenMetadata server API version to use.
+     * ThoughtSpot authentication configuration
      */
-    apiVersion?: string;
+    authentication?: Authenticationation;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1319,6 +1386,10 @@ export interface ConfigClass {
      * Underlying database connection
      */
     databaseConnection?: DatabaseConnectionClass;
+    /**
+     * Underlying storage connection
+     */
+    packageConnection?: S3Connection | string;
     /**
      * Fivetran API Secret.
      */
@@ -1664,9 +1735,9 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex exclude pipelines.
  *
- * Regex to only fetch MlModels with names matching the pattern.
- *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
  */
@@ -1743,6 +1814,8 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * ThoughtSpot authentication configuration
+ *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
@@ -1752,6 +1825,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthConfigurationType {
     /**
@@ -1760,6 +1837,8 @@ export interface AuthConfigurationType {
      * Password to access the service.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -1776,6 +1855,8 @@ export interface AuthConfigurationType {
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -1955,6 +2036,30 @@ export enum NoConfigAuthenticationTypes {
     OAuth2 = "OAuth2",
 }
 
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Types of methods used to authenticate to the alation instance
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authenticationation {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
+}
+
 export interface AuthenticationModeObject {
     /**
      * Authentication from Connection String for AzureSQL.
@@ -1991,6 +2096,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -2699,6 +2805,10 @@ export interface ConfigConnection {
      */
     databaseName?: string;
     /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
@@ -3193,6 +3303,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -3269,6 +3383,37 @@ export interface OracleConnectionType {
      */
     oracleTNSConnection?: string;
     [property: string]: any;
+}
+
+/**
+ * S3 Connection.
+ */
+export interface S3Connection {
+    awsConfig: AWSCredentials;
+    /**
+     * Bucket Names of the data source.
+     */
+    bucketNames?:         string[];
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?:     FilterPattern;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: S3Type;
+}
+
+/**
+ * Service Type
+ *
+ * S3 service type
+ */
+export enum S3Type {
+    S3 = "S3",
 }
 
 /**
@@ -3452,6 +3597,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -3482,6 +3628,7 @@ export enum KafkaSecurityProtocol {
 }
 
 export enum SpaceType {
+    Data = "Data",
     Managed = "Managed",
     Personal = "Personal",
     Shared = "Shared",
@@ -3625,6 +3772,8 @@ export enum TransactionMode {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3658,8 +3807,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum ConfigType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -3736,6 +3887,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -3752,11 +3904,14 @@ export enum RESTType {
     Snowflake = "Snowflake",
     Spark = "Spark",
     Spline = "Spline",
+    Ssas = "SSAS",
+    Ssis = "SSIS",
     Stitch = "Stitch",
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
     Teradata = "Teradata",
+    ThoughtSpot = "ThoughtSpot",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
@@ -3773,10 +3928,12 @@ export enum ServiceType {
     API = "Api",
     Dashboard = "Dashboard",
     Database = "Database",
+    Drive = "Drive",
     Messaging = "Messaging",
     Metadata = "Metadata",
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     Search = "Search",
+    Security = "Security",
     Storage = "Storage",
 }

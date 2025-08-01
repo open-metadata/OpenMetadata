@@ -6,7 +6,10 @@
   "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ColumnsEntityInterface"
+  ],
   "definitions": {
     "dataModelType": {
       "javaType": "org.openmetadata.schema.type.DataModelType",
@@ -25,7 +28,9 @@
         "QlikDataModel",
         "QuickSightDataModel",
         "SigmaDataModel",
-        "PowerBIDataFlow"
+        "PowerBIDataFlow",
+        "MicroStrategyDataset",
+        "ThoughtSpotDataModel"
       ],
       "javaEnums": [
         {
@@ -63,6 +68,12 @@
         },
         {
           "name": "PowerBIDataFlow"
+        },
+        {
+          "name": "MicroStrategyDataset"
+        },
+        {
+          "name": "ThoughtSpotDataModel"
         }
       ]
     }
@@ -109,9 +120,9 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this data model.",
@@ -166,9 +177,9 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain": {
-      "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",

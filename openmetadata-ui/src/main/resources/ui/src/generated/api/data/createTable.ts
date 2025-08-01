@@ -36,9 +36,9 @@ export interface CreateTable {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Table belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -202,6 +202,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -211,12 +212,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -671,7 +674,11 @@ export enum FileFormat {
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Parq = "parq",
     Parquet = "parquet",
+    ParquetSnappy = "parquet.snappy",
+    Pq = "pq",
+    Pqt = "pqt",
     Tsv = "tsv",
 }
 
@@ -834,6 +841,11 @@ export interface TableProfilerConfig {
      */
     sampleDataCount?:    number;
     samplingMethodType?: SamplingMethodType;
+    /**
+     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+     * other engines.
+     */
+    sparkTableProfilerConfig?: SparkTableProfilerConfig;
     [property: string]: any;
 }
 
@@ -914,6 +926,38 @@ export enum ProfileSampleType {
 export enum SamplingMethodType {
     Bernoulli = "BERNOULLI",
     System = "SYSTEM",
+}
+
+/**
+ * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+ * other engines.
+ */
+export interface SparkTableProfilerConfig {
+    /**
+     * When reading big tables from sources, we optimize the reading by partitioning the data.
+     * This configuration is responsible for it.
+     */
+    partitioning?: Partitioning;
+}
+
+/**
+ * When reading big tables from sources, we optimize the reading by partitioning the data.
+ * This configuration is responsible for it.
+ */
+export interface Partitioning {
+    /**
+     * Lower bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    lowerBound?: string;
+    /**
+     * Column to partition on. It should be a date, timestamp or integer column. It is important
+     * for the data to be reasonably equally distributed across the partitions.
+     */
+    partitionColumn: string;
+    /**
+     * Upper bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    upperBound?: string;
 }
 
 /**

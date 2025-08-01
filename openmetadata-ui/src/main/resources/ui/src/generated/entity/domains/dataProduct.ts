@@ -33,9 +33,9 @@ export interface DataProduct {
      */
     displayName?: string;
     /**
-     * Domain or sub-domain to which this Data Product belongs to.
+     * Domains or sub-domains to which this Data Product belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * List of users who are experts for this Data Product.
      */
@@ -44,6 +44,10 @@ export interface DataProduct {
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName is `domain.dataProductName` or `sub-domain.dataProductName`.
      */
@@ -100,8 +104,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain or sub-domain to which this Data Product belongs to.
  */
 export interface EntityReference {
     /**

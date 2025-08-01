@@ -63,6 +63,16 @@
       ]
     },
     {
+      "name": "certification",
+      "required": false,
+      "description": "Certification tag from the Certification classification. Only one certification level can be applied.",
+      "examples": [
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ]
+    },
+    {
       "name": "retentionPeriod",
       "required": false,
       "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
@@ -79,11 +89,11 @@
       ]
     },
     {
-      "name": "domain",
+      "name": "domains",
       "required": false,
-      "description": "Domain to which the database schema belongs to",
+      "description": "Domains to which the entity belongs to, separated by ';'",
       "examples": [
-        "Marketing", "Sales"
+        "Marketing", "Sales;Operations"
       ]
     },
     {
