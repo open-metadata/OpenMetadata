@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Area,
   AreaChart,
@@ -64,6 +65,7 @@ const KPIWidget = ({
   handleLayoutUpdate,
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(true);
   const [kpiResults, setKpiResults] = useState<
@@ -88,6 +90,10 @@ const KPIWidget = ({
     });
 
     return { name: kpi.name, data: response.results };
+  };
+
+  const handleTitleClick = () => {
+    navigate(ROUTES.KPI_LIST);
   };
 
   const fetchKpiResults = async () => {
@@ -325,23 +331,39 @@ const KPIWidget = ({
     }
   }, [kpiList, selectedDays]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        className="items-center"
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<KPIIcon className="kpi-widget-icon" height={22} width={22} />}
+        isEditView={isEditView}
+        title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onTitleClick={handleTitleClick}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleTitleClick,
+    ]
+  );
+
   return (
     <WidgetWrapper
       dataLength={kpiList.length > 0 ? kpiList.length : 10}
+      header={widgetHeader}
       loading={isKPIListLoading || isLoading}>
       <div className="kpi-widget-container" data-testid="kpi-widget">
-        <WidgetHeader
-          className="items-center"
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<KPIIcon className="kpi-widget-icon" height={22} width={22} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.KPI_LIST}
-          title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-        />
         <div className="widget-content flex-1 h-full">
           {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}
         </div>
