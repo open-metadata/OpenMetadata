@@ -159,8 +159,13 @@ UPDATE thread_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domai
  SET json = JSON_SET(
                JSON_REMOVE(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
                '$.feedInfo.entitySpecificInfo.entity.domains',
-               JSON_ARRAY(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain'))
-           )
+               JSON_ARRAY(
+                   IF(
+                       JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL,
+                       JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
+                       NULL
+                   )
+               )
  WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.entity.domain')
    AND JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL;
 

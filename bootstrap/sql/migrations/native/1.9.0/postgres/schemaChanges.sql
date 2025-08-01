@@ -194,7 +194,10 @@ UPDATE thread_entity
 SET json = jsonb_set(
               json #- '{feedInfo,entitySpecificInfo,entity,domain}',
               '{feedInfo,entitySpecificInfo,entity,domains}',
-              to_jsonb(ARRAY[json#>'{feedInfo,entitySpecificInfo,entity,domain}'])
+              to_jsonb(CASE
+                          WHEN json#>'{feedInfo,entitySpecificInfo,entity,domain}' IS NULL THEN ARRAY[]::jsonb[]
+                          ELSE ARRAY[json#>'{feedInfo,entitySpecificInfo,entity,domain}']
+                       END)
           )
 WHERE jsonb_path_exists(json, '$.feedInfo.entitySpecificInfo.entity.domain')
   AND json#>'{feedInfo,entitySpecificInfo,entity,domain}' IS NOT NULL;
