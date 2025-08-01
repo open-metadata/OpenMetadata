@@ -33,7 +33,6 @@ import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
-  default as React,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -131,14 +130,6 @@ export const AssetSelectionModal = ({
   >([]);
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
-  const [updatedQueryFilter, setUpdatedQueryFilter] =
-    useState<QueryFilterInterface>(
-      getCombinedQueryFilterObject(queryFilter as QueryFilterInterface, {
-        query: {
-          bool: {},
-        },
-      })
-    );
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
 
@@ -162,6 +153,11 @@ export const AssetSelectionModal = ({
       page = 1,
       index = activeFilter,
       updatedQueryFilter,
+    }: {
+      searchText?: string;
+      page?: number;
+      index?: SearchIndex;
+      updatedQueryFilter?: Record<string, unknown>;
     }) => {
       try {
         setIsLoading(true);
@@ -198,7 +194,7 @@ export const AssetSelectionModal = ({
 
       case AssetsOfEntity.DATA_PRODUCT:
         data = await getDataProductByName(entityFqn, {
-          fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+          fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
         });
 
         break;
@@ -237,13 +233,17 @@ export const AssetSelectionModal = ({
 
   useEffect(() => {
     if (open) {
+      const combinedQueryFilter = getCombinedQueryFilterObject(
+        queryFilter as unknown as QueryFilterInterface,
+        quickFilterQuery as QueryFilterInterface
+      );
       fetchEntities({
         index: activeFilter,
         searchText: search,
-        updatedQueryFilter,
+        updatedQueryFilter: combinedQueryFilter,
       });
     }
-  }, [open, activeFilter, search, type, updatedQueryFilter]);
+  }, [open, activeFilter, search, type, quickFilterQuery, queryFilter]);
 
   useEffect(() => {
     if (open) {
@@ -357,18 +357,6 @@ export const AssetSelectionModal = ({
     handleSave();
   }, [type, handleSave]);
 
-  const mergeFilters = useCallback(() => {
-    const res = getCombinedQueryFilterObject(
-      queryFilter as QueryFilterInterface,
-      quickFilterQuery as QueryFilterInterface
-    );
-    setUpdatedQueryFilter(res);
-  }, [queryFilter, quickFilterQuery]);
-
-  useEffect(() => {
-    mergeFilters();
-  }, [quickFilterQuery, queryFilter]);
-
   useEffect(() => {
     const updatedQuickFilters = filters
       .filter((filter) => selectedFilter.includes(filter.key))
@@ -402,22 +390,28 @@ export const AssetSelectionModal = ({
         scrollHeight < 501 &&
         items.length < totalCount
       ) {
+        const combinedQueryFilter = getCombinedQueryFilterObject(
+          queryFilter as unknown as QueryFilterInterface,
+          quickFilterQuery as QueryFilterInterface
+        );
+
         !isLoading &&
           fetchEntities({
             searchText: search,
             page: pageNumber + 1,
             index: activeFilter,
-            updatedQueryFilter,
+            updatedQueryFilter: combinedQueryFilter,
           });
       }
     },
     [
       pageNumber,
-      updatedQueryFilter,
       activeFilter,
       search,
       totalCount,
       items,
+      quickFilterQuery,
+      queryFilter,
       isLoading,
       fetchEntities,
     ]
@@ -523,12 +517,13 @@ export const AssetSelectionModal = ({
     }
 
     return () => {
-      socket && socket.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
+      socket?.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
     };
   }, [socket]);
 
   return (
     <Modal
+      centered
       destroyOnClose
       className="asset-selection-modal"
       closable={false}
@@ -571,7 +566,6 @@ export const AssetSelectionModal = ({
         </div>
       }
       open={open}
-      style={{ top: 40 }}
       title={t('label.add-entity', { entity: t('label.asset-plural') })}
       width={675}
       onCancel={onCancel}>
@@ -687,9 +681,11 @@ export const AssetSelectionModal = ({
                         showCheckboxes
                         checked={selectedItems?.has(item.id ?? '')}
                         className="border-none asset-selection-model-card cursor-pointer"
+                        displayNameClassName="text-md"
                         handleSummaryPanelDisplay={handleCardClick}
                         id={`tabledatacard-${item.id}`}
                         key={item.id}
+                        nameClassName="text-md"
                         showBody={false}
                         showName={false}
                         source={{ ...item, tags: [] }}

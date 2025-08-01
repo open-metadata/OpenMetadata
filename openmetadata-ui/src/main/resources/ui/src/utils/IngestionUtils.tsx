@@ -12,14 +12,9 @@
  */
 
 import { Typography } from 'antd';
-import { ExpandableConfig } from 'antd/lib/table/interface';
-import { t } from 'i18next';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
-import { ServiceTypes } from 'Models';
-import React from 'react';
+import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
-import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -34,23 +29,41 @@ import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
+import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
+import { SERVICE_INGESTION_PIPELINE_TYPES } from '../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
+import { EntityTabs } from '../enums/entity.enum';
 import { FormSubmitType } from '../enums/form.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../enums/service.enum';
+import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
 import {
   IngestionPipeline,
+  PipelineState,
   StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
-import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
+import i18n from './i18next/LocalUtil';
+import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
+import {
+  getServiceDetailsPath,
+  getSettingPath,
+  getSettingsPathWithFqn,
+} from './RouterUtils';
 import { getDayCron } from './SchedularUtils';
+import { getFilteredSchema } from './ServiceConnectionUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import {
+  getReadableCountString,
+  getServiceRouteFromServiceType,
+} from './ServiceUtils';
+
+const { t } = i18n;
 
 export const getIngestionHeadingName = (
   ingestionType: string,
@@ -65,10 +78,10 @@ export const getIngestionHeadingName = (
   );
 
   return type === INGESTION_ACTION_TYPE.ADD
-    ? t('label.add-workflow-ingestion', {
+    ? t('label.add-workflow-agent', {
         workflow: ingestionName,
       })
-    : t('label.edit-workflow-ingestion', {
+    : t('label.edit-workflow-agent', {
         workflow: ingestionName,
       });
 };
@@ -120,7 +133,12 @@ export const getBreadCrumbsArray = (
         },
         {
           name: serviceData?.name || '',
-          url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
+          url: getServiceDetailsPath(
+            serviceFQN,
+            serviceCategory,
+            EntityTabs.AGENTS,
+            ServiceAgentSubTabs.METADATA
+          ),
           imgSrc: serviceUtilClassBase.getServiceTypeLogo(
             serviceData as SearchSourceAlias
           ),
@@ -171,7 +189,6 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
 
 export const getIngestionTypes = (
   supportedPipelineTypes: PipelineType[],
-  isOpenMetadataService: boolean,
   ingestionList: IngestionPipeline[],
   pipelineType?: PipelineType
 ) => {
@@ -179,27 +196,17 @@ export const getIngestionTypes = (
     ? supportedPipelineTypes
     : [pipelineType];
 
-  if (isOpenMetadataService || ingestionList.length > 0) {
-    return pipelineTypeArray.reduce((prev, curr) => {
-      if (
-        // Prevent adding multiple usage pipeline
-        curr === PipelineType.Usage &&
-        ingestionList.find((d) => d.pipelineType === curr)
-      ) {
-        return prev;
-      } else {
-        return [...prev, curr];
-      }
-    }, [] as PipelineType[]);
-  }
-
-  return [
-    PipelineType.Metadata,
-    PipelineType.Usage,
-    PipelineType.Lineage,
-    PipelineType.Profiler,
-    PipelineType.Dbt,
-  ];
+  return pipelineTypeArray.reduce((prev, curr) => {
+    if (
+      // Prevent adding multiple usage pipeline
+      curr === PipelineType.Usage &&
+      ingestionList.find((d) => d.pipelineType === curr)
+    ) {
+      return prev;
+    } else {
+      return [...prev, curr];
+    }
+  }, [] as PipelineType[]);
 };
 
 const getPipelineExtraInfo = (
@@ -294,7 +301,9 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder
+        className="p-y-lg border-none"
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         {getPipelineExtraInfo(isPlatFormDisabled, theme, pipelineType)}
       </ErrorPlaceHolder>
     );
@@ -308,33 +317,14 @@ export const getMenuItems = (
   isDataSightIngestionExists: boolean
 ) => {
   return types.map((type) => ({
-    label: t('label.add-workflow-ingestion', {
+    label: t('label.add-workflow-agent', {
       workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
     }),
     key: type,
     disabled:
       type === PipelineType.DataInsight ? isDataSightIngestionExists : false,
-    ['data-testid']: 'list-item',
+    ['data-testid']: `agent-item-${type}`,
   }));
-};
-
-export const getIngestionButtonText = (
-  hasMetadata?: IngestionPipeline,
-  pipelineType?: PipelineType
-) => {
-  if (hasMetadata) {
-    return t('label.add-entity', {
-      entity: t('label.ingestion-lowercase'),
-    });
-  } else {
-    return pipelineType === PipelineType.ElasticSearchReindex
-      ? t('label.deploy')
-      : t('label.add-workflow-ingestion', {
-          workflow: startCase(
-            pipelineType ? pipelineType : t(`label.${PipelineType.Metadata}`)
-          ),
-        });
-  }
 };
 
 export const getSuccessMessage = (
@@ -359,44 +349,13 @@ export const getSuccessMessage = (
 
   return (
     <Typography.Text>
-      <Typography.Text className="font-medium">{`"${ingestionName}"`}</Typography.Text>
+      <Typography.Text className="font-medium break-word">{`"${ingestionName}"`}</Typography.Text>
       <Typography.Text>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
       </Typography.Text>
     </Typography.Text>
   );
 };
-
-export const getExpandableStatusRow = (
-  expandedKeys: Array<string>
-): ExpandableConfig<StepSummary> => ({
-  expandedRowRender: (record) => {
-    return (
-      record.failures?.map((failure) => (
-        <ConnectionStepCard
-          isTestingConnection={false}
-          key={failure.name}
-          testConnectionStep={{
-            name: failure.name,
-            mandatory: false,
-            description: failure.error,
-          }}
-          testConnectionStepResult={{
-            name: failure.name,
-            passed: false,
-            mandatory: false,
-            message: failure.error,
-            errorLog: failure.stackTrace,
-          }}
-        />
-      )) ?? []
-    );
-  },
-  indentSize: 0,
-  expandIcon: () => null,
-  expandedRowKeys: expandedKeys,
-  rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
-});
 
 export const getDefaultIngestionSchedule = ({
   isEditMode = false,
@@ -426,3 +385,90 @@ export const getDefaultIngestionSchedule = ({
     })
   );
 };
+
+export const getDefaultFilterPropertyFieldsFromSchema = (
+  pipelineType: PipelineType,
+  serviceCategory: ServiceCategory
+) => {
+  const pipelineSchema = getSchemaByWorkflowType(pipelineType, serviceCategory);
+
+  return Object.keys(pipelineSchema.properties ?? {}).filter((key) =>
+    SERVICE_FILTER_PATTERN_FIELDS.includes(
+      key as ServiceConnectionFilterPatternFields
+    )
+  );
+};
+
+export const getDefaultFilterPropertyValues = ({
+  pipelineType,
+  serviceCategory,
+  isEditMode,
+  ingestionData,
+  serviceData,
+}: {
+  pipelineType: PipelineType;
+  serviceCategory: ServiceCategory;
+  isEditMode: boolean;
+  ingestionData?: IngestionPipeline;
+  serviceData?: ServicesUpdateRequest;
+}) => {
+  // If it is edit mode, then return the filter property values from the ingestion data
+  if (isEditMode) {
+    return getFilteredSchema(ingestionData?.sourceConfig.config, false);
+  } else {
+    // Get the default filter property fields from the schema
+    const filterPropertiesInSchema = getDefaultFilterPropertyFieldsFromSchema(
+      pipelineType,
+      serviceCategory
+    );
+
+    // Get the default filter values from the service data
+    const filterValues = getFilteredSchema(
+      serviceData?.connection?.config,
+      false
+    );
+
+    // Return the default filter property values from the service data only if
+    // the property is present in the ingestion schema
+    return Object.entries(filterValues).reduce((acc, [key, value]) => {
+      if (filterPropertiesInSchema.includes(key)) {
+        acc[key] = value;
+      }
+
+      return acc;
+    }, {} as Record<string, any>);
+  }
+};
+
+export const getTypeAndStatusMenuItems = () => {
+  const typeMenuItems = SERVICE_INGESTION_PIPELINE_TYPES.map((type) => ({
+    label: startCase(type),
+    key: type,
+    ['data-testid']: `type-menu-item-${type}`,
+  }));
+  const statusMenuItems = Object.values(PipelineState).map((status) => ({
+    label: startCase(status),
+    key: status,
+    ['data-testid']: `status-menu-item-${status}`,
+  }));
+
+  return { typeMenuItems, statusMenuItems };
+};
+
+export const getIngestionStatusCountData = (summary?: StepSummary) => [
+  {
+    label: t('label.success'),
+    value: getReadableCountString(summary?.records ?? 0, 1),
+    type: 'success',
+  },
+  {
+    label: t('label.failed'),
+    value: getReadableCountString(summary?.errors ?? 0, 1),
+    type: 'failed',
+  },
+  {
+    label: t('label.warning'),
+    value: getReadableCountString(summary?.warnings ?? 0, 1),
+    type: 'warning',
+  },
+];

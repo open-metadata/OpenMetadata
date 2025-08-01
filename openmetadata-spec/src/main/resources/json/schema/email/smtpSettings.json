@@ -21,10 +21,6 @@
       "type": "boolean",
       "default": false
     },
-    "openMetadataUrl": {
-      "description": "Openmetadata Server Endpoint",
-      "type": "string"
-    },
     "senderMail": {
       "description": "Mail of the sender",
       "type": "string"
@@ -59,6 +55,5 @@
       "default": "openmetadata"
     }
   },
-  "additionalProperties": false,
-  "required": ["serverEndpoint", "serverPort", "senderMail", "openMetadataUrl"]
+  "additionalProperties": false
 }

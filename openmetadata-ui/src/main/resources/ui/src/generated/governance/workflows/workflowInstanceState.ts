@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a workflow instance.
  */
 export interface WorkflowInstanceState {
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
+    exception?: string;
     /**
      * Unique identifier of this workflow instance state.
      */
-    id?:    string;
-    stage?: Stage;
+    id?:     string;
+    stage?:  Stage;
+    status?: WorkflowStatus;
     /**
      * Timestamp on which the workflow instance state was created.
      */
@@ -46,6 +42,10 @@ export interface WorkflowInstanceState {
 
 export interface Stage {
     /**
+     * Display name of the workflow stage node.
+     */
+    displayName?: string;
+    /**
      * Timestamp on which the workflow instance stage ended.
      */
     endedAt?: number;
@@ -56,4 +56,11 @@ export interface Stage {
     startedAt?: number;
     tasks?:     string[];
     variables?: { [key: string]: any };
+}
+
+export enum WorkflowStatus {
+    Exception = "EXCEPTION",
+    Failure = "FAILURE",
+    Finished = "FINISHED",
+    Running = "RUNNING",
 }

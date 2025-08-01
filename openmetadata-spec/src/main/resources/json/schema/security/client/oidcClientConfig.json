@@ -77,6 +77,19 @@
     "callbackUrl": {
       "description": "Callback Url.",
       "type": "string"
+    },
+    "maxAge": {
+      "description": "Validity for the JWT Token created from SAML Response",
+      "type": "string"
+    },
+    "prompt": {
+      "description": "Prompt whether login/consent",
+      "type": "string"
+    },
+    "sessionExpiry": {
+      "description": "Validity for the Session in case of confidential clients",
+      "type": "integer",
+      "default": "604800"
     }
   },
   "additionalProperties": false

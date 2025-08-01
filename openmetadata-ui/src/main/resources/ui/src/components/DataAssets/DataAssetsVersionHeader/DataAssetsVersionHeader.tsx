@@ -13,8 +13,8 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
-import { get, isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { get } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
@@ -24,50 +24,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
+import './data-asset-version-header.less';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
-
-export const VersionExtraInfoLabel = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <Space align="center">
-      <Typography.Text className="self-center text-xs whitespace-nowrap">
-        {!isEmpty(label) && (
-          <span className="text-grey-muted">{`${label}: `}</span>
-        )}
-      </Typography.Text>
-
-      <Typography.Text className="self-center text-xs whitespace-nowrap font-medium">
-        {stringToHTML(value)}
-      </Typography.Text>
-    </Space>
-  </>
-);
-
-export const VersionExtraInfoLink = ({
-  value,
-  href,
-}: {
-  value: string;
-  href?: string;
-}) => (
-  <>
-    <Divider className="self-center m-x-sm" type="vertical" />
-    <div className="d-flex items-center text-xs">
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
-        {stringToHTML(value)}
-      </Typography.Link>
-    </div>
-  </>
-);
 
 function DataAssetsVersionHeader({
   breadcrumbLinks,
@@ -105,7 +65,10 @@ function DataAssetsVersionHeader({
   }, [currentVersionData]);
 
   return (
-    <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
+    <Row
+      className="version-header-container"
+      gutter={[8, 12]}
+      justify="space-between">
       <Col className="self-center" span={21}>
         <Row gutter={[16, 12]}>
           <Col span={24}>
@@ -121,14 +84,15 @@ function DataAssetsVersionHeader({
             />
           </Col>
           <Col span={24}>
-            <div className="d-flex no-wrap">
+            <div className="d-flex version-domain-container no-wrap">
               {entityType !== EntityType.METADATA_SERVICE && (
                 <>
                   <DomainLabel
-                    domain={
-                      (currentVersionData as EntitiesWithDomainField).domain
-                    }
+                    multiple
                     domainDisplayName={domainDisplayName}
+                    domains={
+                      (currentVersionData as EntitiesWithDomainField).domains
+                    }
                     entityFqn={currentVersionData.fullyQualifiedName ?? ''}
                     entityId={currentVersionData.id ?? ''}
                     entityType={entityType}

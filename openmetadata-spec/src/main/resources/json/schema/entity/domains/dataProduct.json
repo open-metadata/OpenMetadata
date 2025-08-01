@@ -56,21 +56,37 @@
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },
-    "domain": {
-      "description": "Domain or sub-domain to which this Data Product belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains or sub-domains to which this Data Product belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "tags": {
+      "description": "Tags associated with the Data Product.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name", "description"],

@@ -1,0 +1,229 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+
+.assignees-edit-input {
+  .ant-space-item:first-child {
+    width: 100%;
+  }
+}
+
+.task-action-button {
+  button {
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    span {
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 500;
+      line-height: 20px;
+    }
+    &:hover {
+      color: @primary-color !important;
+    }
+
+    svg {
+      width: 12px;
+      height: 12px;
+      font-weight: 600;
+    }
+    &:first-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    &:last-child {
+      border-left: none;
+    }
+    &.ant-btn.ant-btn-default:not(:hover):not(:disabled) {
+      border-color: @blue-12;
+    }
+  }
+}
+
+.task-action-dropdown {
+  .anticon svg {
+    fill: none;
+    width: 16px;
+    height: 16px;
+  }
+  ul {
+    padding: 4px 0;
+    border-radius: 8px;
+
+    li {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-bottom: none;
+      &:hover {
+        background: @primary-25;
+        color: @primary-color !important;
+      }
+
+      &.ant-dropdown-menu-item-selected {
+        background: @primary-25;
+        color: @primary-color !important;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+}
+
+.task-details-id {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+  .ant-typography,
+  .ant-typography a,
+  &.ant-typography,
+  &.ant-typography a,
+  & a.ant-typography,
+  & .ant-typography a {
+    color: @primary-heading-color;
+  }
+}
+.task-details-entity-link {
+  color: @text-color-tertiary;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+//user profile page
+.action-required-card {
+  border-radius: 12px;
+  border: 0.5px solid #eaecf5;
+  background: linear-gradient(
+    270deg,
+    rgba(85, 155, 238, 0.2) 0.56%,
+    rgba(96, 167, 251, 0.2) 16.47%,
+    rgba(245, 245, 245, 0.2) 99.98%
+  );
+  padding: 16px;
+  margin: 24px 0px;
+  box-shadow: none;
+}
+
+.action-required-text {
+  flex-grow: 1;
+  font-weight: 400;
+  color: #414651;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-button {
+  background-color: #2f74eb;
+  border-color: #2f74eb;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.approve-button:hover {
+  background-color: #1f67e9;
+  border-color: #1f67e9;
+}
+
+.reject-button {
+  background-color: #d93025;
+  border-color: #d93025;
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.reject-button:hover {
+  background-color: #b1271c;
+  border-color: #b1271c;
+}
+.profile-picture {
+  width: 32px;
+  height: 32px;
+}
+.task-feed-message {
+  margin-top: -8px;
+  width: 90%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.task-details-panel {
+  padding: @padding-lg;
+}
+.task-id,
+.entity-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: @primary-heading-color;
+  line-height: 20px;
+  &.ant-typography {
+    color: @primary-heading-color;
+  }
+}
+.entity-type.ant-typography {
+  color: @primary-heading-color;
+}
+.entity-link {
+  font-weight: 600;
+  line-height: 20px;
+  color: @primary-heading-color;
+}
+.task-details {
+  font-size: 14px;
+  color: @text-color;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.diff-view-container-card {
+  max-height: 200px;
+  border: 0.5px solid #eaecf5;
+  background: @white;
+  border-radius: 8px;
+}
+.diff-view-container-card-right-panel {
+  max-height: 400px;
+  background: @grey-9;
+  border-radius: 12px;
+  border: 0.5px solid #eaecf5;
+}
+.task-tab-description-header {
+  color: @text-color;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 20px;
+}
+.tags-details-contianer {
+  border-radius: 12px;
+  border: 0.5px solid #eaecf5;
+  background: @grey-9;
+  padding: 16px;
+}

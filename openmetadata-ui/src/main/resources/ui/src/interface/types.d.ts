@@ -19,6 +19,7 @@ declare module 'Models' {
   import { CreateMlModelService } from '../generated/api/services/createMlModelService';
   import { CreatePipelineService } from '../generated/api/services/createPipelineService';
   import { CreateSearchService } from '../generated/api/services/createSearchService';
+  import { CreateSecurityService } from '../generated/api/services/createSecurityService';
   import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
@@ -37,7 +38,8 @@ declare module 'Models' {
     | CreateDatabaseService
     | CreateMessagingService
     | CreateStorageService
-    | CreateSearchService;
+    | CreateSearchService
+    | CreateSecurityService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -130,14 +132,6 @@ declare module 'Models' {
     signingIn?: boolean;
   };
 
-  export type ServiceData = {
-    collection: {
-      documentation: string;
-      href: string;
-      name: string;
-    };
-  };
-
   export type ServiceTypes =
     | 'databaseServices'
     | 'messagingServices'
@@ -147,7 +141,8 @@ declare module 'Models' {
     | 'metadataServices'
     | 'storageServices'
     | 'searchServices'
-    | 'apiServices';
+    | 'apiServices'
+    | 'securityServices';
 
   export type SearchDataFunctionType = {
     queryString: string;

@@ -11,12 +11,12 @@
       "properties": {
         "corePoolSize": {
           "type": "integer",
-          "default": 50,
+          "default": 10,
           "description": "Default worker Pool Size. The Workflow Executor by default has this amount of workers."
         },
         "maxPoolSize": {
           "type": "integer",
-          "default": 100,
+          "default": 20,
           "description": "Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers."
         },
         "queueSize": {
@@ -28,6 +28,11 @@
           "type": "integer",
           "default": 20,
           "description": "The amount of Tasks that the Workflow Executor is able to pick up each time it looks for more."
+        },
+        "jobLockTimeInMillis": {
+          "type": "integer",
+          "default": 1296000000,
+          "description": "The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids jobs that takes too long to run being retried while running."
         }
       },
       "additionalProperties": false
@@ -50,10 +55,10 @@
       "description": "Used to set up the Workflow Executor Settings."
     },
     "historyCleanUpConfiguration": {
-      "$ref":  "#/definitions/historyCleanUpConfiguration",
+      "$ref": "#/definitions/historyCleanUpConfiguration",
       "description": "Used to set up the History CleanUp Settings."
     }
   },
-  "required": ["allowedClassification", "validityPeriod"],
+  "required": [],
   "additionalProperties": false
 }

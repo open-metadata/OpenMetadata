@@ -24,6 +24,7 @@ import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
 import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import cockroach from '../assets/img/service-icon-cockroach.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
@@ -84,6 +85,7 @@ import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
+import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
@@ -96,11 +98,15 @@ import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
+import securitySafe from '../assets/svg/security-safe.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -112,8 +118,10 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../generated/entity/services/searchService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
+import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
 
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
@@ -144,7 +152,7 @@ export const METABASE = metabase;
 export const AZURESQL = azuresql;
 export const CLICKHOUSE = clickhouse;
 export const DATABRICK = databrick;
-export const UNITYCATALOG = databrick;
+export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
 export const DRUID = druid;
@@ -202,11 +210,12 @@ export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
+export const COCKROACH = cockroach;
+export const SECURITY_DEFAULT = securitySafe;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
-  SearchServiceType.OpenSearch,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -217,6 +226,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'mlmodelServices',
   'storageServices',
   'apiServices',
+  'securityServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -229,6 +239,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
   apiServices: ServiceCategory.API_SERVICES,
+  security: ServiceCategory.SECURITY_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -262,9 +273,16 @@ export const servicesDisplayName: { [key: string]: string } = {
   apiServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.api-uppercase'),
   }),
+  securityServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.security'),
+  }),
 };
 
 export const DEF_UI_SCHEMA = {
+  supportsIncrementalMetadataExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -296,21 +314,28 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   'ui:order': [
     'name',
     'displayName',
-    'databaseFilterPattern',
-    'schemaFilterPattern',
-    'tableFilterPattern',
-    'classificationFilterPattern',
+    ...SERVICE_FILTER_PATTERN_FIELDS,
     'enableDebugLog',
     '*',
   ],
 };
 
+export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
+  incremental: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
+};
+
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
-  connection: {
+  [ServiceNestedConnectionFields.CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
-  metastoreConnection: {
+  [ServiceNestedConnectionFields.METASTORE_CONNECTION]: {
+    ...DEF_UI_SCHEMA,
+  },
+  [ServiceNestedConnectionFields.DATABASE_CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
 };
@@ -341,6 +366,23 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
       entity: i18n.t('label.detail-plural'),
     }),
     step: 3,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 4,
+  },
+];
+
+export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
+  {
+    name: i18n.t('label.connection-entity', {
+      entity: i18n.t('label.detail-plural'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 2,
   },
 ];
 
@@ -373,6 +415,7 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
   [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
   [ServiceCategory.API_SERVICES]: ServiceType.API,
+  [ServiceCategory.SECURITY_SERVICES]: ServiceType.Security,
 };
 
 export const SERVICE_TYPES_ENUM = {
@@ -385,20 +428,20 @@ export const SERVICE_TYPES_ENUM = {
   [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
   [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
   [ServiceCategory.API_SERVICES]: APIServiceType,
+  [ServiceCategory.SECURITY_SERVICES]: SecurityServiceType,
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
-  PipelineServiceType.Flink,
-  DatabaseServiceType.Teradata,
-  StorageServiceType.Gcs,
-  DatabaseServiceType.SapERP,
+  PipelineServiceType.Wherescape,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
-  DatabaseServiceType.Synapse,
+  DatabaseServiceType.Cockroach,
+  SearchServiceType.OpenSearch,
+  PipelineServiceType.Ssis,
+  DatabaseServiceType.Ssas,
+  DashboardServiceType.ThoughtSpot,
+  SecurityServiceType.Ranger,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -417,10 +460,6 @@ export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
   'message.testing-your-connection-may-take-two-minutes'
 );
 
-export const TEST_CONNECTION_INFO_MESSAGE = i18n.t(
-  'message.test-connection-taking-too-long'
-);
-
 export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
   'message.connection-test-warning'
 );
@@ -436,12 +475,14 @@ export const ADVANCED_PROPERTIES = [
   'useStatistics',
   'confidence',
   'samplingMethodType',
+  'randomizedSample',
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
+  'consumerConfigSSL',
   'verify',
 ];
 
@@ -457,7 +498,10 @@ export const SERVICE_TYPES = [
   EntityType.STORAGE_SERVICE,
   EntityType.SEARCH_SERVICE,
   EntityType.API_SERVICE,
+  EntityType.SECURITY_SERVICE,
 ];
+
+export const EXCLUDE_AUTO_PILOT_SERVICE_TYPES = [EntityType.SECURITY_SERVICE];
 
 export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Metadata,

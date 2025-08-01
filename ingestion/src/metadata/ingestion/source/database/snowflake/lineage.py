@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -47,6 +47,9 @@ class SnowflakeLineageSource(
         AND (
             QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
             OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
+            OR (QUERY_TYPE = 'ALTER' and query_text ILIKE '%%alter%%table%%swap%%')
+            OR (QUERY_TYPE = 'CREATE_TABLE' and query_text ILIKE '%%clone%%')
+            OR (QUERY_TYPE = 'CREATE_VIEW' and query_text ILIKE '%%create%%temporary%%view%%')
         )
     """
 
@@ -60,6 +63,7 @@ class SnowflakeLineageSource(
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = self.stored_procedure_query.format(
             start_date=start,
+            account_usage=self.service_connection.accountUsageSchema,
         )
         queries_dict = self.procedure_queries_dict(
             query=query,
@@ -84,6 +88,7 @@ class SnowflakeLineageSource(
             # further process of `yield_query_lineage`
             for row in rows:
                 query_dict = dict(row)
+                query_dict.update({k.lower(): v for k, v in query_dict.items()})
                 try:
                     yield TableQuery(
                         dialect=self.dialect.value,

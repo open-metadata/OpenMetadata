@@ -13,8 +13,13 @@
 
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
+import {
+  EntityLineageResponse,
+  LineageData,
+} from '../components/Lineage/Lineage.interface';
+
 import { AddLineage } from '../generated/api/lineage/addLineage';
+import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -47,26 +52,65 @@ export const exportLineageAsync = async (
   return response.data;
 };
 
-export const getLineageDataByFQN = async (
-  fqn: string,
-  entityType: string,
-  config?: LineageConfig,
-  queryFilter?: string
-) => {
+export const getLineageDataByFQN = async ({
+  fqn,
+  entityType,
+  config,
+  queryFilter,
+  from,
+  direction,
+}: {
+  fqn: string;
+  entityType: string;
+  config?: LineageConfig;
+  queryFilter?: string;
+  from?: number;
+  direction?: LineageDirection;
+}) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
-  const response = await APIClient.get<EntityLineageResponse>(
-    `lineage/getLineage`,
-    {
-      params: {
-        fqn,
-        type: entityType,
-        upstreamDepth,
-        downstreamDepth,
-        query_filter: queryFilter,
-        includeDeleted: false,
-      },
-    }
-  );
+  const API_PATH = direction
+    ? `lineage/getLineage/${direction}`
+    : 'lineage/getLineage';
+  const response = await APIClient.get<LineageData>(API_PATH, {
+    params: {
+      fqn,
+      type: entityType,
+      // upstreamDepth depth in BE is n+1 rather than exactly n, so we need to subtract 1 to get the correct depth
+      // and we don't want to pass the negative value
+      upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth - 1,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: config?.nodesPerLayer,
+      from,
+    },
+  });
+
+  return response.data;
+};
+
+export const getPlatformLineage = async ({
+  config,
+  queryFilter,
+  view,
+}: {
+  config?: LineageConfig;
+  queryFilter?: string;
+  view: string;
+}) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const API_PATH = `lineage/getPlatformLineage`;
+
+  const response = await APIClient.get<LineageData>(API_PATH, {
+    params: {
+      view,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: config?.nodesPerLayer,
+    },
+  });
 
   return response.data;
 };

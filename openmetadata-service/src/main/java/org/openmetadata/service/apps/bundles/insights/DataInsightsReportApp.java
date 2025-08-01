@@ -4,10 +4,12 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,11 +31,13 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -42,7 +46,6 @@ import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.Utilities;
 import org.openmetadata.service.util.email.EmailUtil;
@@ -69,6 +72,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
+    app.setAppConfiguration(
+        JsonUtils.getMapFromJson(
+            (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_CONFIG)));
 
     // Calculate time config
     long currentTime = System.currentTimeMillis();
@@ -98,6 +104,17 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
       throw new EventSubscriptionJobException(e);
+    }
+  }
+
+  @Override
+  protected void validateConfig(Map<String, Object> config) {
+    try {
+      JsonUtils.convertValue(config, DataInsightsReportAppConfig.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST,
+          "Invalid DataInsightsReportAppConfig configuration: " + e.getMessage());
     }
   }
 

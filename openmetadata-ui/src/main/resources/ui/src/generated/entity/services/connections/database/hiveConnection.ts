@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Hive SQL Connection Config
  */
 export interface HiveConnection {
@@ -26,6 +24,10 @@ export interface HiveConnection {
     authOptions?:         string;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -55,6 +57,10 @@ export interface HiveConnection {
     password?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                        HiveScheme;
@@ -62,6 +68,10 @@ export interface HiveConnection {
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -89,6 +99,26 @@ export enum AuthenticationMode {
 }
 
 /**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
  * Hive Metastore Connection Details
  *
  * Postgres Database Connection Config
@@ -113,6 +143,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -124,6 +158,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -141,6 +179,10 @@ export interface HiveMetastoreConnectionDetails {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -164,6 +206,10 @@ export interface HiveMetastoreConnectionDetails {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,7 @@ OpenMetadata high-level API Table test
 import logging
 import time
 from datetime import datetime
-from unittest import TestCase
+from unittest import TestCase, mock
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.data.database import Database
@@ -168,7 +168,6 @@ class OMetaTableTest(TestCase):
         cls.test_case = cls.metadata.create_or_update(
             get_create_test_case(
                 entity_link=f"<#E::table::{cls.table.fullyQualifiedName.root}>",
-                test_suite=cls.test_suite.fullyQualifiedName,
                 test_definition=cls.test_definition.fullyQualifiedName,
                 parameter_values=[TestCaseParameterValue(name="foo", value="10")],
             )
@@ -252,7 +251,7 @@ class OMetaTableTest(TestCase):
         )
 
     def test_patch_table(self):
-        new_patched_table = self.patch_test_table.copy(deep=True)
+        new_patched_table = self.patch_test_table.model_copy(deep=True)
 
         # Test adding a new column to the table
         new_patched_table.columns.append(
@@ -289,7 +288,7 @@ class OMetaTableTest(TestCase):
         assert patched_table.owners.root[0].id == self.owner_user_1.root[0].id
 
         # After this we'll again update the descriptions, tags and owner
-        new_patched_table = patched_table.copy(deep=True)
+        new_patched_table = patched_table.model_copy(deep=True)
 
         # Descriptions should not override already present descriptions
         new_patched_table.description = Markdown("This should NOT get patched")
@@ -587,7 +586,7 @@ class OMetaTableTest(TestCase):
         assert updated.owners == EntityReferenceList(root=[])
 
         # Table with non-existent id, force -> Unmodified
-        non_existent_table = self.table.copy(deep=True)
+        non_existent_table = self.table.model_copy(deep=True)
         non_existent_table.id = "9facb7b3-1dee-4017-8fca-1254b700afef"
         updated: Table = self.metadata.patch_owner(
             entity=Table,
@@ -640,3 +639,176 @@ class OMetaTableTest(TestCase):
             with_description.columns[2].children[1].description.root,
             "I am so nested",
         )
+
+    def test_patch_when_inherited_owner(self):
+        """PATCHing anything when owner is inherited, does not add the owner to the entity"""
+
+        # Prepare a schema with owners
+        create_schema = get_create_entity(
+            entity=DatabaseSchema, reference=self.db_entity.fullyQualifiedName
+        )
+        create_schema.owners = self.owner_team_1
+        db_schema_entity = self.metadata.create_or_update(data=create_schema)
+
+        # Add a table and check it has inherited owners
+        create_table = get_create_entity(
+            entity=Table, reference=db_schema_entity.fullyQualifiedName
+        )
+        _table = self.metadata.create_or_update(data=create_table)
+
+        table: Table = self.metadata.get_by_name(
+            entity=Table, fqn=_table.fullyQualifiedName, fields=["owners"]
+        )
+        assert table.owners.root
+        assert table.owners.root[0].inherited
+
+        # Add a description to the table and PATCH it
+        dest = table.model_copy(deep=True)
+        dest.description = Markdown(root="potato")
+
+        self.metadata.patch(
+            entity=Table,
+            source=table,
+            destination=dest,
+        )
+
+        patched_table = self.metadata.get_by_name(
+            entity=Table, fqn=table.fullyQualifiedName, fields=["owners"]
+        )
+
+        # Check the table still has inherited owners
+        assert patched_table.description.root == "potato"
+        assert patched_table.owners.root
+        assert patched_table.owners.root[0].inherited
+
+    def test_patch_skip_on_failure_true(self):
+        """Test that patch operation skips failures when skip_on_failure=True."""
+        # Create a destination with a change to trigger a patch
+        corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination.description = Markdown("Modified description")
+
+        # Mock the client.patch to raise an exception
+        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
+            mock_patch_client.side_effect = Exception("API error")
+
+            # Test with skip_on_failure=True (should return None)
+            result = self.metadata.patch(
+                entity=Table,
+                source=self.table,
+                destination=corrupted_destination,
+                skip_on_failure=True,
+            )
+
+            assert result is None
+            mock_patch_client.assert_called_once()
+
+    def test_patch_skip_on_failure_false(self):
+        """Test that patch operation raises exception when skip_on_failure=False."""
+        # Create a destination with a change to trigger a patch
+        corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination.description = Markdown("Modified description")
+
+        # Mock the client.patch to raise an exception
+        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
+            mock_patch_client.side_effect = Exception("API error")
+
+            # Test with skip_on_failure=False (should raise exception)
+            with self.assertRaises(RuntimeError) as context:
+                self.metadata.patch(
+                    entity=Table,
+                    source=self.table,
+                    destination=corrupted_destination,
+                    skip_on_failure=False,
+                )
+
+            assert "API error" in str(context.exception)
+            assert "Failed to update" in str(context.exception)
+            mock_patch_client.assert_called_once()
+
+    def test_patch_skip_on_failure_default_behavior(self):
+        """Test that patch operation defaults to skip_on_failure=True."""
+        # Create a destination with a change to trigger a patch
+        corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination.description = Markdown("Modified description")
+
+        # Mock the client.patch to raise an exception
+        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
+            mock_patch_client.side_effect = Exception("API error")
+
+            # Test without explicitly setting skip_on_failure (should default to True)
+            result = self.metadata.patch(
+                entity=Table, source=self.table, destination=corrupted_destination
+            )
+
+            assert result is None
+            mock_patch_client.assert_called_once()
+
+    def test_patch_description_skip_on_failure_true(self):
+        """Test that patch_description skips failures when skip_on_failure=True."""
+        # Mock _fetch_entity_if_exists to raise an exception
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+            mock_fetch.side_effect = Exception("Database error")
+
+            # Test with skip_on_failure=True
+            result = self.metadata.patch_description(
+                entity=Table,
+                source=self.table,
+                description="New description",
+                skip_on_failure=True,
+            )
+
+            assert result is None
+            mock_fetch.assert_called_once()
+
+    def test_patch_description_skip_on_failure_false(self):
+        """Test that patch_description raises exception when skip_on_failure=False."""
+        # Mock _fetch_entity_if_exists to raise an exception
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+            mock_fetch.side_effect = Exception("Database error")
+
+            # Test with skip_on_failure=False
+            with self.assertRaises(Exception) as context:
+                self.metadata.patch_description(
+                    entity=Table,
+                    source=self.table,
+                    description="New description",
+                    skip_on_failure=False,
+                )
+
+            assert str(context.exception) == "Database error"
+            mock_fetch.assert_called_once()
+
+    def test_patch_tags_skip_on_failure_true(self):
+        """Test that patch_tags skips failures when skip_on_failure=True."""
+        # Mock _fetch_entity_if_exists to raise an exception
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+            mock_fetch.side_effect = Exception("Database error")
+
+            # Test with skip_on_failure=True
+            result = self.metadata.patch_tags(
+                entity=Table,
+                source=self.table,
+                tag_labels=[PII_TAG_LABEL],
+                skip_on_failure=True,
+            )
+
+            assert result is None
+            mock_fetch.assert_called_once()
+
+    def test_patch_tags_skip_on_failure_false(self):
+        """Test that patch_tags raises exception when skip_on_failure=False."""
+        # Mock _fetch_entity_if_exists to raise an exception
+        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+            mock_fetch.side_effect = Exception("Database error")
+
+            # Test with skip_on_failure=False
+            with self.assertRaises(Exception) as context:
+                self.metadata.patch_tags(
+                    entity=Table,
+                    source=self.table,
+                    tag_labels=[PII_TAG_LABEL],
+                    skip_on_failure=False,
+                )
+
+            assert str(context.exception) == "Database error"
+            mock_fetch.assert_called_once()

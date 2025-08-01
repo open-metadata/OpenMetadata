@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@ System table profiler
 """
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Type, Union
 
 from more_itertools import partition
 from pydantic import field_validator
@@ -25,7 +25,11 @@ from metadata.profiler.interface.sqlalchemy.stored_statistics_profiler import (
     StoredStatisticsSource,
 )
 from metadata.profiler.metrics.core import Metric
-from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.registry import MetricRegistry
+from metadata.utils.dependency_injector.dependency_injector import (
+    Inject,
+    inject_class_attributes,
+)
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -61,23 +65,28 @@ class TableStats(BaseModel):
     columns: Dict[str, ColumnStats] = {}
 
 
+@inject_class_attributes
 class TrinoStoredStatisticsSource(StoredStatisticsSource):
     """Trino system profile source"""
 
-    metric_stats_map: Dict[Metrics, str] = {
-        Metrics.NULL_RATIO: "nulls_fractions",
-        Metrics.DISTINCT_COUNT: "distinct_values_count",
-        Metrics.ROW_COUNT: "row_count",
-        Metrics.MAX: "high_value",
-        Metrics.MIN: "low_value",
-    }
+    metrics: Inject[Type[MetricRegistry]]
 
-    metric_stats_by_name: Dict[str, str] = {
-        k.name: v for k, v in metric_stats_map.items()
-    }
+    @classmethod
+    def get_metric_stats_map(cls) -> Dict[MetricRegistry, str]:
+        return {
+            cls.metrics.NULL_RATIO: "nulls_fractions",
+            cls.metrics.DISTINCT_COUNT: "distinct_values_count",
+            cls.metrics.ROW_COUNT: "row_count",
+            cls.metrics.MAX: "high_value",
+            cls.metrics.MIN: "low_value",
+        }
 
-    def get_statistics_metrics(self) -> Set[Metrics]:
-        return set(self.metric_stats_map.keys())
+    @classmethod
+    def get_metric_stats_by_name(cls) -> Dict[str, str]:
+        return {k.name: v for k, v in cls.get_metric_stats_map().items()}
+
+    def get_statistics_metrics(self) -> Set[MetricRegistry]:
+        return set(self.get_metric_stats_map().keys())
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -96,7 +105,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
                 f"Column {column} not found in table {table_name}. Statistics might be stale or missing."
             )
         result = {
-            m.name(): getattr(column_stats, self.metric_stats_by_name[m.name()])
+            m.name(): getattr(column_stats, self.get_metric_stats_by_name()[m.name()])
             for m in metric
         }
         result.update(self.get_hybrid_statistics(table_stats, column_stats))
@@ -108,7 +117,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     ) -> dict:
         table_stats = self._get_cached_stats(schema, table_name)
         return {
-            m.name(): getattr(table_stats, self.metric_stats_by_name[m.name()])
+            m.name(): getattr(table_stats, self.get_metric_stats_by_name()[m.name()])
             for m in metric
         }
 
@@ -159,7 +168,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
     ) -> Dict[str, Any]:
         return {
             # trino stats are in fractions, so we need to convert them to counts (unlike our default profiler)
-            Metrics.NULL_COUNT.name: (
+            self.metrics.NULL_COUNT.name: (
                 int(table_stats.row_count * column_stats.nulls_fraction)
                 if None not in [table_stats.row_count, column_stats.nulls_fraction]
                 else None

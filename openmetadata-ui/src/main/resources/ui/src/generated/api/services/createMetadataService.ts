@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Metadata Service entity request
  */
 export interface CreateMetadataService {
@@ -26,9 +24,13 @@ export interface CreateMetadataService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Metadata Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
@@ -66,6 +68,10 @@ export interface MetadataConnection {
  */
 export interface Connection {
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
     encrypted?: boolean;
@@ -89,8 +95,16 @@ export interface Connection {
      *
      * password to connect  to the Atlas.
      */
-    password?:                   string;
+    password?: string;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?:        FilterPattern;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -366,6 +380,10 @@ export interface AlationDatabaseConnection {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -377,6 +395,10 @@ export interface AlationDatabaseConnection {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -394,6 +416,10 @@ export interface AlationDatabaseConnection {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -417,6 +443,10 @@ export interface AlationDatabaseConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -511,6 +541,26 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -701,6 +751,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -752,14 +803,16 @@ export enum VerifySSL {
 }
 
 /**
- * Owners of this Metadata service.
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this Metadata service.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -858,6 +911,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

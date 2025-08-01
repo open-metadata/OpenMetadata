@@ -49,6 +49,7 @@ export interface WorkflowExtraConfig {
 
 export interface IngestionExtraConfig {
   retries?: number;
+  raiseOnError?: boolean;
 }
 
 export interface Combination {

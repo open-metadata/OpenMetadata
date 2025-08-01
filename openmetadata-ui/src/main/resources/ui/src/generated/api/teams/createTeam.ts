@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Team entity
  */
 export interface CreateTeam {
@@ -43,6 +41,11 @@ export interface CreateTeam {
      * Email address of the team.
      */
     email?: string;
+    /**
+     * External identifier for the team from an external identity provider (e.g., Azure AD group
+     * ID).
+     */
+    externalId?: string;
     /**
      * Can any user join this team during sign up? Value of true indicates yes, and false no.
      */
@@ -182,6 +185,10 @@ export interface Webhook {
      * HTTP operation to send the webhook request. Supports POST or PUT.
      */
     httpMethod?: HTTPMethod;
+    /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
     /**
      * List of receivers to send mail to
      */

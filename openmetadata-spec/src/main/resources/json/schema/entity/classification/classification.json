@@ -55,6 +55,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -73,11 +77,15 @@
       "type" : "boolean",
       "default" : "false"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "owners": {
+      "description": "Owners of this Classification.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["name", "description"],
+  "required": ["id", "name", "description"],
   "additionalProperties": false
 }

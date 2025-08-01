@@ -11,47 +11,52 @@
  *  limitations under the License.
  */
 import { camelCase, map, startCase } from 'lodash';
-import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets.svg';
-import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored.svg';
-import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-colored.svg';
+import { ReactComponent as APICollectionIcon } from '../../assets/svg/api-collection-colored.svg';
+import { ReactComponent as APIEndpointIcon } from '../../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored-new.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/dashboard-data-models-colored.svg';
+import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets-colored-new.svg';
+import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored-new.svg';
+import { ReactComponent as SchemaIcon } from '../../assets/svg/database-schema-colored.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/domain-colored.svg';
+import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as GovernIcon } from '../../assets/svg/governance.svg';
 import { ReactComponent as HomepageIcon } from '../../assets/svg/homepage.svg';
-import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/ic-dashboard-data-model-colored.svg';
-import { ReactComponent as SchemaIcon } from '../../assets/svg/ic-database-schema-colored.svg';
-import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored.svg';
+import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored-new.svg';
+import { ReactComponent as MetricIcon } from '../../assets/svg/metric-colored-new.svg';
+import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-models-colored-new.svg';
 import { ReactComponent as NavigationIcon } from '../../assets/svg/navigation.svg';
-import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-colored.svg';
-import { ReactComponent as SearchIcon } from '../../assets/svg/search-colored.svg';
-import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored.svg';
-import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedure-colored.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/table-colored.svg';
-
-import { EntityType } from '../../enums/entity.enum';
+import { ReactComponent as PipelineIcon } from '../../assets/svg/pipelines-colored-new.svg';
+import { ReactComponent as SearchIndexIcon } from '../../assets/svg/search-index-colored-new.svg';
+import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored-new.svg';
+import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedures-colored-new.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/table-colored-new.svg';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { SettingMenuItem } from '../GlobalSettingsUtils';
 import i18n from '../i18next/LocalUtil';
 
 const ENTITY_ICONS: Record<string, SvgComponent> = {
-  [EntityType.TABLE]: TableIcon,
-  [EntityType.CONTAINER]: StorageIcon,
-  [EntityType.DASHBOARD]: DashboardIcon,
-  [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModelIcon,
-  [EntityType.DATABASE]: DatabaseIcon,
-  [EntityType.DATABASE_SCHEMA]: SchemaIcon,
-  [EntityType.DOMAIN]: SchemaIcon,
-  [EntityType.GLOSSARY]: GlossaryIcon,
-  [EntityType.GLOSSARY_TERM]: GlossaryIcon,
-  [EntityType.PIPELINE]: PipelineIcon,
-  [EntityType.SEARCH_INDEX]: SearchIcon,
-  [EntityType.STORED_PROCEDURE]: StoredProcedureIcon,
-  [EntityType.TOPIC]: MessagingIcon,
-  [EntityType.GOVERN]: GovernIcon,
+  [PageType.Table]: TableIcon,
+  [PageType.Container]: StorageIcon,
+  [PageType.Dashboard]: DashboardIcon,
+  [PageType.DashboardDataModel]: DashboardDataModelIcon,
+  [PageType.Database]: DatabaseIcon,
+  [PageType.DatabaseSchema]: SchemaIcon,
+  [PageType.Domain]: DomainIcon,
+  [PageType.Glossary]: GlossaryIcon,
+  [PageType.GlossaryTerm]: GlossaryIcon,
+  [PageType.Pipeline]: PipelineIcon,
+  [PageType.SearchIndex]: SearchIndexIcon,
+  [PageType.StoredProcedure]: StoredProcedureIcon,
+  [PageType.Topic]: MessagingIcon,
+  ['govern']: GovernIcon,
   ['dataAssets']: DataAssetsIcon,
   ['homepage']: HomepageIcon,
   ['navigation']: NavigationIcon,
-  ['governance']: GovernIcon,
-  [PageType.LandingPage]: MessagingIcon,
+  [PageType.APICollection]: APICollectionIcon,
+  [PageType.APIEndpoint]: APIEndpointIcon,
+  [PageType.MlModel]: MlModelIcon,
+  [PageType.Metric]: MetricIcon,
 };
 
 export const getCustomizePageCategories = (): SettingMenuItem[] => {
@@ -59,25 +64,29 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
-      description: 'Navigation',
+      isBeta: true,
+      description: 'Customize left sidebar ',
       icon: ENTITY_ICONS[camelCase('Navigation')],
     },
     {
       key: PageType.LandingPage,
-      label: i18n.t('label.homepage'),
-      description: 'Homepage',
+      label: i18n.t('label.home-page'),
+      description: 'Customize the My data page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('Homepage')],
     },
     {
       key: 'governance',
       label: i18n.t('label.governance'),
-      description: 'Governance',
+      isBeta: true,
+      description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS[camelCase('GOVERN')],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
-      description: 'Data assets',
+      isBeta: true,
+      description:
+        'Customize the entity detail page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('data-assets')],
     },
   ];
@@ -86,8 +95,10 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
 const generateSettingItems = (pageType: PageType): SettingMenuItem => ({
   key: pageType,
   label: startCase(pageType),
-  description: pageType,
-  icon: ENTITY_ICONS[camelCase(pageType)],
+  description: i18n.t('message.entity-customize-description', {
+    entity: startCase(pageType),
+  }),
+  icon: ENTITY_ICONS[pageType],
 });
 
 export const getCustomizePageOptions = (

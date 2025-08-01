@@ -12,10 +12,10 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   Post,

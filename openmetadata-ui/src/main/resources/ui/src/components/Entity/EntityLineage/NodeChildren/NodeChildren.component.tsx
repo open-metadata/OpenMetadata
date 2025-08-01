@@ -13,8 +13,8 @@
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Collapse, Input, Space } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
 import {
@@ -25,7 +25,13 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import {
+  EntityReference,
+  TestSummary,
+} from '../../../../generated/tests/testCase';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
+import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { getColumnContent } from '../CustomNode.utils';
@@ -48,6 +54,8 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [summary, setSummary] = useState<TestSummary>();
+  const [isLoading, setIsLoading] = useState(true);
 
   const { showColumns, showDataObservability } = useMemo(() => {
     return {
@@ -57,6 +65,27 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       ),
     };
   }, [activeLayer]);
+
+  const getColumnSummary = useCallback(
+    (column: Column) => {
+      const { fullyQualifiedName } = column;
+
+      return summary?.columnTestSummary?.find(
+        (data) =>
+          EntityLink.getEntityColumnFqn(data.entityLink ?? '') ===
+          fullyQualifiedName
+      );
+    },
+    [summary]
+  );
+
+  const showDataObservabilitySummary = useMemo(() => {
+    return Boolean(
+      showDataObservability &&
+        entityType === EntityType.TABLE &&
+        (node as Table).testSuite
+    );
+  }, [node, showDataObservability, entityType]);
 
   const supportsColumns = useMemo(() => {
     return (
@@ -86,6 +115,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           getEntityName(column).toLowerCase().includes(value.toLowerCase())
         );
         setFilteredColumns(filtered);
+        setShowAllColumns(true);
       }
     },
     [children]
@@ -117,16 +147,43 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     setShowAllColumns(expandAllColumns);
   }, [expandAllColumns]);
 
+  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
+    setIsLoading(true);
+    try {
+      const response = await getTestCaseExecutionSummary(testSuite.id);
+      setSummary(response);
+    } catch {
+      setSummary(undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const testSuite = (node as Table)?.testSuite;
+    if (showDataObservabilitySummary && testSuite && isUndefined(summary)) {
+      fetchTestSuiteSummary(testSuite);
+    } else {
+      setIsLoading(false);
+    }
+  }, [node, showDataObservabilitySummary, summary]);
+
   const renderRecord = useCallback(
     (record: Column) => {
       const isColumnTraced = tracedColumns.includes(
         record.fullyQualifiedName ?? ''
       );
+
+      const columnSummary = getColumnSummary(record);
+
       const headerContent = getColumnContent(
         record,
         isColumnTraced,
         isConnectable,
-        onColumnClick
+        onColumnClick,
+        showDataObservabilitySummary,
+        isLoading,
+        columnSummary
       );
 
       if (!record.children || record.children.length === 0) {
@@ -139,6 +196,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
       const childRecords = record?.children?.map((child) => {
         const { fullyQualifiedName, dataType } = child;
+
+        const columnSummary = getColumnSummary(child);
+
         if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
           return renderRecord(child);
         } else {
@@ -154,7 +214,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             child,
             isColumnTraced,
             isConnectable,
-            onColumnClick
+            onColumnClick,
+            showDataObservabilitySummary,
+            isLoading,
+            columnSummary
           );
         }
       });
@@ -178,12 +241,21 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns, onColumnClick, isColumnVisible]
+    [
+      isConnectable,
+      tracedColumns,
+      onColumnClick,
+      isColumnVisible,
+      showDataObservabilitySummary,
+      isLoading,
+      summary,
+    ]
   );
-
   const renderColumnsData = useCallback(
     (column: Column) => {
       const { fullyQualifiedName, dataType } = column;
+      const columnSummary = getColumnSummary(column);
+
       if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
         return renderRecord(column);
       } else {
@@ -196,12 +268,58 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           column,
           isColumnTraced,
           isConnectable,
-          onColumnClick
+          onColumnClick,
+          showDataObservabilitySummary,
+          isLoading,
+          columnSummary
         );
       }
     },
-    [isConnectable, tracedColumns, isColumnVisible]
+    [
+      isConnectable,
+      tracedColumns,
+      isColumnVisible,
+      showDataObservabilitySummary,
+      isLoading,
+      summary,
+    ]
   );
+
+  // Pre-render column data outside of the return statement
+  const renderedColumns = useMemo(() => {
+    return filteredColumns
+      .map((column) => renderColumnsData(column as Column))
+      .filter(Boolean);
+  }, [filteredColumns, renderColumnsData]);
+
+  // Memoize the expand/collapse icon to prevent unnecessary re-renders
+  const expandCollapseIcon = useMemo(() => {
+    return isExpanded ? (
+      <UpOutlined style={{ fontSize: '12px' }} />
+    ) : (
+      <DownOutlined style={{ fontSize: '12px' }} />
+    );
+  }, [isExpanded]);
+
+  // Memoize the entity icon to prevent unnecessary re-renders
+  const entityIcon = useMemo(() => {
+    return searchClassBase.getEntityIcon(node.entityType ?? '');
+  }, [node.entityType]);
+
+  const shouldShowMoreButton = useMemo(() => {
+    return (
+      !showAllColumns &&
+      !isEmpty(children) &&
+      renderedColumns.length !== children.length &&
+      !searchValue
+    );
+  }, [showAllColumns, children, renderedColumns, searchValue]);
+
+  // Memoize the expand/collapse click handler
+  const handleExpandCollapseClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
+  }, []);
 
   if (supportsColumns && (showColumns || showDataObservability)) {
     return (
@@ -213,29 +331,18 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 className="flex-center text-primary rounded-4 p-xss h-9"
                 data-testid="expand-cols-btn"
                 type="text"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
-                }}>
+                onClick={handleExpandCollapseClick}>
                 <Space>
-                  <div className=" w-5 h-5 text-base-color">
-                    {searchClassBase.getEntityIcon(node.entityType ?? '')}
-                  </div>
+                  <div className=" w-5 h-5 text-base-color">{entityIcon}</div>
                   {childrenHeading}
-                  {isExpanded ? (
-                    <UpOutlined style={{ fontSize: '12px' }} />
-                  ) : (
-                    <DownOutlined style={{ fontSize: '12px' }} />
-                  )}
+                  {expandCollapseIcon}
                 </Space>
               </Button>
             )}
           </div>
-          {showDataObservability &&
-            entityType === EntityType.TABLE &&
-            (node as Table).testSuite && (
-              <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
-            )}
+          {showDataObservabilitySummary && (
+            <TestSuiteSummaryWidget isLoading={isLoading} summary={summary} />
+          )}
         </div>
 
         {showColumns && isExpanded && (
@@ -251,20 +358,21 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
               />
             </div>
 
-            <section className="m-t-md" id="table-columns">
-              <div
-                className={classNames('rounded-4 overflow-hidden', {
-                  border: !showAllColumns,
-                })}>
-                {filteredColumns.map((column) =>
-                  renderColumnsData(column as Column)
-                )}
-              </div>
-            </section>
+            {!isEmpty(renderedColumns) && (
+              <section className="m-t-md" id="table-columns">
+                <div
+                  className={classNames('rounded-4 overflow-hidden', {
+                    border: !showAllColumns,
+                  })}>
+                  {renderedColumns}
+                </div>
+              </section>
+            )}
 
-            {!showAllColumns && (
+            {shouldShowMoreButton && (
               <Button
                 className="m-t-xs text-primary"
+                data-testid="show-more-columns-btn"
                 type="text"
                 onClick={handleShowMoreClick}>
                 {t('label.show-more-entity', {

@@ -11,29 +11,31 @@
  *  limitations under the License.
  */
 
-import { Col, Collapse, Row, Space, Tabs, Tooltip, Typography } from 'antd';
-import Card from 'antd/lib/card/Card';
-import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Col, Row, Tabs, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import { noop } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as PersonaIcon } from '../../../assets/svg/ic-personas.svg';
-import { getUserPath, ROUTES } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { searchData } from '../../../rest/miscAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getUserPath } from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import Chip from '../../common/Chip/Chip.component';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import {
+  ActivityFeedLayoutType,
+  ActivityFeedTabs,
+} from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -42,13 +44,12 @@ import {
   AssetNoDataPlaceholderProps,
   AssetsOfEntity,
 } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { PersonaSelectableList } from '../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
-import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
 import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
+import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './users.less';
-import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
-import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
+import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
@@ -58,19 +59,19 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY } =
-    useParams<{ tab: UserPageTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } = useRequiredParams<{
+    tab: UserPageTabs;
+    subTab: ActivityFeedTabs;
+  }>();
   const { fqn: decodedUsername } = useFqn();
-  const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
-
+  const [currentTab, setCurrentTab] = useState<UserPageTabs>(activeTab);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
-  const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const { t } = useTranslation();
   const { getResourceLimit } = useLimitStore();
 
@@ -81,16 +82,6 @@ const Users = ({
     [decodedUsername]
   );
 
-  const fetchAssetsCount = async (query: string) => {
-    try {
-      const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
-
-      setAssetCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
-      setAssetCount(0);
-    }
-  };
-
   const initLimits = async () => {
     const limits = await getResourceLimit('user', false);
 
@@ -98,23 +89,26 @@ const Users = ({
   };
 
   const activeTabHandler = (activeKey: string) => {
-    // To reset search params appends from other page for proper navigation
     location.search = '';
-    if (activeKey !== activeTab) {
-      history.push({
+    if (activeKey !== currentTab) {
+      navigate({
         pathname: getUserPath(decodedUsername, activeKey),
         search: location.search,
       });
     }
+    setCurrentTab(activeKey as UserPageTabs);
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handleTabRedirection = useCallback(() => {
     if (!isLoggedInUser && activeTab === UserPageTabs.ACCESS_TOKEN) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, UserPageTabs.ACTIVITY),
         search: location.search,
       });
@@ -126,29 +120,27 @@ const Users = ({
     initLimits();
   }, []);
 
-  const handlePersonaUpdate = useCallback(
-    async (personas: EntityReference[]) => {
-      await updateUserDetails({ personas }, 'personas');
-    },
-    [updateUserDetails]
-  );
-
   const tabDataRender = useCallback(
     (props: {
       queryFilter: string;
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (
-      <Row className="user-page-layout" wrap={false}>
-        <Col className="user-layout-scroll" flex="auto">
-          <AssetsTabs
-            isSummaryPanelOpen
-            assetCount={assetCount}
-            permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-            onAddAsset={() => history.push(ROUTES.EXPLORE)}
-            onAssetClick={handleAssetClick}
-            {...props}
-          />
+      <Row
+        className="user-page-layout"
+        gutter={[20, 0]}
+        key={currentTab}
+        wrap={false}>
+        <Col flex="auto">
+          <div className="user-layout-scroll">
+            <AssetsTabs
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
+              onAddAsset={() => navigate(ROUTES.EXPLORE)}
+              onAssetClick={handleAssetClick}
+              {...props}
+            />
+          </div>
         </Col>
 
         {previewAsset && (
@@ -161,16 +153,23 @@ const Users = ({
         )}
       </Row>
     ),
-    [previewAsset, assetCount, handleAssetClick, setPreviewAsset]
+    [previewAsset, handleAssetClick, setPreviewAsset, currentTab]
   );
-
+  useEffect(() => {
+    if (
+      subTab === ActivityFeedTabs.MENTIONS ||
+      subTab === ActivityFeedTabs.TASKS
+    ) {
+      setCurrentTab(UserPageTabs.TASK);
+    }
+  }, [subTab]);
   const tabs = useMemo(
     () => [
       {
         label: (
           <TabsLabel
             id={UserPageTabs.ACTIVITY}
-            isActive={activeTab === UserPageTabs.ACTIVITY}
+            isActive={currentTab === UserPageTabs.ACTIVITY}
             name={t('label.activity')}
           />
         ),
@@ -179,8 +178,30 @@ const Users = ({
           <ActivityFeedProvider user={userData.id}>
             <ActivityFeedTab
               entityType={EntityType.USER}
-              fqn={decodedUsername}
               isForFeedTab={false}
+              layoutType={ActivityFeedLayoutType.TWO_PANEL}
+              subTab={ActivityFeedTabs.ALL}
+              onFeedUpdate={noop}
+            />
+          </ActivityFeedProvider>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            data-testid="user-profile-page-task-tab"
+            id={UserPageTabs.TASK}
+            isActive={currentTab === UserPageTabs.TASK}
+            name={t('label.task-plural')}
+          />
+        ),
+        key: UserPageTabs.TASK,
+        children: (
+          <ActivityFeedProvider user={userData.id}>
+            <ActivityFeedTab
+              entityType={EntityType.USER}
+              isForFeedTab={false}
+              subTab={ActivityFeedTabs.TASKS}
               onFeedUpdate={noop}
             />
           </ActivityFeedProvider>
@@ -199,9 +220,7 @@ const Users = ({
           queryFilter: queryFilters.myData,
           type: AssetsOfEntity.MY_DATA,
           noDataPlaceholder: {
-            message: t('server.you-have-not-action-anything-yet', {
-              action: t('label.owned-lowercase'),
-            }),
+            message: t('server.no-records-found'),
           },
         }),
       },
@@ -218,11 +237,25 @@ const Users = ({
           queryFilter: queryFilters.following,
           type: AssetsOfEntity.FOLLOWING,
           noDataPlaceholder: {
-            message: t('server.you-have-not-action-anything-yet', {
-              action: t('label.followed-lowercase'),
-            }),
+            message: t('server.no-records-found'),
           },
         }),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.PERMISSIONS}
+            isActive={activeTab === UserPageTabs.PERMISSIONS}
+            name={t('label.permissions')}
+          />
+        ),
+        key: UserPageTabs.PERMISSIONS,
+        children: (
+          <UserPermissions
+            isLoggedInUser={isLoggedInUser}
+            username={userData.name}
+          />
+        ),
       },
       ...(isLoggedInUser
         ? [
@@ -244,165 +277,96 @@ const Users = ({
         : []),
     ],
     [
-      activeTab,
+      currentTab,
       userData.id,
+      userData.name,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
-    ]
-  );
-
-  const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await updateUserDetails({ description }, 'description');
-
-      setIsDescriptionEdit(false);
-    },
-    [updateUserDetails, setIsDescriptionEdit]
-  );
-
-  const descriptionRenderComponent = useMemo(
-    () =>
-      isLoggedInUser ? (
-        <DescriptionV1
-          description={userData.description ?? ''}
-          entityName={getEntityName(userData as unknown as EntityReference)}
-          entityType={EntityType.USER}
-          hasEditAccess={isLoggedInUser}
-          isEdit={isDescriptionEdit}
-          showCommentsIcon={false}
-          onCancel={() => setIsDescriptionEdit(false)}
-          onDescriptionEdit={() => setIsDescriptionEdit(true)}
-          onDescriptionUpdate={handleDescriptionChange}
-        />
-      ) : (
-        <Space direction="vertical" size="middle">
-          <Typography.Text className="right-panel-label">
-            {t('label.description')}
-          </Typography.Text>
-          <Typography.Paragraph className="m-b-0">
-            {isEmpty(userData.description)
-              ? t('label.no-entity', {
-                  entity: t('label.description'),
-                })
-              : userData.description}
-          </Typography.Paragraph>
-        </Space>
-      ),
-    [
-      userData,
-      isAdminUser,
-      isDescriptionEdit,
+      subTab,
       isLoggedInUser,
-      getEntityName,
-      handleDescriptionChange,
     ]
   );
 
-  const userProfileCollapseHeader = useMemo(
-    () => (
-      <UserProfileDetails
-        afterDeleteAction={afterDeleteAction}
-        updateUserDetails={updateUserDetails}
-        userData={userData}
-      />
-    ),
-    [userData, afterDeleteAction, updateUserDetails]
-  );
+  const handleRestoreUser = useCallback(async () => {
+    try {
+      await restoreUser(userData.id);
+      afterDeleteAction(true);
 
-  useEffect(() => {
-    if ([UserPageTabs.MY_DATA, UserPageTabs.FOLLOWING].includes(activeTab)) {
-      fetchAssetsCount(
-        activeTab === UserPageTabs.MY_DATA
-          ? queryFilters.myData
-          : queryFilters.following
+      showSuccessToast(
+        t('message.entity-restored-success', { entity: t('label.user') })
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.user') })
       );
     }
-  }, [activeTab]);
+  }, [userData.id]);
 
   return (
-    <PageLayoutV1 className="user-layout h-full" pageTitle={t('label.user')}>
-      <div data-testid="user-profile">
-        <Collapse
-          accordion
-          bordered={false}
-          className="header-collapse-custom-collapse user-profile-container">
-          <Collapse.Panel
-            className="header-collapse-custom-panel"
-            header={userProfileCollapseHeader}
-            key="1">
-            <Row className="border-top p-y-lg" gutter={[0, 24]}>
-              <Col span={24}>
-                <Row data-testid="user-profile-accessibility-details">
-                  <Col className="p-x-sm border-right" span={6}>
-                    <UserProfileTeams
-                      isDeletedUser={userData.deleted}
-                      teams={userData.teams}
-                      updateUserDetails={updateUserDetails}
-                    />
-                  </Col>
-                  <Col className="p-x-sm border-right" span={6}>
-                    <UserProfileRoles
-                      isDeletedUser={userData.deleted}
-                      isUserAdmin={userData.isAdmin}
-                      updateUserDetails={updateUserDetails}
-                      userRoles={userData.roles}
-                    />
-                  </Col>
-                  <Col className="p-x-sm border-right" span={6}>
-                    <UserProfileInheritedRoles
-                      inheritedRoles={userData.inheritedRoles}
-                    />
-                  </Col>
-                  <Col className="p-x-sm" span={6}>
-                    <div className="d-flex flex-col justify-between h-full">
-                      <Card
-                        className="ant-card-feed relative card-body-border-none card-padding-y-0"
-                        title={
-                          <Typography.Text
-                            className="right-panel-label items-center d-flex gap-2"
-                            data-testid="persona-list">
-                            {t('label.persona')}
-                            <PersonaSelectableList
-                              multiSelect
-                              hasPermission={
-                                Boolean(isAdminUser) && !userData.deleted
-                              }
-                              selectedPersonas={userData.personas ?? []}
-                              onUpdate={handlePersonaUpdate}
-                            />
-                          </Typography.Text>
-                        }>
-                        <Chip
-                          showNoDataPlaceholder
-                          data={userData.personas ?? []}
-                          entityType={EntityType.PERSONA}
-                          icon={<PersonaIcon height={20} />}
-                          noDataPlaceholder={t('message.no-persona-assigned')}
-                        />
-                      </Card>
-                    </div>
-                  </Col>
-                </Row>
-              </Col>
-              <Col className="border-top p-lg p-b-0" span={24}>
-                {descriptionRenderComponent}
-              </Col>
-            </Row>
-          </Collapse.Panel>
-        </Collapse>
-
-        <Tabs
-          destroyInactiveTabPane
-          activeKey={activeTab ?? UserPageTabs.ACTIVITY}
-          className="user-page-tabs"
-          data-testid="tabs"
-          items={tabs}
-          onChange={activeTabHandler}
-        />
-      </div>
-    </PageLayoutV1>
+    <div data-testid="user-profile">
+      <Row gutter={[20, 0]} wrap={false}>
+        <Col flex="250px">
+          <div className="profile-section">
+            <ProfileSectionUserDetailsCard
+              afterDeleteAction={afterDeleteAction}
+              handleRestoreUser={handleRestoreUser}
+              updateUserDetails={updateUserDetails}
+              userData={userData}
+            />
+            <UserProfilePersonas
+              updateUserDetails={updateUserDetails}
+              userData={userData}
+            />
+            <DomainLabelNew
+              multiple
+              domains={userData?.domains ?? []}
+              entityFqn={userData.fullyQualifiedName ?? ''}
+              entityId={userData.id ?? ''}
+              entityType={EntityType.USER}
+              hasPermission={Boolean(isAdminUser) && !userData.deleted}
+              textClassName="text-sm text-grey-muted"
+              userData={userData}
+            />
+            <UserProfileTeams
+              isDeletedUser={userData.deleted}
+              teams={userData.teams}
+              updateUserDetails={updateUserDetails}
+            />
+            <UserProfileRoles
+              isDeletedUser={userData.deleted}
+              isUserAdmin={userData.isAdmin}
+              updateUserDetails={updateUserDetails}
+              userData={userData}
+              userRoles={userData.roles}
+            />
+          </div>
+        </Col>
+        <Col flex="auto">
+          <Tabs
+            activeKey={currentTab}
+            className="tabs-new m-b-xs"
+            data-testid="tabs"
+            items={tabs.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              disabled: tab.disabled,
+            }))}
+            renderTabBar={(props, DefaultTabBar) => (
+              <DefaultTabBar {...props} />
+            )}
+            onChange={activeTabHandler}
+          />
+          <Row className="users-tabs-container" gutter={[16, 16]}>
+            <Col span={24}>
+              {tabs.find((tab) => tab.key === currentTab)?.children}
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

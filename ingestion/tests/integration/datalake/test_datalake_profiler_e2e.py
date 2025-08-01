@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,7 +18,6 @@ No sample data is required beforehand
 """
 import pytest
 
-from ingestion.tests.integration.datalake.conftest import BUCKET_NAME
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
@@ -27,6 +26,8 @@ from metadata.utils.time_utils import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
+
+from .conftest import BUCKET_NAME
 
 
 @pytest.fixture(scope="class", autouse=True)
@@ -318,6 +319,8 @@ class TestDatalakeProfilerTestE2E:
         ingestion_config["source"]["sourceConfig"]["config"].update(
             {
                 "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
             }
         )
 

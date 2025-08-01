@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -61,15 +61,12 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import (
-    get_connection,
-    kill_active_connections,
-)
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
 from metadata.utils.execution_time_tracker import (
@@ -77,6 +74,7 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time_generator,
 )
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
@@ -108,6 +106,7 @@ class CommonDbSourceService(
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -141,7 +140,6 @@ class CommonDbSourceService(
         self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
-        self.context.get_global().table_views = []
         self.context.get_global().table_constrains = []
         self.context.get_global().foreign_tables = []
         self.context.set_threads(self.source_config.threads)
@@ -193,6 +191,12 @@ class CommonDbSourceService(
         by default there will be no schema description
         """
 
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        by default there will be no stored procedure description
+        """
+
     @calculate_execution_time_generator()
     def yield_database(
         self, database_name: str
@@ -213,15 +217,16 @@ class CommonDbSourceService(
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=FullyQualifiedEntityName(self.context.get().database_service),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_database_tag_labels(database_name=database_name),
-            )
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=FullyQualifiedEntityName(self.context.get().database_service),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_database_tag_labels(database_name=database_name),
         )
+
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -252,26 +257,31 @@ class CommonDbSourceService(
         )
         source_url = (
             SourceUrl(source_url)
-            if (source_url := self.get_source_url(database_name=schema_name))
+            if (
+                source_url := self.get_source_url(
+                    database_name=self.context.get().database, schema_name=schema_name
+                )
+            )
             else None
         )
 
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                description=description,
-                sourceUrl=source_url,
-                tags=self.get_schema_tag_labels(schema_name=schema_name),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+            description=description,
+            sourceUrl=source_url,
+            tags=self.get_schema_tag_labels(schema_name=schema_name),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     @staticmethod
     @calculate_execution_time()
@@ -412,7 +422,14 @@ class CommonDbSourceService(
         """
         try:
             schema_definition = None
-            if table_type in (TableType.View, TableType.MaterializedView):
+            # Lineage qualified table types to be considered for view definition
+            if table_type in (
+                TableType.View,
+                TableType.MaterializedView,
+                TableType.SecureView,
+                TableType.Dynamic,
+                TableType.Stream,
+            ):
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )
@@ -497,20 +514,17 @@ class CommonDbSourceService(
                 foreign_columns,
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
+                table_type=table_type,
                 table_name=table_name,
                 db_name=self.context.get().database,
                 inspector=self.inspector,
             )
 
-            schema_definition = (
-                self.get_schema_definition(
-                    table_type=table_type,
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    inspector=self.inspector,
-                )
-                if self.source_config.includeDDL
-                else None
+            schema_definition = self.get_schema_definition(
+                table_type=table_type,
+                table_name=table_name,
+                schema_name=schema_name,
+                inspector=self.inspector,
             )
 
             table_constraints = self.update_table_constraints(
@@ -576,20 +590,6 @@ class CommonDbSourceService(
 
             # Register the request that we'll handle during the deletion checks
             self.register_record(table_request=table_request)
-
-            # Flag view as visited
-            if (
-                table_type
-                in (TableType.View, TableType.MaterializedView, TableType.SecureView)
-                and schema_definition
-            ):
-                table_view = TableView(
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    db_name=self.context.get().database,
-                    view_definition=schema_definition,
-                )
-                self.context.get_global().table_views.append(table_view)
 
         except Exception as exc:
             error = (
@@ -681,7 +681,7 @@ class CommonDbSourceService(
             foreign_constraint = self._prepare_foreign_constraints(
                 supports_database, column, table_name, schema_name, db_name, columns
             )
-            if foreign_constraint:
+            if foreign_constraint and foreign_constraint not in foreign_constraints:
                 foreign_constraints.append(foreign_constraint)
 
         return foreign_constraints
@@ -705,7 +705,11 @@ class CommonDbSourceService(
         )
         if foreign_table_constraints:
             if table_constraints:
-                table_constraints.extend(foreign_table_constraints)
+                table_constraints.extend(
+                    constraint
+                    for constraint in foreign_table_constraints
+                    if constraint and constraint not in table_constraints
+                )
             else:
                 table_constraints = foreign_table_constraints
         return table_constraints

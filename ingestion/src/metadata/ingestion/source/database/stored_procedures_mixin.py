@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Union
 
+from networkx import DiGraph
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
@@ -38,10 +39,18 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.filters import (
+    filter_by_database,
+    filter_by_schema,
+    filter_by_stored_procedure,
+)
+from metadata.utils.helpers import pprint_format_object
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -75,6 +84,17 @@ class ProcedureAndQuery(BaseModel):
     query_by_procedure: QueryByProcedure
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ProcedureAndProcedureGraph(BaseModel):
+    """
+    Model to hold the procedure and its graph
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    procedure: StoredProcedure
+    graph: DiGraph
 
 
 class StoredProcedureLineageMixin(ABC):
@@ -134,6 +154,17 @@ class StoredProcedureLineageMixin(ABC):
                     )
                 )
 
+        queries_count_per_procedure = {
+            procedure_name: len(queries)
+            for procedure_name, queries in queries_dict.items()
+        }
+        logger.info(
+            f"Count of queries executed for stored procedures: {sum(queries_count_per_procedure.values())}"
+        )
+        logger.info(
+            f"Count of queries per stored procedure: {pprint_format_object(queries_count_per_procedure)}"
+        )
+
         return queries_dict
 
     @staticmethod
@@ -163,6 +194,18 @@ class StoredProcedureLineageMixin(ABC):
             query_type=query_by_procedure.query_type,
             query_text=query_by_procedure.query_text,
         ):
+            graph = None
+            if self.source_config.enableTempTableLineage:
+                if not self.procedure_graph_map.get(procedure.fullyQualifiedName.root):
+                    # Map to store the directed graph for each procedure with its FQN as key
+                    self.procedure_graph_map[
+                        procedure.fullyQualifiedName.root
+                    ] = ProcedureAndProcedureGraph(procedure=procedure, graph=DiGraph())
+
+                graph = self.procedure_graph_map.get(
+                    procedure.fullyQualifiedName.root
+                ).graph
+
             self.stored_procedure_query_lineage = True
             for either_lineage in get_lineage_by_query(
                 self.metadata,
@@ -175,9 +218,8 @@ class StoredProcedureLineageMixin(ABC):
                 ),
                 timeout_seconds=self.source_config.parsingTimeoutLimit,
                 lineage_source=LineageSource.QueryLineage,
+                graph=graph,
             ):
-                print("&& " * 100)
-                print(either_lineage)
                 if (
                     either_lineage.left is None
                     and either_lineage.right.edge.lineageDetails
@@ -200,8 +242,8 @@ class StoredProcedureLineageMixin(ABC):
                 query_type=query_by_procedure.query_type,
                 duration=query_by_procedure.query_duration,
                 queryDate=Timestamp(
-                    root=convert_timestamp_to_milliseconds(
-                        int(query_by_procedure.query_start_time.timestamp())
+                    root=datetime_to_timestamp(
+                        query_by_procedure.query_start_time, True
                     )
                 ),
                 triggeredBy=EntityReference(
@@ -214,52 +256,100 @@ class StoredProcedureLineageMixin(ABC):
         )
 
     def procedure_lineage_processor(
-        self, procedure_and_query: ProcedureAndQuery
+        self, procedure_and_queries: List[ProcedureAndQuery], queue: Queue
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-
-        try:
-            yield from self._yield_procedure_lineage(
-                query_by_procedure=procedure_and_query.query_by_procedure,
-                procedure=procedure_and_query.procedure,
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Could not get lineage for store procedure '{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
-            )
-        try:
-            yield from self.yield_procedure_query(
-                query_by_procedure=procedure_and_query.query_by_procedure,
-                procedure=procedure_and_query.procedure,
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Could not get query for store procedure '{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
-            )
+        for procedure_and_query in procedure_and_queries:
+            try:
+                for lineage in self._yield_procedure_lineage(
+                    query_by_procedure=procedure_and_query.query_by_procedure,
+                    procedure=procedure_and_query.procedure,
+                ):
+                    if lineage and lineage.right is not None:
+                        queue.put(
+                            Either(
+                                right=OMetaLineageRequest(
+                                    override_lineage=False,
+                                    lineage_request=lineage.right,
+                                    entity=StoredProcedure,
+                                    entity_fqn=procedure_and_query.procedure.fullyQualifiedName.root,
+                                )
+                            )
+                        )
+                    else:
+                        queue.put(lineage)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Could not get lineage for store procedure '{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
+                )
+            try:
+                for lineage in self.yield_procedure_query(
+                    query_by_procedure=procedure_and_query.query_by_procedure,
+                    procedure=procedure_and_query.procedure,
+                ):
+                    queue.put(lineage)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Could not get query for store procedure '{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
+                )
 
     def procedure_lineage_generator(self) -> Iterable[ProcedureAndQuery]:
         query = {
             "query": {
                 "bool": {
                     "must": [
-                        {"term": {"service.name.keyword": self.service_name}},
-                        {"term": {"deleted": False}},
+                        {
+                            "bool": {
+                                "should": [
+                                    {
+                                        "term": {
+                                            "service.name.keyword": self.service_name
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {"bool": {"should": [{"term": {"deleted": False}}]}},
                     ]
                 }
             }
         }
+        if self.source_config.incrementalLineageProcessing:
+            query.get("query").get("bool").get("must").append(
+                {"bool": {"should": [{"term": {"processedLineage": False}}]}}
+            )
         query_filter = json.dumps(query)
-
         logger.info("Processing Lineage for Stored Procedures")
         # First, get all the query history
         queries_dict = self.get_stored_procedure_queries_dict()
         # Then for each procedure, iterate over all its queries
         for procedure in (
-            self.metadata.paginate_es(entity=StoredProcedure, query_filter=query_filter)
+            self.metadata.paginate_es(
+                entity=StoredProcedure, query_filter=query_filter, size=10
+            )
             or []
         ):
             if procedure:
+                if (
+                    filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        procedure.database.name,
+                    )
+                    or filter_by_schema(
+                        self.source_config.schemaFilterPattern,
+                        procedure.databaseSchema.name,
+                    )
+                    or filter_by_stored_procedure(
+                        self.source_config.storedProcedureFilterPattern,
+                        procedure.name.root,
+                    )
+                ):
+                    self.status.filter(
+                        procedure.name.root,
+                        "Stored Procedure Filtered Out",
+                    )
+                    continue
                 logger.debug(f"Processing Lineage for [{procedure.name}]")
                 for query_by_procedure in (
                     queries_dict.get(procedure.name.root.lower()) or []
@@ -275,4 +365,6 @@ class StoredProcedureLineageMixin(ABC):
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_generator
         processor_fn = self.procedure_lineage_processor
-        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
+        yield from self.generate_lineage_in_thread(
+            producer_fn, processor_fn, max_threads=self.source_config.threads
+        )

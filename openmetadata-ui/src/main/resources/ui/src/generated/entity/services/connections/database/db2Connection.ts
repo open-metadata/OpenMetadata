@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Db2 Connection Config
  */
 export interface Db2Connection {
+    /**
+     * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
+     */
+    clidriverVersion?:    string;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
@@ -23,14 +25,30 @@ export interface Db2Connection {
      */
     database: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the DB2 service.
      */
     hostPort: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?: string;
     /**
      * Password to connect to DB2.
      */
     password?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -42,6 +60,10 @@ export interface Db2Connection {
     supportsQueryComment?:          boolean;
     supportsViewLineageExtraction?: boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: Db2Type;
@@ -50,6 +72,26 @@ export interface Db2Connection {
      * DB2.
      */
     username: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

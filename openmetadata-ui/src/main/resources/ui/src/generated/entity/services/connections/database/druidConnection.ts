@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Druid Connection Config
  */
 export interface DruidConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -33,6 +35,10 @@ export interface DruidConnection {
     password?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                        DruidScheme;
@@ -42,6 +48,10 @@ export interface DruidConnection {
     supportsQueryComment?:          boolean;
     supportsViewLineageExtraction?: boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: DruidType;
@@ -50,6 +60,26 @@ export interface DruidConnection {
      * in Druid.
      */
     username?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

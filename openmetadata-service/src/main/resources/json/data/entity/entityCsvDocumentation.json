@@ -1,0 +1,184 @@
+{
+  "summary": "Entity CSV file is used for importing and exporting metadata (database schemas, tables, stored procedures) from and to an **existing** database.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "The name of the entity being updated.",
+      "examples": [
+        "`users`, `customers`"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the entity.",
+      "examples": [
+        "`User Schema`, `Customer Schema`, `Customer Table`"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the entity in Markdown format.",
+      "examples": [
+        "`Customer Schema` that contains all the tables related to customer entity.",
+        "`Customer Table` that contains all customer records."
+      ]
+    },
+    {
+      "name": "owner",
+      "required": false,
+      "description": "Owner names separated by ';'. For team owner, include prefix team. For user owner, include prefix user.",
+      "examples": [
+        "`team;marketing`",
+        "`user;john`"
+      ]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Fully qualified classification tag names associated with the database schema separated by ';'.. These tags are automatically applied along with the glossary term, when it is used to label an entity.",
+      "examples": [
+        "`PII.Sensitive`",
+        "`PII.Sensitive;PersonalData.Personal`"
+      ]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Fully qualified glossary term names associated with the database schema separated by ';'. Tags derived from the glossary term are automatically applied to the database schema.",
+      "examples": [
+        "`Glossary.GlossaryTerm1`",
+        "`Glossary.GlossaryTerm1.GlossaryTerm2`"
+      ]
+    },
+    {
+      "name": "tiers",
+      "required": false,
+      "description": "Fully qualified tier tags names associated with the table separated by ';'.",
+      "examples": [
+        "`Tier.Tier1`",
+        "`Tier.Tier2`"
+      ]
+    },
+    {
+      "name": "certification",
+      "required": false,
+      "description": "Certification tag from the Certification classification. Only one certification level can be applied.",
+      "examples": [
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ]
+    },
+    {
+      "name": "retentionPeriod",
+      "required": false,
+      "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
+      "examples": [
+        "`P23DT23H`"
+      ]
+    },
+    {
+      "name": "sourceUrl",
+      "required": false,
+      "description": "Source URL for the database schema",
+      "examples": [
+        "http://domain.com/system/customer_schema"
+      ]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Domains to which the entity belongs to, separated by ';'",
+      "examples": [
+        "Marketing", "Sales;Operations"
+      ]
+    },
+    {
+      "name": "extension",
+      "required": false,
+      "description": "Custom property values added to the glossary term. Each field value (property and its value) is separated by `;` and internal values can be separated by `|`. For `entityReferenceList` type property, pass `type1:fqn1|type2:fqn2`. For single `entityReference` type property, pass `type:fqn`. Similarly, for `enumMultiSelect`, pass values separated by `|`, and for `enumSingleSelect`, pass a single value along with the property name. For `timeInterval` property type, pass the `startTime:endTime` to the property name. If the field value itself contains delimiter values like `,` and `;` or newline they need to be quoted, and the quotation needs to be further escaped. In general, if passing multiple field values separated by `;`, the extension column value needs to be quoted.",
+      "examples": [
+        "`customAttribute1:value1;customAttribute2:value2`",
+        "`\"dateCp:18-09-2024;dateTimeCp:18-09-2024 01:09:34;durationCp:PT5H30M10S;emailCp:admin@open-metadata.org\"`",
+        "`entRefListCp:searchIndex:elasticsearch_sample.table_search_index|databaseSchema:Glue.default.information_schema|databaseSchema:sample_data.ecommerce_db.shopify|database:Glue.default|`",
+        "`\"entRefCp:user:\"\"aaron.singh2\"\"\"`",
+        "`\"enumMultiSelectCp:val3|val2|val1|val4|val5;enumSingleSelectCp:singleVal1\"`",
+        "`\"timeCp:10:08:45;timeIntervalCp:1726142300000:17261420000;timeStampCp:1726142400000\"`",
+        "`\"integerCp:7777;numberCp:123456\"`",
+        "`\"\"\"queryCp:select col,row from table where id ='30';\"\";stringcp:sample string content\"`",
+        "`markdownCp:# Sample Markdown Text`",
+        "\"\"\"tableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value\"\"\""
+      ]
+    },
+    {
+      "name": "entityType",
+      "required": true,
+      "description": "Type of entity being imported or exported. Used to determine how to process the record during import/export operations.",
+      "examples": [
+        "`database`", "`databaseSchema`", "`table`", "`storedProcedure`", "`column`"
+      ]
+    },
+    {
+      "name": "fullyQualifiedName",
+      "required": false,
+      "description": "The fully qualified name of the entity. If not provided, it will be constructed based on the hierarchy.",
+      "examples": [
+        "`service_name.database_name`",
+        "`service_name.database_name.schema_name`",
+        "`service_name.database_name.schema_name.table_name`"
+      ]
+    },
+    {
+      "name": "column.dataTypeDisplay",
+      "required": false,
+      "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
+      "examples": [
+        "array<int>", "map<int, string>"
+      ]
+    },
+    {
+      "name": "column.dataType",
+      "required": false,
+      "description": "Actual Column data type.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    {
+      "name": "column.arrayDataType",
+      "required": false,
+      "description": "In case of data Type being Array, type of Array Data.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    {
+      "name": "column.dataLength",
+      "required": false,
+      "description": "Data Length of Column in case of CHAR, VARCHAR, BINARY etc.",
+      "examples": [
+        "36"
+      ]
+    },
+    {
+      "name": "storedProcedure.code",
+      "required": false,
+      "description": "The code definition of the stored procedure. Typically SQL, Python, etc.",
+      "examples": [
+        "CREATE PROCEDURE my_proc() BEGIN SELECT * FROM users; END;"
+      ]
+    },
+    {
+      "name": "storedProcedure.language",
+      "required": false,
+      "description": "The language in which the stored procedure is written. Supported values: SQL, Java, JavaScript, Python, External.",
+      "examples": [
+        "SQL",
+        "Python"
+      ]
+    }
+  ]
+}

@@ -29,6 +29,15 @@
       "title": "Project location",
       "description": "location/region of google cloud project",
       "type": "string"
+    },
+    "mlModelFilterPattern": {
+      "description": "Regex to only fetch MlModels with names matching the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default ML Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,

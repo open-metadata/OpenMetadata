@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddNotificationPage from './AddNotificationPage';
 
-const mockPush = jest.fn();
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../rest/alertsAPI', () => ({
   getAlertsFromName: jest.fn().mockImplementation(() =>
@@ -43,6 +41,10 @@ jest.mock('../../utils/RouterUtils', () => ({
   getSettingPath: jest.fn(),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
@@ -54,15 +56,16 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: '' }),
 }));
+
+const mockProps = {
+  pageTitle: 'add-notifications',
+};
 
 describe('AddNotificationPage', () => {
   beforeEach(() => {
@@ -71,7 +74,7 @@ describe('AddNotificationPage', () => {
 
   it('should render Add Notification Page', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -83,7 +86,7 @@ describe('AddNotificationPage', () => {
 
   it('should display the correct breadcrumb', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -96,7 +99,7 @@ describe('AddNotificationPage', () => {
 
   it('should display SubTitle', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -108,7 +111,7 @@ describe('AddNotificationPage', () => {
 
   it('should render Add alert button', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -118,7 +121,7 @@ describe('AddNotificationPage', () => {
 
   it('should navigate back when the cancel button is clicked', async () => {
     await act(async () => {
-      render(<AddNotificationPage />, {
+      render(<AddNotificationPage {...mockProps} />, {
         wrapper: MemoryRouter,
       });
     });
@@ -129,6 +132,6 @@ describe('AddNotificationPage', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

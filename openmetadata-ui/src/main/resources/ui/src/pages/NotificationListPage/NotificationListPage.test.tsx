@@ -51,7 +51,8 @@ const MOCK_DATA = [
     provider: 'user',
   },
 ];
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
+const mockLocationPathname = '/mock-path';
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -61,8 +62,9 @@ jest.mock('react-router-dom', () => ({
         <p {...props}>{children}</p>
       )
     ),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
   })),
 }));
 
@@ -258,7 +260,7 @@ describe('Notification Alerts Page Tests', () => {
     const addButton = await screen.findByText(/label.add-entity/);
     fireEvent.click(addButton);
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       ROUTES.SETTINGS + '/notifications/add-notification'
     );
   });

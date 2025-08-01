@@ -31,4 +31,6 @@ export type TagsV1Props = {
   tooltipOverride?: string;
   tagType?: TagSource;
   size?: SelectProps['size'];
+  isEditTags?: boolean;
+  newLook?: boolean;
 };

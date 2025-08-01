@@ -17,6 +17,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThreadEntity;
+import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getDataContractUrl;
 import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
@@ -33,6 +35,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
@@ -48,8 +51,11 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FeedUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface MessageDecorator<T> {
+  Logger LOG = LoggerFactory.getLogger(MessageDecorator.class);
   String CONNECTION_TEST_DESCRIPTION =
       "This is a test message, receiving this message confirms that you have successfully configured OpenMetadata to receive alerts.";
 
@@ -85,34 +91,43 @@ public interface MessageDecorator<T> {
 
   T buildTestMessage();
 
+  @SneakyThrows
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
-
+    String entityUrl = "";
     switch (entityType) {
       case Entity.TEST_CASE:
         if (entityInterface instanceof TestCase testCase) {
-          return getEntityUrl(
-              "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
+          entityUrl =
+              getEntityUrl("test-case", testCase.getFullyQualifiedName(), "test-case-results");
         }
         break;
 
       case Entity.GLOSSARY_TERM:
-        return getEntityUrl(Entity.GLOSSARY, fqn, "");
+        entityUrl = getEntityUrl(Entity.GLOSSARY, fqn, "");
+        break;
 
       case Entity.TAG:
-        return getEntityUrl("tags", fqn.split("\\.")[0], "");
+        entityUrl = getEntityUrl("tags", fqn.split("\\.")[0], "");
+        break;
 
       case Entity.INGESTION_PIPELINE:
-        return getIngestionPipelineUrl(this, entityType, entityInterface);
+        entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
+        break;
+
+      case Entity.DATA_CONTRACT:
+        entityUrl = getDataContractUrl(this, entityType, entityInterface);
+        break;
 
       default:
-        return getEntityUrl(entityType, fqn, "");
+        entityUrl = getEntityUrl(entityType, fqn, "");
     }
 
-    // Fallback in case of no match
-    return getEntityUrl(entityType, fqn, "");
+    LOG.debug("buildEntityUrl for Alert: {}", entityUrl);
+    return entityUrl;
   }
 
+  @SneakyThrows
   default String buildThreadUrl(
       ThreadType threadType, String entityType, EntityInterface entityInterface) {
 
@@ -120,30 +135,34 @@ public interface MessageDecorator<T> {
         threadType.equals(ThreadType.Task) ? "activity_feed/tasks" : "activity_feed/all";
 
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
-
+    String entityUrl = "";
     switch (entityType) {
       case Entity.TEST_CASE:
         if (entityInterface instanceof TestCase) {
           TestCase testCase = (TestCase) entityInterface;
-          return getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
+          entityUrl = getEntityUrl("test-case", testCase.getFullyQualifiedName(), "issues");
         }
         break;
 
       case Entity.GLOSSARY_TERM:
-        return getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
+        entityUrl = getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
+        break;
 
       case Entity.TAG:
-        return getEntityUrl("tags", fqn.split("\\.")[0], "");
+        entityUrl = getEntityUrl("tags", fqn.split("\\.")[0], "");
+        break;
 
       case Entity.INGESTION_PIPELINE:
-        return getIngestionPipelineUrl(this, entityType, entityInterface);
+        entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
+        break;
 
       default:
-        return getEntityUrl(entityType, fqn, activeTab);
+        entityUrl = getEntityUrl(entityType, fqn, activeTab);
     }
 
     // Fallback in case of no match
-    return getEntityUrl(entityType, fqn, activeTab);
+    LOG.debug("buildThreadUrl for Alert: {}", entityUrl);
+    return entityUrl;
   }
 
   // Helper function to resolve FQN if null or empty
@@ -162,17 +181,15 @@ public interface MessageDecorator<T> {
         .filter(fqn -> !CommonUtil.nullOrEmpty(fqn))
         .orElseGet(
             () -> {
-              EntityInterface entityInterface = getEntity(event);
-              String fqn = entityInterface.getFullyQualifiedName();
-
-              if (CommonUtil.nullOrEmpty(fqn)) {
-                EntityInterface result =
-                    Entity.getEntity(
-                        event.getEntityType(), entityInterface.getId(), "id", Include.NON_DELETED);
-                fqn = result.getFullyQualifiedName();
+              if (event.getEntityType().equals(Entity.THREAD)) {
+                Thread thread = getThreadEntity(event);
+                return nullOrEmpty(thread.getEntityRef())
+                    ? thread.getId().toString()
+                    : thread.getEntityRef().getFullyQualifiedName();
+              } else {
+                EntityInterface entityInterface = getEntity(event);
+                return entityInterface.getFullyQualifiedName();
               }
-
-              return fqn;
             });
   }
 
@@ -516,7 +533,9 @@ public interface MessageDecorator<T> {
     EVENT_DETAILS,
     TEST_CASE_DETAILS,
     TEST_CASE_RESULT,
-    TEST_DEFINITION
+    TEST_DEFINITION,
+    DATA_CONTRACT_DETAILS,
+    DATA_CONTRACT_RESULT
   }
 
   enum EventDetailsKeys {
@@ -550,6 +569,22 @@ public interface MessageDecorator<T> {
     TEST_DEFINITION_DESCRIPTION
   }
 
+  enum DataContractDetailsKeys {
+    ID,
+    NAME,
+    OWNERS,
+    TAGS,
+    DESCRIPTION,
+    DATA_CONTRACT_FQN,
+    ENTITY_FQN
+  }
+
+  enum DataContractResultKeys {
+    STATUS,
+    MESSAGE,
+    TIMESTAMP
+  }
+
   static Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
       ChangeEvent event, OutgoingMessage outgoingMessage) {
 
@@ -577,7 +612,10 @@ public interface MessageDecorator<T> {
     // build TEST_CASE_DETAILS
     builder
         .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.ID, testCase.getId())
-        .add(DQ_Template_Section.TEST_CASE_DETAILS, DQ_TestCaseDetailsKeys.NAME, testCase.getName())
+        .add(
+            DQ_Template_Section.TEST_CASE_DETAILS,
+            DQ_TestCaseDetailsKeys.NAME,
+            testCase.getDisplayName() != null ? testCase.getDisplayName() : testCase.getName())
         .add(
             DQ_Template_Section.TEST_CASE_DETAILS,
             DQ_TestCaseDetailsKeys.OWNERS,
@@ -625,6 +663,84 @@ public interface MessageDecorator<T> {
             DQ_Template_Section.TEST_DEFINITION,
             DQ_TestDefinitionKeys.TEST_DEFINITION_DESCRIPTION,
             testCase.getTestDefinition().getDescription());
+
+    return builder.build();
+  }
+
+  static Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDataContractTemplateData(
+      ChangeEvent event, OutgoingMessage outgoingMessage) {
+
+    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
+    builder
+        .add(
+            DQ_Template_Section.EVENT_DETAILS,
+            EventDetailsKeys.EVENT_TYPE,
+            event.getEventType().value())
+        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
+        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
+        .add(
+            DQ_Template_Section.EVENT_DETAILS,
+            EventDetailsKeys.ENTITY_FQN,
+            getFQNForChangeEventEntity(event))
+        .add(
+            DQ_Template_Section.EVENT_DETAILS,
+            EventDetailsKeys.TIME,
+            new Date(event.getTimestamp()).toString())
+        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
+
+    // Fetch the DataContract entity
+    org.openmetadata.schema.entity.data.DataContract dataContract =
+        (org.openmetadata.schema.entity.data.DataContract) getEntity(event);
+
+    // build DATA_CONTRACT_DETAILS
+    builder
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.ID,
+            dataContract.getId())
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.NAME,
+            dataContract.getName())
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.OWNERS,
+            dataContract.getOwners())
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.TAGS,
+            dataContract.getTags())
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.DESCRIPTION,
+            dataContract.getDescription())
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.DATA_CONTRACT_FQN,
+            dataContract.getFullyQualifiedName())
+        .add(
+            DQ_Template_Section.DATA_CONTRACT_DETAILS,
+            DataContractDetailsKeys.ENTITY_FQN,
+            dataContract.getEntity() != null
+                ? dataContract.getEntity().getFullyQualifiedName()
+                : "-");
+
+    // build DATA_CONTRACT_RESULT
+    if (dataContract.getLatestResult() != null) {
+      builder
+          .add(
+              DQ_Template_Section.DATA_CONTRACT_RESULT,
+              DataContractResultKeys.STATUS,
+              dataContract.getLatestResult().getStatus())
+          .add(
+              DQ_Template_Section.DATA_CONTRACT_RESULT,
+              DataContractResultKeys.MESSAGE,
+              dataContract.getLatestResult().getMessage())
+          .add(
+              DQ_Template_Section.DATA_CONTRACT_RESULT,
+              DataContractResultKeys.TIMESTAMP,
+              new Date(dataContract.getLatestResult().getTimestamp()));
+    }
 
     return builder.build();
   }

@@ -12,8 +12,10 @@
  */
 import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import React from 'react';
-import { useHistory } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCustomizePagePath } from '../../../../utils/GlobalSettingsUtils';
 import {
@@ -25,23 +27,46 @@ import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 const categories = getCustomizePageCategories();
 
 export const CustomizeUI = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
+  const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
+  const { activeCat, fullHash } = useMemo(() => {
+    const activeCat =
+      (location.hash?.replace('#', '') || '').split('.')[1] ?? '';
 
-  const [items, setItems] = React.useState(categories);
+    return { activeCat, fullHash: location.hash?.replace('#', '') };
+  }, [location.hash]);
 
-  const handleCustomizeItemClick = (category: string) => {
-    const nestedItems = getCustomizePageOptions(category);
+  const [items, setItems] = useState(categories);
 
-    if (isEmpty(nestedItems)) {
-      history.push(getCustomizePagePath(personaFQN, category));
-    } else {
-      setItems(nestedItems);
+  const handleCustomizeItemClick = useCallback(
+    (category: string) => {
+      const nestedItems = getCustomizePageOptions(category);
+
+      if (isEmpty(nestedItems)) {
+        navigate(getCustomizePagePath(personaFQN, category));
+      } else {
+        navigate({
+          hash: fullHash + FQN_SEPARATOR_CHAR + category,
+        });
+      }
+    },
+    [history, fullHash, personaFQN]
+  );
+
+  useEffect(() => {
+    if (!activeCat) {
+      setItems(categories);
+
+      return;
     }
-  };
+
+    const nestedItems = getCustomizePageOptions(activeCat);
+    setItems(nestedItems);
+  }, [activeCat]);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="bg-grey" gutter={[16, 16]}>
       {items.map((value) => (
         <Col key={value.key} span={8}>
           <SettingItemCard data={value} onClick={handleCustomizeItemClick} />

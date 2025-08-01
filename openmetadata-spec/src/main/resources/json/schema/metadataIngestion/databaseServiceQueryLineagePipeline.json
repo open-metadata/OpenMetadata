@@ -61,6 +61,11 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only fetch stored procedures that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
     "overrideViewLineage":{
       "title": "Override View Lineage",
       "description": "Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.",
@@ -105,6 +110,18 @@
       "items": {
         "type": "string"
       }
+    },
+    "enableTempTableLineage": {
+      "title": "Enable Temp Table Lineage",
+      "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
+      "type": "boolean",
+      "default": false
+    },
+    "incrementalLineageProcessing": {
+      "title": "Incremental Lineage Processing",
+      "description": "Set the 'Incremental Lineage Processing' toggle to control whether to process lineage incrementally.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.
  */
 export interface Table {
@@ -60,10 +58,10 @@ export interface Table {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -89,6 +87,10 @@ export interface Table {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Details of other tables this table is frequently joined with.
      */
     joins?: TableJoins;
@@ -113,9 +115,17 @@ export interface Table {
      */
     owners?: EntityReference[];
     /**
+     * Processed lineage for the table
+     */
+    processedLineage?: boolean;
+    /**
      * Latest Data profile for a table.
      */
     profile?: TableProfile;
+    /**
+     * List of queries that are used to create this table.
+     */
+    queries?: string[];
     /**
      * Retention period of the data in the table. Period is expressed as duration in ISO 8601
      * format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from
@@ -253,6 +263,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -295,6 +306,7 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -311,6 +323,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -441,6 +476,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -450,12 +486,16 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -564,9 +604,6 @@ export interface CustomMetric {
  * Reference to Database that contains this table.
  *
  * Reference to database schema that contains this table.
- *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -836,7 +873,11 @@ export enum FileFormat {
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Parq = "parq",
     Parquet = "parquet",
+    ParquetSnappy = "parquet.snappy",
+    Pq = "pq",
+    Pqt = "pqt",
     Tsv = "tsv",
 }
 
@@ -1003,7 +1044,9 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",
@@ -1038,6 +1081,7 @@ export enum DatabaseServiceType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",
@@ -1062,6 +1106,7 @@ export interface TableConstraint {
 }
 
 export enum ConstraintType {
+    ClusterKey = "CLUSTER_KEY",
     DistKey = "DIST_KEY",
     ForeignKey = "FOREIGN_KEY",
     PrimaryKey = "PRIMARY_KEY",
@@ -1153,10 +1198,19 @@ export interface TableProfilerConfig {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
+    /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
     sampleDataCount?:    number;
     samplingMethodType?: SamplingMethodType;
+    /**
+     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+     * other engines.
+     */
+    sparkTableProfilerConfig?: SparkTableProfilerConfig;
     [property: string]: any;
 }
 
@@ -1224,6 +1278,38 @@ export enum PartitionIntervalUnit {
 }
 
 /**
+ * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+ * other engines.
+ */
+export interface SparkTableProfilerConfig {
+    /**
+     * When reading big tables from sources, we optimize the reading by partitioning the data.
+     * This configuration is responsible for it.
+     */
+    partitioning?: Partitioning;
+}
+
+/**
+ * When reading big tables from sources, we optimize the reading by partitioning the data.
+ * This configuration is responsible for it.
+ */
+export interface Partitioning {
+    /**
+     * Lower bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    lowerBound?: string;
+    /**
+     * Column to partition on. It should be a date, timestamp or integer column. It is important
+     * for the data to be reasonably equally distributed across the partitions.
+     */
+    partitionColumn: string;
+    /**
+     * Upper bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    upperBound?: string;
+}
+
+/**
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
@@ -1236,6 +1322,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stream = "Stream",
     Transient = "Transient",
     View = "View",
 }

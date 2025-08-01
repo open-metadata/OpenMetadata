@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,6 +52,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -114,9 +115,11 @@ class SigmaSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.workbookId)),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -164,9 +167,11 @@ class SigmaSource(DashboardServiceSource):
                             self.context.get().dashboard_service
                         ),
                         sourceUrl=SourceUrl(dashboard_details.url),
-                        description=Markdown(dashboard_details.description)
-                        if dashboard_details.description
-                        else None,
+                        description=(
+                            Markdown(dashboard_details.description)
+                            if dashboard_details.description
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:
@@ -196,39 +201,80 @@ class SigmaSource(DashboardServiceSource):
         return None
 
     def _get_table_entity_from_node(
-        self, node: NodeDetails, db_service_name: str
+        self, node: NodeDetails, db_service_prefix: Optional[str] = None
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
         """
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix or "*")
+
         if node.node_schema:
-            try:
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
-                    schema_name=node.node_schema,
-                    table_name=node.name,
-                    database_name="",
+            schema_parts = node.node_schema.split(".")
+            schema_name = schema_parts[-1]
+            database_name = schema_parts[0] if len(schema_parts) > 1 else None
+            table_name = node.name
+
+            # Validate prefix filters
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
                 )
-                if table_fqn:
-                    return self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=table_fqn,
-                    )
+                return None
+
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                )
+                return None
+
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
+                logger.debug(
+                    f"Database {database_name} does not match prefix {prefix_database_name}"
+                )
+                return None
+
+            try:
+                fqn_search_string = build_es_fqn_search_string(
+                    service_name=prefix_service_name,
+                    database_name=prefix_database_name or database_name,
+                    schema_name=prefix_schema_name or schema_name,
+                    table_name=prefix_table_name or table_name,
+                )
+                return self.metadata.search_in_any_service(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error occured while finding table fqn: {exc}")
+
         return None
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: WorkbookDetails, db_service_name: Optional[str]
+        self,
+        dashboard_details: WorkbookDetails,
+        db_service_prefix: Optional[str] = None,
     ):
         """
         yield dashboard lineage
         """
-        if not db_service_name:
-            return
         # charts and datamodels are same here as we are using charts as metadata for datamodels
         for data_model in self.data_models or []:
             try:
@@ -241,7 +287,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                     for node in nodes:
                         table_entity = self._get_table_entity_from_node(
-                            node, db_service_name
+                            node, db_service_prefix
                         )
                         if table_entity and data_model.columns:
                             columns_list = data_model.columns
@@ -259,7 +305,7 @@ class SigmaSource(DashboardServiceSource):
                         name=f"{dashboard_details.name} Lineage",
                         error=(
                             "Error to yield dashboard lineage details for DB "
-                            f"service name [{db_service_name}]: {exc}"
+                            f"service prefix [{db_service_prefix}]: {exc}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )

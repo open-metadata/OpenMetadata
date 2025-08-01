@@ -18,6 +18,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { env } from 'process';
+import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
   getApiContext,
   redirectToHomePage,
@@ -34,17 +35,36 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
+  defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
+  excludeSchemas: string[];
   profilerTable = 'alert_entity';
-  constructor(tableFilter?: string[]) {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+    tableFilter?: string[];
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+      tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+    } = extraParams ?? {};
+
     const serviceName = `pw-mysql-with-%-${uuid()}`;
-    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
-    this.name = serviceName;
-    this.tableFilter = tableFilter ?? [
+    super(
+      Services.Database,
+      serviceName,
+      'Mysql',
       'bot_entity',
-      'alert_entity',
-      'chart_entity',
-    ];
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
+    );
+    this.name = serviceName;
+    this.tableFilter = tableFilter;
+    this.excludeSchemas = ['openmetadata'];
   }
 
   async createService(page: Page) {
@@ -75,6 +95,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
         .locator('#root\\/tableFilterPattern\\/includes')
         .press('Enter');
     }
+    for (const schema of this.excludeSchemas) {
+      await page.fill('#root\\/schemaFilterPattern\\/excludes', schema);
+      await page
+        .locator('#root\\/schemaFilterPattern\\/excludes')
+        .press('Enter');
+    }
   }
 
   async runAdditionalTests(
@@ -84,6 +110,11 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await test.step('Add Profiler ingestion', async () => {
       const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        // Todo: Remove this patch once the issue is fixed #19140
+        await resetTokenFromBotPage(page, 'profiler-bot');
+      }
+
       await visitServiceDetailsPage(
         page,
         {
@@ -94,11 +125,20 @@ class MysqlIngestionClass extends ServiceBaseClass {
         true
       );
 
-      await page.click('[data-testid="ingestions"]');
+      await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
-      await page.waitForTimeout(1000);
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForTimeout(1000);
+
+      await page.waitForSelector(
+        '.ant-dropdown:visible [data-menu-id*="profiler"]'
+      );
+
       await page.click('[data-menu-id*="profiler"]');
 
       await page.waitForSelector('#root\\/profileSample');
@@ -112,9 +152,15 @@ class MysqlIngestionClass extends ServiceBaseClass {
       // Header available once page loads
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
-      await page.getByTestId('ingestions').click();
+      await page.getByTestId('agents').click();
+      const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab2.isVisible()) {
+        await metadataTab2.click();
+      }
+      await page.waitForLoadState('networkidle');
+
       await page
-        .getByLabel('Ingestions')
+        .getByLabel('agents')
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
@@ -165,7 +211,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.tableFilter
+      this.defaultFilters.concat([...this.excludeSchemas, ...this.tableFilter])
     );
   }
 }

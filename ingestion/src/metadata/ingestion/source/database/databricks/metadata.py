@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
+    DATABRICKS_GET_SCHEMA_COMMENTS,
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
@@ -65,6 +66,8 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_view_definitions,
+    get_schema_comment_result_wrapper,
+    get_schema_comment_results,
     get_table_comment_result_wrapper,
     get_table_comment_results,
     get_view_definition_wrapper,
@@ -113,11 +116,6 @@ _type_map.update(
 )
 
 
-def format_schema_name(schema):
-    # Adds back quotes(``) if hyphen(-) in schema name
-    return f"`{schema}`" if "-" in schema else schema
-
-
 # This method is from hive dialect originally but
 # is overridden to optimize DESCRIBE query execution
 def _get_table_columns(self, connection, table_name, schema, db_name):
@@ -158,7 +156,6 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
 
 def _get_column_rows(self, connection, table_name, schema, db_name):
     # get columns and strip whitespace
-    schema = format_schema_name(schema=schema)
     table_columns = _get_table_columns(  # pylint: disable=protected-access
         self, connection, table_name, schema, db_name
     )
@@ -212,11 +209,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
-            col_name = f"`{col_name}`" if "." in col_name else col_name
             try:
                 rows = dict(
                     connection.execute(
-                        f"DESCRIBE TABLE {kw.get('db_name')}.{schema}.{table_name} {col_name}"
+                        f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`"
                     ).fetchall()
                 )
                 col_info["system_data_type"] = rows["data_type"]
@@ -333,6 +329,24 @@ def get_table_comment_result(
 
 
 @reflection.cache
+def get_schema_comment_result(
+    self,
+    connection,
+    query,
+    database,
+    schema,
+    **kw,  # pylint: disable=unused-argument
+):
+    return get_schema_comment_result_wrapper(
+        self,
+        connection,
+        query=query,
+        database=database,
+        schema=schema,
+    )
+
+
+@reflection.cache
 def get_table_ddl(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
@@ -393,8 +407,7 @@ def get_table_type(self, connection, database, schema, table):
                 database_name=database, schema_name=schema, table_name=table
             )
         else:
-            schema = format_schema_name(schema=schema)
-            query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
+            query = f"DESCRIBE TABLE EXTENDED `{schema}`.`{table}`"
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -421,6 +434,8 @@ DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 DatabricksDialect.get_table_comment_results = get_table_comment_results
+DatabricksDialect.get_schema_comment_results = get_schema_comment_results
+DatabricksDialect.get_schema_comment_result = get_schema_comment_result
 DatabricksDialect.get_table_comment_result = get_table_comment_result
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
@@ -647,6 +662,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
         except Exception as exc:
@@ -681,6 +698,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
         except Exception as exc:
@@ -719,6 +738,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
             column_tags = self.column_tags.get(
@@ -745,6 +766,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         classification_name=tag_name,
                         tag_description=DATABRICKS_TAG,
                         classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                        metadata=self.metadata,
+                        system_tags=True,
                     )
 
         except Exception as exc:
@@ -756,12 +779,38 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
             )
 
+    def get_schema_description(self, schema_name: str) -> str:
+        description = None
+        try:
+            query = DATABRICKS_GET_SCHEMA_COMMENTS.format(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            )
+            cursor = self.inspector.dialect.get_schema_comment_result(
+                connection=self.connection,
+                query=query,
+                database=self.context.get().database,
+                schema=schema_name,
+            )
+            for result in list(cursor):
+                data = result.values()
+                if data[0] and data[0].strip() == "Comment":
+                    description = data[1] if data and data[1] else None
+                    return description
+
+        # Catch any exception without breaking the ingestion
+        except Exception as exep:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Schema description error for schema [{schema_name}]: {exep}"
+            )
+        return description
+
     def get_table_description(
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
         try:
-            schema_name = format_schema_name(schema=schema_name)
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
                 schema_name=schema_name,
@@ -816,9 +865,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
-                schema_name=format_schema_name(
-                    schema=self.context.get().database_schema
-                ),
+                schema_name=self.context.get().database_schema,
                 table_name=table_name,
             )
             result = self.inspector.dialect.get_table_comment_result(

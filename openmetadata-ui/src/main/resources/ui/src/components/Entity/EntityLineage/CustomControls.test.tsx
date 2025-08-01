@@ -10,20 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
-import { LOADING_STATE } from '../../../enums/common.enum';
+import { render } from '@testing-library/react';
 import { LineageLayer } from '../../../generated/settings/settings';
-import { MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import CustomControlsComponent from './CustomControls.component';
 
-const mockOnOptionSelect = jest.fn();
-const mockOnLineageConfigUpdate = jest.fn();
 const mockOnEditLineageClick = jest.fn();
-const mockHandleFullScreenViewClick = jest.fn();
-const mockOnExitFullScreenViewClick = jest.fn();
-const mockOnZoomHandler = jest.fn();
-const mockZoomValue = 1;
 const mockOnExportClick = jest.fn();
 
 jest.mock('./LineageSearchSelect/LineageSearchSelect', () =>
@@ -55,80 +46,18 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   })),
 }));
 
-const customProps = {
-  onOptionSelect: mockOnOptionSelect,
-  onLineageConfigUpdate: mockOnLineageConfigUpdate,
-  handleFullScreenViewClick: mockHandleFullScreenViewClick,
-  onExitFullScreenViewClick: mockOnExitFullScreenViewClick,
-  onZoomHandler: mockOnZoomHandler,
-  zoomValue: mockZoomValue,
-  deleted: false,
-  hasEditAccess: true,
-  isEditMode: false,
-  lineageData: MOCK_LINEAGE_DATA,
-  isColumnsExpanded: false,
-  loading: false,
-  status: LOADING_STATE.INITIAL,
-  lineageConfig: {
-    upstreamDepth: 1,
-    downstreamDepth: 1,
-    nodesPerLayer: 50,
-  },
-};
-
 describe('CustomControls', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   it('calls onEditLinageClick on Edit Lineage button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const editLineageButton = getByTestId('edit-lineage');
-    fireEvent.click(editLineageButton);
+    const { getByText } = render(<CustomControlsComponent />);
 
-    expect(mockOnEditLineageClick).toHaveBeenCalled();
-  });
+    // check LineageSearchSelect is visible
+    expect(getByText('LineageSearchSelect')).toBeInTheDocument();
 
-  it('calls mockHandleFullScreenViewClick on Full Screen button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const fullScreenButton = getByTestId('full-screen');
-    fireEvent.click(fullScreenButton);
-
-    expect(mockHandleFullScreenViewClick).toHaveBeenCalled();
-  });
-
-  it('calls mockOnExportClick on Export click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const fullScreenButton = getByTestId('lineage-export');
-    fireEvent.click(fullScreenButton);
-
-    expect(mockOnExportClick).toHaveBeenCalled();
-  });
-
-  it('calls mockOnExitFullScreenViewClick on Exit Full Screen button click', () => {
-    const { getByTestId } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const exitFullScreenButton = getByTestId('exit-full-screen');
-    fireEvent.click(exitFullScreenButton);
-
-    expect(mockOnExitFullScreenViewClick).toHaveBeenCalled();
-  });
-
-  it('should show lineage config dialog on setting button click', () => {
-    const { getByTestId, getByRole } = render(
-      <CustomControlsComponent {...customProps} />
-    );
-    const settingButton = getByTestId('lineage-config');
-    fireEvent.click(settingButton);
-    const dialog = getByRole('dialog');
-
-    expect(dialog).toBeInTheDocument();
+    // check ExploreQuickFilters is visible
+    expect(getByText('ExploreQuickFilters')).toBeInTheDocument();
   });
 });

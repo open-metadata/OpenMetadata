@@ -40,12 +40,25 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   dbtEntityFqn: string;
   schemaFilterPattern = 'dbt_automate_upgrade_tests';
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       REDSHIFT.serviceName,
       REDSHIFT.serviceType,
-      REDSHIFT.tableName
+      REDSHIFT.tableName,
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
@@ -105,11 +118,16 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         true
       );
 
-      await page.click('[data-testid="ingestions"]');
+      await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
-      await page.waitForTimeout(1000);
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForTimeout(1000);
+      await page.waitForSelector('.ant-dropdown:visible [data-menu-id*="dbt"]');
       await page.click('[data-menu-id*="dbt"]');
 
       await page.waitForSelector('#root\\/dbtConfigSource__oneof_select');
@@ -147,9 +165,14 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Header available once page loads
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
-      await page.getByTestId('ingestions').click();
+      await page.getByTestId('agents').click();
+      const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab2.isVisible()) {
+        await metadataTab2.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page
-        .getByLabel('Ingestions')
+        .getByLabel('agents')
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
@@ -206,7 +229,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await expect(
         page
-          .getByTestId('entity-right-panel')
+          .getByTestId('KnowledgePanel.Tags')
           .getByTestId('tags-container')
           .getByTestId('entity-tags')
       ).toContainText(DBT.tagName);

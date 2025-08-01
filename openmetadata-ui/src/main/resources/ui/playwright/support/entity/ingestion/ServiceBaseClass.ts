@@ -12,14 +12,17 @@
  *  limitations under the License.
  */
 import {
+  APIRequestContext,
   expect,
   Page,
   PlaywrightTestArgs,
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
+import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
+  executeWithRetry,
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
@@ -30,9 +33,11 @@ import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   deleteService,
   getServiceCategoryFromService,
+  makeRetryRequest,
   Services,
   testConnection,
 } from '../../../utils/serviceIngestion';
+import { ResponseDataType } from '../Entity.interface';
 
 class ServiceBaseClass {
   public category: Services;
@@ -41,7 +46,9 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
+  protected shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
+  public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(
     category: Services,
@@ -49,7 +56,8 @@ class ServiceBaseClass {
     serviceType: string,
     entity: string,
     shouldTestConnection = true,
-    shouldAddIngestion = true
+    shouldAddIngestion = true,
+    shouldAddDefaultFilters = false
   ) {
     this.category = category;
     this.serviceName = name;
@@ -57,7 +65,12 @@ class ServiceBaseClass {
     this.entityName = entity;
     this.shouldTestConnection = shouldTestConnection;
     this.shouldAddIngestion = shouldAddIngestion;
+    this.shouldAddDefaultFilters = shouldAddDefaultFilters;
     this.entityFQN = null;
+  }
+
+  getServiceName() {
+    return this.serviceName;
   }
 
   visitService() {
@@ -76,9 +89,6 @@ class ServiceBaseClass {
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
 
-    const statusPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/status'
-    );
     const ipPromise = page.waitForRequest(
       '/api/v1/services/ingestionPipelines/ip'
     );
@@ -86,7 +96,6 @@ class ServiceBaseClass {
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
-    await statusPromise;
     await ipPromise;
 
     await page.click('[data-testid="service-requirements"]');
@@ -98,7 +107,7 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(page);
+    this.serviceResponseData = await this.submitService(page);
 
     if (this.shouldAddIngestion) {
       await this.addIngestionPipeline(page);
@@ -150,7 +159,23 @@ class ServiceBaseClass {
   }
 
   async addIngestionPipeline(page: Page) {
-    await page.click('[data-testid="add-ingestion-button"]');
+    await page.click('[role="tab"] [data-testid="agents"]');
+
+    const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab.isVisible()) {
+      await metadataTab.click();
+    }
+    await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
+
+    await page.click('[data-testid="add-new-ingestion-button"]');
+
+    await page.waitForSelector(
+      '.ant-dropdown:visible [data-menu-id*="metadata"]'
+    );
+
+    await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
 
     // Add ingestion page
     await page.waitForSelector('[data-testid="add-ingestion-container"]');
@@ -174,9 +199,14 @@ class ServiceBaseClass {
       .getByTestId('table-container')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-    await page.getByTestId('ingestions').click();
+    await page.getByTestId('agents').click();
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
     await page
-      .getByLabel('Ingestions')
+      .getByLabel('agents')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
@@ -185,6 +215,8 @@ class ServiceBaseClass {
 
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
+
+    await page.waitForLoadState('networkidle');
 
     await toastNotification(page, `Pipeline triggered successfully!`);
 
@@ -195,14 +227,33 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.click('[data-testid="submit-btn"]');
-    await page.waitForSelector('[data-testid="success-line"]', {
-      state: 'visible',
-    });
+    await page.getByTestId('submit-btn').getByText('Next').click();
 
-    await expect(page.getByTestId('success-line')).toContainText(
-      'has been created successfully'
+    if (this.shouldAddDefaultFilters) {
+      await this.fillIngestionDetails(page);
+    }
+
+    const autoPilotApplicationRequest = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/apps/trigger/AutoPilotApplication') &&
+        request.method() === 'POST'
     );
+
+    const saveServiceResponse = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/services/') &&
+        request.method() === 'POST'
+    );
+
+    await page.getByTestId('submit-btn').getByText('Save').click();
+
+    const savedService = (await saveServiceResponse).response();
+
+    const serviceDetails = await (await savedService)?.json();
+
+    await autoPilotApplicationRequest;
+
+    return serviceDetails;
   }
 
   async scheduleIngestion(page: Page) {
@@ -226,7 +277,7 @@ class ServiceBaseClass {
 
     await expect(
       page.getByText(
-        'Error: Expression has only 4 parts. At least 5 parts are required.'
+        'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)'
       )
     ).toBeAttached();
 
@@ -239,6 +290,18 @@ class ServiceBaseClass {
       .click();
 
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+
+    await page.click('#root\\/raiseOnError');
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -275,19 +338,31 @@ class ServiceBaseClass {
     )[0];
 
     const oneHourBefore = Date.now() - 86400000;
+    let consecutiveErrors = 0;
 
     await expect
       .poll(
         async () => {
-          const response = await apiContext
-            .get(
-              `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+          try {
+            const response = await makeRetryRequest({
+              url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
                 workflowData.fullyQualifiedName
-              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
-            )
-            .then((res) => res.json());
+              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`,
+              page,
+            });
+            consecutiveErrors = 0; // Reset error counter on success
 
-          return response.data[0]?.pipelineState;
+            return response.data[0]?.pipelineState;
+          } catch (error) {
+            consecutiveErrors++;
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `Failed to get pipeline status after ${MAX_CONSECUTIVE_ERRORS} consecutive attempts`
+              );
+            }
+
+            return 'running';
+          }
         },
         {
           // Custom expect message for reporting, optional.
@@ -311,19 +386,38 @@ class ServiceBaseClass {
     await page.waitForSelector('[data-testid="data-assets-header"]');
 
     await pipelinePromise;
-
     await statusPromise;
 
-    await page.waitForSelector('[data-testid="ingestions"]');
-    await page.click('[data-testid="ingestions"]');
+    await page.waitForSelector('[data-testid="agents"]');
+    await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
+
+    const pipelineStatus = await page
+      .locator(`[data-row-key*="${workflowData.name}"]`)
+      .getByTestId('pipeline-status')
+      .last()
+      .textContent();
+    // add logs to console for failed pipelines
+    if (pipelineStatus?.toLowerCase() === 'failed') {
+      const logsResponse = await apiContext
+        .get(`/api/v1/services/ingestionPipelines/logs/${workflowData.id}/last`)
+        .then((res) => res.json());
+
+      // eslint-disable-next-line no-console
+      console.log(logsResponse);
+    }
 
     await expect(
       page
         .locator(`[data-row-key*="${workflowData.name}"]`)
         .getByTestId('pipeline-status')
         .last()
-    ).toContainText('SUCCESS');
+    ).toContainText('Success');
   };
 
   async updateService(page: Page) {
@@ -337,7 +431,12 @@ class ServiceBaseClass {
       false
     );
 
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
 
     // click and edit pipeline schedule for Hours
 
@@ -484,7 +583,12 @@ class ServiceBaseClass {
     const ingestionResponse = page.waitForResponse(
       `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
     );
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
 
     await ingestionResponse;
     await page
@@ -514,11 +618,16 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('entity-right-panel')).toBeVisible();
-
     await expect(page.getByTestId('markdown-parser').first()).toHaveText(
       description
     );
+
+    // Check for right side widgets visibility
+    await expect(page.getByTestId('KnowledgePanel.Tags')).toBeVisible();
+    await expect(
+      page.getByTestId('KnowledgePanel.GlossaryTerms')
+    ).toBeVisible();
+    await expect(page.getByTestId('KnowledgePanel.DataProducts')).toBeVisible();
   }
 
   async runAdditionalTests(
@@ -530,6 +639,20 @@ class ServiceBaseClass {
 
   async deleteService(page: Page) {
     await deleteService(this.category, this.serviceName, page);
+  }
+
+  async deleteServiceByAPI(apiContext: APIRequestContext) {
+    if (this.serviceResponseData.fullyQualifiedName) {
+      await executeWithRetry(async () => {
+        await apiContext.delete(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
+            this.serviceResponseData.fullyQualifiedName
+          )}?recursive=true&hardDelete=true`
+        );
+      }, 'delete service');
+    }
   }
 }
 

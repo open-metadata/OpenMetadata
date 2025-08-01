@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,13 +18,13 @@ from typing import List, Tuple
 
 import pytest
 
+from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.api.status import Status
 
-from ...src.metadata.data_quality.api.models import TestCaseDefinition
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -172,13 +172,16 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(
             [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
         )
 
     def view_column_lineage_count(self) -> int:
         return 2
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_snowflake.E2E_DB.E2E_TEST.VIEW_PERSONS"
 
     @staticmethod
     def fqn_created_table() -> str:

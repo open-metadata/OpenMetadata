@@ -31,12 +31,12 @@ export interface AssetsTabsProps {
   onRemoveAsset?: () => void;
   entityFqn?: string;
   permissions: OperationPermission;
-  assetCount: number;
+  assetCount?: number;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
   isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
-  queryFilter?: string;
+  queryFilter?: string | Record<string, unknown>;
   noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
 }
 

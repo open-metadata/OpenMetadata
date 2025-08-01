@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes, ReactNode } from 'react';
+import { HTMLAttributes } from 'react';
 
-export type editorRef = ReactNode | HTMLElement | string;
 export type TextVariant = 'white' | 'black';
 
 export interface PreviewerProp {
@@ -34,19 +33,13 @@ export type EditorType = 'markdown' | 'wysiwyg';
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
   initialValue?: string;
-  placeHolder?: string;
-  previewStyle?: PreviewStyle;
-  editorType?: EditorType;
-  previewHighlight?: boolean;
-  extendedAutolinks?: boolean;
-  hideModeSwitch?: boolean;
-  useCommandShortcut?: boolean;
   readonly?: boolean;
-  height?: string;
   onTextChange?: (value: string) => void;
+  placeHolder?: string;
 }
 
 export interface EditorContentRef {
   getEditorContent: () => string;
   clearEditorContent: () => void;
+  setEditorContent: (content: string) => void;
 }

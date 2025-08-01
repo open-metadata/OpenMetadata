@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -49,9 +49,8 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     LINEAGE_MAP,
@@ -69,6 +68,7 @@ from metadata.ingestion.source.dashboard.quicksight.models import (
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -170,9 +170,11 @@ class QuicksightSource(DashboardServiceSource):
             name=EntityName(dashboard_details.DashboardId),
             sourceUrl=SourceUrl(self.dashboard_url),
             displayName=dashboard_details.Name,
-            description=Markdown(dashboard_details.Version.Description)
-            if dashboard_details.Version and dashboard_details.Version.Description
-            else None,
+            description=(
+                Markdown(dashboard_details.Version.Description)
+                if dashboard_details.Version and dashboard_details.Version.Description
+                else None
+            ),
             charts=[
                 FullyQualifiedEntityName(
                     fqn.build(
@@ -254,12 +256,20 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_entity,
+        db_service_prefix: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
-        if not db_service_entity:
-            logger.debug(f"db service is not ingested")
-            return None
+        db_service_entity = None
+        (
+            db_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+        if db_service_prefix:
+            db_service_entity = self.metadata.get_by_name(
+                entity=DatabaseService, fqn=db_service_name
+            )
         sql_query = data_source_resp.data_source_resp.query
         source_database_names = []
         try:
@@ -274,29 +284,65 @@ class QuicksightSource(DashboardServiceSource):
         try:
             lineage_parser = LineageParser(
                 sql_query,
-                ConnectionTypeDialectMapper.dialect_of(
-                    db_service_entity.serviceType.value
-                )
-                if db_service_entity
-                else None,
+                (
+                    ConnectionTypeDialectMapper.dialect_of(
+                        db_service_entity.serviceType.value
+                    )
+                    if db_service_entity
+                    else Dialect.ANSI
+                ),
             )
             lineage_details = LineageDetails(
                 source=LineageSource.DashboardLineage, sqlQuery=sql_query
             )
             for db_name in source_database_names:
+                if (
+                    prefix_database_name
+                    and db_name
+                    and prefix_database_name.lower() != str(db_name).lower()
+                ):
+                    logger.debug(
+                        f"Database {db_name} does not match prefix {prefix_database_name}"
+                    )
+                    continue
                 for table in lineage_parser.source_tables:
                     database_schema_name, table = fqn.split(str(table))[-2:]
                     database_schema_name = self.check_database_schema_name(
                         database_schema_name
                     )
-                    from_entities = search_table_entities(
-                        metadata=self.metadata,
-                        database=db_name,
-                        service_name=db_service_entity.name.root,
-                        database_schema=database_schema_name,
-                        table=table,
+
+                    if (
+                        prefix_schema_name
+                        and database_schema_name
+                        and prefix_schema_name.lower() != database_schema_name.lower()
+                    ):
+                        logger.debug(
+                            f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                        )
+                        continue
+
+                    if (
+                        prefix_table_name
+                        and table
+                        and prefix_table_name.lower() != table.lower()
+                    ):
+                        logger.debug(
+                            f"Table {table} does not match prefix {prefix_table_name}"
+                        )
+                        continue
+
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=prefix_database_name or db_name,
+                        schema_name=prefix_schema_name or database_schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=prefix_table_name or table,
                     )
-                    for from_entity in from_entities:
+                    from_entities = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
+                        fetch_multiple_entities=True,
+                    )
+                    for from_entity in from_entities or []:
                         if from_entity is not None and data_model_entity is not None:
                             columns = [
                                 col.name.root for col in data_model_entity.columns
@@ -354,7 +400,7 @@ class QuicksightSource(DashboardServiceSource):
                     containers = self.metadata.es_search_container_by_path(
                         full_path=f"s3://{bucket_name}/{key_name}"
                     )
-                    for container in containers:
+                    for container in containers or []:
                         if container is not None and data_model_entity is not None:
                             storage_entity = EntityReference(
                                 id=Uuid(container.id.root),
@@ -385,26 +431,62 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_entity,
+        db_service_prefix: Optional[str],
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
             schema_name = data_source_resp.data_source_resp.schema_name
             table_name = data_source_resp.data_source_resp.table_name
+
+            if (
+                prefix_schema_name
+                and schema_name
+                and prefix_schema_name.lower() != schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                )
+                return
+
+            if (
+                prefix_table_name
+                and table_name
+                and prefix_table_name.lower() != table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {table_name} does not match prefix {prefix_table_name}"
+                )
+                return
+
             if data_source_resp and data_source_resp.DataSourceParameters:
                 data_source_dict = data_source_resp.DataSourceParameters
                 for db in data_source_dict.keys() or []:
-                    from_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=db_service_entity.name.root,
-                        database_name=data_source_dict[db].get("Database"),
-                        schema_name=schema_name,
-                        table_name=table_name,
+                    database_name = data_source_dict[db].get("Database")
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        logger.debug(
+                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                        )
+                        continue
+
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or schema_name,
+                        service_name=db_service_name or "*",
+                        table_name=prefix_table_name or table_name,
                     )
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=from_fqn,
+                    from_entity = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
                     )
                     if from_entity is not None and data_model_entity is not None:
                         columns = [col.name.root for col in data_model_entity.columns]
@@ -440,14 +522,14 @@ class QuicksightSource(DashboardServiceSource):
         return None
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
-        self, dashboard_details: DashboardDetail, db_service_name: str
+        self,
+        dashboard_details: DashboardDetail,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
+        db_service_name, *_ = self.parse_db_service_prefix(db_service_prefix)
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(
@@ -460,7 +542,7 @@ class QuicksightSource(DashboardServiceSource):
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
-                        db_service_entity,
+                        db_service_prefix,
                     )
                 elif isinstance(
                     datamodel.DataSource.data_source_resp, DataSourceRespS3
@@ -473,7 +555,7 @@ class QuicksightSource(DashboardServiceSource):
                         data_model_entity,
                         datamodel.DataSource,
                         dashboard_details,
-                        db_service_entity,
+                        db_service_prefix,
                     )
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(

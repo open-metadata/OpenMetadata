@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_DOMAIN } from '../../../../mocks/Domains.mock';
+import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import DocumentationTab from './DocumentationTab.component';
 
 // Mock the onUpdate function
@@ -23,6 +23,7 @@ const defaultProps = {
   domain: MOCK_DOMAIN,
   onUpdate: mockOnUpdate,
   isVersionsView: false,
+  permissions: MOCK_PERMISSIONS,
 };
 
 jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
@@ -33,33 +34,63 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)
 );
 
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
+jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: MOCK_DOMAIN,
+    permissions: {
+      ViewAll: true,
+      EditAll: true,
+    },
+  }),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('Domain Name'),
+}));
+
+jest.mock('../../../../utils/EntityVersionUtils', () => ({
+  getEntityVersionByField: jest.fn().mockReturnValue('1'),
+}));
+
+jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockImplementation(() => <div>CustomPropertyTable</div>),
+}));
+
+jest.mock('../../../DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
+  OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
+}));
+
+jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () =>
+  jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
+);
+
+jest.mock('../../DomainExpertsWidget/DomainExpertWidget', () => ({
+  DomainExpertWidget: jest
+    .fn()
+    .mockImplementation(() => <div>DomainExpertWidget</div>),
+}));
+
+jest.mock('../../DomainTypeWidget/DomainTypeWidget', () => ({
+  DomainTypeWidget: jest
+    .fn()
+    .mockImplementation(() => <div>DomainTypeWidget</div>),
 }));
 
 describe('DocumentationTab', () => {
   it('should render the initial content', () => {
-    const { getByTestId } = render(<DocumentationTab {...defaultProps} />, {
+    render(<DocumentationTab {...defaultProps} />, {
       wrapper: MemoryRouter,
     });
     const description = screen.getByText('DescriptionV1');
 
     expect(description).toBeInTheDocument();
 
-    const editOwnerButton = getByTestId('edit-owner');
+    expect(screen.getByText('OwnerLabelV2')).toBeInTheDocument();
 
-    expect(editOwnerButton).toBeInTheDocument();
+    expect(screen.getByText('DomainExpertWidget')).toBeInTheDocument();
 
-    const ownerName = getByTestId('domain-owner-name');
-
-    expect(ownerName).toHaveTextContent('Aaron Singh');
-
-    const addExpertButton = getByTestId('label.add');
-
-    expect(addExpertButton).toBeInTheDocument();
-
-    const domainTypeLabel = getByTestId('domain-type-label');
-
-    expect(domainTypeLabel).toHaveTextContent('Aggregate');
+    expect(screen.getByText('DomainTypeWidget')).toBeInTheDocument();
   });
 });

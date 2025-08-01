@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,6 +54,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import check_ssl_and_init
 
@@ -79,6 +80,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     Database metadata from NoSQL source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
@@ -120,13 +122,16 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         Prepare a database request and pass it to the sink
         """
 
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=self.context.get().database_service,
-                sourceUrl=self.get_source_url(database_name=database_name),
-            )
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=self.context.get().database_service,
+            sourceUrl=self.get_source_url(database_name=database_name),
         )
+
+        yield Either(
+            right=database_request,
+        )
+        self.register_record_database_request(database_request=database_request)
 
     @abstractmethod
     def get_schema_name_list(self) -> List[str]:
@@ -162,23 +167,24 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         Prepare a database schema request and pass it to the sink
         """
 
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                sourceUrl=self.get_source_url(
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
                     database_name=self.context.get().database,
-                    schema_name=schema_name,
-                ),
-            )
+                )
+            ),
+            sourceUrl=self.get_source_url(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            ),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     @abstractmethod
     def query_table_names_and_types(

@@ -1,0 +1,59 @@
+name: Prepare for Docker Build
+description: Set up Docker Build dependencies (without pushing) and run Maven build
+
+inputs:
+  image:
+    description: Image name
+    required: true
+  tag:
+    description: Docker tag to use
+    required: true
+  is_ingestion:
+    description: true if we are building an Ingestion image, false otherwise
+    required: true
+    default: "false"
+  release_version:
+    description: OpenMetadata Release Version
+
+outputs:
+  tags:
+    description: Generated Docker Tags
+    value: ${{ steps.meta.outputs.tags }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install Ubuntu dependencies
+      shell: bash
+      run: |
+        # stop relying on apt cache of GitHub runners
+        sudo apt-get update
+        sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        librdkafka-dev unixodbc-dev libevent-dev wkhtmltopdf libkrb5-dev jq
+    - name: Set up JDK 21
+      if: inputs.is_ingestion == 'false'
+      uses: actions/setup-java@v4
+      with:
+        java-version: 21
+        distribution: 'temurin'
+
+    - name: Install antlr cli
+      shell: bash
+      run: |
+        sudo make install_antlr_cli
+
+    - name: Build OpenMetadata Server Application
+      if: inputs.is_ingestion == 'false'
+      shell: bash
+      run: |
+        mvn -DskipTests clean package
+
+    - name: Install OpenMetadata Ingestion Dependencies
+      if: inputs.is_ingestion == 'true'
+      shell: bash
+      run: |
+        python3 -m venv env
+        source env/bin/activate
+        pip install --upgrade pip
+        sudo make install_antlr_cli
+        make install_dev generate

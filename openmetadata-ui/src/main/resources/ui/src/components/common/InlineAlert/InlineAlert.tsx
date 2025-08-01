@@ -14,10 +14,11 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Alert, Typography } from 'antd';
+import { Alert, Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as AlertIcon } from '../../../assets/svg/alert.svg';
 import { ReactComponent as ErrorExclamationIcon } from '../../../assets/svg/error-exclamation.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -29,9 +30,13 @@ function InlineAlert({
   type,
   heading,
   description,
+  subDescription,
   onClose,
 }: Readonly<InlineAlertProps>) {
+  const { t } = useTranslation();
   const { inlineAlertDetails, setInlineAlertDetails } = useApplicationStore();
+  const [showMore, setShowMore] = useState(false);
+
   const { alertContainerClass, alertIconClass } = useMemo(
     () => ({
       alertContainerClass: `${type ?? 'default'}-alert`,
@@ -39,6 +44,12 @@ function InlineAlert({
     }),
     [type]
   );
+
+  const handleToggleShowMore = useCallback(() => {
+    setShowMore((prev) => !prev);
+  }, []);
+
+  const combinedText = `${description} ${subDescription}`.trim();
 
   const alertIcon = useMemo(() => {
     switch (type) {
@@ -93,9 +104,29 @@ function InlineAlert({
             <Typography.Text className="font-semibold text-sm">
               {heading}
             </Typography.Text>
-            <Typography.Paragraph className="m-b-0 text-sm">
+            <Typography.Paragraph
+              className={classNames('m-b-0 text-sm', {
+                'truncated-text': !showMore,
+                'expanded-text': showMore,
+              })}
+              data-testid="inline-alert-description">
               {description}
+              {subDescription && (
+                <>
+                  <br />
+                  {subDescription}
+                </>
+              )}
             </Typography.Paragraph>
+            {combinedText.length >= 200 && (
+              <Button
+                className="text-xs p-0 m-0 w-fit-content h-auto"
+                data-testid={`read-${showMore ? 'less' : 'more'}-button`}
+                type="link"
+                onClick={handleToggleShowMore}>
+                {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
+              </Button>
+            )}
           </div>
         </div>
       }

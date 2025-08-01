@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
-import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useFqn } from '../../../hooks/useFqn';
+import { searchQuery } from '../../../rest/searchAPI';
 import { mockAccessData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
@@ -47,15 +45,17 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
 jest.mock(
   './UsersProfile/UserProfileDetails/UserProfileDetails.component',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ afterDeleteAction, updateUserDetails }) => (
-        <>
-          <div>UserProfileDetails</div>
-          <button onClick={afterDeleteAction}>AfterDeleteActionButton</button>
-          <button onClick={updateUserDetails}>UpdateUserDetailsButton</button>
-        </>
-      ));
+    return jest.fn().mockImplementation((props) => (
+      <div data-testid="user-profile-details">
+        <div>UserProfileDetails</div>
+        <button onClick={props.afterDeleteAction}>
+          AfterDeleteActionButton
+        </button>
+        <button onClick={props.updateUserDetails}>
+          UpdateUserDetailsButton
+        </button>
+      </div>
+    ));
   }
 );
 
@@ -96,7 +96,19 @@ jest.mock(
 );
 
 jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
-  return jest.fn().mockReturnValue(<p>AssetsTabs</p>);
+  return jest.fn().mockImplementation((props) => {
+    React.useEffect(() => {
+      if (props.queryFilter === 'my-data') {
+        searchQuery({
+          searchIndex: ['all'] as any,
+          query: '*',
+          filters: props.queryFilter,
+        });
+      }
+    }, [props.queryFilter]);
+
+    return <p>AssetsTabs</p>;
+  });
 });
 
 jest.mock(
@@ -191,6 +203,26 @@ jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
   })),
 }));
 
+jest.mock('../../ProfileCard/ProfileSectionUserDetailsCard.component', () => {
+  return jest.fn().mockImplementation((props) => (
+    <div data-testid="profile-section-card">
+      <div>ProfileSectionUserDetailsCard</div>
+      <button onClick={props.afterDeleteAction}>AfterDeleteActionButton</button>
+      <button onClick={props.updateUserDetails}>UpdateUserDetailsButton</button>
+    </div>
+  ));
+});
+
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [],
+      total: { value: 0 },
+    },
+    aggregations: {},
+  }),
+}));
+
 describe('Test User Component', () => {
   it('Should render user component', async () => {
     await act(async () => {
@@ -199,9 +231,9 @@ describe('Test User Component', () => {
       });
     });
 
-    const UserProfileDetails = await screen.findByText('UserProfileDetails');
+    const profileSection = await screen.findByTestId('profile-section-card');
 
-    expect(UserProfileDetails).toBeInTheDocument();
+    expect(profileSection).toBeInTheDocument();
   });
 
   it('should trigger afterDeleteAction from UserProfileDetails', async () => {
@@ -211,9 +243,7 @@ describe('Test User Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByText('AfterDeleteActionButton'));
-    });
+    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
 
     expect(mockProp.afterDeleteAction).toHaveBeenCalled();
   });
@@ -225,93 +255,23 @@ describe('Test User Component', () => {
       });
     });
 
-    await act(async () => {
-      userEvent.click(screen.getByText('UpdateUserDetailsButton'));
-    });
+    fireEvent.click(screen.getByText('UpdateUserDetailsButton'));
 
     expect(mockProp.updateUserDetails).toHaveBeenCalled();
   });
 
-  it('User profile should render when open collapsible header', async () => {
+  it('User profile should render Persona, Teams and Domains and Roles', async () => {
     await act(async () => {
       render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
       });
     });
 
-    const collapsibleButton = await screen.findByRole('img');
-
-    userEvent.click(collapsibleButton);
-
-    const UserProfileInheritedRoles = await screen.findByText(
-      'UserProfileInheritedRoles'
-    );
     const UserProfileRoles = await screen.findByText('UserProfileRoles');
     const UserProfileTeams = await screen.findByText('UserProfileTeams');
-    const description = await screen.findByText('Description');
 
-    expect(description).toBeInTheDocument();
     expect(UserProfileRoles).toBeInTheDocument();
     expect(UserProfileTeams).toBeInTheDocument();
-    expect(UserProfileInheritedRoles).toBeInTheDocument();
-  });
-
-  it('should call updateUserDetails on click of SaveDescriptionButton', async () => {
-    await act(async () => {
-      render(<Users userData={mockUserData} {...mockProp} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const collapsibleButton = await screen.findByRole('img');
-
-    await act(async () => {
-      userEvent.click(collapsibleButton);
-    });
-
-    const saveDescriptionButton = await screen.findByText(
-      'SaveDescriptionButton'
-    );
-
-    await act(async () => {
-      userEvent.click(saveDescriptionButton);
-    });
-
-    expect(mockProp.updateUserDetails).toHaveBeenCalledWith(
-      {
-        description: 'testDescription',
-      },
-      'description'
-    );
-  });
-
-  it('should call updateUserDetails on click of SavePersonaSelectableListButton', async () => {
-    await act(async () => {
-      render(<Users userData={mockUserData} {...mockProp} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const collapsibleButton = await screen.findByRole('img');
-
-    await act(async () => {
-      userEvent.click(collapsibleButton);
-    });
-
-    const savePersonaSelectableListButton = await screen.findByText(
-      'SavePersonaSelectableListButton'
-    );
-
-    await act(async () => {
-      userEvent.click(savePersonaSelectableListButton);
-    });
-
-    expect(mockProp.updateUserDetails).toHaveBeenCalledWith(
-      {
-        personas: [],
-      },
-      'personas'
-    );
   });
 
   it('Tab should not visible to normal user', async () => {
@@ -416,51 +376,18 @@ describe('Test User Component', () => {
     ).toHaveClass('ant-tabs-tab-disabled');
   });
 
-  it('should show the edit description button for non admin logged in user profile', async () => {
+  it('MyData tab should make query call only once on initial load', async () => {
+    mockParams.tab = UserPageTabs.MY_DATA;
+
     await act(async () => {
-      render(
-        <Users
-          authenticationMechanism={mockAccessData}
-          userData={mockUserData}
-          {...mockProp}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
+    const assetComponent = await screen.findByText('AssetsTabs');
 
-    const collapsibleButton = await screen.findByRole('img');
+    expect(assetComponent).toBeInTheDocument();
 
-    userEvent.click(collapsibleButton);
-
-    expect(screen.getByText('Edit Button')).toBeInTheDocument();
-  });
-
-  it('should not show the edit description button for admins in user profile page', async () => {
-    (useAuth as jest.Mock).mockImplementation(() => ({
-      isAdminUser: true,
-    }));
-    (useFqn as jest.Mock).mockImplementation(() => ({
-      fqn: 'test1',
-    }));
-    await act(async () => {
-      render(
-        <Users
-          authenticationMechanism={mockAccessData}
-          userData={mockUserData}
-          {...mockProp}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const collapsibleButton = await screen.findByRole('img');
-
-    userEvent.click(collapsibleButton);
-
-    expect(screen.queryByText('Edit Button')).toBeNull();
+    expect(searchQuery).toHaveBeenCalledTimes(1);
   });
 });

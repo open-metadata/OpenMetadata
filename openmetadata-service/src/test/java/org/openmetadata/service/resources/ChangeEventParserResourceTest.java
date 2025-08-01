@@ -33,23 +33,26 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.State;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @TestInstance(Lifecycle.PER_CLASS)
@@ -119,7 +122,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         .withEventType(eventType)
         .withEntityId(TABLE.getId())
         .withEntityType(Entity.TABLE)
-        .withDomain(nullOrEmpty(TABLE.getDomain()) ? null : TABLE.getDomain().getId())
+        .withDomains(nullOrEmpty(TABLE.getDomains()) ? null : TABLE.getDomains())
         .withEntityFullyQualifiedName(TABLE.getFullyQualifiedName())
         .withChangeDescription(changeDescription)
         .withPreviousVersion(previousVersion)
@@ -141,7 +144,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Added **owners**: <span class=\"diff-added\">User One</span>",
+        "Added **owners**: <span data-diff='true' class=\"diff-added\">User One</span>",
         threadWithMessages.get(0).getMessage());
   }
 
@@ -156,8 +159,8 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadMessages.size());
 
     assertEquals(
-        "Updated **description**: <span class=\"diff-removed\">old</span> "
-            + "<span class=\"diff-added\">new</span> description",
+        "Updated **description**: <span data-diff='true' class=\"diff-removed\">old</span> "
+            + "<span data-diff='true' class=\"diff-added\">new</span> description",
         threadMessages.get(0).getMessage());
 
     // test if it updates correctly with one add and one delete change
@@ -225,7 +228,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Updated **columns**: lo_order <span class=\"diff-added\">priority</span>",
+        "Updated **columns**: lo_order <span data-diff='true' class=\"diff-added\">priority</span>",
         threadWithMessages.get(0).getMessage());
 
     // Simulate a change of datatype change in column
@@ -261,7 +264,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns**: lo_orderpriority <span data-diff='true' class=\"diff-added\">, newColumn</span>",
         threadWithMessages.get(0).getMessage());
   }
 
@@ -320,5 +323,140 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(
         "Updated *columns*: lo_orderpriority *, newColumn*",
         threadWithMessages.get(0).getMessage());
+  }
+
+  @Test
+  void testDataContractSlackMessageFormatting() {
+    // Create a mock DataContract entity
+    DataContract dataContract = new DataContract();
+    dataContract
+        .withId(UUID.randomUUID())
+        .withName("TestDataContract")
+        .withFullyQualifiedName("database.schema.table.dataContract_TestDataContract")
+        .withDescription("Test data contract for validation")
+        .withEntity(
+            new EntityReference()
+                .withId(TABLE.getId())
+                .withType(Entity.TABLE)
+                .withFullyQualifiedName(TABLE.getFullyQualifiedName()));
+
+    // Create old and new LatestResult objects to simulate a status change
+    LatestResult oldResult =
+        new LatestResult()
+            .withStatus(ContractExecutionStatus.Running)
+            .withMessage("Validation in progress")
+            .withTimestamp(System.currentTimeMillis() - 10000)
+            .withResultId(UUID.randomUUID());
+
+    LatestResult newResult =
+        new LatestResult()
+            .withStatus(ContractExecutionStatus.Failed)
+            .withMessage("Schema validation failed")
+            .withTimestamp(System.currentTimeMillis())
+            .withResultId(UUID.randomUUID());
+
+    // Create a ChangeDescription for latestResult field update
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.0);
+    fieldUpdated(
+        changeDescription,
+        "latestResult",
+        JsonUtils.pojoToJson(oldResult),
+        JsonUtils.pojoToJson(newResult));
+
+    // Set the new result on the data contract
+    dataContract.setLatestResult(newResult);
+
+    // Create a ChangeEvent for DataContract
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityId(dataContract.getId())
+            .withEntityType(Entity.DATA_CONTRACT)
+            .withEntityFullyQualifiedName(dataContract.getFullyQualifiedName())
+            .withChangeDescription(changeDescription)
+            .withPreviousVersion(1.0)
+            .withCurrentVersion(1.1)
+            .withEntity(dataContract);
+
+    // Test Slack message formatting
+    List<Thread> slackThreads = getThreadWithMessage(slackMessageFormatter, changeEvent);
+    assertEquals(1, slackThreads.size());
+
+    String slackMessage = slackThreads.get(0).getMessage();
+
+    // Verify the message contains expected DataContract-specific formatting
+    // The exact message will depend on the SlackMessageDecorator implementation
+    // but should contain information about the status change
+    assert slackMessage.contains("latestResult")
+        || slackMessage.contains("DataContract")
+        || slackMessage.contains("Failed");
+  }
+
+  @Test
+  void testDataContractSlackTemplateMessage() {
+    // Create a DataContract with complete information for template testing
+    DataContract dataContract = new DataContract();
+    dataContract
+        .withId(UUID.randomUUID())
+        .withName("ProductDataContract")
+        .withFullyQualifiedName("ecommerce.public.products.dataContract_ProductDataContract")
+        .withDescription("Data contract ensuring product data quality")
+        .withEntity(
+            new EntityReference()
+                .withId(TABLE.getId())
+                .withType(Entity.TABLE)
+                .withFullyQualifiedName(TABLE.getFullyQualifiedName()))
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withName("dataOwner")
+                    .withType(Entity.USER)));
+
+    // Create a LatestResult with failed status to trigger detailed template
+    LatestResult failedResult =
+        new LatestResult()
+            .withStatus(ContractExecutionStatus.Failed)
+            .withMessage("Quality validation failed: 15 out of 20 test cases failed")
+            .withTimestamp(System.currentTimeMillis())
+            .withResultId(UUID.randomUUID());
+
+    dataContract.setLatestResult(failedResult);
+
+    // Create change event for latestResult update
+    ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.0);
+    fieldUpdated(
+        changeDescription,
+        "latestResult",
+        JsonUtils.pojoToJson(
+            new LatestResult()
+                .withStatus(ContractExecutionStatus.Success)
+                .withMessage("All validations passed")
+                .withTimestamp(System.currentTimeMillis() - 60000)
+                .withResultId(UUID.randomUUID())),
+        JsonUtils.pojoToJson(failedResult));
+
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityId(dataContract.getId())
+            .withEntityType(Entity.DATA_CONTRACT)
+            .withEntityFullyQualifiedName(dataContract.getFullyQualifiedName())
+            .withChangeDescription(changeDescription)
+            .withPreviousVersion(1.0)
+            .withCurrentVersion(1.1)
+            .withEntity(dataContract);
+
+    // Test the specialized DataContract Slack message
+    List<Thread> slackThreads = getThreadWithMessage(slackMessageFormatter, changeEvent);
+    assertEquals(1, slackThreads.size());
+
+    String message = slackThreads.get(0).getMessage();
+
+    // The message should be more detailed due to the DataContract template
+    // Verify it contains contract-specific information
+    assert message.contains("latestResult") : "Message should contain latestResult field";
   }
 }

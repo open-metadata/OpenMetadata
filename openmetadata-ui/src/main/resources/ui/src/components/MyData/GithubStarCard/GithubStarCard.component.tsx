@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
@@ -25,13 +25,14 @@ import {
   ROUTES,
   STAR_OMD_USER,
   TWO_MINUTE_IN_MILLISECOND,
+  VERSION,
 } from '../../../constants/constants';
 import { OMD_REPOSITORY_LINK } from '../../../constants/docs.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getRepositoryData } from '../../../rest/commonAPI';
+import { getVersionedStorageKey } from '../../../utils/Version/Version';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';
-import { COOKIE_VERSION } from '../../Modals/WhatsNewModal/whatsNewData';
 import './github-star-card.style.less';
 
 const cookieStorage = new CookieStorage();
@@ -39,14 +40,16 @@ const cookieStorage = new CookieStorage();
 const GithubStarCard = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, appVersion } = useApplicationStore();
   const [showGithubStarPopup, setShowGithubStarPopup] = useState(false);
   const [starredCount, setStarredCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const isWhatNewAlertVisible = useMemo(
-    () => cookieStorage.getItem(COOKIE_VERSION) !== 'true',
-    [cookieStorage]
+    () =>
+      cookieStorage.getItem(getVersionedStorageKey(VERSION, appVersion)) !==
+      'true',
+    [cookieStorage, appVersion]
   );
 
   const userCookieName = useMemo(
@@ -148,7 +151,6 @@ const GithubStarCard = () => {
 
         <ButtonGroup className="github-action-button-group">
           <Link
-            component={Typography.Link}
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
@@ -161,7 +163,6 @@ const GithubStarCard = () => {
           </Link>
 
           <Link
-            component={Typography.Link}
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,

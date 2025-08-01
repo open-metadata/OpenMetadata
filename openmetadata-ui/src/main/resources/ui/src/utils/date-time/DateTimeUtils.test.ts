@@ -50,7 +50,9 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
+    expect(formatDateTimeLong(0)).toBe(
+      `January 01, 1970, 12:00 AM (UTC+00:00)`
+    );
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
@@ -140,21 +142,56 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 0, expected: '0s' },
     { input: 1000, expected: '1s' },
     { input: 60000, expected: '1m' },
-    { input: 3600000, expected: '1h' },
+    { input: 3600020, expected: '1h' },
     { input: 7265000, expected: '2h 1m 5s' },
     { input: 59999, expected: '59s' },
     { input: 61000, expected: '1m 1s' },
     { input: 3661000, expected: '1h 1m 1s' },
     { input: 86400000, expected: '1d' },
     { input: 90061000, expected: '1d 1h 1m 1s' },
-    { input: -1000, expected: '0s' },
+    { input: -1000, expected: '-1s' },
+    { input: 1200, expected: '1s 200ms', showMilliseconds: true },
+    {
+      input: 90061560,
+      expected: '1d 1h 1m 1s 560ms',
+      length: 5,
+      showMilliseconds: true,
+    },
+    { input: 90061560, expected: '1d 1h', length: 2, showMilliseconds: true },
+    { input: -61000, expected: '-1m 1s' },
+    {
+      input: -3661000,
+      expected: 'Late by 1h 1m 1s',
+      prependForNegativeValue: 'Late by ',
+    },
+    { input: -86400000, expected: '-1d' },
+    {
+      input: -90061000,
+      expected: 'Late by 1d 1h 1m 1s',
+      prependForNegativeValue: 'Late by ',
+    },
   ];
 
-  testCases.forEach(({ input, expected }) => {
-    it(`should return "${expected}" for ${input} milliseconds`, () => {
-      expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
-    });
-  });
+  testCases.forEach(
+    ({
+      input,
+      expected,
+      length,
+      showMilliseconds,
+      prependForNegativeValue,
+    }) => {
+      it(`should return "${expected}" for ${input} milliseconds`, () => {
+        expect(
+          convertMillisecondsToHumanReadableFormat(
+            input,
+            length,
+            showMilliseconds,
+            prependForNegativeValue
+          )
+        ).toBe(expected);
+      });
+    }
+  );
 
   const testCasesWithLength = [
     {
@@ -187,4 +224,13 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
       });
     }
   );
+
+  it('should return the correct value for the input value', () => {
+    const inputValue = 224813364.39; // input in seconds
+    const expectedValue = '7Y 2M 22d 9m 24s';
+
+    expect(convertMillisecondsToHumanReadableFormat(inputValue * 1000)).toBe(
+      expectedValue
+    );
+  });
 });

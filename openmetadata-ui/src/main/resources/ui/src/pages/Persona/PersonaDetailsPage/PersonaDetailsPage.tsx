@@ -15,9 +15,9 @@ import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -26,7 +26,6 @@ import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
@@ -34,31 +33,41 @@ import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.co
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { Include } from '../../../generated/type/include';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { getUserById } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import './persona-details-page.less';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { currentUser, setCurrentUser } = useApplicationStore();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
-  const [isEdit, setIsEdit] = useState(false);
   const { t } = useTranslation();
   const [entityPermission, setEntityPermission] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
   const location = useCustomLocation();
-  const activeKey = useMemo(
-    () => location.hash?.replace('#', '') || 'users',
-    [location]
-  );
+  const { activeKey, fullHash } = useMemo(() => {
+    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
+      '.'
+    )[0];
+
+    return {
+      activeKey,
+      fullHash: location.hash?.replace('#', ''),
+    };
+  }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -100,42 +109,41 @@ export const PersonaDetailsPage = () => {
     }
   }, [fqn]);
 
-  const handleDescriptionUpdate = async (description: string) => {
-    if (!personaDetails) {
+  //   Add #customize-ui to URL if # doesn't exist
+  useEffect(() => {
+    if (location.hash) {
       return;
     }
-    const updatedData = { ...personaDetails, description };
-    const diff = compare(personaDetails, updatedData);
 
-    try {
-      const response = await updatePersona(personaDetails?.id, diff);
-      setPersonaDetails(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
+    if (!location.hash.includes('customize-ui')) {
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search,
+          hash: '#customize-ui',
+        },
+        { replace: true }
+      );
     }
-  };
+  }, []);
 
-  const handleDisplayNameUpdate = async (data: EntityName) => {
-    if (!personaDetails) {
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      if (currentUser) {
+        const user = await getUserById(currentUser.id, {
+          fields: [TabSpecificField.PERSONAS],
+          include: Include.All,
+        });
+
+        setCurrentUser({ ...currentUser, ...user });
+      }
+    } catch {
       return;
     }
-    const updatedData = { ...personaDetails, ...data };
-    const diff = compare(personaDetails, updatedData);
-
-    try {
-      const response = await updatePersona(personaDetails?.id, diff);
-      setPersonaDetails(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
-    }
-  };
+  }, [currentUser, setCurrentUser]);
 
   const handlePersonaUpdate = useCallback(
-    async (data: Partial<Persona>) => {
+    async (data: Partial<Persona>, shouldRefetch = false) => {
       if (!personaDetails) {
         return;
       }
@@ -144,10 +152,11 @@ export const PersonaDetailsPage = () => {
       try {
         const response = await updatePersona(personaDetails?.id, diff);
         setPersonaDetails(response);
+        if (shouldRefetch) {
+          await fetchCurrentUser();
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
     },
     [personaDetails]
@@ -159,23 +168,36 @@ export const PersonaDetailsPage = () => {
         (user) => user.id !== userId
       );
 
-      handlePersonaUpdate({ users: updatedUsers });
+      handlePersonaUpdate({ users: updatedUsers }, true);
     },
     [personaDetails]
   );
 
-  const handleAfterDeleteAction = () => {
-    history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
+  const handleAfterDeleteAction = async () => {
+    await fetchCurrentUser();
+    navigate(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
-  const handleTabChange = (activeKey: string) => {
-    history.push({
-      hash: activeKey,
-    });
-  };
+  const handleTabClick = useCallback(
+    (key: string) => {
+      if (fullHash === key) {
+        return;
+      }
+
+      navigate({
+        hash: key,
+      });
+    },
+    [history, fullHash]
+  );
 
   const tabItems = useMemo(() => {
     return [
+      {
+        label: t('label.customize-ui'),
+        key: 'customize-ui',
+        children: <CustomizeUI />,
+      },
       {
         label: t('label.user-plural'),
         key: 'users',
@@ -185,11 +207,6 @@ export const PersonaDetailsPage = () => {
             onRemoveUser={handleRemoveUser}
           />
         ),
-      },
-      {
-        label: t('label.customize-ui'),
-        key: 'customize-ui',
-        children: <CustomizeUI />,
       },
     ];
   }, [personaDetails]);
@@ -204,12 +221,11 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md page-container" gutter={[0, 16]}>
+      <Row className="m-b-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
-            <div className="w-full">
+            <div className="persona-details-title-container">
               <TitleBreadcrumb titleLinks={breadcrumb} />
-
               <EntityHeaderTitle
                 className="m-t-xs"
                 displayName={personaDetails.displayName}
@@ -233,41 +249,46 @@ export const PersonaDetailsPage = () => {
               entityId={personaDetails.id}
               entityName={personaDetails.name}
               entityType={EntityType.PERSONA}
-              onEditDisplayName={handleDisplayNameUpdate}
+              onEditDisplayName={(data) => handlePersonaUpdate(data, true)}
             />
           </div>
         </Col>
         <Col span={24}>
           <DescriptionV1
-            hasEditAccess
             description={personaDetails.description}
+            entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
-            isEdit={isEdit}
+            hasEditAccess={
+              entityPermission.EditAll || entityPermission.EditDescription
+            }
             showCommentsIcon={false}
-            onCancel={() => setIsEdit(false)}
-            onDescriptionEdit={() => setIsEdit(true)}
-            onDescriptionUpdate={handleDescriptionUpdate}
+            onDescriptionUpdate={(description) =>
+              handlePersonaUpdate({ description })
+            }
           />
         </Col>
         <Col span={24}>
           <Tabs
             activeKey={activeKey}
+            className="tabs-new"
             items={tabItems}
             tabBarExtraContent={
-              <UserSelectableList
-                hasPermission
-                multiSelect
-                selectedUsers={personaDetails.users ?? []}
-                onUpdate={(users) => handlePersonaUpdate({ users })}>
-                <Button
-                  data-testid="add-persona-button"
-                  size="small"
-                  type="primary">
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              </UserSelectableList>
+              activeKey === 'users' && (
+                <UserSelectableList
+                  hasPermission
+                  multiSelect
+                  selectedUsers={personaDetails.users ?? []}
+                  onUpdate={(users) => handlePersonaUpdate({ users }, true)}>
+                  <Button
+                    data-testid="add-persona-button"
+                    size="small"
+                    type="primary">
+                    {t('label.add-entity', { entity: t('label.user') })}
+                  </Button>
+                </UserSelectableList>
+              )
             }
-            onChange={handleTabChange}
+            onTabClick={handleTabClick}
           />
         </Col>
       </Row>

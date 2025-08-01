@@ -19,24 +19,34 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
+import org.apache.commons.collections4.CollectionUtils;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -71,6 +81,22 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("json") String json);
 
+  /** Common queries for all entities implemented here. Do not override. */
+  @Transaction
+  @ConnectionAwareSqlBatch(
+      value = "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlBatch(
+      value =
+          "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb)",
+      connectionType = POSTGRES)
+  @BatchChunkSize(100)
+  void insertMany(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
+      @Bind("json") List<String> json);
+
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE <table> SET  json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
@@ -85,6 +111,28 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("nameHashColumnValue") String nameHashColumnValue,
       @Bind("id") String id,
       @Bind("json") String json);
+
+  /**
+   * Update entity with optimistic locking using version check.
+   * Returns the number of rows updated (0 if version mismatch, 1 if successful)
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND (json->>'version')::text = :version",
+      connectionType = POSTGRES)
+  int updateWithVersion(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("version") String version);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
@@ -129,11 +177,26 @@ public interface EntityDAO<T extends EntityInterface> {
   String findById(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
+  @RegisterRowMapper(EntityIdJsonPairMapper.class)
+  List<EntityIdJsonPair> findByIds(
+      @Define("table") String table,
+      @BindList("ids") List<String> ids,
+      @Define("cond") String cond);
+
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
       @Define("table") String table,
       @Define("nameColumnHash") String nameColumn,
       @BindFQN("name") String name,
+      @Define("cond") String cond);
+
+  @SqlQuery("SELECT <nameColumnHash>, json FROM <table> WHERE <nameColumnHash> IN (<names>) <cond>")
+  @RegisterRowMapper(EntityNameColumnHashJsonPairMapper.class)
+  List<EntityNameColumnHashJsonPair> findByNames(
+      @Define("table") String table,
+      @Define("nameColumnHash") String nameColumn,
+      @BindList("names") List<String> names,
       @Define("cond") String cond);
 
   @SqlQuery("SELECT count(<nameHashColumn>) FROM <table> <cond>")
@@ -322,6 +385,14 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("startHash") String startHash,
       @Bind("endHash") String endHash);
 
+  @SqlQuery("SELECT json FROM <table> <cond> AND <nameHashColumn> BETWEEN :startHash AND :endHash ")
+  List<String> listAll(
+      @Define("table") String table,
+      @Define("cond") String cond,
+      @Define("nameHashColumn") String nameHashColumn,
+      @Bind("startHash") String startHash,
+      @Bind("endHash") String endHash);
+
   @SqlQuery("SELECT json FROM <table> LIMIT :limit OFFSET :offset")
   List<String> listAfterWithOffset(
       @Define("table") String table, @Bind("limit") int limit, @Bind("offset") int offset);
@@ -364,6 +435,16 @@ public interface EntityDAO<T extends EntityInterface> {
   /** Default methods that interfaces with implementation. Don't override */
   default void insert(EntityInterface entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
+  }
+
+  /** Default methods that interfaces with implementation. Don't override */
+  default void insertMany(List<EntityInterface> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+    insertMany(
+        getTableName(),
+        getNameHashColumn(),
+        fqns,
+        entities.stream().map(JsonUtils::pojoToJson).toList());
   }
 
   default void insert(String nameHash, EntityInterface entity, String fqn) {
@@ -411,6 +492,19 @@ public interface EntityDAO<T extends EntityInterface> {
     return findEntityById(id, Include.NON_DELETED);
   }
 
+  default List<T> findEntitiesByIds(List<UUID> ids, Include include) {
+    if (CollectionUtils.isEmpty(ids)) {
+      return List.of();
+    }
+    return findByIds(
+            getTableName(),
+            ids.stream().map(UUID::toString).distinct().toList(),
+            getCondition(include))
+        .stream()
+        .map(pair -> jsonToEntity(pair.json, pair.id))
+        .toList();
+  }
+
   default T findEntityByName(String fqn) {
     return findEntityByName(fqn, Include.NON_DELETED);
   }
@@ -425,6 +519,17 @@ public interface EntityDAO<T extends EntityInterface> {
   default T findEntityByName(String fqn, String nameHashColumn, Include include) {
     return jsonToEntity(
         findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
+  }
+
+  @SneakyThrows
+  default List<T> findEntityByNames(List<String> entityFQNs, Include include) {
+    if (CollectionUtils.isEmpty(entityFQNs)) {
+      return List.of();
+    }
+    List<String> names = entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
+        .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
+        .toList();
   }
 
   default T jsonToEntity(String json, Object identity) {
@@ -470,6 +575,11 @@ public interface EntityDAO<T extends EntityInterface> {
     return listAll(getTableName(), getNameHashColumn(), startHash, endHash);
   }
 
+  default List<String> listAll(String startHash, String endHash, ListFilter filter) {
+    // Quoted name is stored in fullyQualifiedName column and not in the name column
+    return listAll(getTableName(), filter.getCondition(), getNameHashColumn(), startHash, endHash);
+  }
+
   default List<String> listAfterWithOffset(int limit, int offset) {
     // No ordering
     return listAfterWithOffset(getTableName(), limit, offset);
@@ -505,6 +615,24 @@ public interface EntityDAO<T extends EntityInterface> {
     if (rowsDeleted <= 0) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(entityNotFound(entityType, id));
+    }
+  }
+
+  record EntityNameColumnHashJsonPair(String nameColumnHash, String json) {}
+
+  class EntityNameColumnHashJsonPairMapper implements RowMapper<EntityNameColumnHashJsonPair> {
+    @Override
+    public EntityNameColumnHashJsonPair map(ResultSet r, StatementContext ctx) throws SQLException {
+      return new EntityNameColumnHashJsonPair(r.getString(1), r.getString(2));
+    }
+  }
+
+  record EntityIdJsonPair(UUID id, String json) {}
+
+  class EntityIdJsonPairMapper implements RowMapper<EntityIdJsonPair> {
+    @Override
+    public EntityIdJsonPair map(ResultSet r, StatementContext ctx) throws SQLException {
+      return new EntityIdJsonPair(UUID.fromString(r.getString(1)), r.getString(2));
     }
   }
 }

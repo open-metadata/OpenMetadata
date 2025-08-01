@@ -12,13 +12,16 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { StatusType } from '../../../../generated/entity/data/pipeline';
 import { EXECUTION_LIST_MOCK } from '../../../../mocks/PipelineVersion.mock';
 import ListView from './ListViewTab.component';
 
 jest.mock('../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>FilterTablePlaceHolder</div>)
+);
+
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>SearchBar</div>)
 );
 
 jest.mock('../../../../utils/executionUtils', () => ({
@@ -33,6 +36,7 @@ const mockProps = {
   status: StatusType.Successful,
   loading: false,
   searchString: undefined,
+  handleSearch: jest.fn(),
 };
 
 describe('Test ListViewTab Component', () => {

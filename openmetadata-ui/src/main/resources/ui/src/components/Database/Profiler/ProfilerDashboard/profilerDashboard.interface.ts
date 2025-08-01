@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
@@ -38,6 +40,8 @@ export interface ProfilerDetailsCardProps {
   tickFormatter?: string;
   curveType?: CurveType;
   isLoading?: boolean;
+  noDataPlaceholderText?: ReactNode;
+  children?: ReactNode;
 }
 
 export enum TableProfilerTab {
@@ -62,6 +66,8 @@ export interface DataQualityTabProps {
   showPagination?: boolean;
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
   fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
+  isEditAllowed?: boolean;
+  tableHeader?: ReactNode;
 }
 
 export interface TestSummaryProps {
@@ -87,3 +93,7 @@ export type TestCaseChartDataType = {
 export interface LineChartRef {
   container: HTMLElement;
 }
+
+export type TestCasePermission = OperationPermission & {
+  fullyQualifiedName?: string;
+};

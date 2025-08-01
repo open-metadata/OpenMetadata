@@ -20,7 +20,6 @@ import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
@@ -57,6 +56,8 @@ test.describe.serial('Persona operations', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.PERSONA);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
   test('Persona creation should work properly', async ({ page }) => {
@@ -116,6 +117,8 @@ test.describe.serial('Persona operations', () => {
       .click();
 
     await personaResponse;
+
+    await page.getByRole('tab', { name: 'Users' }).click();
 
     await page.waitForSelector('[data-testid="entity-header-name"]', {
       state: 'visible',
@@ -194,6 +197,9 @@ test.describe.serial('Persona operations', () => {
       .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       .click();
 
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Users' }).click();
+
     await page
       .locator(
         `[data-row-key="${user.responseData.name}"] [data-testid="remove-user-btn"]`
@@ -248,9 +254,6 @@ test.describe.serial('Persona operations', () => {
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
 
-    await toastNotification(
-      page,
-      `"${PERSONA_DETAILS.displayName}" deleted successfully!`
-    );
+    await page.waitForURL('**/settings/persona');
   });
 });

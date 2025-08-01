@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
  * (subject) and entity (object) attributes are evaluated with logical AND.
  */
@@ -59,10 +57,13 @@ export enum Operation {
     All = "All",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
+    CreateScim = "CreateScim",
     Delete = "Delete",
+    DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
     Deploy = "Deploy",
     EditAll = "EditAll",
+    EditCertification = "EditCertification",
     EditCustomFields = "EditCustomFields",
     EditDataProfile = "EditDataProfile",
     EditDescription = "EditDescription",
@@ -80,6 +81,7 @@ export enum Operation {
     EditReviewers = "EditReviewers",
     EditRole = "EditRole",
     EditSampleData = "EditSampleData",
+    EditScim = "EditScim",
     EditStatus = "EditStatus",
     EditTags = "EditTags",
     EditTeams = "EditTeams",
@@ -96,6 +98,7 @@ export enum Operation {
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
     ViewSampleData = "ViewSampleData",
+    ViewScim = "ViewScim",
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,7 +12,7 @@
 Salesforce source ingestion
 """
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -119,12 +119,12 @@ class SalesforceSource(DatabaseServiceSource):
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-            )
+        database_request = CreateDatabaseRequest(
+            name=database_name,
+            service=self.context.get().database_service,
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -139,19 +139,19 @@ class SalesforceSource(DatabaseServiceSource):
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
         )
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
@@ -231,6 +231,29 @@ class SalesforceSource(DatabaseServiceSource):
             )
         return table_description if table_description else object_label
 
+    def get_table_column_description(self, table_name: str) -> Optional[List]:
+        """
+        Method to get the all columns' (field) description for Salesforce with the Tooling API.
+        """
+        all_column_description = None
+        try:
+            result = self.client.toolingexecute(
+                f"query/?q=SELECT+Description+FROM+FieldDefinition+WHERE+"
+                f"EntityDefinition.QualifiedApiName='{table_name}'"
+            )
+            all_column_description = result["records"]
+        except KeyError as err:
+            logger.warning(
+                "Unable to get required key from Tooling API response for "
+                f"table [{table_name}]: {err}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unable to get column description with Tooling API for table [{table_name}]: {exc}"
+            )
+        return all_column_description
+
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -245,7 +268,7 @@ class SalesforceSource(DatabaseServiceSource):
                 f"sobjects/{table_name}/describe/",
                 params=None,
             )
-            columns = self.get_columns(salesforce_objects.get("fields", []))
+            columns = self.get_columns(table_name, salesforce_objects.get("fields", []))
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -278,12 +301,26 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, salesforce_fields):
+    def get_columns(self, table_name: str, salesforce_fields: List):
         """
         Method to handle column details
         """
         row_order = 1
         columns = []
+        column_description_mapping = {}
+        all_column_description = self.get_table_column_description(table_name)
+        if all_column_description:
+            for item in all_column_description:
+                try:
+                    if item.get("Description") is not None:
+                        column_name = item["attributes"]["url"].split(".")[-1]
+                        column_description_mapping.update(
+                            {column_name: item["Description"]}
+                        )
+                except Exception as ex:
+                    logger.debug(
+                        f"Error creating column description mapping: {str(ex)}"
+                    )
         for column in salesforce_fields:
             col_constraint = None
             if column["nillable"]:
@@ -292,11 +329,15 @@ class SalesforceSource(DatabaseServiceSource):
                 col_constraint = Constraint.NOT_NULL
             if column["unique"]:
                 col_constraint = Constraint.UNIQUE
+            if column_description_mapping.get(column["name"]):
+                column_description = column_description_mapping[column["name"]]
+            else:
+                column_description = column["label"]
 
             columns.append(
                 Column(
                     name=column["name"],
-                    description=column["label"],
+                    description=column_description,
                     dataType=self.column_type(column["type"].upper()),
                     dataTypeDisplay=column["type"],
                     constraint=col_constraint,

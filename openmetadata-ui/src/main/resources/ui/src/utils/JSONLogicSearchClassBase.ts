@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
-import { get, sortBy } from 'lodash';
 import {
-  AsyncFetchListValues,
+  AntdConfig,
   Config,
   Fields,
+  ListValues,
   Operators,
   SelectFieldSettings,
-} from 'react-awesome-query-builder';
-import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+} from '@react-awesome-query-builder/antd';
+import { get, sortBy } from 'lodash';
 import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
@@ -29,6 +28,7 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
+import { t } from './i18next/LocalUtil';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
@@ -125,7 +125,24 @@ class JSONLogicSearchClassBase {
       ...this.baseConfig.operators.is_not_null,
       label: t('label.is-set'),
     },
+    isReviewer: {
+      label: t('label.is-entity', { entity: t('label.reviewer') }),
+      labelForFormat: t('label.is-entity', { entity: t('label.reviewer') }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isReviewer',
+      sqlOp: 'IS REVIEWER',
+    },
+    isOwner: {
+      label: t('label.is-entity', { entity: t('label.owner') }),
+      labelForFormat: t('label.is-entity', { entity: t('label.owner') }),
+      cardinality: 0,
+      unary: true,
+      jsonLogic: 'isOwner',
+      sqlOp: 'IS OWNER',
+    },
   };
+
   defaultSelectOperators = [
     'select_equals',
     'select_not_equals',
@@ -146,7 +163,7 @@ class JSONLogicSearchClassBase {
   }) => {
     return (search) => {
       return searchData(
-        search ?? '',
+        Array.isArray(search) ? search.join(',') : search ?? '',
         1,
         PAGE_SIZE_BASE,
         '',
@@ -178,9 +195,30 @@ class JSONLogicSearchClassBase {
   glossaryEntityFields: Fields = {
     [EntityReferenceFields.REVIEWERS]: {
       label: t('label.reviewer-plural'),
+      type: '!group',
+      mode: 'some',
+      defaultField: 'fullyQualifiedName',
+      subfields: {
+        fullyQualifiedName: {
+          label: 'Reviewers New',
+          type: 'select',
+          mainWidgetProps: this.mainWidgetProps,
+          operators: this.defaultSelectOperators,
+          fieldSettings: {
+            asyncFetch: advancedSearchClassBase.autocomplete({
+              searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+              entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+            }),
+            useAsyncSearch: true,
+          },
+        },
+      },
+    },
+    [EntityReferenceFields.UPDATED_BY]: {
+      label: t('label.updated-by'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
-      operators: this.defaultSelectOperators,
+      operators: [...this.defaultSelectOperators, 'isOwner', 'isReviewer'],
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
@@ -200,7 +238,8 @@ class JSONLogicSearchClassBase {
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE,
+          entityField: EntityFields.DATABASE_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -214,7 +253,8 @@ class JSONLogicSearchClassBase {
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          entityField: EntityFields.DATABASE_SCHEMA_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -235,11 +275,26 @@ class JSONLogicSearchClassBase {
     },
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getCommonConfig = (_: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<AsyncFetchListValues>;
+    tierOptions?: Promise<ListValues>;
   }) => {
     return {
+      [EntityReferenceFields.SERVICE]: {
+        label: t('label.service'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.ALL,
+            entityField: EntityFields.SERVICE_NAME,
+            isCaseInsensitive: true,
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityReferenceFields.OWNERS]: {
         label: t('label.owner-plural'),
         type: 'select',
@@ -260,7 +315,7 @@ class JSONLogicSearchClassBase {
         fieldSettings: {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.DATA_ASSET,
-            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+            entityField: EntityFields.DISPLAY_NAME_ACTUAL_CASE,
           }),
           useAsyncSearch: true,
         },
@@ -310,7 +365,6 @@ class JSONLogicSearchClassBase {
         type: '!struct',
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
-        operators: TEXT_FIELD_OPERATORS,
       },
     };
   };
@@ -335,10 +389,10 @@ class JSONLogicSearchClassBase {
    */
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions = Promise.resolve([]),
+    tierOptions,
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<AsyncFetchListValues>;
+    tierOptions?: Promise<ListValues>;
   }) => {
     const fieldsConfig = {
       ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
@@ -370,7 +424,12 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
+        defaultField: EntityReferenceFields.OWNERS,
         renderButton: renderJSONLogicQueryBuilderButtons,
+        customFieldSelectProps: {
+          ...this.baseConfig.settings.customFieldSelectProps,
+          popupClassName: 'json-logic-field-select',
+        },
       },
     };
 
@@ -378,7 +437,7 @@ class JSONLogicSearchClassBase {
   };
 
   public getQbConfigs: (
-    tierOptions: Promise<AsyncFetchListValues>,
+    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
   ) => Config = (tierOptions, entitySearchIndex, isExplorePage) => {

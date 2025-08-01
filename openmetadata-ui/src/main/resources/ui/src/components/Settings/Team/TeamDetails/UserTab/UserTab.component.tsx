@@ -11,21 +11,19 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Modal, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
+import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -58,9 +56,7 @@ import ManageButton from '../../../../common/EntityPageInfos/ManageButton/Manage
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../../common/Table/Table';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -73,14 +69,10 @@ export const UserTab = ({
   onRemoveUser,
 }: UserTabProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
-  const handleRemoveClick = (id: string) => {
-    const user = usersList?.find((u) => u.id === id);
-    setDeletingUser(user);
-  };
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -92,13 +84,18 @@ export const UserTab = ({
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
 
   const usersList = useMemo(() => {
     return users.map((item) =>
       getEntityReferenceFromEntity(item, EntityType.USER)
     );
   }, [users]);
+
+  const handleRemoveClick = (id: string) => {
+    const user = usersList?.find((u) => u.id === id);
+    setDeletingUser(user);
+  };
 
   const isGroupType = useMemo(
     () => currentTeam.teamType === TeamType.Group,
@@ -249,12 +246,13 @@ export const UserTab = ({
       showModal({
         name: currentTeam.name,
         onExport: exportUserOfTeam,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [currentTeam, exportUserOfTeam]);
 
   const handleImportClick = useCallback(async () => {
-    history.push({
+    navigate({
       pathname: getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.MEMBERS,
         GlobalSettingOptions.TEAMS,
@@ -355,9 +353,12 @@ export const UserTab = ({
             )}
           </Space>
         }
-        className="mt-0-important"
+        className="mt-0-important border-none"
         heading={t('label.user')}
         permission={editUserPermission}
+        permissionValue={t('label.edit-entity', {
+          entity: t('label.user'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
     ) : (
@@ -370,21 +371,24 @@ export const UserTab = ({
   }
 
   return (
-    <Row className="p-y-md" gutter={[0, 16]}>
-      <Col span={24}>
-        <Row justify="space-between">
-          <Col span={8}>
-            <Searchbar
-              removeMargin
-              placeholder={t('label.search-for-type', {
-                type: t('label.user-lowercase'),
-              })}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleUsersSearchAction}
-            />
-          </Col>
-          {!currentTeam.deleted && isGroupType && (
+    <div className="p-y-md">
+      <Table
+        className="teams-list-table"
+        columns={columns}
+        customPaginationProps={{
+          currentPage,
+          isLoading,
+          showPagination,
+          isNumberBased: Boolean(searchText),
+          pageSize,
+          paging,
+          pagingHandler: userPagingHandler,
+          onShowSizeChange: handlePageSizeChange,
+        }}
+        dataSource={sortedUser}
+        extraTableFilters={
+          !currentTeam.deleted &&
+          isGroupType && (
             <Col>
               <Space>
                 {users.length > 0 && editUserPermission && (
@@ -406,38 +410,24 @@ export const UserTab = ({
                 />
               </Space>
             </Col>
-          )}
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          className="teams-list-table"
-          columns={columns}
-          dataSource={sortedUser}
-          loading={isLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchText)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={userPagingHandler}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-
+          )
+        }
+        loading={isLoading}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
+        pagination={false}
+        rowKey="name"
+        searchProps={{
+          placeholder: t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          }),
+          value: searchText,
+          typingInterval: 500,
+          onSearch: handleUsersSearchAction,
+        }}
+        size="small"
+      />
       <Modal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"
@@ -452,6 +442,6 @@ export const UserTab = ({
           }),
         })}
       </Modal>
-    </Row>
+    </div>
   );
 };

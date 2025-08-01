@@ -13,25 +13,18 @@
 
 @import (reference) url('../../../../styles/variables.less');
 
-@succesColor: #28a745;
-@failedColor: #cb2431;
-@abortedColor: #efae2f;
-@grayColor: #dde3ea;
-
 .table-profiler-container {
+  height: 100%;
+  flex-grow: 1;
+  border-radius: @border-rad-sm;
+  border: 1px solid @grey-15;
+  display: flex;
+  padding: @padding-md;
+  background-color: @white;
+
   .overall-summery-card:not(:first-child) {
     border-left: 1px solid rgb(229, 231, 235);
     padding-left: 16px;
-  }
-
-  .success {
-    color: @succesColor;
-  }
-  .failed {
-    color: @failedColor;
-  }
-  .aborted {
-    color: @abortedColor;
   }
 
   .ant-table-row .ant-table-cell:first-child,
@@ -39,18 +32,23 @@
     padding-left: 16px;
   }
 
-  .data-quality-left-panel,
-  .data-quality-content-panel {
-    height: calc(100vh - 236px);
+  .custom-menu-v1.data-quality-left-panel.ant-menu-inline {
+    flex: 0.14;
+    border: 0.5px solid @grey-200;
+    border-radius: @border-rad-sm;
   }
 
-  .data-quality-left-panel {
-    border-right: @global-border;
-    // need to add !important as in AntD menu padding is given inline
-    padding-right: 1px !important;
-  }
   .data-quality-content-panel {
+    flex: 0.86;
     overflow-y: scroll;
+    margin-left: @margin-mlg;
+    background-color: @white;
+  }
+
+  .quality-tab-container {
+    .ant-tabs.tabs-new .ant-tabs-tabpane {
+      background-color: @white;
+    }
   }
 }
 

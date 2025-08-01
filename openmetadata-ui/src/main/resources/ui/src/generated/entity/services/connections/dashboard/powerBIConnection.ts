@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * PowerBI Connection Config
  */
 export interface PowerBIConnection {
@@ -21,6 +19,10 @@ export interface PowerBIConnection {
      */
     authorityURI?: string;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
      * client_id for PowerBI.
      */
     clientId: string;
@@ -28,6 +30,18 @@ export interface PowerBIConnection {
      * clientSecret for PowerBI.
      */
     clientSecret: string;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Dashboard URL for PowerBI service.
      */
@@ -40,6 +54,10 @@ export interface PowerBIConnection {
      * Source to get the .pbit files to extract lineage information
      */
     pbitFilesSource?: PowerBIPbitFilesSource;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
     /**
      * PowerBI secrets.
      */
@@ -57,6 +75,28 @@ export interface PowerBIConnection {
      * Fetch the PowerBI metadata using admin APIs
      */
     useAdminApis?: boolean;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -202,6 +242,8 @@ export interface Credentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -244,6 +286,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**

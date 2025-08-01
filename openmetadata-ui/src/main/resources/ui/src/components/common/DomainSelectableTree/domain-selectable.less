@@ -1,0 +1,46 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../styles/variables.less');
+
+.ant-tree.domain-selectable-tree {
+  overflow: auto;
+  height: 270px;
+
+  padding-top: 4px;
+  .ant-tree-treenode {
+    .ant-tree-node-content-wrapper {
+      &.ant-tree-node-selected {
+        background-color: @radio-button-checked-bg;
+      }
+    }
+  }
+}
+.domain-selectable-tree-new {
+  overflow: auto;
+  height: auto;
+
+  .ant-tree-treenode {
+    .ant-tree-node-content-wrapper {
+      &.ant-tree-node-selected {
+        background-color: @radio-button-checked-bg;
+      }
+    }
+  }
+}
+.all-domain-container.selected-node {
+  background-color: @primary-1;
+}
+.custom-domain-edit-select .ant-select-selection-placeholder,
+.custom-domain-edit-select .ant-select-selection-search-input::placeholder {
+  padding-left: @size-xs;
+}

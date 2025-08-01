@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,6 +52,10 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.entity.services.searchService import (
     SearchConnection,
     SearchServiceType,
+)
+from metadata.generated.schema.entity.services.securityService import (
+    SecurityConnection,
+    SecurityServiceType,
 )
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
@@ -115,6 +119,10 @@ from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline i
     SearchMetadataConfigType,
     SearchServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.securityServiceMetadataPipeline import (
+    SecurityMetadataConfigType,
+    SecurityServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     StorageMetadataConfigType,
     StorageServiceMetadataPipeline,
@@ -144,6 +152,7 @@ SERVICE_TYPE_MAP = {
     **{service: MlModelConnection for service in MlModelServiceType.__members__},
     **{service: StorageConnection for service in StorageServiceType.__members__},
     **{service: SearchConnection for service in SearchServiceType.__members__},
+    **{service: SecurityConnection for service in SecurityServiceType.__members__},
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
@@ -157,6 +166,7 @@ SOURCE_CONFIG_CLASS_MAP = {
     DatabaseMetadataConfigType.DatabaseMetadata.value: DatabaseServiceMetadataPipeline,
     StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
     SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
+    SecurityMetadataConfigType.SecurityMetadata.value: SecurityServiceMetadataPipeline,
     DbtConfigType.DBT.value: DbtPipeline,
 }
 
@@ -270,25 +280,31 @@ def _parse_validation_err(validation_error: ValidationError) -> str:
     Convert the validation error into a message to log
     """
     missing_fields = [
-        f"Extra parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Extra parameter in {err.get('loc')}"
+        (
+            f"Extra parameter '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Extra parameter in {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") == "extra_forbidden"
     ]
 
     extra_fields = [
-        f"Missing parameter '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Missing parameter in {err.get('loc')}"
+        (
+            f"Missing parameter '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Missing parameter in {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") == "missing"
     ]
 
     invalid_fields = [
-        f"Invalid parameter value for '{err.get('loc')[0]}'"
-        if len(err.get("loc")) == 1
-        else f"Invalid parameter value for {err.get('loc')}"
+        (
+            f"Invalid parameter value for '{err.get('loc')[0]}'"
+            if len(err.get("loc")) == 1
+            else f"Invalid parameter value for {err.get('loc')}"
+        )
         for err in validation_error.errors()
         if err.get("type") not in ("missing", "extra")
     ]

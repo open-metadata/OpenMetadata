@@ -12,23 +12,22 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
-import {
-  deleteGlossary,
-  deleteGlossaryTerm,
-  patchGlossaryTerm,
-} from '../../../rest/glossaryAPI';
+import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'Business Glossary' }),
+}));
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
-  useHistory: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
@@ -45,6 +44,10 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
     })),
   };
 });
+
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 
 jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
@@ -81,15 +84,19 @@ jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
       <div data-testid="glossary-left-panel-container">Left Panel</div>
     ));
 });
+
 jest.mock('../../../rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossaryTermByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
-  getGlossariesList: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: [MOCK_GLOSSARY] })),
+  getGlossariesList: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [MOCK_GLOSSARY],
+      paging: { total: 1 },
+    })
+  ),
   patchGlossaryTerm: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
@@ -118,9 +125,13 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
+const mockProps = {
+  pageTitle: 'glossary',
+};
+
 describe('Test GlossaryComponent page', () => {
   it('GlossaryComponent Page Should render', async () => {
-    render(<GlossaryPage />);
+    render(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -128,7 +139,7 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 1', async () => {
-    render(<GlossaryPage />);
+    render(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -140,7 +151,7 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 2', async () => {
-    render(<GlossaryPage />);
+    render(<GlossaryPage {...mockProps} />);
 
     const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
@@ -158,43 +169,11 @@ describe('Test GlossaryComponent page', () => {
   });
 
   describe('Render Sad Paths', () => {
-    it('show error if deleteGlossaryTerm API fails', async () => {
-      (deleteGlossaryTerm as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      render(<GlossaryPage />);
-      const handleGlossaryTermDelete = await screen.findByTestId(
-        'handleGlossaryTermDelete'
-      );
-
-      expect(handleGlossaryTermDelete).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(handleGlossaryTermDelete);
-      });
-    });
-
-    it('show error if deleteGlossary API fails', async () => {
-      (deleteGlossary as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      render(<GlossaryPage />);
-      const handleGlossaryDelete = await screen.findByTestId(
-        'handleGlossaryDelete'
-      );
-
-      expect(handleGlossaryDelete).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(handleGlossaryDelete);
-      });
-    });
-
     it('show error if patchGlossaryTerm API resolves without data', async () => {
       (patchGlossaryTerm as jest.Mock).mockImplementation(() =>
         Promise.resolve({ data: '' })
       );
-      render(<GlossaryPage />);
+      render(<GlossaryPage {...mockProps} />);
       const handleGlossaryTermUpdate = await screen.findByTestId(
         'handleGlossaryTermUpdate'
       );

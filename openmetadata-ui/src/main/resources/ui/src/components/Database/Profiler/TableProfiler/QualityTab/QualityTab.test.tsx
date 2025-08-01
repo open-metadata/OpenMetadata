@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+jest.mock('../../../../../utils/PermissionsUtils', () => ({
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+}));
+
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
+import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { useTableProfiler } from '../TableProfilerProvider';
 import { QualityTab } from './QualityTab.component';
 
@@ -32,7 +38,6 @@ const mockTable = {
   name: 'test-table',
 };
 
-const mockPush = jest.fn();
 const mockUseTableProfiler = {
   tableProfiler: MOCK_TABLE,
   onSettingButtonClick: jest.fn(),
@@ -40,6 +45,8 @@ const mockUseTableProfiler = {
     EditAll: true,
     EditDataProfile: true,
     EditTests: true,
+    ViewTests: true,
+    ViewAll: true,
   },
   fetchAllTests: jest.fn(),
   onTestCaseUpdate: jest.fn(),
@@ -76,10 +83,8 @@ jest.mock('../../../../../hooks/useFqn', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../../rest/tableAPI', () => ({
@@ -121,6 +126,29 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
   ));
 });
 
+jest.mock('../../../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    pathname: '/test-path',
+    search: '?test=value',
+  })),
+}));
+
+jest.mock('../../../../common/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ id, name, count = 0 }) => (
+    <div data-testid={id}>
+      <div>{name}</div>
+      <span data-testid={`${id}-count`}>{count}</span>
+    </div>
+  ));
+});
+
+jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn().mockResolvedValue({
+    paging: { total: 0 },
+  }),
+}));
+
 describe('QualityTab', () => {
   it('should render QualityTab', async () => {
     await act(async () => {
@@ -149,7 +177,10 @@ describe('QualityTab', () => {
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();
-    expect(await screen.findByText('label.pipeline')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.pipeline-plural')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
   });
 
   it("Pagination should be called with 'handlePageChange'", async () => {
@@ -185,10 +216,8 @@ describe('QualityTab', () => {
   });
 
   it('should call limitWrapper', async () => {
-    await act(async () => {
-      render(<QualityTab />);
-      fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
-    });
+    render(<QualityTab />);
+    fireEvent.click(await screen.findByTestId('profiler-add-table-test-btn'));
 
     expect(LimitWrapper).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'dataQuality' }),
@@ -198,14 +227,20 @@ describe('QualityTab', () => {
   });
 
   it('should not render the Add button if editTest is false', async () => {
+    const { getPrioritizedEditPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
       permissions: {
         EditAll: false,
         EditTests: false,
+        ViewTests: true,
       },
       isTableDeleted: false,
     });
+    getPrioritizedEditPermission.mockReturnValue(false);
 
     await act(async () => {
       render(<QualityTab />);
@@ -222,6 +257,7 @@ describe('QualityTab', () => {
       permissions: {
         EditAll: true,
         EditTests: true,
+        ViewTests: true,
       },
       isTableDeleted: true,
     });
@@ -240,12 +276,10 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(
-      await screen.findByRole('tab', { name: 'label.test-case-plural' })
-    ).toHaveAttribute('aria-selected', 'true');
-    expect(
-      await screen.findByRole('tab', { name: 'label.pipeline' })
-    ).toHaveAttribute('aria-selected', 'false');
+    const tabs = await screen.findAllByRole('tab');
+
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
   });
 
   it('should display the initial summary data', async () => {
@@ -254,6 +288,7 @@ describe('QualityTab', () => {
       permissions: {
         EditAll: true,
         EditTests: true,
+        ViewTests: true,
       },
       isTableDeleted: false,
     }));
@@ -268,6 +303,11 @@ describe('QualityTab', () => {
   });
 
   it('should call onSettingButtonClick', async () => {
+    const { getPrioritizedEditPermission } = jest.requireMock(
+      '../../../../../utils/PermissionsUtils'
+    );
+    getPrioritizedEditPermission.mockReturnValue(true);
+
     await act(async () => {
       render(<QualityTab />);
     });
@@ -281,5 +321,96 @@ describe('QualityTab', () => {
     });
 
     expect(mockUseTableProfiler.onSettingButtonClick).toHaveBeenCalled();
+  });
+
+  it('should display correct test case count in tab', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      testCasePaging: {
+        ...mockUseTableProfiler.testCasePaging,
+        paging: { total: 25, after: 'after' },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('test-cases-count')).toHaveTextContent(
+      '25'
+    );
+  });
+
+  it('should display correct pipeline count in tab', async () => {
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 5 },
+    });
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: {
+          fullyQualifiedName: 'test.suite.name',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('5');
+  });
+
+  it('should show zero count when no test cases or pipelines exist', async () => {
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      testCasePaging: {
+        ...mockUseTableProfiler.testCasePaging,
+        paging: { total: 0, after: null },
+      },
+      table: {
+        ...MOCK_TABLE,
+        testSuite: {
+          fullyQualifiedName: 'test.suite.name',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('test-cases-count')).toHaveTextContent(
+      '0'
+    );
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+  });
+
+  it('should handle error in fetching pipeline count gracefully', async () => {
+    const mockGetIngestionPipelines = jest
+      .fn()
+      .mockRejectedValue(new Error('API Error'));
+
+    jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
+      getIngestionPipelines: mockGetIngestionPipelines,
+    }));
+
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: {
+          fullyQualifiedName: 'test.suite.name',
+        },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
   });
 });

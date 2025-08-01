@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines Event Publisher Job.
  */
 export interface EventPublisherJob {
@@ -20,6 +18,11 @@ export interface EventPublisherJob {
      * Provide After in case of failure to start reindexing after the issue is solved
      */
     afterCursor?: string;
+    /**
+     * Enable automatic performance tuning based on cluster capabilities and database entity
+     * count
+     */
+    autoTune?: boolean;
     /**
      * Maximum number of events sent in a batch (Default 10).
      */
@@ -36,6 +39,10 @@ export interface EventPublisherJob {
      * Failure for the job
      */
     failure?: IndexingAppError;
+    /**
+     * Force reindexing even if no index mapping changes are detected
+     */
+    force?: boolean;
     /**
      * Initial backoff time in milliseconds
      */
@@ -76,18 +83,28 @@ export interface EventPublisherJob {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-    stats?:                      Stats;
+    /**
+     * Optional Slack bot token for sending progress notifications with real-time updates
+     */
+    slackBotToken?: string;
+    /**
+     * Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or
+     * '#general')
+     */
+    slackChannel?: string;
+    stats?:        Stats;
     /**
      * This schema publisher run job status.
      */
-    status:    Status;
-    timestamp: number;
+    status?:    Status;
+    timestamp?: number;
 }
 
 /**
  * Failure for the job
  *
- * This schema defines Event Publisher Job Error Schema.
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
  */
 export interface IndexingAppError {
     errorSource?:      ErrorSource;
@@ -99,6 +116,7 @@ export interface IndexingAppError {
     stackTrace?:       string;
     submittedCount?:   number;
     successCount?:     number;
+    [property: string]: any;
 }
 
 export enum ErrorSource {
@@ -128,12 +146,20 @@ export enum SearchIndexMappingLanguage {
 }
 
 export interface Stats {
-    entityStats?: StepStats;
-    jobStats?:    StepStats;
+    /**
+     * Stats for different entities. Keys should match entity types
+     */
+    entityStats?: { [key: string]: StepStats };
+    /**
+     * Stats for the job
+     */
+    jobStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
+ *
+ * Stats for the job
  */
 export interface StepStats {
     /**
@@ -148,7 +174,6 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
-    [property: string]: any;
 }
 
 /**

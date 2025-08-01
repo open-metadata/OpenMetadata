@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A
  * special type of user called Bot is used for automation. A user can be an owner of zero or
  * more data assets. A user can also follow zero or more data assets.
@@ -48,6 +46,10 @@ export interface User {
      */
     email: string;
     /**
+     * External identifier from identity provider (used for SCIM).
+     */
+    externalId?: string;
+    /**
      * List of entities followed by the user.
      */
     follows?: EntityReference[];
@@ -63,6 +65,10 @@ export interface User {
      * Unique identifier that identifies a user entity instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Roles that a user is inheriting through membership in teams that have set team default
      * roles.
@@ -81,6 +87,14 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * Last time the user was active in the system.
+     */
+    lastActivityTime?: number;
+    /**
+     * Last time the user logged in.
+     */
+    lastLoginTime?: number;
+    /**
      * A unique name of the user, typically the user ID from an identity provider. Example - uid
      * from LDAP.
      */
@@ -89,6 +103,11 @@ export interface User {
      * List of entities owned by the user.
      */
     owns?: EntityReference[];
+    /**
+     * User's personal preferences for each persona. Users can customize certain UI elements per
+     * persona while inheriting base persona configuration.
+     */
+    personaPreferences?: PersonaPreferences[];
     /**
      * Personas that the user assigned to.
      */
@@ -101,6 +120,10 @@ export interface User {
      * Roles that the user has been assigned.
      */
     roles?: EntityReference[];
+    /**
+     * Raw user name from SCIM.
+     */
+    scimUserName?: string;
     /**
      * Teams that the user belongs to.
      */
@@ -398,6 +421,7 @@ export enum SsoServiceType {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -414,6 +438,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -492,6 +539,40 @@ export interface EntityReference {
 }
 
 /**
+ * User-specific preferences for a persona that override default persona UI customization.
+ * These are limited customizations that users can apply to personalize their experience
+ * while still inheriting the base persona configuration.
+ */
+export interface PersonaPreferences {
+    /**
+     * User's personal customizations for the landing page.
+     */
+    landingPageSettings?: LandingPageSettings;
+    /**
+     * UUID of the persona these preferences belong to.
+     */
+    personaId: string;
+    /**
+     * Name of the persona for quick reference and linking.
+     */
+    personaName: string;
+}
+
+/**
+ * User's personal customizations for the landing page.
+ */
+export interface LandingPageSettings {
+    /**
+     * Custom header background color for the landing page.
+     */
+    headerColor?: string;
+    /**
+     * Reference to a custom header background image (reserved for future use).
+     */
+    headerImage?: string;
+}
+
+/**
  * Profile of the user.
  *
  * This schema defines the type for a profile of a user, team, or organization.
@@ -540,6 +621,10 @@ export interface Webhook {
      * HTTP operation to send the webhook request. Supports POST or PUT.
      */
     httpMethod?: HTTPMethod;
+    /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
     /**
      * List of receivers to send mail to
      */

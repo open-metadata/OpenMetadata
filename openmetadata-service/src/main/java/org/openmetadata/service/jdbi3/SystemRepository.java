@@ -1,23 +1,30 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import javax.json.JsonPatch;
-import javax.json.JsonValue;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
@@ -28,10 +35,12 @@ import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -40,8 +49,10 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -105,6 +116,14 @@ public class SystemRepository {
         return null;
       }
 
+      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+        if (!nullOrEmpty(emailConfig.getPassword())) {
+          emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+        }
+        fetchedSettings.setConfigValue(emailConfig);
+      }
+
       return fetchedSettings;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
@@ -121,6 +140,17 @@ public class SystemRepository {
         .orElse(null);
   }
 
+  public AssetCertificationSettings getAssetCertificationSettingOrDefault() {
+    AssetCertificationSettings assetCertificationSettings = getAssetCertificationSettings();
+    if (assetCertificationSettings == null) {
+      assetCertificationSettings =
+          new AssetCertificationSettings()
+              .withAllowedClassification("Certification")
+              .withValidityPeriod("P30D");
+    }
+    return assetCertificationSettings;
+  }
+
   public WorkflowSettings getWorkflowSettings() {
     Optional<Settings> oWorkflowSettings =
         Optional.ofNullable(getConfigWithKey(SettingsType.WORKFLOW_SETTINGS.value()));
@@ -128,6 +158,17 @@ public class SystemRepository {
     return oWorkflowSettings
         .map(settings -> (WorkflowSettings) settings.getConfigValue())
         .orElse(null);
+  }
+
+  public WorkflowSettings getWorkflowSettingsOrDefault() {
+    WorkflowSettings workflowSettings = getWorkflowSettings();
+    if (workflowSettings == null) {
+      workflowSettings =
+          new WorkflowSettings()
+              .withExecutorConfiguration(new ExecutorConfiguration())
+              .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration());
+    }
+    return workflowSettings;
   }
 
   public Settings getEmailConfigInternal() {
@@ -139,6 +180,22 @@ public class SystemRepository {
       return setting;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getOMBaseUrlConfigInternal() {
+    try {
+      Settings setting =
+          dao.getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+      OpenMetadataBaseUrlConfiguration urlConfiguration =
+          (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+      setting.setConfigValue(urlConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while trying to fetch OpenMetadataBaseUrlConfiguration Settings {}",
+          ex.getMessage());
     }
     return null;
   }
@@ -225,6 +282,10 @@ public class SystemRepository {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
     }
+
+    if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
+      LoginAttemptCache.updateLoginConfiguration();
+    }
   }
 
   public void updateSetting(Settings setting) {
@@ -232,7 +293,14 @@ public class SystemRepository {
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
         SmtpSettings emailConfig =
             JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        setting.setConfigValue(encryptEmailSetting(emailConfig));
+        if (!nullOrEmpty(emailConfig.getPassword())) {
+          setting.setConfigValue(encryptEmailSetting(emailConfig));
+        }
+      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+        OpenMetadataBaseUrlConfiguration omBaseUrl =
+            JsonUtils.convertValue(
+                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+        setting.setConfigValue(omBaseUrl);
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
@@ -248,6 +316,8 @@ public class SystemRepository {
         setting.setConfigValue(encryptSlackStateSetting(slackState));
       } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+      } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
@@ -424,12 +494,21 @@ public class SystemRepository {
         && searchRepository
             .getSearchClient()
             .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.SEARCH.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage(
-              String.format(
-                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
+      if (validateDataInsights()) {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.SEARCH.key)
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "Connected to %s",
+                    applicationConfig.getElasticSearchConfiguration().getHost()));
+      } else {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.SEARCH.key)
+            .withPassed(Boolean.FALSE)
+            .withMessage(
+                "Data Insights Application is Installed but it is not reachable or available");
+      }
     } else {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
@@ -438,25 +517,53 @@ public class SystemRepository {
     }
   }
 
+  private boolean validateDataInsights() {
+    boolean isValid = false;
+
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    try {
+      App dataInsightsApp =
+          appRepository.getByName(null, "DataInsightsApplication", EntityUtil.Fields.EMPTY_FIELDS);
+
+      SearchRepository searchRepository = Entity.getSearchRepository();
+      String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), Entity.TABLE);
+
+      if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
+          && searchRepository.getSearchClient().indexExists(dataStreamName)) {
+        isValid = true;
+      }
+    } catch (EntityNotFoundException e) {
+      isValid = true;
+      LOG.info("Data Insights Application is not installed. Skip Validation.");
+    }
+    return isValid;
+  }
+
   private StepValidation getPipelineServiceClientValidation(
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClientInterface pipelineServiceClient) {
-    PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
-    if (pipelineResponse.getCode() == 200) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage(
-              String.format(
-                  "%s is available at %s",
-                  pipelineServiceClient.getPlatform(),
-                  applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
-    } else {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
-          .withPassed(Boolean.FALSE)
-          .withMessage(pipelineResponse.getReason());
+    if (pipelineServiceClient != null) {
+      PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
+      if (pipelineResponse.getCode() == 200) {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "%s is available at %s",
+                    pipelineServiceClient.getPlatform(),
+                    applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
+      } else {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+            .withPassed(Boolean.FALSE)
+            .withMessage(pipelineResponse.getReason());
+      }
     }
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+        .withPassed(Boolean.FALSE)
+        .withMessage("Pipeline client disabled, please check configuration");
   }
 
   private StepValidation getJWKsValidation(

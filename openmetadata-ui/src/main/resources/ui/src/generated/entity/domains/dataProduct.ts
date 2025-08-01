@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Data Product` or `Data as a Product` is a logical unit that contains all components to
  * process and store data for analytical or data-intensive use cases made available to data
  * consumers.
@@ -35,9 +33,9 @@ export interface DataProduct {
      */
     displayName?: string;
     /**
-     * Domain or sub-domain to which this Data Product belongs to.
+     * Domains or sub-domains to which this Data Product belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * List of users who are experts for this Data Product.
      */
@@ -46,6 +44,10 @@ export interface DataProduct {
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName is `domain.dataProductName` or `sub-domain.dataProductName`.
      */
@@ -59,6 +61,10 @@ export interface DataProduct {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * A unique name of the Data Product
      */
     name: string;
@@ -67,6 +73,10 @@ export interface DataProduct {
      */
     owners?: EntityReference[];
     style?:  Style;
+    /**
+     * Tags associated with the Data Product.
+     */
+    tags?: TagLabel[];
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -94,8 +104,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain or sub-domain to which this Data Product belongs to.
  */
 export interface EntityReference {
     /**
@@ -146,6 +154,7 @@ export interface EntityReference {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -162,6 +171,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -194,4 +226,77 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ */
+export interface TagLabel {
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelType;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+ * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+ * used to determine the tag label.
+ */
+export enum LabelType {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum State {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
 }

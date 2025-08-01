@@ -26,7 +26,8 @@ export const searchServiceFromSettingPage = async (
 export const visitServiceDetailsPage = async (
   page: Page,
   service: { type: string; name: string; displayName?: string },
-  verifyHeader = false
+  verifyHeader = false,
+  visitChildrenTab = true
 ) => {
   const serviceResponse = page.waitForResponse('/api/v1/services/*');
   await settingClick(page, service.type as SettingOptionsType);
@@ -37,10 +38,18 @@ export const visitServiceDetailsPage = async (
   // Click on created service
   await page.click(`[data-testid="service-name-${service.name}"]`);
 
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
+  if (visitChildrenTab) {
+    // Click on children tab Ex. DatabaseService -> Databases
+    await page.getByRole('tab').nth(1).click();
+  }
+
+  await page.waitForLoadState('networkidle');
+
   if (verifyHeader) {
-    const text = await page.textContent(
-      `[data-testid="entity-header-display-name"]`
-    );
+    const text = await page.textContent(`[data-testid="entity-header-name"]`);
 
     expect(text).toBe(service.displayName);
   }

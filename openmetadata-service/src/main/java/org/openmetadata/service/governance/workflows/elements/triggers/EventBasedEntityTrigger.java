@@ -1,9 +1,11 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +17,7 @@ import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.ErrorEventDefinition;
 import org.flowable.bpmn.model.FieldExtension;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.IOParameter;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
@@ -24,6 +27,7 @@ import org.flowable.bpmn.model.SignalEventDefinition;
 import org.flowable.bpmn.model.StartEvent;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Event;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
@@ -32,7 +36,6 @@ import org.openmetadata.service.governance.workflows.flowable.builders.FieldExte
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SignalBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
-import org.openmetadata.service.util.JsonUtils;
 
 public class EventBasedEntityTrigger implements TriggerInterface {
   private final Process process;
@@ -68,6 +71,9 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     runtimeExceptionBoundaryEvent.addEventDefinition(runtimeExceptionDefinition);
 
     runtimeExceptionBoundaryEvent.setAttachedToRef(workflowTrigger);
+    for (FlowableListener listener : getWorkflowInstanceListeners(List.of("end"))) {
+      runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
+    }
     process.addFlowElement(runtimeExceptionBoundaryEvent);
 
     EndEvent errorEndEvent =
@@ -144,12 +150,12 @@ public class EventBasedEntityTrigger implements TriggerInterface {
             .build();
 
     IOParameter inputParameter = new IOParameter();
-    inputParameter.setSource(RELATED_ENTITY_VARIABLE);
-    inputParameter.setTarget(RELATED_ENTITY_VARIABLE);
+    inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
 
     IOParameter outputParameter = new IOParameter();
-    outputParameter.setSource(EXCEPTION_VARIABLE);
-    outputParameter.setTarget(EXCEPTION_VARIABLE);
+    outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
+    outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
 
     workflowTrigger.setInParameters(List.of(inputParameter));
     workflowTrigger.setOutParameters(List.of(outputParameter));

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,6 +29,9 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
     """Auto Classification workflow implementation. Based on the Profiler logic with different steps"""
 
     def set_steps(self):
+        # NOTE: Call test_connection to update host value before creating the source class
+        self.test_connection()
+
         source_class = self._get_source_class()
         self.source = source_class.create(self.config.model_dump(), self.metadata)
 

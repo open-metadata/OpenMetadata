@@ -1,5 +1,13 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
+import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
+
+import jakarta.json.JsonArray;
+import jakarta.json.JsonNumber;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,19 +17,27 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonNumber;
-import javax.json.JsonObject;
-import javax.json.JsonString;
-import javax.json.JsonValue;
+import lombok.Getter;
+import org.openmetadata.schema.ColumnsEntityInterface;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeSummaryMap;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.Utilities;
 
 public final class SearchIndexUtils {
+
+  // Keeping the bots list static so we can call this from anywhere in the codebase
+  public static final List<String> AI_BOTS =
+      List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
 
@@ -58,8 +74,9 @@ public final class SearchIndexUtils {
     if (value instanceof Map) {
       currentMap = (Map<String, Object>) value;
     } else if (value instanceof List) {
-      List<Map<String, Object>> list = (List<Map<String, Object>>) value;
-      for (Map<String, Object> item : list) {
+      List<?> list = (List<Map<String, Object>>) value;
+      for (Object obj : list) {
+        Map<String, Object> item = JsonUtils.getMap(obj);
         removeFieldByPath(
             item,
             Arrays.stream(pathElements, 1, pathElements.length).collect(Collectors.joining(".")));
@@ -139,12 +156,11 @@ public final class SearchIndexUtils {
     // The current key represent the node in the aggregation tree (i.e. the current bucket)
     String currentKey = keys.get(0);
     Optional<JsonObject> aggregation =
-        Optional.ofNullable(SearchClient.getAggregationObject(aggregationResults, currentKey));
+        Optional.ofNullable(getAggregationObject(aggregationResults, currentKey));
 
     aggregation.ifPresent(
         agg -> {
-          Optional<JsonArray> buckets =
-              Optional.ofNullable(SearchClient.getAggregationBuckets(agg));
+          Optional<JsonArray> buckets = Optional.ofNullable(getAggregationBuckets(agg));
           if (buckets.isEmpty()) {
             if ((keys.size() > 1) && (agg.containsKey(keys.get(1)))) {
               // If the current node in the aggregation tree does not have further buckets
@@ -281,5 +297,134 @@ public final class SearchIndexUtils {
       aggregationsMetadata.add(siblingAggregationsMetadata);
     }
     return new SearchAggregation(root, aggregationsMetadata);
+  }
+
+  public static String getDescriptionSource(
+      String description, Map<String, ChangeSummary> changeSummaryMap, String changeSummaryKey) {
+    if (description == null) {
+      return null;
+    }
+
+    String descriptionSource = ChangeSource.INGESTED.value();
+
+    if (changeSummaryMap != null) {
+      if (changeSummaryMap.containsKey(changeSummaryKey)
+          && changeSummaryMap.get(changeSummaryKey).getChangeSource() != null) {
+        if (AI_BOTS.contains(changeSummaryMap.get(changeSummaryKey).getChangedBy())) {
+          // If bot is directly PATCHing and not suggesting, we need to still consider it's a
+          // suggested change
+          descriptionSource = ChangeSource.SUGGESTED.value();
+        } else {
+          // Otherwise, use the change summary source
+          descriptionSource = changeSummaryMap.get(changeSummaryKey).getChangeSource().value();
+        }
+      }
+    }
+    return descriptionSource;
+  }
+
+  private static void processTagAndTierSources(
+      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
+    Optional.ofNullable(tagList)
+        .ifPresent(
+            tags ->
+                tags.forEach(
+                    tag -> {
+                      String tagSource = tag.getLabelType().value();
+                      if (tag.getTagFQN().startsWith("Tier.")) {
+                        tagAndTierSources
+                            .getTierSources()
+                            .put(
+                                tagSource,
+                                tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
+                      } else {
+                        tagAndTierSources
+                            .getTagSources()
+                            .put(
+                                tagSource,
+                                tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
+                      }
+                    }));
+  }
+
+  private static void processEntityTagSources(
+      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+    processTagAndTierSources(entity.getTags(), tagAndTierSources);
+  }
+
+  private static void processColumnTagSources(
+      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
+    for (Column column : entity.getColumns()) {
+      processTagAndTierSources(column.getTags(), tagAndTierSources);
+    }
+  }
+
+  public static TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+    TagAndTierSources tagAndTierSources = new TagAndTierSources();
+    processEntityTagSources(entity, tagAndTierSources);
+    if (SearchIndexUtils.hasColumns(entity)) {
+      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
+    }
+    return tagAndTierSources;
+  }
+
+  public static void processDescriptionSource(
+      EntityInterface entity,
+      Map<String, ChangeSummary> changeSummaryMap,
+      Map<String, Integer> descriptionSources) {
+    Optional.ofNullable(
+            getDescriptionSource(entity.getDescription(), changeSummaryMap, "description"))
+        .ifPresent(
+            source ->
+                descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
+  }
+
+  public static void processColumnDescriptionSources(
+      ColumnsEntityInterface entity,
+      Map<String, ChangeSummary> changeSummaryMap,
+      Map<String, Integer> descriptionSources) {
+    for (Column column : entity.getColumns()) {
+      Optional.ofNullable(
+              getDescriptionSource(
+                  column.getDescription(),
+                  changeSummaryMap,
+                  String.format("columns.%s.description", column.getName())))
+          .ifPresent(
+              source ->
+                  descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
+    }
+  }
+
+  public static boolean hasColumns(EntityInterface entity) {
+    return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
+  }
+
+  public static Map<String, Integer> processDescriptionSources(
+      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
+    Map<String, Integer> descriptionSources = new HashMap<>();
+    processDescriptionSource(entity, changeSummaryMap, descriptionSources);
+    if (hasColumns(entity)) {
+      processColumnDescriptionSources(
+          (ColumnsEntityInterface) entity, changeSummaryMap, descriptionSources);
+    }
+    return descriptionSources;
+  }
+
+  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface entity) {
+    return Optional.ofNullable(entity.getChangeDescription())
+        .map(ChangeDescription::getChangeSummary)
+        .map(ChangeSummaryMap::getAdditionalProperties)
+        .orElse(null);
+  }
+
+  @Getter
+  public static class TagAndTierSources {
+    private final Map<String, Integer> tagSources;
+    private final Map<String, Integer> tierSources;
+
+    public TagAndTierSources() {
+      this.tagSources = new HashMap<>();
+      this.tierSources = new HashMap<>();
+    }
   }
 }

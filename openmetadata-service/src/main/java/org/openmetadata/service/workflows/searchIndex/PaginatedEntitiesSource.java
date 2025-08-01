@@ -20,15 +20,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.RestUtil;
@@ -96,10 +99,43 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
+      EntityDAO<?> entityDAO = entityRepository.getDao();
       result =
-          entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), filter, batchSize, cursor);
+          entityRepository.listWithOffset(
+              entityDAO::listAfter,
+              entityDAO::listCount,
+              filter,
+              batchSize,
+              cursor,
+              true,
+              Entity.getFields(entityType, fields),
+              null);
+
+      // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
+      // point to deleted entities and should not be counted as failures
       if (!result.getErrors().isEmpty()) {
+        List<EntityError> realErrors =
+            result.getErrors().stream()
+                .filter(error -> !isEntityNotFoundError(error))
+                .collect(Collectors.toList());
+
+        if (!realErrors.isEmpty()) {
+          LOG.warn("[PaginatedEntitiesSource] Real errors found: {}", realErrors.size());
+          realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
+        }
+
+        long notFoundCount = result.getErrors().size() - realErrors.size();
+        if (notFoundCount > 0) {
+          LOG.debug(
+              "[PaginatedEntitiesSource] Ignored {} 'entity not found' errors for stale relationships",
+              notFoundCount);
+        }
+
+        if (!realErrors.isEmpty()) {
+          lastFailedCursor = this.cursor.get();
+          realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
+        }
+
         lastFailedCursor = this.cursor.get();
         if (result.getPaging().getAfter() == null) {
           this.cursor.set(null);
@@ -107,7 +143,12 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         } else {
           this.cursor.set(result.getPaging().getAfter());
         }
-        updateStats(result.getData().size(), result.getErrors().size());
+
+        // Update stats with only real errors, not missing relationship errors
+        updateStats(result.getData().size(), realErrors.size());
+
+        // Update the result to only include real errors
+        result.setErrors(realErrors);
         return result;
       }
 
@@ -116,6 +157,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           batchSize, result.getData().size(), result.getErrors().size());
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
+      LOG.error("Error reading batch for entityType: {} at cursor: {}", entityType, cursor, e);
       lastFailedCursor = this.cursor.get();
       int remainingRecords =
           stats.getTotalRecords() - stats.getFailedRecords() - stats.getSuccessRecords();
@@ -139,7 +181,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               .withSuccessCount(0)
               .withFailedCount(submittedRecords)
               .withMessage(
-                  "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
+                  String.format(
+                      "Failed to read batch for entityType: %s. Error: %s",
+                      entityType, e.getMessage()))
               .withLastFailedCursor(lastFailedCursor)
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(indexingError.getMessage());
@@ -154,20 +198,46 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
+      EntityDAO<?> entityDAO = entityRepository.getDao();
       result =
-          entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), filter, batchSize, currentCursor);
+          entityRepository.listWithOffset(
+              entityDAO::listAfter,
+              entityDAO::listCount,
+              filter,
+              batchSize,
+              currentCursor,
+              true,
+              Entity.getFields(entityType, fields),
+              null);
+
+      // Filter out EntityNotFoundExceptions from errors - same as in read() method
+      if (!result.getErrors().isEmpty()) {
+        List<EntityError> realErrors = new ArrayList<>();
+        for (EntityError error : result.getErrors()) {
+          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
+            LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
+          } else {
+            realErrors.add(error);
+          }
+        }
+        result.setErrors(realErrors);
+      }
+
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
 
     } catch (Exception e) {
+      LOG.error(
+          "Error reading batch for entityType: {} with cursor: {}", entityType, currentCursor, e);
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
               .withSuccessCount(0)
               .withMessage(
-                  "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
+                  String.format(
+                      "Failed to read batch for entityType: %s. Error: %s",
+                      entityType, e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(indexingError.getMessage());
       throw new SearchIndexException(indexingError);
@@ -189,5 +259,16 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  private boolean isEntityNotFoundError(EntityError error) {
+    if (error == null || error.getMessage() == null) {
+      return false;
+    }
+    String message = error.getMessage().toLowerCase();
+    return message.contains("not found")
+        || message.contains("instance for")
+        || message.contains("does not exist")
+        || message.contains("entitynotfoundexception");
   }
 }

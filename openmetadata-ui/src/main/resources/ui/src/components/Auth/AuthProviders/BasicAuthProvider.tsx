@@ -12,9 +12,9 @@
  */
 
 import { AxiosError } from 'axios';
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
@@ -25,7 +25,6 @@ import { RegistrationRequest } from '../../../generated/auth/registrationRequest
 import {
   basicAuthRegister,
   basicAuthSignIn,
-  checkEmailInUse,
   generatePasswordResetLink,
   logoutUser,
   resetPassword,
@@ -39,13 +38,16 @@ import {
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { OidcUser } from './AuthProvider.interface';
-
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
+import {
+  getOidcToken,
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from './AuthProvider';
 interface BasicAuthProps {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
-  onLoginFailure: () => void;
 }
 
 interface InitialContext {
@@ -54,7 +56,6 @@ interface InitialContext {
   handleForgotPassword: (email: string) => Promise<void>;
   handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
   handleLogout: () => void;
-  loginError?: string | null;
 }
 
 /**
@@ -78,25 +79,14 @@ const initialContext = {
  */
 export const BasicAuthContext = createContext<InitialContext>(initialContext);
 
-const BasicAuthProvider = ({
-  children,
-  onLoginSuccess,
-  onLoginFailure,
-}: BasicAuthProps) => {
+const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { t } = useTranslation();
-  const {
-    setRefreshToken,
-    setOidcToken,
-    getOidcToken,
-    removeOidcToken,
-    getRefreshToken,
-  } = useApplicationStore();
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
+    useAuthProvider();
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      setLoginError(null);
       try {
         const response = await basicAuthSignIn({
           email,
@@ -107,7 +97,7 @@ const BasicAuthProvider = ({
           setRefreshToken(response.refreshToken);
           setOidcToken(response.accessToken);
 
-          onLoginSuccess({
+          handleSuccessfulLogin({
             id_token: response.accessToken,
             profile: {
               email: toLower(email),
@@ -124,8 +114,8 @@ const BasicAuthProvider = ({
       } catch (error) {
         const err = error as AxiosError<{ code: number; message: string }>;
 
-        setLoginError(err.response?.data.message || LOGIN_FAILED_ERROR);
-        onLoginFailure();
+        showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
+        handleFailedLogin();
       }
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unauthorized-user'));
@@ -134,18 +124,13 @@ const BasicAuthProvider = ({
 
   const handleRegister = async (request: RegistrationRequest) => {
     try {
-      const isEmailAlreadyExists = await checkEmailInUse(request.email);
-      if (!isEmailAlreadyExists) {
-        await basicAuthRegister(request);
+      await basicAuthRegister(request);
 
-        showSuccessToast(
-          t('server.create-entity-success', { entity: t('label.user-account') })
-        );
-        showInfoToast(t('server.email-confirmation'));
-        history.push(ROUTES.SIGNIN);
-      } else {
-        return showErrorToast(t('server.email-found'));
-      }
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.user-account') })
+      );
+      showInfoToast(t('server.email-confirmation'));
+      navigate(ROUTES.SIGNIN);
     } catch (err) {
       if (
         (err as AxiosError).response?.status ===
@@ -155,7 +140,7 @@ const BasicAuthProvider = ({
           t('server.create-entity-success', { entity: t('label.user-account') })
         );
         showErrorToast(err as AxiosError, t('server.email-verification-error'));
-        history.push(ROUTES.SIGNIN);
+        navigate(ROUTES.SIGNIN);
       } else {
         showErrorToast(err as AxiosError, t('server.unexpected-response'));
       }
@@ -163,18 +148,7 @@ const BasicAuthProvider = ({
   };
 
   const handleForgotPassword = async (email: string) => {
-    try {
-      await generatePasswordResetLink(email);
-    } catch (err) {
-      if (
-        (err as AxiosError).response?.status ===
-        HTTP_STATUS_CODE.FAILED_DEPENDENCY
-      ) {
-        showErrorToast(t('server.forgot-password-email-error'));
-      } else {
-        showErrorToast(t('server.email-not-found'));
-      }
-    }
+    await generatePasswordResetLink(email);
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {
@@ -187,13 +161,15 @@ const BasicAuthProvider = ({
   const handleLogout = async () => {
     const token = getOidcToken();
     const refreshToken = getRefreshToken();
-    if (token) {
+    const isExpired = extractDetailsFromToken(token).isExpired;
+    if (token && !isExpired) {
       try {
         await logoutUser({ token, refreshToken });
-        removeOidcToken();
-        history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        // This will cleanup the application state and redirect to login page
+        handleSuccessfulLogout();
       }
     }
   };
@@ -204,7 +180,6 @@ const BasicAuthProvider = ({
     handleForgotPassword,
     handleResetPassword,
     handleLogout,
-    loginError,
   };
 
   return (

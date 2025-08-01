@@ -27,4 +27,12 @@ export interface FeedPanelBodyPropV1 {
     showRepliesContainer?: boolean;
   };
   hidePopover: boolean;
+  showActivityFeedEditor?: boolean;
+  onAfterClose?: any;
+  onUpdateEntityDetails?: any;
+  handlePanelResize?: (isFullWidth: boolean) => void;
+  isFullWidth?: boolean;
+  hideCardBorder?: boolean;
+  isFeedWidget?: boolean;
+  isFullSizeWidget?: boolean;
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import '../variables.less';
+@import (reference) url('../variables.less');
 
 .radio-switch {
   .ant-radio-button-wrapper,
@@ -35,4 +35,47 @@
       border-color: @primary-1;
     }
   }
+}
+
+// Global styling for segment toggle classs
+.segment-toggle {
+  background: @white;
+  border-radius: @size-sm;
+  border: 1px solid @grey-20;
+
+  .ant-segmented-item {
+    color: @text-color;
+    transition: all 0.3s ease;
+
+    &-selected {
+      background: @blue-23;
+      color: @primary-heading-color;
+      text-align: center;
+      border-radius: @size-xs;
+      .ant-segmented-item-label {
+        color: @primary-heading-color;
+      }
+
+      svg path {
+        fill: @primary-heading-color;
+      }
+    }
+  }
+
+  &:hover {
+    background: none !important;
+  }
+
+  &:focus {
+    background: none !important;
+  }
+
+  .ant-segmented:not(.ant-segmented-disabled):hover,
+  .ant-segmented:not(.ant-segmented-disabled):focus {
+    background: none !important;
+  }
+}
+.segment-toggle.ant-segmented {
+  background-color: @white;
+  border-radius: @size-sm;
 }

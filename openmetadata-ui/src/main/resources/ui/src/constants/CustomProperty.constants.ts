@@ -111,6 +111,11 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'team',
     label: 'Team',
   },
+  {
+    key: 'metric',
+    value: 'metric',
+    label: 'Metric',
+  },
 ];
 
 // supported date formats on backend
@@ -138,6 +143,29 @@ export const SUPPORTED_DATE_TIME_FORMATS = [
 
 // supported time formats on backend
 export const SUPPORTED_TIME_FORMATS = ['HH:mm:ss'];
+
+export const SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING = {
+  'yyyy-MM-dd': 'YYYY-MM-DD',
+  'dd MMM yyyy': 'DD MMM YYYY',
+  'MM/dd/yyyy': 'MM/DD/YYYY',
+  'dd/MM/yyyy': 'DD/MM/YYYY',
+  'dd-MM-yyyy': 'DD-MM-YYYY',
+  yyyyDDD: 'YYYYDDD',
+  'd MMMM yyyy': 'D MMMM YYYY',
+  'MMM dd HH:mm:ss yyyy': 'MMM DD HH:mm:ss YYYY',
+  'yyyy-MM-dd HH:mm:ss': 'YYYY-MM-DD HH:mm:ss',
+  'MM/dd/yyyy HH:mm:ss': 'MM/DD/YYYY HH:mm:ss',
+  'dd/MM/yyyy HH:mm:ss': 'DD/MM/YYYY HH:mm:ss',
+  'dd-MM-yyyy HH:mm:ss': 'DD-MM-YYYY HH:mm:ss',
+  'yyyy-MM-dd HH:mm:ss.SSS': 'YYYY-MM-DD HH:mm:ss.SSS',
+  'yyyy-MM-dd HH:mm:ss.SSSSSS': 'YYYY-MM-DD HH:mm:ss.SSSSSS',
+  'dd MMMM yyyy HH:mm:ss': 'DD MMMM YYYY HH:mm:ss',
+  'HH:mm:ss': 'HH:mm:ss',
+};
+
+export const DEFAULT_TIME_FORMAT = 'HH:mm:ss';
+export const DEFAULT_DATE_FORMAT = 'yyyy-MM-dd';
+export const DEFAULT_DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';
 
 export const SUPPORTED_FORMAT_MAP = {
   'date-cp': SUPPORTED_DATE_FORMATS,

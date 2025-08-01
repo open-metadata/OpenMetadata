@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Container entity. A Container is an abstraction for any
  * path(including the top level eg. bucket in S3) storing data in an Object store such as
  * S3, GCP, Azure. It maps a tree-like structure, where each Container can have a parent and
@@ -50,10 +48,10 @@ export interface Container {
      */
     displayName?: string;
     /**
-     * Domain the Container belongs to. When not set, the Container inherits the domain from the
-     * storage service it belongs to.
+     * Domains the Container belongs to. When not set, the Container inherits the domain from
+     * the storage service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -83,6 +81,10 @@ export interface Container {
      * Unique identifier that identifies this container instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Life Cycle properties of the entity
      */
@@ -221,6 +223,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -263,6 +266,7 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -279,6 +283,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -310,9 +337,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Container belongs to. When not set, the Container inherits the domain from the
- * storage service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -491,6 +515,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -500,12 +525,16 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",

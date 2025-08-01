@@ -23,7 +23,7 @@ import {
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -136,7 +136,7 @@ export const getSearchIndexVersions = async (id: string) => {
   return response.data;
 };
 
-export const getSearchIndexVersion = async (id: string, version: string) => {
+export const getSearchIndexVersion = async (id: string, version?: string) => {
   const url = `/searchIndexes/${id}/versions/${version}`;
 
   const response = await APIClient.get<SearchIndex>(url);

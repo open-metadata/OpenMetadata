@@ -12,13 +12,18 @@
  */
 
 import { EntityType } from '../../enums/entity.enum';
-import { TestSummary } from '../../generated/tests/testCase';
+import { TestCaseStatus, TestSummary } from '../../generated/tests/testCase';
+import { TestCaseType } from '../../rest/testAPI';
 
 export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',
-  TABLES = 'tables',
   TEST_CASES = 'test-cases',
   DASHBOARD = 'dashboard',
+}
+
+export enum DataQualitySubTabs {
+  TABLE_SUITES = 'table-suites',
+  BUNDLE_SUITES = 'bundle-suites',
 }
 
 export interface DataQualityContextInterface {
@@ -35,4 +40,9 @@ export type DataQualityDashboardChartFilters = {
   endTs?: number;
   entityFQN?: string;
   entityType?: EntityType;
+  serviceName?: string;
+  testPlatforms?: string[];
+  dataQualityDimension?: string;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
 };

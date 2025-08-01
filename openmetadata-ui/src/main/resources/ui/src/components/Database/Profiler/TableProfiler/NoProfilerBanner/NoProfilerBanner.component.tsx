@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/no-data-icon.svg';
+import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 
 const NoProfilerBanner = () => {
   const { t } = useTranslation();
+  const profilerDocsLink =
+    documentationLinksClassBase.getDocsURLS()
+      .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
   return (
     <div
@@ -26,7 +29,7 @@ const NoProfilerBanner = () => {
         {t('message.no-profiler-message')}
         <a
           data-testid="documentation-link"
-          href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow"
+          href={profilerDocsLink}
           rel="noreferrer"
           target="_blank"
           title="data quality observability profiler workflow">

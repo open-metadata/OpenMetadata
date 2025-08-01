@@ -12,12 +12,14 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
-import React from 'react';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
+import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import './suggestions-alert.less';
@@ -27,6 +29,7 @@ const SuggestionsAlert = ({
   suggestion,
   hasEditAccess = false,
   maxLength,
+  showInlineCard,
   showSuggestedBy = true,
 }: SuggestionsAlertProps) => {
   const { t } = useTranslation();
@@ -38,12 +41,20 @@ const SuggestionsAlert = ({
   }
 
   return (
-    <Card className="suggested-description-card card-padding-0">
+    <Card
+      className={classNames('suggested-card card-padding-0', {
+        'card-inline-flex': showInlineCard,
+      })}
+      data-testid={`suggested-${suggestion.type}-card`}>
       <div className="suggested-alert-content">
-        <RichTextEditorPreviewer
-          markdown={suggestion.description ?? ''}
-          maxLength={maxLength}
-        />
+        {suggestion.type === SuggestionType.SuggestDescription ? (
+          <RichTextEditorPreviewerV1
+            markdown={suggestion.description ?? ''}
+            maxLength={maxLength}
+          />
+        ) : (
+          <TagsViewer tags={suggestion.tagLabels ?? []} />
+        )}
       </div>
       <div className="suggested-alert-footer d-flex justify-between">
         <div className="d-flex items-center gap-2 ">

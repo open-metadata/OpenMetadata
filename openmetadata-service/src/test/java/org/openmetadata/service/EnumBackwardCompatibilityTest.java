@@ -49,8 +49,12 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagLabelEnumBackwardCompatible() {
-    assertEquals(4, LabelType.values().length);
+    assertEquals(5, LabelType.values().length);
+    assertEquals(0, LabelType.MANUAL.ordinal());
+    assertEquals(1, LabelType.PROPAGATED.ordinal());
+    assertEquals(2, LabelType.AUTOMATED.ordinal());
     assertEquals(3, LabelType.DERIVED.ordinal());
+    assertEquals(4, LabelType.GENERATED.ordinal());
   }
 
   /**

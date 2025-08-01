@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { get } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   AdvanceSearchProviderProps,
@@ -30,9 +30,14 @@ export const withAdvanceSearch =
       SearchOutputType.ElasticSearch
     );
 
+    // Extract entityType from props if available
+    const entityType = (get(props, 'formContext.entityType') ||
+      get(props, 'schema.entityType')) as string | undefined;
+
     return (
       <AdvanceSearchProvider
         {...providerProps}
+        entityType={entityType}
         searchOutputType={searchOutputType as SearchOutputType}>
         <Component {...props} />
       </AdvanceSearchProvider>

@@ -20,13 +20,14 @@ import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
 import { DROP_CURSOR_COLOR } from '../../../constants/BlockEditor.constants';
+import { FileType } from '../BlockEditor.interface';
 import BlockAndDragDrop from './BlockAndDragDrop/BlockAndDragDrop';
 import { Callout } from './Callout/Callout';
 import DiffView from './diff-view';
+import FileNode from './File/FileNode';
 import { Focus } from './focus';
 import { Hashtag } from './hashtag';
 import { hashtagSuggestion } from './hashtag/hashtagSuggestion';
-import { Image } from './image/image';
 import { LinkExtension } from './link';
 import MathEquation from './MathEquation/MathEquation';
 import { Mention } from './mention';
@@ -34,6 +35,7 @@ import { mentionSuggestion } from './mention/mentionSuggestions';
 import slashCommand from './slash-command';
 import { getSuggestionItems } from './slash-command/items';
 import renderItems from './slash-command/renderItems';
+import TextHighlightView from './text-highlight-view';
 import { TrailingNode } from './trailing-node';
 
 export const extensions = [
@@ -80,7 +82,7 @@ export const extensions = [
   }),
   LinkExtension.configure({
     autolink: false,
-    openOnClick: false,
+    openOnClick: true,
     linkOnPaste: true,
     HTMLAttributes: {
       rel: 'noopener noreferrer nofollow',
@@ -112,10 +114,7 @@ export const extensions = [
     suggestion: hashtagSuggestion(),
   }),
   DiffView,
-  Image.configure({
-    allowBase64: true,
-    inline: true,
-  }),
+  TextHighlightView,
   BlockAndDragDrop,
   Focus.configure({
     mode: 'deepest',
@@ -148,4 +147,12 @@ export const extensions = [
   }),
   MathEquation,
   TrailingNode,
+  FileNode.configure({
+    allowedTypes: [
+      FileType.FILE,
+      FileType.IMAGE,
+      FileType.VIDEO,
+      FileType.AUDIO,
+    ],
+  }),
 ];

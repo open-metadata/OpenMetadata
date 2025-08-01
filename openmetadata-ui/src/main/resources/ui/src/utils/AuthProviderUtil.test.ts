@@ -13,6 +13,10 @@
 import { UserProfile } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { getNameFromUserData } from './AuthProvider.util';
 
+jest.mock('./LocalStorageUtils', () => ({
+  setOidcToken: jest.fn(),
+}));
+
 const userProfile = {
   email: 'testUser@gmail.com',
   sub: 'i_am_sub',

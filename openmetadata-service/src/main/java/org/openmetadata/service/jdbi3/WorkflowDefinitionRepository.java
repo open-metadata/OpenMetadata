@@ -1,16 +1,18 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.util.EntityUtil.objectMatch;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -47,11 +49,17 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void postDelete(WorkflowDefinition entity) {
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity.getName());
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
   }
 
   @Override
-  protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
+  protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {
+    if (WorkflowHandler.isInitialized()) {
+      entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
+    } else {
+      LOG.debug("Can't get `deploy` status since WorkflowHandler is not initialized.");
+    }
+  }
 
   @Override
   protected void clearFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
@@ -60,8 +68,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void prepare(WorkflowDefinition entity, boolean update) {}
 
   @Override
-  public EntityUpdater getUpdater(
-      WorkflowDefinition original, WorkflowDefinition updated, Operation operation) {
+  public EntityRepository<WorkflowDefinition>.EntityUpdater getUpdater(
+      WorkflowDefinition original,
+      WorkflowDefinition updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
   }
 
@@ -74,17 +85,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateType();
       updateTrigger();
+      updateConfig();
       updateNodes();
       updateEdges();
-    }
-
-    private void updateType() {
-      if (original.getType() == updated.getType()) {
-        return;
-      }
-      recordChange("type", original.getType(), updated.getType());
     }
 
     private void updateTrigger() {
@@ -94,28 +98,35 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       recordChange("trigger", original.getTrigger(), updated.getTrigger());
     }
 
+    private void updateConfig() {
+      if (Objects.equals(original.getConfig(), updated.getConfig())) {
+        return;
+      }
+      recordChange("config", original.getConfig(), updated.getConfig());
+    }
+
     private void updateNodes() {
-      List<Object> addedNodes = new ArrayList<>();
-      List<Object> deletedNodes = new ArrayList<>();
+      List<WorkflowNodeDefinitionInterface> addedNodes = new ArrayList<>();
+      List<WorkflowNodeDefinitionInterface> deletedNodes = new ArrayList<>();
       recordListChange(
           "nodes",
-          (List<Object>) original.getNodes(),
-          (List<Object>) updated.getNodes(),
+          original.getNodes(),
+          updated.getNodes(),
           addedNodes,
           deletedNodes,
-          objectMatch);
+          WorkflowNodeDefinitionInterface::equals);
     }
 
     private void updateEdges() {
-      List<Object> addedEdges = new ArrayList<>();
-      List<Object> deletedEdges = new ArrayList<>();
+      List<EdgeDefinition> addedEdges = new ArrayList<>();
+      List<EdgeDefinition> deletedEdges = new ArrayList<>();
       recordListChange(
           "nodes",
-          (List<Object>) original.getNodes(),
-          (List<Object>) updated.getNodes(),
+          original.getEdges(),
+          updated.getEdges(),
           addedEdges,
           deletedEdges,
-          objectMatch);
+          EdgeDefinition::equals);
     }
   }
 
@@ -132,5 +143,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         getByName(null, workflowDefinitionName, new EntityUtil.Fields(Set.of("*")))
             .getEntityReference();
     return workflowDefinitionReference.getId();
+  }
+
+  /**
+   * Efficiently retrieves WorkflowDefinition with minimal fields for stage processing.
+   * This returns the full object so callers can extract both ID and stage displayName without additional DB calls.
+   */
+  public WorkflowDefinition getByNameForStageProcessing(String workflowDefinitionName) {
+    return getByName(null, workflowDefinitionName, EntityUtil.Fields.EMPTY_FIELDS);
   }
 }

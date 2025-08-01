@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Alation Connection Config
  */
 export interface AlationConnection {
@@ -30,6 +28,10 @@ export interface AlationConnection {
     connection?:          AlationDatabaseConnection;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
     /**
      * Host and port of the Alation service.
      */
@@ -69,8 +71,16 @@ export interface AlationConnection {
     /**
      * Project name to create the refreshToken. Can be anything
      */
-    projectName?:                string;
+    projectName?: string;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?:        FilterPattern;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -124,6 +134,10 @@ export interface AlationDatabaseConnection {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -135,6 +149,10 @@ export interface AlationDatabaseConnection {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -152,6 +170,10 @@ export interface AlationDatabaseConnection {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -175,6 +197,10 @@ export interface AlationDatabaseConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -269,6 +295,26 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

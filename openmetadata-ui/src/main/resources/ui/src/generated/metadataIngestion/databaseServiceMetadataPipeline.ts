@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Metadata Pipeline Configuration.
  */
 export interface DatabaseServiceMetadataPipeline {
     /**
-     * Regex to only fetch databases that matches the pattern.
+     * Regex to only include/exclude databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -53,6 +51,18 @@ export interface DatabaseServiceMetadataPipeline {
      */
     incremental?: IncrementalMetadataExtractionConfiguration;
     /**
+     * Optional configuration to soft delete databases in OpenMetadata if the source databases
+     * are deleted. Also, if the database is deleted, all the associated entities like schemas,
+     * tables, views, stored procedures, lineage, etc., with that database will be deleted
+     */
+    markDeletedDatabases?: boolean;
+    /**
+     * Optional configuration to soft delete schemas in OpenMetadata if the source schemas are
+     * deleted. Also, if the schema is deleted, all the associated entities like tables, views,
+     * stored procedures, lineage, etc., with that schema will be deleted
+     */
+    markDeletedSchemas?: boolean;
+    /**
      * Optional configuration to soft delete stored procedures in OpenMetadata if the source
      * stored procedures are deleted. Also, if the stored procedures is deleted, all the
      * associated entities like lineage, etc., with that stored procedures will be deleted
@@ -85,11 +95,11 @@ export interface DatabaseServiceMetadataPipeline {
      */
     queryParsingTimeoutLimit?: number;
     /**
-     * Regex to only fetch tables or databases that matches the pattern.
+     * Regex to only include/exclude schemas that matches the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
-     * Regex exclude tables or databases that matches the pattern.
+     * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -108,13 +118,13 @@ export interface DatabaseServiceMetadataPipeline {
 }
 
 /**
- * Regex to only fetch databases that matches the pattern.
+ * Regex to only include/exclude databases that matches the pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
- * Regex to only fetch tables or databases that matches the pattern.
+ * Regex to only include/exclude schemas that matches the pattern.
  *
- * Regex exclude tables or databases that matches the pattern.
+ * Regex to only include/exclude tables that matches the pattern.
  */
 export interface FilterPattern {
     /**

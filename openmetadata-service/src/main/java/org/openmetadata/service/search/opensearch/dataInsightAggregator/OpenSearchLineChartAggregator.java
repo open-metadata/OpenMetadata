@@ -13,9 +13,9 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.search.SearchRequest;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.index.query.QueryBuilder;
@@ -59,8 +59,18 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       String metricName = metric.getName() == null ? "metric_" + ++i : metric.getName();
       if (lineChart.getxAxisField() != null
           && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
+        IncludeExclude includeExclude = null;
+        if (!CommonUtil.nullOrEmpty(lineChart.getIncludeXAxisFiled())
+            || !CommonUtil.nullOrEmpty(lineChart.getExcludeXAxisField())) {
+          includeExclude =
+              new IncludeExclude(
+                  lineChart.getIncludeXAxisFiled(), lineChart.getExcludeXAxisField());
+        }
         aggregationBuilder =
-            AggregationBuilders.terms(metricName).field(lineChart.getxAxisField()).size(1000);
+            AggregationBuilders.terms(metricName)
+                .field(lineChart.getxAxisField())
+                .includeExclude(includeExclude)
+                .size(1000);
 
         // in case of horizontal axis only process data of 24 hr prior to end time
         start = end - MILLISECONDS_IN_DAY;
@@ -113,7 +123,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
     searchSourceBuilder.query(queryFilter);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

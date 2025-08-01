@@ -14,7 +14,10 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { mockedGlossaries } from '../../../mocks/Glossary.mock';
+import {
+  mockedGlossaries,
+  MOCK_PERMISSIONS,
+} from '../../../mocks/Glossary.mock';
 import GlossaryDetails from './GlossaryDetails.component';
 
 jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {
@@ -31,10 +34,9 @@ jest.mock('react-router-dom', () => ({
     )),
   useParams: jest.fn().mockImplementation(() => ({
     glossaryName: 'GlossaryName',
+    tab: 'terms',
   })),
-  useHistory: jest.fn().mockImplementation(() => {
-    jest.fn();
-  }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock(
@@ -70,7 +72,21 @@ const mockProps = {
   onEditGlossaryTerm: jest.fn(),
   updateVote: jest.fn(),
   onThreadLinkSelect: jest.fn(),
+  toggleTabExpanded: jest.fn(),
+  isTabExpanded: false,
 };
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
+  return {
+    useGenericContext: jest.fn().mockImplementation(() => ({
+      permissions: MOCK_PERMISSIONS,
+    })),
+  };
+});
+
+jest.mock('../../Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
+}));
 
 describe('Test Glossary-details component', () => {
   it('Should render Glossary-details component', async () => {
@@ -83,11 +99,6 @@ describe('Test Glossary-details component', () => {
 
     expect(headerComponent).toBeInTheDocument();
     expect(glossaryDetails).toBeInTheDocument();
-    expect(
-      await screen.findByText('GlossaryTermTab.component')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('GlossaryHeader.component')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('GenericTab')).toBeInTheDocument();
   });
 });

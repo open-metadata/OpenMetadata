@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema corresponding to a Test Definition
  */
 export interface CreateTestDefinition {
@@ -25,9 +23,9 @@ export interface CreateTestDefinition {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Test Definition belongs to.
      */
-    domain?:    string;
+    domains?:   string[];
     entityType: EntityType;
     /**
      * Name that identifies this test case.
@@ -192,9 +190,11 @@ export enum Rule {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -229,6 +229,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -238,12 +239,16 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",

@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -25,40 +25,36 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import {
-  getDomainFieldFromEntityType,
-  renderDomainLink,
-} from '../../../utils/DomainUtils';
+import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
 export const DomainLabelV2 = <
   T extends {
-    domain?: EntityReference | EntityReference[];
+    domains?: EntityReference[];
     id: string;
     fullyQualifiedName: string;
+    deleted?: boolean;
   }
->(
-  props: Partial<DomainLabelProps>
-) => {
-  const { data, permissions, type: entityType } = useGenericContext<T>();
-  const { id: entityId, fullyQualifiedName: entityFqn, domain } = data;
+>({
+  ...props
+}: Partial<DomainLabelProps>) => {
+  const { data, type: entityType, permissions } = useGenericContext<T>();
+  const { id: entityId, fullyQualifiedName: entityFqn, domains } = data;
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
-  const hasPermission = permissions.EditAll;
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      const fieldData = getDomainFieldFromEntityType(entityType);
-
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        { fields: fieldData }
+        { fields: 'domains' }
       );
 
       try {
@@ -66,13 +62,15 @@ export const DomainLabelV2 = <
         if (entityDetailsResponse) {
           const jsonPatch = compare(entityDetailsResponse, {
             ...entityDetailsResponse,
-            [fieldData]: selectedDomain,
+            domains: Array.isArray(selectedDomain)
+              ? selectedDomain
+              : [selectedDomain],
           });
 
           const api = getAPIfromSource(entityType as AssetsUnion);
           const res = await api(entityId, jsonPatch);
 
-          const entityDomains = get(res, fieldData, {});
+          const entityDomains = get(res, 'domains', {});
           if (Array.isArray(entityDomains)) {
             setActiveDomain(entityDomains);
           } else {
@@ -91,14 +89,14 @@ export const DomainLabelV2 = <
   );
 
   useEffect(() => {
-    if (domain) {
-      if (Array.isArray(domain)) {
-        setActiveDomain(domain);
+    if (domains) {
+      if (Array.isArray(domains)) {
+        setActiveDomain(domains);
       } else {
-        setActiveDomain([domain]);
+        setActiveDomain([domains]);
       }
     }
-  }, [domain]);
+  }, [domains]);
 
   const domainLink = useMemo(() => {
     if (
@@ -110,14 +108,14 @@ export const DomainLabelV2 = <
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain'),
+              entity: t('label.domain-plural'),
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
         ) : null;
 
         return (
-          <div className="d-flex items-center gap-1" key={domain.id}>
+          <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
             <Typography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
@@ -127,7 +125,13 @@ export const DomainLabelV2 = <
                 width={16}
               />
             </Typography.Text>
-            {renderDomainLink(domain, getEntityName(domain), true, '')}
+            {renderDomainLink(
+              domain,
+              getEntityName(domain),
+              true,
+              'text-primary domain-link',
+              true
+            )}
             {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
           </div>
         );
@@ -136,16 +140,19 @@ export const DomainLabelV2 = <
       return (
         <Typography.Text
           className={classNames(
-            'domain-link',
             { 'font-medium text-xs': !props.showDomainHeading },
             props.textClassName
           )}
           data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain') })}
+          {t('label.no-entity', { entity: t('label.domain-plural') })}
         </Typography.Text>
       );
     }
   }, [activeDomain]);
+
+  const hasPermission = useMemo(() => {
+    return permissions?.EditAll && !data?.deleted;
+  }, [permissions?.EditAll, data?.deleted]);
 
   const selectableList = useMemo(() => {
     return (
@@ -163,28 +170,32 @@ export const DomainLabelV2 = <
   const label = useMemo(() => {
     if (props.showDomainHeading) {
       return (
-        <>
-          <div className="d-flex items-center m-b-xs">
-            <Typography.Text className="right-panel-label m-r-xss">
-              {t('label.domain')}
-            </Typography.Text>
-            {selectableList}
-          </div>
-
+        <ExpandableCard
+          cardProps={{
+            title: (
+              <div className="d-flex items-center gap-1">
+                <Typography.Text className="text-sm font-medium">
+                  {t('label.domain-plural')}
+                </Typography.Text>
+                {selectableList}
+              </div>
+            ),
+          }}
+          isExpandDisabled={!Array.isArray(domainLink)}>
           <div className="d-flex items-center gap-1 flex-wrap">
             {domainLink}
           </div>
-        </>
+        </ExpandableCard>
       );
     }
 
     return (
-      <div
+      <Card
         className="d-flex items-center gap-1 flex-wrap"
         data-testid="header-domain-container">
         {domainLink}
         {selectableList}
-      </div>
+      </Card>
     );
   }, [activeDomain, hasPermission, selectableList]);
 

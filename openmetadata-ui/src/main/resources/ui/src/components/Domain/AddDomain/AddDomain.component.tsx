@@ -12,13 +12,14 @@
  */
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { Fragment, useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ERROR_MESSAGE, ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../../../constants/Domain.constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -32,7 +33,7 @@ import './add-domain.less';
 
 const AddDomain = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { updateDomainLoading, updateDomains } = useDomainStore();
 
@@ -52,7 +53,7 @@ const AddDomain = () => {
   }, []);
 
   const goToDomain = (name = '') => {
-    history.push(getDomainPath(name));
+    navigate(getDomainPath(name));
   };
 
   const handleCancel = useCallback(() => {
@@ -132,11 +133,11 @@ const AddDomain = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel p-x-box"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
-          <div className="max-width-md w-9/10 domain-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
@@ -163,7 +164,7 @@ const AddDomain = () => {
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -171,4 +172,4 @@ const AddDomain = () => {
   );
 };
 
-export default AddDomain;
+export default withPageLayout(AddDomain);

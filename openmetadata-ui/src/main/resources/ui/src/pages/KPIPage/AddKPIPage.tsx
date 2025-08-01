@@ -14,7 +14,6 @@
 import {
   Button,
   Col,
-  DatePicker,
   Form,
   FormProps,
   Input,
@@ -27,15 +26,14 @@ import {
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
-import moment from 'moment';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import DatePicker from '../../components/common/DatePicker/DatePicker';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ADD_KPI_BREADCRUMB } from '../../constants/Breadcrumb.constants';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -44,11 +42,11 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
-import {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
-} from '../../utils/DataInsightUtils';
+import { getDisabledDates } from '../../utils/DataInsightUtils';
+import { getField } from '../../utils/formUtils';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -58,25 +56,9 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
 
-const breadcrumb = [
-  {
-    name: t('label.data-insight'),
-    url: getDataInsightPathWithFqn(),
-  },
-  {
-    name: t('label.kpi-list'),
-    url: ROUTES.KPI_LIST,
-  },
-  {
-    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
-    url: '',
-    activeTitle: true,
-  },
-];
-
 const AddKPIPage = () => {
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const history = useHistory();
   const [form] = useForm<KPIFormValues>();
 
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
@@ -94,32 +76,32 @@ const AddKPIPage = () => {
       });
 
       setKpiList(response.data);
-    } catch (err) {
+    } catch {
       setKpiList([]);
     }
   };
 
-  const handleCancel = () => history.goBack();
+  const handleCancel = () => navigate(-1);
 
-  const handleFormValuesChange = (
-    changedValues: Partial<KPIFormValues>,
-    allValues: KPIFormValues
+  const handleFormValuesChange: FormProps['onValuesChange'] = (
+    changedValues,
+    allValues
   ) => {
     if (changedValues.startDate) {
-      const startDate = moment(changedValues.startDate).startOf('day');
+      const startDate = changedValues.startDate.startOf('day');
       form.setFieldsValue({ startDate });
-      if (changedValues.startDate > allValues.endDate) {
+      if (startDate > allValues.endDate) {
         form.setFieldsValue({
-          endDate: '',
+          endDate: undefined,
         });
       }
     }
 
     if (changedValues.endDate) {
-      let endDate = moment(changedValues.endDate).endOf('day');
+      let endDate = changedValues.endDate.endOf('day');
       form.setFieldsValue({ endDate });
-      if (changedValues.endDate < allValues.startDate) {
-        endDate = moment(changedValues.endDate).startOf('day');
+      if (endDate < allValues.startDate) {
+        endDate = changedValues.endDate.startOf('day');
         form.setFieldsValue({
           startDate: endDate,
         });
@@ -150,13 +132,40 @@ const AddKPIPage = () => {
     setIsCreatingKPI(true);
     try {
       await postKPI(formData);
-      history.push(ROUTES.KPI_LIST);
+      navigate(ROUTES.KPI_LIST);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsCreatingKPI(false);
     }
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: true,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+          message: t('label.field-required', {
+            field: t('label.description-kpi'),
+          }),
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+      },
+    }),
+    []
+  );
 
   useEffect(() => {
     fetchKpiList();
@@ -167,11 +176,14 @@ const AddKPIPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-kpi-container">
-            <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
+          <div data-testid="add-kpi-container">
+            <TitleBreadcrumb
+              className="m-t-0 my-4"
+              titleLinks={ADD_KPI_BREADCRUMB}
+            />
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
@@ -346,25 +358,7 @@ const AddKPIPage = () => {
                 </Col>
               </Row>
 
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.description-kpi'),
-                    }),
-                  },
-                ]}
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  height="200px"
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
+              {getField(descriptionField)}
 
               <Space align="center" className="w-full justify-end">
                 <Button
@@ -379,7 +373,7 @@ const AddKPIPage = () => {
                   htmlType="submit"
                   loading={isCreatingKPI}
                   type="primary">
-                  {t('label.submit')}
+                  {t('label.create')}
                 </Button>
               </Space>
             </Form>
@@ -402,7 +396,7 @@ const AddKPIPage = () => {
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -410,4 +404,4 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default withPageLayout(AddKPIPage);

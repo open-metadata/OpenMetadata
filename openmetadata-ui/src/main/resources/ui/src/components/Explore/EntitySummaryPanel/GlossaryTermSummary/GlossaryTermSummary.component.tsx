@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
@@ -81,8 +81,10 @@ function GlossaryTermSummary({
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <>
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
+      <Space className="w-full" direction="vertical" size={20}>
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -97,7 +99,7 @@ function GlossaryTermSummary({
               </Space>
             ) : (
               <Typography.Text
-                className="text-grey-body"
+                className="no-data-chip-placeholder"
                 data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
               </Typography.Text>
@@ -105,9 +107,9 @@ function GlossaryTermSummary({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md" gutter={[0, 8]}>
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -128,7 +130,7 @@ function GlossaryTermSummary({
               </div>
             ) : (
               <Typography.Text
-                className="text-grey-body"
+                className="no-data-chip-placeholder"
                 data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
               </Typography.Text>
@@ -136,9 +138,9 @@ function GlossaryTermSummary({
           </Col>
         </Row>
 
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md" gutter={[0, 8]}>
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -156,7 +158,7 @@ function GlossaryTermSummary({
             />
           </Col>
         </Row>
-      </>
+      </Space>
     </SummaryPanelSkeleton>
   );
 }

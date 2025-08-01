@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -66,9 +66,15 @@ class TestSecretsManagerFactory(TestCase):
         )
 
     @patch.dict(os.environ, {"AZURE_KEY_VAULT_NAME": "test"})
+    @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
+    @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
     @patch("metadata.clients.aws_client.boto3")
-    def test_all_providers_has_implementation(self, mocked_boto3):
+    def test_all_providers_has_implementation(
+        self, mocked_boto3, mocked_k8s_client, mocked_k8s_config
+    ):
         mocked_boto3.s3_client.return_value = {}
+        # Mock Kubernetes client
+        mocked_k8s_client.CoreV1Api.return_value = None
         secret_manager_providers = [
             secret_manager_provider
             for secret_manager_provider in SecretsManagerProvider

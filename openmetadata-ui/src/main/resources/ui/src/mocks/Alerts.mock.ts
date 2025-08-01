@@ -314,3 +314,25 @@ export const MOCK_TYPED_EVENT_LIST_RESPONSE: PagingResponse<TypedEvent[]> = {
     offset: 0,
   },
 };
+
+export const mockDiagnosticData = {
+  latestOffset: 100,
+  currentOffset: 80,
+  startingOffset: 0,
+  successfulEventsCount: 75,
+  failedEventsCount: 5,
+  relevantUnprocessedEventsCount: 10,
+  totalUnprocessedEventsCount: 20,
+  hasProcessedAllEvents: true,
+};
+
+export const mockEmptyDiagnosticData = {
+  latestOffset: 0,
+  currentOffset: 0,
+  startingOffset: 0,
+  successfulEventsCount: 0,
+  failedEventsCount: 0,
+  relevantUnprocessedEventsCount: 0,
+  totalUnprocessedEventsCount: 0,
+  hasProcessedAllEvents: false,
+};

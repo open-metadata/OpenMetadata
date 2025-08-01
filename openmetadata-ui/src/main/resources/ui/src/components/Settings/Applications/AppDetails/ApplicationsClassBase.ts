@@ -12,7 +12,7 @@
  */
 
 import { FC } from 'react';
-import { App, AppType } from '../../../../generated/entity/applications/app';
+import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 
 class ApplicationsClassBase {
@@ -20,7 +20,21 @@ class ApplicationsClassBase {
     return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
   }
   public getJSONUISchema() {
-    return {};
+    return {
+      moduleConfiguration: {
+        dataAssets: {
+          serviceFilter: {
+            'ui:widget': 'hidden',
+          },
+        },
+      },
+      entityLink: {
+        'ui:widget': 'hidden',
+      },
+      type: {
+        'ui:widget': 'hidden',
+      },
+    };
   }
   public importAppLogo(appName: string) {
     return import(`../../../../assets/svg/${appName}.svg`);
@@ -36,12 +50,6 @@ class ApplicationsClassBase {
 
   public getFloatingApplicationEntityList(): string[] {
     return [];
-  }
-
-  public isFloatingButtonPresent(applications: App[]) {
-    return applications.some((app) =>
-      this.getFloatingApplicationEntityList().includes(app.name)
-    );
   }
 
   public importAppScreenshot(screenshotName: string) {

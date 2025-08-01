@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
+import { noop } from 'lodash';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
 
 export const ManageButtonItemLabel = ({
@@ -34,7 +34,7 @@ export const ManageButtonItemLabel = ({
         'opacity-50': disabled,
       })}
       data-testid={id}
-      onClick={onClick}>
+      onClick={disabled ? noop : onClick}>
       <Col className="self-center" data-testid={`${id}-icon`} span={3}>
         <Icon width="18px" />
       </Col>

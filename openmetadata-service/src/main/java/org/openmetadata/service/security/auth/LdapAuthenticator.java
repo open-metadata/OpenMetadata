@@ -1,9 +1,9 @@
 package org.openmetadata.service.security.auth;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.auth.TokenType.REFRESH_TOKEN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_EMAIL_PASSWORD;
@@ -32,6 +32,7 @@ import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
 import freemarker.template.TemplateException;
+import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
@@ -44,7 +45,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
@@ -59,6 +59,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
@@ -70,7 +71,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -84,7 +84,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private RoleRepository roleRepository;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private LoginAttemptCache loginAttemptCache;
   private LdapConfiguration ldapConfiguration;
   private LDAPConnectionPool ldapLookupConnectionPool;
   private boolean isSelfSignUpEnabled;
@@ -102,7 +101,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache();
     this.isSelfSignUpEnabled = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
@@ -145,17 +143,13 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     String email = loginRequest.getEmail();
     checkIfLoginBlocked(email);
     User omUser = lookUserInProvider(email, loginRequest.getPassword());
+    Entity.getUserRepository().updateUserLastLoginTime(omUser, System.currentTimeMillis());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
   /**
    * Check if the user exists in database by userName, if user exist, reassign roles for user according to it's ldap
    * group else, create a new user and assign roles according to it's ldap group
-   *
-   * @param userDn userDn from LDAP
-   * @param email Email of the User
-   * @return user info
-   * @author Eric Wen@2023-07-16 17:06:43
    */
   private User checkAndCreateUser(String userDn, String email, String userName) throws IOException {
     // Check if the user exists in OM Database
@@ -176,7 +170,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void checkIfLoginBlocked(String email) {
-    if (loginAttemptCache.isLoginBlocked(email)) {
+    if (LoginAttemptCache.getInstance().isLoginBlocked(email)) {
       throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
     }
   }
@@ -184,8 +178,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(email);
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(email);
+    LoginAttemptCache.getInstance().recordFailedLogin(email);
+    int failedLoginAttempt = LoginAttemptCache.getInstance().getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
           userName,
@@ -304,10 +298,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   /**
    * Getting user's roles according to the mapping between ldap groups and roles
-   *
-   * @param user user object
-   * @param reAssign flag to decide whether to reassign roles
-   * @author Eric Wen@2023-07-16 17:23:57
    */
   private void getRoleForLdap(String userDn, User user, Boolean reAssign)
       throws JsonProcessingException {

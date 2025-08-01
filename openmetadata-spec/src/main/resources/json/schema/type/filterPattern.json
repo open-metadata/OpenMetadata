@@ -8,23 +8,21 @@
     "filterPattern": {
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-      "description": "Regex to only fetch dashboards or charts that matches the pattern.",
+      "description": "Regex to only fetch entities that matches the pattern.",
       "properties": {
         "includes": {
           "description": "List of strings/regex patterns to match and include only database entities that match.",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "default": []
+          }
         },
         "excludes": {
           "description": "List of strings/regex patterns to match and exclude only database entities that match.",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "default": []
+          }
         }
       },
       "additionalProperties": false

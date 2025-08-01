@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -127,9 +127,11 @@ class DomodashboardSource(DashboardServiceSource):
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -228,9 +230,11 @@ class DomodashboardSource(DashboardServiceSource):
                     yield Either(
                         right=CreateChartRequest(
                             name=EntityName(str(chart_id)),
-                            description=Markdown(chart.description)
-                            if chart.description
-                            else None,
+                            description=(
+                                Markdown(chart.description)
+                                if chart.description
+                                else None
+                            ),
                             displayName=chart.name,
                             sourceUrl=SourceUrl(chart_url),
                             service=self.context.get().dashboard_service,
@@ -248,6 +252,8 @@ class DomodashboardSource(DashboardServiceSource):
                 )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict, db_service_name
+        self,
+        dashboard_details: dict,
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """No lineage implemented"""

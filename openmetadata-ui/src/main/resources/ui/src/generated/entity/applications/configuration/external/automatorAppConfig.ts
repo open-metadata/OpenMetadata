@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Configuration for the Automator External Application.
  */
 export interface AutomatorAppConfig {
@@ -39,11 +37,27 @@ export interface AutomatorAppConfig {
  *
  * Remove Tags Action Type
  *
- * Add an owner to the selected assets.
+ * Add domains to the selected assets.
+ *
+ * Remove domains from the selected assets.
+ *
+ * Add a Custom Property to the selected assets.
  *
  * Remove Owner Action Type
  *
+ * Add an owner to the selected assets.
+ *
+ * Add Test Cases to the selected assets.
+ *
+ * Remove Test Cases Action Type
+ *
  * Add owners to the selected assets.
+ *
+ * Remove Custom Properties Action Type
+ *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
  *
  * Propagate description, tags and glossary terms via lineage
  *
@@ -54,31 +68,45 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
+     *
+     * Add tests to the selected table columns
+     *
+     * Remove tests to the selected table columns
      */
     applyToChildren?: string[];
     /**
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
      *
-     * Update the domain even if it is defined in the asset. By default, we will only apply the
-     * domain to assets without domain.
+     * Update the domains even if they are defined in the asset. By default, we will only apply
+     * the domains to assets without domains.
      *
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
      *
+     * Update the Custom Property even if it is defined in the asset. By default, we will only
+     * apply the owners to assets without the given Custom Property informed.
+     *
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
      *
+     * Update the test even if it is defined in the asset. By default, we will only apply the
+     * test to assets without the existing test already existing.
+     *
      * Update the owners even if it is defined in the asset. By default, we will only apply the
      * owners to assets without owner.
+     *
+     * Update the Data Product even if the asset belongs to a different Domain. By default, we
+     * will only add the Data Product if the asset has no Domain, or it belongs to the same
+     * domain as the Data Product.
      *
      * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
      * in the asset. By default, descriptions are only updated if they are not already defined
@@ -90,27 +118,61 @@ export interface Action {
      *
      * Tags to remove
      */
-    tags?: TagLabel[];
+    tags?: TierElement[];
     /**
      * Application Type
      */
     type: ActionType;
     /**
-     * Domain to apply
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
      */
-    domain?: EntityReference;
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
+    /**
+     * Domains to apply
+     */
+    domains?: EntityReference[];
     /**
      * Description to apply
      */
     description?: string;
     /**
+     * Owners to apply
+     *
+     * Custom Properties keys to remove
+     */
+    customProperties?: any;
+    /**
      * tier to apply
      */
-    tier?: TagLabel;
+    tier?: TierElement;
+    /**
+     * Test Cases to apply
+     */
+    testCases?: TestCaseDefinitions[];
+    /**
+     * Remove all test cases
+     */
+    removeAll?: boolean;
+    /**
+     * Test Cases to remove
+     */
+    testCaseDefinitions?: string[];
     /**
      * Owners to apply
      */
     owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -119,6 +181,10 @@ export interface Action {
      * Propagate description through lineage
      */
     propagateDescription?: boolean;
+    /**
+     * Propagate domains from the parent through lineage
+     */
+    propagateDomains?: boolean;
     /**
      * Propagate glossary terms through lineage
      */
@@ -139,19 +205,25 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
+    /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
+    /**
+     * List of configurations to stop propagation based on conditions
+     */
+    propagationStopConfigs?: PropagationStopConfig[];
 }
 
 /**
- * Domain to apply
+ * Domains to apply
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners to apply
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -200,21 +272,74 @@ export interface EntityReference {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Configuration to stop lineage propagation based on conditions
+ */
+export interface PropagationStopConfig {
+    /**
+     * The metadata attribute to check for stopping propagation
+     */
+    metadataAttribute: MetadataAttribute;
+    /**
+     * List of attribute values that will stop propagation when any of them is matched
+     */
+    value: Array<TagLabel | string>;
+}
+
+/**
+ * The metadata attribute to check for stopping propagation
+ */
+export enum MetadataAttribute {
+    Description = "description",
+    Domain = "domain",
+    GlossaryTerms = "glossaryTerms",
+    Owner = "owner",
+    Tags = "tags",
+    Tier = "tier",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
+ *
+ * Domains to apply
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  */
 export interface TagLabel {
     /**
      * Description for the tag label.
+     *
+     * Optional description of entity.
      */
     description?: string;
     /**
      * Display Name that identifies this tag.
+     *
+     * Display Name that identifies this entity.
      */
     displayName?: string;
     /**
      * Link to the tag resource.
+     *
+     * Link to the entity resource.
      */
     href?: string;
     /**
@@ -224,22 +349,48 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType?: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
+     *
+     * Name of the entity instance.
      */
     name?: string;
     /**
      * Label is from Tags or Glossary.
      */
-    source: TagSource;
+    source?: TagSource;
     /**
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
+    state?:  State;
+    style?:  Style;
+    tagFQN?: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id?: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type?: string;
 }
 
 /**
@@ -249,9 +400,10 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -289,17 +441,102 @@ export interface Style {
 }
 
 /**
+ * This schema defines the type for labeling an entity with a Tag.
+ *
+ * tier to apply
+ */
+export interface TierElement {
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelTypeEnum;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Minimum set of requirements to get a Test Case request ready
+ */
+export interface TestCaseDefinitions {
+    /**
+     * Compute the passed and failed row count for the test case.
+     */
+    computePassedFailedRowCount?: boolean;
+    parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Tags to apply
+     */
+    tags?: TierElement[];
+    /**
+     * Fully qualified name of the test definition.
+     */
+    testDefinition?: string;
+    /**
+     * If the test definition supports it, use dynamic assertion to evaluate the test case.
+     */
+    useDynamicAssertion?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines the parameter values that can be passed for a Test Case.
+ */
+export interface TestCaseParameterValue {
+    /**
+     * name of the parameter. Must match the parameter names in testCaseParameterDefinition
+     */
+    name?: string;
+    /**
+     * value to be passed for the Parameters. These are input from Users. We capture this in
+     * string and convert during the runtime.
+     */
+    value?: string;
+    [property: string]: any;
+}
+
+/**
  * Application Type
  *
  * Add Tags action type.
  *
  * Remove Tags Action Type.
  *
- * Add Owner Action Type.
+ * Add Domain Action Type.
  *
  * Remove Domain Action Type
  *
  * Add Description Action Type.
+ *
+ * Add Custom Properties Action Type.
  *
  * Remove Description Action Type
  *
@@ -307,24 +544,42 @@ export interface Style {
  *
  * Remove Tier Action Type
  *
+ * Add Test Case Action Type.
+ *
+ * Remove Test Case Action Type
+ *
+ * Add Owner Action Type.
+ *
  * Remove Owner Action Type
+ *
+ * Remove Custom Properties Action Type.
+ *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
  *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
+    AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
+    RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
 
@@ -332,6 +587,11 @@ export enum ActionType {
  * Entities selected to run the automation.
  */
 export interface Resource {
+    /**
+     * Filter JSON tree to be used for rendering the filters in the UI. This comes from
+     * Immutable Tree type of react-awesome-query-builder.
+     */
+    filterJsonTree?: string;
     /**
      * Query filter to be passed to ES. E.g.,
      * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG

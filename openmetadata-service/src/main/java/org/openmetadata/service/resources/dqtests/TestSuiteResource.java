@@ -12,35 +12,34 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -56,10 +55,14 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -73,10 +76,13 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
-  public static final String EXECUTABLE_TEST_SUITE_DELETION_ERROR =
+  private final TestSuiteMapper mapper = new TestSuiteMapper();
+  public static final String BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
-  public static final String NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR =
-      "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/executable/<...>";
+  public static final String NON_BASIC_TEST_SUITE_DELETION_ERROR =
+      "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/basic/<...>";
+  public static final String BASIC_TEST_SUITE_WITHOUT_REF_ERROR =
+      "Cannot create a basic test suite without the BasicEntityReference field informed.";
 
   static final String FIELDS = "owners,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
@@ -125,13 +131,13 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
                   "Limit the number test definitions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description =
                   "Returns executable or logical test suites. If omitted, returns all test suites.",
-              schema = @Schema(type = "string", example = "executable"))
+              schema = @Schema(type = "string", example = "basic"))
           @QueryParam("testSuiteType")
           String testSuiteType,
       @Parameter(
@@ -161,20 +167,11 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     filter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     EntityUtil.Fields fields = getFields(fieldsParam);
 
-    ResourceContext<?> resourceContext = getResourceContext();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
     return super.listInternal(
-        uriInfo,
-        securityContext,
-        fields,
-        filter,
-        limitParam,
-        before,
-        after,
-        operationContext,
-        resourceContext);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -208,15 +205,15 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Limit the number test suite returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limit,
       @Parameter(
               description = "Returns list of test suite after this offset (default = 0)",
               schema = @Schema(type = "string"))
           @QueryParam("offset")
           @DefaultValue("0")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int offset,
       @Parameter(
               description =
@@ -277,7 +274,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String q)
+          String q,
+      @Parameter(
+              description = "raw elasticsearch query to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("queryString")
+          String queryString)
       throws IOException {
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
@@ -286,7 +288,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
-    searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("domains", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {
@@ -300,21 +302,10 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
     EntityUtil.Fields fields = getFields(fieldsParam);
 
-    ResourceContext<?> resourceContext = getResourceContext();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-
-    return super.listInternalFromSearch(
-        uriInfo,
-        securityContext,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        operationContext,
-        resourceContext);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    return repository.listFromSearchWithOffset(
+        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString);
   }
 
   @GET
@@ -472,10 +463,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               schema = @Schema(type = "String", format = "uuid"))
           @QueryParam("testSuiteId")
           UUID testSuiteId) {
-    ResourceContext<?> resourceContext = getResourceContext();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     // Set the deprecation header based on draft specification from IETF
     // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
     response.setHeader("Deprecation", "Monday, October 30, 2024");
@@ -524,10 +513,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("index")
           String index)
       throws IOException {
-    ResourceContext<?> resourceContext = getResourceContext();
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     if (nullOrEmpty(aggregationQuery) || nullOrEmpty(index)) {
       throw new IllegalArgumentException("aggregationQuery and index are required parameters");
     }
@@ -554,36 +541,44 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     create =
-        create.withExecutableEntityReference(
+        create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(false);
-    return create(uriInfo, securityContext, testSuite);
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    testSuite.setBasic(false);
+    List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
+    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
   @POST
-  @Path("/executable")
+  @Path("/basic")
   @Operation(
-      operationId = "createExecutableTestSuite",
-      summary = "Create an executable test suite",
-      description = "Create an executable test suite.",
+      operationId = "createBasicTestSuite",
+      summary = "Create a basic test suite",
+      description = "Create a basic test suite.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Executable test suite",
+            description = "Basic test suite",
             content =
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = TestSuite.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createExecutable(
+  public Response createBasic(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(true);
-    return create(uriInfo, securityContext, testSuite);
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    if (testSuite.getBasicEntityReference() == null) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
+    }
+    testSuite.setBasic(true);
+    List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
+    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
   @PATCH
@@ -612,7 +607,10 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "", ALL);
+    List<AuthRequest> authRequests =
+        getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PATCH, patch);
+    return patchInternal(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, id, patch);
   }
 
   @PUT
@@ -635,11 +633,17 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     create =
-        create.withExecutableEntityReference(
+        create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(false);
-    return createOrUpdate(uriInfo, securityContext, testSuite);
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    testSuite.setBasic(false);
+    List<AuthRequest> authRequests =
+        new java.util.ArrayList<>(
+            getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
+    authRequests.addAll(getAuthRequestsForPost(testSuite));
+    return createOrUpdate(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
   @PUT
@@ -661,10 +665,51 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdateExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(true);
-    return createOrUpdate(uriInfo, securityContext, testSuite);
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    testSuite.setBasic(true);
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    List<AuthRequest> authRequests =
+        new java.util.ArrayList<>(
+            getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
+    authRequests.addAll(getAuthRequestsForPost(testSuite));
+    return createOrUpdate(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
+  }
+
+  @PUT
+  @Path("/basic")
+  @Operation(
+      operationId = "createOrUpdateBasicTestSuite",
+      summary = "Create or Update Basic test suite",
+      description = "Create a Basic TestSuite if it does not exist or update an existing one.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated test definition ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response createOrUpdateBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTestSuite create) {
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    testSuite.setBasic(true);
+    List<AuthRequest> authRequests =
+        new java.util.ArrayList<>(
+            getAuthRequestsForUpdate(testSuite, ResourceContextInterface.Operation.PUT, null));
+    authRequests.addAll(getAuthRequestsForPost(testSuite));
+    return createOrUpdate(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
   }
 
   @DELETE
@@ -689,17 +734,50 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
+    repository.deleteFromSearch(response.entity(), hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteLogicalTestSuiteAsync",
+      summary = "Delete a logical test suite asynchronously",
+      description = "Delete a logical test suite by `id` asynchronously.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logical test suite for instance {id} is not found")
+      })
+  public Response deleteAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the logical entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    return repository.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
   }
 
   @DELETE
@@ -724,11 +802,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "FQN of the logical test suite", schema = @Schema(type = "String"))
           @PathParam("name")
           String name) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
@@ -751,6 +830,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response deleteExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(
               description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
@@ -766,8 +846,48 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/basic/name/{name}")
+  @Operation(
+      operationId = "deleteTestSuiteByName",
+      summary = "Delete a test suite",
+      description = "Delete a test suite by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test suite for instance {name} is not found")
+      })
+  public Response deleteBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the test suite", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
     return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
@@ -787,6 +907,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response deleteExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(
               description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
@@ -802,8 +923,48 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/basic/{id}")
+  @Operation(
+      operationId = "deleteTestSuite",
+      summary = "Delete a test suite",
+      description = "Delete a test suite by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test suite for instance {id} is not found")
+      })
+  public Response deleteBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
@@ -830,24 +991,64 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private TestSuite getTestSuite(CreateTestSuite create, String user) {
-    TestSuite testSuite =
-        repository
-            .copy(new TestSuite(), create, user)
-            .withDescription(create.getDescription())
-            .withDisplayName(create.getDisplayName())
-            .withName(create.getName());
-    if (create.getExecutableEntityReference() != null) {
-      Table table =
-          Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null);
-      EntityReference entityReference =
-          new EntityReference()
-              .withId(table.getId())
-              .withFullyQualifiedName(table.getFullyQualifiedName())
-              .withName(table.getName())
-              .withType(Entity.TABLE);
-      testSuite.setExecutableEntityReference(entityReference);
+  private List<AuthRequest> getAuthRequestsForListOps() {
+    ResourceContext<?> entityResourceContext = new ResourceContext<>(Entity.TABLE);
+    OperationContext entityOperationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    ResourceContext<?> testSuiteResourceContext = getResourceContext();
+    OperationContext testSuiteOperationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    ResourceContext<?> testCaseResourceContext = new ResourceContext<>(Entity.TEST_CASE);
+    OperationContext testCaseOperationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
+
+    return List.of(
+        new AuthRequest(entityOperationContext, entityResourceContext),
+        new AuthRequest(testSuiteOperationContext, testSuiteResourceContext),
+        new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+  }
+
+  private List<AuthRequest> getAuthRequestsForPost(TestSuite testSuite) {
+    ResourceContext<?> entityResourceContext;
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    if (entityReference != null) {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE, entityReference.getId(), null);
+    } else {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE);
     }
-    return testSuite;
+    OperationContext entityOperationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContext<?> testSuiteResourceContext = getResourceContext();
+    OperationContext testSuiteOperationContext =
+        new OperationContext(entityType, MetadataOperation.CREATE);
+
+    return List.of(
+        new AuthRequest(entityOperationContext, entityResourceContext),
+        new AuthRequest(testSuiteOperationContext, testSuiteResourceContext));
+  }
+
+  private List<AuthRequest> getAuthRequestsForUpdate(
+      TestSuite testSuite, ResourceContextInterface.Operation operation, JsonPatch patch) {
+    EntityReference entityReference = testSuite.getBasicEntityReference();
+    ResourceContext<?> entityResourceContext;
+    OperationContext testSuiteOperationContext;
+    if (entityReference != null) {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE, entityReference.getId(), null);
+    } else {
+      entityResourceContext = new ResourceContext<>(Entity.TABLE);
+    }
+    OperationContext entityOperationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    ResourceContext<?> testSuiteResourceContext =
+        getResourceContextByName(FullyQualifiedName.quoteName(testSuite.getName()), operation);
+    if (patch != null) {
+      testSuiteOperationContext = new OperationContext(entityType, patch);
+    } else {
+      testSuiteOperationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    }
+
+    return List.of(
+        new AuthRequest(entityOperationContext, entityResourceContext),
+        new AuthRequest(testSuiteOperationContext, testSuiteResourceContext));
   }
 }

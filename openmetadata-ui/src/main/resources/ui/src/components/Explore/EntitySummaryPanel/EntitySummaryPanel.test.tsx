@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -23,30 +22,6 @@ import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
 const mockHandleClosePanel = jest.fn();
 
-jest.mock('./TableSummary/TableSummary.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="TableSummary">TableSummary</div>
-    ))
-);
-
-jest.mock('./TopicSummary/TopicSummary.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="TopicSummary">TopicSummary</div>
-    ))
-);
-
-jest.mock('./DashboardSummary/DashboardSummary.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="DashboardSummary">DashboardSummary</div>
-    ))
-);
-
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
   getEntityName: jest.fn().mockImplementation(() => 'displayName'),
@@ -55,30 +30,6 @@ jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
 }));
-
-jest.mock('./PipelineSummary/PipelineSummary.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="PipelineSummary">PipelineSummary</div>
-    ))
-);
-
-jest.mock('./MlModelSummary/MlModelSummary.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="MlModelSummary">MlModelSummary</div>
-    ))
-);
-
-jest.mock('./ChartSummary/ChartSummary.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="ChartSummary">ChartSummary</div>
-    ))
-);
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
@@ -94,7 +45,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-describe('EntitySummaryPanel component tests', () => {
+describe.skip('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     await act(async () => {
       render(

@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.events;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -16,6 +16,8 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -29,8 +31,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
@@ -72,7 +73,6 @@ import org.openmetadata.service.resources.events.subscription.EventSubscriptionR
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -93,6 +93,7 @@ public class EventSubscriptionResourceTest
         EventSubscriptionResource.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsFieldsQueryParam = false;
+    supportsEtag = false;
   }
 
   @Test
@@ -441,7 +442,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -767,7 +768,7 @@ public class EventSubscriptionResourceTest
     CreateDomain createDomain2 = domainResourceTest.createRequest("Engineering_2");
     Domain domainSecond = domainResourceTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
     CreateTable createTable =
-        tableResourceTest.createRequest(test).withDomain(domainSecond.getName());
+        tableResourceTest.createRequest(test).withDomains(List.of(domainSecond.getName()));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     // changeEvent on the table with correct domain will result in alerts
@@ -776,7 +777,7 @@ public class EventSubscriptionResourceTest
     CreateTable createTable2 =
         tableResourceTest
             .createRequest(test.getClass().getName() + "_secondTable")
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
@@ -914,7 +915,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test)
             .withOwners(List.of(USER1.getEntityReference()))
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
@@ -928,7 +929,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER1.getEntityReference()))
-            .withDomain(domain2.getName());
+            .withDomains(List.of(domain2.getName()));
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
@@ -938,7 +939,7 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
 
     Table table = tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
 
@@ -1095,7 +1096,7 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest =
         topicResourceTest
             .createRequest(test)
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
@@ -1188,7 +1189,7 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test)
             .withOwners(List.of(USER1_REF))
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
@@ -1203,7 +1204,7 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test.getClass().getName() + "2")
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain2.getName())
+            .withDomains(List.of(domain2.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
@@ -1214,7 +1215,7 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test.getClass().getName() + "3")
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest3, ADMIN_AUTH_HEADERS);
 
@@ -1456,7 +1457,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1643,7 +1644,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -2215,6 +2216,9 @@ public class EventSubscriptionResourceTest
     WebhookCallbackResource.EventDetails details =
         webhookCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2227,6 +2231,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredSlack(endpoint));
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("SlackCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2239,6 +2246,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredMSTeams(endpoint));
     MSTeamsCallbackResource.EventDetails details = teamsCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("MSTeamsCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2288,5 +2298,17 @@ public class EventSubscriptionResourceTest
           expectedListCopy.get(i).getOldValue(),
           actualListCopy.get(i).getOldValue());
     }
+  }
+
+  public EventSubscription updateEventSubscriptionPollInterval(String fqn, int pollInterval)
+      throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription originalSub =
+        eventSubscriptionResourceTest.getEntityByName(fqn, ADMIN_AUTH_HEADERS);
+    EventSubscription updatedSub =
+        JsonUtils.deepCopy(originalSub, EventSubscription.class).withPollInterval(pollInterval);
+    return eventSubscriptionResourceTest.patchEntityUsingFqn(
+        fqn, JsonUtils.pojoToJson(originalSub), updatedSub, ADMIN_AUTH_HEADERS);
   }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Pipeline entity request
  */
 export interface CreatePipeline {
@@ -34,9 +32,9 @@ export interface CreatePipeline {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Pipeline belongs to.
+     * Fully qualified names of the domains the Pipeline belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -77,6 +75,10 @@ export interface CreatePipeline {
      * Start date of the workflow
      */
     startDate?: Date;
+    /**
+     * State of the pipeline.
+     */
+    state?: PipelineState;
     /**
      * Tags for this Pipeline.
      */
@@ -190,6 +192,16 @@ export interface EntityReference {
 }
 
 /**
+ * State of the pipeline.
+ *
+ * Enum defining the possible Pipeline State.
+ */
+export enum PipelineState {
+    Active = "Active",
+    Inactive = "Inactive",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
@@ -240,6 +252,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

@@ -12,9 +12,10 @@
  */
 import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
+import { ReactComponent as IconTagNew } from '../../../assets/svg/ic-tag-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/tag.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -41,6 +42,8 @@ const TagsV1 = ({
   tooltipOverride,
   tagType,
   size,
+  isEditTags,
+  newLook,
 }: TagsV1Props) => {
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
@@ -52,9 +55,20 @@ const TagsV1 = ({
     [tag.source]
   );
 
-  const startIcon = useMemo(
-    () =>
-      isGlossaryTag ? (
+  const startIcon = useMemo(() => {
+    if (newLook && !isGlossaryTag) {
+      return (
+        <IconTagNew
+          className="flex-shrink m-r-xss"
+          data-testid="tags-icon"
+          height={12}
+          name="tag-icon"
+          width={12}
+        />
+      );
+    }
+    if (isGlossaryTag) {
+      return (
         <IconTerm
           className="flex-shrink m-r-xss"
           data-testid="glossary-icon"
@@ -62,7 +76,9 @@ const TagsV1 = ({
           name="glossary-icon"
           width={12}
         />
-      ) : (
+      );
+    } else {
+      return (
         <IconTag
           className="flex-shrink m-r-xss"
           data-testid="tags-icon"
@@ -70,9 +86,9 @@ const TagsV1 = ({
           name="tag-icon"
           width={12}
         />
-      ),
-    [isGlossaryTag]
-  );
+      );
+    }
+  }, [isGlossaryTag]);
 
   const tagName = useMemo(
     () =>
@@ -120,6 +136,7 @@ const TagsV1 = ({
           ) : (
             startIcon
           )}
+
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"
@@ -144,7 +161,8 @@ const TagsV1 = ({
             ),
           },
           'tag-chip tag-chip-content',
-          size
+          size,
+          'cursor-pointer'
         )}
         data-testid="tags"
         style={
@@ -185,14 +203,19 @@ const TagsV1 = ({
   }
 
   return (
-    <Tooltip
-      className="cursor-pointer"
-      mouseEnterDelay={0.5}
-      placement="bottomLeft"
-      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-      trigger="hover">
-      {tagChip}
-    </Tooltip>
+    <>
+      {isEditTags ? (
+        tagChip
+      ) : (
+        <Tooltip
+          mouseEnterDelay={0.5}
+          placement="bottomLeft"
+          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
+          trigger="hover">
+          {tagChip}
+        </Tooltip>
+      )}
+    </>
   );
 };
 

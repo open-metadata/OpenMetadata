@@ -193,6 +193,7 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.service.governance.workflows.WorkflowEventConsumer"
 
 pipelineServiceClientConfiguration:
   className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
@@ -210,20 +211,13 @@ pipelineServiceClientConfiguration:
     truststorePath: ""
     truststorePassword: ""
 
-email:
-  enableSmtpServer : false
-  emailingEntity: "openmetadata"
-  supportUrl: "http://localhost:8585"
-  openMetadataUrl: "http://localhost:8585"
-  senderMail: "test@openmetadata.org"
-  serverEndpoint: "test.smtp.com"
-  serverPort: "584"
-  username: "test"
-  password: "test"
-  transportationStrategy: "SMTP_TLS"
-
 fernetConfiguration:
   fernetKey: ${FERNET_KEY:-ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ}
 
 dataQualityConfiguration:
   severityIncidentClassifier: "org.openmetadata.service.util.incidentSeverityClassifier.LogisticRegressionIncidentSeverityClassifier"
+
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5242880

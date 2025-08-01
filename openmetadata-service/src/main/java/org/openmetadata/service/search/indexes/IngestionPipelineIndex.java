@@ -1,18 +1,15 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.json.JSONObject;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineIndex implements SearchIndex {
   final IngestionPipeline ingestionPipeline;
@@ -20,16 +17,6 @@ public class IngestionPipelineIndex implements SearchIndex {
 
   public IngestionPipelineIndex(IngestionPipeline ingestionPipeline) {
     this.ingestionPipeline = ingestionPipeline;
-  }
-
-  @Override
-  public List<SearchSuggest> getSuggest() {
-    List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(
-        SearchSuggest.builder().input(ingestionPipeline.getFullyQualifiedName()).weight(5).build());
-    suggest.add(
-        SearchSuggest.builder().input(ingestionPipeline.getDisplayName()).weight(10).build());
-    return suggest;
   }
 
   @Override
@@ -43,15 +30,6 @@ public class IngestionPipelineIndex implements SearchIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    List<SearchSuggest> serviceSuggest = new ArrayList<>();
-    serviceSuggest.add(
-        SearchSuggest.builder()
-            .input(
-                (ingestionPipeline.getService() != null
-                    ? ingestionPipeline.getService().getName()
-                    : null))
-            .weight(5)
-            .build());
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.INGESTION_PIPELINE, ingestionPipeline));
     Map<String, Object> commonAttributes =
@@ -64,7 +42,7 @@ public class IngestionPipelineIndex implements SearchIndex {
             : ingestionPipeline.getDisplayName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("service_suggest", serviceSuggest);
+    doc.put("pipelineStatuses", ingestionPipeline.getPipelineStatuses());
     doc.put("service", getEntityWithDisplayName(ingestionPipeline.getService()));
     // Add only 'scheduleInterval' to avoid exposing sensitive info in 'airflowConfig'
     Optional.ofNullable(ingestionPipeline.getAirflowConfig())

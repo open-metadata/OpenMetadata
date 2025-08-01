@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
-import { cloneDeep, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { cloneDeep, isEmpty, toString } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -38,9 +37,10 @@ import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/Enti
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -54,27 +54,29 @@ import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
   getGlossaryTermsById,
-  patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { getEntityVoteStatus } from '../../../utils/EntityUtils';
+import {
+  getEntityImportPath,
+  getEntityVoteStatus,
+} from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
-  getGlossaryPathWithAction,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
-
+import './glossery-header.less';
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
@@ -82,7 +84,7 @@ const GlossaryHeader = ({
   updateVote,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
   const {
@@ -93,10 +95,10 @@ const GlossaryHeader = ({
     type: entityType,
   } = useGenericContext<GlossaryTerm>();
 
-  const { version } = useParams<{
+  const { version, id } = useRequiredParams<{
     version: string;
+    id: string;
   }>();
-  const { id } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -210,12 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    history.push(
-      getGlossaryPathWithAction(
-        selectedData.fullyQualifiedName ?? '',
-        EntityAction.IMPORT
-      )
-    );
+    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -233,7 +230,7 @@ const GlossaryHeader = ({
           );
     }
 
-    history.push(path);
+    navigate(path);
   };
 
   const handleDelete = async () => {
@@ -259,8 +256,8 @@ const GlossaryHeader = ({
   const onStyleSave = async (data: Style) => {
     const style: Style = {
       // if color/iconURL is empty or undefined send undefined
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: !isEmpty(data.color) ? data.color : undefined,
+      iconURL: !isEmpty(data.iconURL) ? data.iconURL : undefined,
     };
     const updatedDetails = {
       ...selectedData,
@@ -269,28 +266,6 @@ const GlossaryHeader = ({
 
     await onUpdate(updatedDetails);
     setIsStyleEditing(false);
-  };
-
-  const onChangeParentSave = async (parentFQN: string) => {
-    const newTermData = {
-      ...selectedData,
-      parent: {
-        fullyQualifiedName: parentFQN,
-      },
-    };
-    const jsonPatch = compare(selectedData, newTermData);
-
-    try {
-      const { fullyQualifiedName, name } = await patchGlossaryTerm(
-        selectedData.id,
-        jsonPatch
-      );
-      history.push(getGlossaryPath(fullyQualifiedName ?? name));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setOpenChangeParentHierarchyModal(false);
-    }
   };
 
   const addButtonContent = [
@@ -311,6 +286,7 @@ const GlossaryHeader = ({
       showModal({
         name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [selectedData]);
@@ -400,11 +376,6 @@ const GlossaryHeader = ({
               setShowActions(false);
             },
           },
-        ] as ItemType[])
-      : []),
-
-    ...(!isGlossary
-      ? ([
           {
             label: (
               <ManageButtonItemLabel
@@ -471,7 +442,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs"
+          className="m-l-xs h-10"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -482,7 +453,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
             <Dropdown
-              className="m-l-xs"
+              className="m-l-xs h-10"
               menu={{
                 items: addButtonContent,
               }}
@@ -544,7 +515,7 @@ const GlossaryHeader = ({
 
   useEffect(() => {
     const { fullyQualifiedName, name } = selectedData;
-    handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
+    handleBreadcrumb(fullyQualifiedName ?? name);
   }, [selectedData]);
 
   useEffect(() => {
@@ -555,8 +526,8 @@ const GlossaryHeader = ({
 
   return (
     <>
-      <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col className="d-flex" flex="auto">
+      <div className="glossary-header flex gap-4 justify-between no-wrap ">
+        <div className="flex w-min-0 flex-auto">
           <EntityHeader
             badge={statusBadge}
             breadcrumb={breadcrumb}
@@ -566,12 +537,12 @@ const GlossaryHeader = ({
             serviceName=""
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />
-        </Col>
-        <Col flex="360px">
-          <div className="d-flex gap-2 justify-end">
+        </div>
+        <div className="flex items-center">
+          <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -580,7 +551,7 @@ const GlossaryHeader = ({
                 />
               )}
 
-              {selectedData && selectedData.version && (
+              {selectedData?.version && (
                 <Tooltip
                   title={t(
                     `label.${
@@ -627,10 +598,14 @@ const GlossaryHeader = ({
                         : t('label.glossary-term'),
                     })}>
                     <Button
-                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      className="glossary-manage-dropdown-button"
                       data-testid="manage-button"
                       icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                        <IconDropdown
+                          className="vertical-align-inherit manage-dropdown-icon"
+                          height={16}
+                          width={16}
+                        />
                       }
                       onClick={() => setShowActions(true)}
                     />
@@ -639,8 +614,8 @@ const GlossaryHeader = ({
               )}
             </ButtonGroup>
           </div>
-        </Col>
-      </Row>
+        </div>
+      </div>
       {selectedData && (
         <EntityDeleteModal
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
@@ -685,7 +660,6 @@ const GlossaryHeader = ({
         <ChangeParentHierarchy
           selectedData={selectedData}
           onCancel={() => setOpenChangeParentHierarchyModal(false)}
-          onSubmit={onChangeParentSave}
         />
       )}
     </>

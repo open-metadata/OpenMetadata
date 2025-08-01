@@ -10,17 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabsProps } from 'antd';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
+import GlossaryTermReferences from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermReferences';
+import GlossaryTermSynonyms from '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermSynonyms';
+import RelatedTerms from '../../components/Glossary/GlossaryTerms/tabs/RelatedTerms';
+import WorkflowHistory from '../../components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../enums/entity.enum';
-import { Tab } from '../../generated/system/ui/uiCustomization';
+import { EntityType } from '../../enums/entity.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import { getEntityName } from '../EntityUtils';
+import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
+import { ENTITY_LINK_SEPARATOR } from '../EntityUtils';
 
 export const getWidgetFromKey = ({
   widgetConfig,
@@ -58,13 +63,9 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const widgetKey = customizeGlossaryTermPageClassBase.getKeyFromWidgetName(
+  const Widget = customizeGlossaryTermPageClassBase.getWidgetFromKey(
     widgetConfig.i
   );
-
-  const Widget = customizeGlossaryTermPageClassBase.getWidgetsFromKey<
-    typeof widgetKey
-  >(widgetConfig.i as GlossaryTermDetailPageWidgetKeys);
 
   return (
     <Widget
@@ -76,43 +77,47 @@ export const getWidgetFromKey = ({
   );
 };
 
-export const getGlossaryTermDetailTabs = (
-  defaultTabs: TabsProps['items'],
-  customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
-) => {
-  if (!customizedTabs) {
-    return defaultTabs;
+export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
+  if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY)
+  ) {
+    return <WorkflowHistory />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.RELATED_TERMS)
+  ) {
+    return <RelatedTerms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.SYNONYMS)
+  ) {
+    return <GlossaryTermSynonyms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
+  ) {
+    return <GlossaryTermReferences />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
+  ) {
+    return <OwnerLabelV2 />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+  ) {
+    return <ReviewerLabelV2 />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
+  ) {
+    return <DomainLabelV2 multiple showDomainHeading />;
   }
-  const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
-
-  const newTabs =
-    customizedTabs?.map((t) => {
-      const tabItemDetails = defaultTabs?.find((i) => i.key === t.id);
-
-      return (
-        tabItemDetails ?? {
-          label: getEntityName(t),
-          key: t.id,
-          children: overviewTab?.children,
-        }
-      );
-    }) ?? defaultTabs;
-
-  return newTabs;
-};
-
-export const getTabLabelMap = (tabs?: Tab[]): Record<EntityTabs, string> => {
-  const labelMap = {} as Record<EntityTabs, string>;
 
   return (
-    tabs?.reduce((acc: Record<EntityTabs, string>, item) => {
-      if (item.id && item.displayName) {
-        const tab = item.id as EntityTabs;
-        acc[tab] = item.displayName;
-      }
-
-      return acc;
-    }, labelMap) ?? labelMap
+    <CommonWidgets
+      entityType={EntityType.GLOSSARY_TERM}
+      widgetConfig={widgetConfig}
+    />
   );
+};
+
+export const createGlossaryTermEntityLink = (
+  fullyQualifiedName: string
+): string => {
+  return `<#E${ENTITY_LINK_SEPARATOR}glossaryTerm${ENTITY_LINK_SEPARATOR}${fullyQualifiedName}>`;
 };

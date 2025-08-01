@@ -12,11 +12,15 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { RestoreRequestType, ServiceData, ServicesUpdateRequest } from 'Models';
+import { RestoreRequestType, ServicesUpdateRequest } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { PAGE_SIZE } from '../constants/constants';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE,
+} from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
@@ -91,12 +95,40 @@ export const postService = async (
 ) => {
   const response = await APIClient.post<
     ServicesUpdateRequest,
-    AxiosResponse<ServiceData>
+    AxiosResponse<ServicesType>
   >(`/services/${serviceCat}`, options);
 
   return response.data;
 };
 
+export const addServiceFollower = async (id: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(
+    `/services/databaseServices/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeServiceFollower = async (id: string, userId: string) => {
+  const response = await APIClient.delete<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+    }>
+  >(
+    `/services/databaseServices/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
 export const patchService = async (
   serviceCat: string,
   id: string,
@@ -184,4 +216,20 @@ export const restoreService = async (serviceCategory: string, id: string) => {
   });
 
   return response.data;
+};
+
+export const exportDatabaseServiceDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `services/databaseServices/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
 };

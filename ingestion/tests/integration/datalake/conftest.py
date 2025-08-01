@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -209,8 +209,11 @@ def run_ingestion(metadata, ingestion_config):
 @pytest.fixture(scope="class")
 def run_test_suite_workflow(run_ingestion, ingestion_config):
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
-    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
-        "serviceConnection"
+    workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+        {
+            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceConnection": ingestion_config["source"]["serviceConnection"],
+        }
     ]
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
@@ -229,8 +232,11 @@ def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
         ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
-    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
-        "serviceConnection"
+    workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+        {
+            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceConnection": ingestion_config["source"]["serviceConnection"],
+        }
     ]
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
@@ -259,8 +265,11 @@ def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_confi
         ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
-    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
-        "serviceConnection"
+    workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+        {
+            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceConnection": ingestion_config["source"]["serviceConnection"],
+        }
     ]
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
@@ -292,6 +301,8 @@ def auto_classification_workflow_config(ingestion_config, workflow_config):
     ingestion_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "AutoClassification",
+            "storeSampleData": True,
+            "enableAutoClassification": False,
         }
     )
     ingestion_config["processor"] = {

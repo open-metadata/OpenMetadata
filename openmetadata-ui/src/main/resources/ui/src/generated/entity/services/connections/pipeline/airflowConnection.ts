@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Airflow Metadata Database Connection Config
  */
 export interface AirflowConnection {
@@ -29,7 +27,11 @@ export interface AirflowConnection {
     /**
      * Pipeline Service Number Of Status
      */
-    numberOfStatus?:             number;
+    numberOfStatus?: number;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -52,6 +54,10 @@ export interface AirflowConnection {
  */
 export interface MetadataDatabaseConnection {
     /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: Type;
@@ -61,6 +67,10 @@ export interface MetadataDatabaseConnection {
     authType?:            AuthConfigurationType;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -82,6 +92,10 @@ export interface MetadataDatabaseConnection {
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?: Scheme;
@@ -97,6 +111,10 @@ export interface MetadataDatabaseConnection {
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Username to connect to MySQL. This user should have privileges to read all the metadata
      * in Mysql.
      *
@@ -106,6 +124,10 @@ export interface MetadataDatabaseConnection {
      * Username to connect to SQLite. Blank for in-memory database.
      */
     username?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -226,6 +248,28 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

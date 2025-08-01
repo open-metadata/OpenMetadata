@@ -13,8 +13,8 @@
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
 import { Button } from 'antd';
-import React, { useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -25,11 +25,11 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
   const { isTourOpen, updateIsTourOpen, updateTourPage } = useTourProvider();
   const { theme } = useApplicationStore();
   const [showTourEndModal, setShowTourEndModal] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const handleModalSubmit = () => {
     updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
-    history.push('/');
+    navigate('/');
   };
 
   const handleRequestClose = () => {
@@ -67,7 +67,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           }
           maskColor="#302E36"
           playTour={isTourOpen}
-          stepWaitTimer={300}
+          stepWaitTimer={900}
           steps={steps}
           onRequestClose={handleRequestClose}
           onRequestSkip={handleModalSubmit}

@@ -17,19 +17,22 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
 
 import java.util.List;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class PersonaRepository extends EntityRepository<Persona> {
-  static final String PERSONA_UPDATE_FIELDS = "users";
-  static final String PERSONA_PATCH_FIELDS = "users";
+  static final String PERSONA_UPDATE_FIELDS = "users,default";
+  static final String PERSONA_PATCH_FIELDS = "users,default";
   static final String FIELD_USERS = "users";
 
   public PersonaRepository() {
@@ -57,6 +60,9 @@ public class PersonaRepository extends EntityRepository<Persona> {
   @Override
   public void prepare(Persona persona, boolean update) {
     validateUsers(persona.getUsers());
+    if (Boolean.TRUE.equals(persona.getDefault())) {
+      unsetExistingDefaultPersona(persona.getId().toString());
+    }
   }
 
   @Override
@@ -80,12 +86,26 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
-  public PersonaUpdater getUpdater(Persona original, Persona updated, Operation operation) {
+  public EntityRepository<Persona>.EntityUpdater getUpdater(
+      Persona original, Persona updated, Operation operation, ChangeSource changeSource) {
     return new PersonaUpdater(original, updated, operation);
   }
 
   private List<EntityReference> getUsers(Persona persona) {
     return findTo(persona.getId(), PERSONA, Relationship.APPLIED_TO, Entity.USER);
+  }
+
+  @Transaction
+  private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
+    daoCollection.personaDAO().unsetOtherDefaultPersonas(newDefaultPersonaId);
+  }
+
+  public Persona getSystemDefaultPersona() {
+    String json = daoCollection.personaDAO().findDefaultPersona();
+    if (json != null) {
+      return JsonUtils.readValue(json, Persona.class);
+    }
+    return null;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -97,6 +117,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateUsers(original, updated);
+      updateDefault(original, updated);
     }
 
     @Transaction
@@ -112,6 +133,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
           origUsers,
           updatedUsers,
           false);
+    }
+
+    private void updateDefault(Persona origPersona, Persona updatedPersona) {
+      Boolean origDefault = origPersona.getDefault();
+      Boolean updatedDefault = updatedPersona.getDefault();
+      if (!Objects.equals(origDefault, updatedDefault)) {
+        recordChange("default", origDefault, updatedDefault);
+      }
     }
   }
 }

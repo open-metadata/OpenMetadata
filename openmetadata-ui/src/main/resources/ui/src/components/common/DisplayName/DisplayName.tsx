@@ -12,8 +12,8 @@
  */
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import React, { useState } from 'react';
+import { isEmpty, isString } from 'lodash';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -30,6 +30,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   onEditDisplayName,
   link,
   allowRename,
+  hasEditPermission = false,
 }) => {
   const { t } = useTranslation();
 
@@ -46,30 +47,46 @@ const DisplayName: React.FC<DisplayNameProps> = ({
     }
   };
 
+  // function to render text with optional link
+  const renderNameWithOptionalLink = (displayText: ReactNode) => {
+    return link ? (
+      <Link className="break-word" data-testid={name} to={link}>
+        {displayText}
+      </Link>
+    ) : (
+      <span className="break-word" data-testid={name}>
+        {displayText}
+      </span>
+    );
+  };
+
+  const renderMainContent = useMemo(() => {
+    if (isEmpty(displayName)) {
+      return renderNameWithOptionalLink(name);
+    }
+
+    // Show both name and displayName when displayName exists
+    return (
+      <>
+        <Typography.Text className="break-word text-grey-600">
+          {name}
+        </Typography.Text>
+        <Typography.Text
+          className="d-block break-word"
+          data-testid="column-display-name">
+          {renderNameWithOptionalLink(displayName)}
+        </Typography.Text>
+      </>
+    );
+  }, [displayName, name, renderNameWithOptionalLink]);
+
   return (
-    <div className="flex-column hover-icon-group w-max-full">
-      <Typography.Text
-        className="m-b-0 d-block text-grey-muted break-word"
-        data-testid="column-name">
-        {isEmpty(displayName) ? (
-          <Link className="break-word" data-testid={name} to={link}>
-            {name}
-          </Link>
-        ) : (
-          <>
-            {name}
-            <Typography.Text
-              className="m-b-0 d-block break-word"
-              data-testid="column-display-name">
-              <Link className="break-word" data-testid={name} to={link}>
-                {displayName}
-              </Link>
-            </Typography.Text>
-          </>
-        )}
+    <div className="d-inline-flex flex-column hover-icon-group w-max-full vertical-align-inherit">
+      <Typography.Text className="m-b-0 d-block" data-testid="column-name">
+        {renderMainContent}
       </Typography.Text>
 
-      {allowRename ? (
+      {hasEditPermission ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
             ghost
@@ -85,8 +102,8 @@ const DisplayName: React.FC<DisplayNameProps> = ({
         <EntityNameModal
           allowRename={allowRename}
           entity={{
-            name: name ?? '',
-            displayName,
+            name: isString(name) ? name : '',
+            displayName: isString(displayName) ? displayName : undefined,
           }}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),

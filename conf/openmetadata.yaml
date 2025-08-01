@@ -14,17 +14,30 @@ clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
+assets:
+  resourcePath: /assets/
+  uriPath: ${BASE_PATH:-/}
+
+basePath: ${BASE_PATH:-/}
 
 server:
-  rootPath: '/api/*'
+  applicationContextPath: ${BASE_PATH:-/}
+  rootPath: ${BASE_PATH:-/}api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
+      maxRequestHeaderSize: ${MAX_REQUEST_HEADER_SIZE:-8KiB}
   adminConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
+  gzip:
+    syncFlush: true
+
+  maxThreads: ${SERVER_MAX_THREADS:-50}
+  minThreads: ${SERVER_MIN_THREADS:-10}
+  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -156,6 +169,11 @@ database:
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5242880
+
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
@@ -168,6 +186,7 @@ authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+  allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
   useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
@@ -180,6 +199,7 @@ authenticationConfiguration:
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
+  tokenValidationAlgorithm: ${AUTHENTICATION_TOKEN_VALIDATION_ALGORITHM:-"RS256"}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
@@ -203,6 +223,9 @@ authenticationConfiguration:
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
+    maxAge: ${OIDC_MAX_AGE:-"0"}
+    prompt: ${OIDC_PROMPT_TYPE:-"consent"}
+    sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} #7 days
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -286,15 +309,26 @@ elasticsearch:
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
-  payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
+  payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
+  naturalLanguageSearch:
+    enabled: false
+    providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
+    bedrock:
+      region: ${AWS_BEDROCK_REGION:-""}
+      modelId: ${AWS_BEDROCK_MODEL_ID:-""}
+      accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
+      secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+      useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
+
 
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
   pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/api/v1/tables/*", "/api/v1/health-check"]}
   latency: ${EVENT_MONITOR_LATENCY:-[0.99, 0.90]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
+  servicesHealthCheckInterval: ${EVENT_MONITOR_SERVICES_HEALTH_CHECK_INTERVAL:-300}
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -340,7 +374,7 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp", "kubernetes"
   prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
   tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
@@ -356,6 +390,10 @@ secretsManagerConfiguration:
     vaultName: ${OM_SM_VAULT_NAME:-""}
     ## For GCP
     projectId: ${OM_SM_PROJECT_ID:-""}
+    ## For Kubernetes
+    namespace: ${OM_SM_NAMESPACE:-"default"}
+    kubeconfigPath: ${OM_SM_KUBECONFIG_PATH:-""}
+    inCluster: ${OM_SM_IN_CLUSTER:-"false"}
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -368,19 +406,6 @@ health:
         downtimeInterval: 10s
         failureAttempts: 2
         successAttempts: 1
-
-email:
-  emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
-  supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
-  enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
-  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
-  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
-  serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
-  serverPort: ${SMTP_SERVER_PORT:-""}
-  username: ${SMTP_SERVER_USERNAME:-""}
-  password: ${SMTP_SERVER_PWD:-""}
-  transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
-  templates: ${TEMPLATES:-"openmetadata"}
 
 limits:
   enable: ${LIMITS_ENABLED:-false}
@@ -416,4 +441,10 @@ web:
     option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
   cache-control: ${WEB_CONF_CACHE_CONTROL:-""}
   pragma: ${WEB_CONF_PRAGMA:-""}
+
+operationalConfig:
+  enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
+  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
+    
+    
   

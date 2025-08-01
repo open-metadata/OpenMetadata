@@ -13,10 +13,13 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
+import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../constants/GlobalSettings.constants';
 import {
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
@@ -53,7 +56,9 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
+import { getSettingPath } from './RouterUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getFormattedGuideText = (
@@ -193,7 +198,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural')}:</label>
+          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -207,7 +212,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -221,7 +226,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -324,33 +329,29 @@ export const getDeleteEntityMessage = (
 };
 
 export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
-  if (type === 'messagingServices') {
-    return GlobalSettingOptions.MESSAGING;
+  switch (type) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return GlobalSettingOptions.MESSAGING;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return GlobalSettingOptions.DASHBOARDS;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return GlobalSettingOptions.PIPELINES;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return GlobalSettingOptions.MLMODELS;
+    case ServiceCategory.METADATA_SERVICES:
+      return GlobalSettingOptions.METADATA;
+    case ServiceCategory.STORAGE_SERVICES:
+      return GlobalSettingOptions.STORAGES;
+    case ServiceCategory.SEARCH_SERVICES:
+      return GlobalSettingOptions.SEARCH;
+    case ServiceCategory.API_SERVICES:
+      return GlobalSettingOptions.APIS;
+    case ServiceCategory.SECURITY_SERVICES:
+      return GlobalSettingOptions.SECURITY;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return GlobalSettingOptions.DATABASES;
   }
-  if (type === 'dashboardServices') {
-    return GlobalSettingOptions.DASHBOARDS;
-  }
-  if (type === 'pipelineServices') {
-    return GlobalSettingOptions.PIPELINES;
-  }
-  if (type === 'mlmodelServices') {
-    return GlobalSettingOptions.MLMODELS;
-  }
-  if (type === 'metadataServices') {
-    return GlobalSettingOptions.METADATA;
-  }
-  if (type === 'storageServices') {
-    return GlobalSettingOptions.STORAGES;
-  }
-  if (type === 'searchServices') {
-    return GlobalSettingOptions.SEARCH;
-  }
-
-  if (type === ServiceCategory.API_SERVICES) {
-    return GlobalSettingOptions.APIS;
-  }
-
-  return GlobalSettingOptions.DATABASES;
 };
 
 export const getResourceEntityFromServiceCategory = (
@@ -384,6 +385,10 @@ export const getResourceEntityFromServiceCategory = (
     case 'storageServices':
     case ServiceCategory.STORAGE_SERVICES:
       return ResourceEntity.STORAGE_SERVICE;
+
+    case 'searchIndex':
+    case ServiceCategory.SEARCH_SERVICES:
+      return ResourceEntity.SEARCH_SERVICE;
 
     case ServiceCategory.API_SERVICES:
       return ResourceEntity.API_SERVICE;
@@ -441,6 +446,8 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.SEARCH_SERVICES;
     case EntityType.API_SERVICE:
       return ServiceCategory.API_SERVICES;
+    case EntityType.SECURITY_SERVICE:
+      return ServiceCategory.SECURITY_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;
@@ -467,6 +474,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.SEARCH_SERVICE;
     case ServiceCategory.API_SERVICES:
       return EntityType.API_SERVICE;
+    case ServiceCategory.SECURITY_SERVICES:
+      return EntityType.SECURITY_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;
@@ -529,3 +538,50 @@ export const getServiceNameQueryFilter = (serviceName: string) => ({
     },
   },
 });
+
+/**
+ * Gets the active field name for application documentation by converting the path format
+ * from "root/field1/field2" to "field1.field2"
+ * @param activeField Optional string containing the active field path
+ * @returns The field name in dot notation, or undefined if no active field
+ */
+export const getActiveFieldNameForAppDocs = (activeField?: string) => {
+  if (!activeField) {
+    return undefined;
+  }
+
+  // Split by '/', remove 'root', then filter out array indices and join with '.'
+  return activeField
+    .split('/')
+    .slice(1)
+    .filter((segment) => !/^\d+$/.test(segment))
+    .join('.');
+};
+
+export const getReadableCountString = (count: number, maxDigits = 2) => {
+  return new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: maxDigits,
+  }).format(count);
+};
+
+export const getAddServiceEntityBreadcrumb = (
+  serviceCategory: ServiceCategory
+) => {
+  return [
+    {
+      name: startCase(serviceCategory),
+      url: getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+      ),
+    },
+    {
+      name: t('label.add-new-entity', {
+        entity: t('label.service'),
+      }),
+      url: '',
+      activeTitle: true,
+    },
+  ];
+};

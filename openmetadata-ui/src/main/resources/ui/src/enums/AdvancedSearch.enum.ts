@@ -42,10 +42,11 @@ export enum EntityFields {
   TABLE_TYPE = 'tableType',
   COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
   DISPLAY_NAME_KEYWORD = 'displayName.keyword',
+  DISPLAY_NAME_ACTUAL_CASE = 'displayName.actualCase',
   NAME_KEYWORD = 'name.keyword',
   GLOSSARY = 'glossary.name.keyword',
   CLASSIFICATION = 'classification.name.keyword',
-  DOMAIN = 'domain.displayName.keyword',
+  DOMAINS = 'domains.displayName.keyword',
   DATA_MODEL = 'dataModels.displayName.keyword',
   CONTAINER_COLUMN = 'dataModel.columns.name.keyword',
   PROJECT = 'project.keyword',
@@ -58,24 +59,38 @@ export enum EntityFields {
   CERTIFICATION = 'certification.tagLabel.tagFQN',
   SERVICE = 'service.displayName.keyword',
   DATABASE = 'database.displayName.keyword',
+  DATABASE_NAME = 'database.name.keyword',
   DATABASE_SCHEMA = 'databaseSchema.displayName.keyword',
   DATABASE_DISPLAY_NAME = 'database.displayName',
   DATABASE_SCHEMA_DISPLAY_NAME = 'databaseSchema.displayName',
+  DATABASE_SCHEMA_NAME = 'databaseSchema.name.keyword',
   COLUMN = 'columns.name.keyword',
+  API_COLLECTION = 'apiCollection.displayName.keyword',
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
   GLOSSARY_TERM_STATUS = 'status',
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
+  SERVICE_NAME = 'service.name.keyword',
+  SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
+  TAGS_LABEL_TYPE = 'tags.labelType',
 }
+
+export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
+  [EntityFields.SERVICE_NAME]: ['service.name'],
+  [EntityFields.DATABASE_SCHEMA_NAME]: ['databaseSchema.name'],
+  [EntityFields.DATABASE_NAME]: ['database.name'],
+  [EntityFields.COLUMN]: ['columns.name'],
+  [EntityFields.NAME_KEYWORD]: ['name'],
+};
 
 // This enum contains list of fields that are there in the object of the entity
 // For example, in Glossary object, there are fields like name, description, parent, etc.
 export enum EntityReferenceFields {
-  REVIEWERS = 'reviewers.fullyQualifiedName',
+  REVIEWERS = 'reviewers',
   OWNERS = 'owners.fullyQualifiedName',
-  DATABASE = 'database.fullyQualifiedName',
-  DATABASE_SCHEMA = 'databaseSchema.fullyQualifiedName',
+  DATABASE = 'database.name',
+  DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
@@ -83,4 +98,7 @@ export enum EntityReferenceFields {
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
+  SERVICE = 'service.name',
+  UPDATED_BY = 'updatedBy',
+  CHANGE_DESCRIPTION = 'changeDescription',
 }

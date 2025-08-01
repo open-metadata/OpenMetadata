@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Page entity. A Page is a landing page, schema page to customize
  * in OpenMetadata.
  */
 export interface Page {
     /**
-     * Domain this page belongs to.
+     * Domains this page belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity Type.
      */
@@ -45,16 +43,14 @@ export interface Page {
 }
 
 /**
- * Domain this page belongs to.
+ * Domains this page belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * KnowledgePanels that are part of this Page.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -115,6 +111,8 @@ export enum EntityType {
  * This schema defines the type used for describing different types of pages.
  */
 export enum PageType {
+    APICollection = "APICollection",
+    APIEndpoint = "APIEndpoint",
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",
@@ -124,6 +122,8 @@ export enum PageType {
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
+    Metric = "Metric",
+    MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
     StoredProcedure = "StoredProcedure",

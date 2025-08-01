@@ -16,7 +16,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +35,9 @@ import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -47,6 +50,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateTagLabel;
 
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -58,7 +62,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -91,6 +94,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -98,6 +102,7 @@ import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -105,7 +110,6 @@ import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -492,8 +496,6 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     copyGlossaryTerm(t11, originalT1);
 
     GlossaryTerm t2 = createGlossaryTerm(glossaryTermResourceTest, glossary, null, "parentTerm2");
-    LOG.info(" t11 == {}", t11.getTags());
-    LOG.info(" originalT1 == {}", originalT1.getTags());
     glossaryTermResourceTest.moveGlossaryTerm(
         glossary.getEntityReference(), t2.getEntityReference(), t11);
 
@@ -756,7 +758,83 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
+  void test_importCsvWithFullTermUpdate() throws IOException {
+    // Create a glossary
+    String glossaryName = "fullUpdateTest";
+    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+
+    // Create custom property for testing
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+    CustomProperty stringCp =
+        new CustomProperty()
+            .withName("glossaryTermStringCp")
+            .withDescription("string type custom property")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addAndCheckCustomProperty(
+        entityType.getId(), stringCp, OK, ADMIN_AUTH_HEADERS);
+
+    // First create terms with initial hierarchy and values
+    String initialCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                ",term1,Term 1,Description 1,syn1;syn2,,,PII.None,,,Draft,",
+                ",term2,Term 2,Description 2,,,,,,,Approved,",
+                "fullUpdateTest.term1,term3,Term 3,Description 3,,,,,,,Approved,"),
+            null);
+
+    // Import initial terms
+    CsvImportResult result = importCsv(glossaryName, initialCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0);
+
+    // Now update with changes - move term3 to term2 and update other fields
+    String updateCsv =
+        createCsv(
+            GlossaryCsv.HEADERS,
+            listOf(
+                "fullUpdateTest.term2,term3,Term 3 Updated,Description 3 Updated,newSyn1;newSyn2,,ref1;http://ref1.com,PII.Sensitive,,,Approved,glossaryTermStringCp:test value"),
+            null);
+
+    // Import updates
+    result = importCsv(glossaryName, updateCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    // Verify all fields were updated
+    GlossaryTerm term3 =
+        new GlossaryTermResourceTest()
+            .getEntityByName(
+                "fullUpdateTest.term2.term3",
+                "owners,reviewers,parent,glossary,tags,extension",
+                ADMIN_AUTH_HEADERS);
+    assertEquals("Term 3 Updated", term3.getDisplayName());
+    assertEquals("Description 3 Updated", term3.getDescription());
+    assertEquals(List.of("newSyn1", "newSyn2"), term3.getSynonyms());
+    assertEquals("term2", term3.getParent().getName());
+    assertEquals(1, term3.getReferences().size());
+    assertEquals("ref1", term3.getReferences().getFirst().getName());
+    assertEquals("http://ref1.com", term3.getReferences().getFirst().getEndpoint().toString());
+    assertEquals(1, term3.getTags().size());
+    assertEquals("PII.Sensitive", term3.getTags().getFirst().getTagFQN());
+    assertEquals(GlossaryTerm.Status.APPROVED, term3.getStatus());
+    // Fix: Safely extract the custom property from the extension map
+    Object extension = term3.getExtension();
+    String customPropValue = null;
+    if (extension instanceof Map) {
+      Object val = ((Map<?, ?>) extension).get("glossaryTermStringCp");
+      if (val != null) customPropValue = val.toString();
+    }
+    assertEquals("test value", customPropValue);
+  }
+
+  @Test
   void testGlossaryImportExport() throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    // Update poll Interval to allow Status change from workflow to take some time
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 120);
     Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
     String user1 = USER1.getName();
     String user2 = USER2.getName();
@@ -870,7 +948,12 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                   .withConfig(
                       Map.of(
                           "values",
-                          List.of("single1", "single2", "single3", "single4", "\"single5\""),
+                          List.of(
+                              "\"single val with quotes\"",
+                              "single1",
+                              "single2",
+                              "single3",
+                              "single4"),
                           "multiSelect",
                           false))),
       new CustomProperty()
@@ -903,56 +986,42 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     }
     // CSV Header "parent", "name", "displayName", "description", "synonyms", "relatedTerms",
     // "references",
-    // "tags", "reviewers", "owners", "status", "extension"
+    // "tags", "reviewers", "owner", "glossaryStatus", "extension"
     // Create two records
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,g1.g1t1;g2.g2t1,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
                 reviewerRef.get(0), user1, "Approved", team11, user1, user2),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                ",g2,dsp2,dsc3,h1;h3;h3,g1.g1t1;g2.g2t1,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
-                reviewerRef.get(0), team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,g1.g1t1;g2.g2t1,,,user:%s,team:%s,%s,",
+                reviewerRef.getFirst(), team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
-                reviewerRef.get(0), user1, "Approved", team11, user1, user2),
+                ",g1,dsp1,new-dsc1,h1;h2;h3,g1.g1t1;g2.g2t1;importExportTest.g2,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
+                reviewerRef.getFirst(), user1, "Approved", team11, user1, user2),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,g1.g1t1;g2.g2t1;importExportTest.g1,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val1|val2|val3|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, user2, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
-                reviewerRef.get(0), team11, "Draft"));
+                reviewerRef.getFirst(), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =
         listOf(
-            ",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"");
-    Awaitility.await()
-        .atMost(Duration.ofMillis(120 * 1000L))
-        .pollInterval(Duration.ofMillis(2000L))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              try {
-                testImportExport(
-                    glossary.getName(),
-                    GlossaryCsv.HEADERS,
-                    createRecords,
-                    updateRecords,
-                    newRecords);
-                return true;
-              } catch (Exception e) {
-                // Return false to retry
-                return false;
-              }
-            });
+            ",g3,dsp0,dsc0,h1;h2;h3,g1.g1t1;g2.g2t1,term0;http://term0,PII.Sensitive,,,Approved,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"");
+    testImportExport(
+        glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
+
+    // Reset poll Interval to allow Status change from workflow
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
   }
 
   @Test
@@ -1220,6 +1289,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             () ->
                 WorkflowHandler.getInstance()
                     .isActivityWithVariableExecuting(
-                        "ApproveGlossaryTerm.approvalTask", "relatedEntity", entityLink));
+                        "ApproveGlossaryTerm.approvalTask",
+                        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+                        entityLink));
   }
 }

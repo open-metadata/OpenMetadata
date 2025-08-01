@@ -13,53 +13,6 @@
 
 @import url('../variables.less');
 
-.glossary-card {
-  .ant-card-body {
-    padding: 8px 14px;
-  }
-
-  .ant-card-head {
-    .ant-card-head-wrapper {
-      padding: 0;
-      .ant-card-head-title {
-        padding: 10px 0;
-      }
-    }
-  }
-}
-
-.m-r-1 {
-  margin: 1rem 0;
-}
-.p-lr-3 {
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-}
-.left-panel-card {
-  .header {
-    padding: 0.5rem 0.75rem;
-  }
-  .ant-card-body {
-    padding: 0px;
-  }
-  .ant-card-head {
-    border-bottom: none;
-    margin-bottom: 0.5rem;
-
-    .ant-card-head-title {
-      font-weight: 600;
-      font-size: 1rem;
-      line-height: 1.5rem;
-    }
-  }
-}
-
-.right-card {
-  .ant-card-head-wrapper {
-    padding: 0.37rem 0.13rem;
-  }
-}
-
 .reference-edit-form {
   .ant-form-item {
     margin-bottom: 8px;
@@ -72,11 +25,13 @@
 
 .term-reference-tag {
   height: 24px;
+
   .ant-tag-close-icon {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     color: @primary-color;
   }
+
   span {
     white-space: nowrap;
     max-width: 150px;
@@ -85,29 +40,9 @@
   }
 }
 
-.glossary-tabs {
-  .glossary-overview-tab,
-  .glossary-term-table-container,
-  .assets-tab-container {
-    height: @glossary-term-page-height;
-    overflow-y: scroll;
-  }
-  .description-heading {
-    font-size: 16px;
-    font-weight: 500;
-  }
-  .activity-feed-tab {
-    .center-container,
-    .right-container {
-      overflow-x: hidden;
-      overflow-y: auto;
-      height: @glossary-page-tab-height;
-    }
-  }
-}
-
 .tag-button-container {
   height: 24px;
+
   span {
     white-space: nowrap;
     max-width: 150px;
@@ -125,6 +60,7 @@
     margin-top: 8px;
     margin-right: 8px;
   }
+
   .tags-component-container {
     margin-top: 8px;
   }
@@ -149,6 +85,7 @@
   .ant-form-item {
     margin-bottom: 12px;
   }
+
   .form-item-horizontal {
     margin-bottom: 8px;
   }
@@ -165,26 +102,6 @@
   font-size: 14px;
   font-weight: 500;
   color: @text-grey-muted;
-}
-
-.glossary-page-layout {
-  .page-layout-rightpanel {
-    padding-right: 0;
-    background-color: @white;
-    border: 1px solid @border-color;
-    border-radius: 0;
-    padding-left: 0;
-    border-top: 0;
-
-    .summary-panel-container {
-      height: @page-height;
-    }
-  }
-}
-
-.glossary-content-container {
-  height: @glossary-page-height;
-  overflow-y: auto;
 }
 
 .glossary-richtext-editor,

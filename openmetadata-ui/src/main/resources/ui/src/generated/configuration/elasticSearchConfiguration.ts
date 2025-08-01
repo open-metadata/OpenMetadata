@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Elastic Search Configuration.
  */
 export interface ElasticSearchConfiguration {
@@ -36,6 +34,10 @@ export interface ElasticSearchConfiguration {
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Configuration for natural language search capabilities
+     */
+    naturalLanguageSearch?: NaturalLanguageSearch;
     /**
      * Elastic Search Password for Login
      */
@@ -77,6 +79,50 @@ export interface ElasticSearchConfiguration {
      * Elastic Search Username for Login
      */
     username?: string;
+}
+
+/**
+ * Configuration for natural language search capabilities
+ */
+export interface NaturalLanguageSearch {
+    /**
+     * AWS Bedrock configuration for natural language processing
+     */
+    bedrock?: Bedrock;
+    /**
+     * Enable or disable natural language search
+     */
+    enabled?: boolean;
+    /**
+     * Fully qualified class name of the NLQService implementation to use
+     */
+    providerClass?: string;
+}
+
+/**
+ * AWS Bedrock configuration for natural language processing
+ */
+export interface Bedrock {
+    /**
+     * AWS access key for Bedrock service authentication
+     */
+    accessKey?: string;
+    /**
+     * Bedrock model identifier to use for query transformation
+     */
+    modelId?: string;
+    /**
+     * AWS Region for Bedrock service
+     */
+    region?: string;
+    /**
+     * AWS secret key for Bedrock service authentication
+     */
+    secretKey?: string;
+    /**
+     * Set to true to use IAM role based authentication instead of access/secret keys.
+     */
+    useIamRole?: boolean;
 }
 
 /**

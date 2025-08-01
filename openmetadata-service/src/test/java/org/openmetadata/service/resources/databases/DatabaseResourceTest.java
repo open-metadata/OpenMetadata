@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.resources.databases;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsv.entityNotFound;
@@ -34,33 +36,40 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DatabaseRepository.DatabaseCsv;
-import org.openmetadata.service.jdbi3.DatabaseSchemaRepository.DatabaseSchemaCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDatabase> {
   public DatabaseResourceTest() {
     super(
@@ -83,7 +92,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   void post_databaseWithoutRequiredService_4xx(TestInfo test) {
     CreateDatabase create = createRequest(test).withService(null);
     assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "query param service must not be null");
   }
 
   @Test
@@ -116,13 +127,14 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest("s1").withDatabase(database.getFullyQualifiedName());
-    schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    DatabaseSchema dbSchema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Update databaseSchema with invalid tags field
-    String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,";
-    String csv = createCsv(DatabaseCsv.HEADERS, listOf(record), null);
+    String resultsHeader =
+        recordToString(EntityCsv.getResultHeaders(getDatabaseCsvHeaders(database, false)));
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
+    String csv = createCsv(getDatabaseCsvHeaders(database, false), listOf(record), null);
     CsvImportResult result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
@@ -132,8 +144,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertRows(result, expectedRows);
 
     //  invalid tag it will give error.
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,";
-    csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,,";
+    csv = createCsv(getDatabaseSchemaCsvHeaders(dbSchema, false), listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
@@ -144,8 +156,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // databaseSchema will be created if it does not exist
     String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), "non-existing");
-    record = "non-existing,dsp1,dsc1,,,,,,,,";
-    csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
+    record = "non-existing,dsp1,dsc1,,,,,,,,,";
+    csv = createCsv(getDatabaseSchemaCsvHeaders(dbSchema, false), listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
     expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
@@ -163,17 +175,171 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         schemaTest.createRequest("s1").withDatabase(database.getFullyQualifiedName());
     schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, retentionPeriod,
+    // Create certification
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag certificationTag =
+        tagResourceTest.createEntity(
+            tagResourceTest.createRequest("Certification"), ADMIN_AUTH_HEADERS);
+
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+    // retentionPeriod,
     // sourceUrl, domain
     // Update terms with change in description
     String record =
         String.format(
-            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
-            user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
+            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,P23DT23H,http://test.com,%s,",
+            user1,
+            certificationTag.getFullyQualifiedName(),
+            escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
     importCsvAndValidate(
-        database.getFullyQualifiedName(), DatabaseCsv.HEADERS, null, listOf(record));
+        database.getFullyQualifiedName(),
+        getDatabaseCsvHeaders(database, false),
+        null,
+        listOf(record));
+
+    String clearRecord = "s1,dsp1,new-dsc2,,,,,,P23DT23H,http://test.com,,";
+    importCsvAndValidate(
+        database.getFullyQualifiedName(),
+        getDatabaseCsvHeaders(database, false),
+        null,
+        listOf(clearRecord));
+
+    String schemaFqn = String.format("%s.%s", database.getFullyQualifiedName(), "s1");
+    DatabaseSchema updatedSchema = schemaTest.getEntityByName(schemaFqn, ADMIN_AUTH_HEADERS);
+
+    assertEquals("new-dsc2", updatedSchema.getDescription());
+    assertTrue(
+        listOrEmpty(updatedSchema.getTags()).isEmpty(), "Tags should be empty after clearing");
+    assertTrue(listOrEmpty(updatedSchema.getOwners()).isEmpty(), "Owner should be cleared");
+    assertTrue(
+        listOrEmpty(updatedSchema.getDomains()).isEmpty(), "Domain should be null after clearing");
+  }
+
+  @Test
+  void testImportExportRecursive() throws IOException {
+    // 1. Create the initial database and schema structure
+    String dbName = "importExportTestRec";
+    Database database =
+        createEntity(
+            createRequest(dbName).withDescription("Initial database description"),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createSchema =
+        schemaTest
+            .createRequest("schema1")
+            .withDatabase(database.getFullyQualifiedName())
+            .withDescription("Initial schema description");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable =
+        tableTest
+            .createRequest("table1")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDescription("Initial table description");
+    Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    // 2. Export the database hierarchy to CSV
+    String exportedCsv = exportCsvRecursive(database.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    // 3. Parse the exported CSV to verify its structure and contents match our created entities
+    String[] csvLines = exportedCsv.split(CsvUtil.LINE_SEPARATOR);
+    assertTrue(csvLines.length >= 3, "Export should have at least header and 2 entities");
+
+    String headerLine = csvLines[0];
+    assertTrue(headerLine.contains("name"), "Header should contain 'name' column");
+    assertTrue(headerLine.contains("description"), "Header should contain 'description' column");
+    assertTrue(headerLine.contains("entityType"), "Header should contain 'entityType' column");
+
+    boolean foundTable = false;
+    boolean foundSchema = false;
+
+    for (int i = 1; i < csvLines.length; i++) {
+      String line = csvLines[i];
+
+      if (line.contains("schema1") && line.contains("databaseSchema")) {
+        foundSchema = true;
+        assertTrue(
+            line.contains("Initial schema description"),
+            "Database row should contain the correct description");
+      } else if (line.contains("table1") && line.contains("table") && !line.contains("column")) {
+        foundTable = true;
+        assertTrue(
+            line.contains("Initial table description"),
+            "Schema row should contain the correct description");
+      }
+    }
+
+    assertTrue(foundSchema, "Exported CSV should contain the schema");
+    assertTrue(foundTable, "Exported CSV should contain the table");
+
+    // 4. Modify the CSV to update existing entities and add new ones
+    List<String> modifiedCsvLines = new ArrayList<>();
+    modifiedCsvLines.add(headerLine); // Keep the header row
+
+    // Update existing rows with new descriptions
+    for (int i = 1; i < csvLines.length; i++) {
+      String line = csvLines[i];
+
+      if (line.contains("schema1") && line.contains("databaseSchema")) {
+        line = line.replace("Initial schema description", "Updated schema description");
+      } else if (line.contains("table1") && line.contains("table") && !line.contains("column")) {
+        line = line.replace("Initial table description", "Updated table description");
+      } else if (line.contains("column")) {
+        continue;
+      }
+      modifiedCsvLines.add(line);
+    }
+
+    // Add a new schema row by cloning and modifying the existing schema row
+    String schemaLineTemplate = null;
+    for (String line : csvLines) {
+      if (line.contains("schema1") && line.contains("databaseSchema")) {
+        schemaLineTemplate = line;
+        break;
+      }
+    }
+
+    assertNotNull(schemaLineTemplate, "Schema template line should exist");
+    String newSchemaLine =
+        schemaLineTemplate
+            .replace("schema1", "schema2")
+            .replace("Initial schema description", "New schema description");
+    modifiedCsvLines.add(newSchemaLine);
+
+    // 5. Import the modified CSV
+    String modifiedCsv =
+        String.join(CsvUtil.LINE_SEPARATOR, modifiedCsvLines) + CsvUtil.LINE_SEPARATOR;
+    CsvImportResult result =
+        importCsvRecursive(database.getFullyQualifiedName(), modifiedCsv, false);
+    assertNotNull(result);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    DatabaseSchema updatedSchema =
+        schemaTest.getEntityByName(
+            schema.getFullyQualifiedName(), "description", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Updated schema description",
+        updatedSchema.getDescription(),
+        "Schema description should be updated");
+
+    String schema2Fqn = database.getFullyQualifiedName() + ".schema2";
+    DatabaseSchema newSchema =
+        schemaTest.getEntityByName(schema2Fqn, "description", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "New schema description",
+        newSchema.getDescription(),
+        "New schema should be created with correct description");
+    Table updatedTable =
+        tableTest.getEntityByName(table.getFullyQualifiedName(), "description", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        "Updated table description",
+        updatedTable.getDescription(),
+        "Table description should be updated");
   }
 
   @Override
@@ -201,7 +367,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         database.getUsageSummary(),
         database.getLocation());
 
-    fields = "owners,databaseSchemas,usageSummary,location,tags";
+    fields = "owners,databaseSchemas,usageSummary,location,tags,followers";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -260,9 +426,92 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
+    }
+  }
+
+  @Test
+  void testBulkServiceFetchingForDatabases(TestInfo test) throws IOException {
+    // This test verifies that when databases are fetched in bulk with the service field,
+    // each database maintains its correct service reference (not all databases sharing the same
+    // service)
+    // The bug was in fetchAndSetService which used getContainer(entities.get(0).getId()) for ALL
+    // databases
+
+    // To avoid interfering with entity count, we'll only create databases in the default container
+    // but we'll verify the fix by checking existing databases from different services
+
+    // First, verify the fix with existing databases from different services
+    ResultList<Database> existingDatabases =
+        listEntities(Map.of("fields", "service", "limit", "50"), ADMIN_AUTH_HEADERS);
+
+    // Group by service to check if each database has its correct service
+    Map<String, List<Database>> dbByService = new HashMap<>();
+    for (Database db : existingDatabases.getData()) {
+      assertNotNull(db.getService(), "Database " + db.getName() + " should have a service");
+      String serviceName = db.getService().getName();
+      dbByService.computeIfAbsent(serviceName, k -> new ArrayList<>()).add(db);
+    }
+
+    // If we have databases from different services, verify each has the correct service
+    if (dbByService.size() > 1) {
+      for (Map.Entry<String, List<Database>> entry : dbByService.entrySet()) {
+        String serviceName = entry.getKey();
+        for (Database db : entry.getValue()) {
+          assertEquals(
+              serviceName,
+              db.getService().getName(),
+              "Database " + db.getName() + " should have service " + serviceName);
+        }
+      }
+      LOG.info(
+          "Verified databases maintain correct services across {} different services",
+          dbByService.size());
+    }
+
+    // Now test with new databases in the default container to ensure entity count isn't affected
+    String timestamp = String.valueOf(System.currentTimeMillis());
+    CreateDatabase createDb1 = createRequest("bulkTestDb1_" + timestamp);
+    CreateDatabase createDb2 = createRequest("bulkTestDb2_" + timestamp);
+
+    Database db1 = createAndCheckEntity(createDb1, ADMIN_AUTH_HEADERS);
+    Database db2 = createAndCheckEntity(createDb2, ADMIN_AUTH_HEADERS);
+
+    try {
+      // Fetch with service field
+      ResultList<Database> databases =
+          listEntities(
+              Map.of("fields", "service", "service", getContainer().getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS);
+
+      // Find our databases
+      Database foundDb1 =
+          databases.getData().stream()
+              .filter(db -> db.getId().equals(db1.getId()))
+              .findFirst()
+              .orElse(null);
+      Database foundDb2 =
+          databases.getData().stream()
+              .filter(db -> db.getId().equals(db2.getId()))
+              .findFirst()
+              .orElse(null);
+
+      assertNotNull(foundDb1, "Database 1 should be found");
+      assertNotNull(foundDb2, "Database 2 should be found");
+
+      // Both should have the same service (SNOWFLAKE_REFERENCE) since they're in the same container
+      assertEquals(getContainer().getId(), foundDb1.getService().getId());
+      assertEquals(getContainer().getId(), foundDb2.getService().getId());
+      assertEquals(getContainer().getName(), foundDb1.getService().getName());
+      assertEquals(getContainer().getName(), foundDb2.getService().getName());
+
+    } finally {
+      // Clean up - these will be properly handled by recursive delete since they're in the default
+      // container
+      deleteEntity(db1.getId(), ADMIN_AUTH_HEADERS);
+      deleteEntity(db2.getId(), ADMIN_AUTH_HEADERS);
     }
   }
 }

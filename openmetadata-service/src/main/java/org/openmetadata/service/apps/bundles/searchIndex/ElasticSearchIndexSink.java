@@ -19,20 +19,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpHeaders;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ElasticSearchIndexSink implements BulkSink, Closeable {
@@ -43,6 +45,8 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
   private final long initialBackoffMillis;
   private final long maxBackoffMillis;
   private final Semaphore semaphore;
+  private static final RequestOptions COMPRESSED_REQUEST_OPTIONS =
+      RequestOptions.DEFAULT.toBuilder().addHeader(HttpHeaders.CONTENT_ENCODING, "gzip").build();
 
   public ElasticSearchIndexSink(
       SearchClient client,
@@ -67,6 +71,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
 
     List<EntityError> entityErrorList = new ArrayList<>();
     List<DocWriteRequest<?>> requests = new ArrayList<>();
+    List<CountDownLatch> pendingRequests = new ArrayList<>();
     long currentBatchSize = 0L;
 
     for (Object entity : entities) {
@@ -75,7 +80,9 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
         long requestSize = estimateRequestSizeInBytes(request);
 
         if (currentBatchSize + requestSize > maxPayloadSizeInBytes) {
-          sendBulkRequestAsync(new ArrayList<>(requests), new ArrayList<>(entityErrorList));
+          CountDownLatch latch = new CountDownLatch(1);
+          pendingRequests.add(latch);
+          sendBulkRequestAsyncWithCallback(new ArrayList<>(requests), entityErrorList, latch);
           requests.clear();
           currentBatchSize = 0L;
         }
@@ -86,14 +93,29 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
       } catch (Exception e) {
         entityErrorList.add(
             new EntityError()
-                .withMessage("Failed to convert entity to request: " + e.getMessage())
+                .withMessage(
+                    String.format(
+                        "Failed to convert entity to request: %s , Stack : %s",
+                        e.getMessage(), ExceptionUtils.exceptionStackTraceAsString(e)))
                 .withEntity(entity.toString()));
         LOG.error("Error converting entity to request", e);
       }
     }
 
     if (!requests.isEmpty()) {
-      sendBulkRequestAsync(requests, entityErrorList);
+      CountDownLatch latch = new CountDownLatch(1);
+      pendingRequests.add(latch);
+      sendBulkRequestAsyncWithCallback(requests, entityErrorList, latch);
+    }
+
+    // Wait for all async operations to complete
+    for (CountDownLatch latch : pendingRequests) {
+      try {
+        latch.await();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new SearchIndexException(createIndexingError(entities.size(), e));
+      }
     }
 
     int totalEntities = entities.size();
@@ -110,6 +132,138 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
               .withFailedCount(failedEntities)
               .withMessage(String.format("Issues in Sink to Elasticsearch: %s", entityErrorList))
               .withFailedEntities(entityErrorList));
+    }
+  }
+
+  private void sendBulkRequestAsyncWithCallback(
+      List<DocWriteRequest<?>> requests, List<EntityError> entityErrorList, CountDownLatch latch)
+      throws SearchIndexException {
+    BulkRequest bulkRequest = new BulkRequest();
+    bulkRequest.add(requests);
+
+    try {
+      semaphore.acquire();
+      LOG.debug("Semaphore acquired. Available permits: {}", semaphore.availablePermits());
+      ((RestHighLevelClient) client.getClient())
+          .bulkAsync(
+              bulkRequest,
+              COMPRESSED_REQUEST_OPTIONS,
+              new ActionListener<BulkResponse>() {
+                @Override
+                public void onResponse(BulkResponse response) {
+                  try {
+                    synchronized (entityErrorList) {
+                      for (int i = 0; i < response.getItems().length; i++) {
+                        BulkItemResponse itemResponse = response.getItems()[i];
+                        if (itemResponse.isFailed()) {
+                          String failureMessage = itemResponse.getFailureMessage();
+                          String entityData = requests.get(i).toString();
+                          entityErrorList.add(
+                              new EntityError().withMessage(failureMessage).withEntity(entityData));
+                          LOG.warn("Bulk item failed: {}", failureMessage);
+                        }
+                      }
+                    }
+
+                    int success = response.getItems().length;
+                    int failed = 0;
+                    for (BulkItemResponse item : response.getItems()) {
+                      if (item.isFailed()) {
+                        failed++;
+                      }
+                    }
+                    success -= failed;
+                    updateStats(success, failed);
+
+                    if (response.hasFailures()) {
+                      LOG.warn("Bulk request completed with failures. Total Failures: {}", failed);
+                    } else {
+                      LOG.debug("Bulk request successful with {} operations.", success);
+                    }
+                  } finally {
+                    semaphore.release();
+                    latch.countDown();
+                    LOG.debug(
+                        "Semaphore released. Available permits: {}", semaphore.availablePermits());
+                  }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                  try {
+                    LOG.error("Bulk request failed asynchronously", e);
+                    synchronized (entityErrorList) {
+                      for (DocWriteRequest<?> request : requests) {
+                        entityErrorList.add(
+                            new EntityError()
+                                .withMessage(
+                                    String.format("Bulk request failed: %s", e.getMessage()))
+                                .withEntity(request.toString()));
+                      }
+                    }
+                  } finally {
+                    semaphore.release();
+                    latch.countDown();
+                    LOG.debug(
+                        "Semaphore released after failure. Available permits: {}",
+                        semaphore.availablePermits());
+                  }
+                }
+              });
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.error("Bulk request interrupted", e);
+      latch.countDown();
+      throw new SearchIndexException(createIndexingError(requests.size(), e));
+    }
+  }
+
+  private void sendBulkRequestSyncAndCollectErrors(
+      List<DocWriteRequest<?>> requests, List<EntityError> entityErrorList)
+      throws SearchIndexException {
+    BulkRequest bulkRequest = new BulkRequest();
+    bulkRequest.add(requests);
+
+    try {
+      BulkResponse response =
+          ((RestHighLevelClient) client.getClient()).bulk(bulkRequest, COMPRESSED_REQUEST_OPTIONS);
+
+      // Collect all bulk item failures
+      for (int i = 0; i < response.getItems().length; i++) {
+        BulkItemResponse itemResponse = response.getItems()[i];
+        if (itemResponse.isFailed()) {
+          String failureMessage = itemResponse.getFailureMessage();
+          String entityData = requests.get(i).toString();
+          entityErrorList.add(new EntityError().withMessage(failureMessage).withEntity(entityData));
+          LOG.warn("Bulk item failed: {}", failureMessage);
+        }
+      }
+
+      int success = response.getItems().length;
+      int failed = 0;
+      for (BulkItemResponse item : response.getItems()) {
+        if (item.isFailed()) {
+          failed++;
+        }
+      }
+      success -= failed;
+      updateStats(success, failed);
+
+      if (response.hasFailures()) {
+        LOG.warn("Bulk request completed with failures. Total Failures: {}", failed);
+      } else {
+        LOG.debug("Bulk request successful with {} operations.", success);
+      }
+    } catch (Exception e) {
+      LOG.error("Bulk request failed", e);
+      // Add all requests as failed entities
+      for (DocWriteRequest<?> request : requests) {
+        entityErrorList.add(
+            new EntityError()
+                .withMessage(String.format("Bulk request failed: %s", e.getMessage()))
+                .withEntity(request.toString()));
+      }
+      throw new SearchIndexException(createIndexingError(requests.size(), e));
     }
   }
 
@@ -173,6 +327,14 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
                       handleNonRetriableException(requests.size(), e);
                     }
                   } catch (Exception ex) {
+                    entityErrorList.add(
+                        new EntityError()
+                            .withMessage(
+                                String.format(
+                                    "Bulk request failed: %s, StackTrace: %s",
+                                    ex.getMessage(),
+                                    ExceptionUtils.exceptionStackTraceAsString(ex)))
+                            .withEntity(requests.toString()));
                     LOG.error("Bulk request retry attempt {}/{} failed", 1, maxRetries, ex);
                   } finally {
                     semaphore.release();
@@ -338,7 +500,7 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     client.close();
   }
 

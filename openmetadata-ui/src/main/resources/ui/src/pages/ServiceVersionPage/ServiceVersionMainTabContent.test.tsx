@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -66,9 +65,24 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
 );
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div data-testid="owner-label">OwnerLabel</div>,
+    },
+  ]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+}));
 
 const mockPagingHandler = jest.fn();
 const mockData: Database[] = [
@@ -156,8 +170,8 @@ describe('ServiceVersionMainTabContent tests', () => {
 
     const entityTable = screen.getByTestId('service-children-table');
     const entityName = screen.getByText('ecommerce_db');
-    const entityOwnerName = screen.getByText('Adam Rodriguez');
-    const entityDescription = screen.getByText('RichTextEditorPreviewer');
+    const entityOwner = screen.getByText('OwnerLabel');
+    const entityDescription = screen.getByTestId('viewer-container');
 
     expect(entityTable).toBeInTheDocument();
     expect(screen.getByText('DescriptionV1')).toBeInTheDocument();
@@ -165,10 +179,10 @@ describe('ServiceVersionMainTabContent tests', () => {
     expect(screen.queryByText('NextPrevious')).toBeNull();
     expect(screen.getAllByText('TagsContainerV2')).toHaveLength(2);
     expect(entityName).toBeInTheDocument();
-    expect(entityOwnerName).toBeInTheDocument();
+    expect(entityOwner).toBeInTheDocument();
     expect(entityDescription).toBeInTheDocument();
     expect(entityTable.contains(entityName)).toBe(true);
-    expect(entityTable.contains(entityOwnerName)).toBe(true);
+    expect(entityTable.contains(entityOwner)).toBe(true);
     expect(entityTable.contains(entityDescription)).toBe(true);
   });
 

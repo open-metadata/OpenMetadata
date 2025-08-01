@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ServicesUpdateRequest } from 'Models';
 import { FormSubmitType } from '../enums/form.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
@@ -43,6 +44,10 @@ import {
   SearchConnection,
   SearchService,
 } from '../generated/entity/services/searchService';
+import {
+  SecurityConnection,
+  SecurityService,
+} from '../generated/entity/services/securityService';
 import {
   StorageConnection,
   StorageService,
@@ -89,7 +94,8 @@ export type DomainSupportedServiceTypes =
   | DashboardService
   | PipelineService
   | MlmodelService
-  | StorageService;
+  | StorageService
+  | SecurityService;
 
 export type ServicesType =
   | DatabaseService
@@ -100,7 +106,8 @@ export type ServicesType =
   | MetadataService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | SecurityService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -115,12 +122,14 @@ export type ConfigData =
   | MlModelConnection
   | MetadataConnection
   | StorageConnection
-  | SearchConnection;
+  | SearchConnection
+  | SecurityConnection;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;
   enableDebugLog?: boolean;
   displayName?: string;
+  raiseOnError?: boolean;
 };
 
 export interface IngestionWorkflowFormProps {
@@ -135,4 +144,15 @@ export interface IngestionWorkflowFormProps {
   onFocus: (fieldId: string) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
+  serviceData?: ServicesUpdateRequest;
 }
+
+export type ExtraInfoType = {
+  name: string;
+  displayName?: string;
+  description?: string;
+  href?: string;
+  location?: string;
+  type?: string;
+  headerKey?: string;
+};

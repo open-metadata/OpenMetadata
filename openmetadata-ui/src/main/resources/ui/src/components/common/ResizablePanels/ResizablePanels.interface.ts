@@ -27,9 +27,13 @@ export interface PanelProps {
   children: React.ReactNode;
   minWidth: number;
   className?: string;
+  cardClassName?: string;
   flex?: number;
   overlay?: Overlay;
   onStopResize?: (newFlex: number | undefined) => void;
+  title?: string;
+  wrapInCard?: boolean;
+  allowScroll?: boolean;
 }
 
 export interface Overlay {

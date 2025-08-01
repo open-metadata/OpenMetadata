@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Contains UI customization details for a Persona.
  */
 export interface UICustomization {
@@ -38,16 +36,22 @@ export interface UICustomization {
     /**
      * List of Pages in the UI customization.
      */
-    pages:      Team[];
-    updatedAt?: number;
-    updatedBy?: string;
-    version?:   number;
+    pages: Team[];
+    /**
+     * Persona default preferences. Admin can customize certain UI elements per persona as base
+     * configuration.
+     */
+    personaPreferences?: PersonaPreferences[];
+    updatedAt?:          number;
+    updatedBy?:          string;
+    version?:            number;
 }
 
 /**
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -64,6 +68,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -96,9 +123,9 @@ export interface NavigationItem {
      */
     id: string;
     /**
-     * Order of the navigation item in the menu.
+     * Determine if item is visible or not
      */
-    order: number;
+    isHidden?: boolean;
     /**
      * Reference to a Page ID that this navigation item links to.
      */
@@ -115,9 +142,9 @@ export interface NavigationItem {
  */
 export interface Team {
     /**
-     * Domain this page belongs to.
+     * Domains this page belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity Type.
      */
@@ -142,16 +169,14 @@ export interface Team {
 }
 
 /**
- * Domain this page belongs to.
+ * Domains this page belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * KnowledgePanels that are part of this Page.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -212,6 +237,8 @@ export enum EntityType {
  * This schema defines the type used for describing different types of pages.
  */
 export enum PageType {
+    APICollection = "APICollection",
+    APIEndpoint = "APIEndpoint",
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",
@@ -221,6 +248,8 @@ export enum PageType {
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
+    Metric = "Metric",
+    MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
     StoredProcedure = "StoredProcedure",
@@ -253,4 +282,38 @@ export interface Tab {
      * Name of the tab.
      */
     name: string;
+}
+
+/**
+ * User-specific preferences for a persona that override default persona UI customization.
+ * These are limited customizations that users can apply to personalize their experience
+ * while still inheriting the base persona configuration.
+ */
+export interface PersonaPreferences {
+    /**
+     * User's personal customizations for the landing page.
+     */
+    landingPageSettings?: LandingPageSettings;
+    /**
+     * UUID of the persona these preferences belong to.
+     */
+    personaId: string;
+    /**
+     * Name of the persona for quick reference and linking.
+     */
+    personaName: string;
+}
+
+/**
+ * User's personal customizations for the landing page.
+ */
+export interface LandingPageSettings {
+    /**
+     * Custom header background color for the landing page.
+     */
+    headerColor?: string;
+    /**
+     * Reference to a custom header background image (reserved for future use).
+     */
+    headerImage?: string;
 }

@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   dashboardVersionProps,
@@ -24,9 +22,9 @@ import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
@@ -74,9 +72,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'dashboard',
   }),
@@ -210,11 +206,9 @@ describe('DashboardVersion tests', () => {
 
     expect(customPropertyTabLabel).toBeInTheDocument();
 
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
+    fireEvent.click(customPropertyTabLabel);
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
     );
   });

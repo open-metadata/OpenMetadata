@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,12 @@ export interface CassandraConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: AuthConfigurationType;
+    authType?:            AuthConfigurationType;
+    connectionArguments?: { [key: string]: any };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -27,8 +32,18 @@ export interface CassandraConnection {
      * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
      * host when using the `cassandra+srv` scheme.
      */
-    hostPort?:                   string;
+    hostPort?: string;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?:        FilterPattern;
+    sslConfig?:                  Config;
+    sslMode?:                    SSLMode;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -80,6 +95,58 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * SSL Mode to connect to database.
+ */
+export enum SSLMode {
+    Allow = "allow",
+    Disable = "disable",
+    Prefer = "prefer",
+    Require = "require",
+    VerifyCA = "verify-ca",
+    VerifyFull = "verify-full",
 }
 
 /**

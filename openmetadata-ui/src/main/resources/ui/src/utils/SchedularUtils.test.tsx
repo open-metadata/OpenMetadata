@@ -20,6 +20,7 @@ import {
   mockOldState1,
 } from '../mocks/Schedular.mock';
 import {
+  cronValidator,
   getCronDefaultValue,
   getScheduleOptionsFromSchedules,
   getUpdatedStateFromFormState,
@@ -160,5 +161,67 @@ describe('getUpdatedStateFromFormState', () => {
       dow: '*',
       dom: '*',
     });
+  });
+});
+
+describe('cronValidator', () => {
+  it('should resolve for valid cron expression', async () => {
+    await expect(cronValidator({}, '0 0 * * *')).resolves.toBeUndefined();
+  });
+
+  it('should reject for cron expression with frequency less than an hour', async () => {
+    await expect(cronValidator({}, '*/30 * * * *')).rejects.toThrow(
+      'message.cron-less-than-hour-message'
+    );
+  });
+
+  it('should reject for invalid day of week (<0 or >6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 7')).rejects.toThrow(
+      'message.cron-invalid-day-of-week-field'
+    );
+    await expect(cronValidator({}, '0 0 * * -1')).rejects.toThrow(
+      'message.cron-invalid-day-of-week-field'
+    );
+  });
+
+  it('should resolve for valid day of week (0-6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 0')).resolves.toBeUndefined();
+    await expect(cronValidator({}, '0 0 * * 3')).resolves.toBeUndefined();
+    await expect(cronValidator({}, '0 0 * * 6')).resolves.toBeUndefined();
+  });
+
+  it('should resolve for valid day of week range (0-6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 0-3')).resolves.toBeUndefined();
+    await expect(cronValidator({}, '0 0 * * 4-6')).resolves.toBeUndefined();
+  });
+
+  it('should reject for invalid day of week range (<0 or >6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 4-7')).rejects.toThrow(
+      'message.cron-invalid-day-of-week-field'
+    );
+    await expect(cronValidator({}, '0 0 * * -1-3')).rejects.toThrow(
+      'message.cron-invalid-day-of-week-field'
+    );
+  });
+
+  it('should reject for mixed valid and invalid day of week range', async () => {
+    await expect(cronValidator({}, '0 0 * * 0-7')).rejects.toThrow(
+      'message.cron-invalid-day-of-week-field'
+    );
+    await expect(cronValidator({}, '0 0 * * -1-6')).rejects.toThrow(
+      'message.cron-invalid-day-of-week-field'
+    );
+  });
+
+  it('should reject for invalid cron expression with more than 5 fields', async () => {
+    await expect(cronValidator({}, '25 6 3 5 1 1')).rejects.toThrow(
+      'message.cron-invalid-field-count'
+    );
+  });
+
+  it('should reject for invalid cron expression with less than 5 fields', async () => {
+    await expect(cronValidator({}, '25 6 3 5')).rejects.toThrow(
+      'message.cron-invalid-field-count'
+    );
   });
 });

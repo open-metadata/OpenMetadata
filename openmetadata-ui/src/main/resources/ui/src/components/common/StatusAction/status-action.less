@@ -1,0 +1,105 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../styles/variables.less');
+
+.approve-btn,
+.reject-btn {
+  &.ant-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: width 0.3s ease;
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    height: 32px;
+
+    .anticon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-text {
+      margin-left: 4px;
+      white-space: nowrap;
+      transition: opacity 0.3s ease;
+    }
+  }
+}
+
+.approve-btn {
+  &.ant-btn {
+    background-color: @blue-17;
+    color: @white;
+    border: 1px solid @blue-18;
+    width: 90px;
+    padding: 4px 12px;
+
+    &.icon-only {
+      width: 32px;
+      padding: 4px;
+
+      .btn-text {
+        opacity: 0;
+        width: 0;
+        margin-left: 0;
+      }
+    }
+
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: @blue-17;
+      border-color: @blue-18;
+      color: @white;
+    }
+  }
+}
+
+.reject-btn {
+  &.ant-btn {
+    background-color: @red-15;
+    color: @white;
+    border: 1px solid @red-4;
+    width: 32px;
+    padding: 4px;
+
+    .btn-text {
+      opacity: 0;
+      width: 0;
+      margin-left: 0;
+    }
+
+    &.show-text {
+      width: 90px;
+      padding: 4px 12px;
+
+      .btn-text {
+        opacity: 1;
+        width: auto;
+        margin-left: 4px;
+      }
+    }
+
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: @red-15;
+      border-color: @red-4;
+      color: @white;
+    }
+  }
+}

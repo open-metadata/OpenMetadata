@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Databricks Connection Config
  */
 export interface DatabricksPipelineConnection {
     connectionArguments?: { [key: string]: any };
+    /**
+     * Connection timeout in seconds.
+     */
+    connectionTimeout?: number;
     /**
      * Host and port of the Databricks service.
      */
@@ -24,7 +26,11 @@ export interface DatabricksPipelineConnection {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:                   string;
+    httpPath?: string;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Generated Token to connect to Databricks.
@@ -34,6 +40,22 @@ export interface DatabricksPipelineConnection {
      * Service Type
      */
     type?: DatabricksType;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

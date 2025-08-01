@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
-import React from 'react';
+import { Divider, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as UserIcons } from '../../../../../assets/svg/user.svg';
+import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
@@ -25,24 +24,37 @@ const UserProfileInheritedRoles = ({
   const { t } = useTranslation();
 
   return (
-    <Card
-      className="ant-card-feed relative card-body-border-none card-padding-y-0"
-      data-testid="user-profile-inherited-roles"
-      key="inherited-roles-card-component"
-      title={
-        <Typography.Text
-          className="right-panel-label m-b-0"
-          data-testid="inherited-roles-label">
-          {t('label.inherited-role-plural')}
-        </Typography.Text>
-      }>
-      <Chip
-        data={inheritedRoles ?? []}
-        entityType={EntityType.ROLE}
-        icon={<UserIcons height={20} />}
-        noDataPlaceholder={t('message.no-inherited-roles-found')}
-      />
-    </Card>
+    <div
+      className="d-flex flex-col  w-full  p-[20px]  p-0 m-b-0"
+      data-testid="user-profile-inherited-roles">
+      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+        <div className="d-flex flex-center user-page-icon">
+          <InheritedRolesIcon height={16} />
+        </div>
+        <div className="d-flex justify-between w-full">
+          <Typography.Text className="text-sm font-medium">
+            {t('label.inherited-role-plural')}
+          </Typography.Text>
+        </div>
+      </div>
+      <div className="user-profile-card-body d-flex justify-start gap-2">
+        <div className="d-flex flex-center user-page-icon">
+          <Divider
+            style={{
+              height: '100%',
+              width: '1px',
+              background: '#D9D9D9',
+            }}
+            type="vertical"
+          />
+        </div>
+        <Chip
+          data={inheritedRoles ?? []}
+          entityType={EntityType.ROLE}
+          noDataPlaceholder={t('message.no-inherited-roles-found')}
+        />
+      </div>
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a workflow, having all the different pieces and attributes.
  */
 export interface WorkflowDefinition {
@@ -20,10 +18,15 @@ export interface WorkflowDefinition {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
+    config?:            WorkflowConfiguration;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
+    /**
+     * When `true` indicates the workflow is deployed.
+     */
+    deployed?: boolean;
     /**
      * Description of the workflow definition.
      */
@@ -49,13 +52,17 @@ export interface WorkflowDefinition {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Name that identifies this workflow definition.
      */
     name: string;
     /**
      * List of nodes used on the workflow.
      */
-    nodes?: any;
+    nodes?: { [key: string]: any }[];
     /**
      * Owners of this workflow definition.
      */
@@ -63,8 +70,7 @@ export interface WorkflowDefinition {
     /**
      * Workflow Trigger.
      */
-    trigger?: any;
-    type?:    Type;
+    trigger?: any[] | boolean | number | number | null | TriggerObject | string;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -86,6 +92,7 @@ export interface WorkflowDefinition {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -102,6 +109,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -121,6 +151,13 @@ export interface FieldChange {
     oldValue?: any;
 }
 
+export interface WorkflowConfiguration {
+    /**
+     * If True, all the stage status will be stored in the database.
+     */
+    storeStageStatus: boolean;
+}
+
 /**
  * Governance Workflow Edge.
  */
@@ -128,7 +165,7 @@ export interface EdgeDefinition {
     /**
      * Defines if the edge will follow a path depending on the source node result.
      */
-    condition?: boolean;
+    condition?: string;
     /**
      * Element from which the edge will start.
      */
@@ -195,7 +232,13 @@ export interface EntityReference {
     type: string;
 }
 
+export interface TriggerObject {
+    type?: Type;
+    [property: string]: any;
+}
+
 export enum Type {
-    EventBasedEntityWorkflow = "eventBasedEntityWorkflow",
-    PeriodicBatchEntityWorkflow = "periodicBatchEntityWorkflow",
+    EventBasedEntity = "eventBasedEntity",
+    NoOp = "noOp",
+    PeriodicBatchEntity = "periodicBatchEntity",
 }

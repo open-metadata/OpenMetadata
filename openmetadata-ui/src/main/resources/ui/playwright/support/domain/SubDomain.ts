@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
 import { Domain } from './Domain';
 
 type UserTeamRef = {
   name: string;
   type: string;
+  fullyQualifiedName?: string;
+  id?: string;
 };
 
 type ResponseDataType = {
@@ -27,7 +30,7 @@ type ResponseDataType = {
   id?: string;
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
-  experts?: UserTeamRef[];
+  experts?: string[];
   parent?: string;
 };
 
@@ -44,7 +47,7 @@ export class SubDomain {
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(domain: Domain, name?: string) {
+  constructor(domain: Domain | SubDomain, name?: string) {
     this.data.parent = domain.data.name;
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
@@ -73,5 +76,29 @@ export class SubDomain {
     );
 
     return response.body;
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/domains/${this.responseData?.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return {
+      entity: this.responseData,
+    };
   }
 }

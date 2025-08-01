@@ -12,12 +12,13 @@
  */
 import { Form, Modal, Typography } from 'antd';
 import { isUndefined, uniq } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
 } from '../../../../constants/CustomProperty.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   Config,
   CustomProperty,
@@ -28,6 +29,8 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import Banner from '../../../common/Banner/Banner';
+import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 export interface FormData {
   description: string;
@@ -107,9 +110,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
-        const enumConfig = customProperty.customPropertyConfig
-          ?.config as Config;
-        const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
+        const updatedValues = uniq([...value]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
       open: false,
@@ -163,6 +164,9 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     required: false,
     props: {
       'data-testid': 'multiSelect',
+    },
+    formItemProps: {
+      style: { marginBottom: '0px' },
     },
     id: 'root/multiSelect',
     formItemLayout: FormItemLayout.HORIZONTAL,
@@ -228,14 +232,24 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         initialValues={initialValues}
         layout="vertical"
         onFinish={handleSubmit}>
-        {generateFormFields(formFields)}
+        <EntityAttachmentProvider
+          entityFqn={customProperty?.name}
+          entityType={EntityType.TYPE}>
+          {generateFormFields(formFields)}
+        </EntityAttachmentProvider>
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (
               <>
-                {generateFormFields([enumConfigField])}
-                {note}
-                {generateFormFields([multiSelectField])}
+                {generateFormFields([enumConfigField, multiSelectField])}
+                {isSaving && (
+                  <Banner
+                    className="border-radius"
+                    isLoading={isSaving}
+                    message={t('message.enum-property-update-message')}
+                    type="success"
+                  />
+                )}
               </>
             )}
 

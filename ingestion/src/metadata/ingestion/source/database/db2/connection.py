@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,13 +33,28 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.db2.utils import (
+    check_clidriver_version,
+    install_clidriver,
+)
 from metadata.utils.constants import THREE_MIN, UTF_8
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection(connection: Db2Connection) -> Engine:
     """
     Create connection
     """
+    # Install ibm_db with specific version
+    clidriver_version = connection.clidriverVersion
+
+    if clidriver_version:
+        clidriver_version = check_clidriver_version(clidriver_version)
+        if clidriver_version:
+            install_clidriver(clidriver_version.value)
+
     # prepare license
     # pylint: disable=import-outside-toplevel
     if connection.license and connection.licenseFileName:
@@ -50,7 +65,7 @@ def get_connection(connection: Db2Connection) -> Engine:
             "w",
             encoding=UTF_8,
         ) as file:
-            file.write(connection.license)
+            file.write(connection.license.encode(UTF_8).decode("unicode-escape"))
 
     return create_generic_db_connection(
         connection=connection,

@@ -96,7 +96,7 @@ $$
 $$section
 ### Sampling Method Type $(id="samplingMethodType")
 
-**This parameter is effective for Snowflake only**
+**This parameter is effective for Postgres and Snowflake**
 
 The sampling method type can be set to **BERNOULLI** or **SYSTEM**. Only database supporting these two sampling methods will take this setting into account. When you choose **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restrictions than **SYSTEM**. For more information you can reference the service documentation.
 
@@ -119,7 +119,23 @@ It is important to note that the profiler will wait for the hanging query to **t
 $$
 
 $$section
+### Randomized Sample $(id="randomizedSample")
+
+**This parameter is effective when Profile Sample Type is ROWS**
+
+When using the ROWS sampling type choose wheather to randomized the sample or. Non randomized sample will be faster to compute.
+
+Defaults to `True`
+$$
+
+$$section
 ### Number of Retries $(id="retries")
 
 Times to retry the workflow in case it ends with a failure.
+$$
+
+$$section
+### Raise on Error $(id="raiseOnError")
+
+Mark the workflow as failed or avoid raising exceptions.
 $$

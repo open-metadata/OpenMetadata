@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Profiler Pipeline Configuration.
  */
 export interface DatabaseServiceProfilerPipeline {
@@ -42,7 +40,8 @@ export interface DatabaseServiceProfilerPipeline {
     /**
      * Optional configuration to turn off fetching metadata for views.
      */
-    includeViews?: boolean;
+    includeViews?:     boolean;
+    processingEngine?: ProcessingEngine;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
@@ -50,9 +49,9 @@ export interface DatabaseServiceProfilerPipeline {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     * Whether to randomize the sample data or not.
      */
-    sampleDataCount?:    number;
+    randomizedSample?:   boolean;
     samplingMethodType?: SamplingMethodType;
     /**
      * Regex to only fetch tables or databases that matches the pattern.
@@ -92,7 +91,7 @@ export interface DatabaseServiceProfilerPipeline {
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only fetch databases that matches the pattern.
  *
@@ -109,6 +108,46 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Processing Engine Configuration. If not provided, the Native Engine will be used by
+ * default.
+ *
+ * Configuration for the native metadata ingestion engine
+ *
+ * This schema defines the configuration for a Spark Engine runner.
+ */
+export interface ProcessingEngine {
+    /**
+     * The type of the engine configuration
+     */
+    type:    Type;
+    config?: Config;
+    /**
+     * Spark Connect Remote URL.
+     */
+    remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
+}
+
+/**
+ * The type of the engine configuration
+ */
+export enum Type {
+    Native = "Native",
+    Spark = "Spark",
 }
 
 /**

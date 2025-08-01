@@ -11,27 +11,19 @@
  *  limitations under the License.
  */
 
+import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataInsightChartResult } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartAggregateParam } from '../interface/data-insight.interface';
 import APIClient from './index';
 
-export enum SystemChartType {
-  TotalDataAssets = 'total_data_assets',
-  PercentageOfDataAssetWithDescription = 'percentage_of_data_asset_with_description',
-  PercentageOfDataAssetWithOwner = 'percentage_of_data_asset_with_owner',
-  PercentageOfServiceWithDescription = 'percentage_of_service_with_description',
-  PercentageOfServiceWithOwner = 'percentage_of_service_with_owner',
-  TotalDataAssetsByTier = 'total_data_assets_by_tier',
-  TotalDataAssetsSummaryCard = 'total_data_assets_summary_card',
-  DataAssetsWithDescriptionSummaryCard = 'data_assets_with_description_summary_card',
-  DataAssetsWithOwnerSummaryCard = 'data_assets_with_owner_summary_card',
-  TotalDataAssetsWithTierSummaryCard = 'total_data_assets_with_tier_summary_card',
-  NumberOfDataAssetWithDescription = 'number_of_data_asset_with_description_kpi',
-  NumberOfDataAssetWithOwner = 'number_of_data_asset_with_owner_kpi',
-}
-
 export interface DataInsightCustomChartResult {
-  results: Array<{ count: number; day: number; group: string }>;
+  results: Array<{
+    count: number;
+    day: number;
+    group: string;
+    term: string;
+    metric?: string;
+  }>;
 }
 
 export const getAggregateChartData = async (params: ChartAggregateParam) => {

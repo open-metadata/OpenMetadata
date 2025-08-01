@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Nifi Metadata Pipeline Connection Config
  */
 export interface NifiConnection {
@@ -23,7 +21,11 @@ export interface NifiConnection {
     /**
      * We support username/password or client certificate authentication
      */
-    nifiConfig:                  NifiCredentialsConfiguration;
+    nifiConfig: NifiCredentialsConfiguration;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -34,9 +36,9 @@ export interface NifiConnection {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -63,6 +65,22 @@ export interface NifiCredentialsConfiguration {
      * Path to the client key
      */
     clientkeyPath?: string;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

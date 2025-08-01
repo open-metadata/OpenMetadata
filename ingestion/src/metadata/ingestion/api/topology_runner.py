@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -71,14 +71,22 @@ class TopologyRunnerMixin(Generic[C]):
     cache = defaultdict(dict)
     queue = Queue()
 
+    def _run_node_producer(self, node: TopologyNode) -> Iterable[Entity]:
+        """Run the node producer"""
+        try:
+            node_producer = getattr(self, node.producer)
+            yield from node_producer() or []
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error running node producer: {exc}")
+
     def _multithread_process_node(
         self, node: TopologyNode, threads: int
     ) -> Iterable[Entity]:
         """Multithread Processing of a Node"""
-        node_producer = getattr(self, node.producer)
         child_nodes = self._get_child_nodes(node)
 
-        node_entities = list(node_producer() or [])
+        node_entities = list(self._run_node_producer(node) or [])
         node_entities_length = len(node_entities)
 
         if node_entities_length == 0:
@@ -120,10 +128,9 @@ class TopologyRunnerMixin(Generic[C]):
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
         """Processing of a Node in a single thread."""
-        node_producer = getattr(self, node.producer)
         child_nodes = self._get_child_nodes(node)
 
-        for node_entity in node_producer() or []:
+        for node_entity in self._run_node_producer(node) or []:
             for stage in node.stages:
                 yield from self._process_stage(
                     stage=stage, node_entity=node_entity, child_nodes=child_nodes
@@ -217,6 +224,17 @@ class TopologyRunnerMixin(Generic[C]):
             else []
         )
 
+    def _run_stage_processor(
+        self, stage: NodeStage, node_entity: Any
+    ) -> Iterable[Entity]:
+        """Run the stage processor"""
+        try:
+            stage_fn = getattr(self, stage.processor)
+            yield from stage_fn(node_entity) or []
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error running stage processor: {exc}")
+
     def _process_stage(
         self, stage: NodeStage, node_entity: Any, child_nodes: List[TopologyNode]
     ) -> Iterable[Entity]:
@@ -230,8 +248,9 @@ class TopologyRunnerMixin(Generic[C]):
         """
         logger.debug(f"Processing stage: {stage}")
 
-        stage_fn = getattr(self, stage.processor)
-        for entity_request in stage_fn(node_entity) or []:
+        for entity_request in (
+            self._run_stage_processor(stage=stage, node_entity=node_entity) or []
+        ):
             try:
                 # yield and make sure the data is updated
                 yield from self.sink_request(stage=stage, entity_request=entity_request)
@@ -374,28 +393,31 @@ class TopologyRunnerMixin(Generic[C]):
         if entity is None and stage.use_cache:
             # check if we find the entity in the entities list
             entity_source_hash = self.cache[stage.type_].get(entity_fqn)
-            if entity_source_hash:
-                # if the source hash is present, compare it with new hash
-                if entity_source_hash != create_entity_request_hash:
-                    # the entity has changed, get the entity from server and make a patch request
-                    entity = self.metadata.get_by_name(
-                        entity=stage.type_,
-                        fqn=entity_fqn,
-                        fields=["*"],
-                    )
+            # if the source hash is not present or different from new hash, update the entity
+            # if overrideMetadata is true, we will always update the entity
+            if (
+                entity_source_hash != create_entity_request_hash
+                or self.source_config.overrideMetadata
+            ):
+                # the entity has changed, get the entity from server and make a patch request
+                entity = self.metadata.get_by_name(
+                    entity=stage.type_,
+                    fqn=entity_fqn,
+                    fields=["*"],
+                )
 
-                    # we return the entity for a patch update
-                    if entity:
-                        patch_entity = self.create_patch_request(
-                            original_entity=entity, create_request=entity_request.right
-                        )
-                        entity_request.right = patch_entity
-                else:
-                    # nothing has changed on the source skip the API call
-                    logger.debug(
-                        f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
+                # we return the entity for a patch update
+                if entity:
+                    patch_entity = self.create_patch_request(
+                        original_entity=entity, create_request=entity_request.right
                     )
-                    same_fingerprint = True
+                    entity_request.right = patch_entity
+            else:
+                # nothing has changed on the source skip the API call
+                logger.debug(
+                    f"No changes detected for {str(stage.type_.__name__)} '{entity_fqn}'"
+                )
+                same_fingerprint = True
 
         if not same_fingerprint:
             # We store the generated source hash and yield the request
@@ -418,9 +440,9 @@ class TopologyRunnerMixin(Generic[C]):
             if not entity:
                 # Safe access to Entity Request name
                 raise MissingExpectedEntityAckException(
-                    f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
-                    "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
-                    "for the service connection."
+                    f"We are trying to create a [{stage.type_.__name__}] with FQN [{entity_fqn}],"
+                    " but we got no Entity back from the API. Checking for errors in the OpenMetadata Sink could help"
+                    " validate if the Entity was properly created or not."
                 )
 
         self.context.get().update_context_name(stage=stage, right=right)

@@ -6,7 +6,9 @@
   "description": "A `StoredProcedure` entity that contains the set of code statements with an assigned name  and is defined in a `Database Schema`.\"",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "storedProcedureType": {
       "javaType": "org.openmetadata.schema.type.StoredProcedureType",
@@ -15,7 +17,9 @@
       "default": "StoredProcedure",
       "enum": [
         "StoredProcedure",
-        "UDF"
+        "UDF",
+        "StoredPackage",
+        "Function"
       ],
       "javaEnums": [
         {
@@ -23,6 +27,12 @@
         },
         {
           "name": "UDF"
+        },
+        {
+          "name": "StoredPackage"
+        },
+        {
+          "name": "Function"
         }
       ]
     },
@@ -119,6 +129,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "databaseSchema": {
       "description": "Reference to Database Schema that contains this stored procedure.",
       "$ref": "../../type/entityReference.json"
@@ -173,9 +187,9 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
@@ -189,6 +203,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the stored procedure",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

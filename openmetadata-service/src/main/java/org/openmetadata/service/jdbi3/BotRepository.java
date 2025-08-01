@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -74,7 +75,8 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Bot original, Bot updated, Operation operation) {
+  public EntityRepository<Bot>.EntityUpdater getUpdater(
+      Bot original, Bot updated, Operation operation, ChangeSource changeSource) {
     return new BotUpdater(original, updated, operation);
   }
 

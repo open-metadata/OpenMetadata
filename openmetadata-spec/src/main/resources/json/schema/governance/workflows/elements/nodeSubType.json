@@ -11,6 +11,9 @@
     "setEntityCertificationTask",
     "setGlossaryTermStatusTask",
     "endEvent",
-    "startEvent"
+    "startEvent",
+    "createAndRunIngestionPipelineTask",
+    "runAppTask",
+    "parallelGateway"
   ]
 }

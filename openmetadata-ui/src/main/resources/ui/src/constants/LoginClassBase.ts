@@ -10,22 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import collaborationImg from '../assets/img/login-screen/data-collaboration.png';
-import discoveryImg from '../assets/img/login-screen/data-discovery.png';
-import governanceImg from '../assets/img/login-screen/data-governance.png';
-import insightImg from '../assets/img/login-screen/data-insights.png';
-import dataQualityImg from '../assets/img/login-screen/data-quality.png';
+import dataCollaborationImg from '../assets/img/login-screen/data-collabration/data-collbration.png';
+import discoveryImg from '../assets/img/login-screen/discovery/data-discovery.png';
+import governanceImg from '../assets/img/login-screen/governance/governce.png';
+import observabilityImg from '../assets/img/login-screen/observability/data-observability.png';
 
 class LoginClassBase {
-  public carouselImages() {
-    return {
-      dataDiscovery: discoveryImg,
-      dataQuality: dataQualityImg,
-      governance: governanceImg,
-      dataInsightPlural: insightImg,
-      dataCollaboration: collaborationImg,
-    };
+  public getLoginCarouselContent() {
+    const carouselContent = [
+      {
+        title: 'governance',
+        image: governanceImg,
+        descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
+      },
+      {
+        title: 'data-collaboration',
+        image: dataCollaborationImg,
+        descriptionKey: 'deeply-understand-table-relations-message',
+      },
+      {
+        title: 'data-observability',
+        image: observabilityImg,
+        descriptionKey:
+          'discover-your-data-and-unlock-the-value-of-data-assets',
+      },
+      {
+        title: 'data-discovery',
+        image: discoveryImg,
+        descriptionKey: 'enables-end-to-end-metadata-management',
+      },
+    ];
+
+    return carouselContent;
   }
 }
 

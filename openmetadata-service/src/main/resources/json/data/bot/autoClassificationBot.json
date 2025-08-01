@@ -1,0 +1,11 @@
+{
+  "name": "autoClassification-bot",
+  "displayName": "AutoClassificationBot",
+  "description": "Bot used for ingesting Sample Data and adding PII classification.",
+  "fullyQualifiedName": "autoClassification-bot",
+  "botUser": {
+    "name" : "autoClassification-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

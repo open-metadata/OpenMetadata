@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import functools
+import json
 import traceback
 from copy import deepcopy
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
@@ -63,7 +64,7 @@ class OMetaLineageMixin(Generic[T]):
                     )
             for column in updated or []:
                 if not isinstance(column, dict):
-                    data = column.dict()
+                    data = column.model_dump()
                 else:
                     data = column
                 if data.get("toColumn") and data.get("fromColumns"):
@@ -112,6 +113,7 @@ class OMetaLineageMixin(Generic[T]):
         Add lineage relationship between two entities and returns
         the entity information of the origin node
         """
+        data = deepcopy(data)
         try:
             patch_op_success = False
             if check_patch and data.edge.lineageDetails:
@@ -171,13 +173,9 @@ class OMetaLineageMixin(Generic[T]):
 
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.error(
-                "Error %s trying to PUT lineage for %s: %s",
-                err.status_code,
-                data.model_dump_json(),
-                str(err),
-            )
-            raise err
+            error = f"Error {err.status_code} trying to PUT lineage for {data.model_dump_json()}: {str(err)}"
+            logger.error(error)
+            return {"error": error}
 
         from_entity_lineage = self.get_lineage_by_id(
             data.edge.fromEntity.type, str(data.edge.fromEntity.id.root)
@@ -397,6 +395,10 @@ class OMetaLineageMixin(Generic[T]):
                     resp = self.add_lineage(
                         lineage_request.right, check_patch=check_patch
                     )
+                    if resp.get("error"):
+                        logger.error(resp["error"])
+                        continue
+
                     entity_name = resp.get("entity", {}).get("name")
                     for node in resp.get("nodes", []):
                         logger.info(
@@ -406,3 +408,28 @@ class OMetaLineageMixin(Generic[T]):
                     logger.error(
                         f"Error while adding lineage: {lineage_request.left.error}"
                     )
+
+    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)
+    def patch_lineage_processed_flag(
+        self,
+        entity: Type[T],
+        fqn: str,
+    ) -> None:
+        """
+        Patch the processed lineage flag for an entity
+        """
+        try:
+            patch = [
+                {
+                    "op": "add",
+                    "path": "/processedLineage",
+                    "value": True,
+                }
+            ]
+            self.client.patch(
+                path=f"{self.get_suffix(entity)}/name/{fqn}",
+                data=json.dumps(patch),
+            )
+        except Exception as exc:
+            logger.debug(f"Error while patching lineage processed flag: {exc}")
+            logger.debug(traceback.format_exc())

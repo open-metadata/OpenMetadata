@@ -13,12 +13,14 @@
 
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React from 'react';
+
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 import { ErrorPlaceHolderIngestionProps } from './ErrorPlaceHolderIngestion.interface';
@@ -27,15 +29,16 @@ const ErrorPlaceHolderIngestion = ({
   cardClassName,
 }: ErrorPlaceHolderIngestionProps) => {
   const { platform, isFetchingStatus } = useAirflowStatus();
+  const { t } = useTranslation();
 
   const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
 
-  const airflowSetupGuide = () => {
+  const airflowSetupGuide = useMemo(() => {
     return (
       <div className="mb-5" data-testid="error-steps">
         <Card
           className={classNames(
-            'd-flex flex-col justify-between w-4/5 mx-auto',
+            'd-flex flex-col justify-between',
             cardClassName
           )}>
           <AirflowMessageBanner className="m-b-xs" />
@@ -67,17 +70,21 @@ const ErrorPlaceHolderIngestion = ({
               direction="vertical"
               size={16}>
               <IconCollateSupport height={100} width={100} />
-              <Typography>{t('message.pipeline-scheduler-message')}</Typography>
+              <Typography>
+                {t('message.pipeline-scheduler-message', {
+                  brandName: brandClassBase.getPageTitle(),
+                })}
+              </Typography>
             </Space>
           )}
         </Card>
       </div>
     );
-  };
+  }, [isAirflowPlatform, cardClassName]);
 
   return (
     <div className="m-t-lg text-base font-medium">
-      {isFetchingStatus ? <Loader /> : airflowSetupGuide()}
+      {isFetchingStatus ? <Loader /> : airflowSetupGuide}
     </div>
   );
 };

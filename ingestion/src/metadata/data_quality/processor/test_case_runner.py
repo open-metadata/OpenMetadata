@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +15,8 @@ This Processor is in charge of executing the test cases
 import traceback
 from copy import deepcopy
 from typing import List, Optional
+
+from pydantic import RootModel
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -39,14 +41,13 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import entity_link, fqn
+from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -81,11 +82,6 @@ class TestCaseRunner(Processor):
         # Add the test cases from the YAML file, if any
         test_cases = self.get_test_cases(
             test_cases=record.test_cases,
-            test_suite_fqn=fqn.build(
-                None,
-                TestSuite,
-                table_fqn=record.table.fullyQualifiedName.root,
-            ),
             table_fqn=record.table.fullyQualifiedName.root,
         )
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
@@ -93,6 +89,7 @@ class TestCaseRunner(Processor):
             record.table, openmetadata_test_cases
         )
 
+        self.config.source.serviceConnection = RootModel(record.service_connection)
         test_suite_runner = self.get_test_suite_runner(record.table)
 
         logger.debug(
@@ -110,7 +107,7 @@ class TestCaseRunner(Processor):
         return Either(right=TestCaseResults(test_results=test_results))
 
     def get_test_cases(
-        self, test_cases: List[TestCase], test_suite_fqn: str, table_fqn: str
+        self, test_cases: List[TestCase], table_fqn: str
     ) -> List[TestCase]:
         """
         Based on the test suite test cases that we already know, pick up
@@ -121,7 +118,6 @@ class TestCaseRunner(Processor):
             return self.compare_and_create_test_cases(
                 cli_test_cases_definitions=cli_test_cases,
                 test_cases=test_cases,
-                test_suite_fqn=test_suite_fqn,
                 table_fqn=table_fqn,
             )
 
@@ -138,7 +134,6 @@ class TestCaseRunner(Processor):
         cli_test_cases_definitions: List[TestCaseDefinition],
         test_cases: List[TestCase],
         table_fqn: str,
-        test_suite_fqn: str,
     ) -> List[TestCase]:
         """
         compare test cases defined in CLI config workflow with test cases
@@ -195,7 +190,6 @@ class TestCaseRunner(Processor):
                                 column_name=test_case_to_create.columnName,
                             )
                         ),
-                        testSuite=test_suite_fqn,
                         parameterValues=(
                             list(test_case_to_create.parameterValues)
                             if test_case_to_create.parameterValues
@@ -353,7 +347,5 @@ class TestCaseRunner(Processor):
 
     def get_test_suite_runner(self, table: Table):
         return BaseTestSuiteRunner(
-            self.config,
-            self.metadata,
-            table,
+            self.config, self.metadata, table
         ).get_data_quality_runner()

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { navbarSearchItems, selectOption } from '../../utils/navbar';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -22,6 +24,8 @@ for (const searchItem of navbarSearchItems) {
 
   test(`Search Term - ${label}`, async ({ page }) => {
     await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
 
     await selectOption(
       page,
@@ -35,7 +39,7 @@ for (const searchItem of navbarSearchItems) {
     );
 
     const searchRes = page.waitForResponse(
-      `/api/v1/search/query?q=*&index=${searchIndex}`
+      `/api/v1/search/query?q=*&index=${searchIndex}**`
     );
     await page.getByTestId('searchBox').fill('dim');
     await searchRes;

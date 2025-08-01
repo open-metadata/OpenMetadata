@@ -16,7 +16,16 @@ import '@fontsource/poppins/300.css'; // Font 300
 import '@fontsource/poppins/500.css'; // Font 500
 import '@fontsource/poppins/600.css'; // Font 600
 import '@fontsource/source-code-pro'; // Font 400
-import 'react-awesome-query-builder/lib/css/styles.css';
+
+import '@fontsource/inter'; // Font 400
+import '@fontsource/inter/400.css'; // Font 400
+import '@fontsource/inter/500.css'; // Font 500
+import '@fontsource/inter/600.css'; // Font 600
+import '@fontsource/inter/700.css'; // Font 700
+import '@fontsource/inter/800.css'; // Font 800
+import '@fontsource/inter/900.css'; // Font 900
+
+import '@react-awesome-query-builder/antd/css/styles.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import './antd-master.less';
@@ -28,6 +37,7 @@ import './components/drawer.less';
 import './components/entity-version-time-line.less';
 import './components/glossary.less';
 import './components/menu.less';
+import './components/pagination.less';
 import './components/profile-picture.less';
 import './components/profiler.less';
 import './components/radio.less';

@@ -23,5 +23,5 @@ public interface ResourceContextInterface {
 
   EntityInterface getEntity();
 
-  EntityReference getDomain();
+  List<EntityReference> getDomains();
 }

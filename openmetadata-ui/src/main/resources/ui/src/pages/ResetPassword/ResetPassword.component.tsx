@@ -14,14 +14,17 @@
 import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './reset-password.style.less';
@@ -35,10 +38,11 @@ const ResetPassword = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const location = useCustomLocation();
+  const { alert } = useAlertStore();
 
   const { handleResetPassword } = useBasicAuth();
 
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -61,7 +65,7 @@ const ResetPassword = () => {
 
     try {
       await handleResetPassword(ResetRequest);
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.unexpected-response'));
     }
@@ -69,6 +73,7 @@ const ResetPassword = () => {
 
   return (
     <div className="h-full p-y-36" data-testid="reset-password-container">
+      <DocumentTitle title={t('label.reset-your-password')} />
       <Card
         bodyStyle={{ padding: '48px' }}
         className="m-auto p-x-lg"
@@ -83,6 +88,16 @@ const ResetPassword = () => {
               {t('label.reset-your-password')}
             </Typography.Text>
           </Col>
+
+          {alert && (
+            <Col className="m-b-lg" span={24}>
+              <AlertBar
+                defafultExpand
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </Col>
+          )}
 
           <Col span={24}>
             <Form
@@ -148,7 +163,7 @@ const ResetPassword = () => {
                 data-testid="submit-button"
                 htmlType="submit"
                 type="primary">
-                {t('label.submit')}
+                {t('label.save')}
               </Button>
             </Form>
           </Col>

@@ -32,6 +32,11 @@
       "description": "Set the logging level for the workflow.",
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
+    "raiseOnError": {
+      "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+      "type": "boolean",
+      "default": true
+    },
     "service": {
       "description": "Link to the service for which ingestion pipeline is ingesting the metadata.",
       "$ref": "../../../type/entityReference.json"
@@ -41,9 +46,19 @@
       "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "provider" : {
+      "$ref": "../../../type/basic.json#/definitions/providerType"
+    },
+    "domains" : {
+      "description": "Fully qualified names of the domains the Ingestion Pipeline belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "processingEngine": {
+      "description": "The processing engine responsible for executing the ingestion pipeline logic.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": [

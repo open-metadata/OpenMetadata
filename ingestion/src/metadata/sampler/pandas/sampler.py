@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -46,6 +46,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         super().__init__(*args, **kwargs)
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
         self._table = None
+        self.client = self.get_client()
 
     @property
     def raw_dataset(self):
@@ -59,7 +60,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         return self._table
 
     def get_client(self):
-        return self.connection.client
+        return self.connection
 
     def _partitioned_table(self):
         """Get partitioned table"""
@@ -123,13 +124,13 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         """
         random.shuffle(self.raw_dataset)  # we'll shuffle the list of dataframes
         # sampling data based on profiler config (if any)
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             try:
-                profile_sample = (self.sample_config.profile_sample or 100) / 100
+                profile_sample = (self.sample_config.profileSample or 100) / 100
             except TypeError:
                 # if the profile sample is not a number or is None
                 # we'll set it to 100
-                profile_sample = self.sample_config.profile_sample = 100
+                profile_sample = self.sample_config.profileSample = 100
             return [
                 df.sample(
                     frac=profile_sample,
@@ -141,7 +142,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
 
         # we'll distribute the sample size equally among the dataframes
         sample_rows_per_chunk: int = math.floor(
-            (self.sample_config.profile_sample or 100) / len(self.raw_dataset)
+            (self.sample_config.profileSample or 100) / len(self.raw_dataset)
         )
         num_rows = sum(len(df) for df in self.raw_dataset)
 
@@ -187,9 +188,9 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if self.partition_details:
             self._table = self._partitioned_table()
 
-        if not self.sample_config.profile_sample or (
-            self.sample_config.profile_sample == 100
-            and self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
+        if not self.sample_config.profileSample or (
+            self.sample_config.profileSample == 100
+            and self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
         ):
             return self.raw_dataset
         return self._get_sampled_dataframe()

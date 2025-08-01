@@ -4,6 +4,9 @@
   "title": "EventBasedEntityTriggerDefinition",
   "description": "Event Based Entity Trigger.",
   "javaType": "org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface"
+  ],
   "type": "object",
   "definitions": {
     "event": {
@@ -15,6 +18,7 @@
       ]
     },
     "config": {
+      "title": "Trigger Configuration",
       "description": "Entity Event Trigger Configuration.",
       "type": "object",
       "properties": {
@@ -23,6 +27,8 @@
           "type": "string"
         },
         "events": {
+          "title": "Events",
+          "descriptions": "Select the events that should trigger this workflow",
           "type": "array",
           "items": {
             "$ref": "#/definitions/event"
@@ -30,21 +36,25 @@
           "uniqueItems": true
         },
         "exclude": {
-          "description": "Exclude events that only modify given attributes.",
+          "title": "Exclude Fields",
+          "description": "Select fields that should not trigger the workflow if only them are modified.",
           "type": "array",
           "items": {
             "type": "string"
           }
         }
       },
-      "required": ["entityType", "events"],
+      "required": [
+        "entityType",
+        "events"
+      ],
       "additionalProperties": false
     }
   },
   "properties": {
     "type": {
       "type": "string",
-      "default": "eventBasedEntityTrigger"
+      "default": "eventBasedEntity"
     },
     "config": {
       "$ref": "#/definitions/config"
@@ -54,7 +64,9 @@
       "items": {
         "type": "string"
       },
-      "default": ["relatedEntity"],
+      "default": [
+        "relatedEntity"
+      ],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1,

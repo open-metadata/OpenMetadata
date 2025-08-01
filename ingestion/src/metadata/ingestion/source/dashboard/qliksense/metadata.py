@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,6 +55,7 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -135,9 +136,11 @@ class QliksenseSource(DashboardServiceSource):
                 name=EntityName(dashboard_details.qDocId),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.qDocName,
-                description=Markdown(dashboard_details.qMeta.description)
-                if dashboard_details.qMeta.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.qMeta.description)
+                    if dashboard_details.qMeta.description
+                    else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -188,9 +191,11 @@ class QliksenseSource(DashboardServiceSource):
                     right=CreateChartRequest(
                         name=EntityName(chart.qInfo.qId),
                         displayName=chart.qMeta.title,
-                        description=Markdown(chart.qMeta.description)
-                        if chart.qMeta.description
-                        else None,
+                        description=(
+                            Markdown(chart.qMeta.description)
+                            if chart.qMeta.description
+                            else None
+                        ),
                         chartType=ChartType.Other,
                         sourceUrl=SourceUrl(chart_url),
                         service=FullyQualifiedEntityName(
@@ -276,7 +281,11 @@ class QliksenseSource(DashboardServiceSource):
         return None
 
     def _get_database_table(
-        self, db_service_entity: DatabaseService, datamodel: QlikTable
+        self,
+        db_service_entity: DatabaseService,
+        datamodel: QlikTable,
+        schema_name: Optional[str],
+        database_name: Optional[str],
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
@@ -284,17 +293,6 @@ class QliksenseSource(DashboardServiceSource):
         # table.name in tableau can come as db.schema.table_name. Hence the logic to split it
         if datamodel.tableName and db_service_entity:
             try:
-                if len(datamodel.connectorProperties.tableQualifiers) > 1:
-                    (
-                        database_name,
-                        schema_name,
-                    ) = datamodel.connectorProperties.tableQualifiers[-2:]
-                elif len(datamodel.connectorProperties.tableQualifiers) == 1:
-                    schema_name = datamodel.connectorProperties.tableQualifiers[-1]
-                    database_name = None
-                else:
-                    schema_name, database_name = None, None
-
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
@@ -316,18 +314,69 @@ class QliksenseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikDashboard,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
-        db_service_entity = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=db_service_name
-        )
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
         for datamodel in self.data_models or []:
             try:
                 data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
-                    om_table = self._get_database_table(
-                        db_service_entity, datamodel=datamodel
+                    if len(datamodel.connectorProperties.tableQualifiers) > 1:
+                        (
+                            database_name,
+                            schema_name,
+                        ) = datamodel.connectorProperties.tableQualifiers[-2:]
+                    elif len(datamodel.connectorProperties.tableQualifiers) == 1:
+                        schema_name = datamodel.connectorProperties.tableQualifiers[-1]
+                        database_name = None
+                    else:
+                        schema_name, database_name = None, None
+
+                    if (
+                        prefix_table_name
+                        and datamodel.tableName
+                        and prefix_table_name.lower() != datamodel.tableName.lower()
+                    ):
+                        logger.debug(
+                            f"Table {datamodel.tableName} does not match prefix {prefix_table_name}"
+                        )
+                        continue
+
+                    if (
+                        prefix_schema_name
+                        and schema_name
+                        and prefix_schema_name.lower() != schema_name.lower()
+                    ):
+                        logger.debug(
+                            f"Schema {schema_name} does not match prefix {prefix_schema_name}"
+                        )
+                        continue
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        logger.debug(
+                            f"Database {database_name} does not match prefix {prefix_database_name}"
+                        )
+                        continue
+
+                    fqn_search_string = build_es_fqn_search_string(
+                        database_name=prefix_database_name or database_name,
+                        schema_name=prefix_schema_name or schema_name,
+                        service_name=prefix_service_name or "*",
+                        table_name=prefix_table_name or datamodel.tableName,
+                    )
+                    om_table = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
                     )
                     if om_table:
                         columns_list = [col.name for col in datamodel.fields]
@@ -345,7 +394,7 @@ class QliksenseSource(DashboardServiceSource):
                         name=f"{dashboard_details.qDocName} Lineage",
                         error=(
                             "Error to yield dashboard lineage details for DB "
-                            f"service name [{db_service_name}]: {err}"
+                            f"service name [{prefix_service_name}]: {err}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )

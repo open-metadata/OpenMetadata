@@ -41,6 +41,13 @@
         "dataTypeDisplay": "numeric",
         "description": "Vaccine Candidates in phase: 'Authorize'",
         "ordinalPosition": 5
+      },
+      {
+        "name": "5. \"Delivery\"",
+        "dataType": "NUMERIC",
+        "dataTypeDisplay": "numeric",
+        "description": "Vaccine Candidates in phase: 'Delivery'",
+        "ordinalPosition": 5
       }
     ]
   },

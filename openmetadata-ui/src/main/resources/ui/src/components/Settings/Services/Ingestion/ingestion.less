@@ -1,0 +1,105 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.agents-tab {
+  background-color: @white;
+  border-radius: @border-rad-sm;
+  border: 1px solid @grey-15;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .service-agents-widget {
+    height: 100%;
+    background-color: @white;
+    border-radius: @border-rad-sm;
+    border: 1px solid @grey-15;
+    padding: 20px;
+  }
+
+  .search-bar-container {
+    width: 350px;
+  }
+
+  .reload-button {
+    border-color: @grey-15;
+    .anticon.reload-button-icon {
+      font-size: 14px;
+    }
+  }
+
+  .quick-filter-dropdown-trigger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: @border-rad-xs;
+    border: 1px solid @grey-15;
+    padding: 19px;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: @white;
+  }
+
+  .agents-sub-tabs-switch {
+    .ant-radio-button-wrapper,
+    .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
+      background-color: @grey-15;
+    }
+    .ant-radio-button-wrapper:first-child {
+      border-color: @grey-15;
+      border-radius: 8px 0 0 8px;
+    }
+    .ant-radio-button-wrapper:last-child {
+      border-color: @grey-15;
+      border-radius: 0 8px 8px 0;
+    }
+    .ant-radio-button-wrapper:hover {
+      .tab-label {
+        color: @primary-color;
+        .ant-typography {
+          color: @primary-color;
+        }
+      }
+    }
+    .ant-radio-button-wrapper-checked {
+      background-color: @primary-button-background;
+      .tab-label {
+        color: @primary-color;
+        .ant-typography {
+          color: @primary-color;
+        }
+      }
+    }
+    .ant-radio-button-wrapper:focus-within {
+      box-shadow: none;
+    }
+    .ant-radio-button-wrapper {
+      box-shadow: none;
+      .tab-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    }
+    .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover {
+      background-color: @primary-button-background;
+    }
+  }
+}

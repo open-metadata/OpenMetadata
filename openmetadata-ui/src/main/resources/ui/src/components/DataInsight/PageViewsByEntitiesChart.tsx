@@ -14,7 +14,7 @@
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -121,7 +121,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="entity-page-views-card"
       id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}>

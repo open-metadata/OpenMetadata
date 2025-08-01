@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { diffArrays } from 'diff';
-import React, { FC, Fragment, useMemo } from 'react';
+import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TaskType,
@@ -30,7 +30,7 @@ interface TagsTaskProps {
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
   value?: TagLabel[];
-  onChange: (newTags: TagLabel[]) => void;
+  onChange?: (newTags: TagLabel[]) => void;
 }
 
 const TagsTask: FC<TagsTaskProps> = ({

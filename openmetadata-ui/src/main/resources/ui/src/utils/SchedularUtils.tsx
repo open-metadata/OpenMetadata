@@ -12,8 +12,10 @@
  */
 
 import { Select } from 'antd';
+import cronstrue from 'cronstrue/i18n';
+import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
-import React from 'react';
+import { RuleObject } from 'rc-field-form/es/interface';
 import {
   Combination,
   CronOption,
@@ -22,12 +24,18 @@ import {
 } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import {
   CRON_COMBINATIONS,
+  DAY_OF_MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
   DEFAULT_SCHEDULE_CRON_DAILY,
   DEFAULT_SCHEDULE_CRON_HOURLY,
   DEFAULT_SCHEDULE_CRON_MONTHLY,
   DEFAULT_SCHEDULE_CRON_WEEKLY,
+  HOUR_PATTERN,
+  MINUTE_PATTERN,
+  MONTH_PATTERN,
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
+import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]
@@ -280,4 +288,83 @@ export const getUpdatedStateFromFormState = <T,>(
   } catch {
     return { ...currentState, ...formValues };
   }
+};
+
+export const cronValidator = async (_: RuleObject, value: string) => {
+  const trimmedValue = value.trim();
+
+  // to avoid multiple validation errors
+  if (!trimmedValue) {
+    return;
+  }
+
+  const cronParts = trimmedValue.split(' ');
+
+  // Check if the cron expression has exactly 5 fields (standard Unix cron)
+
+  if (cronParts.length !== 5) {
+    return Promise.reject(new Error(t('message.cron-invalid-field-count')));
+  }
+
+  // Validate that each field follows standard Unix cron format
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
+
+  if (!MINUTE_PATTERN.test(minute)) {
+    return Promise.reject(new Error(t('message.cron-invalid-minute-field')));
+  }
+  if (!HOUR_PATTERN.test(hour)) {
+    return Promise.reject(new Error(t('message.cron-invalid-hour-field')));
+  }
+  if (!DAY_OF_MONTH_PATTERN.test(dayOfMonth)) {
+    return Promise.reject(
+      new Error(t('message.cron-invalid-day-of-month-field'))
+    );
+  }
+  if (!MONTH_PATTERN.test(month)) {
+    return Promise.reject(new Error(t('message.cron-invalid-month-field')));
+  }
+  if (!DAY_OF_WEEK_PATTERN.test(dayOfWeek)) {
+    return Promise.reject(
+      new Error(t('message.cron-invalid-day-of-week-field'))
+    );
+  }
+
+  try {
+    // Check if cron is valid and get the description
+    const description = cronstrue.toString(trimmedValue);
+
+    // Check if cron has a frequency of less than an hour
+    const isFrequencyInMinutes = /Every \d* *minute/.test(description);
+    const isFrequencyInSeconds = /Every \d* *second/.test(description);
+
+    if (isFrequencyInMinutes || isFrequencyInSeconds) {
+      return Promise.reject(
+        new Error(t('message.cron-less-than-hour-message'))
+      );
+    }
+
+    return Promise.resolve();
+  } catch {
+    // If cronstrue fails to parse, it's an invalid cron expression
+    return Promise.reject(new Error(t('message.cron-invalid-expression')));
+  }
+};
+
+export const getRaiseOnErrorFormField = (
+  onFocus?: (fieldName: string) => void
+) => {
+  return {
+    name: 'raiseOnError',
+    label: t('label.raise-on-error'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    formItemProps: {
+      valuePropName: 'checked',
+    },
+    props: {
+      onFocus: () => onFocus?.('raiseOnError'),
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    id: 'root/raiseOnError',
+  };
 };

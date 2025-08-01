@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Form, Row, Tooltip, Typography } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -20,22 +20,17 @@ import { Metric } from '../../../generated/entity/data/metric';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 
-interface MetricExpressionProps {
-  metricDetails: Metric;
-  onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
-}
-
-const MetricExpression: FC<MetricExpressionProps> = ({
-  metricDetails,
-  onMetricUpdate,
-}: MetricExpressionProps) => {
+const MetricExpression: FC = () => {
   const [form] = Form.useForm();
   const { t } = useTranslation();
+  const { data: metricDetails, onUpdate: onMetricUpdate } =
+    useGenericContext<Metric>();
 
-  const [isUpdating, setIsUpdating] = React.useState(false);
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const selectedLanguage = Form.useWatch('language', form);
 
@@ -99,7 +94,7 @@ const MetricExpression: FC<MetricExpressionProps> = ({
           ? t('label.edit-entity', { entity: t('label.expression') })
           : metricDetails?.metricExpression?.language ?? t('label.expression')}
       </Typography>
-      {!isEditing && onMetricUpdate && !metricDetails.deleted && (
+      {!isEditing && !metricDetails.deleted && (
         <Tooltip
           title={t('label.edit-entity', {
             entity: t('label.expression'),

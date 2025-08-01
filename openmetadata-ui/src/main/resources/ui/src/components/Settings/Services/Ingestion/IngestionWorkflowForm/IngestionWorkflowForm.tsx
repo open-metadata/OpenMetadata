@@ -16,9 +16,10 @@ import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
 } from '../../../../../constants/Services.constant';
@@ -50,6 +51,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onFocus,
   onSubmit,
   onChange,
+  serviceData,
 }) => {
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
@@ -71,12 +73,22 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
   const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
+  const isIncrementalExtractionSupported =
+    serviceData?.connection.config.supportsIncrementalMetadataExtraction;
+
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
     if (isElasticSearchPipeline) {
       commonSchema = {
         ...commonSchema,
         ...INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+      };
+    }
+
+    if (!isIncrementalExtractionSupported) {
+      commonSchema = {
+        ...commonSchema,
+        ...EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
       };
     }
 
@@ -178,7 +190,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           </Button>
 
           <Button data-testid="submit-btn" htmlType="submit" type="primary">
-            {okText ?? t('label.submit')}
+            {okText ?? t('label.save')}
           </Button>
         </Space>
       </div>

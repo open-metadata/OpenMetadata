@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -151,7 +151,7 @@ def build(
 def _(
     metadata: Optional[OpenMetadata],
     *,
-    service_name: str,
+    service_name: Optional[str],
     database_name: Optional[str],
     schema_name: Optional[str],
     table_name: str,
@@ -161,7 +161,7 @@ def _(
     """
     Building logic for tables
     :param metadata: OMeta client
-    :param service_name: Service Name to filter
+    :param service_name: Service Name to filter or None
     :param database_name: DB name or None
     :param schema_name: Schema name or None
     :param table_name: Table name
@@ -180,8 +180,8 @@ def _(
             service_name=service_name,
         )
 
-    # if entity not found in ES proceed to build FQN with database_name and schema_name
-    if not entity and database_name and schema_name:
+    # if entity not found in ES proceed to build FQN with service_name, database_name and schema_name
+    if not entity and service_name and database_name and schema_name:
         fqn = _build(service_name, database_name, schema_name, table_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:

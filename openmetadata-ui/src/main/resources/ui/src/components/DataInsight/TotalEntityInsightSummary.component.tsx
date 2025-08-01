@@ -13,8 +13,8 @@
 import { Button, Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
-import { includes, toLower } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { includes, startCase, toLower } from 'lodash';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { entityChartColor } from '../../utils/CommonUtils';
@@ -114,7 +114,7 @@ const TotalEntityInsightSummary = ({
                 onMouseEnter={() => handleLegendMouseEnter(entity)}
                 onMouseLeave={handleLegendMouseLeave}>
                 <EntitySummaryProgressBar
-                  entity={entity}
+                  entity={startCase(entity)}
                   isActive={
                     activeKeys?.length ? activeKeys.includes(entity) : true
                   }

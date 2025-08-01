@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,12 +33,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import InvalidSourceException, Source
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
 from metadata.ingestion.source.metadata.alationsink.constants import (
     SERVICE_TYPE_MAPPER,
@@ -56,6 +53,7 @@ from metadata.ingestion.source.metadata.alationsink.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -71,6 +69,7 @@ class AlationsinkSource(Source):
     config: WorkflowSource
     alation_sink_client: AlationSinkClient
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -117,9 +116,11 @@ class AlationsinkSource(Source):
                     ),
                 ),
                 db_username="Test",
-                title=om_database.displayName
-                if om_database.displayName
-                else model_str(om_database.name),
+                title=(
+                    om_database.displayName
+                    if om_database.displayName
+                    else model_str(om_database.name)
+                ),
                 description=model_str(om_database.description),
             )
         except Exception as exc:
@@ -140,9 +141,11 @@ class AlationsinkSource(Source):
                 key=fqn._build(  # pylint: disable=protected-access
                     str(alation_datasource_id), model_str(om_schema.name)
                 ),
-                title=om_schema.displayName
-                if om_schema.displayName
-                else model_str(om_schema.name),
+                title=(
+                    om_schema.displayName
+                    if om_schema.displayName
+                    else model_str(om_schema.name)
+                ),
                 description=model_str(om_schema.description),
             )
         except Exception as exc:
@@ -163,9 +166,11 @@ class AlationsinkSource(Source):
                 key=fqn._build(  # pylint: disable=protected-access
                     str(alation_datasource_id), schema_name, model_str(om_table.name)
                 ),
-                title=om_table.displayName
-                if om_table.displayName
-                else model_str(om_table.name),
+                title=(
+                    om_table.displayName
+                    if om_table.displayName
+                    else model_str(om_table.name)
+                ),
                 description=model_str(om_table.description),
                 table_type=TABLE_TYPE_MAPPER.get(om_table.tableType, "TABLE"),
                 sql=om_table.schemaDefinition,
@@ -273,16 +278,22 @@ class AlationsinkSource(Source):
                     table_name,
                     model_str(om_column.name),
                 ),
-                column_type=om_column.dataTypeDisplay.lower()
-                if om_column.dataTypeDisplay
-                else om_column.dataType.value.lower(),
-                title=om_column.displayName
-                if om_column.displayName
-                else model_str(om_column.name),
+                column_type=(
+                    om_column.dataTypeDisplay.lower()
+                    if om_column.dataTypeDisplay
+                    else om_column.dataType.value.lower()
+                ),
+                title=(
+                    om_column.displayName
+                    if om_column.displayName
+                    else model_str(om_column.name)
+                ),
                 description=model_str(om_column.description),
-                position=str(om_column.ordinalPosition)
-                if om_column.ordinalPosition
-                else None,
+                position=(
+                    str(om_column.ordinalPosition)
+                    if om_column.ordinalPosition
+                    else None
+                ),
                 index=self._get_column_index(
                     alation_datasource_id, om_column, table_constraints
                 ),
@@ -461,8 +472,6 @@ class AlationsinkSource(Source):
         """Not required to implement"""
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.alation_sink_client, self.service_connection
         )
-        raise_test_connection_exception(result)

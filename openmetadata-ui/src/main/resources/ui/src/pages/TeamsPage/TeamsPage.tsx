@@ -14,10 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -54,7 +53,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
 const TeamsPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
@@ -65,8 +64,6 @@ const TeamsPage = () => {
 
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
 
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -85,10 +82,6 @@ const TeamsPage = () => {
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
   );
-
-  const descriptionHandler = (value: boolean) => {
-    setIsDescriptionEditable(value);
-  };
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
@@ -208,7 +201,7 @@ const TeamsPage = () => {
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);
-      } catch (error) {
+      } catch {
         // Error
       }
     }
@@ -288,8 +281,8 @@ const TeamsPage = () => {
 
       const res = await createTeam(teamData);
       if (res) {
-        fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
+        await fetchTeamBasicDetails(selectedTeam.name, true);
         loadAdvancedDetails();
       }
     } catch (error) {
@@ -432,11 +425,7 @@ const TeamsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        descriptionHandler(false);
       }
-    } else {
-      descriptionHandler(false);
     }
   };
 
@@ -462,7 +451,7 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(getTeamsWithFqnPath(TeamType.Organization));
+      : navigate(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
@@ -503,11 +492,24 @@ const TeamsPage = () => {
   }
 
   if (!hasViewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.team-plural'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isEmpty(selectedTeam)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
   }
 
   return (
@@ -517,13 +519,11 @@ const TeamsPage = () => {
         assetsCount={assets}
         childTeams={childTeams}
         currentTeam={selectedTeam}
-        descriptionHandler={descriptionHandler}
         entityPermissions={entityPermissions}
         handleAddTeam={handleAddTeam}
         handleAddUser={addUsersToTeam}
         handleJoinTeamClick={handleJoinTeamClick}
         handleLeaveTeamClick={handleLeaveTeamClick}
-        isDescriptionEditable={isDescriptionEditable}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
         isTeamMemberLoading={isDataLoading}

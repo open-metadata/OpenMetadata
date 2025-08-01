@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Request to create User entity
  */
 export interface CreateUser {
@@ -50,6 +48,10 @@ export interface CreateUser {
     domains?: string[];
     email:    string;
     /**
+     * External identifier from identity provider (used for SCIM).
+     */
+    externalId?: string;
+    /**
      * When true indicates user is an administrator for the system with superuser privileges
      */
     isAdmin?: boolean;
@@ -74,6 +76,10 @@ export interface CreateUser {
      * Roles that the user has been assigned
      */
     roles?: string[];
+    /**
+     * Raw user name from SCIM.
+     */
+    scimUserName?: string;
     /**
      * Teams that the user belongs to
      */
@@ -469,6 +475,10 @@ export interface Webhook {
      * HTTP operation to send the webhook request. Supports POST or PUT.
      */
     httpMethod?: HTTPMethod;
+    /**
+     * Query parameters to be added to the webhook request URL.
+     */
+    queryParams?: { [key: string]: any };
     /**
      * List of receivers to send mail to
      */

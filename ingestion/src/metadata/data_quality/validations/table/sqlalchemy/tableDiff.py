@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -265,6 +265,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
+            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            if self.runtime_params.table1.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            if self.runtime_params.table1.passPhrase
+            else None,
         ).with_schema()
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
@@ -272,6 +278,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
+            key_content=self.runtime_params.table2.privateKey.get_secret_value()
+            if self.runtime_params.table2.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()
+            if self.runtime_params.table2.passPhrase
+            else None,
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
@@ -332,6 +344,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
             where=left_where,
+            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            if self.runtime_params.table1.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            if self.runtime_params.table1.passPhrase
+            else None,
         )
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
@@ -339,6 +357,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
+            key_content=self.runtime_params.table1.privateKey.get_secret_value()
+            if self.runtime_params.table1.privateKey
+            else None,
+            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
+            if self.runtime_params.table1.passPhrase
+            else None,
         )
         data_diff_kwargs = {
             "key_columns": self.runtime_params.keyColumns,
@@ -484,7 +508,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             ("table1.serviceUrl", self.runtime_params.table1.serviceUrl),
             ("table2.serviceUrl", self.runtime_params.table2.serviceUrl),
         ]:
-            dialect = urlparse(param).scheme
+            if isinstance(param, dict):
+                dialect = param.get("driver")
+            else:
+                dialect = urlparse(param).scheme
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
 

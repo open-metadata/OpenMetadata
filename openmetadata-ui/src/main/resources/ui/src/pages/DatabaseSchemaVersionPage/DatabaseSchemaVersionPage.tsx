@@ -14,25 +14,21 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  PAGE_SIZE,
-} from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -55,25 +51,26 @@ import {
   getDatabaseSchemaVersions,
 } from '../../rest/databaseAPI';
 import { getTableList, TableListParams } from '../../rest/tableAPI';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } = useParams<{
+  const { version, tab } = useRequiredParams<{
     version: string;
     tab: EntityTabs;
   }>();
   const { fqn: decodedEntityFQN } = useFqn();
 
-  const pagingInfo = usePaging(PAGE_SIZE);
+  const pagingInfo = usePaging();
 
   const {
     paging,
@@ -103,7 +100,7 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -120,9 +117,9 @@ function DatabaseSchemaVersionPage() {
           currentVersionData.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData.changeDescription, owners, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domains]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -207,7 +204,7 @@ function DatabaseSchemaVersionPage() {
   const { versionHandler, backHandler } = useMemo(
     () => ({
       versionHandler: (newVersion = version) => {
-        history.push(
+        navigate(
           getVersionPath(
             EntityType.DATABASE_SCHEMA,
             decodedEntityFQN,
@@ -217,7 +214,7 @@ function DatabaseSchemaVersionPage() {
         );
       },
       backHandler: () => {
-        history.push(
+        navigate(
           getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
             decodedEntityFQN,
@@ -230,7 +227,7 @@ function DatabaseSchemaVersionPage() {
   );
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DATABASE_SCHEMA,
         decodedEntityFQN,
@@ -248,31 +245,37 @@ function DatabaseSchemaVersionPage() {
         ),
         key: EntityTabs.TABLE,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
-              <SchemaTablesTab
-                isVersionView
-                currentTablesPage={currentPage}
-                databaseSchemaDetails={currentVersionData}
-                description={description}
-                pagingInfo={pagingInfo}
-                tableData={tableData}
-                tableDataLoading={isTableDataLoading}
-                tablePaginationHandler={tablePaginationHandler}
-              />
+              <Row gutter={[16, 16]}>
+                <Col data-testid="description-container" span={24}>
+                  <DescriptionV1
+                    description={description}
+                    entityType={EntityType.DATABASE_SCHEMA}
+                    isDescriptionExpanded={isEmpty(tableData)}
+                    showActions={false}
+                  />
+                </Col>
+                <Col className="p-t-sm" flex="auto">
+                  <SchemaTablesTab isVersionView />
+                </Col>
+              </Row>
             </Col>
+
             <Col
               className="entity-tag-right-panel-container"
               data-testid="entity-right-panel"
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
-                  activeDomain={domain}
+                  newLook
+                  activeDomains={domains}
                   dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     displayType={DisplayType.READ_MORE}
                     entityType={EntityType.DATABASE_SCHEMA}
                     key={tagType}
@@ -299,7 +302,6 @@ function DatabaseSchemaVersionPage() {
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={false}
             hasPermission={viewVersionPermission}
@@ -324,7 +326,15 @@ function DatabaseSchemaVersionPage() {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.database-schema-version'),
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     return (
@@ -349,15 +359,23 @@ function DatabaseSchemaVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.TABLE}
-                  items={tabs}
-                  onChange={handleTabChange}
-                />
-              </Col>
+              <GenericProvider
+                isVersionView
+                currentVersionData={currentVersionData}
+                data={currentVersionData}
+                permissions={servicePermissions}
+                type={EntityType.DATABASE}
+                onUpdate={() => Promise.resolve()}>
+                <Col className="entity-version-page-tabs" span={24}>
+                  <Tabs
+                    className="tabs-new"
+                    data-testid="tabs"
+                    defaultActiveKey={tab}
+                    items={tabs}
+                    onChange={handleTabChange}
+                  />
+                </Col>
+              </GenericProvider>
             </Row>
           </div>
         )}
@@ -414,15 +432,7 @@ function DatabaseSchemaVersionPage() {
     }
   }, [currentVersionData, pageSize]);
 
-  return (
-    <PageLayoutV1
-      className="version-page-container"
-      pageTitle={t('label.entity-version-detail-plural', {
-        entity: getEntityName(currentVersionData),
-      })}>
-      {versionComponent}
-    </PageLayoutV1>
-  );
+  return versionComponent;
 }
 
 export default DatabaseSchemaVersionPage;

@@ -12,8 +12,10 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CertificationConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetEntityCertificationImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -26,7 +28,8 @@ public class SetEntityCertificationTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public SetEntityCertificationTask(SetEntityCertificationTaskDefinition nodeDefinition) {
+  public SetEntityCertificationTask(
+      SetEntityCertificationTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -38,7 +41,8 @@ public class SetEntityCertificationTask implements NodeInterface {
         getSetEntityCertificationServiceTask(
             subProcessId,
             (CertificationConfiguration.CertificationEnum)
-                nodeDefinition.getConfig().getCertification());
+                nodeDefinition.getConfig().getCertification(),
+            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -50,7 +54,12 @@ public class SetEntityCertificationTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setEntityCertification.getId()));
     subProcess.addFlowElement(new SequenceFlow(setEntityCertification.getId(), endEvent.getId()));
 
-    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
+
+    this.runtimeExceptionBoundaryEvent =
+        getRuntimeExceptionBoundaryEvent(subProcess, config.getStoreStageStatus());
     this.subProcess = subProcess;
   }
 
@@ -60,7 +69,9 @@ public class SetEntityCertificationTask implements NodeInterface {
   }
 
   private ServiceTask getSetEntityCertificationServiceTask(
-      String subProcessId, CertificationConfiguration.CertificationEnum certification) {
+      String subProcessId,
+      CertificationConfiguration.CertificationEnum certification,
+      String inputNamespaceMap) {
     FieldExtension certificationExpr =
         new FieldExtensionBuilder()
             .fieldName("certificationExpr")
@@ -69,14 +80,18 @@ public class SetEntityCertificationTask implements NodeInterface {
                     .map(CertificationConfiguration.CertificationEnum::value)
                     .orElse(""))
             .build();
-
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
-            .implementation(SetEntityCertificationImpl.class.getName())
+    FieldExtension inputNamespaceMapExpr =
+        new FieldExtensionBuilder()
+            .fieldName("inputNamespaceMapExpr")
+            .fieldValue(inputNamespaceMap)
             .build();
-    serviceTask.getFieldExtensions().add(certificationExpr);
-    return serviceTask;
+
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
+        .implementation(SetEntityCertificationImpl.class.getName())
+        .addFieldExtension(certificationExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

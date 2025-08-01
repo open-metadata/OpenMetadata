@@ -18,9 +18,9 @@
       "description": "Reference to a Page ID that this navigation item links to.",
       "type": "string"
     },
-    "order": {
-      "description": "Order of the navigation item in the menu.",
-      "type": "integer"
+    "isHidden": {
+      "description": "Determine if item is visible or not",
+      "type": "boolean"
     },
     "children": {
       "description": "Optional sub-navigation items.",
@@ -29,6 +29,6 @@
       "default": []
     }
   },
-  "required": ["id", "title", "pageId", "order"],
+  "required": ["id", "title", "pageId"],
   "additionalProperties": false
 }

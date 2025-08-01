@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.feeds;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_CREATED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_REJECTED;
@@ -27,26 +26,26 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CreateSuggestion;
 import org.openmetadata.schema.entity.feed.Suggestion;
@@ -54,20 +53,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SuggestionFilter;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.UserUtil;
 
 @Path("/v1/suggestions")
 @Tag(
@@ -79,9 +74,9 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "suggestions")
 public class SuggestionsResource {
   public static final String COLLECTION_PATH = "/v1/suggestions/";
+  private final SuggestionMapper mapper = new SuggestionMapper();
   private final SuggestionRepository dao;
   private final Authorizer authorizer;
-  private final String INVALID_SUGGESTION_REQUEST = "INVALID_SUGGESTION_REQUEST";
 
   public static void addHref(UriInfo uriInfo, List<Suggestion> suggestions) {
     if (uriInfo != null) {
@@ -127,7 +122,7 @@ public class SuggestionsResource {
                   "Limit the number of suggestions returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(1)
-          @Max(1000000)
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -303,8 +298,7 @@ public class SuggestionsResource {
       dao.checkPermissionsForAcceptOrRejectSuggestion(
           suggestion, SuggestionStatus.Rejected, securityContext);
       dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
-      return dao.acceptSuggestionList(
-          uriInfo, suggestions, suggestionType, securityContext, authorizer);
+      return dao.acceptSuggestionList(uriInfo, suggestions, securityContext, authorizer);
     } else {
       // No suggestions found
       return new RestUtil.PutResponse<>(
@@ -410,7 +404,8 @@ public class SuggestionsResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSuggestion create) {
-    Suggestion suggestion = getSuggestion(securityContext, create);
+    Suggestion suggestion =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(suggestion));
     return Response.created(suggestion.getHref())
         .entity(suggestion)
@@ -478,57 +473,5 @@ public class SuggestionsResource {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteSuggestionsForAnEntity(entity, securityContext.getUserPrincipal().getName())
         .toResponse();
-  }
-
-  private Suggestion getSuggestion(SecurityContext securityContext, CreateSuggestion create) {
-    validate(create);
-    return new Suggestion()
-        .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
-        .withEntityLink(create.getEntityLink())
-        .withType(create.getType())
-        .withDescription(create.getDescription())
-        .withTagLabels(create.getTagLabels())
-        .withStatus(SuggestionStatus.Open)
-        .withCreatedBy(UserUtil.getUserOrBot(securityContext.getUserPrincipal().getName()))
-        .withCreatedAt(System.currentTimeMillis())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
-  }
-
-  private void validate(CreateSuggestion suggestion) {
-    if (suggestion.getEntityLink() == null) {
-      throw new SuggestionException(
-          Response.Status.BAD_REQUEST,
-          INVALID_SUGGESTION_REQUEST,
-          "Suggestion's entityLink cannot be null.");
-    }
-    MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse(suggestion.getEntityLink());
-    Entity.getEntityReferenceByName(
-        entityLink.getEntityType(), entityLink.getEntityFQN(), Include.NON_DELETED);
-
-    if (suggestion.getType() == SuggestionType.SuggestDescription) {
-      if (suggestion.getDescription() == null || suggestion.getDescription().isEmpty()) {
-        throw new SuggestionException(
-            Response.Status.BAD_REQUEST,
-            INVALID_SUGGESTION_REQUEST,
-            "Suggestion's description cannot be empty.");
-      }
-    } else if (suggestion.getType() == SuggestionType.SuggestTagLabel) {
-      if (suggestion.getTagLabels().isEmpty()) {
-        throw new SuggestionException(
-            Response.Status.BAD_REQUEST,
-            INVALID_SUGGESTION_REQUEST,
-            "Suggestion's tag label's cannot be empty.");
-      } else {
-        for (TagLabel label : listOrEmpty(suggestion.getTagLabels())) {
-          TagLabelUtil.applyTagCommonFields(label);
-        }
-      }
-    } else {
-      throw new SuggestionException(
-          Response.Status.BAD_REQUEST, INVALID_SUGGESTION_REQUEST, "Invalid Suggestion Type.");
-    }
   }
 }

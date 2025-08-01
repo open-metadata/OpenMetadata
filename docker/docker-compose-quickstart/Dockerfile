@@ -11,7 +11,7 @@
 
 # Build stage
 FROM alpine:3 AS build
-ARG RI_VERSION="1.6.0-SNAPSHOT"
+ARG RI_VERSION="1.8.0-SNAPSHOT"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
 RUN mkdir -p /opt/openmetadata && \
@@ -21,7 +21,7 @@ RUN mkdir -p /opt/openmetadata && \
 
 # Final stage
 FROM alpine:3
-ARG RI_VERSION="1.6.0-SNAPSHOT"
+ARG RI_VERSION="1.8.0-SNAPSHOT"
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
@@ -37,7 +37,7 @@ LABEL org.open-metadata.commit-id=$COMMIT_ID
 EXPOSE 8585 8586
 RUN adduser -D openmetadata && apk update && \
     apk upgrade && \
-    apk add --update --no-cache bash openjdk17-jre
+    apk add --update --no-cache bash openjdk21-jre
 
 COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh ./

@@ -30,13 +30,15 @@ import {
   TestPlatform,
 } from '../generated/tests/testDefinition';
 import { TestSuite, TestSummary } from '../generated/tests/testSuite';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export enum TestSuiteType {
-  executable = 'executable',
+  basic = 'basic',
   logical = 'logical',
 }
 export enum TestCaseType {
@@ -143,7 +145,7 @@ export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${testCaseUrl}/${getEncodedFqn(fqn)}/testCaseResult`;
+  const url = `${testCaseUrl}/testCaseResults/${getEncodedFqn(fqn)}`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
@@ -217,6 +219,25 @@ export const removeTestCaseFromTestSuite = async (
   return response.data;
 };
 
+export const getTestCaseVersionList = async (id: string) => {
+  const url = `${testCaseUrl}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getTestCaseVersionDetails = async (
+  id: string,
+  version: string
+) => {
+  const url = `${testCaseUrl}/${id}/versions/${version}`;
+
+  const response = await APIClient.get(url);
+
+  return response.data;
+};
+
 // testDefinition Section
 export const getListTestDefinitions = async (
   params?: ListTestDefinitionsParams
@@ -282,7 +303,7 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
   const response = await APIClient.post<
     CreateTestSuite,
     AxiosResponse<TestSuite>
-  >(`${testSuiteUrl}/executable`, data);
+  >(`${testSuiteUrl}/basic`, data);
 
   return response.data;
 };
@@ -314,6 +335,32 @@ export const getDataQualityReport = async (
   const response = await APIClient.get<DataQualityReport>(
     `${testSuiteUrl}/dataQualityReport`,
     { params }
+  );
+
+  return response.data;
+};
+
+interface ListTestCasesParams {
+  includeAllTests?: boolean;
+  limit?: number;
+  fields?: string[];
+  before?: string;
+  after?: string;
+  entityFQN?: string;
+  entityLink?: string;
+  testSuiteId?: string;
+  include?: Include;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
+  createdBy?: string;
+}
+
+export const listTestCases = async (params: ListTestCasesParams) => {
+  const response = await APIClient.get<PagingResponse<TestCase[]>>(
+    testCaseUrl,
+    {
+      params,
+    }
   );
 
   return response.data;

@@ -14,8 +14,9 @@ import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { Image, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { useEntityAttachment } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
@@ -25,9 +26,15 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
   (props, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const { items, command } = props;
+    const { allowFileUpload } = useEntityAttachment();
+
+    // Filter out file commands if file upload is not allowed
+    const filteredItems = items.filter(
+      (item) => !item.isFileCommand || allowFileUpload
+    );
 
     const selectItem = (index: number) => {
-      const item = items[index];
+      const item = filteredItems[index];
 
       if (item) {
         command(item);
@@ -36,9 +43,10 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
 
     const upHandler = () => {
       setSelectedIndex((prev) => {
-        const newIndex = (prev + items.length - 1) % items.length;
+        const newIndex =
+          (prev + filteredItems.length - 1) % filteredItems.length;
         const commandListing = document.getElementById(
-          `editor-command-${items[newIndex].title}`
+          `editor-command-${filteredItems[newIndex].title}`
         );
         const commandList = document.getElementById('editor-commands-viewport');
         if (
@@ -55,9 +63,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
 
     const downHandler = () => {
       setSelectedIndex((prev) => {
-        const newIndex = (prev + 1) % items.length;
+        const newIndex = (prev + 1) % filteredItems.length;
         const commandListing = document.getElementById(
-          `editor-command-${items[newIndex].title}`
+          `editor-command-${filteredItems[newIndex].title}`
         );
         const commandList = document.getElementById('editor-commands-viewport');
         if (
@@ -100,7 +108,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
       },
     }));
 
-    if (isEmpty(items)) {
+    if (isEmpty(filteredItems)) {
       return null;
     }
 
@@ -109,7 +117,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
         className="slash-menu-wrapper"
         direction="vertical"
         id="editor-commands-viewport">
-        {items.map((item, index) => (
+        {filteredItems.map((item, index) => (
           <Space
             className={classNames('w-full cursor-pointer slash-command-item', {
               'bg-grey-2': index === selectedIndex,
@@ -118,7 +126,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
             key={item.title}
             onClick={() => selectItem(index)}>
             <Image
-              className="slash-command-image"
+              className={classNames('slash-command-image', {
+                'svg-image': item.isSvg,
+              })}
               preview={false}
               src={item.imgSrc}
             />

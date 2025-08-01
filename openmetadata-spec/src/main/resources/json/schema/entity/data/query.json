@@ -47,6 +47,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "owners": {
       "description": "Owners of this Query.",
       "$ref": "../../type/entityReferenceList.json",
@@ -125,9 +129,9 @@
       "description": "Link to the service this query belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name", "query", "service"],

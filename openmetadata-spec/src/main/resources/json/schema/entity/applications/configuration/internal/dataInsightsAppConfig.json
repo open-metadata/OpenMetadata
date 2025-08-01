@@ -33,6 +33,116 @@
           "format": "date"
         }
       }
+    },
+    "dataAssetsConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "If Enabled, Data Asset insights will be populated when the App runs.",
+          "type": "boolean",
+          "default": true
+        },
+        "entities": {
+          "description": "List of Entities to Reindex",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["all"],
+          "uniqueItems": true
+        },
+        "retention": {
+          "title": "Data Retention (Days)",
+          "description": "Defines the number of days the Data Assets Insights information will be kept. After it they will be deleted.",
+          "type": "integer",
+          "default": 7,
+          "minimum": 0
+        },
+        "serviceFilter": {
+          "type": "object",
+          "properties": {
+            "serviceType": {
+              "type": "string"
+            },
+            "serviceName": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["enabled"]
+    },
+    "appAnalyticsConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "If Enabled, App Analytics insights will be populated when the App runs.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "required": ["enabled"]
+    },
+    "dataQualityConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "If Enabled, Data Quality insights will be populated when the App runs.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "required": ["enabled"]
+    },
+    "costAnalysisConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "If Enabled, Cost Analysis insights will be populated when the App runs.",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "required": ["enabled"]
+    },
+    "moduleConfiguration": {
+      "description": "Different Module Configurations",
+      "title": "Module Configuration",
+      "type": "object",
+      "properties": {
+        "dataAssets": {
+          "title": "Data Assets Module",
+          "description": "Data Assets Insights Module configuration",
+          "$ref": "#/definitions/dataAssetsConfig"
+        },
+        "appAnalytics": {
+          "title": "App Analytics Module",
+          "description": "App Analytics Module configuration",
+          "$ref": "#/definitions/appAnalyticsConfig"
+        },
+        "dataQuality": {
+          "title": "Data Quality Insights Module",
+          "description": "Data Quality Insights Module configuration",
+          "$ref": "#/definitions/dataQualityConfig"
+        },
+        "costAnalysis": {
+          "title": "Cost Analysis Insights Module",
+          "description": "Cost Analysis Insights Module configuration",
+          "$ref": "#/definitions/costAnalysisConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["dataAssets", "appAnalytics", "dataQuality", "costAnalysis"]
     }
   },
   "properties": {
@@ -45,7 +155,8 @@
     "batchSize": {
       "description": "Maximum number of events processed at a time (Default 100).",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 0
     },
     "recreateDataAssetsIndex": {
       "title": "Recreate DataInsights DataAssets Index",
@@ -55,6 +166,9 @@
     },
     "backfillConfiguration": {
       "$ref": "#/definitions/backfillConfiguration"
+    },
+    "moduleConfiguration": {
+      "$ref": "#/definitions/moduleConfiguration"
     }
   },
   "additionalProperties": false

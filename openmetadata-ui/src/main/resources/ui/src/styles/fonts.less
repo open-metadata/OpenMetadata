@@ -25,41 +25,15 @@ pre {
 .font-normal {
   font-weight: 400;
 }
-.font-medium {
-  font-weight: 500;
-}
-.font-semibold {
-  font-weight: 600;
-}
-.font-bold {
-  font-weight: 700;
-}
 
 // font size
 .text-xss {
   font-size: 10px;
 }
-.text-xs {
-  font-size: 12px;
-  line-height: 1rem /* 16px */;
-}
-.text-lg {
-  font-size: 18px;
-}
-.text-sm {
-  font-size: 14px;
-  line-height: 1rem /* 16px */;
-}
-.text-md {
-  font-size: 16px;
-}
+
 .text-base {
   font-size: 1rem /* 16px */;
   line-height: 1.5rem /* 24px */;
-}
-.text-xl {
-  font-size: 1.25rem /* 20px */;
-  line-height: 1.75rem /* 28px */;
 }
 
 .text-2xl {
@@ -105,6 +79,9 @@ pre {
 .text-white {
   color: @white;
 }
+.text-blue {
+  color: @primary-heading-color;
+}
 .text-black {
   color: @black;
 }
@@ -114,6 +91,9 @@ pre {
 .text-grey-3 {
   color: @grey-3;
 }
+.text-grey-14 {
+  color: @grey-400;
+}
 .text-grey-body {
   color: @text-color;
 }
@@ -122,6 +102,9 @@ pre {
 }
 .text-gray-400 {
   color: @grey-7;
+}
+.text-grey-600 {
+  color: @grey-600;
 }
 .text-red-3 {
   color: @red-3;
@@ -136,6 +119,18 @@ pre {
   &:hover {
     color: @text-color;
   }
+}
+
+.generate-text-grey-colors(@n, @i: 100) when (@i =< @n) {
+  &-@{i} {
+    color: ~'@{grey-@{i}}';
+  }
+
+  .generate-text-grey-colors(@n, (@i + 100));
+}
+
+.text-grey {
+  .generate-text-grey-colors(900);
 }
 
 .text-success {
@@ -155,6 +150,19 @@ a.ant-typography,
   font-weight: 500;
   font-size: 14px;
   line-height: 21px;
+  color: @blue-9;
+
+  &:hover {
+    color: @blue-26;
+  }
+
+  &:focus {
+    color: @blue-9;
+  }
+
+  &:disabled {
+    color: @grey-300;
+  }
 }
 
 // font style
@@ -166,3 +174,130 @@ a.ant-typography,
 .line-height-16 {
   line-height: 16px;
 }
+
+// =============================== New Design System ===============================
+
+.text-secondary-new {
+  color: #414651;
+}
+
+.border-secondary-new {
+  border-color: #d5d7da;
+}
+
+//font weight
+.font-regular {
+  font-weight: @font-regular;
+}
+.font-medium {
+  font-weight: @font-medium;
+}
+.font-semibold {
+  font-weight: @font-semibold;
+}
+.font-bold {
+  font-weight: @font-bold;
+}
+
+// Typography Mixins
+.text-style(@size, @lh, @ls: 0%) {
+  font-size: @size;
+  line-height: @lh;
+  letter-spacing: @ls;
+}
+
+.font-weight-variants() {
+  &.regular {
+    font-weight: @font-regular;
+  }
+  &.medium {
+    font-weight: @font-medium;
+  }
+  &.semibold {
+    font-weight: @font-semibold;
+  }
+  &.bold {
+    font-weight: @font-bold;
+  }
+}
+
+// Font Style Definitions
+.display-lg {
+  .text-style(48px, 60px, -2%);
+
+  .font-weight-variants();
+}
+
+.display-md {
+  .text-style(36px, 44px, -2%);
+
+  .font-weight-variants();
+}
+
+.display-sm {
+  .text-style(30px, 38px, 0%);
+
+  .font-weight-variants();
+}
+
+.display-xs {
+  .text-style(24px, 32px, 0%);
+
+  .font-weight-variants();
+}
+
+.text-xl {
+  .text-style(20px, 30px);
+}
+.text-lg {
+  .text-style(18px, 28px);
+}
+.text-md {
+  .text-style(16px, 24px);
+}
+.text-sm {
+  .text-style(14px, 20px);
+}
+.text-xs {
+  .text-style(12px, 18px);
+}
+
+.ant-typography {
+  &.display-lg {
+    .display-lg();
+  }
+
+  &.display-md {
+    .display-md();
+  }
+
+  &.display-sm {
+    .display-sm();
+  }
+
+  &.display-xs {
+    .display-xs();
+  }
+
+  &.text-xl {
+    .text-xl();
+  }
+
+  &.text-lg {
+    .text-lg();
+  }
+
+  &.text-md {
+    .text-md();
+  }
+
+  &.text-sm {
+    .text-sm();
+  }
+
+  &.text-xs {
+    .text-xs();
+  }
+}
+
+// =============================== End of New Design System ===============================

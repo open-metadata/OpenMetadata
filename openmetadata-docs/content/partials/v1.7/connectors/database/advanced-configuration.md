@@ -9,7 +9,7 @@ This would only be required to handle advanced connectivity scenarios or customi
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent during the connection. These details must be added as Key-Value pairs.
 
 {% image
-  src="/images/v1.5/connectors/advanced-configuration.png"
+  src="/images/v1.7/connectors/advanced-configuration.png"
   alt="Advanced Configuration"
   height="250px"
   caption="Advanced Configuration" /%}

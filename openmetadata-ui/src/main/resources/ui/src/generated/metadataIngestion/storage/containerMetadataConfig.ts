@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Definition of the properties contained by an object store container template config file
  */
 export interface ContainerMetadataConfig {
@@ -31,6 +29,10 @@ export interface MetadataEntry {
      * The path where the data resides in the container, excluding the bucket name
      */
     dataPath: string;
+    /**
+     * Depth of the data path in the container
+     */
+    depth?: number;
     /**
      * Flag indicating whether the container's data is partitioned
      */
@@ -165,6 +167,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -174,12 +177,16 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -528,6 +535,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

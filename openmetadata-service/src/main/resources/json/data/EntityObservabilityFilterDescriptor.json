@@ -37,6 +37,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -98,6 +107,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -150,6 +168,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -202,6 +229,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -257,6 +293,15 @@
           "ownerNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -324,6 +369,15 @@
           "tableNameList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -392,6 +446,15 @@
           "domainList"
         ],
         "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description" : "Event Filtering By Updater is Bot",
+        "effect" : "include",
+        "condition": "isBot()",
+        "inputType": "none"
       }
     ],
     "supportedActions" : [
@@ -405,6 +468,72 @@
         "arguments": [
           "testResultList"
         ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name": "dataContract",
+    "supportedFilters": [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Data Contract Name",
+        "description": "Event Filtering By Data Contract Name",
+        "effect": "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": ["fqnList"],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description": "Event Filtering By Domain a Entity Belongs To",
+        "effect": "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": ["domainList"],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description": "Event Filtering By Owner Name of Asset",
+        "effect": "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": ["ownerNameList"],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByEntityName",
+        "fullyQualifiedName": "eventSubscription.filterByEntityName",
+        "displayName": "Entity Name Data Contract Belongs To",
+        "description": "Event Filtering By Entity Name A Data Contract Belongs To",
+        "effect": "include",
+        "condition": "filterByEntityNameDataContractBelongsTo(${entityNameList})",
+        "arguments": ["entityNameList"],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByUpdaterIsBot",
+        "fullyQualifiedName": "eventSubscription.filterByUpdaterIsBot",
+        "displayName": "Update is Bot",
+        "description": "Event Filtering By Updater is Bot",
+        "effect": "include",
+        "condition": "isBot()",
+        "inputType": "none"
+      }
+    ],
+    "supportedActions": [
+      {
+        "name": "GetDataContractStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetDataContractStatusUpdates",
+        "displayName": "Get Data Contract Status Updates",
+        "description": "Get Status Updates for Data Contract Validations",
+        "effect": "include",
+        "condition": "matchDataContractStatus(${contractStatusList})",
+        "arguments": ["contractStatusList"],
         "inputType": "runtime"
       }
     ]

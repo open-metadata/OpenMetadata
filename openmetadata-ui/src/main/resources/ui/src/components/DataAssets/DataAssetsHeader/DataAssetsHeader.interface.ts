@@ -79,17 +79,36 @@ export type DataAssetsWithoutServiceField =
   | MetadataService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | Metric;
 
-export type DataAssetsWithFollowersField = Exclude<
-  DataAssetsType,
-  DataAssetsWithoutServiceField | Database | DatabaseSchema | APICollection
->;
+export type DataAssetsWithFollowersField =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | SearchIndex
+  | DashboardDataModel
+  | StoredProcedure
+  | APIEndpoint
+  | Metric;
 
-export type DataAssetsWithServiceField = Exclude<
-  DataAssetsType,
-  DataAssetsWithoutServiceField | Metric
->;
+export type DataAssetsWithServiceField =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | SearchIndex
+  | Database
+  | DashboardDataModel
+  | StoredProcedure
+  | DatabaseSchema
+  | APICollection
+  | APIEndpoint;
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>
@@ -116,6 +135,11 @@ export type DataAssetsHeaderProps = {
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
   onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
+  isCustomizedView?: boolean;
+  disableRunAgentsButton?: boolean;
+  afterTriggerAction?: VoidFunction;
+  isAutoPilotWorkflowStatusLoading?: boolean;
+  onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic
@@ -137,6 +161,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetStorageService
   | DataAssetSearchService
   | DataAssetApiService
+  | DataAssetSecurityService
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
   | DataAssetMetric
@@ -246,6 +271,11 @@ export interface DataAssetAPIEndpoint {
 export interface DataAssetMetric {
   dataAsset: Metric;
   entityType: EntityType.METRIC;
+}
+
+export interface DataAssetSecurityService {
+  dataAsset: ServicesType;
+  entityType: EntityType.SECURITY_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

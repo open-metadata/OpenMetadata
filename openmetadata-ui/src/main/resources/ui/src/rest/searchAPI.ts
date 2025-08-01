@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
+import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
   Aggregations,
   KeysOfUnion,
@@ -201,6 +202,7 @@ export const rawSearchQuery = <
       track_total_hits: trackTotalHits,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
+      exclude_source_fields: req.excludeSourceFields,
     },
     paramsSerializer: {
       indexes: null,
@@ -232,4 +234,48 @@ export const searchQuery = async <
   const res = await rawSearchQuery(req);
 
   return formatSearchQueryResponse(res.data);
+};
+
+export const searchPreview = async (payload: PreviewSearchRequest) => {
+  const response = await APIClient.post<SearchResponse<SearchIndex>>(
+    '/search/preview',
+    payload
+  );
+
+  return response.data;
+};
+
+export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
+  const {
+    pageNumber = 1,
+    pageSize = 10,
+    query,
+    searchIndex,
+    sortField,
+    sortOrder,
+    queryFilter,
+  } = payload;
+
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/nlq/query',
+    {
+      params: {
+        q: query,
+        index: searchIndex,
+        size: pageSize,
+        from: (pageNumber - 1) * pageSize,
+        sort_field: sortField,
+        sort_order: sortOrder,
+        query_filter: JSON.stringify(queryFilter),
+      },
+    }
+  );
+
+  return formatSearchQueryResponse(response.data);
+};
+
+export const getNLPEnabledStatus = async () => {
+  const response = await APIClient.get<boolean>('/system/search/nlq');
+
+  return response.data;
 };

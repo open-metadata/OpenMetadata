@@ -60,6 +60,18 @@
       "default": true,
       "title": "Mark Deleted Stored Procedures"
     },
+    "markDeletedSchemas": {
+      "description": "Optional configuration to soft delete schemas in OpenMetadata if the source schemas are deleted. Also, if the schema is deleted, all the associated entities like tables, views, stored procedures, lineage, etc., with that schema will be deleted",
+      "type": "boolean",
+      "default": false,
+      "title": "Mark Deleted Schemas"
+    },
+    "markDeletedDatabases": {
+      "description": "Optional configuration to soft delete databases in OpenMetadata if the source databases are deleted. Also, if the database is deleted, all the associated entities like schemas, tables, views, stored procedures, lineage, etc., with that database will be deleted",
+      "type": "boolean",
+      "default": false,
+      "title": "Mark Deleted Databases"
+    },
     "includeTables": {
       "description": "Optional configuration to turn off fetching metadata for tables.",
       "type": "boolean",
@@ -121,17 +133,17 @@
       "title": "Use FQN For Filtering"
     },
     "schemaFilterPattern": {
-      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Schema Filter Pattern"
     },
     "tableFilterPattern": {
-      "description": "Regex exclude tables or databases that matches the pattern.",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Table Filter Pattern"
     },
     "databaseFilterPattern": {
-      "description": "Regex to only fetch databases that matches the pattern.",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },

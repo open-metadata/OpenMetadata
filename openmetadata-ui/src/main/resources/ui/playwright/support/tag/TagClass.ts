@@ -66,9 +66,11 @@ export class TagClass {
   async visitPage(page: Page) {
     await visitClassificationPage(
       page,
+      this.responseData.classification.name,
       this.responseData.classification.displayName
     );
     await page.getByTestId(this.data.name).click();
+    await page.waitForLoadState('networkidle');
   }
 
   async create(apiContext: APIRequestContext) {

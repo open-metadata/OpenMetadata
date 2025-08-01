@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Dashboard service entity request
  */
 export interface CreateDashboardService {
@@ -30,9 +28,13 @@ export interface CreateDashboardService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Dashboard Service belongs to.
+     * Fully qualified names of the domains the Dashboard Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
@@ -88,8 +90,14 @@ export interface DashboardConnection {
  * Qlik Cloud Connection Config
  *
  * Sigma Connection Config
+ *
+ * ThoughtSpot Connection Config
  */
 export interface Connection {
+    /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
     /**
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
@@ -109,6 +117,14 @@ export interface Connection {
      */
     clientSecret?: string;
     /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
@@ -126,7 +142,7 @@ export interface Connection {
      *
      * URL for the superset instance.
      *
-     * Tableau Server.
+     * Tableau Server url.
      *
      * URL for the mode instance.
      *
@@ -139,8 +155,17 @@ export interface Connection {
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
+     *
+     * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      */
-    hostPort?:                   string;
+    hostPort?: string;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
+    /**
+     * Supports Metadata Extraction.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -172,6 +197,10 @@ export interface Connection {
      * Authority URI for the PowerBI service.
      */
     authorityURI?: string;
+    /**
+     * Display Table Name from source instead of renamed table name for datamodel tables
+     */
+    displayTableNameFromSource?: boolean;
     /**
      * Entity Limit set here will be used to paginate the PowerBi APIs
      */
@@ -211,9 +240,11 @@ export interface Connection {
      */
     connection?: SupersetConnection;
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      *
      * Sigma API version.
+     *
+     * ThoughtSpot API version to use
      */
     apiVersion?: string;
     /**
@@ -221,21 +252,18 @@ export interface Connection {
      */
     authType?: AuthenticationTypeForTableau;
     /**
-     * Tableau Environment Name.
-     */
-    env?: string;
-    /**
      * Pagination limit used while querying the tableau metadata API for getting data sources
      */
     paginationLimit?: number;
     /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
+    /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:   string;
+    siteName?:  string;
     sslConfig?: CertificatesSSLConfig;
     verifySSL?: VerifySSL;
     /**
@@ -328,9 +356,22 @@ export interface Connection {
      */
     projectName?: string;
     /**
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
+     */
+    spaceTypes?: SpaceType[];
+    /**
      * token to connect to Qlik Cloud.
      */
     token?: string;
+    /**
+     * ThoughtSpot authentication configuration
+     */
+    authentication?: Authentication;
+    /**
+     * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
+     * only.
+     */
+    orgId?: string;
 }
 
 /**
@@ -357,6 +398,28 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+}
+
+/**
+ * ThoughtSpot authentication configuration
+ *
+ * Basic Auth Credentials
+ *
+ * API Access Token Auth Credentials
+ */
+export interface Authentication {
+    /**
+     * Password to access the service.
+     */
+    password?: string;
+    /**
+     * Username to access the service.
+     */
+    username?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
 }
 
 /**
@@ -450,6 +513,34 @@ export interface CertificatesSSLConfig {
 }
 
 /**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
  * Choose between API or database connection fetch metadata from superset.
  *
  * Superset API Connection Config
@@ -501,6 +592,10 @@ export interface SupersetConnection {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -512,6 +607,10 @@ export interface SupersetConnection {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -525,6 +624,10 @@ export interface SupersetConnection {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -540,6 +643,10 @@ export interface SupersetConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -934,6 +1041,8 @@ export interface Credentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -976,6 +1085,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**
@@ -1025,6 +1136,13 @@ export interface GCPImpersonateServiceAccountValues {
     [property: string]: any;
 }
 
+export enum SpaceType {
+    Data = "Data",
+    Managed = "Managed",
+    Personal = "Personal",
+    Shared = "Shared",
+}
+
 /**
  * Service Type
  *
@@ -1060,6 +1178,8 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Sigma service type
  *
+ * ThoughtSpot service type
+ *
  * Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode,
  * or Lightdash
  */
@@ -1080,17 +1200,20 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }
 
 /**
- * Owners of this dashboard service.
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this dashboard service.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -1189,6 +1312,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

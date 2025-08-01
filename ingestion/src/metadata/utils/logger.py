@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,10 +25,12 @@ from metadata.data_quality.api.models import (
     TestCaseResults,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
-from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -61,6 +63,7 @@ class Loggers(Enum):
     TEST_SUITE = "TestSuite"
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
+    REVERSE_INGESTION = "ReverseIngestion"
 
     @DynamicClassAttribute
     def value(self):
@@ -142,6 +145,14 @@ def ingestion_logger():
     """
 
     return logging.getLogger(Loggers.INGESTION.value)
+
+
+def reverse_ingestion_logger():
+    """
+    Method to get the REVERSE INGESTION logger
+    """
+
+    return logging.getLogger(Loggers.REVERSE_INGESTION.value)
 
 
 def utils_logger():
@@ -284,19 +295,19 @@ def _(record: PatchRequest) -> str:
 @get_log_name.register
 def _(record: TableQueries) -> str:
     """Get the log of the TableQuery"""
-    queries = "\n------\n".join(
-        mask_query(query.query, query.dialect) for query in record.queries
-    )
-    return f"Table Queries [{queries}]"
+    return f"Table Queries [{len(record.queries)}]"
 
 
 @get_log_name.register
 def _(record: QueryParserData) -> str:
     """Get the log of the ParsedData"""
-    queries = "\n------\n".join(
-        mask_query(query.sql, query.dialect) for query in record.parsedData
-    )
-    return f"Usage ParsedData [{queries}]"
+    return f"Usage ParsedData [{len(record.parsedData)}]"
+
+
+@get_log_name.register
+def _(record: DataContractResult) -> str:
+    """Get the log of the DataContractResult"""
+    return f"DataContractResult for [{record.dataContractFQN.root}]; status: {record.contractExecutionStatus.value}]"
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

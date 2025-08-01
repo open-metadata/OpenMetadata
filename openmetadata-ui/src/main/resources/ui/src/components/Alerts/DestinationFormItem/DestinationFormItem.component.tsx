@@ -14,7 +14,7 @@
 import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import React, { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
@@ -27,6 +27,7 @@ import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
   getConnectionTimeoutField,
   getFormattedDestinations,
+  getReadTimeoutField,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -103,6 +104,7 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
       heading={t('label.destination')}
       subHeading={t('message.alerts-destination-description')}>
       {getConnectionTimeoutField()}
+      {getReadTimeoutField()}
       <Form.List
         name={['destinations']}
         rules={[

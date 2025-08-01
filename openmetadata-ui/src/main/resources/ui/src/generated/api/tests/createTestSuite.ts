@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema corresponding to a Test Suite
  */
 export interface CreateTestSuite {
+    /**
+     * Entity reference the test suite needs to execute the test against. Only applicable if the
+     * test suite is basic.
+     */
+    basicEntityReference?: string;
+    /**
+     * Reference to the data contract that this test suite is associated with.
+     */
+    dataContract?: EntityReference;
     /**
      * Description of the test suite.
      */
@@ -25,12 +32,11 @@ export interface CreateTestSuite {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Test Suite belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
-     * FQN of the entity the test suite is executed against. Only applicable for executable test
-     * suites.
+     * DEPRECATED in 1.6.2: use 'basicEntityReference'
      */
     executableEntityReference?: string;
     /**
@@ -48,14 +54,16 @@ export interface CreateTestSuite {
 }
 
 /**
- * Owners of this test suite
+ * Reference to the data contract that this test suite is associated with.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this test suite
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -154,6 +162,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

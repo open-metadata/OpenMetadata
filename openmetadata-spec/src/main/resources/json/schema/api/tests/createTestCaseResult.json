@@ -6,6 +6,10 @@
   "javaType": "org.openmetadata.schema.api.tests.CreateTestCaseResult",
   "type": "object",
   "properties": {
+    "fqn": {
+      "description": "Fqn of the test case against which this test case result is added.",
+      "type": "string"
+    },
     "timestamp": {
       "description": "Data one which test case result is taken.",
       "$ref": "../../type/basic.json#/definitions/timestamp"

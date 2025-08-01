@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,6 +25,8 @@ import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
   private dashboardName = `pw-dashboard-${uuid()}`;
+  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+  private projectName = `pw-project-${uuid()}`;
   service = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -49,18 +52,54 @@ export class DashboardClass extends EntityClass {
     name: this.dashboardName,
     displayName: this.dashboardName,
     service: this.service.name,
+    project: this.projectName,
+  };
+  children = [
+    {
+      name: 'merchant',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'merchant',
+    },
+    {
+      name: 'notes',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'merchant',
+    },
+    {
+      name: 'country_name',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the country.',
+    },
+  ];
+  dataModel = {
+    name: this.dashboardDataModelName,
+    displayName: this.dashboardDataModelName,
+    service: this.service.name,
+    columns: this.children,
+    dataModelType: 'SupersetDataModel',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
+  dataModelResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string) {
+  constructor(name?: string, dataModelType = 'SupersetDataModel') {
     super(EntityTypeEndpoint.Dashboard);
     this.service.name = name ?? this.service.name;
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
+    this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
+    this.dataModel.dataModelType = dataModelType;
+    this.childrenSelectorId = `${this.service.name}.${this.charts.name}`;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -80,9 +119,16 @@ export class DashboardClass extends EntityClass {
         charts: [`${this.service.name}.${this.charts.name}`],
       },
     });
+    const dataModelResponse = await apiContext.post(
+      '/api/v1/dashboard/datamodels',
+      {
+        data: this.dataModel,
+      }
+    );
 
     this.serviceResponseData = await serviceResponse.json();
     this.chartsResponseData = await chartsResponse.json();
+    this.dataModelResponseData = await dataModelResponse.json();
     this.entityResponseData = await entityResponse.json();
 
     return {

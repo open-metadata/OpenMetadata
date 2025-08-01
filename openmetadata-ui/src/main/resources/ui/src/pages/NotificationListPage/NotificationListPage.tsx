@@ -13,21 +13,24 @@
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -62,7 +65,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const NotificationListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -161,7 +164,7 @@ const NotificationListPage = () => {
 
         handlePagingChange(paging);
         fetchAllAlertsPermission(data);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -203,7 +206,7 @@ const NotificationListPage = () => {
   const columns = useMemo(
     () => [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -220,7 +223,7 @@ const NotificationListPage = () => {
         },
       },
       {
-        title: t('label.trigger'),
+        title: t('label.trigger').toString(),
         dataIndex: ['filteringRules', 'resources'],
         width: '200px',
         key: 'FilteringRules.resources',
@@ -229,7 +232,7 @@ const NotificationListPage = () => {
         },
       },
       {
-        title: t('label.description'),
+        title: t('label.description').toString(),
         dataIndex: 'description',
         flex: true,
         key: 'description',
@@ -241,11 +244,11 @@ const NotificationListPage = () => {
               })}
             </Typography.Text>
           ) : (
-            description
+            <RichTextEditorPreviewerNew markdown={description} />
           ),
       },
       {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
         width: 90,
         key: 'fullyQualifiedName',
@@ -277,7 +280,7 @@ const NotificationListPage = () => {
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
                       disabled={record.provider === ProviderType.System}
-                      icon={<EditIcon height={16} />}
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                       type="text"
                     />
                   </Link>
@@ -305,7 +308,7 @@ const NotificationListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.alert-plural')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -319,7 +322,7 @@ const NotificationListPage = () => {
                   data-testid="create-notification"
                   type="primary"
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION
@@ -334,8 +337,16 @@ const NotificationListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             columns={columns}
+            customPaginationProps={{
+              currentPage,
+              isLoading: loadingCount > 0,
+              showPagination,
+              pageSize,
+              paging,
+              pagingHandler: onPageChange,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             dataSource={alerts}
             loading={Boolean(loadingCount)}
             locale={{
@@ -345,9 +356,12 @@ const NotificationListPage = () => {
                   className="p-y-md"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.alert'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION
@@ -363,17 +377,6 @@ const NotificationListPage = () => {
           />
         </Col>
         <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={loadingCount > 0}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={onPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}

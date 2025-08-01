@@ -96,6 +96,12 @@
       "type": "boolean",
       "default": true
     },
+    "displayTableNameFromSource": {
+      "title": "Display Table Name from source",
+      "description": "Display Table Name from source instead of renamed table name for datamodel tables",
+      "type": "boolean",
+      "default": false
+    },
     "pbitFilesSource": {
       "title": "PowerBI .pbit Files Source",
       "description": "Source to get the .pbit files to extract lineage information",
@@ -113,6 +119,26 @@
           "$ref": "powerbi/s3Config.json"
         }
       ]
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Chart Filter Pattern"
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Data Model Filter Pattern"
+    },
+    "projectFilterPattern": {
+      "description": "Regex to exclude or include projects that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Project Filter Pattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

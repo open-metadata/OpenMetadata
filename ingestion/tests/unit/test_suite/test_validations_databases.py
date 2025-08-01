@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -305,7 +305,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "TABLE",
             (
                 TestCaseResult,
-                "10",
+                "11",
                 None,
                 TestCaseStatus.Success,
                 None,
@@ -318,7 +318,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
-            (TestCaseResult, "10", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_column_name_to_exist",
@@ -430,6 +430,12 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
                 None,
                 None,
             ),
+        ),
+        (
+            "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 66.67, 0.0),
         ),
     ],
 )

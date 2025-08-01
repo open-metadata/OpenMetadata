@@ -13,7 +13,7 @@
 
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
-import React, {
+import {
   createContext,
   FC,
   useCallback,
@@ -22,7 +22,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
@@ -66,7 +66,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   );
   const { currentUser } = useApplicationStore();
   const cookieStorage = new CookieStorage();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   const [entitiesPermission, setEntitiesPermission] =
@@ -80,7 +80,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       setUrlPathnameExpiryAfterRoute(urlPathname);
-      history.push(urlPathname);
+      navigate(urlPathname);
     }
   }, [history]);
 
@@ -98,7 +98,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setPermissions, redirectToStoredPath]);
+  }, [redirectToStoredPath]);
 
   const fetchEntityPermission = useCallback(
     async (resource: ResourceEntity, entityId: string) => {

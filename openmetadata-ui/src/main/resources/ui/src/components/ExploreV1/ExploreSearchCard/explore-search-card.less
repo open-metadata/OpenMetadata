@@ -13,19 +13,36 @@
 @import url('../../../styles/variables.less');
 
 .explore-search-card {
-  background-color: @white;
   padding: 20px;
   position: relative;
-  &.highlight-card {
-    border-left: 4px solid @info-color;
-    box-shadow: none;
+  border-radius: 12px;
+  border-left: 4px solid transparent;
+  opacity: 0.95;
+  background-color: @grey-9 !important;
+  border: 0.5px solid #eaecf5;
+  margin: 0 0 20px;
+  overflow: hidden;
+  .no-owner-text {
+    font-size: @size-sm;
+    font-weight: @font-regular;
   }
+  &.highlight-card {
+    border-left: 4px solid @primary-color;
+    background: @primary-50 !important;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
   .entity-summary-details {
     font-size: 12px;
+
     .no-owner {
       color: @text-grey-muted;
     }
   }
+
   .explore-card-actions {
     position: absolute;
     right: 10px;
@@ -35,9 +52,8 @@
     border-radius: 6px;
     display: flex;
   }
-
-  &:hover {
-    background-color: @grey-1;
+  .ProseMirror-hideselection *::selection {
+    background: inherit;
   }
 }
 
@@ -46,4 +62,14 @@
   height: 18px;
   width: 18px;
   border-color: @primary-color;
+}
+
+.score-container {
+  background-color: @blue-14;
+  padding: 6px;
+  border-radius: 6px;
+
+  .score {
+    color: @primary-heading-color;
+  }
 }

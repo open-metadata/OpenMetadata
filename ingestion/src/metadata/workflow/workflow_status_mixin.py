@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Tuple
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineState,
@@ -30,10 +29,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.basic import Map, Timestamp
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ometa_logger
+from metadata.workflow.context.context_manager import ContextManager
 
 logger = ometa_logger()
 
@@ -81,12 +81,23 @@ class WorkflowStatusMixin:
             pipelineState=state,
             startDate=Timestamp(self._start_ts),
             timestamp=Timestamp(self._start_ts),
-        )
+        )  # type: ignore
+
+    def update_pipeline_status_metadata(
+        self, pipeline_status: PipelineStatus
+    ) -> PipelineStatus:
+        """
+        Update the pipeline status metadata with the context manager data.
+        """
+        metadata = ContextManager.dump_contexts()
+        if metadata:
+            pipeline_status.metadata = Map(**metadata)
+        else:
+            pipeline_status.metadata = None
+        return pipeline_status
 
     def set_ingestion_pipeline_status(
-        self,
-        state: PipelineState,
-        ingestion_status: Optional[IngestionStatus] = None,
+        self, state: PipelineState, ingestion_status: Optional[IngestionStatus] = None
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -94,7 +105,11 @@ class WorkflowStatusMixin:
 
         try:
             # if we don't have a related Ingestion Pipeline FQN, no status is set.
-            if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
+            if (
+                self.config.ingestionPipelineFQN
+                and self.ingestion_pipeline
+                and self.ingestion_pipeline.fullyQualifiedName
+            ):
                 pipeline_status = self.metadata.get_pipeline_status(
                     self.ingestion_pipeline.fullyQualifiedName.root, self.run_id
                 )
@@ -111,6 +126,17 @@ class WorkflowStatusMixin:
                 pipeline_status.status = (
                     ingestion_status if ingestion_status else pipeline_status.status
                 )
+                # committing configurations can be a burden on resources,
+                # we dump a subset to be mindful of the payload size
+                pipeline_status.config = Map(
+                    **self.config.model_dump(
+                        include={"appConfig"},
+                        mask_secrets=True,
+                    )
+                )
+
+                pipeline_status = self.update_pipeline_status_metadata(pipeline_status)
+
                 self.metadata.create_or_update_pipeline_status(
                     self.ingestion_pipeline.fullyQualifiedName.root, pipeline_status
                 )
@@ -123,19 +149,14 @@ class WorkflowStatusMixin:
     def raise_from_status(self, raise_warnings=False):
         """
         Method to raise error if failed execution
-        and updating Ingestion Pipeline Status
         """
-        try:
-            self.raise_from_status_internal(raise_warnings)
-        except WorkflowExecutionError as err:
-            self.set_ingestion_pipeline_status(PipelineState.failed)
-            raise err
+        self.raise_from_status_internal(raise_warnings)  # type: ignore
 
     def result_status(self) -> WorkflowResultStatus:
         """
         Returns 1 if source status is failed, 0 otherwise.
         """
-        if self.get_failures():
+        if self.get_failures():  # type: ignore
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
@@ -148,6 +169,6 @@ class WorkflowStatusMixin:
         return IngestionStatus(
             [
                 StepSummary.model_validate(Summary.from_step(step).model_dump())
-                for step in self.workflow_steps()
+                for step in self.workflow_steps()  # type: ignore
             ]
         )

@@ -15,9 +15,10 @@ import { ReactNode } from 'react';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { Table } from '../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestCase } from '../../../generated/tests/testCase';
+import { TagLabel, TestCase } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
 export interface AddDataQualityTestProps {
   table: Table;
@@ -43,15 +44,17 @@ export type TestSuiteIngestionDataType = {
   testCases?: string[];
   name?: string;
   selectAllTestCases?: boolean;
+  raiseOnError?: boolean;
 };
 
 export interface AddTestSuitePipelineProps {
   initialData?: Partial<TestSuiteIngestionDataType>;
   isLoading: boolean;
-  testSuiteFQN?: string;
+  testSuite?: TestSuite;
   onSubmit: (data: TestSuiteIngestionDataType) => void;
   includePeriodOptions?: string[];
   onCancel?: () => void;
+  testCaseParams?: ListTestCaseParamsBySearch;
 }
 
 export interface RightPanelProps {
@@ -88,4 +91,6 @@ export type TestCaseFormType = {
   testTypeId: string;
   computePassedFailedRowCount?: boolean;
   description?: string;
+  tags?: TagLabel[];
+  glossaryTerms?: TagLabel[];
 };

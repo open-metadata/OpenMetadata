@@ -3,14 +3,12 @@
 
 "safe to test":
   - '@ayush-shah'
-  - '@OnkarVO7'
   - '@TeddyCr'
   - '@ulixius9'
   - '@pmbrull'
   - '@aniketkatkar97'
   - '@Ashish8689'
   - '@chirag-madlani'
-  - '@Sachin-chaurasiya'
   - '@shahsank3t'
   - '@ShaileshParmar11'
   - '@karanh37'
@@ -26,10 +24,18 @@
   - '@harshsoni2024'
   - '@SumanMaharana'
   - '@Prajwal214'
+  - '@gyohub'
+  - '@sonika-shah'
+  - '@keshavmohta09'
+  - '@sweta1308'
+  - '@shrushti2000'
+  - '@mohittilala'
+  - '@pellejador'
+  - '@pranita09'
+  - '@github-actions[bot]'
 
 ingestion:
   - '@ayush-shah'
-  - '@OnkarVO7'
   - '@TeddyCr'
   - '@ulixius9'
   - '@pmbrull'
@@ -37,21 +43,28 @@ ingestion:
   - '@sushi30'
   - '@harshsoni2024'
   - '@SumanMaharana'
+  - '@keshavmohta09'
+  - '@mohittilala'
 
 UI:
   - '@aniketkatkar97'
   - '@Ashish8689'
   - '@chirag-madlani'
-  - '@Sachin-chaurasiya'
   - '@shahsank3t'
   - '@ShaileshParmar11'
   - '@karanh37'
+  - '@sweta1308'
+  - '@shrushti2000'
+  - '@pranita09'
 
 backend:
   - '@harshach'
   - '@mohityadav766'
   - '@sureshms'
+  - '@gyohub'
+  - '@sonika-shah'
 
 devops:
   - '@akash-jain-10'
   - '@tutte'
+  - '@pellejador'

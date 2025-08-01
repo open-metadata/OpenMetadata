@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,25 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Remove Tags Action Type
  */
 export interface RemoveTagsAction {
     /**
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      */
     applyToChildren?: string[];
     /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
+    /**
      * Tags to remove
      */
-    tags: TagLabel[];
+    tags?: TagLabel[];
     /**
      * Application Type
      */
     type: RemoveTagsActionType;
+}
+
+/**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
 }
 
 /**
@@ -54,7 +69,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -79,9 +94,10 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

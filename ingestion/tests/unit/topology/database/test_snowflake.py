@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,8 @@ snowflake unit tests
 from unittest import TestCase
 from unittest.mock import PropertyMock, patch
 
+import sqlalchemy.types as sqltypes
+
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineStatus,
@@ -23,7 +25,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
+from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 
 SNOWFLAKE_CONFIGURATION = {
@@ -47,9 +49,7 @@ SNOWFLAKE_CONFIGURATION = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {
-                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-            },
+            "securityConfig": {"jwtToken": "snowflake"},
         }
     },
     "ingestionPipelineFQN": "snowflake.mock_pipeline",
@@ -122,6 +122,9 @@ EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/random_org/random_account/#
 
 
 def get_snowflake_sources():
+    """
+    Get snowflake sources
+    """
     sources = {}
 
     with patch(
@@ -263,3 +266,42 @@ class SnowflakeUnitTest(TestCase):
         )
 
         self.assertEqual("()", sp_payload.unquote_signature())
+
+    def test_map_class_default_initialization(self):
+        """Test MAP class with default parameters"""
+        map_type = MAP()
+
+        # Test default values
+        self.assertEqual(map_type.key_type, sqltypes.VARCHAR)
+        self.assertEqual(map_type.value_type, sqltypes.VARCHAR)
+        self.assertFalse(map_type.not_null)
+
+        # Test visit name
+        self.assertEqual(map_type.__visit_name__, "MAP")
+
+    def test_map_class_custom_initialization(self):
+        """Test MAP class with custom parameters"""
+        key_type = sqltypes.INTEGER
+        value_type = sqltypes.TEXT
+        not_null = True
+
+        map_type = MAP(key_type=key_type, value_type=value_type, not_null=not_null)
+
+        # Test custom values
+        self.assertEqual(map_type.key_type, key_type)
+        self.assertEqual(map_type.value_type, value_type)
+        self.assertTrue(map_type.not_null)
+
+        # Test visit name remains the same
+        self.assertEqual(map_type.__visit_name__, "MAP")
+
+    def test_map_class_partial_custom_initialization(self):
+        """Test MAP class with some custom parameters"""
+        key_type = sqltypes.BIGINT
+
+        map_type = MAP(key_type=key_type)
+
+        # Test mixed values
+        self.assertEqual(map_type.key_type, key_type)
+        self.assertEqual(map_type.value_type, sqltypes.VARCHAR)  # default
+        self.assertFalse(map_type.not_null)  # default

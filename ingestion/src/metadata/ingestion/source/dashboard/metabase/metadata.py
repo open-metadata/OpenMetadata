@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
@@ -42,9 +43,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.metabase.models import (
@@ -54,7 +54,9 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboardDetails,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DASHBAORD
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
     get_standard_chart_type,
@@ -92,16 +94,22 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.collections: List[MetabaseCollection] = []
+        self.dashboards_list: List[MetabaseDashboard] = []
+        self.charts_dict: Dict[str] = {}
+        self.orphan_charts_id: List[str] = []
+        self._default_dashboard_added = False
 
     def prepare(self):
         self.collections = self.client.get_collections_list()
+        self.charts_dict = self.client.get_charts_dict()
         return super().prepare()
 
     def get_dashboards_list(self) -> Optional[List[MetabaseDashboard]]:
         """
         Get List of all dashboards
         """
-        return self.client.get_dashboards_list(self.collections)
+        self.dashboards_list = self.client.get_dashboards_list(self.collections)
+        return self.dashboards_list
 
     def get_dashboard_name(self, dashboard: MetabaseDashboard) -> str:
         """
@@ -115,13 +123,39 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.get_dashboard_details(dashboard.id)
+        retrieved_dashboards = self.client.get_dashboard_details(
+            dashboard.id, self.charts_dict, self.orphan_charts_id
+        )
+        if (
+            retrieved_dashboards
+            and dashboard == self.dashboards_list[-1]
+            and not self._default_dashboard_added
+        ):
+            # If processing the last dashboard, identify any orphaned charts (not associated with dashboards)
+            # and create a default dashboard to maintain visibility of these charts
+            self.orphan_charts_id = [
+                chart_id
+                for chart_id, chart in self.charts_dict.items()
+                if not chart.dashboard_ids
+            ]
+            if self.orphan_charts_id:
+                # add the default dashboard to the dashboards list
+                default_dashboard = MetabaseDashboard(
+                    name=DEFAULT_DASHBAORD,
+                    id=DEFAULT_DASHBAORD,
+                )
+                self.dashboards_list.append(default_dashboard)
+                self._default_dashboard_added = True
+        return retrieved_dashboards
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
         """
         Method to get the project name by searching the dataset using id in the workspace dict
         """
         try:
+            # Return default for the default dashboard containing orphaned charts
+            if dashboard_details.id == DEFAULT_DASHBAORD:
+                return DEFAULT_DASHBAORD
             if dashboard_details.collection_id:
                 collection_name = next(
                     (
@@ -164,17 +198,23 @@ class MetabaseSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         try:
+            # dashboard_url to be empty for default dashboard
             dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
+                ""
+                if dashboard_details.id == DEFAULT_DASHBAORD
+                else f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
+
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.id)),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=Markdown(dashboard_details.description)
-                if dashboard_details.description
-                else None,
+                description=(
+                    Markdown(dashboard_details.description)
+                    if dashboard_details.description
+                    else None
+                ),
                 project=self.context.get().project_name,
                 charts=[
                     FullyQualifiedEntityName(
@@ -211,10 +251,10 @@ class MetabaseSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = dashboard_details.dashcards
-        for chart in charts:
+        chart_ids = dashboard_details.card_ids
+        for chart_id in chart_ids:
             try:
-                chart_details = chart.card
+                chart_details = self.charts_dict[chart_id]
                 if not chart_details.id or not chart_details.name:
                     continue
                 chart_url = (
@@ -240,7 +280,7 @@ class MetabaseSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Chart",
-                        error=f"Error creating chart [{chart}]: {exc}",
+                        error=f"Error creating chart [{self.charts_dict[chart_id]}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
@@ -248,22 +288,20 @@ class MetabaseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MetabaseDashboardDetails,
-        db_service_name: Optional[str],
+        db_service_prefix: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method
 
         Args:
             dashboard_details
         """
-        if not db_service_name:
-            return
-        chart_list, dashboard_name = (
-            dashboard_details.dashcards,
+        chart_ids, dashboard_name = (
+            dashboard_details.card_ids,
             str(dashboard_details.id),
         )
-        for chart in chart_list:
+        for chart_id in chart_ids:
             try:
-                chart_details = chart.card
+                chart_details = self.charts_dict[chart_id]
                 if (
                     chart_details.dataset_query is None
                     or chart_details.dataset_query.type is None
@@ -272,7 +310,7 @@ class MetabaseSource(DashboardServiceSource):
                 if chart_details.dataset_query.type == "native":
                     yield from self._yield_lineage_from_query(
                         chart_details=chart_details,
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         dashboard_name=dashboard_name,
                     ) or []
 
@@ -283,7 +321,7 @@ class MetabaseSource(DashboardServiceSource):
                         continue
                     yield from self._yield_lineage_from_api(
                         chart_details=chart_details,
-                        db_service_name=db_service_name,
+                        db_service_prefix=db_service_prefix,
                         dashboard_name=dashboard_name,
                     ) or []
 
@@ -296,13 +334,26 @@ class MetabaseSource(DashboardServiceSource):
                     )
                 )
 
-    def _get_database_service(self, db_service_name: str):
+    def _get_database_service(self, db_service_name: Optional[str]):
+        if not db_service_name:
+            return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
+    # pylint: disable=too-many-locals
     def _yield_lineage_from_query(
-        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
+        self,
+        chart_details: MetabaseChart,
+        db_service_prefix: Optional[str],
+        dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
+
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
 
         query = None
         if (
@@ -317,26 +368,60 @@ class MetabaseSource(DashboardServiceSource):
 
         database_name = database.details.db if database and database.details else None
 
-        db_service = self._get_database_service(db_service_name)
+        db_service = self._get_database_service(prefix_service_name)
 
         lineage_parser = LineageParser(
             query,
-            ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
-            if db_service
-            else None,
+            (
+                ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+                if db_service
+                else Dialect.ANSI
+            ),
         )
+
+        if (
+            prefix_database_name
+            and database_name
+            and prefix_database_name.lower() != database_name.lower()
+        ):
+            logger.debug(
+                f"Database {database_name} does not match prefix {prefix_database_name}"
+            )
+            return
 
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
-            from_entities = search_table_entities(
-                metadata=self.metadata,
-                database=database_name,
-                service_name=db_service_name,
-                database_schema=database_schema_name,
-                table=table,
-            )
 
+            if (
+                prefix_table_name
+                and table
+                and prefix_table_name.lower() != table.lower()
+            ):
+                logger.debug(f"Table {table} does not match prefix {prefix_table_name}")
+                continue
+
+            if (
+                prefix_schema_name
+                and database_schema_name
+                and prefix_schema_name.lower() != database_schema_name.lower()
+            ):
+                logger.debug(
+                    f"Schema {database_schema_name} does not match prefix {prefix_schema_name}"
+                )
+                continue
+
+            fqn_search_string = build_es_fqn_search_string(
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or database_schema_name,
+                service_name=prefix_service_name or "*",
+                table_name=prefix_table_name or table,
+            )
+            from_entities = self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+                fetch_multiple_entities=True,
+            )
             to_fqn = fqn.build(
                 self.metadata,
                 entity_type=LineageDashboard,
@@ -348,13 +433,16 @@ class MetabaseSource(DashboardServiceSource):
                 fqn=to_fqn,
             )
 
-            for from_entity in from_entities:
+            for from_entity in from_entities or []:
                 yield self._get_add_lineage_request(
                     to_entity=to_entity, from_entity=from_entity
                 )
 
     def _yield_lineage_from_api(
-        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
+        self,
+        chart_details: MetabaseChart,
+        db_service_prefix: Optional[str],
+        dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
         table_name = table.name or table.display_name
@@ -362,15 +450,56 @@ class MetabaseSource(DashboardServiceSource):
         if table is None or table_name is None:
             return
 
-        database_name = table.db.details.db if table.db and table.db.details else None
-        from_entities = search_table_entities(
-            metadata=self.metadata,
-            database=database_name,
-            service_name=db_service_name,
-            database_schema=table.table_schema,
-            table=table_name,
-        )
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
 
+        database_name = table.db.details.db if table.db and table.db.details else None
+
+        if (
+            prefix_table_name
+            and table_name
+            and prefix_table_name.lower() != table_name.lower()
+        ):
+            logger.debug(
+                f"Table {table_name} does not match prefix {prefix_table_name}"
+            )
+            return
+
+        if (
+            prefix_schema_name
+            and table.table_schema
+            and prefix_schema_name.lower() != table.table_schema.lower()
+        ):
+            logger.debug(
+                f"Schema {table.table_schema} does not match prefix {prefix_schema_name}"
+            )
+            return
+
+        if (
+            prefix_database_name
+            and database_name
+            and prefix_database_name.lower() != database_name.lower()
+        ):
+            logger.debug(
+                f"Database {database_name} does not match prefix {prefix_database_name}"
+            )
+            return
+
+        fqn_search_string = build_es_fqn_search_string(
+            service_name=prefix_service_name or "*",
+            database_name=prefix_database_name or database_name,
+            schema_name=prefix_schema_name or table.table_schema,
+            table_name=prefix_table_name or table_name,
+        )
+        from_entities = self.metadata.search_in_any_service(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
+            fetch_multiple_entities=True,
+        )
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -383,7 +512,7 @@ class MetabaseSource(DashboardServiceSource):
             fqn=to_fqn,
         )
 
-        for from_entity in from_entities:
+        for from_entity in from_entities or []:
             yield self._get_add_lineage_request(
                 to_entity=to_entity, from_entity=from_entity
             )

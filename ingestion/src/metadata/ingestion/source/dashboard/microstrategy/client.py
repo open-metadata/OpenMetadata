@@ -1,8 +1,8 @@
 #  Copyright 2023 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -264,5 +264,26 @@ class MicroStrategyClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
+
+        return None
+
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> Optional[str]:
+        """
+        Get Cube SQL Details
+        """
+        try:
+            headers = {
+                "X-MSTR-ProjectID": project_id,
+                "cubeId": cube_id,
+            } | self.auth_params.auth_header
+
+            resp_dataset = self.client._request(  # pylint: disable=protected-access
+                "GET", path=f"/v2/cubes/{cube_id}/sqlView", headers=headers
+            )
+            return resp_dataset["sqlStatement"]
+
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the cube with id: {cube_id}")
 
         return None

@@ -1,0 +1,129 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../variables.less');
+
+.om-rdg {
+  border-radius: 12px;
+  border: 1px solid @om-rdg-border-color;
+  overflow: hidden;
+  user-select: none;
+
+  .rdg-cell-range-selections {
+    background-color: @rdg-cell-range-selections-background-color;
+  }
+
+  .rdg {
+    border: none;
+    height: calc(100vh - 280px);
+    background-color: @grey-9;
+  }
+
+  .rdg-editor-container {
+    .value-renderer-on-edit-cell {
+      width: 100%;
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      padding-right: @size-xs;
+      padding-left: @size-xs;
+
+      .ellipsis-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: block;
+        width: 100%;
+      }
+    }
+  }
+
+  .rdg-header-row {
+    background-color: @grey-50;
+    font-weight: 600;
+    color: @om-rdg-header-color;
+  }
+
+  .rdg-cell-tags {
+    &.rdg-editor-container {
+      padding: @size-xxs;
+      min-width: -webkit-fill-available;
+      height: auto !important;
+      width: auto !important;
+      z-index: 999;
+      overflow: visible;
+      position: absolute;
+      top: 0;
+      left: 0;
+
+      .ant-select-focused .ant-select-selector {
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    .ant-space {
+      .ant-space-item:first-child {
+        flex: 1;
+      }
+    }
+
+    .ant-select-selector {
+      border: none;
+    }
+  }
+
+  .rdg-cell-glossaryTerms {
+    &.rdg-editor-container {
+      padding: @size-xxs;
+      min-width: -webkit-fill-available;
+      height: auto !important;
+      width: auto !important;
+      z-index: 999;
+      overflow: visible;
+      position: absolute;
+      top: 0;
+      left: 0;
+
+      .ant-select-focused .ant-select-selector {
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    .ant-select-selector {
+      border: none;
+    }
+  }
+
+  .rdg-cell-entityType {
+    &.rdg-editor-container {
+      padding: 2px @size-xxs;
+
+      .ant-select-focused .ant-select-selector {
+        border: none;
+        box-shadow: none;
+      }
+    }
+
+    .ant-space {
+      .ant-space-item:first-child {
+        flex: 1;
+      }
+    }
+
+    .ant-select-selector {
+      border: none;
+    }
+  }
+}

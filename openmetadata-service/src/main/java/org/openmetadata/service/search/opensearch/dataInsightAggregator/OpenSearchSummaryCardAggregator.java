@@ -11,8 +11,8 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.search.SearchRequest;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.index.query.QueryBuilder;
@@ -54,7 +54,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
     searchSourceBuilder.size(0);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

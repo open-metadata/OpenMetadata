@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,9 +15,9 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
-from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
@@ -30,13 +30,16 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
 )
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContractMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
+from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
@@ -57,7 +60,12 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
-from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
+from metadata.ingestion.ometa.utils import (
+    decode_jwt_token,
+    get_entity_type,
+    model_str,
+    quote,
+)
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -89,6 +97,16 @@ class EmptyPayloadException(Exception):
     """
 
 
+class OpenMetadataSettings(BaseSettings):
+    """OpenMetadataConnection settings wrapper"""
+
+    model_config = SettingsConfigDict(
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+    )
+
+    connection: OpenMetadataConnection
+
+
 class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
@@ -99,6 +117,7 @@ class OpenMetadata(
     ESMixin,
     OMetaServerMixin,
     OMetaDashboardMixin,
+    OMetaDataContractMixin,
     OMetaPatchMixin,
     OMetaTestsMixin,
     DataInsightMixin,
@@ -109,6 +128,7 @@ class OpenMetadata(
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
+    OMetaDomainMixin,
     Generic[T, C],
 ):
     """
@@ -132,6 +152,7 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
+        additional_client_config_arguments: Optional[Dict[str, Any]] = None,
     ):
         self.config = config
 
@@ -142,21 +163,56 @@ class OpenMetadata(
         ).get_secrets_manager()
 
         self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
+        self.log_user_name_from_jwt_token()
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
-        client_config: ClientConfig = ClientConfig(
+        extra_headers: Optional[dict[str, str]] = None
+        if self.config.extraHeaders:
+            extra_headers = self.config.extraHeaders.root
+
+        client_config = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
-            extra_headers=self.config.extraHeaders,
+            extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            **(additional_client_config_arguments or {}),
         )
+
         self.client = REST(client_config)
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
+
+    def log_user_name_from_jwt_token(self) -> None:
+        """
+        Log user name from JWT token.
+        """
+        # Log user name from JWT token if authProvider is openmetadata
+        if (
+            self.config.authProvider
+            and self.config.authProvider.value == "openmetadata"
+        ):
+            try:
+                # Get the JWT token from the auth provider
+                jwt_token, _ = self._auth_provider.get_access_token()
+                if jwt_token:
+                    # Decode the JWT token to extract user information
+                    payload = decode_jwt_token(jwt_token)
+                    if payload:
+                        if payload.get("sub"):
+                            logger.debug(f"Authenticated user: {payload.get('sub')}")
+                        else:
+                            logger.debug("Could not extract user name from JWT token")
+            except Exception as e:
+                logger.debug(f"Error processing JWT token: {e}")
+
+    @classmethod
+    def from_env(cls) -> "OpenMetadata":
+        settings = OpenMetadataSettings()
+        return cls(settings.connection)
 
     @staticmethod
     def get_suffix(entity: Type[T]) -> str:
@@ -235,6 +291,7 @@ class OpenMetadata(
             .replace("storedprocedure", "storedProcedure")
             .replace("ingestionpipeline", "ingestionPipeline")
             .replace("dataproduct", "dataProduct")
+            .replace("datacontract", "dataContract")
         )
         class_path = ".".join(
             filter(
@@ -268,7 +325,11 @@ class OpenMetadata(
             )
 
         fn = getattr(self.client, method)
-        resp = fn(self.get_suffix(entity), data=data.model_dump_json())
+        resp = fn(
+            # this might be a regular pydantic model so we build the context manually
+            self.get_suffix(entity),
+            data=data.model_dump_json(context={"mask_secrets": False}, by_alias=True),
+        )
         if not resp:
             raise EmptyPayloadException(
                 f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"

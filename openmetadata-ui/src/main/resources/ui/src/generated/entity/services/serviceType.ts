@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the service types entities which requires a connection.
  */
 export enum ServiceType {
     API = "Api",
     Dashboard = "Dashboard",
     Database = "Database",
+    Drive = "Drive",
     Messaging = "Messaging",
     Metadata = "Metadata",
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     Search = "Search",
+    Security = "Security",
     Storage = "Storage",
 }

@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -57,10 +57,17 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    @staticmethod
+    def expected_profiled_tables() -> int:
+        return 6
+
+    def expected_sample_size(self) -> int:
         return 50
 
     def view_column_lineage_count(self) -> int:
+        pass
+
+    def expected_lineage_node(self) -> str:
         pass
 
     @staticmethod
@@ -128,3 +135,7 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
+
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")

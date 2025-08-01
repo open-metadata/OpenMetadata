@@ -14,7 +14,7 @@ services:
   execute-migrate-all:
     container_name: execute_migrate_all
     command: "./bootstrap/openmetadata-ops.sh migrate"
-    image: docker.getcollate.io/openmetadata/server:1.5.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.8.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -31,6 +31,7 @@ services:
       AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
       AUTHORIZER_INGESTION_PRINCIPALS: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
       AUTHORIZER_PRINCIPAL_DOMAIN: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+      AUTHORIZER_ALLOWED_DOMAINS: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
       AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHORIZER_ENABLE_SECURE_SOCKET: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-basic}
@@ -60,6 +61,9 @@ services:
       OIDC_TENANT: ${OIDC_TENANT:-""}
       OIDC_MAX_CLOCK_SKEW: ${OIDC_MAX_CLOCK_SKEW:-""}
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
+      OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
+      OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -227,7 +231,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.5.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.8.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -241,6 +245,7 @@ services:
       AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
       AUTHORIZER_INGESTION_PRINCIPALS: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
       AUTHORIZER_PRINCIPAL_DOMAIN: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+      AUTHORIZER_ALLOWED_DOMAINS: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
       AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHORIZER_ENABLE_SECURE_SOCKET: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-basic}
@@ -270,6 +275,9 @@ services:
       OIDC_TENANT: ${OIDC_TENANT:-""}
       OIDC_MAX_CLOCK_SKEW: ${OIDC_MAX_CLOCK_SKEW:-""}
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
+      OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
+      OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}

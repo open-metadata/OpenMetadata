@@ -1,3 +1,5 @@
+import { ExportTypes } from '../../../constants/Export.constants';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,12 +29,48 @@ export type CSVExportJob = {
 } & Partial<CSVExportWebsocketResponse> &
   CSVExportResponse;
 
+export interface PDFLayoutConfig {
+  layoutType: 'grid' | 'vertical' | 'horizontal';
+  imageSpacing: number;
+  pageOrientation: 'portrait' | 'landscape';
+  customPageSize?: { width: number; height: number };
+}
+
+export interface PDFDimensions {
+  pageWidth: number;
+  pageHeight: number;
+  availableWidth: number;
+  availableHeight: number;
+  imageWidth: number;
+  imageHeight: number;
+  gridColumns: number;
+  gridRows: number;
+}
+
 export type ExportData = {
   name: string;
   title?: string;
-  onExport: (name: string) => Promise<CSVExportResponse | string>;
+  documentSelector?: string;
+  exportTypes: ExportTypes[];
+  viewport?: ExportViewport;
+  exportConfig?: Partial<PDFLayoutConfig>;
+  onExport: (
+    name: string,
+    params?: {
+      recursive?: boolean;
+    }
+  ) => Promise<CSVExportResponse | string>;
 };
 export interface EntityExportModalContextProps {
+  csvExportData?: string;
+  clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
+  triggerExportForBulkEdit: (data: ExportData) => void;
   onUpdateCSVExportJob: (data: Partial<CSVExportWebsocketResponse>) => void;
+}
+
+export interface ExportViewport {
+  x: number;
+  y: number;
+  zoom: number;
 }

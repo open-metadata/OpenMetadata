@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
-import i18next from 'i18next';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -58,7 +57,6 @@ import {
   tableSortingFields,
   tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
-  TAGS_INITIAL_SORT_ORDER,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -76,7 +74,7 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -163,41 +161,41 @@ class SearchClassBase {
 
   public getGlobalSearchOptions() {
     return [
-      { value: '', label: i18n.t('label.all') },
-      { value: SearchIndex.DATABASE, label: i18n.t('label.database') },
+      { value: '', label: t('label.all') },
+      { value: SearchIndex.DATABASE, label: t('label.database') },
       {
         value: SearchIndex.DATABASE_SCHEMA,
-        label: i18n.t('label.database-schema'),
+        label: t('label.database-schema'),
       },
-      { value: SearchIndex.TABLE, label: i18n.t('label.table') },
-      { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
-      { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
-      { value: SearchIndex.PIPELINE, label: i18n.t('label.pipeline') },
-      { value: SearchIndex.MLMODEL, label: i18n.t('label.ml-model') },
-      { value: SearchIndex.CONTAINER, label: i18n.t('label.container') },
+      { value: SearchIndex.TABLE, label: t('label.table') },
+      { value: SearchIndex.TOPIC, label: t('label.topic') },
+      { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+      { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
+      { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+      { value: SearchIndex.CONTAINER, label: t('label.container') },
       {
         value: SearchIndex.STORED_PROCEDURE,
-        label: i18n.t('label.stored-procedure'),
+        label: t('label.stored-procedure'),
       },
       {
         value: SearchIndex.DASHBOARD_DATA_MODEL,
-        label: i18n.t('label.data-model'),
+        label: t('label.data-model'),
       },
-      { value: SearchIndex.GLOSSARY_TERM, label: i18n.t('label.glossary') },
-      { value: SearchIndex.TAG, label: i18n.t('label.tag') },
-      { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
-      { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
+      { value: SearchIndex.GLOSSARY_TERM, label: t('label.glossary') },
+      { value: SearchIndex.TAG, label: t('label.tag') },
+      { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
+      { value: SearchIndex.DATA_PRODUCT, label: t('label.data-product') },
       {
         value: SearchIndex.API_ENDPOINT_INDEX,
-        label: i18n.t('label.api-endpoint'),
+        label: t('label.api-endpoint'),
       },
       {
         value: SearchIndex.API_COLLECTION_INDEX,
-        label: i18n.t('label.api-collection'),
+        label: t('label.api-collection'),
       },
       {
         value: SearchIndex.METRIC_SEARCH_INDEX,
-        label: i18n.t('label.metric'),
+        label: t('label.metric'),
       },
     ];
   }
@@ -205,7 +203,7 @@ class SearchClassBase {
   public getExploreTree(): ExploreTreeNode[] {
     return [
       {
-        title: i18n.t('label.database-plural'),
+        title: t('label.database-plural'),
         key: SearchIndex.DATABASE,
         data: {
           isRoot: true,
@@ -219,7 +217,7 @@ class SearchClassBase {
         icon: DatabaseIcon,
       },
       {
-        title: i18n.t('label.dashboard-plural'),
+        title: t('label.dashboard-plural'),
         key: SearchIndex.DASHBOARD,
         data: {
           isRoot: true,
@@ -231,38 +229,38 @@ class SearchClassBase {
         icon: DashboardIcon,
       },
       {
-        title: i18n.t('label.pipeline-plural'),
+        title: t('label.pipeline-plural'),
         key: SearchIndex.PIPELINE,
         data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
         icon: PipelineIcon,
       },
       {
-        title: i18n.t('label.topic-plural'),
+        title: t('label.topic-plural'),
         key: SearchIndex.TOPIC,
         data: { isRoot: true, childEntities: [EntityType.TOPIC] },
         icon: TopicIcon,
       },
       {
-        title: i18n.t('label.ml-model-plural'),
+        title: t('label.ml-model-plural'),
         key: SearchIndex.MLMODEL,
         data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
         icon: MlModelIcon,
       },
       {
-        title: i18n.t('label.container-plural'),
+        title: t('label.container-plural'),
         key: SearchIndex.CONTAINER,
         data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
         icon: ContainerIcon,
       },
       {
-        title: i18n.t('label.search-index-plural'),
+        title: t('label.search-index-plural'),
         key: SearchIndex.SEARCH_INDEX,
         data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
         icon: SearchIcon,
       },
       {
-        title: i18n.t('label.api-uppercase-plural'),
-        key: SearchIndex.API_ENDPOINT_INDEX,
+        title: t('label.api-uppercase-plural'),
+        key: SearchIndex.API_COLLECTION_INDEX,
         data: {
           isRoot: true,
           childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
@@ -270,16 +268,20 @@ class SearchClassBase {
         icon: IconAPIService,
       },
       {
-        title: i18n.t('label.governance'),
+        title: t('label.governance'),
         key: 'Governance',
         data: {
           isRoot: true,
-          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+          childEntities: [
+            EntityType.TAG,
+            EntityType.GLOSSARY_TERM,
+            EntityType.METRIC,
+          ],
         },
         icon: GovernIcon,
         children: [
           {
-            title: i18n.t('label.glossary-plural'),
+            title: t('label.glossary-plural'),
             key: EntityType.GLOSSARY_TERM,
             isLeaf: true,
             icon: GlossaryIcon,
@@ -290,7 +292,7 @@ class SearchClassBase {
             },
           },
           {
-            title: i18n.t('label.tag-plural'),
+            title: t('label.tag-plural'),
             key: EntityType.TAG,
             isLeaf: true,
             icon: ClassificationIcon,
@@ -300,26 +302,28 @@ class SearchClassBase {
               dataId: 'Tags',
             },
           },
+          {
+            title: t('label.metric-plural'),
+            key: EntityType.METRIC,
+            isLeaf: true,
+            icon: MetricIcon,
+            data: {
+              entityType: EntityType.METRIC,
+              isStatic: true,
+              dataId: 'Metrics',
+            },
+          },
         ],
       },
+
       {
-        title: i18n.t('label.metric-plural'),
-        key: EntityType.METRIC,
-        icon: MetricIcon,
-        data: {
-          entityType: EntityType.METRIC,
-          isRoot: true,
-          childEntities: [EntityType.METRIC],
-        },
-      },
-      {
-        title: i18n.t('label.domain-plural'),
+        title: t('label.domain-plural'),
         key: 'Domain',
         data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
         icon: DomainIcon,
         children: [
           {
-            title: i18n.t('label.data-product-plural'),
+            title: t('label.data-product-plural'),
             key: EntityType.DATA_PRODUCT,
             isLeaf: true,
             icon: DataProductIcon,
@@ -352,126 +356,121 @@ class SearchClassBase {
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
       [SearchIndex.TABLE]: {
-        label: i18n.t('label.table-plural'),
+        label: t('label.table-plural'),
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TABLES,
         icon: TableIcon,
       },
       [SearchIndex.STORED_PROCEDURE]: {
-        label: i18n.t('label.stored-procedure-plural'),
+        label: t('label.stored-procedure-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.STORED_PROCEDURE,
         icon: IconStoredProcedure,
       },
       [SearchIndex.DATABASE]: {
-        label: i18n.t('label.database-plural'),
+        label: t('label.database-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE,
         icon: DatabaseIcon,
       },
       [SearchIndex.DATABASE_SCHEMA]: {
-        label: i18n.t('label.database-schema-plural'),
+        label: t('label.database-schema-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE_SCHEMA,
         icon: SchemaIcon,
       },
       [SearchIndex.DASHBOARD]: {
-        label: i18n.t('label.dashboard-plural'),
+        label: t('label.dashboard-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DASHBOARDS,
         icon: DashboardIcon,
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
-        label: i18n.t('label.dashboard-data-model-plural'),
+        label: t('label.dashboard-data-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DASHBOARD_DATA_MODEL,
         icon: IconDataModel,
       },
       [SearchIndex.PIPELINE]: {
-        label: i18n.t('label.pipeline-plural'),
+        label: t('label.pipeline-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.PIPELINES,
         icon: PipelineIcon,
       },
       [SearchIndex.TOPIC]: {
-        label: i18n.t('label.topic-plural'),
+        label: t('label.topic-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TOPICS,
         icon: TopicIcon,
       },
       [SearchIndex.MLMODEL]: {
-        label: i18n.t('label.ml-model-plural'),
+        label: t('label.ml-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.MLMODELS,
         icon: MlModelIcon,
       },
       [SearchIndex.CONTAINER]: {
-        label: i18n.t('label.container-plural'),
+        label: t('label.container-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.CONTAINERS,
         icon: ContainerIcon,
       },
       [SearchIndex.SEARCH_INDEX]: {
-        label: i18n.t('label.search-index-plural'),
+        label: t('label.search-index-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SEARCH_INDEX,
         icon: SearchOutlined,
       },
       [SearchIndex.GLOSSARY_TERM]: {
-        label: i18n.t('label.glossary-term-plural'),
+        label: t('label.glossary-term-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.GLOSSARY,
         icon: GlossaryIcon,
       },
       [SearchIndex.TAG]: {
-        label: i18n.t('label.tag-plural'),
+        label: t('label.tag-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.TAG,
         icon: ClassificationIcon,
       },
       [SearchIndex.DATA_PRODUCT]: {
-        label: i18n.t('label.data-product-plural'),
+        label: t('label.data-product-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.DATA_PRODUCT,
         icon: DataProductIcon,
       },
       [SearchIndex.API_COLLECTION_INDEX]: {
-        label: i18n.t('label.api-collection-plural'),
+        label: t('label.api-collection-plural'),
         sortingFields: tagSortingFields,
-        sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_COLLECTION,
         icon: IconAPICollection,
       },
       [SearchIndex.API_ENDPOINT_INDEX]: {
-        label: i18n.t('label.api-endpoint-plural'),
+        label: t('label.api-endpoint-plural'),
         sortingFields: tagSortingFields,
-        sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_ENDPOINT,
         icon: IconAPIEndpoint,
       },
       [SearchIndex.METRIC_SEARCH_INDEX]: {
-        label: i18n.t('label.metric-plural'),
+        label: t('label.metric-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.METRIC,
         icon: MetricIcon,
       },
@@ -541,7 +540,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE];
+    return [EntityType.TEST_CASE, EntityType.DOMAIN];
   }
 
   public getEntityBreadcrumbs(
@@ -557,7 +556,7 @@ class SearchClassBase {
   ): string | { pathname: string } {
     if (entity.entityType === EntityType.TEST_SUITE) {
       return getTestSuiteDetailsPath({
-        isExecutableTestSuite: (entity as TestSuite).executable,
+        isExecutableTestSuite: (entity as TestSuite).basic,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
     }
@@ -617,7 +616,7 @@ class SearchClassBase {
       case SearchIndex.TABLE:
       default:
         return {
-          label: i18next.t('label.table-plural'),
+          label: t('label.table-plural'),
           GroupIcon: IconTable,
         };
     }

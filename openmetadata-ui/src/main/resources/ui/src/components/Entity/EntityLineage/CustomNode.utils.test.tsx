@@ -11,15 +11,37 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { Column } from '../../../generated/entity/data/table';
 import {
   getCollapseHandle,
+  getColumnContent,
   getColumnHandle,
   getExpandHandle,
 } from './CustomNode.utils';
-import { EdgeTypeEnum } from './EntityLineage.interface';
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: {
+    Button: jest.fn().mockImplementation(() => <p data-testid="loader" />),
+  },
+}));
+
+// Add mock before describe blocks
+jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ isLoading }) =>
+      isLoading ? (
+        <p data-testid="loader" />
+      ) : (
+        <div data-testid="test-suite-summary" />
+      )
+    ),
+}));
 
 describe('Custom Node Utils', () => {
   it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
@@ -48,7 +70,7 @@ describe('Custom Node Utils', () => {
   describe('getExpandHandle', () => {
     it('renders a Button component', () => {
       const { getByRole } = render(
-        getExpandHandle(EdgeTypeEnum.DOWN_STREAM, jest.fn())
+        getExpandHandle(LineageDirection.Downstream, jest.fn())
       );
 
       expect(getByRole('button')).toBeInTheDocument();
@@ -57,7 +79,7 @@ describe('Custom Node Utils', () => {
 
     it('applies the correct class name for non-DOWN_STREAM direction', () => {
       const { getByRole } = render(
-        getExpandHandle(EdgeTypeEnum.UP_STREAM, jest.fn())
+        getExpandHandle(LineageDirection.Upstream, jest.fn())
       );
 
       expect(getByRole('button')).toHaveClass('react-flow__handle-left');
@@ -66,7 +88,7 @@ describe('Custom Node Utils', () => {
     it('calls the onClickHandler when clicked', () => {
       const onClickHandler = jest.fn();
       const { getByRole } = render(
-        getExpandHandle(EdgeTypeEnum.DOWN_STREAM, onClickHandler)
+        getExpandHandle(LineageDirection.Downstream, onClickHandler)
       );
 
       fireEvent.click(getByRole('button'));
@@ -80,7 +102,7 @@ describe('Custom Node Utils', () => {
       const onClickHandler = jest.fn();
 
       const { getByTestId } = render(
-        getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onClickHandler)
+        getCollapseHandle(LineageDirection.Downstream, onClickHandler)
       );
 
       const collapseHandle = getByTestId('downstream-collapse-handle');
@@ -93,7 +115,7 @@ describe('Custom Node Utils', () => {
       const onClickHandler = jest.fn();
 
       const { getByTestId } = render(
-        getCollapseHandle(EdgeTypeEnum.UP_STREAM, onClickHandler)
+        getCollapseHandle(LineageDirection.Upstream, onClickHandler)
       );
 
       const collapseHandle = getByTestId('upstream-collapse-handle');
@@ -103,6 +125,127 @@ describe('Custom Node Utils', () => {
       fireEvent.click(collapseHandle);
 
       expect(onClickHandler).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getColumnContent', () => {
+    const mockColumn = {
+      fullyQualifiedName: 'test.column',
+      dataType: 'string',
+      name: 'test column',
+      constraint: 'NOT NULL',
+    } as unknown as Column;
+    const mockOnColumnClick = jest.fn();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should render basic column content', () => {
+      const { getByTestId, getByText } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            false,
+            false
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('column-test.column')).toBeInTheDocument();
+      expect(getByText('test column')).toBeInTheDocument();
+      expect(getByText('NOT NULL')).toBeInTheDocument();
+    });
+
+    it('should apply tracing class when isColumnTraced is true', () => {
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            true,
+            true,
+            mockOnColumnClick,
+            false,
+            false
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('column-test.column')).toHaveClass(
+        'custom-node-header-tracing'
+      );
+    });
+
+    it('should render loading on TestSuiteSummaryWidget when showDataObservabilitySummary is true with isLoading true', () => {
+      const mockSummary = {
+        success: 1,
+        failed: 0,
+        aborted: 0,
+        total: 1,
+      };
+
+      const { getAllByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            true,
+            true,
+            mockSummary
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getAllByTestId('loader')).toHaveLength(2);
+    });
+
+    it('should render TestSuiteSummaryWidget when showDataObservabilitySummary is true', () => {
+      const mockSummary = {
+        success: 1,
+        failed: 0,
+        aborted: 0,
+        total: 1,
+      };
+
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            true,
+            false,
+            mockSummary
+          )}
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('test-suite-summary')).toBeInTheDocument();
+    });
+
+    it('should call onColumnClick when clicked', () => {
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          {getColumnContent(
+            mockColumn,
+            false,
+            true,
+            mockOnColumnClick,
+            false,
+            false
+          )}
+        </ReactFlowProvider>
+      );
+
+      fireEvent.click(getByTestId('column-test.column'));
+
+      expect(mockOnColumnClick).toHaveBeenCalledWith('test.column');
     });
   });
 });

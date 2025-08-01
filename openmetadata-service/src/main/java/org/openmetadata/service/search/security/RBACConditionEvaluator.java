@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.*;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
@@ -200,6 +202,10 @@ public class RBACConditionEvaluator {
     String methodName = methodRef.getName();
 
     switch (methodName) {
+      case "matchAnyCertification" -> {
+        List<String> certificationLabels = extractMethodArguments(methodRef);
+        matchAnyCertification(certificationLabels, collector);
+      }
       case "matchAnyTag" -> {
         List<String> tags = extractMethodArguments(methodRef);
         matchAnyTag(tags, collector);
@@ -259,6 +265,22 @@ public class RBACConditionEvaluator {
     }
   }
 
+  public void matchAnyCertification(
+      List<String> certificationLabels, ConditionCollector collector) {
+    List<OMQueryBuilder> certificationQueries = new ArrayList<>();
+    for (String certificationLabel : certificationLabels) {
+      certificationQueries.add(
+          queryBuilderFactory.termQuery("certification.tagLabel.tagFQN", certificationLabel));
+    }
+    OMQueryBuilder certificationQueriesCombined;
+    if (certificationQueries.size() == 1) {
+      certificationQueriesCombined = certificationQueries.get(0);
+    } else {
+      certificationQueriesCombined = queryBuilderFactory.boolQuery().should(certificationQueries);
+    }
+    collector.addMust(certificationQueriesCombined);
+  }
+
   public void isOwner(User user, ConditionCollector collector) {
     List<OMQueryBuilder> ownerQueries = new ArrayList<>();
     ownerQueries.add(queryBuilderFactory.termQuery("owners.id", user.getId().toString()));
@@ -303,13 +325,15 @@ public class RBACConditionEvaluator {
 
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
-    if (user.getDomain() == null) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
+    if (user == null || nullOrEmpty(user.getDomains())) {
+      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
       collector.addMustNot(existsQuery); // Wrap existsQuery in a List
     } else {
-      String userDomainId = user.getDomain().getId().toString();
-      OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
-      collector.addMust(domainQuery);
+      for (EntityReference domain : user.getDomains()) {
+        String domainId = domain.getId().toString();
+        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
+        collector.addMust(domainQuery);
+      }
     }
   }
 

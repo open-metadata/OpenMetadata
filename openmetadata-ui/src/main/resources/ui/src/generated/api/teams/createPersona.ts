@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Persona entity
  */
 export interface CreatePersona {
+    /**
+     * When true, this persona is the system-wide default persona that will be applied to users
+     * who don't have any persona assigned or no default persona set.
+     */
+    default?: boolean;
     /**
      * Optional description of the team.
      */
@@ -25,10 +28,10 @@ export interface CreatePersona {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Persona belongs to.
      */
-    domain?: string;
-    name:    string;
+    domains?: string[];
+    name:     string;
     /**
      * Optional IDs of users that are going to assign a Persona.
      */

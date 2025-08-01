@@ -13,54 +13,48 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
-import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { ThreadType } from '../../../generated/entity/feed/thread';
-import { TagLabel } from '../../../generated/type/schema';
+import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
+import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
-import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
-import APIEndpointSchema from '../APIEndpointSchema/APIEndpointSchema';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
 
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,
-  onCreateThread,
   fetchAPIEndpointDetails,
   onFollowApiEndPoint,
   onApiEndpointUpdate,
@@ -72,29 +66,20 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 }: APIEndpointDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
-  const history = useHistory();
-  const [isEdit, setIsEdit] = useState(false);
-  const [threadLink, setThreadLink] = useState<string>('');
+  const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
+  const { customizedPage, isLoading } = useCustomPages(PageType.APIEndpoint);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
     deleted,
-    description,
     followers = [],
-    entityName,
-    apiEndpointTags,
-    tier,
   } = useMemo(
     () => ({
       ...apiEndpointDetails,
@@ -123,20 +108,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     };
     await onApiEndpointUpdate(updatedData, 'displayName');
   };
-  const onExtensionUpdate = async (updatedData: APIEndpoint) => {
-    await onApiEndpointUpdate(
-      { ...apiEndpointDetails, extension: updatedData.extension },
-      'extension'
-    );
-  };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
-  const onThreadPanelClose = () => setThreadLink('');
 
   const handleRestoreApiEndpoint = async () => {
     try {
@@ -146,8 +117,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.api-endpoint'),
-        }),
-        2000
+        })
       );
       onToggleDelete(newVersion);
     } catch (error) {
@@ -162,7 +132,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.API_ENDPOINT,
           decodedApiEndpointFqn,
@@ -172,27 +142,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   };
 
-  const onDescriptionEdit = (): void => setIsEdit(true);
-
-  const onCancel = () => setIsEdit(false);
-
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML) {
-      const updatedApiEndpointDetails = {
-        ...apiEndpointDetails,
-        description: updatedHTML,
-      };
-      try {
-        await onApiEndpointUpdate(updatedApiEndpointDetails, 'description');
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
-      }
-    } else {
-      setIsEdit(false);
-    }
-  };
   const onOwnerUpdate = useCallback(
     async (newOwners?: APIEndpoint['owners']) => {
       const updatedApiEndpointDetails = {
@@ -214,29 +163,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     return onApiEndpointUpdate(updatedApiEndpointDetails, 'tags');
   };
 
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-
-    if (updatedTags && apiEndpointDetails) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedApiEndpoint = { ...apiEndpointDetails, tags: updatedTags };
-      await onApiEndpointUpdate(updatedApiEndpoint, 'tags');
-    }
-  };
-
-  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
-    const dataProductsEntity = updatedData?.map((item) => {
-      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
-    });
-
-    const updatedApiEndpointDetails = {
-      ...apiEndpointDetails,
-      dataProducts: dataProductsEntity,
-    };
-
-    await onApiEndpointUpdate(updatedApiEndpointDetails, 'dataProducts');
-  };
-
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -249,44 +175,24 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewSampleDataPermission,
     viewAllPermission,
   } = useMemo(
     () => ({
-      editTagsPermission:
-        (apiEndpointPermissions.EditTags || apiEndpointPermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (apiEndpointPermissions.EditGlossaryTerms ||
-          apiEndpointPermissions.EditAll) &&
-        !deleted,
-      editDescriptionPermission:
-        (apiEndpointPermissions.EditDescription ||
-          apiEndpointPermissions.EditAll) &&
-        !deleted,
       editCustomAttributePermission:
         (apiEndpointPermissions.EditAll ||
           apiEndpointPermissions.EditCustomFields) &&
         !deleted,
-      editAllPermission: apiEndpointPermissions.EditAll && !deleted,
       editLineagePermission:
         (apiEndpointPermissions.EditAll ||
           apiEndpointPermissions.EditLineage) &&
         !deleted,
-      viewSampleDataPermission:
-        apiEndpointPermissions.ViewAll || apiEndpointPermissions.ViewSampleData,
       viewAllPermission: apiEndpointPermissions.ViewAll,
     }),
     [apiEndpointPermissions, deleted]
@@ -296,173 +202,73 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     getEntityFeedCount();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
-        key: EntityTabs.SCHEMA,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
-                      <DescriptionV1
-                        description={apiEndpointDetails.description}
-                        entityFqn={decodedApiEndpointFqn}
-                        entityName={entityName}
-                        entityType={EntityType.API_ENDPOINT}
-                        hasEditAccess={editDescriptionPermission}
-                        isEdit={isEdit}
-                        owner={apiEndpointDetails.owners}
-                        showActions={!deleted}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                      <APIEndpointSchema
-                        apiEndpointDetails={apiEndpointDetails}
-                        permissions={apiEndpointPermissions}
-                        onApiEndpointUpdate={onApiEndpointUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.API_ENDPOINT>
-                        customProperties={apiEndpointDetails}
-                        dataProducts={apiEndpointDetails?.dataProducts ?? []}
-                        domain={apiEndpointDetails?.domain}
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={editTagsPermission}
-                        entityFQN={decodedApiEndpointFqn}
-                        entityId={apiEndpointDetails.id}
-                        entityType={EntityType.API_ENDPOINT}
-                        selectedTags={apiEndpointTags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={onExtensionUpdate}
-                        onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.API_ENDPOINT}
-            fqn={apiEndpointDetails?.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchAPIEndpointDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
-
-      {
-        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
-        key: EntityTabs.LINEAGE,
-        children: (
-          <LineageProvider>
-            <Lineage
-              deleted={apiEndpointDetails.deleted}
-              entity={apiEndpointDetails as SourceType}
-              entityType={EntityType.API_ENDPOINT}
-              hasEditAccess={editLineagePermission}
-            />
-          </LineageProvider>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: apiEndpointDetails && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.API_ENDPOINT>
-              entityDetails={apiEndpointDetails}
-              entityType={EntityType.API_ENDPOINT}
-              handleExtensionUpdate={onExtensionUpdate}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-            />
-          </div>
-        ),
-      },
-    ],
-
-    [
-      isEdit,
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+    const tabs = apiEndpointClassBase.getAPIEndpointDetailPageTabs({
       activeTab,
-      feedCount.totalCount,
-      apiEndpointTags,
-      entityName,
-      apiEndpointDetails,
-      decodedApiEndpointFqn,
+      feedCount,
+      apiEndpoint: apiEndpointDetails,
       fetchAPIEndpointDetails,
-      deleted,
-      onCancel,
-      onDescriptionEdit,
+      getEntityFeedCount,
+      labelMap: tabLabelMap,
       handleFeedCount,
-      onExtensionUpdate,
-      onThreadLinkSelect,
-      handleTagSelection,
-      onDescriptionUpdate,
-      onDataProductsUpdate,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      editDescriptionPermission,
       editCustomAttributePermission,
-      editLineagePermission,
-      editAllPermission,
-      viewSampleDataPermission,
       viewAllPermission,
-    ]
+      editLineagePermission,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.SCHEMA
+    );
+  }, [
+    activeTab,
+    feedCount,
+    apiEndpointDetails,
+    fetchAPIEndpointDetails,
+    getEntityFeedCount,
+    handleFeedCount,
+    editCustomAttributePermission,
+    viewAllPermission,
+    editLineagePermission,
+    customizedPage,
+  ]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (apiEndpointDetails) {
+        const certificationTag = updateCertificationTag(newCertification);
+        const updatedApiEndpointDetails: APIEndpoint = {
+          ...apiEndpointDetails,
+          certification: certificationTag,
+        };
+
+        await onApiEndpointUpdate(updatedApiEndpointDetails, 'certification');
+      }
+    },
+    [apiEndpointDetails, onApiEndpointUpdate]
   );
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.APIEndpoint),
+    [tabs[0], activeTab]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.api-endpoint'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -472,6 +278,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             entityType={EntityType.API_ENDPOINT}
             openTaskCount={feedCount.openTaskCount}
             permissions={apiEndpointPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followApiEndpoint}
             onOwnerUpdate={onOwnerUpdate}
@@ -481,32 +288,38 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             onVersionClick={onVersionChange}
           />
         </Col>
-        <Col span={24}>
-          <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
-            className="entity-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<APIEndpoint>
+          customizedPage={customizedPage}
+          data={apiEndpointDetails}
+          isTabExpanded={isTabExpanded}
+          permissions={apiEndpointPermissions}
+          type={EntityType.API_ENDPOINT}
+          onUpdate={onApiEndpointUpdate}>
+          <Col className="entity-details-page-tabs" span={24}>
+            <Tabs
+              activeKey={activeTab}
+              className="tabs-new"
+              data-testid="tabs"
+              items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
       <LimitWrapper resource="apiEndpoint">
         <></>
       </LimitWrapper>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={onCreateThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </PageLayoutV1>
   );
 };

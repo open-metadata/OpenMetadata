@@ -14,21 +14,25 @@
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { startCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { isArray, startCase } from 'lodash';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA } from '../../../constants/constants';
-import { StepSummary } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
+import {
+  PipelineStatus,
+  StepSummary,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Table from '../../common/Table/Table';
 import ConnectionStepCard from '../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interface';
 
-function IngestionRunDetailsModal({
+function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
   pipelineStatus,
   handleCancel,
-}: Readonly<IngestionRunDetailsModalProps>) {
+}: Readonly<IngestionRunDetailsModalProps<T>>) {
   const { t } = useTranslation();
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
 
@@ -129,15 +133,19 @@ function IngestionRunDetailsModal({
       maskClosable={false}
       okButtonProps={{ style: { display: 'none' } }}
       title={t('message.run-status-at-timestamp', {
-        status: startCase(pipelineStatus?.pipelineState),
+        status: startCase(
+          (pipelineStatus as PipelineStatus)?.pipelineState ??
+            (pipelineStatus as AppRunRecord)?.status
+        ),
         timestamp: formatDateTime(pipelineStatus?.timestamp),
       })}
       width="80%"
       onCancel={handleCancel}>
       <Table
-        bordered
         columns={columns}
-        dataSource={pipelineStatus?.status ?? []}
+        dataSource={
+          isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
+        }
         expandable={expandable}
         indentSize={0}
         pagination={false}

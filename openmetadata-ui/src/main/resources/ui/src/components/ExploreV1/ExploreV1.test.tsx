@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
@@ -26,11 +24,14 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
 }));
+
+jest.mock('../Explore/ExploreTree/ExploreTree', () => {
+  return jest.fn().mockImplementation(() => <div>ExploreTree</div>);
+});
 
 jest.mock('../common/ResizablePanels/ResizablePanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -131,28 +132,16 @@ const props = {
 };
 
 describe('ExploreV1', () => {
-  it('renders component without errors', () => {
+  it('renders component without errors', async () => {
     render(<ExploreV1 {...props} />);
 
-    expect(screen.getByTestId('explore-page')).toBeInTheDocument();
-
-    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.dashboard-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.pipeline-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.ml-model-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.topic-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.container-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.search-index-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.governance')).toBeInTheDocument();
-    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
+    expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {
     render(<ExploreV1 {...props} />);
 
-    act(() => {
-      userEvent.click(screen.getByTestId('sort-order-button'));
-    });
+    fireEvent.click(screen.getByTestId('sort-order-button'));
 
     expect(onChangeSortOder).toHaveBeenCalled();
   });

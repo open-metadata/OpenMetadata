@@ -49,8 +49,8 @@ const MOCK_DATA = [
     provider: 'user',
   },
 ];
-const mockPush = jest.fn();
-
+const mockNavigate = jest.fn();
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -59,8 +59,9 @@ jest.mock('react-router-dom', () => ({
         <p {...props}>{children}</p>
       )
     ),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
   })),
 }));
 
@@ -231,7 +232,7 @@ describe('Observability Alerts Page Tests', () => {
     const addButton = await screen.findByText(/label.add-entity/);
     fireEvent.click(addButton);
 
-    expect(mockPush).toHaveBeenCalledWith('/observability/alerts/add');
+    expect(mockNavigate).toHaveBeenCalledWith('/observability/alerts/add');
   });
 
   it('should not render add, edit and delete buttons for alerts without permissions', async () => {

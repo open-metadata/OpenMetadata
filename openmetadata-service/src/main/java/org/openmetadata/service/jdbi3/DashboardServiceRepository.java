@@ -33,6 +33,5 @@ public class DashboardServiceRepository
         "",
         ServiceType.DASHBOARD);
     supportsSearch = true;
-    parent = true;
   }
 }

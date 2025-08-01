@@ -28,7 +28,7 @@
   background: @white;
   border: @global-border;
   box-shadow: @box-shadow-base;
-  border-radius: 6px;
+  border-radius: @border-rad-sm;
   padding: 0 !important;
   width: 350px;
 
@@ -74,12 +74,12 @@
   }
 
   .ant-popover-inner-content {
+    width: 100%;
     padding: 0;
   }
 
   .ant-list-vertical {
     .selectable-list-item {
-      margin-bottom: 4px;
       border-bottom: 0;
       border-radius: 4px;
       padding: 8px;
@@ -94,4 +94,29 @@
     border-radius: 12px;
     padding: 2px 6px;
   }
+
+  .selectable-list-item:focus-visible {
+    outline: 2px solid @focus-outline-color;
+    background-color: @focus-outline-color;
+  }
+
+  [role='tab']:focus-visible {
+    outline: 2px solid @focus-outline-color;
+    background-color: @focus-outline-color;
+  }
+
+  [role='tabpanel']:focus {
+    outline: 2px solid @focus-outline-color;
+    background-color: @focus-outline-color;
+  }
+}
+
+.ant-btn.ant-btn-icon-only.edit-owner-button {
+  border: 1px solid @border-light;
+  background-color: @background-color;
+  border-radius: 4px;
+  padding: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
 }

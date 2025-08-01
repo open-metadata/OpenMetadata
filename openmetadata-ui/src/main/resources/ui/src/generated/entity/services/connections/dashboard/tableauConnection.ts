@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Tableau Connection Config
  */
 export interface TableauConnection {
     /**
-     * Tableau API version.
+     * Tableau API version. If not provided, the version will be used from the tableau server.
      */
-    apiVersion: string;
+    apiVersion?: string;
     /**
      * Types of methods used to authenticate to the tableau instance
      */
     authType?: AuthenticationTypeForTableau;
     /**
-     * Tableau Environment Name.
+     * Regex exclude or include charts that matches the pattern.
      */
-    env: string;
+    chartFilterPattern?: FilterPattern;
     /**
-     * Tableau Server.
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
+     * Tableau Server url.
      */
     hostPort: string;
     /**
@@ -37,13 +43,18 @@ export interface TableauConnection {
      */
     paginationLimit?: number;
     /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
+    /**
+     * Proxy URL for the tableau server. If not provided, the hostPort will be used. This is
+     * used to generate the dashboard & Chart URL.
+     */
+    proxyURL?: string;
+    /**
      * Tableau Site Name.
      */
-    siteName?: string;
-    /**
-     * Tableau Site Url.
-     */
-    siteUrl?:                    string;
+    siteName?:                   string;
     sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
@@ -77,6 +88,28 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

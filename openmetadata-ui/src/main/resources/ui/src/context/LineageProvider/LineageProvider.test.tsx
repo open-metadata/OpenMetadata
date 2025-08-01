@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Edge } from 'reactflow';
-import { EdgeTypeEnum } from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
@@ -45,7 +46,8 @@ const DummyChildrenComponent = () => {
   const {
     loadChildNodesHandler,
     onEdgeClick,
-    updateEntityType,
+    onColumnClick,
+    updateEntityData,
     onLineageEditClick,
   } = useLineageProvider();
 
@@ -77,11 +79,16 @@ const DummyChildrenComponent = () => {
 
   const handleButtonClick = () => {
     // Trigger the loadChildNodesHandler method when the button is clicked
-    loadChildNodesHandler(nodeData, EdgeTypeEnum.DOWN_STREAM);
+    loadChildNodesHandler(nodeData, LineageDirection.Downstream);
   };
 
   useEffect(() => {
-    updateEntityType(EntityType.TABLE);
+    updateEntityData(EntityType.TABLE, {
+      id: 'table1',
+      name: 'table1',
+      type: 'table',
+      fullyQualifiedName: 'table1',
+    } as SourceType);
   }, []);
 
   return (
@@ -93,6 +100,11 @@ const DummyChildrenComponent = () => {
         data-testid="edge-click"
         onClick={() => onEdgeClick(MOCK_EDGE as Edge)}>
         On Edge Click
+      </button>
+      <button
+        data-testid="column-click"
+        onClick={() => onColumnClick('column')}>
+        On Column Click
       </button>
       <button data-testid="openConfirmationModal">
         Close Confirmation Modal
@@ -109,10 +121,10 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'table1',
   }),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock(
@@ -145,18 +157,12 @@ jest.mock('../../rest/lineageAPI', () => ({
 }));
 
 describe('LineageProvider', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('renders Lineage component and fetches data', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     expect(getLineageDataByFQN).toHaveBeenCalled();
     expect(getDataQualityLineage).not.toHaveBeenCalled();
@@ -173,20 +179,23 @@ describe('LineageProvider', () => {
         edges: [],
       })
     );
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
 
-    expect(getLineageDataByFQN).toHaveBeenCalledWith(
-      'table1',
-      'table',
-      { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
-      ''
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
     );
+
+    expect(getLineageDataByFQN).toHaveBeenCalledWith({
+      entityType: 'table',
+      fqn: 'table1',
+      config: {
+        downstreamDepth: 1,
+        nodesPerLayer: 50,
+        upstreamDepth: 1,
+      },
+      queryFilter: '',
+    });
     expect(getDataQualityLineage).toHaveBeenCalledWith(
       'table1',
       { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
@@ -198,13 +207,11 @@ describe('LineageProvider', () => {
   });
 
   it('should call loadChildNodesHandler', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const loadButton = screen.getByTestId('load-nodes');
     fireEvent.click(loadButton);
@@ -213,13 +220,11 @@ describe('LineageProvider', () => {
   });
 
   it('should show sidebar when edit is clicked', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const loadButton = screen.getByTestId('editLineage');
     fireEvent.click(loadButton);
@@ -230,13 +235,11 @@ describe('LineageProvider', () => {
   });
 
   it('should show delete modal', async () => {
-    await act(async () => {
-      render(
-        <LineageProvider>
-          <DummyChildrenComponent />
-        </LineageProvider>
-      );
-    });
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
 
     const edgeClick = screen.getByTestId('edge-click');
     fireEvent.click(edgeClick);
@@ -244,5 +247,25 @@ describe('LineageProvider', () => {
     const edgeDrawer = screen.getByText('Edge Info Drawer');
 
     expect(edgeDrawer).toBeInTheDocument();
+  });
+
+  it('should close the drawer if open, on column click', async () => {
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
+
+    const edgeClick = screen.getByTestId('edge-click');
+    fireEvent.click(edgeClick);
+
+    const edgeDrawer = screen.getByText('Edge Info Drawer');
+
+    expect(edgeDrawer).toBeInTheDocument();
+
+    const columnClick = screen.getByTestId('column-click');
+    fireEvent.click(columnClick);
+
+    expect(edgeDrawer).not.toBeInTheDocument();
   });
 });

@@ -12,15 +12,12 @@
  */
 @import url('../../styles/variables.less');
 
-.tag-tabs {
-  .tag-overview-tab,
-  .assets-tab-container {
-    height: @tag-page-height;
-    overflow-y: scroll;
-  }
+.tag-height-with-resizable-panel {
+  height: @tag-page-height;
+}
 
-  .ant-tabs-nav {
-    margin: 0 !important;
-    padding: 0 16px;
+.tag-page-tabs.ant-tabs.tabs-new {
+  .ant-tabs-tabpane {
+    background-color: transparent;
   }
 }

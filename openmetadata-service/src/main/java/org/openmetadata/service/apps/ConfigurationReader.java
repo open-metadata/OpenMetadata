@@ -12,7 +12,7 @@ import java.net.URL;
 import java.util.Map;
 import org.apache.commons.text.StringSubstitutor;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ public class ConfigurationReader {
   private final StringSubstitutor substitutor;
   private final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
   private final YamlConfigurationFactory<Object> factory =
-      new YamlConfigurationFactory<>(Object.class, null, mapper, "dw");
+      new YamlConfigurationFactory<>(Object.class, null, mapper, "app");
 
   public ConfigurationReader(Map<String, String> envMap) {
     // envMap is for custom environment variables (e.g., for testing), defaulting to the system

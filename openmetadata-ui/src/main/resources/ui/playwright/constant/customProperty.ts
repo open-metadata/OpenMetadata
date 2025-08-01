@@ -30,6 +30,7 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.API_ENDPOINT,
   EntityTypeEndpoint.DATA_PRODUCT,
   EntityTypeEndpoint.METRIC,
+  EntityTypeEndpoint.Domain,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
@@ -51,7 +52,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'containers',
     tableConfig: {
@@ -72,7 +73,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dashboards',
     tableConfig: {
@@ -93,7 +94,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'databases',
     tableConfig: {
@@ -114,7 +115,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'databaseSchemas',
     tableConfig: {
@@ -135,7 +136,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'glossaryTerm',
     tableConfig: {
@@ -156,7 +157,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'mlmodels',
     tableConfig: {
@@ -177,7 +178,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'pipelines',
     tableConfig: {
@@ -198,7 +199,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'searchIndexes',
     tableConfig: {
@@ -219,7 +220,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'storedProcedures',
     tableConfig: {
@@ -240,7 +241,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'tables',
     tableConfig: {
@@ -261,7 +262,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'topics',
     tableConfig: {
@@ -281,7 +282,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'apiCollections',
     tableConfig: {
@@ -302,7 +303,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'apiEndpoints',
     tableConfig: {
@@ -322,15 +323,35 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dataProducts',
     tableConfig: {
       columns: ['pw-column1', 'pw-column2'],
     },
   },
+  entity_domain: {
+    name: 'domain',
+    description: 'This is Domain custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
+    entityObj: {},
+    entityApiType: 'domains',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
+  },
   entity_dashboardDataModel: {
-    name: 'dataModel',
+    name: 'dashboardDataModel',
     description: 'This is Data Model custom property',
     integerValue: '23',
     stringValue: 'This is string propery',
@@ -342,7 +363,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dashboardDataModels',
     tableConfig: {
@@ -362,7 +383,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'metrics',
     tableConfig: {

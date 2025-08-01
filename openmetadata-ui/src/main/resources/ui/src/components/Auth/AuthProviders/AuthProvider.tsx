@@ -13,6 +13,7 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
+
 import {
   Configuration,
   IPublicClientApplication,
@@ -25,19 +26,23 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { debounce, isEmpty, isNil, isNumber } from 'lodash';
+import { isEmpty, isNil, isNumber } from 'lodash';
+import { WebStorageStateStore } from 'oidc-client';
 import Qs from 'qs';
-import React, {
+import {
   ComponentType,
+  createContext,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   DEFAULT_DOMAIN_VALUE,
   ES_MAX_PAGE_SIZE,
@@ -63,16 +68,22 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
+import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
-  isProtectedRoute,
   prepareUserProfileFromClaims,
+  validateAuthFields,
 } from '../../../utils/AuthProvider.util';
-import { getOidcToken } from '../../../utils/LocalStorageUtils';
+import {
+  getOidcToken,
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
@@ -110,14 +121,26 @@ const isEmailVerifyField = 'isEmailVerified';
 
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
-let failedLoggedInUserRequest: boolean | null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let pendingRequests: any[] = [];
+
+type AuthContextType = {
+  onLoginHandler: () => void;
+  onLogoutHandler: () => void;
+  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
+  handleFailedLogin: () => void;
+  handleSuccessfulLogout: () => void;
+  updateAxiosInterceptors: () => void;
+};
+
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const AuthProvider = ({
   childComponentType,
   children,
 }: AuthProviderProps) => {
   const {
-    setHelperFunctionsRef,
     setCurrentUser,
     updateNewUser: setNewUserProfile,
     setIsAuthenticated,
@@ -130,17 +153,14 @@ export const AuthProvider = ({
     jwtPrincipalClaimsMapping,
     setJwtPrincipalClaims,
     setJwtPrincipalClaimsMapping,
-    removeRefreshToken,
-    removeOidcToken,
-    getRefreshToken,
     isApplicationLoading,
     setApplicationLoading,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
-  const tokenService = useRef<TokenService>();
+  const tokenService = useRef<TokenService>(TokenService.getInstance());
 
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [timeoutId, setTimeoutId] = useState<number>();
@@ -149,7 +169,10 @@ export const AuthProvider = ({
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const userConfig = useMemo(
-    () => (authConfig ? getUserManagerConfig(authConfig) : {}),
+    () =>
+      authConfig
+        ? getUserManagerConfig(authConfig)
+        : ({} as Record<string, string | boolean | WebStorageStateStore>),
     [authConfig]
   );
 
@@ -163,10 +186,13 @@ export const AuthProvider = ({
     resetWebAnalyticSession();
   };
 
-  const onLogoutHandler = useCallback(() => {
+  // Handler to perform logout within application
+  const onLogoutHandler = useCallback(async () => {
     clearTimeout(timeoutId);
 
-    authenticatorRef.current?.invokeLogout();
+    // Let SSO complete the logout process
+    await authenticatorRef.current?.invokeLogout();
+
     setIsAuthenticated(false);
 
     // reset the user details on logout
@@ -176,21 +202,16 @@ export const AuthProvider = ({
     removeSession();
 
     // remove the refresh token on logout
-    removeRefreshToken();
+    setRefreshToken('');
 
     setApplicationLoading(false);
 
-    // Upon logout, redirect to the login page
-    history.push(ROUTES.SIGNIN);
-  }, [timeoutId]);
+    // Clear the refresh flag (used after refresh is complete)
+    tokenService.current.clearRefreshInProgress();
 
-  useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current = new TokenService(
-        authenticatorRef.current?.renewIdToken
-      );
-    }
-  }, [authenticatorRef.current?.renewIdToken]);
+    // Upon logout, redirect to the login page
+    navigate(ROUTES.SIGNIN);
+  }, [timeoutId]);
 
   const fetchDomainList = useCallback(async () => {
     try {
@@ -208,8 +229,8 @@ export const AuthProvider = ({
   }, []);
 
   const handledVerifiedUser = () => {
-    if (!isProtectedRoute(location.pathname)) {
-      history.push(ROUTES.HOME);
+    if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
+      navigate(ROUTES.HOME);
     }
   };
 
@@ -228,15 +249,17 @@ export const AuthProvider = ({
 
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
-    removeOidcToken();
+    setOidcToken('');
+    setRefreshToken('');
     setIsAuthenticated(false);
     setApplicationLoading(false);
     clearTimeout(timeoutId);
+    TokenService.getInstance().clearRefreshInProgress();
     if (forceLogout) {
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
     } else {
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     }
   };
 
@@ -269,39 +292,6 @@ export const AuthProvider = ({
   };
 
   /**
-   * This method will try to signIn silently when token is about to expire
-   * if it's not succeed then it will proceed for logout
-   */
-  const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = getPathNameFromWindowLocation();
-    // Do not try silent sign in for SignIn or SignUp route
-    if (
-      [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
-    ) {
-      return;
-    }
-
-    if (!tokenService.current?.isTokenUpdateInProgress()) {
-      // For OIDC we won't be getting newToken immediately hence not updating token here
-      const newToken = await tokenService.current?.refreshToken();
-      // Start expiry timer on successful silent signIn
-      if (newToken) {
-        // Start expiry timer on successful silent signIn
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        startTokenExpiryTimer();
-
-        // Retry the failed request after successful silent signIn
-        if (failedLoggedInUserRequest) {
-          await getLoggedInUserDetails();
-          failedLoggedInUserRequest = null;
-        }
-      } else if (forceLogout) {
-        resetUserDetails(true);
-      }
-    }
-  };
-
-  /**
    * It will set an timer for 5 mins before Token will expire
    * If time if less then 5 mins then it will try to SilentSignIn
    * It will also ensure that we have time left for token expiry
@@ -326,12 +316,23 @@ export const AuthProvider = ({
       // If token is about to expire then start silentSignIn
       // else just set timer to try for silentSignIn before token expires
       clearTimeout(timeoutId);
+
       const timerId = setTimeout(() => {
-        trySilentSignIn();
+        tokenService.current?.refreshToken();
       }, timeoutExpiry);
       setTimeoutId(Number(timerId));
     }
   };
+
+  useEffect(() => {
+    if (authenticatorRef.current?.renewIdToken) {
+      tokenService.current.updateRenewToken(
+        authenticatorRef.current?.renewIdToken
+      );
+      // After every refresh success, start timer again
+      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
+    }
+  }, [authenticatorRef.current?.renewIdToken]);
 
   /**
    * Performs cleanup around timers
@@ -345,7 +346,7 @@ export const AuthProvider = ({
     setIsSigningUp(false);
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
   };
 
   const handleSuccessfulLogin = useCallback(
@@ -382,19 +383,20 @@ export const AuthProvider = ({
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
-            history.push(ROUTES.UNAUTHORISED);
+            navigate(ROUTES.UNAUTHORISED);
+            showErrorToast(err);
           } else {
             setNewUserProfile(user.profile);
             setCurrentUser({} as User);
             setIsSigningUp(true);
-            history.push(ROUTES.SIGNUP);
+            navigate(ROUTES.SIGNUP);
           }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
           showErrorToast(err);
           resetUserDetails();
-          history.push(ROUTES.SIGNIN);
+          navigate(ROUTES.SIGNIN);
         }
       } finally {
         setApplicationLoading(false);
@@ -414,15 +416,11 @@ export const AuthProvider = ({
     ]
   );
 
-  const handleSuccessfulLogout = () => {
-    resetUserDetails();
-  };
-
   /**
    * Stores redirect URL for successful login
    */
   const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (isProtectedRoute(location.pathname)) {
+    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
       storeRedirectPath(location.pathname);
     }
   }, [location.pathname, storeRedirectPath]);
@@ -477,7 +475,7 @@ export const AuthProvider = ({
         // Parse and update the query parameter
         const queryParams = Qs.parse(config.url.split('?')[1]);
         // adding quotes for exact matching
-        const domainStatement = `(domain.fullyQualifiedName:"${escapeESReservedCharacters(
+        const domainStatement = `(domains.fullyQualifiedName:"${escapeESReservedCharacters(
           activeDomain
         )}")`;
         queryParams.q = queryParams.q ?? '';
@@ -542,13 +540,61 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
-            // store the failed request for retry after successful silent signIn
-            if (error.config.url === '/users/loggedInUser') {
-              failedLoggedInUserRequest = true;
+            // For login or refresh we don't want to fire another refresh req
+            // Hence rejecting it
+            if (
+              UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
+              (error.config.url === '/users/loggedInUser' &&
+                !error.response.data.message.includes('Expired token!'))
+            ) {
+              return Promise.reject(error);
             }
             handleStoreProtectedRedirectPath();
-            // try silent signIn if token is about to expire
-            debounce(() => trySilentSignIn(true), 100);
+
+            // If 401 error and refresh is not in progress, trigger the refresh
+            if (!tokenService.current?.isTokenUpdateInProgress()) {
+              // Start the refresh process
+              return new Promise((resolve, reject) => {
+                // Add this request to the pending queue
+                pendingRequests.push({
+                  resolve,
+                  reject,
+                  config: error.config,
+                });
+
+                // Refresh the token and retry the requests in the queue
+                tokenService.current
+                  .refreshToken()
+                  .then((token) => {
+                    if (token) {
+                      // Retry the pending requests
+                      initializeAxiosInterceptors();
+                      pendingRequests.forEach(({ resolve, reject, config }) => {
+                        axiosClient.request(config).then(resolve).catch(reject);
+                      });
+
+                      // Clear the queue after retrying
+                      pendingRequests = [];
+                    } else {
+                      resetUserDetails(true);
+                    }
+                  })
+                  .catch((error) => {
+                    resetUserDetails(true);
+
+                    return Promise.reject(error);
+                  });
+              });
+            } else {
+              // If refresh is in progress, queue the request
+              return new Promise((resolve, reject) => {
+                pendingRequests.push({
+                  resolve,
+                  reject,
+                  config: error.config,
+                });
+              });
+            }
           }
         }
 
@@ -568,6 +614,7 @@ export const AuthProvider = ({
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
+          validateAuthFields(configJson, t);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
@@ -631,9 +678,7 @@ export const AuthProvider = ({
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
         return (
-          <BasicAuthProvider
-            onLoginFailure={handleFailedLogin}
-            onLoginSuccess={handleSuccessfulLogin}>
+          <BasicAuthProvider>
             <BasicAuthAuthenticator ref={authenticatorRef}>
               {childElement}
             </BasicAuthAuthenticator>
@@ -648,9 +693,7 @@ export const AuthProvider = ({
             clientId={authConfig.clientId.toString()}
             domain={authConfig.authority.toString()}
             redirectUri={authConfig.callbackUrl.toString()}>
-            <Auth0Authenticator
-              ref={authenticatorRef}
-              onLogoutSuccess={handleSuccessfulLogout}>
+            <Auth0Authenticator ref={authenticatorRef}>
               {childElement}
             </Auth0Authenticator>
           </Auth0Provider>
@@ -658,19 +701,15 @@ export const AuthProvider = ({
       }
       case AuthProviderEnum.Saml: {
         return (
-          <SamlAuthenticator
-            ref={authenticatorRef}
-            onLogoutSuccess={handleSuccessfulLogout}>
+          <SamlAuthenticator ref={authenticatorRef}>
             {childElement}
           </SamlAuthenticator>
         );
       }
       case AuthProviderEnum.Okta: {
         return (
-          <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
-            <OktaAuthenticator
-              ref={authenticatorRef}
-              onLogoutSuccess={handleSuccessfulLogout}>
+          <OktaAuthProvider>
+            <OktaAuthenticator ref={authenticatorRef}>
               {childElement}
             </OktaAuthenticator>
           </OktaAuthProvider>
@@ -683,10 +722,7 @@ export const AuthProvider = ({
           <OidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
-            userConfig={userConfig}
-            onLoginFailure={handleFailedLogin}
-            onLoginSuccess={handleSuccessfulLogin}
-            onLogoutSuccess={handleSuccessfulLogout}>
+            userConfig={userConfig}>
             {childElement}
           </OidcAuthenticator>
         );
@@ -694,11 +730,7 @@ export const AuthProvider = ({
       case AuthProviderEnum.Azure: {
         return msalInstance ? (
           <MsalProvider instance={msalInstance}>
-            <MsalAuthenticator
-              ref={authenticatorRef}
-              onLoginFailure={handleFailedLogin}
-              onLoginSuccess={handleSuccessfulLogin}
-              onLogoutSuccess={handleSuccessfulLogout}>
+            <MsalAuthenticator ref={authenticatorRef}>
               {childElement}
             </MsalAuthenticator>
           </MsalProvider>
@@ -717,34 +749,40 @@ export const AuthProvider = ({
     startTokenExpiryTimer();
     initializeAxiosInterceptors();
 
-    setHelperFunctionsRef({
-      onLoginHandler,
-      onLogoutHandler,
-      handleSuccessfulLogin,
-      trySilentSignIn,
-      handleFailedLogin,
-      updateAxiosInterceptors: initializeAxiosInterceptors,
-    });
-
     return cleanup;
   }, []);
 
-  useEffect(() => {
-    setHelperFunctionsRef({
+  const contextValues = useMemo(() => {
+    return {
       onLoginHandler,
       onLogoutHandler,
       handleSuccessfulLogin,
-      trySilentSignIn,
       handleFailedLogin,
+      handleSuccessfulLogout: resetUserDetails,
       updateAxiosInterceptors: initializeAxiosInterceptors,
-    });
-  }, [handleSuccessfulLogin]);
+    };
+  }, [
+    onLoginHandler,
+    onLogoutHandler,
+    handleSuccessfulLogin,
+    handleFailedLogin,
+    resetUserDetails,
+    initializeAxiosInterceptors,
+  ]);
 
   const isConfigLoading =
     !authConfig ||
     (authConfig.provider === AuthProviderEnum.Azure && !msalInstance);
 
-  return <>{isConfigLoading ? <Loader fullScreen /> : getProtectedApp()}</>;
+  return (
+    <AuthContext.Provider value={contextValues}>
+      {isConfigLoading ? <Loader fullScreen /> : getProtectedApp()}
+    </AuthContext.Provider>
+  );
 };
 
 export default AuthProvider;
+
+export const useAuthProvider = () => {
+  return useContext(AuthContext);
+};

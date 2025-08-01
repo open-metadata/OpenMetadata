@@ -21,12 +21,25 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class S3IngestionClass extends ServiceBaseClass {
   name = '';
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Storage,
       `pw-s3-storage-with-%-${uuid()}`,
       'S3',
-      'awsathena-database'
+      'awsathena-database',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 
@@ -55,8 +68,8 @@ class S3IngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'awsRegion');
 
     // to reduce ingestion time
-    await page.click('[data-testid="add-item-Bucket Names"]');
-    await page.fill('#root\\/bucketNames\\/0', this.entityName);
+    await page.fill('#root\\/bucketNames', this.entityName);
+    await page.locator('#root\\/bucketNames').press('Enter');
   }
 
   async fillIngestionDetails(page: Page) {

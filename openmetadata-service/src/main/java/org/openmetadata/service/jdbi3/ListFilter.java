@@ -11,6 +11,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
@@ -44,12 +45,38 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getDomainCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getDirectoryCondition(tableName));
+    conditions.add(getSpreadsheetCondition(tableName));
+    conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getCreatedByCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
+    conditions.add(getEntityLinkCondition());
+    conditions.add(getAgentTypeCondition());
+    conditions.add(getProviderCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
+  }
+
+  public ResourceContext getResourceContext(String entityType) {
+    if (queryParams.containsKey("service") && queryParams.get("service") != null) {
+      return new ResourceContext<>(
+          Entity.getServiceType(entityType), null, queryParams.get("service"));
+    } else if (queryParams.containsKey(Entity.DATABASE)
+        && queryParams.get(Entity.DATABASE) != null) {
+      return new ResourceContext<>(Entity.DATABASE, null, queryParams.get(Entity.DATABASE));
+    } else if (queryParams.containsKey(Entity.DATABASE_SCHEMA)
+        && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
+      return new ResourceContext<>(
+          Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
+    } else if (queryParams.containsKey(Entity.API_COLLCECTION)
+        && queryParams.get(Entity.API_COLLCECTION) != null) {
+      return new ResourceContext<>(
+          Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
+    }
+    return new ResourceContext<>(entityType);
   }
 
   private String getAssignee() {
@@ -57,11 +84,56 @@ public class ListFilter extends Filter<ListFilter> {
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
   }
 
+  private String getCreatedByCondition() {
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
+    } else {
+      String createdBy = queryParams.get("createdBy");
+      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
+    }
+  }
+
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
     return workflowDefinitionId == null
         ? ""
         : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+  }
+
+  private String getEntityLinkCondition() {
+    String entityLinkStr = queryParams.get("entityLink");
+    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+  }
+
+  private String getAgentTypeCondition() {
+    String agentType = queryParams.get("agentType");
+    if (agentType == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+      } else {
+        return String.format("json->>'agentType' = '%s'", agentType);
+      }
+    }
+  }
+
+  public String getProviderCondition(String tableName) {
+    String provider = queryParams.get("provider");
+    if (provider == null) {
+      return "";
+    } else {
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return tableName == null
+            ? "JSON_EXTRACT(json, '$.provider') = :provider"
+            : String.format("JSON_EXTRACT(%s.json, '$.provider') = :provider", tableName);
+      } else {
+        return tableName == null
+            ? "json->>'provider' = :provider"
+            : String.format("%s.json->>'provider' = :provider", tableName);
+      }
+    }
   }
 
   private String getEventSubscriptionAlertType() {
@@ -153,6 +225,30 @@ public class ListFilter extends Filter<ListFilter> {
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn, "parent");
+  }
+
+  public String getDirectoryCondition(String tableName) {
+    String directoryFqn = queryParams.get("directory");
+    if (directoryFqn == null) {
+      return "";
+    }
+    return String.format("directoryFqn = '%s'", directoryFqn);
+  }
+
+  public String getSpreadsheetCondition(String tableName) {
+    String spreadsheetFqn = queryParams.get("spreadsheet");
+    if (spreadsheetFqn == null) {
+      return "";
+    }
+    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+  }
+
+  public String getFileTypeCondition(String tableName) {
+    String fileType = queryParams.get("fileType");
+    if (fileType == null) {
+      return "";
+    }
+    return String.format("fileType = '%s'", fileType);
   }
 
   public String getDisabledCondition() {
@@ -272,22 +368,22 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return switch (testSuiteType) {
-      case ("executable") -> {
+        // We'll clean up the executable when we deprecate the /executable endpoints
+      case "basic", "executable" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'true')", tableName);
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'true')", tableName);
         }
-        yield String.format("(%s.json->>'executable' = 'true')", tableName);
+        yield String.format("(%s.json->>'basic' = 'true')", tableName);
       }
-      case ("logical") -> {
+      case "logical" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) IS NULL)",
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) IS NULL)",
               tableName, tableName);
         }
         yield String.format(
-            "(%s.json->>'executable' = 'false' or %s.json -> 'executable' is null)",
-            tableName, tableName);
+            "(%s.json->>'basic' = 'false' or %s.json -> 'basic' is null)", tableName, tableName);
       }
       default -> "";
     };

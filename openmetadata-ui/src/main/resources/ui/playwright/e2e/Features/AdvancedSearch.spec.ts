@@ -12,102 +12,231 @@
  */
 import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
-import { TopicClass } from '../../support/entity/TopicClass';
-import { TagClass } from '../../support/tag/TagClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
   FIELDS,
   OPERATOR,
   runRuleGroupTests,
+  runRuleGroupTestsWithNonExistingValue,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { addMultiOwner, assignTag, assignTier } from '../../utils/entity';
+import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+
+const creationConfig: EntityDataClassCreationConfig = {
+  table: true,
+  topic: true,
+  dashboard: true,
+  mlModel: true,
+  pipeline: true,
+  dashboardDataModel: true,
+  apiCollection: true,
+  searchIndex: true,
+  container: true,
+  entityDetails: true,
+};
+
+const user = new UserClass();
+const table = new TableClass(undefined, 'Regular');
+let glossaryEntity: Glossary;
 
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
-  const user1 = new UserClass();
-  const user2 = new UserClass();
-  const table1 = new TableClass();
-  const table2 = new TableClass();
-  const topic1 = new TopicClass();
-  const topic2 = new TopicClass();
-  const tierTag1 = new TagClass({ classification: 'Tier' });
-  const tierTag2 = new TagClass({ classification: 'Tier' });
-
   let searchCriteria: Record<string, any> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.setTimeout(150000);
+    test.slow(true);
 
     const { page, apiContext, afterAction } = await createNewPage(browser);
-    await Promise.all([
-      user1.create(apiContext),
-      user2.create(apiContext),
-      table1.create(apiContext),
-      table2.create(apiContext),
-      topic1.create(apiContext),
-      topic2.create(apiContext),
-      tierTag1.create(apiContext),
-      tierTag2.create(apiContext),
+    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
+    await user.create(apiContext);
+    glossaryEntity = new Glossary(undefined, [
+      {
+        id: user.responseData.id,
+        type: 'user',
+        name: user.responseData.name,
+        displayName: user.responseData.displayName,
+      },
     ]);
+    const glossaryTermEntity = new GlossaryTerm(glossaryEntity);
+
+    await glossaryEntity.create(apiContext);
+    await glossaryTermEntity.create(apiContext);
+    await table.create(apiContext);
 
     // Add Owner & Tag to the table
-    await table1.visitEntityPage(page);
-    await addMultiOwner({
-      page,
-      ownerNames: [user1.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
-      resultTestId: 'data-assets-header',
-      endpoint: table1.endpoint,
-      type: 'Users',
+    await EntityDataClass.table1.visitEntityPage(page);
+    await EntityDataClass.table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          value: {
+            type: 'user',
+            id: EntityDataClass.user1.responseData.id,
+          },
+          path: '/owners/0',
+        },
+        {
+          op: 'add',
+          value: {
+            tagFQN: 'PersonalData.Personal',
+          },
+          path: '/tags/0',
+        },
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: EntityDataClass.domain1.responseData.id,
+            type: 'domain',
+            name: EntityDataClass.domain1.responseData.name,
+            displayName: EntityDataClass.domain1.responseData.displayName,
+          },
+        },
+      ],
     });
-    await assignTag(page, 'PersonalData.Personal');
 
-    await table2.visitEntityPage(page);
-    await addMultiOwner({
-      page,
-      ownerNames: [user2.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
-      resultTestId: 'data-assets-header',
-      endpoint: table1.endpoint,
-      type: 'Users',
+    await EntityDataClass.table2.visitEntityPage(page);
+    await EntityDataClass.table2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          value: {
+            type: 'user',
+            id: EntityDataClass.user2.responseData.id,
+          },
+          path: '/owners/0',
+        },
+        {
+          op: 'add',
+          value: {
+            tagFQN: 'PII.None',
+          },
+          path: '/tags/0',
+        },
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: EntityDataClass.domain2.responseData.id,
+            type: 'domain',
+            name: EntityDataClass.domain2.responseData.name,
+            displayName: EntityDataClass.domain2.responseData.displayName,
+          },
+        },
+      ],
     });
-    await assignTag(page, 'PII.None');
 
     // Add Tier To the topic 1
-    await topic1.visitEntityPage(page);
-    await assignTier(page, tierTag1.data.displayName, topic1.endpoint);
+    await EntityDataClass.topic1.visitEntityPage(page);
+    await assignTier(
+      page,
+      EntityDataClass.tierTag1.data.displayName,
+      EntityDataClass.topic1.endpoint
+    );
 
     // Add Tier To the topic 2
-    await topic2.visitEntityPage(page);
-    await assignTier(page, tierTag2.data.displayName, topic2.endpoint);
+    await EntityDataClass.topic2.visitEntityPage(page);
+    await assignTier(
+      page,
+      EntityDataClass.tierTag2.data.displayName,
+      EntityDataClass.topic2.endpoint
+    );
 
     // Update Search Criteria here
     searchCriteria = {
-      'owners.displayName.keyword': [user1.getUserName(), user2.getUserName()],
+      'owners.displayName.keyword': [
+        EntityDataClass.user1.getUserName(),
+        EntityDataClass.user2.getUserName(),
+      ],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
       'tier.tagFQN': [
-        tierTag1.responseData.fullyQualifiedName,
-        tierTag2.responseData.fullyQualifiedName,
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+        EntityDataClass.tierTag2.responseData.fullyQualifiedName,
       ],
-      'service.displayName.keyword': [table1.service.name, table2.service.name],
+      'service.displayName.keyword': [
+        EntityDataClass.table1.service.name,
+        EntityDataClass.table2.service.name,
+      ],
       'database.displayName.keyword': [
-        table1.database.name,
-        table2.database.name,
+        EntityDataClass.table1.database.name,
+        EntityDataClass.table2.database.name,
       ],
       'databaseSchema.displayName.keyword': [
-        table1.schema.name,
-        table2.schema.name,
+        EntityDataClass.table1.schema.name,
+        EntityDataClass.table2.schema.name,
       ],
-      'columns.name.keyword': ['email', 'shop_id'],
+      'columns.name.keyword': [
+        EntityDataClass.table1.entity.columns[2].name,
+        EntityDataClass.table2.entity.columns[3].name,
+      ],
       'displayName.keyword': [
-        table1.entity.displayName,
-        table2.entity.displayName,
+        EntityDataClass.table1.entity.displayName,
+        EntityDataClass.table2.entity.displayName,
+      ],
+      serviceType: [
+        EntityDataClass.table1.service.serviceType,
+        EntityDataClass.topic1.service.serviceType,
+      ],
+      'messageSchema.schemaFields.name.keyword': [
+        EntityDataClass.topic1.entity.messageSchema.schemaFields[0].name,
+        EntityDataClass.topic2.entity.messageSchema.schemaFields[1].name,
+      ],
+      'dataModel.columns.name.keyword': [
+        EntityDataClass.container1.entity.dataModel.columns[0].name,
+        EntityDataClass.container2.entity.dataModel.columns[1].name,
+      ],
+      dataModelType: [
+        EntityDataClass.dashboard1.dataModel.dataModelType,
+        EntityDataClass.dashboard2.dataModel.dataModelType,
+      ],
+      'fields.name.keyword': [
+        EntityDataClass.searchIndex1.entity.fields[1].name,
+        EntityDataClass.searchIndex2.entity.fields[3].name,
+      ],
+      'tasks.displayName.keyword': [
+        EntityDataClass.pipeline1.entity.tasks[0].displayName,
+        EntityDataClass.pipeline2.entity.tasks[1].displayName,
+      ],
+      'domains.displayName.keyword': [
+        EntityDataClass.domain1.data.displayName,
+        EntityDataClass.domain2.data.displayName,
+      ],
+      'responseSchema.schemaFields.name.keyword': [
+        EntityDataClass.apiCollection1.apiEndpoint.responseSchema
+          .schemaFields[0].name,
+        EntityDataClass.apiCollection2.apiEndpoint.responseSchema
+          .schemaFields[1].name,
+      ],
+      'requestSchema.schemaFields.name.keyword': [
+        EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[0]
+          .name,
+        EntityDataClass.apiCollection2.apiEndpoint.requestSchema.schemaFields[1]
+          .name,
+      ],
+      'name.keyword': [
+        EntityDataClass.table1.entity.name,
+        EntityDataClass.table2.entity.name,
+      ],
+      'project.keyword': [
+        EntityDataClass.dashboardDataModel1.entity.project,
+        EntityDataClass.dashboardDataModel2.entity.project,
+      ],
+      status: ['Approved', 'In Review'],
+      tableType: [table.entity.tableType, 'MaterializedView'],
+      'charts.displayName.keyword': [
+        EntityDataClass.dashboard1.charts.displayName,
+        EntityDataClass.dashboard2.charts.displayName,
       ],
     };
 
@@ -115,17 +244,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await createNewPage(browser);
-    await Promise.all([
-      user1.delete(apiContext),
-      user2.delete(apiContext),
-      table1.delete(apiContext),
-      table2.delete(apiContext),
-      topic1.delete(apiContext),
-      topic2.delete(apiContext),
-      tierTag1.delete(apiContext),
-      tierTag2.delete(apiContext),
-    ]);
+    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
+    await glossaryEntity.delete(apiContext);
+    await user.delete(apiContext);
+    await table.delete(apiContext);
     await afterAction();
   });
 
@@ -162,5 +287,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         await runRuleGroupTests(page, field, operator, true, searchCriteria);
       });
     });
+  });
+
+  test('Verify search with non existing value do not result in infinite search', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await runRuleGroupTestsWithNonExistingValue(page);
   });
 });

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Policy` defines control that needs to be applied across different Data Entities.
  */
 export interface Policy {
@@ -45,10 +43,10 @@ export interface Policy {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Is the policy enabled.
      */
@@ -65,6 +63,10 @@ export interface Policy {
      * Unique identifier that identifies this Policy.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Location to which a policy is applied. This field is relevant only for `lifeCycle`
      * policies.
@@ -110,8 +112,11 @@ export interface Policy {
  * Change that led to this version of the Policy.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -128,6 +133,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -148,8 +176,13 @@ export interface FieldChange {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -158,13 +191,6 @@ export interface FieldChange {
  *
  * Location to which a policy is applied. This field is relevant only for `lifeCycle`
  * policies.
- *
- * Owners of this Policy.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -212,9 +238,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -270,10 +298,13 @@ export enum Operation {
     All = "All",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
+    CreateScim = "CreateScim",
     Delete = "Delete",
+    DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
     Deploy = "Deploy",
     EditAll = "EditAll",
+    EditCertification = "EditCertification",
     EditCustomFields = "EditCustomFields",
     EditDataProfile = "EditDataProfile",
     EditDescription = "EditDescription",
@@ -291,6 +322,7 @@ export enum Operation {
     EditReviewers = "EditReviewers",
     EditRole = "EditRole",
     EditSampleData = "EditSampleData",
+    EditScim = "EditScim",
     EditStatus = "EditStatus",
     EditTags = "EditTags",
     EditTeams = "EditTeams",
@@ -307,6 +339,7 @@ export enum Operation {
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",
     ViewSampleData = "ViewSampleData",
+    ViewScim = "ViewScim",
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",

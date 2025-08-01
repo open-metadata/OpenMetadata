@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { AssetCertification } from '../../../generated/entity/data/table';
+import { EntityType } from '../../../enums/entity.enum';
 
 export interface EntityHeaderTitleProps {
   className?: string;
   icon: React.ReactNode;
+  showOnlyDisplayName?: boolean;
   name: string;
   displayName?: string;
   link?: string;
@@ -26,5 +27,13 @@ export interface EntityHeaderTitleProps {
   badge?: React.ReactNode;
   isDisabled?: boolean;
   showName?: boolean;
-  certification?: AssetCertification;
+  excludeEntityService?: boolean;
+  isFollowing?: boolean;
+  isFollowingLoading?: boolean;
+  handleFollowingClick?: () => void;
+  followers?: number;
+  entityType?: EntityType;
+  nameClassName?: string;
+  displayNameClassName?: string;
+  isCustomizedView?: boolean;
 }

@@ -28,7 +28,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,6 +47,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -81,10 +84,69 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
-    Classification parent =
-        Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "", ALL);
-    if (parent.getDisabled() != null && parent.getDisabled()) {
-      tag.setDisabled(true);
+    if (tag.getClassification() == null || tag.getClassification().getId() == null) {
+      return;
+    }
+
+    try {
+      Classification parent =
+          Entity.getEntity(CLASSIFICATION, tag.getClassification().getId(), "owners,domains", ALL);
+      if (parent.getDisabled() != null && parent.getDisabled()) {
+        tag.setDisabled(true);
+      }
+      inheritOwners(tag, fields, parent);
+      inheritDomains(tag, fields, parent);
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to get classification {} for tag {}: {}",
+          tag.getClassification().getId(),
+          tag.getId(),
+          e.getMessage());
+    }
+  }
+
+  @Override
+  public void setInheritedFields(List<Tag> tags, Fields fields) {
+    if (tags == null || tags.isEmpty()) {
+      return;
+    }
+
+    Set<UUID> classificationIds =
+        tags.stream()
+            .map(Tag::getClassification)
+            .filter(Objects::nonNull)
+            .map(EntityReference::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+    if (classificationIds.isEmpty()) {
+      return;
+    }
+
+    ClassificationRepository classificationRepository =
+        (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
+    List<Classification> classifications =
+        classificationRepository
+            .getDao()
+            .findEntitiesByIds(new ArrayList<>(classificationIds), ALL);
+
+    classificationRepository.setFieldsInBulk(
+        new Fields(Set.of("owners", "domains")), classifications);
+
+    Map<UUID, Classification> classificationMap =
+        classifications.stream().collect(Collectors.toMap(Classification::getId, c -> c));
+
+    for (Tag tag : tags) {
+      if (tag.getClassification() != null && tag.getClassification().getId() != null) {
+        Classification classification = classificationMap.get(tag.getClassification().getId());
+        if (classification != null) {
+          if (classification.getDisabled() != null && classification.getDisabled()) {
+            tag.setDisabled(true);
+          }
+          inheritOwners(tag, fields, classification);
+          inheritDomains(tag, fields, classification);
+        }
+      }
     }
   }
 
@@ -237,7 +299,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(
-      Tag original, Tag updated, Operation operation) {
+      Tag original, Tag updated, Operation operation, ChangeSource changeSource) {
     return new TagUpdater(original, updated, operation);
   }
 
@@ -265,6 +327,171 @@ public class TagRepository extends EntityRepository<Tag> {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
+    }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Tag> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch classifications and parents for all tags
+    var classificationsMap = batchFetchClassifications(entities);
+    var parentsMap = batchFetchParents(entities);
+
+    // Set default fields (classification and parent) for all entities first
+    entities.forEach(
+        entity ->
+            entity
+                .withClassification(classificationsMap.get(entity.getId()))
+                .withParent(parentsMap.get(entity.getId())));
+
+    // Batch fetch usage counts if requested
+    if (fields.contains("usageCount")) {
+      var usageCountMap = batchFetchUsageCounts(entities);
+      entities.forEach(
+          entity ->
+              entity.withUsageCount(usageCountMap.getOrDefault(entity.getFullyQualifiedName(), 0)));
+    }
+
+    // Process other fields using the standard bulk processing
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private Map<UUID, EntityReference> batchFetchClassifications(List<Tag> tags) {
+    // Classification -> CONTAINS -> Tag relationship
+    // We need to find classifications that contain these tags
+    if (tags == null || tags.isEmpty()) {
+      return Map.of();
+    }
+
+    var entityIds = tags.stream().map(e -> e.getId().toString()).toList();
+
+    // Find all CONTAINS relationships where tags are on the "to" side and from entity is
+    // CLASSIFICATION
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+    if (records.isEmpty()) {
+      return Map.of();
+    }
+
+    // Get unique classification IDs and batch fetch references
+    var classificationIds =
+        records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+
+    var classificationRefs =
+        Entity.getEntityReferencesByIds(Entity.CLASSIFICATION, classificationIds, NON_DELETED);
+    var idToRefMap =
+        classificationRefs.stream()
+            .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
+
+    // Map tags to their classifications
+    return records.stream()
+        .collect(
+            Collectors.toMap(
+                r -> UUID.fromString(r.getToId()),
+                r -> idToRefMap.get(r.getFromId()),
+                (existing, replacement) -> existing // In case of duplicates, keep first
+                ))
+        .entrySet()
+        .stream()
+        .filter(e -> e.getValue() != null)
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {
+    // Parent Tag -> CONTAINS -> Child Tag relationship
+    if (tags == null || tags.isEmpty()) {
+      return Map.of();
+    }
+
+    var entityIds = tags.stream().map(e -> e.getId().toString()).toList();
+
+    // For parent tags, we need to find where current tags are the "to" side of CONTAINS
+    // relationship
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG);
+
+    if (records.isEmpty()) {
+      return Map.of();
+    }
+
+    // Get unique parent IDs and batch fetch references
+    var parentIds = records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
+
+    var parentRefs = Entity.getEntityReferencesByIds(TAG, parentIds, NON_DELETED);
+    var idToRefMap =
+        parentRefs.stream().collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
+
+    // Map tags to their parents
+    return records.stream()
+        .collect(
+            Collectors.toMap(
+                r -> UUID.fromString(r.getToId()),
+                r -> idToRefMap.get(r.getFromId()),
+                (existing, replacement) -> existing))
+        .entrySet()
+        .stream()
+        .filter(e -> e.getValue() != null)
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private Map<String, Integer> batchFetchUsageCounts(List<Tag> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return Map.of();
+    }
+
+    // Build and execute a single query for all tags
+    var tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
+
+    // Build UNION query that gets counts for all tags in one go
+    var queryBuilder = new StringBuilder();
+    tagFQNs.forEach(
+        tagFQN -> {
+          if (queryBuilder.length() > 0) {
+            queryBuilder.append(" UNION ALL ");
+          }
+          var escapedFQN = tagFQN.replace("'", "''");
+          queryBuilder.append(
+              """
+          SELECT '%s' as tagFQN,
+          COUNT(DISTINCT targetFQNHash) as count
+          FROM tag_usage
+          WHERE source = %d
+          AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
+          """
+                  .formatted(
+                      escapedFQN, TagSource.CLASSIFICATION.ordinal(), escapedFQN, escapedFQN));
+        });
+
+    try {
+      var results =
+          Entity.getJdbi()
+              .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
+
+      return results.stream()
+          .filter(row -> row.get("tagFQN") != null)
+          .collect(
+              Collectors.toMap(
+                  row -> (String) row.get("tagFQN"),
+                  row -> {
+                    var count = (Number) row.get("count");
+                    return count != null ? count.intValue() : 0;
+                  }));
+    } catch (Exception e) {
+      LOG.error("Error batch fetching usage counts", e);
+      // Fall back to individual queries
+      return daoCollection
+          .tagUsageDAO()
+          .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
     }
   }
 

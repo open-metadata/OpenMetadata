@@ -42,6 +42,12 @@
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
+    "billingProjectId": {
+      "title": "Billing Project ID",
+      "description": "Billing Project ID",
+      "type": "string",
+      "default": null
+    },
     "credentials": {
       "title": "GCP Credentials",
       "description": "GCP Credentials",
@@ -76,9 +82,28 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsIncrementalMetadataExtraction": {
+      "title": "Supports Incremental Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsIncrementalMetadataExtraction"
     },
     "supportsUsageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
@@ -110,8 +135,14 @@
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    },
+    "costPerTB": {
+      "title": "Cost Per TiB",
+      "description": "Cost per TiB for BigQuery usage",
+      "type": "number",
+      "default": 6.25
     }
   },
   "additionalProperties": false,

@@ -143,7 +143,7 @@ test.afterAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.skip('Permissions', async ({ userPage, adminPage }) => {
+test('Permissions', async ({ userPage, adminPage }) => {
   test.slow();
 
   await redirectToHomePage(userPage);
@@ -261,13 +261,17 @@ test.skip('Permissions', async ({ userPage, adminPage }) => {
       .click();
     await testCaseResponse;
 
+    const testDefinitionResponse = userPage.waitForResponse(
+      '/api/v1/dataQuality/testDefinitions/*'
+    );
     await userPage.getByTestId(`edit-${testCaseName}`).click();
+    await testDefinitionResponse;
     await userPage.locator('#tableTestForm_displayName').clear();
     await userPage.fill('#tableTestForm_displayName', 'Update_display_name');
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await userPage.locator('.ant-modal-footer').getByText('Submit').click();
+    await userPage.getByTestId('update-btn').click();
     await saveTestResponse;
   });
 });

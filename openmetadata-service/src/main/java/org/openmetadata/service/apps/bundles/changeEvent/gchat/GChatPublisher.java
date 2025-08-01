@@ -16,33 +16,32 @@ package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
 import java.util.List;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Invocation;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.GChatMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GChatPublisher implements Destination<ChangeEvent> {
   private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator =
       new GChatMessageDecorator();
   private final Webhook webhook;
-  private Invocation.Builder target;
   private final Client client;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
@@ -59,14 +58,6 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       // Build Client
       client =
           getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
-
-      // Build Target
-      if (webhook != null && webhook.getEndpoint() != null) {
-        String gChatWebhookURL = webhook.getEndpoint().toString();
-        if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
-          target = client.target(gChatWebhookURL).request();
-        }
-      }
     } else {
       throw new IllegalArgumentException("GChat Alert Invoked with Illegal Type and Settings.");
     }
@@ -79,12 +70,11 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       GChatMessage gchatMessage =
           gChatMessageMessageDecorator.buildOutgoingMessage(
               getDisplayNameOrFqn(eventSubscription), event);
+      String json = JsonUtils.pojoToJsonIgnoreNull(gchatMessage);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
-      if (target != null) {
-        targets.add(target);
-      }
+              webhook, subscriptionDestination.getCategory(), G_CHAT, client, event, json);
+      targets.add(getTarget(client, webhook, json));
       for (Invocation.Builder actionTarget : targets) {
         postWebhookMessage(this, actionTarget, gchatMessage);
       }
@@ -102,10 +92,8 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     try {
       GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
-
-      if (target != null) {
-        deliverTestWebhookMessage(this, target, gchatMessage);
-      }
+      deliverTestWebhookMessage(
+          this, getTarget(client, webhook, JsonUtils.pojoToJson(gchatMessage)), gchatMessage);
     } catch (Exception e) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage());

@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Radio, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../../assets/svg/ic-list.svg';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SERVICE_VISIBLE_COLUMNS,
+} from '../../../constants/TableKeys.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
@@ -28,15 +34,27 @@ export const ListView = <T extends object = any>({
   searchProps: { search, onSearch },
   handleDeletedSwitchChange,
   deleted = false,
+  customPaginationProps,
 }: ListViewProps<T>) => {
   const [currentView, setCurrentView] = useState<ListViewOptions>(
     ListViewOptions.TABLE
   );
   const { t } = useTranslation();
 
+  const listViewOptions = [
+    {
+      label: <Icon component={GridIcon} data-testid="grid" />,
+      value: ListViewOptions.CARD,
+    },
+    {
+      label: <Icon component={ListIcon} data-testid="list" />,
+      value: ListViewOptions.TABLE,
+    },
+  ];
+
   const cardRender = useMemo(() => {
     if (isEmpty(tableProps.dataSource)) {
-      return tableProps.locale?.emptyText;
+      return <>{tableProps.locale?.emptyText as ReactNode}</>;
     }
 
     return (
@@ -75,25 +93,34 @@ export const ListView = <T extends object = any>({
             </span>
           )}
 
-          <Radio.Group
+          <Segmented
+            className="segment-toggle"
+            options={listViewOptions}
             value={currentView}
-            onChange={(e) => setCurrentView(e.target.value)}>
-            <Radio.Button value={ListViewOptions.CARD}>
-              <Icon component={GridIcon} data-testid="grid" />
-            </Radio.Button>
-            <Radio.Button value={ListViewOptions.TABLE}>
-              <Icon component={ListIcon} data-testid="list" />
-            </Radio.Button>
-          </Radio.Group>
+            onChange={(value) => setCurrentView(value as ListViewOptions)}
+          />
         </Space>
       </Col>
       <Col span={24}>
         {currentView === ListViewOptions.TABLE ? (
-          <Table {...tableProps} />
+          <Table
+            customPaginationProps={customPaginationProps}
+            defaultVisibleColumns={DEFAULT_SERVICE_VISIBLE_COLUMNS}
+            entityType={EntityType.SERVICE}
+            staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+            {...tableProps}
+          />
         ) : (
           cardRender
         )}
       </Col>
+      {currentView !== ListViewOptions.TABLE && (
+        <Col span={24}>
+          {customPaginationProps.showPagination && (
+            <NextPrevious {...customPaginationProps} />
+          )}
+        </Col>
+      )}
     </Row>
   );
 };

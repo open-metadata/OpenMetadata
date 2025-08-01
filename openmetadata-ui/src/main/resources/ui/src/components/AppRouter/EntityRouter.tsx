@@ -10,15 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
-import { Redirect, Route, Switch, useParams } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { useMemo } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import {
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  ROUTES,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import EntityImportRouter from './EntityImportRouter';
 
 const EntityRouter = () => {
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const Component = useMemo(
     () => entityUtilClassBase.getEntityDetailComponent(entityType),
@@ -26,30 +31,61 @@ const EntityRouter = () => {
   );
 
   return (
-    <Switch>
+    <Routes>
+      {/* Handle Entity Import and Edit pages */}
       <Route
-        exact
-        component={EntityVersionPage}
-        path={[
-          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
-          ROUTES.ENTITY_VERSION_DETAILS,
-        ]}
+        element={<EntityImportRouter />}
+        path={ROUTES.ENTITY_IMPORT.replace('/bulk', '')}
       />
+      <Route
+        element={<EntityImportRouter />}
+        path={ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace('/bulk', '')}
+      />
+
+      <Route
+        element={<EntityVersionPage />}
+        path={ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB.replace(
+          PLACEHOLDER_ROUTE_ENTITY_TYPE,
+          ''
+        )}
+      />
+      <Route
+        element={<EntityVersionPage />}
+        path={ROUTES.ENTITY_VERSION_DETAILS.replace(
+          PLACEHOLDER_ROUTE_ENTITY_TYPE,
+          ''
+        )}
+      />
+
       {Component ? (
-        <Route
-          exact
-          component={Component}
-          path={[
-            ROUTES.ENTITY_DETAILS,
-            ROUTES.ENTITY_DETAILS_WITH_TAB,
-            ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
-          ]}
-        />
+        <>
+          <Route
+            element={<Component />}
+            path={ROUTES.ENTITY_DETAILS.replace(
+              PLACEHOLDER_ROUTE_ENTITY_TYPE,
+              ''
+            )}
+          />
+          <Route
+            element={<Component />}
+            path={ROUTES.ENTITY_DETAILS_WITH_TAB.replace(
+              PLACEHOLDER_ROUTE_ENTITY_TYPE,
+              ''
+            )}
+          />
+          <Route
+            element={<Component />}
+            path={ROUTES.ENTITY_DETAILS_WITH_SUB_TAB.replace(
+              PLACEHOLDER_ROUTE_ENTITY_TYPE,
+              ''
+            )}
+          />
+        </>
       ) : (
-        // If not route match is found then redirect to not found page
-        <Redirect to={ROUTES.NOT_FOUND} />
+        // If no route match, then redirect to not found page
+        <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
       )}
-    </Switch>
+    </Routes>
   );
 };
 

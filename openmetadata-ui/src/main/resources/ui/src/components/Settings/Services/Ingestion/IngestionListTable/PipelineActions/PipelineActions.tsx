@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Tooltip } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
 import { ReactComponent as PauseIcon } from '../../../../../../assets/svg/pause.svg';
 import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resume.svg';
@@ -22,8 +22,8 @@ import { Operation } from '../../../../../../generated/entity/policies/accessCon
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
-import { PipelineActionsProps } from '../../PipelineActions.interface';
 import './pipeline-actions.less';
+import { PipelineActionsProps } from './PipelineActions.interface';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
 function PipelineActions({
@@ -38,8 +38,9 @@ function PipelineActions({
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
   handleEditClick,
+  moreActionButtonProps,
 }: Readonly<PipelineActionsProps>) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
@@ -78,7 +79,7 @@ function PipelineActions({
 
   const handleLogsClick = useCallback(
     () =>
-      history.push(
+      navigate(
         getLogsViewerPath(
           pipeline.pipelineType === PipelineType.TestSuite
             ? EntityType.TEST_SUITE
@@ -145,7 +146,7 @@ function PipelineActions({
       align="middle"
       className="pipeline-actions-container"
       data-tesid="pipeline-actions"
-      gutter={[12, 12]}
+      gutter={[8, 8]}
       justify="space-between"
       wrap={false}>
       {playPauseButton}
@@ -168,6 +169,7 @@ function PipelineActions({
                 handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
                 ingestion={pipeline}
                 ingestionPipelinePermissions={ingestionPipelinePermissions}
+                moreActionButtonProps={moreActionButtonProps}
                 serviceCategory={serviceCategory}
                 serviceName={serviceName}
                 triggerIngestion={triggerIngestion}

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@ import uuid
 from unittest import TestCase
 
 import pytest
+from collate_sqllineage.runner import SQLPARSE_DIALECT
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.masker import mask_query
@@ -229,14 +230,50 @@ class SqlLineageTest(TestCase):
 
     def test_query_masker(self):
         query_list = [
-            """SELECT * FROM user WHERE id=1234 AND name='Alice' AND birthdate=DATE '2023-01-01';""",
-            """insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""",
-            """SELECT * FROM user WHERE address = '5th street' and name = 'john';""",
-            """INSERT INTO user VALUE ('John', '19', '5TH Street');""",
-            """SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user;""",
-            """with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""",
-            """select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""",
-            """select * from users where id > 2 and name <> 'pere';""",
+            (
+                """SELECT * FROM user WHERE id=1234 AND name='Alice' AND birthdate=DATE '2023-01-01';""",
+                Dialect.MYSQL.value,
+            ),
+            (
+                """insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """SELECT * FROM user WHERE address = '5th street' and name = 'john';""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """INSERT INTO user VALUE ('John', '19', '5TH Street');""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user;""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """select * from users where id > 2 and name <> 'pere';""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """select * from users where id > 2 and name <> 'pere';""",
+                "random",
+            ),
+            (
+                """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",
+                SQLPARSE_DIALECT,  # test with sqlparse
+            ),
+            (
+                """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > 18 AND name = 'John';""",
+                Dialect.ANSI.value,  # test with sqlfluff
+            ),
         ]
 
         expected_query_list = [
@@ -248,7 +285,10 @@ class SqlLineageTest(TestCase):
             """with test as (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user) select * from test;""",
             """select * from (select * from (SELECT CASE address WHEN ? THEN ? ELSE ? END AS person FROM user));""",
             """select * from users where id > ? and name <> ?;""",
+            """select * from users where id > ? and name <> ?;""",
+            """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",
+            """CREATE TABLE "db001"."table001" AS SELECT * FROM "db002"."table002" WHERE age > ? AND name = ?;""",
         ]
 
         for i, query in enumerate(query_list):
-            self.assertEqual(mask_query(query), expected_query_list[i])
+            self.assertEqual(mask_query(query[0], query[1]), expected_query_list[i])

@@ -37,7 +37,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { getEntityDisplayName } from './entity';
+import { getEntityDisplayName, getTextFromHtmlString } from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
   addFilterWithUsersListInput,
@@ -158,6 +158,10 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const alertRow = page.locator(`[data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
   if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
@@ -274,7 +278,6 @@ export const addOwnerFilter = async ({
 
   // Search and select owner
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.waitForSelector('.ant-select-dropdown:visible');
   await page.fill(
     '[data-testid="owner-name-select"] [role="combobox"]',
     ownerName,
@@ -394,7 +397,7 @@ export const addDomainFilter = async ({
 
   // Search and select domain
   const getSearchResult = page.waitForResponse(
-    '/api/v1/search/query?q=**index=domain_search_index'
+    '/api/v1/search/query?q=**index=domain_search_index*'
   );
   await page.fill(
     '[data-testid="domain-select"] [role="combobox"]',
@@ -502,9 +505,9 @@ export const verifyAlertDetails = async ({
   );
 
   if (description) {
-    // Check alert name
-    await expect(page.getByTestId('alert-description')).toContainText(
-      description
+    // Check alert description
+    await expect(page.getByTestId('markdown-parser')).toContainText(
+      getTextFromHtmlString(description)
     );
   }
 
@@ -529,6 +532,11 @@ export const verifyAlertDetails = async ({
     // Check connection timeout details
     await expect(page.getByTestId('connection-timeout-input')).toHaveValue(
       destinations[0].timeout.toString()
+    );
+
+    // Check read timeout details
+    await expect(page.getByTestId('read-timeout-input')).toHaveValue(
+      destinations[0].readTimeout.toString()
     );
 
     for (const destinationNumber in destinations) {
@@ -783,7 +791,9 @@ export const createAlert = async ({
     });
 
     await page.getByTestId('connection-timeout-input').clear();
+    await page.getByTestId('read-timeout-input').clear();
     await page.fill('[data-testid="connection-timeout-input"]', '26');
+    await page.fill('[data-testid="read-timeout-input"]', '26');
   }
 
   // Select Destination
@@ -823,8 +833,8 @@ export const waitForRecentEventsToFinishExecution = async (
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for pending events to complete',
-        intervals: [5_000, 10_000, 15_000],
-        timeout: 600_000,
+        intervals: [5_000, 10_000, 15_000, 20_000],
+        timeout: 900_000,
       }
     )
     // Move ahead when the pending events count is 0

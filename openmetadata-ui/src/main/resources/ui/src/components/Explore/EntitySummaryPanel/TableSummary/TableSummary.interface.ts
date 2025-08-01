@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 
-import { Table, TagLabel } from '../../../../generated/entity/data/table';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Table } from '../../../../generated/entity/data/table';
 
 export interface TableSummaryProps {
   entityDetails: Table;
-  componentType?: DRAWER_NAVIGATION_OPTIONS;
-  tags?: TagLabel[];
-  isLoading?: boolean;
-  highlights?: SearchedDataProps['data'][number]['highlight'];
+  permissions: OperationPermission | null;
 }
 
 export interface TableProfileDetails {

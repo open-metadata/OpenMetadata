@@ -14,7 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   @Override
@@ -61,11 +62,12 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqnSafe(fqn);
     return String.format(
-        "<a href = '%s/%s/%s%s'>%s</a>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        "<a href='%s/%s/%s%s'>%s</a>",
+        EmailUtil.getOMBaseURL(),
         prefix,
-        fqn.trim(),
+        encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
   }

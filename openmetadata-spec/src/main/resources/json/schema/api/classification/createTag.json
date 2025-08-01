@@ -43,11 +43,18 @@
     "mutuallyExclusive" : {
       "description" : "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
       "type" : "boolean",
-      "default" : "false"
+      "default" : false
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Fully qualified names of the domains the Tag belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owners": {
+      "description": "Owners of this glossary term.",
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["name", "description"],

@@ -87,6 +87,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "default": {
       "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
       "type": "boolean",
@@ -109,9 +113,9 @@
       "description": "Source URL of database.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -123,6 +127,10 @@
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",
@@ -155,6 +163,11 @@
         "sampleDataStorageConfig": {
           "title": "Storage Config for Sample Data",
           "$ref": "../services/connections/connectionBasicType.json#/definitions/sampleDataStorageConfig"
+        },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
         }
       }
     }

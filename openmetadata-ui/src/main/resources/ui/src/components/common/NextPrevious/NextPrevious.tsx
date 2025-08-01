@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import {
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DownOutlined,
-} from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
-import React, { FC } from 'react';
+import classNames from 'classnames';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
+import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
 import {
+  ICON_DIMENSION,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -29,6 +29,7 @@ import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
 const NextPrevious: FC<NextPreviousProps> = ({
+  className,
   paging,
   pagingHandler,
   pageSize,
@@ -84,30 +85,40 @@ const NextPrevious: FC<NextPreviousProps> = ({
   };
 
   return (
-    <div className="flex-center gap-3" data-testid="pagination">
+    <div
+      className={classNames(
+        'pagination-container flex-center gap-3',
+        className
+      )}
+      data-testid="pagination">
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        className="pagination-button hover-button"
         data-testid="previous"
         disabled={computePrevDisableState() || isLoading}
-        icon={<ArrowLeftOutlined />}
-        type="primary"
+        icon={
+          <Icon
+            className="pagination-prev-icon"
+            component={ArrowRightOutlined}
+          />
+        }
+        type="text"
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
-      <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
+      <span className="pagination-indicator" data-testid="page-indicator">{`${t(
+        'label.page'
+      )} ${currentPage} of ${computeTotalPages(
         pageSize,
         paging.total
-      )} ${t('label.page')}`}</span>
+      )} `}</span>
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        className="pagination-button hover-button"
         data-testid="next"
         disabled={computeNextDisableState() || isLoading}
-        type="primary"
+        type="text"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
-        <ArrowRightOutlined />
+        <Icon className="pagination-next-icon" component={ArrowRightOutlined} />
       </Button>
       {onShowSizeChange && (
         <Dropdown
@@ -120,9 +131,13 @@ const NextPrevious: FC<NextPreviousProps> = ({
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button onClick={(e) => e.preventDefault()}>
+          <Button
+            className="pagination-button"
+            data-testid="page-size-selection-dropdown"
+            type="text"
+            onClick={(e) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
-            <DownOutlined />
+            <Icon component={DownOutlined} style={ICON_DIMENSION} />
           </Button>
         </Dropdown>
       )}

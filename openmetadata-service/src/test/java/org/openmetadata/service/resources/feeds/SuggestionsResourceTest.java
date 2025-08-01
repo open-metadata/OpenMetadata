@@ -1,22 +1,31 @@
 package org.openmetadata.service.resources.feeds;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
 import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER2_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
+import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -25,8 +34,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
@@ -53,6 +60,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -65,6 +73,8 @@ import org.openmetadata.service.util.TestUtils;
 public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   public static Table TABLE;
   public static Table TABLE2;
+  public static Table TABLE_NESTED;
+  public static Table TABLE_DEEPLY_NESTED;
 
   public static Table TABLE_WITHOUT_OWNER;
   public static String TABLE_LINK;
@@ -72,6 +82,8 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   public static String TABLE_WITHOUT_OWNER_LINK;
   public static String TABLE_COLUMN1_LINK;
   public static String TABLE_COLUMN2_LINK;
+  public static String TABLE_NESTED_LINK;
+  public static String TABLE_DEEPLY_NESTED_LINK;
   public static List<Column> COLUMNS;
   public static User USER;
   public static String USER_LINK;
@@ -116,6 +128,48 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     createTable3.withName("table_without_owner").withOwners(null);
     TABLE_WITHOUT_OWNER =
         TABLE_RESOURCE_TEST.createAndCheckEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
+    Column c2_c =
+        getColumn("c", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(c2_c_d)));
+
+    CreateTable createTableNested =
+        TABLE_RESOURCE_TEST
+            .createRequest(test)
+            .withColumns(new ArrayList<>(singletonList(c2_c)))
+            .withName("table_with_nested_suggestion")
+            .withTableConstraints(null);
+
+    TABLE_NESTED = TABLE_RESOURCE_TEST.createAndCheckEntity(createTableNested, ADMIN_AUTH_HEADERS);
+    TABLE_NESTED_LINK =
+        String.format("<#E::table::%s::columns::c.d>", TABLE_NESTED.getFullyQualifiedName());
+
+    // Create deeply nested table with 4 levels: level1 -> level2 -> level3 -> level4
+    Column level4 = getColumn("level4", INT, USER_ADDRESS_TAG_LABEL);
+    Column level3 =
+        getColumn("level3", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(level4)));
+    Column level2 =
+        getColumn("level2", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(level3)));
+    Column level1 =
+        getColumn("level1", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(level2)));
+
+    CreateTable createTableDeeplyNested =
+        TABLE_RESOURCE_TEST
+            .createRequest(test)
+            .withColumns(new ArrayList<>(singletonList(level1)))
+            .withName("table_with_deeply_nested_suggestion")
+            .withTableConstraints(null);
+
+    TABLE_DEEPLY_NESTED =
+        TABLE_RESOURCE_TEST.createAndCheckEntity(createTableDeeplyNested, ADMIN_AUTH_HEADERS);
+    TABLE_DEEPLY_NESTED_LINK =
+        String.format(
+            "<#E::table::%s::columns::level1.level2.level3.level4>",
+            TABLE_DEEPLY_NESTED.getFullyQualifiedName());
 
     COLUMNS =
         Collections.singletonList(
@@ -528,6 +582,161 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     }
   }
 
+  @Test
+  @Order(6)
+  void put_acceptSuggestion_mutuallyExclusiveTags_200(TestInfo test) throws IOException {
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable = tableResourceTest.createRequest(test);
+    Table table = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+    MessageParser.EntityLink entityLink =
+        new MessageParser.EntityLink(Entity.TABLE, table.getFullyQualifiedName());
+
+    CreateSuggestion create = createTierSuggestion(TIER1_TAG_LABEL, entityLink);
+    Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+
+    // When accepting the suggestion, we'll get the Tier1 tag applied to the table
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "tags", USER_AUTH_HEADERS);
+    List<TagLabel> expectedTags = new ArrayList<>(table.getTags());
+    expectedTags.addAll(suggestion.getTagLabels());
+    validateAppliedTags(expectedTags, table.getTags());
+
+    // Not, let's try to apply the Tier2 tag, which is mutually exclusive with the Tier1 tag
+    // The table should then only have the Tier2
+    create = createTierSuggestion(TIER2_TAG_LABEL, entityLink);
+    suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    table = tableResourceTest.getEntity(table.getId(), "tags", USER_AUTH_HEADERS);
+    expectedTags = new ArrayList<>(table.getTags());
+    expectedTags.addAll(suggestion.getTagLabels());
+    validateAppliedTags(expectedTags, table.getTags());
+  }
+
+  @Test
+  @Order(7)
+  void put_acceptSuggestionNested_200(TestInfo test) throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_NESTED_LINK);
+    Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+
+    // When accepting the suggestion, the nested column column1.column2 should have the Updated
+    // Description
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.getEntity(TABLE_NESTED.getId(), "columns", USER_AUTH_HEADERS);
+    Column nestedColumn = table.getColumns().get(0).getChildren().get(0);
+    assertEquals("Update description", nestedColumn.getDescription());
+  }
+
+  @Test
+  @Order(8)
+  void put_acceptSuggestionDeeplyNested_200(TestInfo test) throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_DEEPLY_NESTED_LINK);
+    Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+
+    // When accepting the suggestion, the deeply nested column level1.level2.level3.level4 should
+    // have the Updated Description
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table =
+        tableResourceTest.getEntity(TABLE_DEEPLY_NESTED.getId(), "columns", USER_AUTH_HEADERS);
+
+    // Navigate through the 4 levels: level1 -> level2 -> level3 -> level4
+    Column level1 = table.getColumns().get(0);
+    Column level2 = level1.getChildren().get(0);
+    Column level3 = level2.getChildren().get(0);
+    Column level4 = level3.getChildren().get(0);
+
+    assertEquals("Update description", level4.getDescription());
+  }
+
+  @Test
+  @Order(9)
+  void put_acceptAllColumnSuggestionsManyColumns_200(TestInfo test) throws IOException {
+
+    List<Column> columns = new ArrayList<>();
+    for (int i = 1; i <= 100; i++) {
+      Column column = getColumn("column" + i, ColumnDataType.STRING, null).withOrdinalPosition(i);
+      columns.add(column);
+      if (i == 100) {
+        column.setTags(List.of(PII_SENSITIVE_TAG_LABEL));
+      }
+    }
+
+    CreateTable createTable =
+        TABLE_RESOURCE_TEST
+            .createRequest(test)
+            .withOwners(List.of(TableResourceTest.USER1_REF))
+            .withColumns(columns)
+            .withTableConstraints(null);
+    Table table = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    String tableColumn50Link =
+        String.format("<#E::table::%s::columns::column50>", table.getFullyQualifiedName());
+    String tableColumn100Link =
+        String.format("<#E::table::%s::columns::column100>", table.getFullyQualifiedName());
+
+    CreateSuggestion create =
+        create().withEntityLink(tableColumn50Link).withDescription("Update column 50 description");
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    // And now update another column tags
+    create =
+        create()
+            .withEntityLink(tableColumn100Link)
+            .withTagLabels(List.of(PERSONAL_DATA_TAG_LABEL))
+            .withType(SuggestionType.SuggestTagLabel);
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(table.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(2, suggestionList.getData().size());
+
+    acceptAllSuggestions(
+        table.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    acceptAllSuggestions(
+        table.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestTagLabel,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            table.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+
+    // fetch all columns
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "200")
+            .queryParam("fields", "tags");
+    TableResource.TableColumnList response =
+        TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(100, response.getData().size());
+    assertEquals(100, response.getPaging().getTotal());
+
+    for (Column column : response.getData()) {
+      if (column.getName().equals("column50")) {
+        assertEquals("Update column 50 description", column.getDescription());
+      } else if (column.getName().equals("column100")) {
+        assertEquals(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL), column.getTags());
+      }
+    }
+  }
+
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("suggestions"), create, Suggestion.class, authHeaders);
@@ -550,6 +759,13 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
         .withTagLabels(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
         .withType(SuggestionType.SuggestTagLabel)
         .withEntityLink(TABLE_LINK);
+  }
+
+  public CreateSuggestion createTierSuggestion(TagLabel tier, MessageParser.EntityLink entityLink) {
+    return new CreateSuggestion()
+        .withTagLabels(List.of(tier))
+        .withType(SuggestionType.SuggestTagLabel)
+        .withEntityLink(entityLink.getLinkString());
   }
 
   public Suggestion getSuggestion(UUID id, Map<String, String> authHeaders)

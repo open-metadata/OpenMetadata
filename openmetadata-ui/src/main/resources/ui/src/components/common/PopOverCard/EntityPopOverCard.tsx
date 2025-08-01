@@ -13,9 +13,10 @@
 
 import { Popover, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, {
+import {
   FC,
   HTMLAttributes,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -176,7 +177,7 @@ export const PopoverContent: React.FC<{
 
       case EntityType.DATA_PRODUCT:
         promise = getDataProductByName(entityFQN, {
-          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
         });
 
         break;
@@ -200,7 +201,7 @@ export const PopoverContent: React.FC<{
           fields: [
             TabSpecificField.OWNERS,
             TabSpecificField.TAGS,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
           ],
         });
 
@@ -245,6 +246,7 @@ export const PopoverContent: React.FC<{
   return (
     <ExploreSearchCard
       actionPopoverContent={extraInfo}
+      className="entity-popover-card"
       id="tabledatacard"
       showTags={false}
       source={entityData}
@@ -261,7 +263,7 @@ const EntityPopOverCard: FC<Props> = ({
 }) => {
   return (
     <Popover
-      align={{ targetOffset: [0, -10] }}
+      align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
           entityFQN={entityFQN}
@@ -273,7 +275,7 @@ const EntityPopOverCard: FC<Props> = ({
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>
-      {children}
+      {children as ReactNode}
     </Popover>
   );
 };

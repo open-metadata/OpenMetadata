@@ -10,22 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
-import React from 'react';
+import { render, waitFor } from '@testing-library/react';
 import ExploreTree from './ExploreTree';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: jest.fn().mockImplementation((key) => key),
+  }),
+}));
+
 describe('ExploreTree', () => {
-  it('renders the correct tree nodes', () => {
-    const { getByText } = render(
+  it('renders the correct tree nodes', async () => {
+    const { getByText, queryByTestId } = render(
       <ExploreTree onFieldValueSelect={jest.fn()} />
     );
+
+    // Wait for loader to disappear
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
 
     expect(getByText('label.database-plural')).toBeInTheDocument();
     expect(getByText('label.dashboard-plural')).toBeInTheDocument();

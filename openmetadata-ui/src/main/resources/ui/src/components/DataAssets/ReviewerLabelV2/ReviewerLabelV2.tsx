@@ -10,25 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip, Typography } from 'antd';
-import { t } from 'i18next';
-import React, { useMemo } from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { Typography } from 'antd';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
+import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import TagButton from '../../common/TagButton/TagButton.component';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
-export const ReviewerLabelV2 = () => {
-  const { data, onUpdate, permissions, isVersionView } = useGenericContext<
-    GlossaryTerm | Glossary
-  >();
+export const ReviewerLabelV2 = <
+  T extends {
+    reviewers?: EntityReference[];
+    id: string;
+    changeDescription?: ChangeDescription;
+  }
+>() => {
+  const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
+  const { t } = useTranslation();
 
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;
@@ -59,15 +64,15 @@ export const ReviewerLabelV2 = () => {
     await onUpdate(updatedEntity);
   };
 
-  return (
-    <div data-testid="glossary-reviewer">
-      <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>
+  const header = useMemo(
+    () => (
+      <div className="d-flex items-center gap-2">
         <Typography.Text
-          className="right-panel-label"
+          className="text-sm font-medium"
           data-testid="heading-name">
           {t('label.reviewer-plural')}
         </Typography.Text>
-        {hasEditReviewerAccess && hasReviewers && (
+        {hasEditReviewerAccess && (
           <UserTeamSelectableList
             previewSelected
             hasPermission={hasEditReviewerAccess}
@@ -77,22 +82,39 @@ export const ReviewerLabelV2 = () => {
             owner={assignedReviewers ?? []}
             popoverProps={{ placement: 'topLeft' }}
             onUpdate={handleReviewerSave}>
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.reviewer-plural'),
-              })}>
-              <Button
-                className="cursor-pointer flex-center m-l-xss"
+            {hasReviewers ? (
+              <EditIconButton
+                newLook
                 data-testid="edit-reviewer-button"
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 size="small"
-                type="text"
+                title={t('label.edit-entity', {
+                  entity: t('label.reviewer-plural'),
+                })}
               />
-            </Tooltip>
+            ) : (
+              <PlusIconButton
+                data-testid="Add"
+                size="small"
+                title={t('label.add-entity', {
+                  entity: t('label.reviewer-plural'),
+                })}
+              />
+            )}
           </UserTeamSelectableList>
         )}
       </div>
-      <div>
+    ),
+    [data, permissions, handleReviewerSave]
+  );
+
+  return (
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="glossary-reviewer"
+      isExpandDisabled={!hasReviewers}>
+      {hasReviewers ? (
         <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(
             data,
@@ -101,26 +123,7 @@ export const ReviewerLabelV2 = () => {
             hasEditReviewerAccess
           )}
         </div>
-
-        {hasEditReviewerAccess && !hasReviewers && (
-          <UserTeamSelectableList
-            previewSelected
-            hasPermission={hasEditReviewerAccess}
-            label={t('label.reviewer-plural')}
-            listHeight={200}
-            multiple={{ user: true, team: false }}
-            owner={assignedReviewers ?? []}
-            popoverProps={{ placement: 'topLeft' }}
-            onUpdate={handleReviewerSave}>
-            <TagButton
-              className="text-primary cursor-pointer"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-            />
-          </UserTeamSelectableList>
-        )}
-      </div>
-    </div>
+      ) : null}
+    </ExpandableCard>
   );
 };

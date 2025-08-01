@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
+
 .certification-tag {
   display: flex;
   align-items: center;
@@ -27,4 +29,32 @@
 .certification-img {
   width: 28px;
   height: 28px;
+}
+
+.certification-tag-with-name {
+  border-radius: 16px;
+  padding: 4px 10px;
+
+  .certification-img {
+    width: 16px;
+    height: 16px;
+  }
+
+  span.certification-text {
+    color: @grey-700;
+    font-size: 12px;
+    max-width: 120px;
+  }
+
+  span.bronze {
+    color: @red-16;
+  }
+
+  span.silver {
+    color: @grey-700;
+  }
+
+  span.gold {
+    color: @yellow-11;
+  }
 }

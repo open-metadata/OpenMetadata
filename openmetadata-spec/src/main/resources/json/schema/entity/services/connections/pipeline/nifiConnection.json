@@ -15,6 +15,7 @@
     "basicAuthentication": {
       "title": "Username/Password Authentication",
       "description": "username/password auth",
+      "javaType": "org.openmetadata.schema.services.connections.pipeline.NifiBasicAuth",
       "type":"object",
       "properties": {
         "username": {
@@ -41,6 +42,7 @@
       "title": "Client Certificate Authentication",
       "description": "client certificate auth",
       "type":"object",
+      "javaType": "org.openmetadata.schema.services.connections.pipeline.NifiClientAuth",
       "properties": {
         "certificateAuthorityPath":{
           "title":"Certificat Authority Path",
@@ -80,12 +82,17 @@
       "description": "We support username/password or client certificate authentication",
       "oneOf": [
         {
-          "$ref": "#/definitions/basicAuthentication"
+          "$ref": "nifi/basicAuth.json"
         },
         {
-          "$ref": "#/definitions/clientCertificateAuthentication"
+          "$ref": "nifi/clientCertificateAuth.json"
         }
       ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

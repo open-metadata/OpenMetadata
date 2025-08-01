@@ -24,12 +24,25 @@ class BigQueryIngestionClass extends ServiceBaseClass {
   name = '';
   filterPattern: string;
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       `pw-bigquery-with-%-${uuid()}`,
       'BigQuery',
-      'testtable'
+      'testtable',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     this.filterPattern = 'testschema';
@@ -79,10 +92,9 @@ class BigQueryIngestionClass extends ServiceBaseClass {
       )}`
     );
     await checkServiceFieldSectionHighlighting(page, 'clientX509CertUrl');
-    await page.click('[data-testid="add-item-Taxonomy Project IDs"]');
-    await checkServiceFieldSectionHighlighting(page, 'taxonomyProjectID');
-    await page.fill('#root\\/taxonomyProjectID\\/0', projectIdTaxonomy);
-    await checkServiceFieldSectionHighlighting(page, 'taxonomyProjectID');
+
+    await page.fill(`#root\\/taxonomyProjectID`, projectIdTaxonomy);
+    await page.locator(`#root\\/taxonomyProjectID`).press('Enter');
   }
 
   async fillIngestionDetails(page: Page) {

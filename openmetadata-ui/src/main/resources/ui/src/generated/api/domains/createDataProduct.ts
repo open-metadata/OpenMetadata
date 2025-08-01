@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create DataProduct API request
  */
 export interface CreateDataProduct {
@@ -29,9 +27,9 @@ export interface CreateDataProduct {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the Domain the DataProduct belongs to.
+     * Fully qualified names of the Domains the DataProduct belongs to.
      */
-    domain?: string;
+    domains: string[];
     /**
      * List of user/login names of users who are experts in this DataProduct.
      */
@@ -53,6 +51,10 @@ export interface CreateDataProduct {
      */
     owners?: EntityReference[];
     style?:  Style;
+    /**
+     * Tags for this Data Product.
+     */
+    tags?: TagLabel[];
 }
 
 /**
@@ -124,4 +126,77 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ */
+export interface TagLabel {
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelType;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+ * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+ * used to determine the tag label.
+ */
+export enum LabelType {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum State {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
 }

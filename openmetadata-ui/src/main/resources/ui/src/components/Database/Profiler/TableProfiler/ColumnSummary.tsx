@@ -12,10 +12,10 @@
  */
 import { Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { Column } from '../../../../generated/entity/data/container';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
 
 interface ColumnSummaryProps {
@@ -31,7 +31,7 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
         <Typography.Text className="text-xs text-grey-muted">{`(${column.dataType})`}</Typography.Text>
       </Space>
 
-      <RichTextEditorPreviewer
+      <RichTextEditorPreviewerV1
         className="text-grey-muted m-t-xs"
         markdown={column.description ?? ''}
         maxLength={184}

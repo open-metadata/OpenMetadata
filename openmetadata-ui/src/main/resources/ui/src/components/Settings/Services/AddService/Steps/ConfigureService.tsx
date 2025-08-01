@@ -12,8 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../../../constants/regex.constants';
 import {
   FieldProp,
@@ -28,7 +27,7 @@ const ConfigureService = ({
   onNext,
 }: ConfigureServiceProps) => {
   const [form] = Form.useForm();
-
+  const { t } = useTranslation();
   const formFields: FieldProp[] = [
     {
       name: 'name',
@@ -44,6 +43,7 @@ const ConfigureService = ({
       ],
       props: {
         'data-testid': 'service-name',
+        autoFocus: true,
       },
       placeholder: t('label.service-name'),
       formItemProps: {
@@ -64,7 +64,7 @@ const ConfigureService = ({
   ];
 
   const handleSubmit: FormProps['onFinish'] = (data) => {
-    onNext({ serviceName: data.name, description: data.description ?? '' });
+    onNext({ name: data.name, description: data.description ?? '' });
   };
 
   return (

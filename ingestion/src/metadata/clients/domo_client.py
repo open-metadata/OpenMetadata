@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.domoPipeline
     DomoPipelineConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -103,8 +104,7 @@ class DomoClient:
         self.config = config
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            # AnyUrl string ends with / and the domo API does not respond properly if it has 2 // at the end
-            base_url=str(self.config.instanceDomain)[:-1],
+            base_url=clean_uri(self.config.instanceDomain),
             api_version="api/",
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),

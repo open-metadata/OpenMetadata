@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Typography } from 'antd';
+import { Col, Form, Input, Typography } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
@@ -29,9 +29,16 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getSuccessMessage } from '../../../../utils/IngestionUtils';
+import { generateFormFields } from '../../../../utils/formUtils';
+import {
+  getDefaultFilterPropertyValues,
+  getSuccessMessage,
+} from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import {
+  getRaiseOnErrorFormField,
+  getScheduleOptionsFromSchedules,
+} from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -84,14 +91,28 @@ const AddIngestion = ({
     ? getScheduleOptionsFromSchedules(pipelineSchedules)
     : undefined;
 
+  const filterProperties = useMemo(
+    () =>
+      getDefaultFilterPropertyValues({
+        pipelineType,
+        serviceCategory,
+        ingestionData: data,
+        serviceData,
+        isEditMode,
+      }),
+    [pipelineType, serviceCategory, data, serviceData, isEditMode]
+  );
+
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
+      ...filterProperties,
       name: data?.name ?? generateUUID(),
       displayName:
         data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
+      raiseOnError: data?.raiseOnError ?? true,
     })
   );
 
@@ -151,6 +172,7 @@ const AddIngestion = ({
       name = '',
       enableDebugLog,
       displayName,
+      raiseOnError,
       ...rest
     } = workflowData ?? {};
     const ingestionName = trim(name);
@@ -167,6 +189,7 @@ const AddIngestion = ({
         startDate: date,
         retries: extraData.retries,
       },
+      raiseOnError: extraData.raiseOnError ?? true,
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
@@ -218,6 +241,7 @@ const AddIngestion = ({
           scheduleInterval: extraData.cron,
           retries: extraData.retries,
         },
+        raiseOnError: extraData.raiseOnError ?? true,
         displayName: workflowData?.displayName,
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
@@ -226,8 +250,12 @@ const AddIngestion = ({
           config: {
             // clean the data to remove empty fields
             ...cleanWorkFlowData(
-              omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
-                {}
+              omit(workflowData, [
+                'name',
+                'enableDebugLog',
+                'displayName',
+                'raiseOnError',
+              ]) ?? {}
             ),
           },
         },
@@ -270,6 +298,11 @@ const AddIngestion = ({
     }
   };
 
+  const raiseOnErrorFormField = useMemo(
+    () => getRaiseOnErrorFormField(onFocus),
+    [onFocus]
+  );
+
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -289,6 +322,7 @@ const AddIngestion = ({
             operationType={status}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
+            serviceData={serviceData}
             workflowData={workflowData}
             onCancel={handleCancelClick}
             onChange={handleDataChange}
@@ -307,22 +341,28 @@ const AddIngestion = ({
             defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
             disabled={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={periodOptions}
-            initialData={{ cron: data?.airflowConfig.scheduleInterval }}
+            initialData={{
+              cron: data?.airflowConfig.scheduleInterval,
+              raiseOnError: data?.raiseOnError ?? true,
+            }}
             isEditMode={isEditMode}
             status={saveState}
             onBack={() => handlePrev(1)}
             onDeploy={handleScheduleIntervalDeployClick}>
-            <Form.Item
-              colon={false}
-              initialValue={retries}
-              label={t('label.number-of-retries')}
-              name="retries">
-              <Input
-                min={0}
-                type="number"
-                onFocus={() => onFocus('root/retries')}
-              />
-            </Form.Item>
+            <Col span={24}>
+              <Form.Item
+                colon={false}
+                initialValue={retries}
+                label={t('label.number-of-retries')}
+                name="retries">
+                <Input
+                  min={0}
+                  type="number"
+                  onFocus={() => onFocus('root/retries')}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
           </ScheduleInterval>
         )}
 

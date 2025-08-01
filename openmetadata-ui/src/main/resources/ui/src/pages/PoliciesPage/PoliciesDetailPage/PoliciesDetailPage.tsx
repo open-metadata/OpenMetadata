@@ -28,21 +28,30 @@ import {
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -62,24 +71,23 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
-
-const { TabPane } = Tabs;
 
 type Attribute = 'roles' | 'teams';
 
 const PoliciesDetailPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isloadingOnSave, setIsloadingOnSave] = useState(false);
-  const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
+  const [policyPermission, setPolicyPermission] =
+    useState<OperationPermission | null>(null);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -100,6 +108,39 @@ const PoliciesDetailPage = () => {
       },
     ],
     [policyName, policiesPath]
+  );
+
+  const {
+    editDisplayNamePermission,
+    hasDeletePermission,
+    viewBasicPermission,
+  } = useMemo(() => {
+    const editDisplayNamePermission =
+      policyPermission?.EditAll || policyPermission?.EditDisplayName;
+    const hasDeletePermission = policyPermission?.Delete;
+    const viewBasicPermission =
+      policyPermission?.ViewAll || policyPermission?.ViewBasic;
+
+    return {
+      editDisplayNamePermission,
+      hasDeletePermission,
+      viewBasicPermission,
+    };
+  }, [policyPermission]);
+
+  const fetchPolicyPermission = useCallback(
+    async (fqn: string) => {
+      try {
+        const response = await getEntityPermissionByFqn(
+          ResourceEntity.POLICY,
+          fqn
+        );
+        setPolicyPermission(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [getEntityPermissionByFqn, setPolicyPermission]
   );
 
   const fetchPolicy = async () => {
@@ -124,8 +165,26 @@ const PoliciesDetailPage = () => {
       setPolicy({ ...policy, description: data.description });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setEditDescription(false);
+    }
+  };
+
+  const handleDisplayNameUpdate = async (entityName?: EntityName) => {
+    try {
+      if (policy) {
+        const updatedPolicy = {
+          ...policy,
+          ...entityName,
+        };
+        const jsonPatch = compare(policy, updatedPolicy);
+
+        if (jsonPatch.length && policy.id) {
+          const response = await patchPolicy(jsonPatch, policy.id);
+
+          setPolicy(response);
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -268,7 +327,7 @@ const PoliciesDetailPage = () => {
             ],
             onClick: (menuInfo) => {
               if (menuInfo.key === 'edit-button') {
-                history.push(getEditPolicyRulePath(fqn, rule.name || ''));
+                navigate(getEditPolicyRulePath(fqn, rule.name || ''));
               } else if (menuInfo.key === 'delete-button') {
                 handleRuleDelete(rule);
               } else {
@@ -299,24 +358,181 @@ const PoliciesDetailPage = () => {
     [policy]
   );
 
+  const init = async () => {
+    if (!fqn) {
+      return;
+    }
+    await fetchPolicyPermission(fqn);
+    if (viewBasicPermission) {
+      fetchPolicy();
+    }
+  };
+
+  const rulesTab = useMemo(() => {
+    return (
+      <Card>
+        {isEmpty(policy.rules) ? (
+          <ErrorPlaceHolder className="border-none" />
+        ) : (
+          <>
+            <div className="flex justify-end m-b-md">
+              <Button
+                data-testid="add-rule"
+                type="primary"
+                onClick={() => navigate(getAddPolicyRulePath(fqn))}>
+                {t('label.add-entity', {
+                  entity: t('label.rule'),
+                })}
+              </Button>
+            </div>
+
+            <Space className="w-full" direction="vertical" size={20}>
+              {policy.rules.map((rule) => (
+                <Card data-testid="rule-card" key={rule.name || 'rule'}>
+                  <Space
+                    align="baseline"
+                    className="w-full justify-between p-b-lg"
+                    direction="horizontal">
+                    <Typography.Text
+                      className="font-medium text-base text-grey-body"
+                      data-testid="rule-name">
+                      {rule.name}
+                    </Typography.Text>
+                    {getRuleActionElement(rule)}
+                  </Space>
+
+                  <Space className="w-full" direction="vertical" size={12}>
+                    {rule.description && (
+                      <Row data-testid="description">
+                        <Col span={2}>
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.description')}:`}
+                          </Typography.Text>
+                        </Col>
+                        <Col span={22}>
+                          <RichTextEditorPreviewerV1
+                            markdown={rule.description || ''}
+                          />
+                        </Col>
+                      </Row>
+                    )}
+
+                    <Row data-testid="resources">
+                      <Col span={2}>
+                        <Typography.Text className="text-grey-muted m-b-0">
+                          {`${t('label.resource-plural')}:`}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={22}>
+                        <Typography.Text className="text-grey-body">
+                          {rule.resources
+                            ?.map((resource) => startCase(resource))
+                            ?.join(', ')}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+
+                    <Row data-testid="operations">
+                      <Col span={2}>
+                        <Typography.Text className="text-grey-muted">
+                          {`${t('label.operation-plural')}:`}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={22}>
+                        <Typography.Text className="text-grey-body">
+                          {rule.operations?.join(', ')}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                    <Row data-testid="effect">
+                      <Col span={2}>
+                        <Typography.Text className="text-grey-muted">
+                          {`${t('label.effect')}:`}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={22}>
+                        <Typography.Text className="text-grey-body">
+                          {startCase(rule.effect)}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                    {rule.condition && (
+                      <Row data-testid="condition">
+                        <Col span={2}>
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.condition')}:`}
+                          </Typography.Text>
+                        </Col>
+                        <Col span={22}>
+                          <code>{rule.condition}</code>
+                        </Col>
+                      </Row>
+                    )}
+                  </Space>
+                </Card>
+              ))}
+            </Space>
+          </>
+        )}
+      </Card>
+    );
+  }, [policy]);
+
+  const tabItems = useMemo(() => {
+    return [
+      {
+        key: 'rules',
+        label: t('label.rule-plural'),
+        children: rulesTab,
+      },
+      {
+        key: 'roles',
+        label: t('label.role-plural'),
+        children: (
+          <PoliciesDetailsList
+            hasAccess
+            list={policy.roles ?? []}
+            type="role"
+            onDelete={(record) => setEntity({ record, attribute: 'roles' })}
+          />
+        ),
+      },
+      {
+        key: 'teams',
+        label: t('label.team-plural'),
+        children: (
+          <PoliciesDetailsList
+            hasAccess
+            list={policy.teams ?? []}
+            type="team"
+            onDelete={(record) => setEntity({ record, attribute: 'teams' })}
+          />
+        ),
+      },
+    ];
+  }, [rulesTab, policy]);
+
   useEffect(() => {
-    fetchPolicy();
-  }, [fqn]);
+    init();
+  }, [fqn, policyPermission]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.policy-plural')}>
-      <div className="page-container" data-testid="policy-details-container">
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.policy'),
+      })}>
+      <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         <>
           {isEmpty(policy) ? (
-            <ErrorPlaceHolder>
+            <ErrorPlaceHolder className="border-none h-min-80">
               <div className="text-center">
-                <p>
+                <p className="m-y-sm">
                   {t('message.no-entity-found-for-name', {
                     entity: t('label.policy-lowercase'),
                     name: fqn,
@@ -325,165 +541,60 @@ const PoliciesDetailPage = () => {
                 <Button
                   size="small"
                   type="primary"
-                  onClick={() => history.push(policiesPath)}>
+                  onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>
               </div>
             </ErrorPlaceHolder>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="heading"
-                level={5}>
-                {policyName}
-              </Typography.Title>
+              <Row className="flex justify-between">
+                <Col span={23}>
+                  <EntityHeaderTitle
+                    className="w-max-full"
+                    displayName={policy.displayName}
+                    icon={
+                      <Icon
+                        className="align-middle p-y-xss"
+                        component={PolicyIcon}
+                        style={{ fontSize: '50px' }}
+                      />
+                    }
+                    name={policy?.name ?? ''}
+                    serviceName="policy"
+                  />
+                </Col>
+                <Col span={1}>
+                  <ManageButton
+                    isRecursiveDelete
+                    afterDeleteAction={() => navigate(policiesPath)}
+                    allowSoftDelete={false}
+                    canDelete={hasDeletePermission}
+                    displayName={policy?.displayName}
+                    editDisplayNamePermission={editDisplayNamePermission}
+                    entityFQN={policy?.fullyQualifiedName}
+                    entityId={policy?.id}
+                    entityName={policy.name}
+                    entityType={EntityType.POLICY}
+                    onEditDisplayName={handleDisplayNameUpdate}
+                  />
+                </Col>
+              </Row>
               <DescriptionV1
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}
-                entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
                 entityType={EntityType.POLICY}
-                isEdit={editDescription}
                 showCommentsIcon={false}
-                onCancel={() => setEditDescription(false)}
-                onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
-              <Tabs defaultActiveKey="rules">
-                <TabPane key="rules" tab={t('label.rule-plural')}>
-                  {isEmpty(policy.rules) ? (
-                    <ErrorPlaceHolder />
-                  ) : (
-                    <Space
-                      className="w-full tabpane-space"
-                      direction="vertical">
-                      <Button
-                        data-testid="add-rule"
-                        type="primary"
-                        onClick={() => history.push(getAddPolicyRulePath(fqn))}>
-                        {t('label.add-entity', {
-                          entity: t('label.rule'),
-                        })}
-                      </Button>
-
-                      <Space className="w-full" direction="vertical" size={20}>
-                        {policy.rules.map((rule) => (
-                          <Card
-                            data-testid="rule-card"
-                            key={rule.name || 'rule'}>
-                            <Space
-                              align="baseline"
-                              className="w-full justify-between p-b-lg"
-                              direction="horizontal">
-                              <Typography.Text
-                                className="font-medium text-base text-grey-body"
-                                data-testid="rule-name">
-                                {rule.name}
-                              </Typography.Text>
-                              {getRuleActionElement(rule)}
-                            </Space>
-
-                            <Space
-                              className="w-full"
-                              direction="vertical"
-                              size={12}>
-                              {rule.description && (
-                                <Row data-testid="description">
-                                  <Col span={2}>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.description')}:`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col span={22}>
-                                    <RichTextEditorPreviewer
-                                      markdown={rule.description || ''}
-                                    />
-                                  </Col>
-                                </Row>
-                              )}
-
-                              <Row data-testid="resources">
-                                <Col span={2}>
-                                  <Typography.Text className="text-grey-muted m-b-0">
-                                    {`${t('label.resource-plural')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col span={22}>
-                                  <Typography.Text className="text-grey-body">
-                                    {rule.resources
-                                      ?.map((resource) => startCase(resource))
-                                      ?.join(', ')}
-                                  </Typography.Text>
-                                </Col>
-                              </Row>
-
-                              <Row data-testid="operations">
-                                <Col span={2}>
-                                  <Typography.Text className="text-grey-muted">
-                                    {`${t('label.operation-plural')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col span={22}>
-                                  <Typography.Text className="text-grey-body">
-                                    {rule.operations?.join(', ')}
-                                  </Typography.Text>
-                                </Col>
-                              </Row>
-                              <Row data-testid="effect">
-                                <Col span={2}>
-                                  <Typography.Text className="text-grey-muted">
-                                    {`${t('label.effect')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col span={22}>
-                                  <Typography.Text className="text-grey-body">
-                                    {startCase(rule.effect)}
-                                  </Typography.Text>
-                                </Col>
-                              </Row>
-                              {rule.condition && (
-                                <Row data-testid="condition">
-                                  <Col span={2}>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.condition')}:`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col span={22}>
-                                    <code>{rule.condition}</code>
-                                  </Col>
-                                </Row>
-                              )}
-                            </Space>
-                          </Card>
-                        ))}
-                      </Space>
-                    </Space>
-                  )}
-                </TabPane>
-                <TabPane key="roles" tab={t('label.role-plural')}>
-                  <PoliciesDetailsList
-                    hasAccess
-                    list={policy.roles ?? []}
-                    type="role"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'roles' })
-                    }
-                  />
-                </TabPane>
-                <TabPane key="teams" tab={t('label.team-plural')}>
-                  <PoliciesDetailsList
-                    hasAccess
-                    list={policy.teams ?? []}
-                    type="team"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'teams' })
-                    }
-                  />
-                </TabPane>
-              </Tabs>
+              <Tabs
+                className="tabs-new"
+                defaultActiveKey="rules"
+                items={tabItems}
+              />
             </div>
           )}
         </>

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,19 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
- * Add an owner to the selected assets.
+/**
+ * Add domains to the selected assets.
  */
 export interface AddDomainAction {
     /**
-     * Domain to apply
+     * Domains to apply
      */
-    domain: EntityReference;
+    domains: EntityReference[];
     /**
-     * Update the domain even if it is defined in the asset. By default, we will only apply the
-     * domain to assets without domain.
+     * Update the domains even if they are defined in the asset. By default, we will only apply
+     * the domains to assets without domains.
      */
     overwriteMetadata?: boolean;
     /**
@@ -32,7 +30,12 @@ export interface AddDomainAction {
 }
 
 /**
- * Domain to apply
+ * Domains to apply
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -85,7 +88,7 @@ export interface EntityReference {
 /**
  * Application Type
  *
- * Add Owner Action Type.
+ * Add Domain Action Type.
  */
 export enum AddDomainActionType {
     AddDomainAction = "AddDomainAction",

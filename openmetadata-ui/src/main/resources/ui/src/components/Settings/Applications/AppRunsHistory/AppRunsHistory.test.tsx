@@ -12,6 +12,7 @@
  */
 import {
   act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -21,13 +22,16 @@ import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
-import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
+import {
+  mockApplicationData,
+  mockExternalApplicationData,
+} from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
-const mockGetApplicationRuns = jest.fn().mockReturnValue({
+let mockGetApplicationRuns = jest.fn().mockReturnValue({
   data: [mockApplicationData],
   paging: {
     offset: 0,
@@ -35,7 +39,19 @@ const mockGetApplicationRuns = jest.fn().mockReturnValue({
   },
 });
 const mockShowErrorToast = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('username'),
+}));
+
+jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onSubmit }) => (
+      <button onClick={onSubmit}>Configure Save</button>
+    ))
+);
 
 jest.mock('../../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
@@ -81,34 +97,44 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('formatDateTime'),
+  formatDateTime: jest.fn().mockImplementation((timestamp) => {
+    // Return a fixed string for specific timestamps
+    if (timestamp === 1741037977960) {
+      return 'Mar 4, 2025, 3:08 AM';
+    }
+
+    return 'formatDateTime';
+  }),
   getEpochMillisForPastDays: jest.fn().mockReturnValue('startDay'),
+  getIntervalInMilliseconds: jest.fn().mockReturnValue('interval'),
+  formatDuration: jest.fn().mockReturnValue('formatDuration'),
+  formatDurationToHHMMSS: jest.fn().mockImplementation((_ms) => {
+    // Return a consistent formatted duration for all cases
+    return '02:30:15';
+  }),
 }));
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/NextPrevious/NextPrevious', () =>
-  jest.fn().mockImplementation(({ pagingHandler }) => (
-    // passing currentPage value in pagingHandler
-    <button onClick={() => pagingHandler({ currentPage: 6 })}>
-      NextPrevious
-    </button>
-  ))
-);
-
-jest.mock('../../../common/StatusBadge/StatusBadge.component', () =>
-  jest.fn().mockReturnValue(<div>StatusBadge</div>)
-);
-
 jest.mock('../../../common/Table/Table', () => {
-  return jest.fn().mockImplementation(({ loading, ...rest }) => (
-    <div>
-      {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
-      Table
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
+      <div>
+        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {customPaginationProps && (
+          <button
+            onClick={() =>
+              customPaginationProps.pagingHandler({ currentPage: 6 })
+            }>
+            NextPrevious
+          </button>
+        )}
+        Table
+      </div>
+    ));
 });
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
@@ -116,9 +142,7 @@ jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../../constants/constants', () => ({
@@ -132,6 +156,7 @@ const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
+  jsonSchema: {},
 };
 
 const mockProps2 = {
@@ -151,7 +176,7 @@ const mockProps3 = {
   },
 };
 
-describe('AppRunsHistory component', () => {
+describe('AppRunsHistory', () => {
   it('should contain all necessary elements based on mockProps1', async () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -165,8 +190,6 @@ describe('AppRunsHistory component', () => {
     act(() => {
       userEvent.click(screen.getByText('label.log-plural'));
     });
-
-    expect(screen.queryByText('--')).not.toBeInTheDocument();
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
 
@@ -191,7 +214,7 @@ describe('AppRunsHistory component', () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
@@ -209,15 +232,17 @@ describe('AppRunsHistory component', () => {
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
   });
 
@@ -246,17 +271,17 @@ describe('AppRunsHistory component', () => {
     });
   });
 
-  it('onclick of logs button should call history.push method of external apps', async () => {
+  it('onclick of logs button should call navigate method of external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText('label.log-plural'));
 
-    expect(mockPush).toHaveBeenCalledWith('logs viewer path');
+    expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
-    render(<AppRunsHistory />);
+    render(<AppRunsHistory jsonSchema={{}} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(screen.getByText('--')).toBeInTheDocument();
@@ -283,10 +308,39 @@ describe('AppRunsHistory component', () => {
 
     expect(stopButton).toBeInTheDocument();
 
-    act(() => {
-      userEvent.click(stopButton);
-    });
+    fireEvent.click(stopButton);
 
     expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
+  });
+
+  it('should render the table data for external app', async () => {
+    mockGetApplicationRuns = jest.fn().mockImplementation(() => ({
+      data: [
+        {
+          appId: '633f579c-512c-4b5f-864b-5664aa56b37f',
+          appName: 'CollateAIApplication',
+          extension: 'status',
+          status: 'success',
+          endTime: 1741038028746,
+          executionTime: 1741037977960,
+          startTime: 1741037977960,
+        },
+      ],
+      paging: {
+        offset: 0,
+        total: 1,
+      },
+    }));
+
+    render(
+      <AppRunsHistory appData={mockExternalApplicationData} jsonSchema={{}} />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    // Verify timestamps are rendered
+    expect(screen.getByText('Mar 4, 2025, 3:08 AM')).toBeInTheDocument();
+
+    // Verify status is rendered
+    expect(screen.getByText('Success')).toBeInTheDocument();
   });
 });

@@ -12,15 +12,13 @@
  */
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -28,6 +26,7 @@ import {
   default as applicationsClassBase,
 } from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import ApplicationConfiguration from '../../components/Settings/Applications/ApplicationConfiguration/ApplicationConfiguration';
 import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
@@ -35,7 +34,6 @@ import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
 import {
   CreateAppRequest,
   ScheduleTimeline,
@@ -59,7 +57,7 @@ import './app-install.less';
 
 const AppInstall = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
@@ -67,7 +65,6 @@ const AppInstall = () => {
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
-  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
   const { config, getResourceLimit } = useLimitStore();
 
   const { pipelineSchedules } =
@@ -115,19 +112,21 @@ const AppInstall = () => {
       const schema = await applicationSchemaClassBase.importSchema(fqn);
 
       setJsonSchema(schema);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    } catch (_) {
+      showErrorToast(
+        t('message.no-application-schema-found', { appName: fqn })
+      );
     } finally {
       setIsLoading(false);
     }
   }, [fqn]);
 
   const onCancel = () => {
-    history.push(getMarketPlaceAppDetailsPath(fqn));
+    navigate(getMarketPlaceAppDetailsPath(fqn));
   };
 
   const goToAppPage = () => {
-    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
+    navigate(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
   const installApp = async (data: CreateAppRequest) => {
@@ -182,7 +181,7 @@ const AppInstall = () => {
     }
   };
 
-  const RenderSelectedTab = useCallback(() => {
+  const renderSelectedTab = useMemo(() => {
     if (!appData || !jsonSchema) {
       return <></>;
     }
@@ -206,24 +205,17 @@ const AppInstall = () => {
 
       case 2:
         return (
-          <div className="w-4/5 p-md border rounded-4">
-            <FormBuilder
-              showFormHeader
-              useSelectWidget
-              cancelText={t('label.back')}
-              okText={t('label.submit')}
-              schema={jsonSchema}
-              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              uiSchema={UiSchema}
-              validator={validator}
-              onCancel={() => setActiveServiceStep(1)}
-              onSubmit={onSaveConfiguration}
-            />
-          </div>
+          <ApplicationConfiguration
+            appData={appData}
+            isLoading={false}
+            jsonSchema={jsonSchema}
+            onCancel={() => setActiveServiceStep(1)}
+            onConfigSave={onSaveConfiguration}
+          />
         );
       case 3:
         return (
-          <div className="w-3/5 p-md border rounded-4">
+          <div className="m-auto bg-white w-3/5 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <ScheduleInterval
               defaultSchedule={defaultValue}
@@ -268,15 +260,15 @@ const AppInstall = () => {
     <PageLayoutV1
       className="app-install-page"
       pageTitle={t('label.application-plural')}>
-      <Row>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <IngestionStepper
             activeStep={activeServiceStep}
             steps={stepperList}
           />
         </Col>
-        <Col span={24}>
-          <div className="p-md flex-center">{RenderSelectedTab()}</div>
+        <Col className="app-intall-page-tabs" span={24}>
+          {renderSelectedTab}
         </Col>
       </Row>
     </PageLayoutV1>

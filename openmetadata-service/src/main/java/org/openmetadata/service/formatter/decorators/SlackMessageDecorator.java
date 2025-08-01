@@ -14,7 +14,8 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.Entity.DATA_CONTRACT_RESULT;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
 import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
@@ -33,12 +34,14 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.util.email.EmailUtil;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
@@ -77,14 +80,17 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return "~";
   }
 
+  @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqnSafe(fqn);
     return String.format(
         "<%s/%s/%s%s|%s>",
-        getSmtpSettings().getOpenMetadataUrl(),
+        EmailUtil.getOMBaseURL(),
         prefix,
-        fqn.trim().replaceAll(" ", "%20"),
+        encodedFqn, // Use safely encoded FQN in the URL
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
-        fqn.trim());
+        fqn.trim() // Display text remains unencoded
+        );
   }
 
   @Override
@@ -113,6 +119,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   private SlackMessage createMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
     return switch (event.getEntityType()) {
       case Entity.TEST_CASE -> createTestCaseMessage(event, outgoingMessage);
+      case Entity.DATA_CONTRACT -> createDataContractMessage(event, outgoingMessage);
       default -> createGeneralChangeEventMessage(event, outgoingMessage);
     };
   }
@@ -128,6 +135,21 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
     return hasRelevantChange
         ? createDQTemplateMessage(event, outgoingMessage)
+        : createGeneralChangeEventMessage(event, outgoingMessage);
+  }
+
+  private SlackMessage createDataContractMessage(
+      ChangeEvent event, OutgoingMessage outgoingMessage) {
+    List<FieldChange> fieldsAdded = event.getChangeDescription().getFieldsAdded();
+    List<FieldChange> fieldsUpdated = event.getChangeDescription().getFieldsUpdated();
+
+    boolean hasRelevantChange =
+        fieldsAdded.stream().anyMatch(field -> DATA_CONTRACT_RESULT.equals(field.getName()))
+            || fieldsUpdated.stream()
+                .anyMatch(field -> DATA_CONTRACT_RESULT.equals(field.getName()));
+
+    return hasRelevantChange
+        ? createDataContractTemplateMessage(event, outgoingMessage)
         : createGeneralChangeEventMessage(event, outgoingMessage);
   }
 
@@ -221,11 +243,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // desc about the event
     List<String> thread_messages = outgoingMessage.getMessages();
     thread_messages.forEach(
-        (message) -> {
-          blocks.add(
-              Blocks.section(
-                  section -> section.text(BlockCompositions.markdownText("> " + message))));
-        });
+        (message) ->
+            blocks.add(
+                Blocks.section(
+                    section -> section.text(BlockCompositions.markdownText("> " + message)))));
 
     // Divider
     blocks.add(Blocks.divider());
@@ -308,11 +329,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // desc about the event
     List<String> thread_messages = outgoingMessage.getMessages();
     thread_messages.forEach(
-        (message) -> {
-          blocks.add(
-              Blocks.section(
-                  section -> section.text(BlockCompositions.markdownText("> " + message))));
-        });
+        (message) ->
+            blocks.add(
+                Blocks.section(
+                    section -> section.text(BlockCompositions.markdownText("> " + message)))));
 
     // Divider
     blocks.add(Blocks.divider());
@@ -356,6 +376,158 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return message;
   }
 
+  public SlackMessage createDataContractTemplateMessage(
+      ChangeEvent event, OutgoingMessage outgoingMessage) {
+
+    Map<DQ_Template_Section, Map<Enum<?>, Object>> dataContractTemplateData =
+        MessageDecorator.buildDataContractTemplateData(event, outgoingMessage);
+
+    List<LayoutBlock> body =
+        createDataContractBodyBlocks(event, outgoingMessage, dataContractTemplateData);
+
+    SlackMessage message = new SlackMessage();
+    message.setBlocks(body);
+
+    Map<Enum<?>, Object> enumObjectMap =
+        dataContractTemplateData.get(DQ_Template_Section.DATA_CONTRACT_RESULT);
+    if (!nullOrEmpty(enumObjectMap)) {
+      SlackMessage.Attachment attachment = createDataContractAttachment(dataContractTemplateData);
+
+      // Set color based on status
+      Object statusObj = enumObjectMap.get(DataContractResultKeys.STATUS);
+      attachment.setColor(determineColorBasedOnStatus(statusObj));
+
+      message.setAttachments(Collections.singletonList(attachment));
+    }
+
+    return message;
+  }
+
+  private List<LayoutBlock> createDataContractBodyBlocks(
+      ChangeEvent event,
+      OutgoingMessage outgoingMessage,
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> data) {
+    List<LayoutBlock> blocks = new ArrayList<>();
+
+    // Header
+    createDataContractHeading(blocks, data);
+
+    // Info about the event
+    List<TextObject> first_field = new ArrayList<>();
+    first_field.add(
+        BlockCompositions.markdownText(
+            applyBoldFormatWithSpace("Event Type:") + event.getEventType()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            applyBoldFormatWithSpace("Updated By:") + event.getUserName()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            applyBoldFormatWithSpace("Entity Type:") + event.getEntityType()));
+    first_field.add(
+        BlockCompositions.markdownText(
+            applyBoldFormatWithSpace("Time:") + new Date(event.getTimestamp())));
+
+    // Split fields into multiple sections to avoid block limits
+    for (int i = 0; i < first_field.size(); i += 10) {
+      List<TextObject> sublist = first_field.subList(i, Math.min(i + 10, first_field.size()));
+      blocks.add(Blocks.section(section -> section.fields(sublist)));
+    }
+
+    String fqnForChangeEventEntity = MessageDecorator.getFQNForChangeEventEntity(event);
+
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(
+                        applyBoldFormatWithSpace("FQN:") + fqnForChangeEventEntity))));
+
+    // divider
+    blocks.add(Blocks.divider());
+
+    // desc about the event
+    List<String> thread_messages = outgoingMessage.getMessages();
+    thread_messages.forEach(
+        (message) ->
+            blocks.add(
+                Blocks.section(
+                    section -> section.text(BlockCompositions.markdownText("> " + message)))));
+
+    // Divider
+    blocks.add(Blocks.divider());
+
+    // View event link
+    String entityUrl = buildClickableEntityUrl(outgoingMessage.getEntityUrl());
+
+    blocks.add(Blocks.section(section -> section.text(BlockCompositions.markdownText(entityUrl))));
+
+    // Context Block
+    blocks.add(
+        Blocks.context(
+            context ->
+                context.elements(
+                    List.of(
+                        ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
+                        BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
+    return blocks;
+  }
+
+  private void createDataContractHeading(
+      List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+    Map<Enum<?>, Object> dataContractResults =
+        templateData.get(DQ_Template_Section.DATA_CONTRACT_RESULT);
+
+    if (nullOrEmpty(dataContractResults)) {
+      addChangeEventDetailsHeader(blocks);
+    } else {
+      String statusWithEmoji =
+          getStatusWithEmoji(dataContractResults.get(DataContractResultKeys.STATUS));
+      Map<Enum<?>, Object> dataContractDetails =
+          templateData.get(DQ_Template_Section.DATA_CONTRACT_DETAILS);
+      String contractName = String.valueOf(dataContractDetails.get(DataContractDetailsKeys.NAME));
+      String message =
+          String.format("\"%s\" data contract having status: %s", contractName, statusWithEmoji);
+      blocks.add(Blocks.header(header -> header.text(BlockCompositions.plainText(message))));
+    }
+  }
+
+  public SlackMessage.Attachment createDataContractAttachment(
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> dataContractTemplateData) {
+    List<LayoutBlock> blocks = new ArrayList<>();
+
+    // Header Block
+    addDataContractAlertHeader(blocks);
+
+    // Section 1 - Name and Entity
+    addDataContractIdAndNameSection(blocks, dataContractTemplateData);
+
+    // Section 2 - Owners and Tags
+    addDataContractOwnersTagsSection(blocks, dataContractTemplateData);
+
+    // Section 3 - Description
+    addDataContractDescriptionSection(blocks, dataContractTemplateData);
+
+    // Divider
+    blocks.add(Blocks.divider());
+
+    // Section 4 - Result
+    blocks.addAll(createDataContractResultSections(dataContractTemplateData));
+
+    // Context Block - Image and Markdown Text
+    blocks.add(
+        Blocks.context(
+            context ->
+                context.elements(
+                    List.of(
+                        ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
+                        BlockCompositions.markdownText("Change Event by OpenMetadata")))));
+
+    SlackMessage.Attachment attachment = new SlackMessage.Attachment();
+    attachment.setBlocks(blocks);
+
+    return attachment;
+  }
+
   private String determineColorBasedOnStatus(Object object) {
     if (object instanceof TestCaseStatus status) {
       return switch (status) {
@@ -365,8 +537,16 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         case Queued -> "#439FE0"; // Blue for queued
         default -> "#808080"; // Gray for unknown or default cases
       };
+    } else if (object instanceof ContractExecutionStatus status) {
+      return switch (status) {
+        case Success -> "#36a64f"; // Green for success
+        case Failed -> "#ff0000"; // Red for failure
+        case Aborted -> "#ffcc00"; // Yellow for aborted
+        case Running -> "#439FE0"; // Blue for running
+        default -> "#808080"; // Gray for unknown or default cases
+      };
     }
-    return "#808080"; // Default to gray if the object is not a valid TestCaseStatus
+    return "#808080"; // Default to gray if the object is not a valid status
   }
 
   private String getStatusWithEmoji(Object object) {
@@ -378,9 +558,16 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         case Queued -> "Queued :hourglass_flowing_sand:"; // Hourglass for queued
         default -> "Unknown :grey_question:"; // Gray question mark for unknown cases
       };
+    } else if (object instanceof ContractExecutionStatus status) {
+      return switch (status) {
+        case Success -> "Success :white_check_mark:"; // Green checkmark for success
+        case Failed -> "Failed :x:"; // Red cross for failure
+        case Aborted -> "Aborted :warning:"; // Warning sign for aborted
+        case Running -> "Running :arrows_counterclockwise:"; // Running arrows for running
+        default -> "Unknown :grey_question:"; // Gray question mark for unknown cases
+      };
     }
-    return "Unknown :grey_question:"; // Default to unknown if the object is not a valid
-    // TestCaseStatus
+    return "Unknown :grey_question:"; // Default to unknown if the object is not valid
   }
 
   public SlackMessage.Attachment createDQAttachment(
@@ -787,5 +974,127 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
   private String getOMImage() {
     return "https://i.postimg.cc/0jYLNmM1/image.png";
+  }
+
+  private void addDataContractAlertHeader(List<LayoutBlock> blocks) {
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(BlockCompositions.markdownText(applyBoldFormat("DATA CONTRACT")))));
+  }
+
+  private void addDataContractIdAndNameSection(
+      List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+
+    Map<Enum<?>, Object> dataContractDetails =
+        templateData.get(DQ_Template_Section.DATA_CONTRACT_DETAILS);
+    if (nullOrEmpty(dataContractDetails)) {
+      return;
+    }
+
+    List<TextObject> idNameFields =
+        Stream.of(
+                createFieldText(
+                    "Name :", dataContractDetails.getOrDefault(DataContractDetailsKeys.NAME, "-")),
+                createFieldText(
+                    "Entity :",
+                    dataContractDetails.getOrDefault(DataContractDetailsKeys.ENTITY_FQN, "-")))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(idNameFields)));
+  }
+
+  private void addDataContractDescriptionSection(
+      List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+
+    Map<Enum<?>, Object> dataContractDetails =
+        templateData.get(DQ_Template_Section.DATA_CONTRACT_DETAILS);
+    if (nullOrEmpty(dataContractDetails)) {
+      return;
+    }
+
+    TextObject descriptionField =
+        createFieldTextWithNewLine(
+            "Description",
+            dataContractDetails.getOrDefault(DataContractDetailsKeys.DESCRIPTION, "-"));
+    blocks.add(Blocks.section(section -> section.text(descriptionField)));
+  }
+
+  private void addDataContractOwnersTagsSection(
+      List<LayoutBlock> blocks, Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+
+    Map<Enum<?>, Object> dataContractDetails =
+        templateData.get(DQ_Template_Section.DATA_CONTRACT_DETAILS);
+    if (nullOrEmpty(dataContractDetails)) {
+      return;
+    }
+
+    List<TextObject> ownerTagFields =
+        Stream.of(
+                createFieldTextWithNewLine("Owners", formatOwners(dataContractDetails)),
+                createFieldTextWithNewLine("Tags", formatTags(dataContractDetails)))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(ownerTagFields)));
+  }
+
+  private List<LayoutBlock> createDataContractResultSections(
+      Map<DQ_Template_Section, Map<Enum<?>, Object>> templateData) {
+
+    List<LayoutBlock> blocks = new ArrayList<>();
+
+    Map<Enum<?>, Object> dataContractResults =
+        templateData.get(DQ_Template_Section.DATA_CONTRACT_RESULT);
+    if (nullOrEmpty(dataContractResults)) {
+      return blocks;
+    }
+
+    // Data Contract Result Header
+    blocks.add(
+        Blocks.section(
+            section ->
+                section.text(
+                    BlockCompositions.markdownText(
+                        applyBoldFormat(":clipboard: DATA CONTRACT RESULT")))));
+
+    // Status Section
+    List<TextObject> statusFields =
+        Stream.of(
+                BlockCompositions.markdownText(
+                    applyBoldFormatWithSpace("Status -")
+                        + getStatusWithEmoji(
+                            dataContractResults.getOrDefault(DataContractResultKeys.STATUS, "-"))))
+            .collect(Collectors.toList());
+
+    blocks.add(Blocks.section(section -> section.fields(statusFields)));
+
+    // Message Section
+    if (dataContractResults.containsKey(DataContractResultKeys.MESSAGE)) {
+      blocks.add(
+          Blocks.section(
+              section -> section.text(BlockCompositions.markdownText(applyBoldFormat("Message")))));
+
+      blocks.add(
+          Blocks.section(
+              section ->
+                  section.text(
+                      BlockCompositions.markdownText(
+                          formatWithTripleBackticksForEnumMap(
+                              DataContractResultKeys.MESSAGE, dataContractResults)))));
+    }
+
+    // Timestamp Section
+    if (dataContractResults.containsKey(DataContractResultKeys.TIMESTAMP)) {
+      blocks.add(
+          Blocks.section(
+              section ->
+                  section.text(
+                      BlockCompositions.markdownText(
+                          applyBoldFormatWithSpace("Last Updated:")
+                              + dataContractResults.get(DataContractResultKeys.TIMESTAMP)))));
+    }
+
+    blocks.add(Blocks.divider());
+    return blocks;
   }
 }

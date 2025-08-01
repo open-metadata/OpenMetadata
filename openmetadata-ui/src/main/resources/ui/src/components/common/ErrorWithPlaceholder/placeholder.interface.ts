@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactElement } from 'react';
+import { ReactElement, ReactNode } from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
 export interface ErrorPlaceholderProps {
@@ -26,7 +26,8 @@ export interface ErrorPlaceholderProps {
   icon?: ReactElement;
   onClick?: () => void;
   permission?: boolean;
-  placeholderText?: string | JSX.Element;
+  placeholderText?: ReactNode;
+  permissionValue?: string;
 }
 
 export interface NoDataPlaceholderProps {
@@ -34,7 +35,7 @@ export interface NoDataPlaceholderProps {
   className?: string;
   children?: React.ReactNode;
   icon?: ReactElement;
-  placeholderText?: string | JSX.Element;
+  placeholderText?: ReactNode;
 }
 
 export interface CreatePlaceholderProps {
@@ -45,7 +46,8 @@ export interface CreatePlaceholderProps {
   doc?: string;
   permission?: boolean;
   buttonId?: string;
-  placeholderText?: string | JSX.Element;
+  placeholderText?: ReactNode;
+  permissionValue?: string;
   onClick?: () => void;
 }
 
@@ -56,20 +58,22 @@ export interface AssignPlaceholderProps {
   permission?: boolean;
   children?: React.ReactNode;
   button?: React.ReactNode;
+  permissionValue?: string;
 }
 
 export interface PermissionPlaceholderProps {
   size?: SIZE;
   className?: string;
+  permissionValue?: string;
 }
 
 export interface FilterPlaceholderProps {
   size?: SIZE;
   className?: string;
   doc?: string;
-  placeholderText?: string | JSX.Element;
+  placeholderText?: ReactNode;
 }
 
 export interface FilterTablePlaceHolderProps {
-  placeholderText?: string | JSX.Element;
+  placeholderText?: ReactNode;
 }

@@ -35,7 +35,7 @@
     },
     {
       "name": "column.dataType",
-      "required": false,
+      "required": true,
       "description": "Actual Column data type.",
       "examples": [
         "BLOB", "DATE"
@@ -49,7 +49,7 @@
         "BLOB", "DATE"
       ]
     },
-    
+
     {
       "name": "column.dataLength",
       "required": false,

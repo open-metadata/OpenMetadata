@@ -45,6 +45,7 @@
     "authType": {
       "title": "Auth Configuration Type",
       "description": "Choose Auth Config Type.",
+      "mask": true,
       "oneOf": [
         {
           "$ref": "./common/basicAuth.json"
@@ -72,6 +73,29 @@
       "description": "Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.",
       "type": "boolean",
       "default": false
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$"]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^template1$", "^template0$"]
+      }
     },
     "sslMode": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
@@ -123,8 +147,8 @@
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     }
   },
   "additionalProperties": false,

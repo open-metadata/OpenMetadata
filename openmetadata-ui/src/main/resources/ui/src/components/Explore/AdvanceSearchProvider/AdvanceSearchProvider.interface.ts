@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Config, ImmutableTree } from '@react-awesome-query-builder/antd';
 import { ReactNode } from 'react';
-import { Config, ImmutableTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../../enums/search.enum';
 
 export enum SearchOutputType {
@@ -29,6 +29,7 @@ export interface AdvanceSearchProviderProps {
   updateURL?: boolean;
   fieldOverrides?: { field: string; type: string }[];
   searchOutputType?: SearchOutputType;
+  entityType?: string; // Optional entity type to filter custom properties
 }
 
 export interface AdvanceSearchContext {
@@ -48,4 +49,9 @@ export interface AdvanceSearchContext {
     title?: string;
     subTitle?: string;
   };
+}
+
+export interface CustomPropertyEnumConfig {
+  multiSelect: boolean;
+  values: string[];
 }

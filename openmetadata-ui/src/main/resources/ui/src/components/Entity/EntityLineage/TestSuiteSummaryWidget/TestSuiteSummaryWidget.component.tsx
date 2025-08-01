@@ -11,59 +11,41 @@
  *  limitations under the License.
  */
 import { Skeleton } from 'antd';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import {
-  EntityReference,
-  TestSummary,
-} from '../../../../generated/tests/testCase';
-import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
+import classNames from 'classnames';
+import { TestSummary } from '../../../../generated/tests/testCase';
 
 const TestSuiteSummaryWidget = ({
-  testSuite,
+  summary,
+  isLoading,
+  size = 'medium',
 }: {
-  testSuite?: EntityReference;
+  summary?: TestSummary;
+  isLoading?: boolean;
+  size?: 'medium' | 'small';
 }) => {
-  const [summary, setSummary] = useState<TestSummary>();
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
-    setIsLoading(true);
-    try {
-      const response = await getTestCaseExecutionSummary(testSuite.id);
-      setSummary(response);
-    } catch (error) {
-      setSummary(undefined);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (testSuite && isUndefined(summary)) {
-      fetchTestSuiteSummary(testSuite);
-    } else {
-      setIsLoading(false);
-    }
-  }, [testSuite]);
-
   if (isLoading) {
-    return <Skeleton.Input active data-tesid="loader" />;
+    return <Skeleton.Button active data-tesid="loader" size="small" />;
   }
 
   return (
     <div className="d-flex justify-end">
-      <div className="profiler-item green" data-testid="test-passed">
+      <div
+        className={classNames(`profiler-item green`, size)}
+        data-testid="test-passed">
         <div className="font-medium" data-testid="test-passed-value">
           {summary?.success ?? 0}
         </div>
       </div>
-      <div className="profiler-item amber" data-testid="test-aborted">
+      <div
+        className={classNames(`profiler-item amber`, size)}
+        data-testid="test-aborted">
         <div className="font-medium" data-testid="test-aborted-value">
           {summary?.aborted ?? 0}
         </div>
       </div>
-      <div className="profiler-item red" data-testid="test-failed">
+      <div
+        className={classNames(`profiler-item red`, size)}
+        data-testid="test-failed">
         <div className="font-medium" data-testid="test-failed-value">
           {summary?.failed ?? 0}
         </div>

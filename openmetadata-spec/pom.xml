@@ -5,15 +5,16 @@
     <parent>
         <artifactId>platform</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.6.0-SNAPSHOT</version>
+        <version>1.8.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>openmetadata-spec</artifactId>
+    <name>OpenMetadata Specification</name>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
         <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
         <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
@@ -25,6 +26,10 @@
             <groupId>org.open-metadata</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -56,6 +61,26 @@
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-retry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+            <version>2.1.3</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr353</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.java-json-tools</groupId>
+            <artifactId>json-patch</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.5.2</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
@@ -147,6 +172,7 @@
                     <targetPackage>org.openmetadata.schema</targetPackage>
                     <includeJsr303Annotations>true</includeJsr303Annotations>
                     <generateBuilders>true</generateBuilders>
+                    <useJakartaValidation>true</useJakartaValidation>
                     <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>
                 </configuration>
                 <dependencies>

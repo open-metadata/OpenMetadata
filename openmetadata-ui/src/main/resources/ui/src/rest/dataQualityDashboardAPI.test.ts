@@ -16,6 +16,7 @@ import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import {
+  buildDataQualityDashboardFilters,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
@@ -37,21 +38,27 @@ jest.mock('./testAPI', () => ({
 jest.mock('../utils/DataQuality/DataQualityUtils', () => ({
   buildMustEsFilterForOwner: jest.fn(),
   buildMustEsFilterForTags: jest.fn(),
+  buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
 }));
 
 describe('dataQualityDashboardAPI', () => {
   describe('fetchTotalEntityCount', () => {
     it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
       const filters = { ownerFqn: 'owner1' };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue({
-        term: {
-          'owners.fullyQualifiedName': 'owner1',
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        {
+          term: {
+            'owners.fullyQualifiedName': 'owner1',
+          },
         },
-      });
+      ]);
 
       await fetchTotalEntityCount(filters);
 
-      expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1');
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: { ownerFqn: 'owner1' },
+        isTableApi: true,
+      });
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -73,6 +80,16 @@ describe('dataQualityDashboardAPI', () => {
 
     it('should call getDataQualityReport with correct query when tags are provided', async () => {
       const filters = { tags: ['tag1', 'tag2'] };
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        {
+          bool: {
+            should: [
+              { term: { 'tags.tagFQN': 'tag1' } },
+              { term: { 'tags.tagFQN': 'tag2' } },
+            ],
+          },
+        },
+      ]);
 
       await fetchTotalEntityCount(filters);
 
@@ -100,6 +117,16 @@ describe('dataQualityDashboardAPI', () => {
 
     it('should call getDataQualityReport with correct query when tier is provided', async () => {
       const filters = { tier: ['tier1', 'tier2'] };
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        {
+          bool: {
+            should: [
+              { term: { 'tier.tagFQN': 'tier1' } },
+              { term: { 'tier.tagFQN': 'tier2' } },
+            ],
+          },
+        },
+      ]);
 
       await fetchTotalEntityCount(filters);
 
@@ -127,15 +154,30 @@ describe('dataQualityDashboardAPI', () => {
 
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue({
-        term: {
-          'owners.fullyQualifiedName': 'owner1',
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        {
+          term: {
+            'owners.fullyQualifiedName': 'owner1',
+          },
         },
-      });
+        {
+          bool: {
+            should: [{ term: { 'tags.tagFQN': 'tag1' } }],
+          },
+        },
+        {
+          bool: {
+            should: [{ term: { 'tier.tagFQN': 'tier1' } }],
+          },
+        },
+      ]);
 
       await fetchTotalEntityCount(filters);
 
-      expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1');
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] },
+        isTableApi: true,
+      });
       expect(getDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -350,6 +392,9 @@ describe('dataQualityDashboardAPI', () => {
       func: fetchEntityCoveredWithDQ,
       index: 'testCase',
       aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
+      params: {
+        unhealthy: false,
+      },
     },
     {
       functionName: 'fetchTestCaseSummaryByDimension',
@@ -364,15 +409,16 @@ describe('dataQualityDashboardAPI', () => {
     describe(`${testData.functionName}`, () => {
       it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
         const filters = { ownerFqn: testCaseData.filters.ownerFqn };
-        (buildMustEsFilterForOwner as jest.Mock).mockReturnValue(
-          testCaseData.ownerExpectedQuery
-        );
+        (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+          testCaseData.ownerExpectedQuery,
+        ]);
 
         await testData.func(filters);
 
-        expect(buildMustEsFilterForOwner).toHaveBeenCalledWith(
-          testCaseData.filters.ownerFqn
-        );
+        expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+          filters,
+          ...testData.params,
+        });
         expect(getDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test1.q,
           index: testData.index,
@@ -382,15 +428,16 @@ describe('dataQualityDashboardAPI', () => {
 
       it('should call getDataQualityReport with correct query when tags are provided', async () => {
         const filters = { tags: testCaseData.filters.tags };
-        (buildMustEsFilterForTags as jest.Mock).mockReturnValue(
-          testCaseData.test2.expected
-        );
+        (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+          testCaseData.test2.expected,
+        ]);
 
         await testData.func(filters);
 
-        expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-          testCaseData.filters.tags
-        );
+        expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+          filters,
+          ...testData.params,
+        });
         expect(getDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test2.q,
           index: testData.index,
@@ -400,15 +447,16 @@ describe('dataQualityDashboardAPI', () => {
 
       it('should call getDataQualityReport with correct query when tier is provided', async () => {
         const filters = { tier: testCaseData.filters.tier };
-        (buildMustEsFilterForTags as jest.Mock).mockReturnValue(
-          testCaseData.test3.expected
-        );
+        (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+          testCaseData.test3.expected,
+        ]);
 
         await testData.func(filters);
 
-        expect(buildMustEsFilterForTags).toHaveBeenCalledWith(
-          testCaseData.filters.tier
-        );
+        expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+          filters,
+          ...testData.params,
+        });
         expect(getDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test3.q,
           index: testData.index,
@@ -418,22 +466,19 @@ describe('dataQualityDashboardAPI', () => {
 
       it('should call getDataQualityReport with correct query when all filters are provided', async () => {
         const filters = testCaseData.filters;
-        (buildMustEsFilterForOwner as jest.Mock).mockReturnValue(
-          testCaseData.ownerExpectedQuery
-        );
-        (buildMustEsFilterForTags as jest.Mock).mockReturnValue(
-          testCaseData.test4.expected
-        );
+
+        (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+          testCaseData.ownerExpectedQuery,
+          testCaseData.test4.expected,
+        ]);
 
         await testData.func(filters);
 
-        expect(buildMustEsFilterForOwner).toHaveBeenCalledWith(
-          testCaseData.filters.ownerFqn
-        );
-        expect(buildMustEsFilterForTags).toHaveBeenCalledWith([
-          ...testCaseData.filters.tags,
-          ...testCaseData.filters.tier,
-        ]);
+        expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+          filters,
+          ...testData.params,
+        });
+
         expect(getDataQualityReport).toHaveBeenCalledWith({
           q: testCaseData.test4.q,
           index: testData.index,
@@ -486,7 +531,7 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
       const status = TestCaseResolutionStatusTypes.Assigned;
       const filters = { ownerFqn: 'owner1' };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
         term: {
           'owners.fullyQualifiedName': 'owner1',
         },
@@ -527,7 +572,7 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
       const status = TestCaseResolutionStatusTypes.New;
       const filters = { tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
         nested: {
           path: 'tags',
           query: {
@@ -587,12 +632,12 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
       const status = TestCaseResolutionStatusTypes.Resolved;
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
         term: {
           'owners.fullyQualifiedName': 'owner1',
         },
       });
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
         nested: {
           path: 'tags',
           query: {
@@ -732,7 +777,7 @@ describe('dataQualityDashboardAPI', () => {
         startTs: 1729073964962,
         endTs: 1729678764965,
       };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue(
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(
         testCaseData.ownerExpectedQuery
       );
 
@@ -788,7 +833,7 @@ describe('dataQualityDashboardAPI', () => {
         startTs: 1729073964962,
         endTs: 1729678764965,
       };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
         nested: {
           path: 'tags',
           query: {
@@ -863,10 +908,10 @@ describe('dataQualityDashboardAPI', () => {
         startTs: 1729073964962,
         endTs: 1729678764965,
       };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue(
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(
         testCaseData.ownerExpectedQuery
       );
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
         nested: {
           path: 'tags',
           query: {
@@ -1011,7 +1056,7 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
       const status = TestCaseStatus.Failed;
       const filters = { ownerFqn: testCaseData.filters.ownerFqn };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue(
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(
         testCaseData.ownerExpectedQuery
       );
 
@@ -1053,7 +1098,7 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
       const status = TestCaseStatus.Aborted;
       const filters = { tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
         nested: {
           path: 'tags',
           query: {
@@ -1113,12 +1158,12 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
       const status = TestCaseStatus.Failed;
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
         term: {
           'owners.fullyQualifiedName': 'owner1',
         },
       });
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValue({
+      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce({
         nested: {
           path: 'tags',
           query: {

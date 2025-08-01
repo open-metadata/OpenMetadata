@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
-import { Modal, Space, Tabs, TabsProps } from 'antd';
-import { isEmpty, toString } from 'lodash';
-import { default as React, useCallback, useMemo } from 'react';
+import { Modal, Tabs, TabsProps } from 'antd';
+import { isEmpty, sortBy, toString } from 'lodash';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import {
   CommonWidgetType,
   GridSizes,
@@ -33,7 +31,6 @@ interface Props {
   open: boolean;
   maxGridSizeSupport: number;
   placeholderWidgetKey: string;
-  addedWidgetsList: Array<string>;
   handleCloseAddWidgetModal: () => void;
   handleAddWidget: (
     widget: CommonWidgetType,
@@ -46,7 +43,6 @@ interface Props {
 function AddDetailsPageWidgetModal({
   open,
   widgetsList,
-  addedWidgetsList,
   handleCloseAddWidgetModal,
   handleAddWidget,
   maxGridSizeSupport,
@@ -66,7 +62,7 @@ function AddDetailsPageWidgetModal({
 
   const tabItems: TabsProps['items'] = useMemo(
     () =>
-      widgetsList?.map((widget) => {
+      sortBy(widgetsList, 'name')?.map((widget) => {
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: GridSizes) => ({
             label: (
@@ -79,20 +75,7 @@ function AddDetailsPageWidgetModal({
 
         return {
           label: (
-            <Space data-testid={`${widget.name}-widget-tab-label`}>
-              <span>{widget.name}</span>
-              {addedWidgetsList.some(
-                (w) =>
-                  w.startsWith(widget.fullyQualifiedName) &&
-                  !w.includes('EmptyWidgetPlaceholder')
-              ) && (
-                <CheckOutlined
-                  className="m-l-xs"
-                  data-testid={`${widget.name}-check-icon`}
-                  style={{ color: LIGHT_GREEN_COLOR }}
-                />
-              )}
-            </Space>
+            <span data-testid={`${widget.name}-widget`}>{widget.name}</span>
           ),
           key: widget.fullyQualifiedName,
           children: (
@@ -105,7 +88,7 @@ function AddDetailsPageWidgetModal({
           ),
         };
       }),
-    [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
+    [widgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
   const widgetsInfo = useMemo(() => {
@@ -122,6 +105,7 @@ function AddDetailsPageWidgetModal({
 
     return (
       <Tabs
+        destroyInactiveTabPane
         data-testid="widget-info-tabs"
         items={tabItems}
         tabPosition="left"

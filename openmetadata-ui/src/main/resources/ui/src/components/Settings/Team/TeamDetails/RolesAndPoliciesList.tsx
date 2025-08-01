@@ -13,8 +13,8 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
-import React, { useMemo } from 'react';
+import { ColumnsType } from 'antd/lib/table';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
@@ -26,7 +26,8 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../../common/Table/Table';
 
 const ListEntities = ({
   list,
@@ -47,7 +48,7 @@ const ListEntities = ({
       {
         title: t('label.name'),
         dataIndex: 'name',
-        width: '200px',
+        width: 300,
         key: 'name',
         render: (_, record) => {
           let link = '';
@@ -79,14 +80,15 @@ const ListEntities = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 300,
         render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
+          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
         ),
       },
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
-        width: '80px',
+        width: 100,
         key: 'actions',
         render: (_, record) => {
           return (
@@ -117,9 +119,8 @@ const ListEntities = ({
 
   return (
     <Table
-      bordered
-      className="list-table"
       columns={columns}
+      containerClassName="list-table"
       dataSource={list}
       pagination={false}
       rowKey="id"

@@ -6,11 +6,13 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.task.service.delegate.DelegateTask;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 
 @Slf4j
 public class SetCandidateUsersImpl implements TaskListener {
@@ -18,6 +20,7 @@ public class SetCandidateUsersImpl implements TaskListener {
 
   @Override
   public void notify(DelegateTask delegateTask) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
       List<String> assignees =
           JsonUtils.readOrConvertValue(
@@ -30,7 +33,7 @@ public class SetCandidateUsersImpl implements TaskListener {
               "[%s] Failure: ",
               getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
           exc);
-      delegateTask.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

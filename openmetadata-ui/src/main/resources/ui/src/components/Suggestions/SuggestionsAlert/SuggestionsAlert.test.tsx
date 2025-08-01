@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { Suggestion } from '../../../generated/entity/feed/suggestion';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../../generated/entity/feed/suggestion';
 import SuggestionsProvider from '../SuggestionsProvider/SuggestionsProvider';
 import SuggestionsAlert from './SuggestionsAlert';
 
@@ -24,6 +26,10 @@ jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
+jest.mock('../../Tag/TagsViewer/TagsViewer', () => {
+  return jest.fn().mockImplementation(() => <p>TagsViewer</p>);
+});
+
 jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn().mockImplementation(() => ({
     suggestions: [
@@ -32,6 +38,7 @@ jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
         description: 'Test suggestion',
         createdBy: { id: '1', name: 'Test User', type: 'user' },
         entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+        type: SuggestionType.SuggestDescription,
       },
     ],
     acceptRejectSuggestion: jest.fn(),
@@ -40,12 +47,17 @@ jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
   default: 'SuggestionsProvider',
 }));
 
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
 describe('SuggestionsAlert', () => {
   const mockSuggestion: Suggestion = {
     id: '1',
     description: 'Test suggestion',
     createdBy: { id: '1', name: 'Test User', type: 'user' },
     entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    type: SuggestionType.SuggestDescription,
   };
 
   it('renders alert without access', () => {

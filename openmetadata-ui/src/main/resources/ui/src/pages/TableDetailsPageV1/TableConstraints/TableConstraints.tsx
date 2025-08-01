@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import React, { FC, useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import TagButton from '../../../components/common/TagButton/TagButton.component';
+import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../../components/common/IconButtons/EditIconButton';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -29,19 +32,21 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-interface TableConstraintsProps {
-  hasPermission: boolean;
-  tableDetails?: Table;
-  onUpdate: (updateData: Table['tableConstraints']) => Promise<void>;
-}
-
-const TableConstraints: FC<TableConstraintsProps> = ({
-  tableDetails,
-  hasPermission,
-  onUpdate,
+const TableConstraints = ({
+  renderAsExpandableCard = true,
+}: {
+  renderAsExpandableCard?: boolean;
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data, permissions, onUpdate } = useGenericContext<Table>();
+
+  const { deleted } = data ?? {};
+
+  const hasPermission = useMemo(
+    () => permissions.EditAll && !deleted,
+    [permissions, deleted]
+  );
 
   const handleOpenEditConstraintModal = useCallback(
     () => setIsModalOpen(true),
@@ -53,135 +58,135 @@ const TableConstraints: FC<TableConstraintsProps> = ({
   );
 
   const handleSubmit = async (values: Table['tableConstraints']) => {
-    await onUpdate(values);
+    await onUpdate({ ...data, tableConstraints: values });
     setIsModalOpen(false);
   };
 
-  return (
-    <>
-      <Space className="p-b-sm w-full" direction="vertical">
-        <Space size="middle">
-          <Typography.Text className="right-panel-label">
-            {t('label.table-constraints')}
-          </Typography.Text>
+  const header = (
+    <Space size="middle">
+      <Typography.Text className={classNames('text-sm font-medium')}>
+        {t('label.table-constraints')}
+      </Typography.Text>
 
-          {hasPermission && !isEmpty(tableDetails?.tableConstraints) && (
-            <Tooltip
-              placement="right"
-              title={t('label.edit-entity', {
-                entity: t('label.table-constraint-plural'),
-              })}>
-              <Button
-                className="cursor-pointer hover-cell-icon w-fit-content"
-                data-testid="edit-table-constraint-button"
-                style={{
-                  color: DE_ACTIVE_COLOR,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                }}
-                onClick={handleOpenEditConstraintModal}>
-                <IconEdit
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                />
-              </Button>
-            </Tooltip>
-          )}
-        </Space>
-
-        {hasPermission && isEmpty(tableDetails?.tableConstraints) && (
-          <TagButton
-            className="text-primary cursor-pointer"
-            dataTestId="table-constraints-add-button"
-            icon={<PlusIcon height={16} name="plus" width={16} />}
-            label={t('label.add')}
-            tooltip=""
+      {hasPermission &&
+        (isEmpty(data?.tableConstraints) ? (
+          <PlusIconButton
+            data-testid="table-constraints-add-button"
+            size="small"
+            title={t('label.add-entity', {
+              entity: t('label.table-constraints'),
+            })}
             onClick={handleOpenEditConstraintModal}
           />
-        )}
+        ) : (
+          <EditIconButton
+            newLook
+            data-testid="edit-table-constraint-button"
+            size="small"
+            onClick={handleOpenEditConstraintModal}
+          />
+        ))}
+    </Space>
+  );
 
-        {tableDetails?.tableConstraints?.map(
-          ({ constraintType, columns, referredColumns }) => {
-            if (constraintType === ConstraintType.PrimaryKey) {
-              return tableConstraintRendererBasedOnType(
-                ConstraintType.PrimaryKey,
-                columns
-              );
-            }
+  const content = isEmpty(data?.tableConstraints) ? null : (
+    <Space className="w-full new-header-border-card" direction="vertical">
+      {data?.tableConstraints?.map(
+        ({ constraintType, columns, referredColumns }) => {
+          if (constraintType === ConstraintType.PrimaryKey) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.PrimaryKey,
+              columns
+            );
+          }
 
-            if (constraintType === ConstraintType.SortKey) {
-              return tableConstraintRendererBasedOnType(
-                ConstraintType.SortKey,
-                columns
-              );
-            }
+          if (constraintType === ConstraintType.SortKey) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.SortKey,
+              columns
+            );
+          }
 
-            if (constraintType === ConstraintType.DistKey) {
-              return tableConstraintRendererBasedOnType(
-                ConstraintType.DistKey,
-                columns
-              );
-            }
+          if (constraintType === ConstraintType.DistKey) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.DistKey,
+              columns
+            );
+          }
 
-            if (constraintType === ConstraintType.Unique) {
-              return tableConstraintRendererBasedOnType(
-                ConstraintType.Unique,
-                columns
-              );
-            }
-            if (constraintType === ConstraintType.ForeignKey) {
-              return (
-                <div
-                  className="d-flex gap-2 constraint-columns"
-                  data-testid={`${ConstraintType.ForeignKey}-container`}
-                  key={ConstraintType.ForeignKey}>
-                  <ForeignKeyConstraint />
-                  <div className="d-flex flex-column gap-2">
-                    <Typography.Text data-testid="constraint-column-name">
-                      {columns?.join(', ')}
-                    </Typography.Text>
-                    <div data-testid="referred-column-name-fqn">
-                      {map(referredColumns, (referredColumn) => (
-                        <Tooltip
-                          placement="top"
-                          title={referredColumn}
-                          trigger="hover">
-                          <Link
-                            className="no-underline"
-                            to={entityUtilClassBase.getEntityLink(
-                              EntityType.TABLE,
-                              getPartialNameFromTableFQN(
-                                referredColumn,
-                                [
-                                  FqnPart.Service,
-                                  FqnPart.Database,
-                                  FqnPart.Schema,
-                                  FqnPart.Table,
-                                ],
-                                FQN_SEPARATOR_CHAR
-                              )
-                            )}>
-                            <Typography.Text className="truncate referred-column-name">
-                              {referredColumn}
-                            </Typography.Text>
-                          </Link>
-                        </Tooltip>
-                      ))}
-                    </div>
+          if (constraintType === ConstraintType.Unique) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.Unique,
+              columns
+            );
+          }
+          if (constraintType === ConstraintType.ForeignKey) {
+            return (
+              <div
+                className="d-flex gap-2 constraint-columns"
+                data-testid={`${ConstraintType.ForeignKey}-container`}
+                key={ConstraintType.ForeignKey}>
+                <ForeignKeyConstraint />
+                <div className="d-flex flex-column gap-2">
+                  <Typography.Text data-testid="constraint-column-name">
+                    {columns?.join(', ')}
+                  </Typography.Text>
+                  <div data-testid="referred-column-name-fqn">
+                    {map(referredColumns, (referredColumn) => (
+                      <Tooltip
+                        placement="top"
+                        title={referredColumn}
+                        trigger="hover">
+                        <Link
+                          className="no-underline"
+                          to={entityUtilClassBase.getEntityLink(
+                            EntityType.TABLE,
+                            getPartialNameFromTableFQN(
+                              referredColumn,
+                              [
+                                FqnPart.Service,
+                                FqnPart.Database,
+                                FqnPart.Schema,
+                                FqnPart.Table,
+                              ],
+                              FQN_SEPARATOR_CHAR
+                            )
+                          )}>
+                          <Typography.Text className="truncate referred-column-name">
+                            {referredColumn}
+                          </Typography.Text>
+                        </Link>
+                      </Tooltip>
+                    ))}
                   </div>
                 </div>
-              );
-            }
-
-            return null;
+              </div>
+            );
           }
-        )}
-      </Space>
 
+          return null;
+        }
+      )}
+    </Space>
+  );
+
+  return (
+    <>
+      {renderAsExpandableCard ? (
+        <ExpandableCard
+          cardProps={{
+            title: header,
+          }}
+          isExpandDisabled={isEmpty(data?.tableConstraints)}>
+          {content}
+        </ExpandableCard>
+      ) : (
+        content
+      )}
       {isModalOpen && (
         <TableConstraintsModal
-          constraint={tableDetails?.tableConstraints}
-          tableDetails={tableDetails}
+          constraint={data?.tableConstraints}
+          tableDetails={data}
           onClose={handleCloseEditConstraintModal}
           onSave={handleSubmit}
         />

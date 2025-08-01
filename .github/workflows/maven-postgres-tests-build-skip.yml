@@ -32,11 +32,5 @@ permissions:
 jobs:
     maven-postgresql-ci:
         runs-on: ubuntu-latest
-        strategy:
-          matrix:
-            os:
-              - ubuntu-latest
-            node-version:
-              - 18.x
         steps:
           - run: 'echo "Step is not required"'

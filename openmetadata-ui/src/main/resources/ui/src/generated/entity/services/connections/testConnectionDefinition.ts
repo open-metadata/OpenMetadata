@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * TestConnection is the definition that will encapsulate the steps required to test a
  * connection to a specific service.
  */
@@ -34,10 +32,10 @@ export interface TestConnectionDefinition {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -50,6 +48,10 @@ export interface TestConnectionDefinition {
      * Unique identifier of this test case definition instance.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Name of the Test Connection Definition. It should be the `type` of the service being
      * tested, e.g., Mysql, or Snowflake.
@@ -84,6 +86,7 @@ export interface TestConnectionDefinition {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -100,6 +103,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -120,17 +146,15 @@ export interface FieldChange {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this TestConnection definition.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.

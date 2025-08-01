@@ -5,7 +5,9 @@
   "description": "A unit of work that will be triggered as an API call to the OpenMetadata server.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.automations.CreateWorkflow",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "Name of the workflow.",
@@ -28,6 +30,9 @@
       "oneOf": [
         {
           "$ref": "../../entity/automations/testServiceConnection.json"
+        },
+        {
+          "$ref": "../../metadataIngestion/reverseIngestionPipeline.json"
         }
       ]
     },
@@ -41,6 +46,9 @@
       "oneOf": [
         {
           "$ref": "../../entity/services/connections/testConnectionResult.json"
+        },
+        {
+          "$ref": "../../entity/services/ingestionPipelines/reverseIngestionResponse.json"
         }
       ]
     },
@@ -49,11 +57,18 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Table belongs to.",
-      "type": "string"
+    "domains": {
+      "description": "Fully qualified names of the domains the Workflow belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false,
-  "required": ["name", "workflowType", "request"]
+  "required": [
+    "name",
+    "workflowType",
+    "request"
+  ]
 }

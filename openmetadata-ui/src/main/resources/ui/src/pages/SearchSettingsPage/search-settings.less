@@ -1,0 +1,179 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../styles/variables.less');
+
+.search-settings {
+  background-color: @grey-9;
+}
+
+.settings-row {
+  margin: 18px;
+  margin-bottom: 24px;
+  background-color: @white;
+  border: 1px solid @border-color-1;
+  border-radius: 10px;
+}
+
+.global-settings-cards-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: -10px;
+  margin-bottom: 8px;
+
+  .global-setting-card {
+    padding: 32px 20px;
+    border: 1px solid @grey-100;
+    border-radius: 12px;
+    background-color: @grey-50;
+    flex: 0 0 calc(25% - 15px);
+    min-width: 250px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    min-height: 60px;
+
+    &__content {
+      flex: 1;
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 500;
+      margin-right: 16px;
+    }
+
+    &__action {
+      flex-shrink: 0;
+    }
+  }
+}
+
+.boosts-section {
+  .ant-collapse {
+    .ant-collapse-item {
+      margin-bottom: 16px;
+      border: 1px solid @grey-100;
+      border-radius: 10px;
+      overflow: hidden;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      > .ant-collapse-header {
+        display: flex;
+        align-items: center;
+      }
+
+      .ant-collapse-content {
+        border-top: 1px solid @grey-100;
+      }
+    }
+  }
+  .ant-collapse-borderless > .ant-collapse-item > .ant-collapse-content {
+    background-color: @grey-100;
+  }
+}
+
+.field-value-boost-add-btn,
+.term-boost-add-btn,
+.term-boost-save-btn {
+  background-color: @primary-heading-color;
+  border: 1px solid @primary-heading-color;
+  color: @white;
+  border-radius: 8px;
+  &:hover {
+    background-color: @primary-heading-color;
+    border-color: @primary-heading-color;
+    color: @white;
+  }
+  &:disabled {
+    background-color: @grey-100;
+    border-color: @grey-300;
+    color: @grey-400;
+  }
+}
+
+.search-settings-collapse {
+  background-color: transparent;
+
+  .ant-collapse-item {
+    margin-bottom: 16px;
+
+    &.term-boost-panel {
+      border: 1px solid @border-color-1;
+      background-color: @grey-50;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    &.field-value-boost-panel {
+      border: 1px solid @border-color-1;
+      background-color: @grey-50;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+  }
+}
+
+.count-label {
+  padding: 2px 8px;
+  background-color: @primary-button-background;
+  border-radius: 16px;
+  color: @primary-heading-color;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.field-value-boost-modal {
+  .ant-select {
+    width: 100%;
+  }
+
+  .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  .range-inputs {
+    .ant-form-item {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.field-value-boost-table-container {
+  width: 100%;
+  overflow-x: auto;
+
+  .ant-table-wrapper {
+    width: 100%;
+  }
+
+  .ant-table {
+    min-width: 100%;
+  }
+
+  .ant-table-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+
+    &.ant-table-cell-ellipsis {
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.settings-term-boost-card {
+  min-width: 300px;
+}

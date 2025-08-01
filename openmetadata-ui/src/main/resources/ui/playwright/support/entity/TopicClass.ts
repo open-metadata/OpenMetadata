@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -37,33 +38,28 @@ export class TopicClass extends EntityClass {
       },
     },
   };
-  private topicName = `pw-topic-${uuid()}`;
-  private fqn = `${this.service.name}.${this.topicName}`;
+  private topicName = `pw-topic-entity-class-${uuid()}`;
 
   children = [
     {
-      name: 'default',
+      name: `default${uuid()}`,
       dataType: 'RECORD',
-      fullyQualifiedName: `${this.fqn}.default`,
       tags: [],
       children: [
         {
-          name: 'name',
+          name: `name${uuid()}`,
           dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default.name`,
           tags: [],
           children: [
             {
               name: 'first_name',
               dataType: 'STRING',
               description: 'Description for schema field first_name',
-              fullyQualifiedName: `${this.fqn}.default.name.first_name`,
               tags: [],
             },
             {
               name: 'last_name',
               dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.name.last_name`,
               tags: [],
             },
           ],
@@ -71,21 +67,26 @@ export class TopicClass extends EntityClass {
         {
           name: 'age',
           dataType: 'INT',
-          fullyQualifiedName: `${this.fqn}.default.age`,
           tags: [],
         },
         {
           name: 'club_name',
           dataType: 'STRING',
-          fullyQualifiedName: `${this.fqn}.default.club_name`,
           tags: [],
         },
       ],
+    },
+    {
+      name: `secondary${uuid()}`,
+      dataType: 'RECORD',
+      tags: [],
+      children: [],
     },
   ];
 
   entity = {
     name: this.topicName,
+    displayName: this.topicName,
     service: this.service.name,
     messageSchema: {
       schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
@@ -107,6 +108,7 @@ export class TopicClass extends EntityClass {
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Messaging;
+    this.serviceType = ServiceTypes.MESSAGING_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

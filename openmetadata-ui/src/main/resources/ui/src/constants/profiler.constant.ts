@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { capitalize, map, startCase, values } from 'lodash';
+import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
-import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
@@ -36,7 +34,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
-import i18n from '../utils/i18next/LocalUtil';
+import { t } from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 
 export const PROFILER_METRIC = [
@@ -64,6 +62,7 @@ export const PROFILER_METRIC = [
   'histogram',
   'customMetricsProfile',
 ];
+export const PROFILER_CHART_DATA_SIZE = 500;
 
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
@@ -212,22 +211,22 @@ export const INITIAL_SUM_METRIC_VALUE = {
 export const INITIAL_QUARTILE_METRIC_VALUE = {
   information: [
     {
-      title: i18n.t('label.first-quartile'),
+      title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
       color: '#1890FF',
     },
     {
-      title: i18n.t('label.median'),
+      title: t('label.median'),
       dataKey: 'median',
       color: '#7147E8',
     },
     {
-      title: i18n.t('label.inter-quartile-range'),
+      title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
       color: '#008376',
     },
     {
-      title: i18n.t('label.third-quartile'),
+      title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
       color: '#B02AAC',
     },
@@ -287,25 +286,6 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
   notCovered: 0,
   total: 0,
 };
-
-export const NO_DIMENSION = 'No Dimension';
-export const DIMENSIONS_DATA = [
-  ...Object.values(DataQualityDimensions),
-  NO_DIMENSION,
-];
-
-export const DEFAULT_DIMENSIONS_DATA = DIMENSIONS_DATA.reduce((acc, item) => {
-  return {
-    ...acc,
-    [item]: {
-      title: item,
-      success: 0,
-      failed: 0,
-      aborted: 0,
-      total: 0,
-    },
-  };
-}, {} as { [key: string]: StatusData });
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   {
@@ -378,7 +358,7 @@ export const TIME_BASED_PARTITION = [
 
 export const TEST_CASE_TYPE_OPTION = [
   ...map(TestCaseType, (value) => ({
-    label: capitalize(value),
+    label: t('label.' + value),
     value: value,
   })),
 ];
@@ -389,7 +369,7 @@ export const TEST_CASE_STATUS_OPTION = [
     value: '',
   },
   ...values(TestCaseStatus).map((value) => ({
-    label: value,
+    label: t('label.' + value.toLowerCase()),
     value: value,
   })),
 ];

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -71,6 +71,25 @@ def get_view_definition(
         schema=schema.lower() if schema else None,
         query=ORACLE_ALL_VIEW_DEFINITIONS,
     )
+
+
+@reflection.cache
+def get_all_view_definitions(self, connection, query):
+    """
+    Method to fetch view definition of all available views
+    """
+    self.all_view_definitions = {}
+    self.current_db: str = connection.engine.url.database  # type: ignore
+    result = connection.execute(query)
+    for view in result:
+        if hasattr(view, "view_def") and hasattr(view, "schema"):
+            self.all_view_definitions[
+                (view.view_name, view.schema)
+            ] = f"CREATE OR REPLACE VIEW {view.view_name} AS {view.view_def}"
+        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+            self.all_view_definitions[
+                (view.VIEW_NAME, view.SCHEMA)
+            ] = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view.VIEW_DEF}"
 
 
 def _get_col_type(
@@ -262,20 +281,6 @@ def get_mview_names_dialect(self, connection, schema=None, **kw):
     sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES)
     cursor = connection.execute(sql_query, {"owner": self.denormalize_name(schema)})
     return [self.normalize_name(row[0]) for row in cursor]
-
-
-def get_mview_definition(self, mview_name, schema=None):
-    """Return definition for `mview_name`.
-
-    :param schema: Optional, retrieve names from a non-default schema.
-        For special quoting, use :class:`.quoted_name`.
-
-    """
-
-    with self._operation_context() as conn:
-        return self.dialect.get_view_definition(
-            conn, mview_name, schema, info_cache=self.info_cache
-        )
 
 
 @reflection.cache

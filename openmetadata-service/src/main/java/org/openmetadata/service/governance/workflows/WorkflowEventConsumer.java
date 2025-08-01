@@ -1,6 +1,9 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,11 +30,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   // TODO: Understand if we need to consider ENTITY_NO_CHANGE, ENTITY_FIELDS_CHANGED or
   // ENTITY_RESTORED.
   private static List<EventType> validEventTypes =
-      List.of(
-          EventType.ENTITY_CREATED,
-          EventType.ENTITY_UPDATED,
-          EventType.ENTITY_SOFT_DELETED,
-          EventType.ENTITY_DELETED);
+      List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
+  private static List<String> validEntityTypes = List.of(Entity.GLOSSARY_TERM);
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
@@ -52,19 +52,21 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     // NOTE: We are only consuming ENTITY related events.
     try {
       EventType eventType = event.getEventType();
+      String entityType = event.getEntityType();
 
-      if (validEventTypes.contains(eventType)) {
-        String signal = String.format("%s-%s", event.getEntityType(), eventType.toString());
+      if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
+        String signal = String.format("%s-%s", entityType, eventType.toString());
 
         EntityReference entityReference =
-            Entity.getEntityReferenceById(event.getEntityType(), event.getEntityId(), Include.ALL);
+            Entity.getEntityReferenceById(entityType, event.getEntityId(), Include.ALL);
         MessageParser.EntityLink entityLink =
-            new MessageParser.EntityLink(
-                event.getEntityType(), entityReference.getFullyQualifiedName());
+            new MessageParser.EntityLink(entityType, entityReference.getFullyQualifiedName());
 
         Map<String, Object> variables = new HashMap<>();
 
-        variables.put("relatedEntity", entityLink.getLinkString());
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+            entityLink.getLinkString());
 
         WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }

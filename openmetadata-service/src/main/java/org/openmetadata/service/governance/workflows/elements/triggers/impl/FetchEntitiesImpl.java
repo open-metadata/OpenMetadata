@@ -10,12 +10,12 @@ import java.util.Optional;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.util.JsonUtils;
 
 public class FetchEntitiesImpl implements JavaDelegate {
   private Expression entityTypeExpr;
@@ -34,7 +34,7 @@ public class FetchEntitiesImpl implements JavaDelegate {
     List<Object> searchAfter =
         JsonUtils.readOrConvertValues(execution.getVariable("searchAfter"), Object.class);
 
-    SearchClient.SearchResultListMapper response =
+    SearchResultListMapper response =
         fetchEntities(searchAfter, entityType, searchFilter, batchSize);
 
     List<String> entityList =
@@ -55,7 +55,7 @@ public class FetchEntitiesImpl implements JavaDelegate {
     execution.setVariable("searchAfter", JsonUtils.pojoToJson(response.getLastHitSortValues()));
   }
 
-  private SearchClient.SearchResultListMapper fetchEntities(
+  private SearchResultListMapper fetchEntities(
       List<Object> searchAfterList, String entityType, String searchFilter, int batchSize) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     SearchSortFilter searchSortFilter =

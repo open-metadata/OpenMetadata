@@ -12,17 +12,21 @@
  */
 
 import { List, Space, Typography } from 'antd';
-import React, { FC } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ThreadType } from '../../generated/entity/feed/thread';
+import { EntityType } from '../../enums/entity.enum';
+import { TaskType, ThreadType } from '../../generated/entity/feed/thread';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityLinkFromType } from '../../utils/EntityUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
+import Fqn from '../../utils/Fqn';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
 
 const NotificationFeedCard: FC<NotificationFeedProp> = ({
@@ -35,6 +39,50 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 }) => {
   const { t } = useTranslation();
   const { task: taskDetails } = task ?? {};
+
+  const taskContent = useMemo(() => {
+    if (
+      entityType === 'glossaryTerm' &&
+      task.task?.type === TaskType.RequestApproval
+    ) {
+      return (
+        <>
+          <span className="p-x-xss">{task.message}</span>
+          <Link
+            className='className="p-r-xss"'
+            to={getEntityLinkFromType(
+              task?.entityRef?.fullyQualifiedName ?? '',
+              task?.entityRef?.type as EntityType,
+              task?.entityRef as SourceType
+            )}>
+            <span className="m-r-xss">{task?.entityRef?.displayName}</span>
+          </Link>
+          <span>{t('label.of-lowercase')}</span>
+          <Link
+            to={getEntityLinkFromType(
+              Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0],
+              task?.entityRef?.type as EntityType,
+              task?.entityRef as SourceType
+            )}>
+            <span className="m-l-xss">
+              {Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0]}
+            </span>
+          </Link>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <span className="p-x-xss">
+          {t('message.assigned-you-a-new-task-lowercase')}
+        </span>
+        <Link to={getTaskDetailPath(task)}>
+          {`#${taskDetails?.id}`} {taskDetails?.type}
+        </Link>
+      </>
+    );
+  }, [entityType, task, taskDetails]);
 
   return (
     <Link
@@ -64,14 +112,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   </Link>
                 </>
               ) : (
-                <>
-                  <span className="p-x-xss">
-                    {t('message.assigned-you-a-new-task-lowercase')}
-                  </span>
-                  <Link to={getTaskDetailPath(task)}>
-                    {`#${taskDetails?.id}`} {taskDetails?.type}
-                  </Link>
-                </>
+                taskContent
               )}
             </Typography.Paragraph>
             <Typography.Text

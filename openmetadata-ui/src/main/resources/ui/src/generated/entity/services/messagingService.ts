@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Messaging Service entity, such as Kafka and Pulsar.
  */
 export interface MessagingService {
@@ -39,9 +37,13 @@ export interface MessagingService {
      */
     displayName?: string;
     /**
-     * Domain the Messaging service belongs to.
+     * Domains the Messaging service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -54,6 +56,14 @@ export interface MessagingService {
      * Unique identifier of this messaging service instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this messaging service.
      */
@@ -100,6 +110,7 @@ export interface MessagingService {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -116,6 +127,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -172,6 +206,11 @@ export interface Connection {
      */
     consumerConfig?: { [key: string]: any };
     /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: Config;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -211,6 +250,10 @@ export interface Connection {
      */
     securityProtocol?:           SecurityProtocol;
     supportsMetadataExtraction?: boolean;
+    /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: FilterPattern;
     /**
      * Service Type
      *
@@ -272,23 +315,13 @@ export interface AWSCredentials {
 }
 
 /**
- * sasl.mechanism Consumer Config property
- *
- * SASL Mechanism consumer config property
- */
-export enum SaslMechanismType {
-    Gssapi = "GSSAPI",
-    Oauthbearer = "OAUTHBEARER",
-    Plain = "PLAIN",
-    ScramSHA256 = "SCRAM-SHA-256",
-    ScramSHA512 = "SCRAM-SHA-512",
-}
-
-/**
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
  * Client SSL configuration
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -308,6 +341,19 @@ export interface Config {
 }
 
 /**
+ * sasl.mechanism Consumer Config property
+ *
+ * SASL Mechanism consumer config property
+ */
+export enum SaslMechanismType {
+    Gssapi = "GSSAPI",
+    Oauthbearer = "OAUTHBEARER",
+    Plain = "PLAIN",
+    ScramSHA256 = "SCRAM-SHA-256",
+    ScramSHA512 = "SCRAM-SHA-512",
+}
+
+/**
  * security.protocol consumer config property
  */
 export enum SecurityProtocol {
@@ -315,6 +361,22 @@ export enum SecurityProtocol {
     SSL = "SSL",
     SaslPlaintext = "SASL_PLAINTEXT",
     SaslSSL = "SASL_SSL",
+}
+
+/**
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -352,7 +414,7 @@ export enum MessagingServiceType {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Messaging service belongs to.
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
@@ -448,6 +510,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

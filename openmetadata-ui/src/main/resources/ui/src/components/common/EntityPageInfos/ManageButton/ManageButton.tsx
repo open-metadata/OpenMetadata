@@ -15,18 +15,20 @@ import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { isUndefined } from 'lodash';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-gray.svg';
+import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import { DISPLAY_NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -47,6 +49,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   entityType,
   canDelete,
   entityId,
+  isAsyncDelete = false,
   isRecursiveDelete,
   extraDropdownContent,
   onAnnouncementClick,
@@ -112,7 +115,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     [editDisplayNamePermission, onEditDisplayName, deleted]
   );
 
-  const renderDropdownContainer = useCallback((menus) => {
+  const renderDropdownContainer = useCallback((menus: React.ReactNode) => {
     return <div data-testid="manage-dropdown-list-container">{menus}</div>;
   }, []);
 
@@ -235,13 +238,18 @@ const ManageButton: FC<ManageButtonProps> = ({
       : []),
   ];
 
+  const formattedEntityType = useMemo(
+    () => entityUtilClassBase.getFormattedEntityType(entityType),
+    [entityType]
+  );
+
   return (
     <>
       {items.length ? (
         // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
         <Button
-          className="remove-button-default-styling"
+          className="remove-button-default-styling p-0"
           onClick={(e) => e.stopPropagation()}>
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
@@ -254,7 +262,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             <Tooltip
               placement="topRight"
               title={t('label.manage-entity', {
-                entity: capitalize(entityType),
+                entity: formattedEntityType,
               })}>
               <Button
                 className={classNames('flex-center px-1.5', buttonClassName)}
@@ -278,6 +286,7 @@ const ManageButton: FC<ManageButtonProps> = ({
           entityName={displayName ?? entityName}
           entityType={entityType}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+          isAsyncDelete={isAsyncDelete}
           isRecursiveDelete={isRecursiveDelete}
           prepareType={prepareType}
           softDeleteMessagePostFix={softDeleteMessagePostFix}
@@ -289,6 +298,7 @@ const ManageButton: FC<ManageButtonProps> = ({
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
+          displayNameValidationRules={DISPLAY_NAME_FIELD_RULES}
           entity={{
             name: entityName,
             displayName,

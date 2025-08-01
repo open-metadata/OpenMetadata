@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Settings. A Settings represents a generic Setting.
  */
 export interface Settings {
@@ -37,13 +35,16 @@ export enum SettingType {
     CustomUIThemePreference = "customUiThemePreference",
     Elasticsearch = "elasticsearch",
     EmailConfiguration = "emailConfiguration",
+    EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
+    ScimConfiguration = "scimConfiguration",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SlackAppConfiguration = "slackAppConfiguration",
@@ -52,6 +53,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    WorkflowSettings = "workflowSettings",
 }
 
 /**
@@ -73,16 +75,18 @@ export enum SettingType {
  *
  * This schema defines the SMTP Settings for sending Email
  *
+ * This schema defines the OpenMetadata base URL configuration
+ *
  * This schema defines the Slack App Information
  *
  * This schema defines the profiler configuration. It is used to configure globally the
  * metrics to compute for specific data types.
  *
- * This schema defines the Rbac Search Configuration.
- *
  * This schema defines the Asset Certification Settings.
  *
  * This schema defines the Lineage Settings.
+ *
+ * This schema defines the Workflow Settings.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -200,9 +204,17 @@ export interface PipelineServiceClientConfiguration {
      */
     samlConfiguration?: SamlSSOClientConfig;
     /**
+     * Token Validation Algorithm to use.
+     */
+    tokenValidationAlgorithm?: TokenValidationAlgorithm;
+    /**
      * List of unique admin principals.
      */
     adminPrincipals?: string[];
+    /**
+     * Allowed Domains to access
+     */
+    allowedDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
@@ -256,6 +268,10 @@ export interface PipelineServiceClientConfiguration {
      * Keep Alive Timeout in Seconds
      */
     keepAliveTimeoutSecs?: number;
+    /**
+     * Configuration for natural language search capabilities
+     */
+    naturalLanguageSearch?: NaturalLanguageSearch;
     /**
      * Elastic Search Password for Login
      *
@@ -334,10 +350,6 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSmtpServer?: boolean;
     /**
-     * Openmetadata Server Endpoint
-     */
-    openMetadataUrl?: string;
-    /**
      * Mail of the sender
      */
     senderMail?: string;
@@ -357,6 +369,10 @@ export interface PipelineServiceClientConfiguration {
     templates?:              Templates;
     transportationStrategy?: TransportationStrategy;
     /**
+     * OpenMetadata Server Endpoint
+     */
+    openMetadataUrl?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -367,9 +383,26 @@ export interface PipelineServiceClientConfiguration {
     signingSecret?:       string;
     metricConfiguration?: MetricConfigurationDefinition[];
     /**
-     * Flag to enable or disable the RBAC Search Configuration.
+     * Configurations of allowed searchable fields for each entity type
      */
-    enableAccessControl?: boolean;
+    allowedFields?: AllowedSearchFields[];
+    /**
+     * Configurations of allowed field value boost fields for each entity type
+     */
+    allowedFieldValueBoosts?: AllowedFieldValueBoostFields[];
+    /**
+     * List of per-asset search configurations that override the global settings.
+     */
+    assetTypeConfigurations?: AssetTypeConfiguration[];
+    /**
+     * Fallback configuration for any entity/asset not matched in assetTypeConfigurations.
+     */
+    defaultConfiguration?: AssetTypeConfiguration;
+    globalSettings?:       GlobalSettings;
+    /**
+     * Configuration for Natural Language Query capabilities
+     */
+    nlqConfiguration?: NlqConfiguration;
     /**
      * Classification that can be used for certifications.
      */
@@ -390,6 +423,278 @@ export interface PipelineServiceClientConfiguration {
      * Upstream Depth for Lineage.
      */
     upstreamDepth?: number;
+    /**
+     * Used to set up the Workflow Executor Settings.
+     */
+    executorConfiguration?: ExecutorConfiguration;
+    /**
+     * Used to set up the History CleanUp Settings.
+     */
+    historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
+    /**
+     * Semantics rules defined in the data contract.
+     */
+    entitySemantics?: SemanticsRule[];
+}
+
+export interface AllowedFieldValueBoostFields {
+    /**
+     * Entity type this field value boost configuration applies to
+     */
+    entityType: string;
+    fields:     AllowedFieldValueBoostField[];
+}
+
+export interface AllowedFieldValueBoostField {
+    /**
+     * Detailed explanation of what this numeric field represents and how it can be used for
+     * boosting relevance
+     */
+    description: string;
+    /**
+     * Field name that can be used in fieldValueBoosts
+     */
+    name: string;
+}
+
+export interface AllowedSearchFields {
+    /**
+     * Entity type this field configuration applies to
+     */
+    entityType: string;
+    fields:     AllowedFieldField[];
+}
+
+export interface AllowedFieldField {
+    /**
+     * Detailed explanation of what this field represents and how it affects search behavior
+     */
+    description: string;
+    /**
+     * Field name that can be used in searchFields
+     */
+    name: string;
+}
+
+/**
+ * Fallback configuration for any entity/asset not matched in assetTypeConfigurations.
+ */
+export interface AssetTypeConfiguration {
+    /**
+     * Catch-all for any advanced or asset-specific search settings.
+     */
+    additionalSettings?: { [key: string]: any };
+    /**
+     * List of additional aggregations for this asset type.
+     */
+    aggregations?: Aggregation[];
+    /**
+     * Name or type of the asset to which this configuration applies.
+     */
+    assetType: string;
+    /**
+     * How the function score is combined with the main query score.
+     */
+    boostMode?: BoostMode;
+    /**
+     * List of numeric field-based boosts that apply only to this asset.
+     */
+    fieldValueBoosts?: FieldValueBoost[];
+    /**
+     * Which fields to highlight for this asset.
+     */
+    highlightFields?: string[];
+    /**
+     * Multipliers applied to different match types to control their relative importance.
+     */
+    matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
+    /**
+     * How to combine function scores if multiple boosts are applied.
+     */
+    scoreMode?: ScoreMode;
+    /**
+     * Which fields to search for this asset, with their boost values.
+     */
+    searchFields?: FieldBoost[];
+    /**
+     * List of field=value term-boost rules that apply only to this asset.
+     */
+    termBoosts?: TermBoost[];
+}
+
+export interface Aggregation {
+    /**
+     * The field on which this aggregation is performed.
+     */
+    field: string;
+    /**
+     * A descriptive name for the aggregation.
+     */
+    name: string;
+    /**
+     * The type of aggregation to perform.
+     */
+    type: Type;
+}
+
+/**
+ * The type of aggregation to perform.
+ */
+export enum Type {
+    Avg = "avg",
+    DateHistogram = "date_histogram",
+    Filters = "filters",
+    Histogram = "histogram",
+    Max = "max",
+    Min = "min",
+    Missing = "missing",
+    Nested = "nested",
+    Range = "range",
+    ReverseNested = "reverse_nested",
+    Stats = "stats",
+    Sum = "sum",
+    Terms = "terms",
+    TopHits = "top_hits",
+}
+
+/**
+ * How the function score is combined with the main query score.
+ */
+export enum BoostMode {
+    Avg = "avg",
+    Max = "max",
+    Min = "min",
+    Multiply = "multiply",
+    Replace = "replace",
+    Sum = "sum",
+}
+
+export interface FieldValueBoost {
+    /**
+     * Conditional logic (e.g., range constraints) to apply the boost only for certain values.
+     */
+    condition?: Condition;
+    /**
+     * Multiplier factor for the field value.
+     */
+    factor: number;
+    /**
+     * Numeric field name whose value will affect the score.
+     */
+    field: string;
+    /**
+     * Value to use if the field is missing on a document.
+     */
+    missing?: number;
+    /**
+     * Optional mathematical transformation to apply to the field value.
+     */
+    modifier?: Modifier;
+}
+
+/**
+ * Conditional logic (e.g., range constraints) to apply the boost only for certain values.
+ */
+export interface Condition {
+    range?: Range;
+}
+
+export interface Range {
+    gt?:  number;
+    gte?: number;
+    lt?:  number;
+    lte?: number;
+}
+
+/**
+ * Optional mathematical transformation to apply to the field value.
+ */
+export enum Modifier {
+    Ln = "ln",
+    Ln1P = "ln1p",
+    Ln2P = "ln2p",
+    Log = "log",
+    Log1P = "log1p",
+    Log2P = "log2p",
+    None = "none",
+    Reciprocal = "reciprocal",
+    Sqrt = "sqrt",
+    Square = "square",
+}
+
+/**
+ * Multipliers applied to different match types to control their relative importance.
+ */
+export interface MatchTypeBoostMultipliers {
+    /**
+     * Multiplier for exact match queries (term queries on .keyword fields)
+     */
+    exactMatchMultiplier?: number;
+    /**
+     * Multiplier for fuzzy match queries
+     */
+    fuzzyMatchMultiplier?: number;
+    /**
+     * Multiplier for phrase match queries
+     */
+    phraseMatchMultiplier?: number;
+}
+
+/**
+ * How to combine function scores if multiple boosts are applied.
+ */
+export enum ScoreMode {
+    Avg = "avg",
+    First = "first",
+    Max = "max",
+    Min = "min",
+    Multiply = "multiply",
+    Sum = "sum",
+}
+
+export interface FieldBoost {
+    /**
+     * Relative boost factor for the above field.
+     */
+    boost?: number;
+    /**
+     * Field name to search/boost.
+     */
+    field: string;
+    /**
+     * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+     * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+     * behavior.
+     */
+    matchType?: MatchType;
+}
+
+/**
+ * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+ * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+ * behavior.
+ */
+export enum MatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
+}
+
+export interface TermBoost {
+    /**
+     * Numeric boost factor to apply if a document has field==value.
+     */
+    boost: number;
+    /**
+     * The keyword field to match, e.g. tier.tagFQN, tags.tagFQN, certification.tagLabel.tagFQN,
+     * etc.
+     */
+    field: string;
+    /**
+     * The exact keyword value to match in the above field.
+     */
+    value: string;
 }
 
 /**
@@ -569,6 +874,96 @@ export enum AuthProvider {
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
+}
+
+/**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * Name of the semantics rule.
+     */
+    name: string;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
+}
+
+/**
+ * Used to set up the Workflow Executor Settings.
+ */
+export interface ExecutorConfiguration {
+    /**
+     * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
+     */
+    corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
+     * jobs that takes too long to run being retried while running.
+     */
+    jobLockTimeInMillis?: number;
+    /**
+     * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
+     */
+    maxPoolSize?: number;
+    /**
+     * Amount of Tasks that can be queued to be picked up by the Workflow Executor.
+     */
+    queueSize?: number;
+    /**
+     * The amount of Tasks that the Workflow Executor is able to pick up each time it looks for
+     * more.
+     */
+    tasksDuePerAcquisition?: number;
+}
+
+export interface GlobalSettings {
+    /**
+     * List of global aggregations to include in the search query.
+     */
+    aggregations?: Aggregation[];
+    /**
+     * Flag to enable or disable RBAC Search Configuration globally.
+     */
+    enableAccessControl?: boolean;
+    /**
+     * Optional list of numeric field-based boosts applied globally.
+     */
+    fieldValueBoosts?: FieldValueBoost[];
+    /**
+     * Which fields to highlight by default.
+     */
+    highlightFields?:   string[];
+    maxAggregateSize?:  number;
+    maxAnalyzedOffset?: number;
+    maxResultHits?:     number;
+    /**
+     * List of field=value term-boost rules that apply only to this asset.
+     */
+    termBoosts?: TermBoost[];
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface HistoryCleanUpConfiguration {
+    /**
+     * Cleans the Workflow Task that were finished, after given number of days.
+     */
+    cleanAfterNumberOfDays?: number;
 }
 
 /**
@@ -808,6 +1203,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -817,12 +1213,16 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -904,6 +1304,184 @@ export enum MetricType {
 }
 
 /**
+ * Configuration for natural language search capabilities
+ */
+export interface NaturalLanguageSearch {
+    /**
+     * AWS Bedrock configuration for natural language processing
+     */
+    bedrock?: Bedrock;
+    /**
+     * Enable or disable natural language search
+     */
+    enabled?: boolean;
+    /**
+     * Fully qualified class name of the NLQService implementation to use
+     */
+    providerClass?: string;
+}
+
+/**
+ * AWS Bedrock configuration for natural language processing
+ */
+export interface Bedrock {
+    /**
+     * AWS access key for Bedrock service authentication
+     */
+    accessKey?: string;
+    /**
+     * Bedrock model identifier to use for query transformation
+     */
+    modelId?: string;
+    /**
+     * AWS Region for Bedrock service
+     */
+    region?: string;
+    /**
+     * AWS secret key for Bedrock service authentication
+     */
+    secretKey?: string;
+    /**
+     * Set to true to use IAM role based authentication instead of access/secret keys.
+     */
+    useIamRole?: boolean;
+}
+
+/**
+ * Configuration for Natural Language Query capabilities
+ */
+export interface NlqConfiguration {
+    entitySpecificInstructions?: EntitySpecificInstruction[];
+    examples?:                   QueryExample[];
+    /**
+     * Guidelines for querying custom properties in extension fields
+     */
+    extensionFieldGuidelines?: ExtensionFieldGuidelines;
+    globalInstructions?:       PromptSection[];
+    /**
+     * Configuration for including Elasticsearch mapping information in prompts
+     */
+    mappingConfiguration?: MappingConfiguration;
+    /**
+     * Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific
+     * instructions should appear.
+     */
+    promptTemplate?: string;
+    [property: string]: any;
+}
+
+export interface EntitySpecificInstruction {
+    /**
+     * Entity type this instruction applies to (e.g., 'table', 'dashboard')
+     */
+    entityType: string;
+    sections:   PromptSection[];
+    [property: string]: any;
+}
+
+export interface PromptSection {
+    /**
+     * The content for this section of the prompt
+     */
+    content: string;
+    /**
+     * Display order for this section (lower numbers appear first)
+     */
+    order?: number;
+    /**
+     * Section name (e.g., 'CRITICAL FIELD CORRECTIONS', 'QUERY PATTERNS')
+     */
+    section: string;
+    [property: string]: any;
+}
+
+export interface QueryExample {
+    /**
+     * Human-readable description of the example query
+     */
+    description?: string;
+    /**
+     * Entity types this example applies to (empty array = all types)
+     */
+    entityTypes?: string[];
+    /**
+     * The corresponding Elasticsearch query
+     */
+    esQuery: string;
+    /**
+     * Natural language query example
+     */
+    query: string;
+    [property: string]: any;
+}
+
+/**
+ * Guidelines for querying custom properties in extension fields
+ */
+export interface ExtensionFieldGuidelines {
+    examples?: QueryExample[];
+    /**
+     * Title for the extension field guidelines section
+     */
+    header:   string;
+    sections: GuidelineSection[];
+    [property: string]: any;
+}
+
+export interface GuidelineSection {
+    guidelines: string[];
+    /**
+     * Section title (e.g., 'For EntityReference type custom properties')
+     */
+    title: string;
+    [property: string]: any;
+}
+
+/**
+ * Configuration for including Elasticsearch mapping information in prompts
+ */
+export interface MappingConfiguration {
+    /**
+     * Specific guidance for interpreting field patterns in the mapping
+     */
+    fieldInterpretations?: FieldInterpretation[];
+    /**
+     * Whether to include mapping information in the prompts
+     */
+    includeMappings?: boolean;
+    mappingSection?:  TitleSection;
+    [property: string]: any;
+}
+
+export interface FieldInterpretation {
+    /**
+     * How to interpret and query this field pattern
+     */
+    explanation: string;
+    /**
+     * Field pattern to match (e.g., 'tags.tagFQN')
+     */
+    pattern: string;
+    [property: string]: any;
+}
+
+export interface TitleSection {
+    /**
+     * Description text for the section
+     */
+    description?: string;
+    /**
+     * Position of this section in the prompt (lower numbers appear first)
+     */
+    order?: number;
+    /**
+     * Title for the section
+     */
+    title?: string;
+    [property: string]: any;
+}
+
+/**
  * Oidc Configuration for Confidential Client Type
  *
  * Oidc client security configs.
@@ -934,6 +1512,10 @@ export interface OidcClientConfig {
      */
     id?: string;
     /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
+    /**
      * Max Clock Skew
      */
     maxClockSkew?: string;
@@ -941,6 +1523,10 @@ export interface OidcClientConfig {
      * Preferred Jws Algorithm.
      */
     preferredJwsAlgorithm?: string;
+    /**
+     * Prompt whether login/consent
+     */
+    prompt?: string;
     /**
      * Auth0 Client Secret Key.
      */
@@ -957,6 +1543,10 @@ export interface OidcClientConfig {
      * Server Url.
      */
     serverUrl?: string;
+    /**
+     * Validity for the Session in case of confidential clients
+     */
+    sessionExpiry?: number;
     /**
      * Tenant in case of Azure.
      */
@@ -1170,6 +1760,15 @@ export interface Config {
 export enum Templates {
     Collate = "collate",
     Openmetadata = "openmetadata",
+}
+
+/**
+ * Token Validation Algorithm to use.
+ */
+export enum TokenValidationAlgorithm {
+    Rs256 = "RS256",
+    Rs384 = "RS384",
+    Rs512 = "RS512",
 }
 
 export enum TransportationStrategy {

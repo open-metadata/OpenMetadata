@@ -10,44 +10,78 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Modal, Space, Typography } from 'antd';
-import { startCase } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import {
+  CloseOutlined,
+  PlusOutlined,
+  RedoOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
+import { Button, Card, Modal, Space, Typography } from 'antd';
+import { kebabCase } from 'lodash';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { Link, useNavigate } from 'react-router-dom';
+import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import './customizable-page-header.less';
 
 export const CustomizablePageHeader = ({
+  disableSave,
+  onAddWidget,
   onReset,
   onSave,
   personaName,
 }: {
-  onSave: () => Promise<void>;
+  disableSave?: boolean;
+  onAddWidget?: () => void;
   onReset: () => void;
+  onSave: () => Promise<void>;
   personaName: string;
 }) => {
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
   const { currentPageType } = useCustomizeStore();
-  const history = useHistory();
-  const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const { theme } = useApplicationStore();
+  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
+  const [confirmationModalOpen, setConfirmationModalOpen] = useState(false);
+
+  const [confirmationModalType, setConfirmationModalType] = useState<
+    'reset' | 'close'
+  >('close');
+
+  const isLandingPage = currentPageType === PageType.LandingPage;
 
   const handleCancel = () => {
-    history.push(getPersonaDetailsPath(personaFqn));
+    // Go back in history
+    navigate(-1);
   };
 
+  const { modalTitle, modalDescription } = useMemo(() => {
+    if (confirmationModalType === 'reset') {
+      return {
+        modalTitle: t('label.reset-default-layout'),
+        modalDescription: t('message.reset-layout-confirmation'),
+      };
+    }
+
+    return {
+      modalTitle: t('message.are-you-sure-want-to-text', {
+        text: t('label.close'),
+      }),
+      modalDescription: t('message.unsaved-changes-warning'),
+    };
+  }, [confirmationModalType]);
+
   const handleOpenResetModal = useCallback(() => {
-    setIsResetModalOpen(true);
+    setConfirmationModalType('reset');
+    setConfirmationModalOpen(true);
   }, []);
 
   const handleCloseResetModal = useCallback(() => {
-    setIsResetModalOpen(false);
+    setConfirmationModalOpen(false);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -57,76 +91,112 @@ export const CustomizablePageHeader = ({
   }, [onSave]);
 
   const handleReset = useCallback(async () => {
-    onReset();
-    setIsResetModalOpen(false);
-  }, [onReset]);
+    confirmationModalType === 'reset' ? onReset() : handleCancel();
+    setConfirmationModalOpen(false);
+  }, [onReset, confirmationModalType, handleCancel]);
+
   const i18Values = useMemo(
     () => ({
       persona: personaName,
-      pageName: startCase(currentPageType as string) ?? t('label.landing-page'),
+      entity: isLandingPage
+        ? t('label.home-page')
+        : t(`label.${kebabCase(currentPageType as string)}`),
     }),
-    [personaName]
+    [personaName, isLandingPage]
   );
 
+  const handleClose = useCallback(() => {
+    setConfirmationModalType('close');
+    setConfirmationModalOpen(true);
+  }, []);
+
   return (
-    <Col
-      className="bg-white d-flex justify-between border-bottom p-sm"
-      data-testid="customize-landing-page-header"
-      span={24}>
-      <div className="d-flex gap-2 items-center">
-        <Typography.Title
-          className="m-0"
-          data-testid="customize-page-title"
-          level={5}>
-          <Transi18next
-            i18nKey="message.customize-landing-page-header"
-            renderElement={
-              <Link
-                style={{ color: theme.primaryColor, fontSize: '16px' }}
-                to={getPersonaDetailsPath(personaFqn)}
-              />
-            }
-            values={i18Values}
-          />
-        </Typography.Title>
+    <Card
+      className="customize-page-header m-b-lg"
+      data-testid="customize-landing-page-header">
+      <div className="d-flex items-center justify-between">
+        <div>
+          <Typography.Title
+            className="m-0"
+            data-testid="customize-page-title"
+            level={5}>
+            {t('label.customize-entity', {
+              entity: isLandingPage
+                ? t('label.home-page')
+                : t(`label.${kebabCase(currentPageType as string)}`),
+            })}
+          </Typography.Title>
+          <Typography.Paragraph className="m-0">
+            <Transi18next
+              i18nKey={
+                isLandingPage
+                  ? 'message.customize-home-page-page-header-for-persona'
+                  : 'message.customize-entity-landing-page-header-for-persona'
+              }
+              renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
+              values={i18Values}
+            />
+          </Typography.Paragraph>
+        </div>
+        <Space>
+          {isLandingPage ? (
+            <Button
+              data-testid="add-widget-button"
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={onAddWidget}>
+              {t('label.add-widget-plural')}
+            </Button>
+          ) : (
+            <Button
+              data-testid="cancel-button"
+              disabled={saving}
+              icon={<CloseOutlined />}
+              onClick={handleClose}>
+              {t('label.close')}
+            </Button>
+          )}
+          <Button
+            data-testid="reset-button"
+            disabled={saving}
+            icon={<RedoOutlined />}
+            onClick={handleOpenResetModal}>
+            {t('label.reset')}
+          </Button>
+          <Button
+            data-testid="save-button"
+            disabled={disableSave}
+            icon={<SaveOutlined />}
+            loading={saving}
+            type="primary"
+            onClick={handleSave}>
+            {t('label.save')}
+          </Button>
+          {isLandingPage && (
+            <Button
+              className="landing-page-cancel-button"
+              data-testid="cancel-button"
+              disabled={saving}
+              icon={<CloseOutlined />}
+              onClick={handleClose}
+            />
+          )}
+        </Space>
       </div>
-      <Space>
-        <Button
-          data-testid="cancel-button"
-          disabled={saving}
-          size="small"
-          onClick={handleCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="reset-button"
-          disabled={saving}
-          size="small"
-          onClick={handleOpenResetModal}>
-          {t('label.reset')}
-        </Button>
-        <Button
-          data-testid="save-button"
-          loading={saving}
-          size="small"
-          type="primary"
-          onClick={handleSave}>
-          {t('label.save')}
-        </Button>
-      </Space>
-      {isResetModalOpen && (
+
+      {confirmationModalOpen && (
         <Modal
           centered
           cancelText={t('label.no')}
           data-testid="reset-layout-modal"
           okText={t('label.yes')}
-          open={isResetModalOpen}
-          title={t('label.reset-default-layout')}
+          open={confirmationModalOpen}
+          title={modalTitle}
           onCancel={handleCloseResetModal}
           onOk={handleReset}>
-          {t('message.reset-layout-confirmation')}
+          {modalDescription}
         </Modal>
       )}
-    </Col>
+    </Card>
   );
 };

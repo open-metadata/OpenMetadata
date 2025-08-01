@@ -17,17 +17,13 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
+import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import SignInPage from './SignInPage';
 
 const mockuseApplicationStore = useApplicationStore as unknown as jest.Mock;
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -49,6 +45,14 @@ jest.mock('../../components/common/BrandImage/BrandImage', () => {
   return jest.fn().mockReturnValue(<p>testBrandLogo</p>);
 });
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
+  return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
+});
+
+jest.mock('../../components/Layout/CarouselLayout/CarouselLayout', () => ({
+  CarouselLayout: jest.fn().mockImplementation(({ children }) => children),
+}));
+
 describe('Test SignInPage Component', () => {
   afterEach(() => {
     jest.clearAllMocks();
@@ -69,13 +73,15 @@ describe('Test SignInPage Component', () => {
     const { container } = render(<SignInPage />, {
       wrapper: MemoryRouter,
     });
-    const signInPage = await findByTestId(container, 'signin-page');
-    const bgImg = await findByTestId(container, 'bg-image');
-    const LoginCarousel = await findByText(container, /LoginCarousel/i);
+    const signInPage = await findByTestId(container, 'login-form-container');
 
     expect(signInPage).toBeInTheDocument();
-    expect(bgImg).toBeInTheDocument();
-    expect(LoginCarousel).toBeInTheDocument();
+    expect(CarouselLayout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'label.sign-in',
+      }),
+      {}
+    );
   });
 
   it.each([

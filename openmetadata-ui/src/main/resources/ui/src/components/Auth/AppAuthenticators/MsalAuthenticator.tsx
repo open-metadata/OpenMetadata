@@ -16,62 +16,66 @@ import {
   InteractionStatus,
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
-import { AxiosError } from 'axios';
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { toast } from 'react-toastify';
 import {
   msalLoginRequest,
   parseMSALResponse,
 } from '../../../utils/AuthProvider.util';
 import { getPopupSettingLink } from '../../../utils/BrowserUtils';
 import { Transi18next } from '../../../utils/CommonUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
 } from '../AuthProviders/AuthProvider.interface';
-
 interface Props {
   children: ReactNode;
-  onLoginSuccess: (user: OidcUser) => void;
-  onLoginFailure: (error: AxiosError) => void;
-  onLogoutSuccess: () => void;
 }
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  (
-    { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
-    ref
-  ) => {
+  ({ children }: Props, ref) => {
     const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
-
-    const handleOnLogoutSuccess = async () => {
-      for (const key in localStorage) {
-        if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
-          localStorage.removeItem(key);
-        }
-      }
-      onLogoutSuccess();
-    };
+    const { handleSuccessfulLogin, handleFailedLogin, handleSuccessfulLogout } =
+      useAuthProvider();
 
     const login = async () => {
       try {
-        // Use login with redirect to avoid popup issue with maximized browser window
-        await instance.loginRedirect();
-      } catch (error) {
-        onLoginFailure(error as AxiosError);
+        const isInIframe = window.self !== window.top;
+
+        if (isInIframe) {
+          // Use popup login when in iframe to avoid redirect issues
+          const response = await instance.loginPopup(msalLoginRequest);
+
+          handleSuccessfulLogin(parseMSALResponse(response));
+        } else {
+          // Use login with redirect for normal window context
+          await instance.loginRedirect(msalLoginRequest);
+        }
+      } catch {
+        handleFailedLogin();
       }
     };
 
-    const logout = () => {
-      handleOnLogoutSuccess();
+    const logout = async () => {
+      try {
+        for (const key in localStorage) {
+          if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } finally {
+        // Cleanup application state
+        handleSuccessfulLogout();
+      }
     };
 
     const fetchIdToken = async (
@@ -96,7 +100,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               // eslint-disable-next-line no-console
               console.error(e);
               if (e?.message?.includes('popup_window_error')) {
-                toast.error(
+                showErrorToast(
                   <Transi18next
                     i18nKey="message.popup-block-message"
                     renderElement={
@@ -124,7 +128,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const renewIdToken = async () => {
-      const user = await fetchIdToken(true);
+      const user = await fetchIdToken();
 
       return user.id_token;
     };
@@ -144,10 +148,10 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         if (response) {
           const user = parseMSALResponse(response);
 
-          onLoginSuccess(user);
+          handleSuccessfulLogin(user);
         }
-      } catch (error) {
-        onLoginFailure(error as AxiosError);
+      } catch {
+        handleFailedLogin();
       }
     };
 

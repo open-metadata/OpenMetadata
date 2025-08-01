@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,7 +68,7 @@ class SnowflakeSampler(SQASampler):
         self.sampling_method_type = func.bernoulli
         if (
             sample_config
-            and sample_config.sampling_method_type == SamplingMethodType.SYSTEM
+            and sample_config.samplingMethodType == SamplingMethodType.SYSTEM
         ):
             self.sampling_method_type = func.system
 
@@ -77,19 +77,20 @@ class SnowflakeSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
-                self.sampling_method_type(self.sample_config.profile_sample or 100)
+                self.sampling_method_type(self.sample_config.profileSample or 100)
             )
 
         return selectable.tablesample(
-            func.ROW(text(f"{self.sample_config.profile_sample or 100} ROWS"))
+            func.ROW(text(f"{self.sample_config.profileSample or 100} ROWS"))
         )
 
     def get_sample_query(self, *, column=None) -> CTE:
-        """get query for sample data"""
+        """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
         rnd = self._base_sample_query(column).cte(
-            f"{self.raw_dataset.__tablename__}_rnd"
+            f"{self.get_sampler_table_name()}_rnd"
         )
-        query = self.client.query(rnd)
-        return query.cte(f"{self.raw_dataset.__tablename__}_sample")
+        with self.session_factory() as client:
+            query = client.query(rnd)
+        return query.cte(f"{self.get_sampler_table_name()}_sample")

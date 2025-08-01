@@ -29,6 +29,10 @@
         "name": {
           "$ref": "../../type/basic.json#/definitions/entityName"
         },
+        "displayName": {
+          "description": "Display name of the workflow stage node.",
+          "type": "string"
+        },
         "startedAt": {
           "description": "Timestamp on which the workflow instance stage started.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
@@ -55,9 +59,11 @@
       "description": "Timestamp on which the workflow instance state was created.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "status": {
+      "$ref": "workflowInstance.json#/definitions/workflowStatus"
+    },
     "exception": {
-      "description": "If the Workflow Instance has errors, 'True'. Else, 'False'.",
-      "type": "boolean"
+      "type": "string"
     }
   },
   "required": [],

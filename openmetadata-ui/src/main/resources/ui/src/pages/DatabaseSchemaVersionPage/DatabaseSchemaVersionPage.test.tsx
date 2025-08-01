@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import DatabaseSchemaVersionPage from './DatabaseSchemaVersionPage';
 import {
-  CURRENT_TABLE_PAGE,
   CUSTOM_PROPERTY_TABLE,
-  CUSTOM_PROPERTY_TAB_NAME,
   DATABASE_SCHEMA_ID,
   DATA_ASSET_VERSION_HEADER,
   DATA_PRODUCT_CONTAINER,
@@ -99,22 +95,25 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
-  jest
-    .fn()
-    .mockImplementation(({ tablePaginationHandler, currentTablesPage }) => (
-      <>
-        <p>
-          {currentTablesPage ? `currentTablesPage is ${currentTablesPage}` : ''}
-        </p>
-        <button
-          onClick={tablePaginationHandler({
-            currentPage: CURRENT_TABLE_PAGE,
-            // cursorType: CursorType.BEFORE,
-          })}>
-          {SCHEMA_TABLE_TAB}
-        </button>
-      </>
-    ))
+  jest.fn().mockImplementation(() => (
+    <>
+      <button>{SCHEMA_TABLE_TAB}</button>
+    </>
+  ))
+);
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    useGenericContext: jest.fn().mockImplementation(() => ({
+      data: {
+        tableDetails: {
+          joins: [],
+        },
+      },
+      onThreadLinkSelect: jest.fn(),
+    })),
+  })
 );
 
 const mockGetDatabaseSchemaDetailsByFQN = jest
@@ -150,14 +149,30 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getCommonExtraInfoForVersionDetails: jest.fn().mockReturnValue({}),
 }));
 
-const mockPush = jest.fn();
-
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => MOCK_PARAMS),
-  useHistory: jest.fn(() => ({
-    push: mockPush,
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
   })),
+  useNavigate: jest.fn(),
 }));
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    useGenericContext: jest.fn().mockImplementation(() => ({
+      data: {},
+    })),
+  })
+);
+
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+  jest.fn().mockImplementation(() => <div>description</div>)
+);
 
 describe('DatabaseSchemaVersionPage', () => {
   it('should render all necessary components', async () => {
@@ -170,50 +185,6 @@ describe('DatabaseSchemaVersionPage', () => {
     expect(screen.getByText(SCHEMA_TABLE_TAB)).toBeInTheDocument();
     expect(screen.getByText(DATA_PRODUCT_CONTAINER)).toBeInTheDocument();
     expect(screen.getAllByText(TAGS_CONTAINER_V2)).toHaveLength(2);
-  });
-
-  it('actions on table tab', async () => {
-    await act(async () => {
-      render(<DatabaseSchemaVersionPage />);
-    });
-
-    // tablePaginationHandler
-    act(() => {
-      userEvent.click(screen.getByText(SCHEMA_TABLE_TAB));
-    });
-
-    expect(
-      screen.getByText(`currentTablesPage is ${CURRENT_TABLE_PAGE}`)
-    ).toBeInTheDocument();
-  });
-
-  it('tab change, version handler, back handler should work', async () => {
-    await act(async () => {
-      render(<DatabaseSchemaVersionPage />);
-    });
-
-    // for tab change
-    userEvent.click(
-      screen.getByRole('tab', {
-        name: CUSTOM_PROPERTY_TAB_NAME,
-      })
-    );
-
-    // for back handler
-    userEvent.click(
-      screen.getByRole('button', {
-        name: DATA_ASSET_VERSION_HEADER,
-      })
-    );
-
-    // for version handler
-    userEvent.click(
-      screen.getByRole('button', {
-        name: ENTITY_VERSION_TIMELINE,
-      })
-    );
-
-    expect(mockPush).toHaveBeenCalledTimes(3);
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

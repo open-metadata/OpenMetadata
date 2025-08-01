@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema corresponding to a table that belongs to a database
  */
 export interface CreateTable {
@@ -38,9 +36,9 @@ export interface CreateTable {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Table belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -204,6 +202,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -213,12 +212,16 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -569,6 +572,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -670,7 +674,11 @@ export enum FileFormat {
     Jsonl = "jsonl",
     JsonlGz = "jsonl.gz",
     JsonlZip = "jsonl.zip",
+    Parq = "parq",
     Parquet = "parquet",
+    ParquetSnappy = "parquet.snappy",
+    Pq = "pq",
+    Pqt = "pqt",
     Tsv = "tsv",
 }
 
@@ -735,6 +743,7 @@ export interface TableConstraint {
 }
 
 export enum ConstraintType {
+    ClusterKey = "CLUSTER_KEY",
     DistKey = "DIST_KEY",
     ForeignKey = "FOREIGN_KEY",
     PrimaryKey = "PRIMARY_KEY",
@@ -824,10 +833,19 @@ export interface TableProfilerConfig {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
+    /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
     sampleDataCount?:    number;
     samplingMethodType?: SamplingMethodType;
+    /**
+     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+     * other engines.
+     */
+    sparkTableProfilerConfig?: SparkTableProfilerConfig;
     [property: string]: any;
 }
 
@@ -911,6 +929,38 @@ export enum SamplingMethodType {
 }
 
 /**
+ * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+ * other engines.
+ */
+export interface SparkTableProfilerConfig {
+    /**
+     * When reading big tables from sources, we optimize the reading by partitioning the data.
+     * This configuration is responsible for it.
+     */
+    partitioning?: Partitioning;
+}
+
+/**
+ * When reading big tables from sources, we optimize the reading by partitioning the data.
+ * This configuration is responsible for it.
+ */
+export interface Partitioning {
+    /**
+     * Lower bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    lowerBound?: string;
+    /**
+     * Column to partition on. It should be a date, timestamp or integer column. It is important
+     * for the data to be reasonably equally distributed across the partitions.
+     */
+    partitionColumn: string;
+    /**
+     * Upper bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    upperBound?: string;
+}
+
+/**
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
@@ -923,6 +973,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stream = "Stream",
     Transient = "Transient",
     View = "View",
 }
