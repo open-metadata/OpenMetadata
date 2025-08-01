@@ -404,7 +404,7 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'charts',
     tableConfig: {

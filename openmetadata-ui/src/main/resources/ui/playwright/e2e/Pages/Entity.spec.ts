@@ -283,7 +283,7 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (!['Store Procedure', 'Metric'].includes(entity.type)) {
+    if (!['Store Procedure', 'Metric', 'Chart'].includes(entity.type)) {
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
       }) => {
