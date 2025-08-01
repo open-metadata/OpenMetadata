@@ -2627,5 +2627,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.LINEAGE_EDGE]: t('label.lineage-edge'),
   [EntityType.WORKFLOW_DEFINITION]: t('label.workflow-definition'),
   [EntityType.SERVICE]: t('label.service'),
-  [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.SECURITY_SERVICE]: t('label.entity-service', {
+    entity: t('label.security'),
+  }),
 };
