@@ -14,8 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -65,6 +68,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Repository
@@ -521,7 +525,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContractResult addContractResult(
+  public RestUtil.PutResponse<DataContractResult> addContractResult(
       DataContract dataContract, DataContractResult result) {
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
 
@@ -555,9 +559,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         || dataContract.getLatestResult().getTimestamp() < result.getTimestamp()
         || dataContract.getLatestResult().getResultId().equals(result.getId())) {
       updateLatestResult(dataContract, result);
+      return new RestUtil.PutResponse<>(Response.Status.OK, result, ENTITY_UPDATED);
     }
 
-    return result;
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, result, ENTITY_CREATED);
   }
 
   public DataContractResult updateContractDQResults(
