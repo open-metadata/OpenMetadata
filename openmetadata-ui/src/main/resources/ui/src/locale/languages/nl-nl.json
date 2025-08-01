@@ -744,6 +744,7 @@
     "http-method": "HTTP Method",
     "hyper-parameter-plural": "Hyperparameters",
     "icon": "Icon",
+    "icon-plural": "Icons",
     "icon-url": "Pictogram URL",
     "image": "Afbeelding",
     "image-repository": "Afbeeldingenrepository",

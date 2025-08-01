@@ -252,6 +252,7 @@ function AddEntityForm<T extends CreateEntityType>({
     props: {
       selectProps: {
         'data-testid': 'glossary-terms-container',
+        tagRender: domainTagRender,
       },
       open: false,
       hasNoActionButtons: true,

@@ -744,6 +744,7 @@
     "http-method": "HTTP Method",
     "hyper-parameter-plural": "超参数",
     "icon": "Icon",
+    "icon-plural": "Icons",
     "icon-url": "Icon URL",
     "image": "图片",
     "image-repository": "图像仓库",

@@ -744,6 +744,7 @@
     "http-method": "HTTP 메서드",
     "hyper-parameter-plural": "하이퍼 파라미터들",
     "icon": "Icon",
+    "icon-plural": "Icons",
     "icon-url": "아이콘 URL",
     "image": "이미지",
     "image-repository": "이미지 저장소",
