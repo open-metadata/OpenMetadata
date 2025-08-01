@@ -24,12 +24,17 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 public class RuleEngine {
 
   @Getter private static final RuleEngine instance = new RuleEngine();
-  private final JsonLogic jsonLogic;
+  private final ThreadLocal<JsonLogic> jsonLogicThreadLocal;
   private final DataContractRepository dataContractRepository;
 
   private RuleEngine() {
-    this.jsonLogic = new JsonLogic();
-    LogicOps.addCustomOps(jsonLogic);
+    this.jsonLogicThreadLocal =
+        ThreadLocal.withInitial(
+            () -> {
+              JsonLogic jsonLogic = new JsonLogic();
+              LogicOps.addCustomOps(jsonLogic);
+              return jsonLogic;
+            });
     dataContractRepository =
         (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
   }
@@ -136,6 +141,7 @@ public class RuleEngine {
 
   private void validateRule(Object facts, SemanticsRule rule) throws RuleValidationException {
     try {
+      JsonLogic jsonLogic = jsonLogicThreadLocal.get();
       Boolean result = (Boolean) jsonLogic.apply(rule.getRule(), JsonUtils.getMap(facts));
       if (result == null || !result) {
         throw new RuleValidationException(rule, "Entity does not satisfy the rule");

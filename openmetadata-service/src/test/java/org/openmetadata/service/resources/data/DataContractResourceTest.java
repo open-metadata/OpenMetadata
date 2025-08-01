@@ -830,6 +830,34 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertEquals(ContractStatus.Active, patched.getStatus());
     assertEquals(created.getId(), patched.getId());
+
+    // Verify that GET returns the correct status after PATCH
+    DataContract retrieved = getDataContract(patched.getId(), "");
+    assertEquals(ContractStatus.Active, retrieved.getStatus());
+    assertEquals(created.getId(), retrieved.getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPatchDataContractWithoutStatus(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withStatus(null);
+    DataContract created = createDataContract(create);
+    assertNull(created.getStatus());
+
+    String originalJson = JsonUtils.pojoToJson(created);
+    created.setStatus(ContractStatus.Active);
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    assertEquals(ContractStatus.Active, patched.getStatus());
+    assertEquals(created.getId(), patched.getId());
+
+    // Verify that GET returns the correct status after PATCH
+    DataContract retrieved = getDataContract(patched.getId(), "");
+    assertEquals(ContractStatus.Active, retrieved.getStatus());
+    assertEquals(created.getId(), retrieved.getId());
   }
 
   @Test
