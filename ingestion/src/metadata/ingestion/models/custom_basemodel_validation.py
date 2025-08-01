@@ -57,7 +57,10 @@ TRANSFORMABLE_ENTITIES: Dict[str, Dict[str, Any]] = {
         "fields": {"name", "columns", "children", "tableConstraints"},
         "direction": TransformDirection.DECODE,
     },
-    "DashboardDataModel": {"fields": {"name"}, "direction": TransformDirection.DECODE},
+    "DashboardDataModel": {
+        "fields": {"name", "columns", "children"},
+        "direction": TransformDirection.DECODE,
+    },
     "CustomColumnName": {"fields": {"name"}, "direction": TransformDirection.DECODE},
     # Create/Store models - encode special characters to reserved keywords
     "ProfilerResponse": {"fields": {"name"}, "direction": TransformDirection.ENCODE},
@@ -67,7 +70,7 @@ TRANSFORMABLE_ENTITIES: Dict[str, Dict[str, Any]] = {
         "direction": TransformDirection.ENCODE,
     },
     "CreateDashboardDataModelRequest": {
-        "fields": {"name"},
+        "fields": {"name", "columns", "children"},
         "direction": TransformDirection.ENCODE,
     },
 }
