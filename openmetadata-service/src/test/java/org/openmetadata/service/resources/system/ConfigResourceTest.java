@@ -37,6 +37,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.util.TestUtils;
@@ -63,14 +64,24 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("auth");
     AuthenticationConfiguration auth =
         TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
-    assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
-    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
-    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
     assertEquals(
-        config.getAuthenticationConfiguration().getJwtPrincipalClaims(),
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider(),
+        auth.getProvider());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProviderName(),
+        auth.getProviderName());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getAuthority(),
+        auth.getAuthority());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getCallbackUrl(),
+        auth.getCallbackUrl());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getJwtPrincipalClaims(),
         auth.getJwtPrincipalClaims());
-    assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
+    assertEquals(
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getClientId(),
+        auth.getClientId());
   }
 
   @Test

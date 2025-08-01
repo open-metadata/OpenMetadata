@@ -110,7 +110,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
+    this.isSelfSignUpAvailable =
+        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getEnableSelfSignup();
   }
 
   @Override
