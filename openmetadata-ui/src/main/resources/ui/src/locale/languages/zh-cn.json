@@ -2085,6 +2085,7 @@
     "minimum-value-error": "最小值应小于最大值",
     "minute": "分钟",
     "missing-config-value": "缺少配置值：{{field}}",
+    "modified-time-ago-by": "{{time}} 前由 {{by}} 修改",
     "modify-hierarchy-entity-description": "通过更改父{{entity}}来修改层级结构.",
     "most-active-users": "显示平台上最活跃的用户(基于页面浏览量)",
     "most-expensive-queries-widget-description": "服务中数据资产的前 5 个最昂贵查询。<0>了解更多。</0>",

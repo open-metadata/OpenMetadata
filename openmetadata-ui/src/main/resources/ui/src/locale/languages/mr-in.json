@@ -2085,6 +2085,7 @@
     "minimum-value-error": "किमान मूल्य कमाल मूल्यापेक्षा लहान असावे.",
     "minute": "मिनिट",
     "missing-config-value": "कॉन्फिगरेशन व्हॅल्यू गहाळ आहे: {{field}}",
+    "modified-time-ago-by": "{{time}} पूर्व {{by}} द्वारे संशोधित",
     "modify-hierarchy-entity-description": "पालक {{entity}} बदलून श्रेणीक्रम बदल करा.",
     "most-active-users": "पृष्ठ दृश्यांवर आधारित प्लॅटफॉर्मवरील सर्वात सक्रिय वापरकर्ते दर्शवते.",
     "most-expensive-queries-widget-description": "सेवेतील डेटा मालमत्तांसाठी शीर्ष 5 सर्वात महाग क्वेरी. <0>अधिक जाणून घ्या.</0>",

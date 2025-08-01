@@ -26,9 +26,10 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 
 export const ContractDetailFormTab: React.FC<{
   initialValues?: Partial<DataContract>;
-  onNext: (formData: Partial<DataContract>) => Promise<void>;
+  onNext: () => void;
+  onChange: (formData: Partial<DataContract>) => void;
   nextLabel?: string;
-}> = ({ initialValues, onNext, nextLabel }) => {
+}> = ({ initialValues, onNext, nextLabel, onChange }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -79,10 +80,6 @@ export const ContractDetailFormTab: React.FC<{
     },
   ];
 
-  const handleSubmit = () => {
-    form.submit();
-  };
-
   useEffect(() => {
     if (initialValues) {
       form.setFieldsValue({
@@ -110,7 +107,7 @@ export const ContractDetailFormTab: React.FC<{
             className="contract-detail-form"
             form={form}
             layout="vertical"
-            onFinish={onNext}>
+            onValuesChange={onChange}>
             {generateFormFields(fields)}
 
             {owners?.length > 0 && <OwnerLabel owners={owners} />}
@@ -118,7 +115,7 @@ export const ContractDetailFormTab: React.FC<{
         </div>
       </Card>
       <div className="d-flex justify-end m-t-md">
-        <Button htmlType="submit" type="primary" onClick={handleSubmit}>
+        <Button htmlType="submit" type="primary" onClick={onNext}>
           {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
@@ -45,27 +46,26 @@ export const ContractTab = () => {
       ]);
       setContract(contract);
     } catch {
-      //
+      setContract(undefined);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (contract?.id) {
-      deleteContractById(contract.id)
-        .then(() => {
-          showSuccessToast(
-            t('message.entity-deleted-successfully', {
-              entity: t('label.contract'),
-            })
-          );
-          fetchContract();
-          setTabMode(DataContractTabMode.VIEW);
-        })
-        .catch((err) => {
-          showErrorToast(err);
-        });
+      try {
+        await deleteContractById(contract.id);
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: t('label.contract'),
+          })
+        );
+        fetchContract();
+        setTabMode(DataContractTabMode.VIEW);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
     }
   };
 

@@ -115,8 +115,8 @@ export const getTestCaseSummaryChartItems = (testCaseSummary?: TestSummary) => {
       color: GREEN_3,
       chartData: [
         { name: 'success', value: success, color: GREEN_3 },
-        { name: 'aborted', value: failed, color: YELLOW_2 },
-        { name: 'failed', value: aborted, color: RED_3 },
+        { name: 'failed', value: failed, color: RED_3 },
+        { name: 'aborted', value: aborted, color: YELLOW_2 },
       ],
     },
     {

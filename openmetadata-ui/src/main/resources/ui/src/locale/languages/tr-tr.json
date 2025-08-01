@@ -2085,6 +2085,7 @@
     "minimum-value-error": "Minimum değer maksimum değerden küçük olmalıdır.",
     "minute": "Dakika",
     "missing-config-value": "Eksik yapılandırma değeri: {{field}}",
+    "modified-time-ago-by": "{{time}} önce {{by}} tarafından değiştirildi",
     "modify-hierarchy-entity-description": "Üst {{entity}} değiştirerek hiyerarşiyi değiştirin.",
     "most-active-users": "Sayfa Görüntülemelerine göre platformdaki en aktif kullanıcıları görüntüler.",
     "most-expensive-queries-widget-description": "Servisteki veri varlıkları için en maliyetli ilk 5 sorgu. <0>daha fazla bilgi edinin.</0>",

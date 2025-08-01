@@ -2085,6 +2085,7 @@
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "דקה",
     "missing-config-value": "חסר ערך הגדרה: {{field}}",
+    "modified-time-ago-by": "עודכן {{time}} לפני {{by}}",
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "מציג את המשתמשים הפעילים ביותר בפלטפורמה על פי צפיות בדף.",
     "most-expensive-queries-widget-description": "5 השאילתות היקרות ביותר עבור נכסי הנתונים בשירות. <0>למד עוד</0>.",

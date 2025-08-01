@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
@@ -21,14 +20,10 @@ import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import { TEST_CASE_STATUS_ICON } from '../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
-import {
-  TestCase,
-  TestCaseParameterValue,
-} from '../../generated/tests/testCase';
+import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   DataQualityDimensions,
   TestDataType,
@@ -327,15 +322,3 @@ export const convertSearchSourceToTable = (
     ...searchSource,
     columns: searchSource.columns || [],
   } as Table);
-
-export const getTestCaseStatusIcon = (record: TestCase) => (
-  <Icon
-    className="test-status-icon"
-    component={
-      TEST_CASE_STATUS_ICON[
-        (record?.testCaseResult?.testCaseStatus ??
-          'Queued') as keyof typeof TEST_CASE_STATUS_ICON
-      ]
-    }
-  />
-);

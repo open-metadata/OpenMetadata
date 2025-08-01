@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
@@ -34,7 +35,10 @@ import {
 } from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  ContractStatus,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
@@ -81,15 +85,24 @@ const AddDataContract: React.FC<{
   const handleSave = useCallback(async () => {
     setIsSubmitting(true);
 
+    const validSemantics = formValues.semantics?.filter(
+      (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
+    );
+
     try {
       await (contract
-        ? updateContract(getUpdatedContractDetails(contract, formValues))
+        ? updateContract({
+            ...getUpdatedContractDetails(contract, formValues),
+            semantics: validSemantics,
+          })
         : createContract({
             ...formValues,
             entity: {
               id: table.id,
               type: EntityType.TABLE,
             },
+            semantics: validSemantics,
+            status: ContractStatus.Active,
           }));
 
       showSuccessToast(t('message.data-contract-saved-successfully'));
@@ -101,18 +114,20 @@ const AddDataContract: React.FC<{
     }
   }, [contract, formValues]);
 
-  const onNext = useCallback(
-    async (data: Partial<DataContract>) => {
+  const onFormChange = useCallback(
+    (data: Partial<DataContract>) => {
       setFormValues((prev) => ({ ...prev, ...data }));
-
-      setActiveTab((prev) => (Number(prev) + 1).toString());
     },
-    [activeTab, handleSave]
+    [setFormValues]
   );
+
+  const onNext = useCallback(async () => {
+    setActiveTab((prev) => (Number(prev) + 1).toString());
+  }, [setActiveTab]);
 
   const onPrev = useCallback(() => {
     setActiveTab((prev) => (Number(prev) - 1).toString());
-  }, [activeTab]);
+  }, [setActiveTab]);
 
   const items = useMemo(
     () => [
@@ -126,8 +141,9 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
         children: (
           <ContractDetailFormTab
-            initialValues={formValues}
+            initialValues={contract}
             nextLabel={t('label.schema')}
+            onChange={onFormChange}
             onNext={onNext}
           />
         ),
@@ -145,8 +161,9 @@ const AddDataContract: React.FC<{
             nextLabel={t('label.semantic-plural')}
             prevLabel={t('label.contract-detail-plural')}
             selectedSchema={
-              formValues.schema?.map((column) => column.name) || []
+              contract?.schema?.map((column) => column.name) || []
             }
+            onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
           />
@@ -162,9 +179,10 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SEMANTICS.toString(),
         children: (
           <ContractSemanticFormTab
-            initialValues={formValues}
+            initialValues={contract}
             nextLabel={t('label.quality')}
             prevLabel={t('label.schema')}
+            onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
           />
@@ -182,19 +200,17 @@ const AddDataContract: React.FC<{
           <ContractQualityFormTab
             prevLabel={t('label.semantic-plural')}
             selectedQuality={
-              formValues.qualityExpectations?.map(
+              contract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
               ) ?? []
             }
+            onChange={onFormChange}
             onPrev={onPrev}
-            onUpdate={(qualityExpectations) =>
-              setFormValues((prev) => ({ ...prev, qualityExpectations }))
-            }
           />
         ),
       },
     ],
-    [t, onNext, onPrev]
+    [contract, onFormChange, onNext, onPrev]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
