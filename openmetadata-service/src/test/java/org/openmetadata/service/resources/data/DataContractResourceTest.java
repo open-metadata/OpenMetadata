@@ -2689,25 +2689,4 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         errorMessage.contains("DataContract") || errorMessage.contains("not found"),
         "Error message should indicate that no data contract was found: " + errorMessage);
   }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void testGetDataContractByEntityWithoutContract(TestInfo test) throws IOException {
-    // Create a table that will NOT have a data contract associated
-    Table tableWithoutContract = createUniqueTable(test.getDisplayName());
-
-    HttpResponseException exception =
-        assertThrows(
-            HttpResponseException.class,
-            () -> getDataContractByEntityId(tableWithoutContract.getId(), "table", "owners"));
-
-    // Should return 404 since no data contract exists for this table
-    assertEquals(Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
-
-    // Verify the error message makes sense
-    String errorMessage = exception.getMessage();
-    assertTrue(
-        errorMessage.contains("DataContract") || errorMessage.contains("not found"),
-        "Error message should indicate that no data contract was found: " + errorMessage);
-  }
 }
