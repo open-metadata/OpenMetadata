@@ -353,7 +353,7 @@ export const useSemanticsRuleList = ({
       title: t('label.action'),
       dataIndex: 'actions',
       render: (_: unknown, record: SemanticsRule) => (
-        <Space>
+        <Space className="custom-icon-button">
           <Button
             className="text-secondary p-0 remove-button-background-hover"
             disabled={record.provider === ProviderType.System}
@@ -395,7 +395,11 @@ export const useSemanticsRuleList = ({
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
     <Row align="middle" className="h-full" justify="center">
       <Col>
-        <Space align="center" className="w-full" direction="vertical" size={0}>
+        <Space
+          align="center"
+          className="w-full custom-icon-button"
+          direction="vertical"
+          size={0}>
           <AddPlaceHolderIcon
             data-testid="no-data-image"
             height={SIZE.MEDIUM}

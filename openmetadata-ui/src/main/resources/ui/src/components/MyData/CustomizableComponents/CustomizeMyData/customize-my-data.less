@@ -26,34 +26,36 @@
   margin: 0 @margin-mlg !important;
 
   // Custom thin and light scrollbar styles
-  ::-webkit-scrollbar {
-    width: 4px !important;
-    height: 4px !important;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: @grey-20;
-    border-radius: 3px;
-    opacity: 0.6;
-
-    &:hover {
-      background: @grey-30;
-      opacity: 0.8;
+  * {
+    ::-webkit-scrollbar {
+      width: 4px !important;
+      height: 4px !important;
     }
-  }
 
-  ::-webkit-scrollbar-corner {
-    background: transparent;
-  }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 3px;
+    }
 
-  // Firefox scrollbar styles
-  scrollbar-width: thin;
-  scrollbar-color: @grey-20 transparent;
+    ::-webkit-scrollbar-thumb {
+      background: @grey-300;
+      border-radius: 3px;
+      opacity: 0.6;
+
+      &:hover {
+        background: @grey-300;
+        opacity: 0.8;
+      }
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    // Firefox scrollbar styles
+    scrollbar-width: thin;
+    scrollbar-color: @grey-300 transparent;
+  }
 }
 
 .grid-wrapper {

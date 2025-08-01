@@ -211,4 +211,13 @@ export const KPI_WIDGET_GRAPH_COLORS = [
   '#6AD2FF',
   '#2ED3B7',
   '#E478FA',
+  //   TODO: Add more colors for more KPIs
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
 ];
