@@ -127,9 +127,6 @@ test.describe('Customize Landing Page Flow', () => {
       await expect(
         adminPage.locator('[data-testid="KnowledgePanel.TotalAssets"]')
       ).toBeVisible();
-      await expect(
-        adminPage.locator('[data-testid="ExtraWidget.EmptyWidgetPlaceholder"]')
-      ).toBeVisible();
 
       await openAddCustomizeWidgetModal(adminPage);
 

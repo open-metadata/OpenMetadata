@@ -79,9 +79,9 @@ test.describe('Curated Assets', () => {
 
     await page.locator('[data-testid="title-input"]').fill('Popular Charts');
 
-    await page.getByTestId('asset-type-select').click();
+    await page.locator('[data-testid="asset-type-select"]').click();
 
-    await page.getByText('Chart').click();
+    await page.locator('[data-testid="chart-option"]').click();
 
     const ruleLocator = page.locator('.rule').nth(0);
     await selectOption(

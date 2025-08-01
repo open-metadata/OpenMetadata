@@ -74,9 +74,12 @@ export const setUserDefaultPersona = async (
   await visitOwnProfilePage(page);
 
   await page.locator('[data-testid="edit-user-persona"]').nth(1).click();
-  await page.locator('[data-testid="persona-popover"]').isVisible();
-  await page.locator('input[role="combobox"]').nth(1).click();
-  await page.waitForSelector('[data-testid="persona-select-list"]');
+
+  await expect(
+    page.locator('[data-testid="persona-select-list"]')
+  ).toBeVisible();
+
+  await page.locator('[data-testid="persona-select-list"]').click();
 
   const setDefaultPersona = page.waitForResponse('/api/v1/users/*');
 
