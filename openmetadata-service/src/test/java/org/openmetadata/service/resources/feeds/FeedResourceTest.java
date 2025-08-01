@@ -33,7 +33,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
+import static org.openmetadata.service.resources.EntityResourceTest.DOMAIN_ONLY_ACCESS_ROLE_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER2_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
@@ -89,6 +91,7 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
@@ -98,6 +101,7 @@ import org.openmetadata.schema.type.ChatbotDetails;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Reaction;
@@ -115,7 +119,9 @@ import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.PostList;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
@@ -145,6 +151,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static String TEAM_LINK;
   public static Thread THREAD;
   public static TableResourceTest TABLE_RESOURCE_TEST;
+  protected static RoleRepository roleRepository;
   public static final Comparator<Reaction> REACTION_COMPARATOR =
       (o1, o2) ->
           o1.getReactionType().equals(o2.getReactionType())
@@ -159,6 +166,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     TABLE_RESOURCE_TEST = new TableResourceTest();
     TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
+
+    // Create a test domain for the main tables used in tests
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("feed-test-domain"), ADMIN_AUTH_HEADERS);
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER2 =
@@ -204,6 +217,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     CreateThread createThread = create();
     THREAD = createAndCheck(createThread, ADMIN_AUTH_HEADERS);
+
+    roleRepository = Entity.getRoleRepository();
+    DOMAIN_ONLY_ACCESS_ROLE_REF =
+        roleRepository.getReferenceByName(DOMAIN_ONLY_ACCESS_ROLE, Include.NON_DELETED);
   }
 
   @Test
@@ -782,6 +799,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @ParameterizedTest
   @NullSource
   @MethodSource("provideStringsForListThreads")
+  @Order(3)
   void get_listThreadsWithPagination(String entityLink) throws HttpResponseException {
     EventSubscriptionResourceTest eventSubscriptionResourceTest =
         new EventSubscriptionResourceTest();
@@ -1486,6 +1504,504 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
   }
 
+  private Table createTableWithDomain(EntityReference domain)
+      throws HttpResponseException, IOException {
+    CreateTable createTable =
+        TABLE_RESOURCE_TEST.createRequest("domain-test-table-" + UUID.randomUUID());
+    if (domain != null) {
+      createTable.withDomains(List.of(domain.getFullyQualifiedName()));
+    }
+    return TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+  }
+
+  private Table createTableWithMultipleDomains(List<EntityReference> domains)
+      throws HttpResponseException, IOException {
+    CreateTable createTable =
+        TABLE_RESOURCE_TEST.createRequest("domain-test-table-" + UUID.randomUUID());
+    if (domains != null && !domains.isEmpty()) {
+      createTable.withDomains(domains.stream().map(d -> d.getFullyQualifiedName()).toList());
+    }
+    return TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+  }
+
+  private void cleanupTable(Table table) throws HttpResponseException {
+    TABLE_RESOURCE_TEST.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void list_threadsWithUserHavingMultipleDomains() throws HttpResponseException, IOException {
+    // Create domains for this test
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain1 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("test-domain1"), ADMIN_AUTH_HEADERS);
+    Domain testDomain2 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("test-domain2"), ADMIN_AUTH_HEADERS);
+
+    try {
+      // Create a user with multiple domains via team membership
+      TeamResourceTest teamResourceTest = new TeamResourceTest();
+      UserResourceTest userResourceTest = new UserResourceTest();
+
+      // Create team1 with testDomain1
+      CreateTeam createTeam1 =
+          teamResourceTest
+              .createRequest("multi-domain-team1")
+              .withDomains(List.of(testDomain1.getFullyQualifiedName()));
+      Team team1 = teamResourceTest.createAndCheckEntity(createTeam1, ADMIN_AUTH_HEADERS);
+
+      // Create team2 with testDomain2
+      CreateTeam createTeam2 =
+          teamResourceTest
+              .createRequest("multi-domain-team2")
+              .withDomains(List.of(testDomain2.getFullyQualifiedName()));
+      Team team2 = teamResourceTest.createAndCheckEntity(createTeam2, ADMIN_AUTH_HEADERS);
+
+      // Create user with domain access role and assign to both teams
+      User multiDomainUser = userResourceTest.createUser("multi-domain-user", false);
+      String multiDomainUserJson = JsonUtils.pojoToJson(multiDomainUser);
+      multiDomainUser.setRoles(List.of(DOMAIN_ONLY_ACCESS_ROLE_REF));
+      multiDomainUser.setTeams(List.of(team1.getEntityReference(), team2.getEntityReference()));
+      multiDomainUser =
+          userResourceTest.patchEntity(
+              multiDomainUser.getId(), multiDomainUserJson, multiDomainUser, ADMIN_AUTH_HEADERS);
+      Map<String, String> multiDomainUserAuthHeaders = authHeaders(multiDomainUser.getName());
+
+      // Create tables with different domain combinations
+      Table tableDomain1 = createTableWithDomain(testDomain1.getEntityReference());
+      Table tableDomain2 = createTableWithDomain(testDomain2.getEntityReference());
+      Table tableNoDomain = createTableWithDomain(null);
+      Table tableMultiDomain =
+          createTableWithMultipleDomains(
+              Arrays.asList(testDomain1.getEntityReference(), testDomain2.getEntityReference()));
+
+      try {
+        // Create threads in each table
+        Thread threadDomain1 =
+            createAndCheck(
+                create()
+                    .withAbout(buildEntityLink(Entity.TABLE, tableDomain1.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain1.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadDomain2 =
+            createAndCheck(
+                create()
+                    .withAbout(buildEntityLink(Entity.TABLE, tableDomain2.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain2.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadNoDomain =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableNoDomain.getFullyQualifiedName())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadMultiDomain =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableMultiDomain.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain1.getId())),
+                ADMIN_AUTH_HEADERS);
+
+        // User with multiple domains should see threads from all their domains and no-domain
+        // threads
+        ThreadList threads = listThreads(null, 100, multiDomainUserAuthHeaders);
+
+        // User should see threads from tables that match any of their domains
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadDomain1.getId())),
+            "User should see thread from table with domain 1");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadDomain2.getId())),
+            "User should see thread from table with domain 2");
+        assertFalse(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadNoDomain.getId())),
+            "User with domain should not see thread from table with no domain");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadMultiDomain.getId())),
+            "User should see thread from table with multiple domains");
+      } finally {
+        // Clean up tables
+        cleanupTable(tableDomain1);
+        cleanupTable(tableDomain2);
+        cleanupTable(tableNoDomain);
+        cleanupTable(tableMultiDomain);
+      }
+    } finally {
+      // Clean up domains
+      domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
+      domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void list_threadsWithComplexDomainScenarios() throws HttpResponseException, IOException {
+    // Create test domains
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain1 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("complex-domain1"), ADMIN_AUTH_HEADERS);
+    Domain testDomain2 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("complex-domain2"), ADMIN_AUTH_HEADERS);
+    Domain testDomain3 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("complex-domain3"), ADMIN_AUTH_HEADERS);
+
+    try {
+      TeamResourceTest teamResourceTest = new TeamResourceTest();
+      UserResourceTest userResourceTest = new UserResourceTest();
+
+      // Create teams with different domain configurations
+      CreateTeam createTeam1 =
+          teamResourceTest
+              .createRequest("complex-team1")
+              .withDomains(List.of(testDomain1.getFullyQualifiedName()));
+      Team team1 = teamResourceTest.createAndCheckEntity(createTeam1, ADMIN_AUTH_HEADERS);
+
+      CreateTeam createTeam2 =
+          teamResourceTest
+              .createRequest("complex-team2")
+              .withDomains(
+                  List.of(
+                      testDomain2.getFullyQualifiedName(), testDomain3.getFullyQualifiedName()));
+      Team team2 = teamResourceTest.createAndCheckEntity(createTeam2, ADMIN_AUTH_HEADERS);
+
+      // Create user with access to all domains via teams
+      User complexDomainUser = userResourceTest.createUser("complex-domain-user", false);
+      String complexDomainUserJson = JsonUtils.pojoToJson(complexDomainUser);
+      complexDomainUser.setRoles(List.of(DOMAIN_ONLY_ACCESS_ROLE_REF));
+      complexDomainUser.setTeams(List.of(team1.getEntityReference(), team2.getEntityReference()));
+      complexDomainUser =
+          userResourceTest.patchEntity(
+              complexDomainUser.getId(),
+              complexDomainUserJson,
+              complexDomainUser,
+              ADMIN_AUTH_HEADERS);
+      Map<String, String> complexDomainUserAuthHeaders = authHeaders(complexDomainUser.getName());
+
+      // Create tables with various domain combinations
+      Table tableDomain1Only = createTableWithDomain(testDomain1.getEntityReference());
+      Table tableDomain2Only = createTableWithDomain(testDomain2.getEntityReference());
+      Table tableDomain3Only = createTableWithDomain(testDomain3.getEntityReference());
+      Table tableMultiple12 =
+          createTableWithMultipleDomains(
+              Arrays.asList(testDomain1.getEntityReference(), testDomain2.getEntityReference()));
+      Table tableMultiple13 =
+          createTableWithMultipleDomains(
+              Arrays.asList(testDomain1.getEntityReference(), testDomain3.getEntityReference()));
+      Table tableMultiple23 =
+          createTableWithMultipleDomains(
+              Arrays.asList(testDomain2.getEntityReference(), testDomain3.getEntityReference()));
+      Table tableAllThree =
+          createTableWithMultipleDomains(
+              Arrays.asList(
+                  testDomain1.getEntityReference(),
+                  testDomain2.getEntityReference(),
+                  testDomain3.getEntityReference()));
+
+      try {
+        // Create threads for each table
+        Thread threadDomain1 =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableDomain1Only.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain1.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadDomain2 =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableDomain2Only.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain2.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadDomain3 =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableDomain3Only.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain3.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadMultiple12 =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableMultiple12.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain1.getId(), testDomain2.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadMultiple13 =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableMultiple13.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain1.getId(), testDomain3.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadMultiple23 =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableMultiple23.getFullyQualifiedName()))
+                    .withDomains(List.of(testDomain2.getId(), testDomain3.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadAllThree =
+            createAndCheck(
+                create()
+                    .withAbout(buildEntityLink(Entity.TABLE, tableAllThree.getFullyQualifiedName()))
+                    .withDomains(
+                        List.of(testDomain1.getId(), testDomain2.getId(), testDomain3.getId())),
+                ADMIN_AUTH_HEADERS);
+
+        // Test filtering - user should see threads from tables containing their domains
+        ThreadList threads = listThreads(null, 100, complexDomainUserAuthHeaders);
+
+        // User has access to all three domains via teams
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadDomain1.getId())),
+            "Should see thread from table with domain 1");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadDomain2.getId())),
+            "Should see thread from table with domain 2");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadDomain3.getId())),
+            "Should see thread from table with domain 3");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadMultiple12.getId())),
+            "Should see thread from table with domains 1&2");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadMultiple13.getId())),
+            "Should see thread from table with domains 1&3");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadMultiple23.getId())),
+            "Should see thread from table with domains 2&3");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadAllThree.getId())),
+            "Should see thread from table with all three domains");
+      } finally {
+        // Clean up tables
+        cleanupTable(tableDomain1Only);
+        cleanupTable(tableDomain2Only);
+        cleanupTable(tableDomain3Only);
+        cleanupTable(tableMultiple12);
+        cleanupTable(tableMultiple13);
+        cleanupTable(tableMultiple23);
+        cleanupTable(tableAllThree);
+      }
+    } finally {
+      // Clean up domains
+      domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
+      domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
+      domainResourceTest.deleteEntity(testDomain3.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void list_threadsWithDomainFilterEdgeCases() throws HttpResponseException, IOException {
+    // Create test domain
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("edge-case-domain"), ADMIN_AUTH_HEADERS);
+
+    try {
+      UserResourceTest userResourceTest = new UserResourceTest();
+
+      // Create user with domain access role but no domains assigned (via teams with no domains)
+      User noDomainUser = userResourceTest.createUser("no-domain-user", false);
+      String noDomainUserJson = JsonUtils.pojoToJson(noDomainUser);
+      noDomainUser.setRoles(List.of(DOMAIN_ONLY_ACCESS_ROLE_REF));
+      noDomainUser =
+          userResourceTest.patchEntity(
+              noDomainUser.getId(), noDomainUserJson, noDomainUser, ADMIN_AUTH_HEADERS);
+      Map<String, String> noDomainUserAuthHeaders = authHeaders(noDomainUser.getName());
+
+      // Create tables with and without domains
+      Table tableDomain1 = createTableWithDomain(testDomain.getEntityReference());
+      Table tableNoDomain = createTableWithDomain(null);
+
+      try {
+        // Create threads
+        Thread threadDomain1 =
+            createAndCheck(
+                create()
+                    .withAbout(buildEntityLink(Entity.TABLE, tableDomain1.getFullyQualifiedName()))
+                    .withDomains(List.of(tableDomain1.getId())),
+                ADMIN_AUTH_HEADERS);
+        Thread threadNoDomain =
+            createAndCheck(
+                create()
+                    .withAbout(
+                        buildEntityLink(Entity.TABLE, tableNoDomain.getFullyQualifiedName())),
+                ADMIN_AUTH_HEADERS);
+
+        // User with domain access role and with no domains should only see threads from tables with
+        // their domains
+        ThreadList threads = listThreads(null, 100, noDomainUserAuthHeaders);
+
+        assertFalse(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadDomain1.getId())),
+            "User with no domains should not see thread from table with domain");
+        assertTrue(
+            threads.getData().stream().anyMatch(t -> t.getId().equals(threadNoDomain.getId())),
+            "User with no domains should see thread from table with no domain");
+      } finally {
+        // Clean up tables
+        cleanupTable(tableDomain1);
+        cleanupTable(tableNoDomain);
+      }
+    } finally {
+      // Clean up domain
+      domainResourceTest.deleteEntity(testDomain.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void list_threadsWithDomainFilterDifferentThreadTypes()
+      throws HttpResponseException, IOException {
+    // Create test domains
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain1 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("thread-type-domain1"), ADMIN_AUTH_HEADERS);
+    Domain testDomain2 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest("thread-type-domain2"), ADMIN_AUTH_HEADERS);
+
+    // Create tables with different domains first to ensure they inherit domain associations
+    Table tableDomainAccess = createTableWithDomain(testDomain1.getEntityReference());
+    Table tableNoAccess = createTableWithDomain(testDomain2.getEntityReference());
+
+    try {
+      TeamResourceTest teamResourceTest = new TeamResourceTest();
+      UserResourceTest userResourceTest = new UserResourceTest();
+
+      // Create user with domain access
+      CreateTeam createTeam =
+          teamResourceTest
+              .createRequest("thread-type-team")
+              .withDomains(List.of(testDomain1.getFullyQualifiedName()));
+      Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+      User threadTypeUser = userResourceTest.createUser("thread-type-user", false);
+      String userJson = JsonUtils.pojoToJson(threadTypeUser);
+      threadTypeUser.setRoles(List.of(DOMAIN_ONLY_ACCESS_ROLE_REF));
+      threadTypeUser.setTeams(List.of(team.getEntityReference()));
+      threadTypeUser =
+          userResourceTest.patchEntity(
+              threadTypeUser.getId(), userJson, threadTypeUser, ADMIN_AUTH_HEADERS);
+      Map<String, String> threadTypeUserAuthHeaders = authHeaders(threadTypeUser.getName());
+
+      // Create different types of threads - these will inherit domain from their tables
+      Thread conversationThread =
+          createAndCheck(
+              create()
+                  .withAbout(
+                      buildEntityLink(Entity.TABLE, tableDomainAccess.getFullyQualifiedName()))
+                  .withDomains(List.of(testDomain1.getId())),
+              ADMIN_AUTH_HEADERS);
+
+      Thread taskThread =
+          createTaskThreadWithDomain(
+              TEST_USER_NAME,
+              "<#E::table::" + tableDomainAccess.getFullyQualifiedName() + "::description>",
+              USER.getEntityReference(),
+              "old description",
+              "new description",
+              RequestDescription,
+              List.of(testDomain1.getId()),
+              ADMIN_AUTH_HEADERS);
+
+      // Create announcement thread
+      LocalDateTime now = LocalDateTime.now();
+      AnnouncementDetails announcementDetails = getAnnouncementDetails("Test Announcement", 1, 2);
+      Thread announcementThread =
+          createAnnouncementWithDomain(
+              TEST_USER_NAME,
+              buildEntityLink(Entity.TABLE, tableDomainAccess.getFullyQualifiedName()),
+              "Announcement Message",
+              announcementDetails,
+              List.of(testDomain1.getId()),
+              ADMIN_AUTH_HEADERS);
+
+      // Create threads on table user doesn't have access to
+      Thread conversationThreadNoAccess =
+          createAndCheck(
+              create()
+                  .withAbout(buildEntityLink(Entity.TABLE, tableNoAccess.getFullyQualifiedName()))
+                  .withDomains(List.of(testDomain2.getId())),
+              ADMIN_AUTH_HEADERS);
+
+      // Test different thread type filtering with domain access
+      ThreadList conversationThreads =
+          listThreads(
+              null,
+              100,
+              threadTypeUserAuthHeaders,
+              null,
+              null,
+              null,
+              ThreadType.Conversation.toString(),
+              null,
+              null,
+              null,
+              null);
+
+      assertTrue(
+          conversationThreads.getData().stream()
+              .anyMatch(t -> t.getId().equals(conversationThread.getId())),
+          "Should see conversation thread from accessible domain");
+      assertFalse(
+          conversationThreads.getData().stream()
+              .anyMatch(t -> t.getId().equals(conversationThreadNoAccess.getId())),
+          "Should not see conversation thread from inaccessible domain");
+
+      ThreadList taskThreads =
+          listThreads(
+              null,
+              100,
+              threadTypeUserAuthHeaders,
+              null,
+              null,
+              null,
+              ThreadType.Task.toString(),
+              null,
+              null,
+              null,
+              null);
+      assertTrue(
+          taskThreads.getData().stream().anyMatch(t -> t.getId().equals(taskThread.getId())),
+          "Should see task thread from accessible domain");
+
+      ThreadList announcementThreads =
+          listThreads(
+              null,
+              100,
+              threadTypeUserAuthHeaders,
+              null,
+              null,
+              null,
+              ThreadType.Announcement.toString(),
+              null,
+              null,
+              null,
+              null);
+      assertTrue(
+          announcementThreads.getData().stream()
+              .anyMatch(t -> t.getId().equals(announcementThread.getId())),
+          "Should see announcement thread from accessible domain");
+
+    } finally {
+      // Clean up tables first before domains
+      cleanupTable(tableDomainAccess);
+      cleanupTable(tableNoAccess);
+
+      // Clean up domains last to ensure they exist during table lifecycle
+      domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
+      domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
   @Test
   void patch_post_404() {
     // Test with an invalid thread id
@@ -1951,6 +2467,33 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return createAndCheck(create, authHeaders);
   }
 
+  public Thread createTaskThreadWithDomain(
+      String fromUser,
+      String about,
+      EntityReference assignee,
+      String oldValue,
+      String newValue,
+      TaskType taskType,
+      List<UUID> domains,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue(oldValue)
+            .withAssignees(List.of(assignee))
+            .withType(taskType)
+            .withSuggestion(newValue);
+    CreateThread create =
+        new CreateThread()
+            .withFrom(fromUser)
+            .withAbout(about)
+            .withMessage("Message")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withDomains(domains);
+    return createAndCheck(create, authHeaders);
+  }
+
   public Thread createAnnouncement(
       String fromUser,
       String about,
@@ -1965,6 +2508,25 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             .withAbout(about)
             .withType(ThreadType.Announcement)
             .withAnnouncementDetails(announcementDetails);
+    return createAndCheck(create, authHeaders);
+  }
+
+  public Thread createAnnouncementWithDomain(
+      String fromUser,
+      String about,
+      String message,
+      AnnouncementDetails announcementDetails,
+      List<UUID> domains,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    CreateThread create =
+        new CreateThread()
+            .withFrom(fromUser)
+            .withMessage(message)
+            .withAbout(about)
+            .withType(ThreadType.Announcement)
+            .withAnnouncementDetails(announcementDetails)
+            .withDomains(domains);
     return createAndCheck(create, authHeaders);
   }
 
@@ -2017,5 +2579,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         .withDescription(description)
         .withStartTime(now.plusDays(start).toInstant(ZoneOffset.UTC).toEpochMilli())
         .withEndTime(now.plusDays(end).toInstant(ZoneOffset.UTC).toEpochMilli());
+  }
+
+  public static String buildEntityLink(String entityType, String fullyQualifiedName) {
+    return String.format("<#E::%s::%s>", entityType, fullyQualifiedName);
+  }
+
+  public static String buildColumnLink(String tableFqn, String columnName, String field) {
+    return String.format("<#E::table::%s::columns::%s::%s>", tableFqn, columnName, field);
+  }
+
+  public static String buildTableFieldLink(String tableFqn, String field) {
+    return String.format("<#E::table::%s::%s>", tableFqn, field);
   }
 }

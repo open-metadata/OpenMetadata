@@ -4,12 +4,14 @@ import static org.openmetadata.service.util.RestUtil.decodeCursor;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 @Builder
 public class FeedFilter {
@@ -62,12 +64,40 @@ public class FeedFilter {
     String domainCondition = "";
     if (applyDomainFilter) {
       if (domains != null && !domains.isEmpty()) {
-        domainCondition =
-            String.format(
-                "domain IN ('%s')",
-                domains.stream().map(UUID::toString).reduce((a, b) -> a + "','" + b).get());
+        if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+          // MySQL: generate JSON array string: ["id1", "id2", ...]
+          String jsonArray =
+              domains.stream()
+                  .map(uuid -> "\"" + uuid.toString() + "\"")
+                  .collect(Collectors.joining(",", "[", "]"));
+
+          domainCondition =
+              "EXISTS ("
+                  + "SELECT 1 FROM JSON_TABLE("
+                  + "'"
+                  + jsonArray
+                  + "', '$[*]' "
+                  + "COLUMNS (domainId VARCHAR(64) PATH '$')) d "
+                  + "WHERE JSON_CONTAINS(domains, JSON_QUOTE(d.domainId))"
+                  + ")";
+        } else {
+          // PostgreSQL: generate ARRAY['id1','id2',...]
+          String arrayLiteral =
+              domains.stream()
+                  .map(uuid -> "'" + uuid.toString() + "'")
+                  .collect(Collectors.joining(",", "ARRAY[", "]"));
+
+          domainCondition =
+              "EXISTS ("
+                  + "SELECT 1 FROM unnest("
+                  + arrayLiteral
+                  + ") AS d(domainId) "
+                  + "WHERE domainId = ANY (SELECT jsonb_array_elements_text(domains::jsonb))"
+                  + ")";
+        }
+
       } else {
-        domainCondition = "domain is null";
+        domainCondition = "domains IS NULL";
       }
     }
     condition1 = addCondition(condition1, domainCondition);

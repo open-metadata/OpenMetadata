@@ -48,7 +48,7 @@ export interface Thread {
     /**
      * Domain the entity belongs to.
      */
-    domains?: EntityReference[];
+    domains?: string[];
     /**
      * Reference to the entity in `about` that the thread belongs to.
      */
@@ -163,19 +163,17 @@ export interface ChatbotDetails {
 }
 
 /**
- * Domain the entity belongs to.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
+ * Reference to the entity in `about` that the thread belongs to.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Reference to the entity in `about` that the thread belongs to.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * Test case that this result is for.
  *
