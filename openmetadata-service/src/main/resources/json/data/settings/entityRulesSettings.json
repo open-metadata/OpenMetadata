@@ -9,9 +9,10 @@
     },
     {
       "name": "Multiple Domains are not allowed",
-      "description": "By default, we only allow entities to be assigned to a single domain.",
+      "description": "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.",
       "rule": "{\"<=\":[{\"length\":{\"var\":\"domains\"}},1]}",
       "enabled": true,
+      "ignoredEntities": ["user", "team", "persona", "bot"],
       "provider": "system"
     },
     {
