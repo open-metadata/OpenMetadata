@@ -9,11 +9,7 @@ public class RdfUtils {
     // Private constructor for utility class
   }
 
-  /**
-   * Get the RDF type for an entity type
-   */
   public static String getRdfType(String entityType) {
-    // Standard vocabulary mappings for common entity types
     return switch (entityType.toLowerCase()) {
       case "table" -> "dcat:Dataset";
       case "database" -> "dcat:Catalog";
