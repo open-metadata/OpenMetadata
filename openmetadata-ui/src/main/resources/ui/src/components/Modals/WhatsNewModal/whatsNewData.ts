@@ -1192,7 +1192,7 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
     features: [],
     changeLogs: {
       Improvements: `- Remove unnecessary braces in additional_config for cleaner code.
-- Implemented comprehensive Security Service with schema changes, UI integration, metadata pipeline support, and OSS visibility controls.
+- Implemented comprehensive Security Service with schema changes, UI integration, and OSS visibility controls.
 - Add backward-compatible support for documented owner configuration in dbt.
 - Implemented configurable sink and reverse metadata support for Ranger, along with cleanup, bug fixes, and UI enhancements. ${CollateIconWithLinkMD}
 - Add lineage propagation enhancements in Automator with stop conditions and propagation depth, along with related UI fixes, configuration support, and test improvements. ${CollateIconWithLinkMD}
