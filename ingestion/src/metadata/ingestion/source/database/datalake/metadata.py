@@ -249,10 +249,10 @@ class DatalakeSource(DatabaseServiceSource):
         if self.source_config.includeTables:
             for key_name in self.client.get_table_names(bucket_name, prefix):
                 table_name = self.standardize_table_name(bucket_name, key_name)
-                logger.info(f"Processing table: {table_name}")
+
                 if self.filter_dl_table(table_name):
                     continue
-
+                logger.info(f"Processing table: {table_name}")
                 file_extension = get_file_format_type(
                     key_name=key_name, metadata_entry=metadata_entry
                 )
