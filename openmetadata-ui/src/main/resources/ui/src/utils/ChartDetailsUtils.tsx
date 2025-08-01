@@ -28,7 +28,7 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { ChartDetailsTabsProps } from './ChartDetailsClassBase';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const getChartDetailPageTabs = ({
   chartDetails,
