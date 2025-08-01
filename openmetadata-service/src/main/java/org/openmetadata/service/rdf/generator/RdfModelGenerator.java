@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -82,22 +83,13 @@ public class RdfModelGenerator {
     this.outputPath = Paths.get(outputPath);
     this.ontologyModel = ModelFactory.createDefaultModel();
     this.processedTypes = new HashSet<>();
-
-    // Initialize ontology with prefixes
     VOCAB_PREFIXES.forEach(ontologyModel::setNsPrefix);
     ontologyModel.setNsPrefix("om", ONTOLOGY_URI);
   }
 
-  /**
-   * Generate RDF models for all JSON schemas
-   */
   public void generateAll() throws IOException {
     LOG.info("Starting RDF model generation from schemas at: {}", schemaBasePath);
-
-    // Initialize ontology
     initializeOntology();
-
-    // Process entity schemas
     Path entityPath = schemaBasePath.resolve("entity");
     if (Files.exists(entityPath)) {
       try (Stream<Path> paths = Files.walk(entityPath)) {
@@ -108,7 +100,6 @@ public class RdfModelGenerator {
       }
     }
 
-    // Process type schemas
     Path typePath = schemaBasePath.resolve("type");
     if (Files.exists(typePath)) {
       try (Stream<Path> paths = Files.walk(typePath)) {
@@ -118,13 +109,8 @@ public class RdfModelGenerator {
             .forEach(this::processTypeSchema);
       }
     }
-
-    // Generate combined JSON-LD context
     generateCombinedContext();
-
-    // Write ontology
     writeOntology();
-
     LOG.info("RDF model generation completed. Processed {} types", processedTypes.size());
   }
 
@@ -143,14 +129,9 @@ public class RdfModelGenerator {
 
       if (entityType != null && schema.has("properties")) {
         LOG.debug("Processing entity schema: {}", entityType);
-
-        // Create JSON-LD context for this entity
         ObjectNode context = createJsonLdContext(entityType, schema);
         writeJsonLdContext(entityType, context);
-
-        // Add to ontology
         addToOntology(entityType, schema);
-
         processedTypes.add(entityType);
       }
     } catch (IOException e) {
@@ -165,8 +146,6 @@ public class RdfModelGenerator {
 
       if (typeName != null && schema.has("properties")) {
         LOG.debug("Processing type schema: {}", typeName);
-
-        // Add to ontology as a class
         Resource typeClass = ontologyModel.createResource(ONTOLOGY_URI + typeName);
         typeClass.addProperty(RDF.type, OWL.Class);
         typeClass.addProperty(RDFS.label, typeName);
@@ -184,19 +163,16 @@ public class RdfModelGenerator {
     ObjectNode root = MAPPER.createObjectNode();
     ObjectNode context = MAPPER.createObjectNode();
 
-    // Add @vocab and prefixes
     context.put("@vocab", ONTOLOGY_URI);
     VOCAB_PREFIXES.forEach(context::put);
     context.put("om", ONTOLOGY_URI);
 
-    // Add entity type mapping
     String standardType = TYPE_MAPPINGS.getOrDefault(entityType, "om:" + capitalize(entityType));
     ObjectNode typeMapping = MAPPER.createObjectNode();
     typeMapping.put("@id", "om:" + entityType);
     typeMapping.put("@type", standardType);
     context.set(capitalize(entityType), typeMapping);
 
-    // Process properties
     JsonNode properties = schema.get("properties");
     if (properties != null && properties.isObject()) {
       properties
@@ -205,7 +181,6 @@ public class RdfModelGenerator {
               entry -> {
                 String propName = entry.getKey();
                 JsonNode propSchema = entry.getValue();
-
                 // Skip internal properties
                 if (propName.startsWith("_") || propName.equals("href")) {
                   return;
@@ -225,15 +200,9 @@ public class RdfModelGenerator {
   private ObjectNode createPropertyMapping(String propName, JsonNode propSchema) {
     ObjectNode mapping = MAPPER.createObjectNode();
 
-    // Check for standard property mapping
     String standardProp = PROPERTY_MAPPINGS.get(propName);
-    if (standardProp != null) {
-      mapping.put("@id", standardProp);
-    } else {
-      mapping.put("@id", "om:" + propName);
-    }
+    mapping.put("@id", Objects.requireNonNullElseGet(standardProp, () -> "om:" + propName));
 
-    // Determine type from schema
     String jsonType = propSchema.path("type").asText();
     switch (jsonType) {
       case "string":
@@ -272,7 +241,6 @@ public class RdfModelGenerator {
   }
 
   private void addToOntology(String entityType, JsonNode schema) {
-    // Create class for entity type
     Resource entityClass = ontologyModel.createResource(ONTOLOGY_URI + capitalize(entityType));
     entityClass.addProperty(RDF.type, OWL.Class);
     entityClass.addProperty(RDFS.label, capitalize(entityType));
@@ -281,7 +249,6 @@ public class RdfModelGenerator {
       entityClass.addProperty(RDFS.comment, schema.get("description").asText());
     }
 
-    // Map to standard class if available
     String standardType = TYPE_MAPPINGS.get(entityType);
     if (standardType != null && standardType.contains(":")) {
       String[] parts = standardType.split(":");
@@ -294,7 +261,6 @@ public class RdfModelGenerator {
       }
     }
 
-    // Add properties
     JsonNode properties = schema.get("properties");
     if (properties != null && properties.isObject()) {
       properties
@@ -314,13 +280,10 @@ public class RdfModelGenerator {
     property.addProperty(RDF.type, OWL.DatatypeProperty);
     property.addProperty(RDFS.label, propName);
     property.addProperty(RDFS.domain, domainClass);
-
-    // Add description if available
     if (propSchema.has("description")) {
       property.addProperty(RDFS.comment, propSchema.get("description").asText());
     }
 
-    // Set range based on type
     String jsonType = propSchema.path("type").asText();
     switch (jsonType) {
       case "string":
@@ -342,12 +305,10 @@ public class RdfModelGenerator {
     ObjectNode combined = MAPPER.createObjectNode();
     ObjectNode context = MAPPER.createObjectNode();
 
-    // Add base context
     context.put("@vocab", ONTOLOGY_URI);
     VOCAB_PREFIXES.forEach(context::put);
     context.put("om", ONTOLOGY_URI);
 
-    // Add all entity type mappings
     for (String entityType : processedTypes) {
       ObjectNode typeMapping = MAPPER.createObjectNode();
       typeMapping.put("@id", "om:" + entityType);
@@ -358,7 +319,6 @@ public class RdfModelGenerator {
 
     combined.set("@context", context);
 
-    // Write combined context
     Path combinedPath = outputPath.resolve("contexts/combined.jsonld");
     Files.createDirectories(combinedPath.getParent());
     MAPPER.writerWithDefaultPrettyPrinter().writeValue(combinedPath.toFile(), combined);
@@ -387,7 +347,6 @@ public class RdfModelGenerator {
   private String extractEntityType(Path schemaPath) {
     String fileName = schemaPath.getFileName().toString();
     if (fileName.endsWith(".json")) {
-      // Convert camelCase to lowercase
       String name = fileName.substring(0, fileName.length() - 5);
       return name.substring(0, 1).toLowerCase() + name.substring(1);
     }
@@ -407,18 +366,5 @@ public class RdfModelGenerator {
       return str;
     }
     return str.substring(0, 1).toUpperCase() + str.substring(1);
-  }
-
-  /**
-   * Main method to run the generator
-   */
-  public static void main(String[] args) throws IOException {
-    if (args.length < 2) {
-      System.err.println("Usage: RdfModelGenerator <schema-base-path> <output-path>");
-      System.exit(1);
-    }
-
-    RdfModelGenerator generator = new RdfModelGenerator(args[0], args[1]);
-    generator.generateAll();
   }
 }
