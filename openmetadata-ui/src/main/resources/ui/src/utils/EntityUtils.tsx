@@ -2384,6 +2384,7 @@ export const getEntityNameLabel = (entityName?: string) => {
     dashboard: t('label.dashboard'),
     testCase: t('label.test-case'),
     testSuite: t('label.test-suite'),
+    dataContract: t('label.data-contract'),
     ingestionPipeline: t('label.ingestion-pipeline'),
     all: t('label.all'),
     announcement: t('label.announcement'),
@@ -2634,5 +2635,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.LINEAGE_EDGE]: t('label.lineage-edge'),
   [EntityType.WORKFLOW_DEFINITION]: t('label.workflow-definition'),
   [EntityType.SERVICE]: t('label.service'),
+  [EntityType.DATA_CONTRACT]: t('label.data-contract'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.DATA_CONTRACT]: t('label.data-contract'),
 };
