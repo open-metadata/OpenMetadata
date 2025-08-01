@@ -34,7 +34,6 @@ public class SemanticSearchQueryBuilder {
     this.embeddingService = EmbeddingService.getInstance();
   }
 
-
   public QueryBuilder buildSemanticQuery(SearchRequest request) {
     String queryText = request.getQuery();
     if (!isSemanticSearchEnabled(request)) {
@@ -56,10 +55,9 @@ public class SemanticSearchQueryBuilder {
         };
 
     return QueryBuilders.functionScoreQuery(hybridQuery, functions)
-            .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
-            .boostMode(os.org.opensearch.common.lucene.search.function.CombineFunction.MULTIPLY);
+        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
+        .boostMode(os.org.opensearch.common.lucene.search.function.CombineFunction.MULTIPLY);
   }
-
 
   private QueryBuilder buildKnnQuery(float[] queryEmbedding) {
     // OpenSearch k-NN plugin uses a different query structure
@@ -121,5 +119,4 @@ public class SemanticSearchQueryBuilder {
   private boolean isSemanticSearchEnabled(SearchRequest request) {
     return request.getSemanticSearch() != null && request.getSemanticSearch();
   }
-
 }

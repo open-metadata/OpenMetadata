@@ -2,7 +2,6 @@ package org.openmetadata.service.rdf.storage;
 
 import java.util.List;
 import java.util.UUID;
-
 import lombok.Getter;
 import org.apache.jena.rdf.model.Model;
 
@@ -104,6 +103,5 @@ public interface RdfStorageInterface {
       this.toId = toId;
       this.relationshipType = relationshipType;
     }
-
   }
 }

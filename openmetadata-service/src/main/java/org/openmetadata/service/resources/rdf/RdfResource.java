@@ -124,24 +124,25 @@ public class RdfResource {
       }
 
       String result;
-      MediaType mediaType = switch (format.toLowerCase()) {
-        case "turtle", "ttl" -> {
-          result = rdfRepository.getEntityAsRdf(entityType, id, "turtle");
-          yield MediaType.valueOf(TURTLE);
-        }
-        case "rdfxml", "xml" -> {
-          result = rdfRepository.getEntityAsRdf(entityType, id, "rdfxml");
-          yield MediaType.valueOf(RDF_XML);
-        }
-        case "ntriples", "nt" -> {
-          result = rdfRepository.getEntityAsRdf(entityType, id, "ntriples");
-          yield MediaType.valueOf(N_TRIPLES);
-        }
-        default -> {
-          result = rdfRepository.getEntityAsJsonLd(entityType, id);
-          yield MediaType.valueOf(JSON_LD);
-        }
-      };
+      MediaType mediaType =
+          switch (format.toLowerCase()) {
+            case "turtle", "ttl" -> {
+              result = rdfRepository.getEntityAsRdf(entityType, id, "turtle");
+              yield MediaType.valueOf(TURTLE);
+            }
+            case "rdfxml", "xml" -> {
+              result = rdfRepository.getEntityAsRdf(entityType, id, "rdfxml");
+              yield MediaType.valueOf(RDF_XML);
+            }
+            case "ntriples", "nt" -> {
+              result = rdfRepository.getEntityAsRdf(entityType, id, "ntriples");
+              yield MediaType.valueOf(N_TRIPLES);
+            }
+            default -> {
+              result = rdfRepository.getEntityAsJsonLd(entityType, id);
+              yield MediaType.valueOf(JSON_LD);
+            }
+          };
 
       return Response.ok(result, mediaType).build();
 

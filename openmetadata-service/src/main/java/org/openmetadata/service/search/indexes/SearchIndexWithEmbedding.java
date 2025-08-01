@@ -16,7 +16,6 @@ public interface SearchIndexWithEmbedding extends SearchIndex {
   String EMBEDDING_FIELD = "embedding";
   String RDF_CONTEXT_FIELD = "rdfContext";
 
-
   default void enrichWithSemanticData(Map<String, Object> doc, EntityInterface entity) {
     try {
       EmbeddingService embeddingService = getEmbeddingService();
@@ -35,7 +34,6 @@ public interface SearchIndexWithEmbedding extends SearchIndex {
       // This ensures backward compatibility
     }
   }
-
 
   default float[] generateEntityEmbedding(
       EntityInterface entity, EmbeddingService embeddingService) {
@@ -119,7 +117,8 @@ public interface SearchIndexWithEmbedding extends SearchIndex {
       List<Map<String, String>> counts = rdfRepository.executeSparqlQueryAsJson(countQuery);
       if (!counts.isEmpty()) {
         context.put(
-            "upstreamCount", Integer.parseInt(counts.getFirst().getOrDefault("upstreamCount", "0")));
+            "upstreamCount",
+            Integer.parseInt(counts.getFirst().getOrDefault("upstreamCount", "0")));
         context.put(
             "downstreamCount",
             Integer.parseInt(counts.getFirst().getOrDefault("downstreamCount", "0")));
@@ -133,7 +132,6 @@ public interface SearchIndexWithEmbedding extends SearchIndex {
 
     return context;
   }
-
 
   default String getAdditionalTextForEmbedding(EntityInterface entity) {
     return "";

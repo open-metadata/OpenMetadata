@@ -39,9 +39,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
-    String endpoint = config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
-        ? config.getRemoteEndpoint().toString()
-        : "http://openmetadata-fuseki:3030/openmetadata";
+    String endpoint =
+        config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
+            ? config.getRemoteEndpoint().toString()
+            : "http://openmetadata-fuseki:3030/openmetadata";
 
     if (config.getUsername() != null && config.getPassword() != null) {
       java.net.http.HttpClient httpClient =
@@ -84,7 +85,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       Model ontologyModel = ModelFactory.createDefaultModel();
       RDFDataMgr.read(
           ontologyModel,
-          Objects.requireNonNull(getClass().getResourceAsStream("/rdf/ontology/openmetadata-complete.ttl")),
+          Objects.requireNonNull(
+              getClass().getResourceAsStream("/rdf/ontology/openmetadata-complete.ttl")),
           org.apache.jena.riot.Lang.TURTLE);
 
       connection.load(METADATA_GRAPH, ontologyModel);

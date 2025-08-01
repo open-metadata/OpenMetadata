@@ -64,7 +64,7 @@ public class JsonLdTranslator {
     }
   }
 
-  public ObjectNode toJsonLd(EntityInterface entity)  {
+  public ObjectNode toJsonLd(EntityInterface entity) {
     JsonNode jsonNode = objectMapper.valueToTree(entity);
     ObjectNode objectNode = (ObjectNode) jsonNode;
 
@@ -112,7 +112,7 @@ public class JsonLdTranslator {
     } else {
       entityResource.addProperty(RDF.type, model.createResource(rdfType));
     }
-    
+
     // Hybrid approach: Always add OpenMetadata-specific type as defined in our ontology
     // This aligns with our ontology where om:Table is subClassOf dcat:Dataset
     String omNamespace = model.getNsPrefixURI("om");
@@ -149,7 +149,9 @@ public class JsonLdTranslator {
     if (entity.getTags() != null && !entity.getTags().isEmpty()) {
       for (org.openmetadata.schema.type.TagLabel tag : entity.getTags()) {
         String tagUri =
-            baseUri + "entity/tag/" + java.net.URLEncoder.encode(tag.getTagFQN(), StandardCharsets.UTF_8);
+            baseUri
+                + "entity/tag/"
+                + java.net.URLEncoder.encode(tag.getTagFQN(), StandardCharsets.UTF_8);
         String predicate =
             tag.getSource() == org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY
                 ? "hasGlossaryTerm"
@@ -175,21 +177,67 @@ public class JsonLdTranslator {
 
   private Object selectContext(String entityType) {
     return switch (entityType.toLowerCase()) {
-      case "table", "database", "databaseschema", "storedprocedure", "query", "dashboard", "chart", "report",
-           "pipeline", "topic", "mlmodel", "container", "metric", "searchindex", "apicollection", "apiendpoint",
-           "directory", "file", "spreadsheet", "worksheet" -> contextCache.get("dataAsset-complete");
-      case "databaseservice", "dashboardservice", "messagingservice", "pipelineservice", "mlmodelservice",
-           "storageservice", "searchservice", "metadataservice", "apiservice", "reportingservice", "qualityservice",
-           "observabilityservice", "driveservice" -> contextCache.get("service");
+      case "table",
+          "database",
+          "databaseschema",
+          "storedprocedure",
+          "query",
+          "dashboard",
+          "chart",
+          "report",
+          "pipeline",
+          "topic",
+          "mlmodel",
+          "container",
+          "metric",
+          "searchindex",
+          "apicollection",
+          "apiendpoint",
+          "directory",
+          "file",
+          "spreadsheet",
+          "worksheet" -> contextCache.get("dataAsset-complete");
+      case "databaseservice",
+          "dashboardservice",
+          "messagingservice",
+          "pipelineservice",
+          "mlmodelservice",
+          "storageservice",
+          "searchservice",
+          "metadataservice",
+          "apiservice",
+          "reportingservice",
+          "qualityservice",
+          "observabilityservice",
+          "driveservice" -> contextCache.get("service");
       case "user", "team", "role", "bot", "policy" -> contextCache.get("team");
       case "thread", "post" -> contextCache.get("thread");
-      case "glossary", "glossaryterm", "classification", "tag", "datacontract", "dataproduct", "domain", "persona" ->
-          contextCache.get("governance");
-      case "testdefinition", "testsuite", "testcase", "testcaseresult", "testcaseresolutionstatus" ->
-          contextCache.get("quality");
-      case "ingestionpipeline", "workflow", "workflowdefinition", "workflowinstance", "workflowinstancestate",
-           "eventsubscription", "kpi", "datainsightchart", "webanalyticevent", "app", "appmarketplacedefinition",
-           "document", "page" -> contextCache.get("operations");
+      case "glossary",
+          "glossaryterm",
+          "classification",
+          "tag",
+          "datacontract",
+          "dataproduct",
+          "domain",
+          "persona" -> contextCache.get("governance");
+      case "testdefinition",
+          "testsuite",
+          "testcase",
+          "testcaseresult",
+          "testcaseresolutionstatus" -> contextCache.get("quality");
+      case "ingestionpipeline",
+          "workflow",
+          "workflowdefinition",
+          "workflowinstance",
+          "workflowinstancestate",
+          "eventsubscription",
+          "kpi",
+          "datainsightchart",
+          "webanalyticevent",
+          "app",
+          "appmarketplacedefinition",
+          "document",
+          "page" -> contextCache.get("operations");
       default -> contextCache.get("base");
     };
   }

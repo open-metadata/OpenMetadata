@@ -14,7 +14,8 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 @Slf4j
 public class EmbeddingService {
 
-  private static final int EMBEDDING_DIMENSION = 384; // Dimension for SimpleSemanticEmbeddingProvider
+  private static final int EMBEDDING_DIMENSION =
+      384; // Dimension for SimpleSemanticEmbeddingProvider
   private static volatile EmbeddingService INSTANCE;
   private final EmbeddingProvider provider;
   private final ExecutorService executorService;
