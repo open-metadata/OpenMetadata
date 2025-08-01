@@ -870,6 +870,7 @@ export enum ModelType {
 export enum FileFormat {
     Avro = "avro",
     CSV = "csv",
+    CSVGz = "csv.gz",
     JSON = "json",
     JSONGz = "json.gz",
     JSONZip = "json.zip",
