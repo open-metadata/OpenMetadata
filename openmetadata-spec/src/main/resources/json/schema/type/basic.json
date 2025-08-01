@@ -241,6 +241,15 @@
           "type": "string",
           "default": null
         },
+        "ignoredEntities": {
+          "title": "Ignored Entities",
+          "description": "List of entities to ignore for this semantics rule.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
         "provider": {
           "$ref": "#/definitions/providerType"
         }

@@ -34,6 +34,10 @@ export interface SemanticsRule {
      */
     entityType?: string;
     /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
      * Name of the semantics rule.
      */
     name:      string;
