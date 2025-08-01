@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_9'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1182,6 +1182,22 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Fix Airflow ingestion compatibility for older Airflow versions.
 - Fix Trino column validation errors for highly complex fields, ensuring proper handling.
 - Fix alert to correctly display the test case name and URL on failure.
+`,
+    },
+  },
+  {
+    id: 81,
+    version: 'v1.8.9',
+    description: 'Released on 1st August 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Remove unnecessary braces in additional_config for cleaner code.
+- Implemented comprehensive Security Service with schema changes, UI integration, and OSS visibility controls.
+- Add backward-compatible support for documented owner configuration in dbt.
+- Implemented configurable sink and reverse metadata support for Ranger, along with cleanup, bug fixes, and UI enhancements. ${CollateIconWithLinkMD}
+- Add lineage propagation enhancements in Automator with stop conditions and propagation depth, along with related UI fixes, configuration support, and test improvements. ${CollateIconWithLinkMD}
+`,
+      Fixes: `- Incorrect or missing security labels.
 `,
     },
   },
