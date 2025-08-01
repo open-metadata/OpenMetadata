@@ -20,7 +20,6 @@ import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
-  toastNotification,
   uuid,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
@@ -255,9 +254,6 @@ test.describe.serial('Persona operations', () => {
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
 
-    await toastNotification(
-      page,
-      `"${PERSONA_DETAILS.displayName}" deleted successfully!`
-    );
+    await page.waitForURL('**/settings/persona');
   });
 });

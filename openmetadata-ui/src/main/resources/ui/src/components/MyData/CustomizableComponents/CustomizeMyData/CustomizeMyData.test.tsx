@@ -136,8 +136,11 @@ jest.mock(
   () => ({
     CustomizablePageHeader: jest
       .fn()
-      .mockImplementation(({ onReset, onSave }) => (
+      .mockImplementation(({ onAddWidget, onReset, onSave }) => (
         <div data-testid="customizable-page-header">
+          <button data-testid="add-widget-button" onClick={onAddWidget}>
+            Add Widget
+          </button>
           <button data-testid="cancel-button" onClick={onReset}>
             Cancel
           </button>
@@ -220,20 +223,12 @@ describe('CustomizeMyData component', () => {
     expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
   });
 
-  it('CustomizeMyData should display EmptyWidgetPlaceholderV1', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    expect(screen.getByText('EmptyWidgetPlaceholderV1')).toBeInTheDocument();
-  });
-
   it('CustomizeMyData should display CustomiseHomeModal after handleOpenAddWidgetModal is called', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModalV1');
+    const addWidgetButton = screen.getByTestId('add-widget-button');
 
     fireEvent.click(addWidgetButton);
 
@@ -245,7 +240,7 @@ describe('CustomizeMyData component', () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModalV1');
+    const addWidgetButton = screen.getByTestId('add-widget-button');
 
     fireEvent.click(addWidgetButton);
 

@@ -39,10 +39,10 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
   return (
     <Card
       bodyStyle={{ height: '100%' }}
-      className="h-full cursor-pointer"
+      className="h-full w-full cursor-pointer overflow-hidden"
       data-testid={`persona-details-card-${persona.name}`}
       onClick={handleCardClick}>
-      <Space className="justify-between h-full" direction="vertical">
+      <Space className="justify-between w-full" direction="vertical">
         <Card.Meta
           description={
             persona.description ? (
@@ -56,7 +56,11 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
               </Typography.Text>
             )
           }
-          title={getEntityName(persona)}
+          title={
+            <Typography.Text ellipsis={{ tooltip: true }}>
+              {getEntityName(persona)}
+            </Typography.Text>
+          }
         />
       </Space>
     </Card>

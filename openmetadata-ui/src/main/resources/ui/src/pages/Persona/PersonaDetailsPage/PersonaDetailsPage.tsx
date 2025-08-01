@@ -45,6 +45,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import './persona-details-page.less';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
@@ -223,9 +224,8 @@ export const PersonaDetailsPage = () => {
       <Row className="m-b-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
-            <div className="w-full">
+            <div className="persona-details-title-container">
               <TitleBreadcrumb titleLinks={breadcrumb} />
-
               <EntityHeaderTitle
                 className="m-t-xs"
                 displayName={personaDetails.displayName}

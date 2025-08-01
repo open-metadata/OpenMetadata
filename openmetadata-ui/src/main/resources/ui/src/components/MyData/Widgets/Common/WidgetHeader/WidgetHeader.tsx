@@ -16,7 +16,6 @@ import { Button, Col, Row, Typography } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
@@ -34,7 +33,7 @@ export interface WidgetHeaderProps {
   isEditView?: boolean;
   onEditClick?: () => void;
   onSortChange?: (key: string) => void;
-  redirectUrlOnTitleClick?: string;
+  onTitleClick?: () => void;
   selectedSortBy?: string;
   sortOptions?: Array<{
     key: string;
@@ -55,14 +54,13 @@ const WidgetHeader = ({
   isEditView = false,
   onEditClick,
   onSortChange,
-  redirectUrlOnTitleClick,
+  onTitleClick,
   selectedSortBy,
   sortOptions,
   title,
   widgetKey,
   widgetWidth = 2,
 }: WidgetHeaderProps) => {
-  const navigate = useNavigate();
   const handleSortByClick = (e: MenuInfo) => {
     onSortChange?.(e.key);
   };
@@ -87,12 +85,6 @@ const WidgetHeader = ({
     }
   };
 
-  const handleTitleClick = () => {
-    if (redirectUrlOnTitleClick) {
-      navigate(redirectUrlOnTitleClick);
-    }
-  };
-
   return (
     <Row
       className={`widget-header h-15 ${className}`}
@@ -106,7 +98,7 @@ const WidgetHeader = ({
           style={{
             maxWidth: widgetWidth === 1 ? '200px' : '525px',
           }}
-          onClick={handleTitleClick}>
+          onClick={onTitleClick}>
           {title}
         </Typography.Paragraph>
       </Col>

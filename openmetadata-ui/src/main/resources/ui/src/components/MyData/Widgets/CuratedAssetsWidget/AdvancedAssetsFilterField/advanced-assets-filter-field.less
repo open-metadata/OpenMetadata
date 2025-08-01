@@ -26,8 +26,18 @@
   }
 
   .query-builder-container {
+    .rule-container:first-child .action--DELETE {
+      display: none;
+    }
+
+    .group-or-rule-container.rule-container:first-child {
+      max-width: 85%;
+    }
+
     .group-or-rule-container.rule-container {
       padding: 0px;
+      height: 32px;
+
       .rule.group-or-rule {
         .rule--header {
           .ant-btn-group {
@@ -127,7 +137,16 @@
 
           .group--header {
             .group--conjunctions {
-              display: none;
+              top: 0px;
+              right: 0px;
+
+              .ant-btn-group {
+                button {
+                  height: 32px;
+                  padding-top: 0px;
+                  padding-bottom: 0px;
+                }
+              }
             }
           }
 
@@ -135,8 +154,8 @@
             top: -54px !important;
             right: 0px !important;
             background-color: @primary-button-background !important;
-            color: @primary-color !important;
-            border: none !important;
+            color: @primary-7;
+            border: none;
             border-radius: 8px !important;
             padding-top: 4px;
             padding-bottom: 4px;

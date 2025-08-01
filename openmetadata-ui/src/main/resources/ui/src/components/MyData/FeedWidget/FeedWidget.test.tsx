@@ -78,8 +78,13 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 jest.mock(
   '../Widgets/Common/WidgetWrapper/WidgetWrapper',
   () =>
-    ({ children }: any) =>
-      <div data-testid="widget-wrapper">{children}</div>
+    ({ children, header }: any) =>
+      (
+        <div data-testid="widget-wrapper">
+          {header}
+          {children}
+        </div>
+      )
 );
 
 jest.mock(

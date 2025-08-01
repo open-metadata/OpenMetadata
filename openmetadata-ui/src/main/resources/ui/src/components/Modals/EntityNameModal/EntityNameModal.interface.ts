@@ -29,5 +29,6 @@ export interface EntityNameModalProps<
   entity: T;
   title: string;
   nameValidationRules?: Rule[];
+  displayNameValidationRules?: Rule[];
   additionalFields?: React.ReactNode;
 }

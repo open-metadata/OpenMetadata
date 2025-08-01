@@ -154,26 +154,36 @@ export const getModifiedQueryFilterWithSelectedAssets = (
   queryFilterObject: Record<string, any>,
   selectedResource?: Array<string>
 ) => {
+  // Create entityType filter for selected resources
+  const entityTypeFilter = {
+    bool: {
+      should: [
+        ...(selectedResource ?? []).map((resource) => ({
+          term: { entityType: resource },
+        })),
+      ],
+    },
+  };
+
+  // If no original query, return just the entityType filter
+  if (!queryFilterObject.query) {
+    return {
+      query: {
+        bool: {
+          must: [entityTypeFilter],
+        },
+      },
+    };
+  }
+
+  // If original query exists, combine it with entity type filter using AND logic
+  // This ensures the user's query conditions AND the entity type selection are both satisfied
   return {
     query: {
       bool: {
         must: [
-          {
-            bool: {
-              must: [
-                ...(queryFilterObject.query?.bool?.must?.[0]?.bool?.must ?? []),
-                {
-                  bool: {
-                    should: [
-                      ...(selectedResource ?? []).map((resource) => ({
-                        term: { entityType: resource },
-                      })),
-                    ],
-                  },
-                },
-              ],
-            },
-          },
+          queryFilterObject.query, // Preserve original query structure completely
+          entityTypeFilter, // Add entity type filter
         ],
       },
     },

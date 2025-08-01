@@ -211,7 +211,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
         showArrow={false}
         trigger={['click']}
         onOpenChange={(open) => {
-          setIsSearchBoxOpen(isNLPEnabled ? open : !!searchValue && open);
+          setIsSearchBoxOpen(isNLPActive ? open : !!searchValue && open);
         }}>
         <Input
           autoComplete="off"

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,31 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) url('../../../styles/variables.less');
 
-.user-listing,
-.reactive-modal {
-  .ant-btn {
-    border-radius: 4px;
-  }
+.persona-cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 
-  .user-list-table {
-    .ant-table-row .ant-table-cell:first-child,
-    .ant-table-thead .ant-table-cell:first-child {
-      padding-left: 16px;
-    }
-  }
-
-  .persona-list-container {
-    .ant-col {
-      padding: 0 !important;
-    }
+  .persona-card-item,
+  .skeleton-card-item {
+    flex: 0 0 calc(33.333% - 6px);
+    min-width: 300px;
+    height: 120px;
   }
 }
 
-.action-icons {
-  .ant-btn {
-    height: 20px;
-    width: 20px;
-    padding: 0px;
-  }
+.persona-main-container > .ant-row {
+  height: 100%;
 }

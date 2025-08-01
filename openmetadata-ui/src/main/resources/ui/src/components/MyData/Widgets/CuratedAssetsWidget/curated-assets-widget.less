@@ -56,10 +56,25 @@
     overflow: hidden;
   }
 
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .entity-list-body {
+    flex: 1;
     padding: 0;
     margin-top: 0;
     overflow-y: auto;
+    min-height: 0;
+  }
+
+  .widget-footer {
+    flex-shrink: 0;
+    margin-top: auto;
   }
 
   .curated-assets-list-item-content {
@@ -77,14 +92,6 @@
     font-weight: @font-regular;
     text-align: left;
     margin-bottom: 0;
-  }
-
-  .widget-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
   }
 
   .ant-dropdown-menu-item {

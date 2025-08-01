@@ -153,7 +153,7 @@ const CustomiseLandingPageHeader = ({
   }, [fetchAnnouncements]);
 
   return (
-    <div className="customise-landing-page" style={landingPageStyle}>
+    <div className="customise-landing-page-header" style={landingPageStyle}>
       <div className="header-container">
         <div className="dashboard-header">
           <div

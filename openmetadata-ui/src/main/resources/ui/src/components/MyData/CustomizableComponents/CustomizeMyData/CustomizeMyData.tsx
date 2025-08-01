@@ -73,6 +73,18 @@ function CustomizeMyData({
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
 
+  const emptyWidgetPlaceholder = useMemo(
+    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
+    [layout]
+  );
+
+  const maxRows = useMemo(() => {
+    return (
+      (emptyWidgetPlaceholder?.y ?? 0) +
+      customizeMyDataPageClassBase.defaultWidgetHeight
+    );
+  }, [emptyWidgetPlaceholder]);
+
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
   }, []);
@@ -147,20 +159,25 @@ function CustomizeMyData({
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
-          {getWidgetFromKey({
-            currentLayout: layout,
-            handleLayoutUpdate: handleLayoutUpdate,
-            handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
-            handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
-            handleRemoveWidget: handleRemoveWidget,
-            isEditView: true,
-            personaName: getEntityName(personaDetails),
-            widgetConfig: widget,
-          })}
-        </div>
-      )),
+      layout
+        .filter(
+          (widget) =>
+            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+        )
+        .map((widget) => (
+          <div data-grid={widget} id={widget.i} key={widget.i}>
+            {getWidgetFromKey({
+              currentLayout: layout,
+              handleLayoutUpdate: handleLayoutUpdate,
+              handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
+              handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
+              handleRemoveWidget: handleRemoveWidget,
+              isEditView: true,
+              personaName: getEntityName(personaDetails),
+              widgetConfig: widget,
+            })}
+          </div>
+        )),
     [
       layout,
       handleOpenCustomiseHomeModal,
@@ -237,6 +254,7 @@ function CustomizeMyData({
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
+            maxRows={maxRows}
             preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
