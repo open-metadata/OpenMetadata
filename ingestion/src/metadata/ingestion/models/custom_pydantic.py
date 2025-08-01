@@ -27,11 +27,7 @@ from pydantic_core.core_schema import SerializationInfo
 from typing_extensions import Annotated
 
 from metadata.ingestion.models.custom_basemodel_validation import (
-    CREATE_ADJACENT_MODELS,
-    FETCH_MODELS,
-    replace_separators,
-    revert_separators,
-    validate_name_and_transform,
+    transform_entity_names,
 )
 
 logger = logging.getLogger("metadata")
@@ -75,25 +71,19 @@ class BaseModel(PydanticBaseModel):
     @classmethod
     def parse_name(cls, values):  # pylint: disable=inconsistent-return-statements
         """
-        Primary entry point to process values based on their class.
+        Transform entity names using hybrid configuration system.
         """
 
         if not values:
-            return
+            return values
 
         try:
-
-            if cls.__name__ in CREATE_ADJACENT_MODELS or cls.__name__.startswith(
-                "Create"
-            ):
-                values = validate_name_and_transform(values, replace_separators)
-            elif cls.__name__ in FETCH_MODELS:
-                values = validate_name_and_transform(values, revert_separators)
-
+            model_name = cls.__name__
+            # Try new hybrid system first
+            return transform_entity_names(values, model_name)
         except Exception as exc:
             logger.warning("Exception while parsing Basemodel: %s", exc)
-            raise exc
-        return values
+            return values
 
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
