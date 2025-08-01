@@ -10,23 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, {
-  EditOutlined,
-  PlayCircleOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
+import Icon, { PlayCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Loading } from '@melloware/react-logviewer';
 import { Button, Card, Col, Row, Space, Tag, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
 import { Cell, Pie, PieChart } from 'recharts';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -46,19 +46,19 @@ import {
   getContractStatusType,
   getTestCaseSummaryChartItems,
 } from '../../../utils/DataContract/DataContractUtils';
+import { getTestCaseStatusIcon } from '../../../utils/DataQuality/DataQualityUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { OwnerAvatar } from '../../common/OwnerAvtar/OwnerAvatar';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
 import './contract-detail.less';
-
-const { Title, Text } = Typography;
 
 const ContractDetail: React.FC<{
   contract?: DataContract | null;
@@ -129,7 +129,9 @@ const ContractDetail: React.FC<{
       title: t('label.name'),
       dataIndex: 'name',
       key: 'name',
-      render: (name: string) => <Text className="text-primary">{name}</Text>,
+      render: (name: string) => (
+        <Typography.Text className="text-primary">{name}</Typography.Text>
+      ),
     },
     {
       title: t('label.type'),
@@ -216,19 +218,19 @@ const ContractDetail: React.FC<{
   return (
     <>
       {/* Header Section */}
-      <Card style={{ marginBottom: 16 }}>
+      <Card className="contract-header-container" style={{ marginBottom: 16 }}>
         <Row align="middle" justify="space-between">
           <Col flex="auto">
-            <Title level={3} style={{ margin: 0 }}>
-              {contract.displayName || contract.name}
-            </Title>
+            <Typography.Text className="contract-title">
+              {getEntityName(contract)}
+            </Typography.Text>
 
-            <Text type="secondary">
+            <Typography.Text className="contract-time">
               {t('message.created-time-ago-by', {
                 time: getRelativeTime(contract.updatedAt),
                 by: contract.updatedBy,
               })}
-            </Text>
+            </Typography.Text>
 
             <div className="d-flex items-center gap-2 m-t-xs">
               <StatusBadgeV2
@@ -236,19 +238,34 @@ const ContractDetail: React.FC<{
                 label={t('label.active')}
                 status={StatusType.Success}
               />
-              <Text type="secondary">
-                {t('label.version-number', {
+
+              <StatusBadgeV2
+                className="contract-version-badge"
+                label={t('label.version-number', {
                   version: contract.version,
                 })}
-              </Text>
+                status={StatusType.Version}
+              />
             </div>
           </Col>
           <Col>
-            <Space>
+            <div className="contract-action-container">
+              <div className="contract-owner-label-container">
+                <Typography.Text>{t('label.owner-plural')}</Typography.Text>
+                <OwnerLabel
+                  avatarSize={24}
+                  isCompactView={false}
+                  maxVisibleOwners={5}
+                  owners={contract.owners}
+                  showLabel={false}
+                />
+              </div>
+
               <Button
+                className="contract-run-now-button"
                 icon={<PlayCircleOutlined />}
                 loading={validateLoading}
-                size="small"
+                size="middle"
                 onClick={handleRunNow}>
                 {t('label.run-now')}
               </Button>
@@ -260,48 +277,61 @@ const ContractDetail: React.FC<{
                 onClick={onDelete}
               />
               <Button
-                icon={<EditOutlined />}
+                icon={
+                  <EditIcon className="anticon" style={{ ...ICON_DIMENSION }} />
+                }
                 size="small"
                 type="primary"
                 onClick={onEdit}>
                 {t('label.edit')}
               </Button>
-            </Space>
+            </div>
           </Col>
         </Row>
-        {contract.owners && contract.owners.length > 0 && (
-          <Row style={{ marginTop: 16 }}>
-            <Col>
-              <Text strong style={{ marginRight: 8 }}>
-                {t('label.owner')}
-              </Text>
-              <OwnerAvatar avatarSize={24} owner={contract.owners[0]} />
-            </Col>
-          </Row>
-        )}
       </Card>
 
-      <Row gutter={[16, 16]}>
+      <Row className="contract-detail-container" gutter={[16, 0]}>
         {/* Left Column */}
         <Col span={12}>
           <Row gutter={[16, 16]}>
             <Col span={24}>
-              <DescriptionV1
-                wrapInCard
-                description={contract.description}
-                entityType={EntityType.DATA_CONTRACT}
-                showCommentsIcon={false}
-                showSuggestions={false}
-              />
+              <ExpandableCard
+                cardProps={{
+                  className: 'expandable-card-contract',
+                  title: (
+                    <div className="contract-card-title-container">
+                      <Typography.Text className="contract-card-title">
+                        {t('label.entity-detail-plural', {
+                          entity: t('label.contract'),
+                        })}
+                      </Typography.Text>
+                      <Typography.Text className="contract-card-description">
+                        {t('message.expected-schema-structure-of-this-asset')}
+                      </Typography.Text>
+                    </div>
+                  ),
+                }}>
+                <div className="expandable-card-contract-body">
+                  <DescriptionV1
+                    description={contract.description}
+                    entityType={EntityType.DATA_CONTRACT}
+                    showCommentsIcon={false}
+                    showSuggestions={false}
+                  />
+                </div>
+              </ExpandableCard>
             </Col>
 
             <Col span={24}>
               <ExpandableCard
                 cardProps={{
+                  className: 'expandable-card-contract',
                   title: (
-                    <div>
-                      <Title level={5}>{t('label.schema')}</Title>
-                      <Typography.Text type="secondary">
+                    <div className="contract-card-title-container">
+                      <Typography.Text className="contract-card-title">
+                        {t('label.schema')}
+                      </Typography.Text>
+                      <Typography.Text className="contract-card-description">
                         {t('message.expected-schema-structure-of-this-asset')}
                       </Typography.Text>
                     </div>
@@ -328,10 +358,13 @@ const ContractDetail: React.FC<{
               <Col span={24}>
                 <ExpandableCard
                   cardProps={{
+                    className: 'expandable-card-contract',
                     title: (
-                      <div>
-                        <Title level={5}>{t('label.contract-status')}</Title>
-                        <Typography.Text type="secondary">
+                      <div className="contract-card-title-container">
+                        <Typography.Text className="contract-card-title">
+                          {t('label.contract-status')}
+                        </Typography.Text>
+                        <Typography.Text className="contract-card-description">
                           {t('message.contract-status-description')}
                         </Typography.Text>
                       </div>
@@ -352,16 +385,16 @@ const ContractDetail: React.FC<{
                           />
 
                           <div className="d-flex flex-column m-l-md">
-                            <Text className="contract-status-card-label">
+                            <Typography.Text className="contract-status-card-label">
                               {item.label}
-                            </Text>
+                            </Typography.Text>
                             <div>
-                              <Text className="contract-status-card-desc">
+                              <Typography.Text className="contract-status-card-desc">
                                 {item.desc}
-                              </Text>
-                              <Text className="contract-status-card-time">
+                              </Typography.Text>
+                              <Typography.Text className="contract-status-card-time">
                                 {item.time}
-                              </Text>
+                              </Typography.Text>
                             </div>
                           </div>
                         </div>
@@ -382,27 +415,32 @@ const ContractDetail: React.FC<{
               <Col span={24}>
                 <ExpandableCard
                   cardProps={{
+                    className: 'expandable-card-contract',
                     title: (
-                      <div>
-                        <Title level={5}>{t('label.semantic-plural')}</Title>
-                        <Typography.Text type="secondary">
+                      <div className="contract-card-title-container">
+                        <Typography.Text className="contract-card-title">
+                          {t('label.semantic-plural')}
+                        </Typography.Text>
+                        <Typography.Text className="contract-card-description">
                           {t('message.semantics-description')}
                         </Typography.Text>
                       </div>
                     ),
                   }}>
-                  <Text className="card-subtitle">
-                    {t('label.custom-integrity-rules')}
-                  </Text>
-                  {(contract?.semantics ?? []).map((item) => (
-                    <div className="rule-item">
-                      <Icon className="rule-icon" component={CheckIcon} />
-                      <span className="rule-name">{item.name}</span>{' '}
-                      <span className="rule-description">
-                        {item.description}
-                      </span>
-                    </div>
-                  ))}
+                  <div className="expandable-card-contract-body">
+                    <Typography.Text className="card-subtitle">
+                      {t('label.custom-integrity-rules')}
+                    </Typography.Text>
+                    {(contract?.semantics ?? []).map((item) => (
+                      <div className="rule-item">
+                        <Icon className="rule-icon" component={CheckIcon} />
+                        <span className="rule-name">{item.name}</span>{' '}
+                        <span className="rule-description">
+                          {item.description}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </ExpandableCard>
               </Col>
             )}
@@ -412,93 +450,79 @@ const ContractDetail: React.FC<{
               <Col span={24}>
                 <ExpandableCard
                   cardProps={{
+                    className: 'expandable-card-contract',
                     title: (
-                      <div>
-                        <Title level={5}>{t('label.quality')}</Title>
-                        <Typography.Text type="secondary">
+                      <div className="contract-card-title-container">
+                        <Typography.Text className="contract-card-title">
+                          {t('label.quality')}
+                        </Typography.Text>
+                        <Typography.Text className="contract-card-description">
                           {t('message.data-quality-test-contract-title')}
                         </Typography.Text>
                       </div>
                     ),
                   }}>
-                  {isTestCaseLoading ? (
-                    <Loading />
-                  ) : (
-                    <Row
-                      className="data-quality-card-container"
-                      gutter={[0, 8]}>
-                      <Col span={24}>
-                        <Row
-                          align="middle"
-                          className="data-quality-chart-container"
-                          gutter={8}>
+                  <div className="expandable-card-contract-body">
+                    {isTestCaseLoading ? (
+                      <Loading />
+                    ) : (
+                      <div className="data-quality-card-container">
+                        <div className="data-quality-chart-container">
                           {testCaseSummaryChartItems.map((item) => (
-                            <Col key={item.label} span={6}>
-                              <div
-                                className="data-quality-chart-item"
-                                key={item.label}>
-                                <Text className="chart-label">
-                                  {item.label}
-                                </Text>
+                            <div
+                              className="data-quality-chart-item"
+                              key={item.label}>
+                              <Typography.Text className="chart-label">
+                                {item.label}
+                              </Typography.Text>
 
-                                <PieChart height={120} width={120}>
-                                  <Pie
-                                    cx="50%"
-                                    cy="50%"
-                                    data={item.chartData}
-                                    dataKey="value"
-                                    innerRadius={40}
-                                    outerRadius={50}>
-                                    {item.chartData.map((entry, index) => (
-                                      <Cell
-                                        fill={entry.color}
-                                        key={`cell-${index}`}
-                                      />
-                                    ))}
-                                  </Pie>
-                                  <text
-                                    className="chart-center-text"
-                                    dominantBaseline="middle"
-                                    textAnchor="middle"
-                                    x="50%"
-                                    y="50%">
-                                    {item.value}
-                                  </text>
-                                </PieChart>
-                              </div>
-                            </Col>
+                              <PieChart height={120} width={120}>
+                                <Pie
+                                  cx="50%"
+                                  cy="50%"
+                                  data={item.chartData}
+                                  dataKey="value"
+                                  innerRadius={40}
+                                  outerRadius={50}>
+                                  {item.chartData.map((entry, index) => (
+                                    <Cell
+                                      fill={entry.color}
+                                      key={`cell-${index}`}
+                                    />
+                                  ))}
+                                </Pie>
+                                <text
+                                  className="chart-center-text"
+                                  dominantBaseline="middle"
+                                  textAnchor="middle"
+                                  x="50%"
+                                  y="50%">
+                                  {item.value}
+                                </text>
+                              </PieChart>
+                            </div>
                           ))}
-                        </Row>
-                      </Col>
-                      <Col span={24} style={{ marginTop: 8 }}>
+                        </div>
                         <Space direction="vertical">
                           {testCaseResult.map((item) => (
                             <div
                               className="data-quality-item d-flex items-center"
                               key={item.id}>
-                              <StatusBadgeV2
-                                className="data-quality-list-badge"
-                                label=""
-                                status={
-                                  item.testCaseStatus
-                                    ? getContractStatusType(item.testCaseStatus)
-                                    : StatusType.Pending
-                                }
-                              />
+                              {getTestCaseStatusIcon(item)}
                               <div className="data-quality-item-content">
                                 <Typography.Text className="data-quality-item-name">
                                   {item.name}
                                 </Typography.Text>
-                                <Text className="data-quality-item-description">
+                                <Typography.Text className="data-quality-item-description">
                                   {item.description}
-                                </Text>
+                                </Typography.Text>
                               </div>
                             </div>
                           ))}
                         </Space>
-                      </Col>
-                    </Row>
-                  )}
+                      </div>
+                    )}
+                  </div>
                 </ExpandableCard>
               </Col>
             )}

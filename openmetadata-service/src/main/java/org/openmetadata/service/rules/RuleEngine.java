@@ -74,8 +74,10 @@ public class RuleEngine {
     ArrayList<SemanticsRule> rulesToEvaluate = new ArrayList<>();
     if (!incomingOnly) {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
-      DataContract entityContract = getEntityDataContractSafely(facts);
-      if (entityContract != null && entityContract.getStatus() == ContractStatus.Active) {
+      DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
+      if (entityContract != null
+          && entityContract.getStatus() == ContractStatus.Active
+          && !nullOrEmpty(entityContract.getSemantics())) {
         rulesToEvaluate.addAll(entityContract.getSemantics());
       }
     }
@@ -123,15 +125,6 @@ public class RuleEngine {
       }
     } catch (JsonLogicException e) {
       throw new RuleValidationException(rule, e.getMessage(), e);
-    }
-  }
-
-  private DataContract getEntityDataContractSafely(EntityInterface entity) {
-    try {
-      return dataContractRepository.loadEntityDataContract(entity.getEntityReference());
-    } catch (Exception e) {
-      LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
-      return null;
     }
   }
 }

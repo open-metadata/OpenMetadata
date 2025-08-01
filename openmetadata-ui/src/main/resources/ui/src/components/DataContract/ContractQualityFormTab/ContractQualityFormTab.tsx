@@ -99,11 +99,16 @@ export const ContractQualityFormTab: React.FC<{
 
   return (
     <Card className="container bg-grey p-box">
-      <Typography.Title level={5}>{t('label.quality')}</Typography.Title>
-      <Typography.Text type="secondary">
-        {t('message.quality-contract-description')}
-      </Typography.Text>
-      <Card>
+      <div>
+        <Typography.Text className="contract-detail-form-tab-title">
+          {t('label.quality')}
+        </Typography.Text>
+        <Typography.Text className="contract-detail-form-tab-description">
+          {t('message.quality-contract-description')}
+        </Typography.Text>
+      </div>
+
+      <div className="contract-form-content-container">
         <Radio.Group
           className="m-b-sm"
           value={testType}
@@ -125,7 +130,8 @@ export const ContractQualityFormTab: React.FC<{
             },
           }}
         />
-      </Card>
+      </div>
+
       <div className="d-flex justify-between m-t-md">
         <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
