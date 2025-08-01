@@ -255,7 +255,7 @@ test.describe('Customize Landing Page Flow', () => {
         await toastNotification(adminPage, 'Page layout updated successfully.');
 
         // Check if all widgets are present after resetting the layout
-        await checkAllDefaultWidgets(adminPage, true);
+        await checkAllDefaultWidgets(adminPage);
 
         // Check if all widgets are present on landing page
         await redirectToHomePage(adminPage);

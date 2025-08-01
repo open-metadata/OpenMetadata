@@ -12,7 +12,11 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { toastNotification, visitOwnProfilePage } from './common';
+import {
+  redirectToHomePage,
+  toastNotification,
+  visitOwnProfilePage,
+} from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -60,22 +64,13 @@ export const removeAndCheckWidget = async (
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
-export const checkAllDefaultWidgets = async (
-  page: Page,
-  checkEmptyWidgetPlaceholder = false
-) => {
+export const checkAllDefaultWidgets = async (page: Page) => {
   await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
   await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
-
-  if (checkEmptyWidgetPlaceholder) {
-    await expect(
-      page.getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
-    ).toBeVisible();
-  }
 };
 
 export const setUserDefaultPersona = async (
@@ -128,4 +123,55 @@ export const saveCustomizeLayoutPage = async (
     page,
     `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
   );
+};
+
+export const removeAndVerifyWidget = async (
+  page: Page,
+  widgetKey: string,
+  personaName: string,
+  customPageDataResponse: number
+) => {
+  await navigateToCustomizeLandingPage(page, {
+    personaName,
+    customPageDataResponse,
+  });
+
+  await removeAndCheckWidget(page, {
+    widgetKey,
+  });
+
+  await saveCustomizeLayoutPage(page, true);
+
+  await redirectToHomePage(page);
+
+  await expect(page.getByTestId(widgetKey)).not.toBeVisible();
+};
+
+export const addAndVerifyWidget = async (
+  page: Page,
+  widgetKey: string,
+  personaName: string,
+  customPageDataResponse: number
+) => {
+  await navigateToCustomizeLandingPage(page, {
+    personaName,
+    customPageDataResponse,
+  });
+
+  await openAddCustomizeWidgetModal(page);
+  await page.locator('[data-testid="loader"]').waitFor({
+    state: 'detached',
+  });
+
+  await page.locator(`[data-testid="${widgetKey}"]`).click();
+
+  await page.locator('[data-testid="apply-btn"]').click();
+
+  await expect(page.getByTestId(widgetKey)).toBeVisible();
+
+  await saveCustomizeLayoutPage(page);
+
+  await redirectToHomePage(page);
+
+  await expect(page.getByTestId(widgetKey)).toBeVisible();
 };
