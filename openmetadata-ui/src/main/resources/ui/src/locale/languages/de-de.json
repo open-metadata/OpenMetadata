@@ -2085,6 +2085,7 @@
     "minimum-value-error": "Der Minimalwert sollte kleiner als der Maximalwert sein.",
     "minute": "Minute",
     "missing-config-value": "Fehlender Konfigurationswert: {{field}}",
+    "modified-time-ago-by": "Geändert vor {{time}} von {{by}}",
     "modify-hierarchy-entity-description": "Ändern Sie die Hierarchie, indem Sie die übergeordnete {{entity}} ändern.",
     "most-active-users": "Zeigt die aktivsten Benutzer auf der Plattform basierend auf Seitenaufrufen.",
     "most-expensive-queries-widget-description": "Top 5 der aufwändigsten Abfragen für die Datenvermögenswerte im Dienst. <0>Mehr erfahren.</0>",

@@ -22,11 +22,13 @@ import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
+import { isEmpty } from 'lodash';
 import { Cell, Pie, PieChart } from 'recharts';
 import {
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
+import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -46,7 +48,6 @@ import {
   getContractStatusType,
   getTestCaseSummaryChartItems,
 } from '../../../utils/DataContract/DataContractUtils';
-import { getTestCaseStatusIcon } from '../../../utils/DataQuality/DataQualityUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
@@ -55,6 +56,7 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
@@ -169,6 +171,18 @@ const ContractDetail: React.FC<{
     return getTestCaseSummaryChartItems(testCaseSummary);
   }, [testCaseSummary]);
 
+  const getTestCaseStatusIcon = (record: TestCase) => (
+    <Icon
+      className="test-status-icon"
+      component={
+        TEST_CASE_STATUS_ICON[
+          (record?.testCaseResult?.testCaseStatus ??
+            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
+        ]
+      }
+    />
+  );
+
   const handleRunNow = () => {
     if (contract?.id) {
       setValidateLoading(true);
@@ -183,13 +197,13 @@ const ContractDetail: React.FC<{
   };
 
   useEffect(() => {
-    if (contract?.id && !contract?.latestResult?.resultId) {
+    if (contract?.id && contract?.latestResult?.resultId) {
       fetchLatestContractResults();
+    }
 
-      if (contract?.testSuite?.id) {
-        fetchTestCaseSummary();
-        fetchTestCases();
-      }
+    if (contract?.testSuite?.id) {
+      fetchTestCaseSummary();
+      fetchTestCases();
     }
   }, [contract]);
 
@@ -226,7 +240,7 @@ const ContractDetail: React.FC<{
             </Typography.Text>
 
             <Typography.Text className="contract-time">
-              {t('message.created-time-ago-by', {
+              {t('message.modified-time-ago-by', {
                 time: getRelativeTime(contract.updatedAt),
                 by: contract.updatedBy,
               })}
@@ -235,7 +249,7 @@ const ContractDetail: React.FC<{
             <div className="d-flex items-center gap-2 m-t-xs">
               <StatusBadgeV2
                 externalIcon={FlagIcon}
-                label={t('label.active')}
+                label={contract.status ?? t('label.active')}
                 status={StatusType.Success}
               />
 
@@ -250,16 +264,18 @@ const ContractDetail: React.FC<{
           </Col>
           <Col>
             <div className="contract-action-container">
-              <div className="contract-owner-label-container">
-                <Typography.Text>{t('label.owner-plural')}</Typography.Text>
-                <OwnerLabel
-                  avatarSize={24}
-                  isCompactView={false}
-                  maxVisibleOwners={5}
-                  owners={contract.owners}
-                  showLabel={false}
-                />
-              </div>
+              {!isEmpty(contract.owners) && (
+                <div className="contract-owner-label-container">
+                  <Typography.Text>{t('label.owner-plural')}</Typography.Text>
+                  <OwnerLabel
+                    avatarSize={24}
+                    isCompactView={false}
+                    maxVisibleOwners={5}
+                    owners={contract.owners}
+                    showLabel={false}
+                  />
+                </div>
+              )}
 
               <Button
                 className="contract-run-now-button"
@@ -431,15 +447,17 @@ const ContractDetail: React.FC<{
                     <Typography.Text className="card-subtitle">
                       {t('label.custom-integrity-rules')}
                     </Typography.Text>
-                    {(contract?.semantics ?? []).map((item) => (
-                      <div className="rule-item">
-                        <Icon className="rule-icon" component={CheckIcon} />
-                        <span className="rule-name">{item.name}</span>{' '}
-                        <span className="rule-description">
-                          {item.description}
-                        </span>
-                      </div>
-                    ))}
+                    <div className="rule-item-container">
+                      {(contract?.semantics ?? []).map((item) => (
+                        <div className="rule-item">
+                          <Icon className="rule-icon" component={CheckIcon} />
+                          <span className="rule-name">{item.name}</span>{' '}
+                          <span className="rule-description">
+                            {item.description}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </ExpandableCard>
               </Col>
@@ -504,21 +522,25 @@ const ContractDetail: React.FC<{
                           ))}
                         </div>
                         <Space direction="vertical">
-                          {testCaseResult.map((item) => (
-                            <div
-                              className="data-quality-item d-flex items-center"
-                              key={item.id}>
-                              {getTestCaseStatusIcon(item)}
-                              <div className="data-quality-item-content">
-                                <Typography.Text className="data-quality-item-name">
-                                  {item.name}
-                                </Typography.Text>
-                                <Typography.Text className="data-quality-item-description">
-                                  {item.description}
-                                </Typography.Text>
+                          {testCaseResult.map((item) => {
+                            return (
+                              <div
+                                className="data-quality-item d-flex items-center"
+                                key={item.id}>
+                                {getTestCaseStatusIcon(item)}
+                                <div className="data-quality-item-content">
+                                  <Typography.Text className="data-quality-item-name">
+                                    {item.name}
+                                  </Typography.Text>
+                                  <Typography.Text className="data-quality-item-description">
+                                    <RichTextEditorPreviewerNew
+                                      markdown={item.description ?? ''}
+                                    />
+                                  </Typography.Text>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </Space>
                       </div>
                     )}

@@ -2085,6 +2085,7 @@
     "minimum-value-error": "O valor mínimo deve ser menor que o valor máximo.",
     "minute": "Minuto",
     "missing-config-value": "Valor de configuração ausente: {{field}}",
+    "modified-time-ago-by": "Modificado {{time}} atrás por {{by}}",
     "modify-hierarchy-entity-description": "Modifique a hierarquia alterando o Pai {{entity}}.",
     "most-active-users": "Exibe os usuários mais ativos na plataforma com base nas Visualizações de Página.",
     "most-expensive-queries-widget-description": "Top 5 consultas mais caras para os ativos de dados no serviço. <0>saiba mais.</0>",
