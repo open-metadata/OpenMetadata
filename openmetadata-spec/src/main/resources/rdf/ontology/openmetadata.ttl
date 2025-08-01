@@ -8,232 +8,453 @@
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix void: <http://rdfs.org/ns/void#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
-# OpenMetadata Ontology
+# OpenMetadata Complete Ontology
 om: a owl:Ontology ;
     owl:versionInfo "1.0.0" ;
-    dct:title "OpenMetadata Ontology" ;
-    dct:description "An ontology for describing data assets and their relationships in OpenMetadata" ;
+    dct:title "OpenMetadata Complete Ontology" ;
+    dct:description "Complete ontology for OpenMetadata covering all entities and relationships" ;
     dct:creator "OpenMetadata Team" ;
     dct:created "2024-01-01"^^xsd:date ;
     dct:license <https://www.apache.org/licenses/LICENSE-2.0> ;
     owl:imports dcat: , prov: , skos: .
 
-# Core Classes
-om:DataAsset a owl:Class ;
-    rdfs:label "Data Asset" ;
-    rdfs:comment "A base class for all data assets in OpenMetadata" ;
+#################################################################
+# Base Classes
+#################################################################
+
+om:Entity a owl:Class ;
+    rdfs:label "Entity" ;
+    rdfs:comment "Base class for all OpenMetadata entities" ;
     rdfs:subClassOf owl:Thing .
 
-om:Table a owl:Class ;
-    rdfs:label "Table" ;
-    rdfs:comment "A database table containing structured data" ;
-    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+om:DataAsset a owl:Class ;
+    rdfs:label "Data Asset" ;
+    rdfs:comment "Base class for all data assets" ;
+    rdfs:subClassOf om:Entity .
+
+om:Service a owl:Class ;
+    rdfs:label "Service" ;
+    rdfs:comment "Base class for all services" ;
+    rdfs:subClassOf om:Entity .
+
+#################################################################
+# Service Classes
+#################################################################
+
+om:DatabaseService a owl:Class ;
+    rdfs:label "Database Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:DashboardService a owl:Class ;
+    rdfs:label "Dashboard Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:MessagingService a owl:Class ;
+    rdfs:label "Messaging Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:PipelineService a owl:Class ;
+    rdfs:label "Pipeline Service" ;
+    rdfs:comment "ETL Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:MLModelService a owl:Class ;
+    rdfs:label "ML Model Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:StorageService a owl:Class ;
+    rdfs:label "Storage Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:SearchService a owl:Class ;
+    rdfs:label "Search Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:MetadataService a owl:Class ;
+    rdfs:label "Metadata Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:APIService a owl:Class ;
+    rdfs:label "API Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:ReportingService a owl:Class ;
+    rdfs:label "Reporting Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:QualityService a owl:Class ;
+    rdfs:label "Quality Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:ObservabilityService a owl:Class ;
+    rdfs:label "Observability Service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+om:DriveService a owl:Class ;
+    rdfs:label "Drive Service" ;
+    rdfs:comment "File and document storage service" ;
+    rdfs:subClassOf om:Service, dcat:DataService .
+
+#################################################################
+# Data Asset Classes
+#################################################################
 
 om:Database a owl:Class ;
     rdfs:label "Database" ;
-    rdfs:comment "A database containing schemas and tables" ;
     rdfs:subClassOf om:DataAsset, dcat:Catalog .
 
 om:DatabaseSchema a owl:Class ;
     rdfs:label "Database Schema" ;
-    rdfs:comment "A schema within a database" ;
     rdfs:subClassOf om:DataAsset .
 
-om:Column a owl:Class ;
-    rdfs:label "Column" ;
-    rdfs:comment "A column in a database table" ;
-    rdfs:subClassOf owl:Thing .
+om:Table a owl:Class ;
+    rdfs:label "Table" ;
+    rdfs:subClassOf om:DataAsset, dcat:Dataset .
 
-om:Pipeline a owl:Class ;
-    rdfs:label "Pipeline" ;
-    rdfs:comment "A data processing pipeline" ;
-    rdfs:subClassOf om:DataAsset, dcat:DataService .
+om:StoredProcedure a owl:Class ;
+    rdfs:label "Stored Procedure" ;
+    rdfs:subClassOf om:DataAsset .
+
+om:Query a owl:Class ;
+    rdfs:label "Query" ;
+    rdfs:subClassOf om:DataAsset .
 
 om:Dashboard a owl:Class ;
     rdfs:label "Dashboard" ;
-    rdfs:comment "A business intelligence dashboard" ;
     rdfs:subClassOf om:DataAsset, dcat:Dataset .
+
+om:Chart a owl:Class ;
+    rdfs:label "Chart" ;
+    rdfs:subClassOf om:DataAsset .
+
+om:Report a owl:Class ;
+    rdfs:label "Report" ;
+    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+
+om:Metric a owl:Class ;
+    rdfs:label "Metric" ;
+    rdfs:subClassOf om:DataAsset .
+
+om:Pipeline a owl:Class ;
+    rdfs:label "Pipeline" ;
+    rdfs:subClassOf om:DataAsset, dcat:DataService .
+
+om:Task a owl:Class ;
+    rdfs:label "Task" ;
+    rdfs:subClassOf om:DataAsset .
 
 om:Topic a owl:Class ;
     rdfs:label "Topic" ;
-    rdfs:comment "A message queue topic" ;
+    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+
+om:MLModel a owl:Class ;
+    rdfs:label "ML Model" ;
     rdfs:subClassOf om:DataAsset, dcat:Dataset .
 
 om:Container a owl:Class ;
     rdfs:label "Container" ;
-    rdfs:comment "A storage container for unstructured data" ;
     rdfs:subClassOf om:DataAsset, dcat:Dataset .
 
-om:MlModel a owl:Class ;
-    rdfs:label "ML Model" ;
-    rdfs:comment "A machine learning model" ;
+om:SearchIndex a owl:Class ;
+    rdfs:label "Search Index" ;
+    rdfs:subClassOf om:DataAsset .
+
+om:APICollection a owl:Class ;
+    rdfs:label "API Collection" ;
+    rdfs:comment "Collection of API endpoints" ;
+    rdfs:subClassOf om:DataAsset, dcat:DataService .
+
+om:APIEndpoint a owl:Class ;
+    rdfs:label "API Endpoint" ;
+    rdfs:comment "Individual API endpoint" ;
+    rdfs:subClassOf om:DataAsset .
+
+om:Directory a owl:Class ;
+    rdfs:label "Directory" ;
+    rdfs:comment "File system directory" ;
     rdfs:subClassOf om:DataAsset, dcat:Dataset .
 
-om:GlossaryTerm a owl:Class ;
-    rdfs:label "Glossary Term" ;
-    rdfs:comment "A business glossary term" ;
-    rdfs:subClassOf skos:Concept .
+om:File a owl:Class ;
+    rdfs:label "File" ;
+    rdfs:comment "Individual file" ;
+    rdfs:subClassOf om:DataAsset, dcat:Distribution .
+
+om:Spreadsheet a owl:Class ;
+    rdfs:label "Spreadsheet" ;
+    rdfs:comment "Spreadsheet document" ;
+    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+
+om:Worksheet a owl:Class ;
+    rdfs:label "Worksheet" ;
+    rdfs:comment "Worksheet within a spreadsheet" ;
+    rdfs:subClassOf om:DataAsset .
+
+#################################################################
+# Metadata & Governance Classes
+#################################################################
 
 om:Glossary a owl:Class ;
     rdfs:label "Glossary" ;
-    rdfs:comment "A business glossary" ;
-    rdfs:subClassOf skos:ConceptScheme .
+    rdfs:subClassOf om:Entity, skos:ConceptScheme .
+
+om:GlossaryTerm a owl:Class ;
+    rdfs:label "Glossary Term" ;
+    rdfs:subClassOf om:Entity, skos:Concept .
+
+om:Classification a owl:Class ;
+    rdfs:label "Classification" ;
+    rdfs:comment "Tag Category" ;
+    rdfs:subClassOf om:Entity, skos:ConceptScheme .
 
 om:Tag a owl:Class ;
     rdfs:label "Tag" ;
-    rdfs:comment "A classification tag" ;
-    rdfs:subClassOf skos:Concept .
+    rdfs:subClassOf om:Entity, skos:Concept .
 
-om:TagLabel a owl:Class ;
-    rdfs:label "Tag Label" ;
-    rdfs:comment "A tag label that represents the application of a tag or glossary term to an entity" ;
-    rdfs:subClassOf owl:Thing .
+om:DataContract a owl:Class ;
+    rdfs:label "Data Contract" ;
+    rdfs:subClassOf om:Entity .
 
-om:User a owl:Class ;
-    rdfs:label "User" ;
-    rdfs:comment "A user of the system" ;
-    rdfs:subClassOf prov:Agent .
+om:DataProduct a owl:Class ;
+    rdfs:label "Data Product" ;
+    rdfs:subClassOf om:Entity .
+
+om:Domain a owl:Class ;
+    rdfs:label "Domain" ;
+    rdfs:subClassOf om:Entity .
+
+#################################################################
+# Teams & Users Classes
+#################################################################
 
 om:Team a owl:Class ;
     rdfs:label "Team" ;
-    rdfs:comment "A team of users" ;
-    rdfs:subClassOf prov:Agent .
+    rdfs:subClassOf om:Entity, prov:Agent, foaf:Group .
 
-# Object Properties
-om:hasColumn a owl:ObjectProperty ;
-    rdfs:label "has column" ;
-    rdfs:domain om:Table ;
-    rdfs:range om:Column .
+om:User a owl:Class ;
+    rdfs:label "User" ;
+    rdfs:subClassOf om:Entity, prov:Agent, foaf:Person .
 
-om:belongsToDatabase a owl:ObjectProperty ;
-    rdfs:label "belongs to database" ;
-    rdfs:domain om:Table ;
-    rdfs:range om:Database ;
-    owl:inverseOf om:containsTable .
+om:Bot a owl:Class ;
+    rdfs:label "Bot" ;
+    rdfs:subClassOf om:Entity, prov:Agent .
 
-om:containsTable a owl:ObjectProperty ;
-    rdfs:label "contains table" ;
-    rdfs:domain om:Database ;
-    rdfs:range om:Table .
+om:Role a owl:Class ;
+    rdfs:label "Role" ;
+    rdfs:subClassOf om:Entity .
 
-om:belongsToSchema a owl:ObjectProperty ;
-    rdfs:label "belongs to schema" ;
-    rdfs:domain om:Table ;
-    rdfs:range om:DatabaseSchema .
+om:Policy a owl:Class ;
+    rdfs:label "Policy" ;
+    rdfs:subClassOf om:Entity .
 
-om:hasOwner a owl:ObjectProperty ;
-    rdfs:label "has owner" ;
-    rdfs:domain om:DataAsset ;
+#################################################################
+# Quality & Testing Classes
+#################################################################
+
+om:TestDefinition a owl:Class ;
+    rdfs:label "Test Definition" ;
+    rdfs:subClassOf om:Entity .
+
+om:TestSuite a owl:Class ;
+    rdfs:label "Test Suite" ;
+    rdfs:subClassOf om:Entity .
+
+om:TestCase a owl:Class ;
+    rdfs:label "Test Case" ;
+    rdfs:subClassOf om:Entity .
+
+#################################################################
+# Communication Classes
+#################################################################
+
+om:Thread a owl:Class ;
+    rdfs:label "Thread" ;
+    rdfs:subClassOf om:Entity .
+
+om:Post a owl:Class ;
+    rdfs:label "Post" ;
+    rdfs:subClassOf om:Entity .
+
+#################################################################
+# Object Properties - All Relationship Types
+#################################################################
+
+om:contains a owl:ObjectProperty ;
+    rdfs:label "contains" ;
+    rdfs:comment "Hierarchical containment relationship" .
+
+om:createdBy a owl:ObjectProperty ;
+    rdfs:label "created by" ;
+    rdfs:subPropertyOf prov:wasGeneratedBy .
+
+om:repliedTo a owl:ObjectProperty ;
+    rdfs:label "replied to" ;
+    rdfs:domain om:Post ;
+    rdfs:range om:Post .
+
+om:isAbout a owl:ObjectProperty ;
+    rdfs:label "is about" ;
+    rdfs:comment "Thread or post is about an entity" .
+
+om:addressedTo a owl:ObjectProperty ;
+    rdfs:label "addressed to" ;
+    rdfs:domain om:Post ;
     rdfs:range prov:Agent .
 
-om:hasTag a owl:ObjectProperty ;
-    rdfs:label "has tag" ;
-    rdfs:domain om:DataAsset ;
-    rdfs:range om:Tag .
+om:mentionedIn a owl:ObjectProperty ;
+    rdfs:label "mentioned in" ;
+    rdfs:comment "Entity is mentioned in a post or thread" .
 
-om:hasGlossaryTerm a owl:ObjectProperty ;
-    rdfs:label "has glossary term" ;
+om:testedBy a owl:ObjectProperty ;
+    rdfs:label "tested by" ;
     rdfs:domain om:DataAsset ;
-    rdfs:range om:GlossaryTerm .
+    rdfs:range om:TestCase .
+
+om:uses a owl:ObjectProperty ;
+    rdfs:label "uses" ;
+    rdfs:subPropertyOf prov:used .
+
+om:owns a owl:ObjectProperty ;
+    rdfs:label "owns" ;
+    rdfs:domain prov:Agent ;
+    rdfs:range om:Entity .
+
+om:parentOf a owl:ObjectProperty ;
+    rdfs:label "parent of" ;
+    rdfs:comment "Hierarchical parent relationship" .
+
+om:has a owl:ObjectProperty ;
+    rdfs:label "has" ;
+    rdfs:comment "General possession relationship" .
+
+om:follows a owl:ObjectProperty ;
+    rdfs:label "follows" ;
+    rdfs:domain prov:Agent ;
+    rdfs:range om:Entity .
+
+om:joinedWith a owl:ObjectProperty ;
+    rdfs:label "joined with" ;
+    rdfs:comment "Join relationship between tables" ;
+    rdfs:domain om:Table ;
+    rdfs:range om:Table .
 
 om:upstream a owl:ObjectProperty ;
     rdfs:label "upstream" ;
-    rdfs:comment "Indicates data lineage upstream relationship" ;
+    rdfs:comment "Data lineage upstream relationship" ;
     rdfs:subPropertyOf prov:wasDerivedFrom ;
     rdfs:domain om:DataAsset ;
     rdfs:range om:DataAsset .
 
 om:downstream a owl:ObjectProperty ;
     rdfs:label "downstream" ;
-    rdfs:comment "Indicates data lineage downstream relationship" ;
-    owl:inverseOf om:upstream ;
+    rdfs:comment "Data lineage downstream relationship" ;
+    owl:inverseOf om:upstream .
+
+om:appliedTo a owl:ObjectProperty ;
+    rdfs:label "applied to" ;
+    rdfs:comment "Tag or classification applied to entity" ;
+    rdfs:domain om:Tag ;
+    rdfs:range om:Entity .
+
+om:relatedTo a owl:ObjectProperty ;
+    rdfs:label "related to" ;
+    rdfs:comment "General relationship between entities" .
+
+om:reviews a owl:ObjectProperty ;
+    rdfs:label "reviews" ;
+    rdfs:domain prov:Agent ;
+    rdfs:range om:Entity .
+
+om:reactedTo a owl:ObjectProperty ;
+    rdfs:label "reacted to" ;
+    rdfs:domain prov:Agent ;
+    rdfs:range om:Post .
+
+om:voted a owl:ObjectProperty ;
+    rdfs:label "voted" ;
+    rdfs:domain prov:Agent ;
+    rdfs:range om:Entity .
+
+om:expert a owl:ObjectProperty ;
+    rdfs:label "expert" ;
+    rdfs:comment "User is expert on entity" ;
+    rdfs:domain om:User ;
+    rdfs:range om:Entity .
+
+om:editedBy a owl:ObjectProperty ;
+    rdfs:label "edited by" ;
+    rdfs:domain om:Entity ;
+    rdfs:range prov:Agent .
+
+om:defaultsTo a owl:ObjectProperty ;
+    rdfs:label "defaults to" ;
+    rdfs:comment "Default value relationship" .
+
+om:relatesTo a owl:ObjectProperty ;
+    rdfs:label "relates to" ;
+    rdfs:comment "Alternative spelling of relatedTo" ;
+    owl:equivalentProperty om:relatedTo .
+
+#################################################################
+# Additional Important Properties
+#################################################################
+
+om:belongsToDatabase a owl:ObjectProperty ;
+    rdfs:label "belongs to database" ;
+    rdfs:domain om:Table ;
+    rdfs:range om:Database .
+
+om:belongsToSchema a owl:ObjectProperty ;
+    rdfs:label "belongs to schema" ;
+    rdfs:domain om:Table ;
+    rdfs:range om:DatabaseSchema .
+
+om:belongsToService a owl:ObjectProperty ;
+    rdfs:label "belongs to service" ;
     rdfs:domain om:DataAsset ;
-    rdfs:range om:DataAsset .
+    rdfs:range om:Service .
 
-om:contains a owl:ObjectProperty ;
-    rdfs:label "contains" ;
-    rdfs:domain owl:Thing ;
-    rdfs:range owl:Thing .
+om:hasColumn a owl:ObjectProperty ;
+    rdfs:label "has column" ;
+    rdfs:domain om:Table ;
+    rdfs:range om:Column .
 
-om:uses a owl:ObjectProperty ;
-    rdfs:label "uses" ;
-    rdfs:subPropertyOf prov:used ;
-    rdfs:domain owl:Thing ;
-    rdfs:range owl:Thing .
+om:hasTag a owl:ObjectProperty ;
+    rdfs:label "has tag" ;
+    rdfs:domain om:Entity ;
+    rdfs:range om:Tag .
 
-om:processedBy a owl:ObjectProperty ;
-    rdfs:label "processed by" ;
-    rdfs:subPropertyOf prov:wasGeneratedBy ;
-    rdfs:domain om:DataAsset ;
-    rdfs:range om:Pipeline .
+om:hasOwner a owl:ObjectProperty ;
+    rdfs:label "has owner" ;
+    rdfs:domain om:Entity ;
+    rdfs:range prov:Agent .
 
+om:memberOf a owl:ObjectProperty ;
+    rdfs:label "member of" ;
+    rdfs:domain om:User ;
+    rdfs:range om:Team .
+
+om:creates a owl:ObjectProperty ;
+    rdfs:label "creates" ;
+    rdfs:domain om:User ;
+    rdfs:range om:Thread .
+
+om:containsPosts a owl:ObjectProperty ;
+    rdfs:label "contains posts" ;
+    rdfs:domain om:Thread ;
+    rdfs:range om:Post .
+
+#################################################################
 # Datatype Properties
+#################################################################
+
 om:fullyQualifiedName a owl:DatatypeProperty ;
     rdfs:label "fully qualified name" ;
-    rdfs:domain om:DataAsset ;
+    rdfs:domain om:Entity ;
     rdfs:range xsd:string .
 
-om:columnName a owl:DatatypeProperty ;
-    rdfs:label "column name" ;
-    rdfs:domain om:Column ;
-    rdfs:range xsd:string .
-
-om:columnType a owl:DatatypeProperty ;
-    rdfs:label "column type" ;
-    rdfs:domain om:Column ;
-    rdfs:range xsd:string .
-
-om:isNullable a owl:DatatypeProperty ;
-    rdfs:label "is nullable" ;
-    rdfs:domain om:Column ;
-    rdfs:range xsd:boolean .
-
-om:isPrimaryKey a owl:DatatypeProperty ;
-    rdfs:label "is primary key" ;
-    rdfs:domain om:Column ;
-    rdfs:range xsd:boolean .
-
-om:tableType a owl:DatatypeProperty ;
-    rdfs:label "table type" ;
-    rdfs:domain om:Table ;
-    rdfs:range xsd:string .
-
-om:rowCount a owl:DatatypeProperty ;
-    rdfs:label "row count" ;
-    rdfs:domain om:Table ;
-    rdfs:range xsd:integer .
-
-om:sizeInBytes a owl:DatatypeProperty ;
-    rdfs:label "size in bytes" ;
-    rdfs:domain om:DataAsset ;
-    rdfs:range xsd:integer ;
-    rdfs:subPropertyOf dcat:byteSize .
-
-om:isDeleted a owl:DatatypeProperty ;
-    rdfs:label "is deleted" ;
-    rdfs:domain owl:Thing ;
-    rdfs:range xsd:boolean .
-
-om:retentionPeriod a owl:DatatypeProperty ;
-    rdfs:label "retention period" ;
-    rdfs:domain om:DataAsset ;
-    rdfs:range xsd:string .
-
-om:labelType a owl:DatatypeProperty ;
-    rdfs:label "label type" ;
-    rdfs:comment "The type of tag label (Manual, Propagated, Automated, Derived, Generated)" ;
-    rdfs:domain om:TagLabel ;
-    rdfs:range xsd:string .
-
-om:tagState a owl:DatatypeProperty ;
-    rdfs:label "tag state" ;
-    rdfs:comment "The state of the tag label (Suggested, Confirmed)" ;
-    rdfs:domain om:TagLabel ;
-    rdfs:range xsd:string .
-
-om:tagSource a owl:DatatypeProperty ;
-    rdfs:label "tag source" ;
-    rdfs:comment "The source of the tag (Classification, Glossary)" ;
-    rdfs:domain om:TagLabel ;
+om:serviceType a owl:DatatypeProperty ;
+    rdfs:label "service type" ;
+    rdfs:domain om:Service ;
     rdfs:range xsd:string .

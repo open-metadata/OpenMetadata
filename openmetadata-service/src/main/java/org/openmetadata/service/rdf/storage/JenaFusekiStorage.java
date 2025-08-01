@@ -85,8 +85,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       Model ontologyModel = ModelFactory.createDefaultModel();
       RDFDataMgr.read(
           ontologyModel,
-          Objects.requireNonNull(
-              getClass().getResourceAsStream("/rdf/ontology/openmetadata-complete.ttl")),
+          Objects.requireNonNull(getClass().getResourceAsStream("/rdf/ontology/openmetadata.ttl")),
           org.apache.jena.riot.Lang.TURTLE);
 
       connection.load(METADATA_GRAPH, ontologyModel);

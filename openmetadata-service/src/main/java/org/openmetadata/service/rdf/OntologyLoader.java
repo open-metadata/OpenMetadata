@@ -28,7 +28,7 @@ public class OntologyLoader {
 
     try {
       // Load the complete ontology
-      loadOntologyFile("openmetadata-complete.ttl", ONTOLOGY_GRAPH);
+      loadOntologyFile("openmetadata.ttl", ONTOLOGY_GRAPH);
 
       // Load SHACL shapes
       loadShapesFile("openmetadata-shapes.ttl", SHAPES_GRAPH);
