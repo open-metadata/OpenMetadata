@@ -26,9 +26,7 @@ from pydantic.types import SecretStr
 from pydantic_core.core_schema import SerializationInfo
 from typing_extensions import Annotated
 
-from metadata.ingestion.models.custom_basemodel_validation import (
-    transform_entity_names,
-)
+from metadata.ingestion.models.custom_basemodel_validation import transform_entity_names
 
 logger = logging.getLogger("metadata")
 

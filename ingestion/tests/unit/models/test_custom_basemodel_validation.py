@@ -15,10 +15,8 @@ Tests the hybrid name validation system with all edge cases and scenarios.
 """
 
 import uuid
-from typing import List, Optional
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
-import pytest
+from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -36,27 +34,21 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
     Table,
-    TableConstraint,
-    TableType,
 )
-from metadata.generated.schema.type.basic import (
-    EntityName,
-    FullyQualifiedEntityName,
-    Markdown,
-)
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_basemodel_validation import (
+    RESERVED_ARROW_KEYWORD,
+    RESERVED_COLON_KEYWORD,
+    RESERVED_QUOTE_KEYWORD,
     TRANSFORMABLE_ENTITIES,
     TransformDirection,
-    is_service_level_create_model,
-    transform_entity_names,
-    replace_separators,
-    revert_separators,
     get_entity_config,
     get_transformer,
-    RESERVED_COLON_KEYWORD,
-    RESERVED_ARROW_KEYWORD,
-    RESERVED_QUOTE_KEYWORD,
+    is_service_level_create_model,
+    replace_separators,
+    revert_separators,
+    transform_entity_names,
 )
 
 
@@ -82,11 +74,11 @@ class TestCustomBasemodelValidation(TestCase):
             "CreateSearchServiceRequest",
             "CreateApiServiceRequest",
         ]
-        
+
         for service in existing_services:
             self.assertTrue(
                 is_service_level_create_model(service),
-                f"{service} should be identified as a service model"
+                f"{service} should be identified as a service model",
             )
 
         # Test future services (should be identified as services - scalability test)
@@ -97,11 +89,11 @@ class TestCustomBasemodelValidation(TestCase):
             "CreateAnalyticsServiceRequest",
             "CreateAnyThingServiceRequest",
         ]
-        
+
         for service in future_services:
             self.assertTrue(
                 is_service_level_create_model(service),
-                f"{service} should be identified as a service model (future compatibility)"
+                f"{service} should be identified as a service model (future compatibility)",
             )
 
         # Test non-services (should NOT be identified as services)
@@ -116,11 +108,11 @@ class TestCustomBasemodelValidation(TestCase):
             "CreateDashboard",
             "CreateChart",
         ]
-        
+
         for non_service in non_services:
             self.assertFalse(
                 is_service_level_create_model(non_service),
-                f"{non_service} should NOT be identified as a service model"
+                f"{non_service} should NOT be identified as a service model",
             )
 
     def test_service_pattern_edge_cases(self):
@@ -128,39 +120,58 @@ class TestCustomBasemodelValidation(TestCase):
         # Test edge case: just "CreateServiceRequest" (no service name)
         self.assertFalse(
             is_service_level_create_model("CreateServiceRequest"),
-            "CreateServiceRequest with no service name should not be considered a service"
+            "CreateServiceRequest with no service name should not be considered a service",
         )
-        
+
         # Test minimum valid service name
         self.assertTrue(
             is_service_level_create_model("CreateXServiceRequest"),
-            "CreateXServiceRequest should be considered a service"
+            "CreateXServiceRequest should be considered a service",
         )
-        
+
         # Test very long service name
         long_service = "Create" + "Very" * 50 + "LongServiceRequest"
         self.assertTrue(
             is_service_level_create_model(long_service),
-            "Very long service names should be handled correctly"
+            "Very long service names should be handled correctly",
         )
 
     def test_transformable_entities_configuration(self):
         """Test the TRANSFORMABLE_ENTITIES configuration."""
         # Test that expected entities are configured
         expected_entities = {
-            "Table", "DashboardDataModel", "CustomColumnName",
-            "ProfilerResponse", "SampleData", "CreateTableRequest", "CreateDashboardDataModelRequest"
+            "Table",
+            "DashboardDataModel",
+            "CustomColumnName",
+            "ProfilerResponse",
+            "SampleData",
+            "CreateTableRequest",
+            "CreateDashboardDataModelRequest",
         }
-        
+
         for entity in expected_entities:
-            self.assertIn(entity, TRANSFORMABLE_ENTITIES, f"{entity} should be in TRANSFORMABLE_ENTITIES")
+            self.assertIn(
+                entity,
+                TRANSFORMABLE_ENTITIES,
+                f"{entity} should be in TRANSFORMABLE_ENTITIES",
+            )
 
         # Test entity configurations have required fields
         for entity_name, config in TRANSFORMABLE_ENTITIES.items():
-            self.assertIn("fields", config, f"{entity_name} config should have 'fields' key")
-            self.assertIn("direction", config, f"{entity_name} config should have 'direction' key")
-            self.assertIsInstance(config["fields"], set, f"{entity_name} fields should be a set")
-            self.assertIsInstance(config["direction"], TransformDirection, f"{entity_name} direction should be TransformDirection enum")
+            self.assertIn(
+                "fields", config, f"{entity_name} config should have 'fields' key"
+            )
+            self.assertIn(
+                "direction", config, f"{entity_name} config should have 'direction' key"
+            )
+            self.assertIsInstance(
+                config["fields"], set, f"{entity_name} fields should be a set"
+            )
+            self.assertIsInstance(
+                config["direction"],
+                TransformDirection,
+                f"{entity_name} direction should be TransformDirection enum",
+            )
 
     def test_get_entity_config(self):
         """Test get_entity_config function."""
@@ -173,7 +184,6 @@ class TestCustomBasemodelValidation(TestCase):
         # Test non-existent entity
         non_existent_config = get_entity_config("NonExistentEntity")
         self.assertIsNone(non_existent_config)
-
 
     def test_get_transformer(self):
         """Test get_transformer function."""
@@ -195,35 +205,76 @@ class TestCustomBasemodelValidation(TestCase):
         """Test replace_separators function with various inputs."""
         test_cases = [
             ("simple_name", "simple_name"),  # No separators
-            ("name::with::colons", "name__reserved__colon__with__reserved__colon__colons"),
-            ("name>with>arrows", "name__reserved__arrow__with__reserved__arrow__arrows"),
-            ('name"with"quotes', "name__reserved__quote__with__reserved__quote__quotes"),
-            ("mixed::>\"chars", "mixed__reserved__colon____reserved__arrow____reserved__quote__chars"),
+            (
+                "name::with::colons",
+                "name__reserved__colon__with__reserved__colon__colons",
+            ),
+            (
+                "name>with>arrows",
+                "name__reserved__arrow__with__reserved__arrow__arrows",
+            ),
+            (
+                'name"with"quotes',
+                "name__reserved__quote__with__reserved__quote__quotes",
+            ),
+            (
+                'mixed::>"chars',
+                "mixed__reserved__colon____reserved__arrow____reserved__quote__chars",
+            ),
             ("", ""),  # Empty string
             (":::", "__reserved__colon__:"),  # Multiple colons - :: replaced, : remains
-            (">>>", "__reserved__arrow____reserved__arrow____reserved__arrow__"),  # Multiple arrows - each > replaced
-            ('"""', "__reserved__quote____reserved__quote____reserved__quote__"),  # Multiple quotes - each " replaced
+            (
+                ">>>",
+                "__reserved__arrow____reserved__arrow____reserved__arrow__",
+            ),  # Multiple arrows - each > replaced
+            (
+                '"""',
+                "__reserved__quote____reserved__quote____reserved__quote__",
+            ),  # Multiple quotes - each " replaced
         ]
 
         for input_val, expected in test_cases:
             result = replace_separators(input_val)
-            self.assertEqual(result, expected, f"replace_separators('{input_val}') should return '{expected}'")
+            self.assertEqual(
+                result,
+                expected,
+                f"replace_separators('{input_val}') should return '{expected}'",
+            )
 
     def test_revert_separators_function(self):
         """Test revert_separators function with various inputs."""
         test_cases = [
             ("simple_name", "simple_name"),  # No reserved keywords
-            ("name__reserved__colon__with__reserved__colon__colons", "name::with::colons"),
-            ("name__reserved__arrow__with__reserved__arrow__arrows", "name>with>arrows"),
-            ("name__reserved__quote__with__reserved__quote__quotes", 'name"with"quotes'),
-            ("mixed__reserved__colon____reserved__arrow____reserved__quote__chars", "mixed::>\"chars"),
+            (
+                "name__reserved__colon__with__reserved__colon__colons",
+                "name::with::colons",
+            ),
+            (
+                "name__reserved__arrow__with__reserved__arrow__arrows",
+                "name>with>arrows",
+            ),
+            (
+                "name__reserved__quote__with__reserved__quote__quotes",
+                'name"with"quotes',
+            ),
+            (
+                "mixed__reserved__colon____reserved__arrow____reserved__quote__chars",
+                'mixed::>"chars',
+            ),
             ("", ""),  # Empty string
-            ("__reserved__colon__:", ":::"),  # Multiple colons: __reserved__colon__ + : = :: + : = :::
+            (
+                "__reserved__colon__:",
+                ":::",
+            ),  # Multiple colons: __reserved__colon__ + : = :: + : = :::
         ]
 
         for input_val, expected in test_cases:
             result = revert_separators(input_val)
-            self.assertEqual(result, expected, f"revert_separators('{input_val}') should return '{expected}'")
+            self.assertEqual(
+                result,
+                expected,
+                f"revert_separators('{input_val}') should return '{expected}'",
+            )
 
     def test_round_trip_transformations(self):
         """Test that encode->decode round trips preserve original values."""
@@ -232,9 +283,9 @@ class TestCustomBasemodelValidation(TestCase):
             "name::with::colons",
             "name>with>arrows",
             'name"with"quotes',
-            "complex::name>with\"all",
+            'complex::name>with"all',
             "unicode测试::name",
-            "emoji🚀::data📊>chart\"report",
+            'emoji🚀::data📊>chart"report',
             "  spaced :: values  ",  # Leading/trailing spaces
             "special!@#$%^&*()_+-={}[]|\\:;'<>?,./",  # Special characters (non-reserved)
         ]
@@ -254,7 +305,7 @@ class TestCustomBasemodelValidation(TestCase):
             fullyQualifiedName="db.schema.test_table",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
-        
+
         result = transform_entity_names(table, "Table")
         self.assertEqual(result.name.root, "test::table>name")
 
@@ -262,9 +313,9 @@ class TestCustomBasemodelValidation(TestCase):
         create_request = CreateTableRequest(
             name=EntityName('my::table>with"special_chars'),
             columns=[Column(name=ColumnName("col1"), dataType=DataType.STRING)],
-            databaseSchema=FullyQualifiedEntityName("db.schema")
+            databaseSchema=FullyQualifiedEntityName("db.schema"),
         )
-        
+
         result = transform_entity_names(create_request, "CreateTableRequest")
         expected = "my__reserved__colon__table__reserved__arrow__with__reserved__quote__special_chars"
         self.assertEqual(result.name.root, expected)
@@ -275,9 +326,9 @@ class TestCustomBasemodelValidation(TestCase):
         create_request = CreateTableRequest(
             name=EntityName('dynamic::table>name"test'),
             columns=[Column(name=ColumnName("col1"), dataType=DataType.STRING)],
-            databaseSchema=FullyQualifiedEntityName("db.schema")
+            databaseSchema=FullyQualifiedEntityName("db.schema"),
         )
-        
+
         # Use a model name not in explicit config to trigger dynamic pattern
         result = transform_entity_names(create_request, "CreateCustomEntity")
         expected = "dynamic__reserved__colon__table__reserved__arrow__name__reserved__quote__test"
@@ -286,10 +337,9 @@ class TestCustomBasemodelValidation(TestCase):
     def test_transform_entity_names_service_exclusion(self):
         """Test that service-level models are excluded from transformation."""
         service_request = CreateDatabaseServiceRequest(
-            name=EntityName('my::database>service"with_separators'),
-            serviceType="Mysql"
+            name=EntityName('my::database>service"with_separators'), serviceType="Mysql"
         )
-        
+
         result = transform_entity_names(service_request, "CreateDatabaseServiceRequest")
         # Should NOT be transformed
         self.assertEqual(result.name.root, 'my::database>service"with_separators')
@@ -320,23 +370,26 @@ class TestCustomBasemodelValidation(TestCase):
         """Test transform_entity_names with complex nested structures."""
         # Create deeply nested column structure
         level3_columns = [
-            Column(name=ColumnName("deep__reserved__colon__field"), dataType=DataType.STRING)
+            Column(
+                name=ColumnName("deep__reserved__colon__field"),
+                dataType=DataType.STRING,
+            )
         ]
-        
+
         level2_columns = [
             Column(
                 name=ColumnName("nested__reserved__arrow__struct"),
                 dataType=DataType.STRUCT,
-                children=level3_columns
+                children=level3_columns,
             )
         ]
-        
+
         level1_column = Column(
-            name=ColumnName('root__reserved__quote__struct'),
+            name=ColumnName("root__reserved__quote__struct"),
             dataType=DataType.STRUCT,
-            children=level2_columns
+            children=level2_columns,
         )
-        
+
         table = Table(
             id=self.sample_table_id,
             name="complex__reserved__colon__table",
@@ -344,15 +397,17 @@ class TestCustomBasemodelValidation(TestCase):
             databaseSchema=self.sample_schema_ref,
             fullyQualifiedName="db.schema.complex_table",
         )
-        
+
         result = transform_entity_names(table, "Table")
-        
+
         # Verify table name transformation (DECODE operation)
         self.assertEqual(result.name.root, "complex::table")
         # Column names should also be decoded since Table config includes columns
         self.assertEqual(result.columns[0].name.root, 'root"struct')
         self.assertEqual(result.columns[0].children[0].name.root, "nested>struct")
-        self.assertEqual(result.columns[0].children[0].children[0].name.root, "deep::field")
+        self.assertEqual(
+            result.columns[0].children[0].children[0].name.root, "deep::field"
+        )
 
     def test_transform_entity_names_with_root_attributes(self):
         """Test transformation of entities with root attributes (like FullyQualifiedEntityName)."""
@@ -374,23 +429,27 @@ class TestCustomBasemodelValidation(TestCase):
             name="測試__reserved__colon__表格__reserved__arrow__名稱",
             databaseSchema=self.sample_schema_ref,
             fullyQualifiedName="db.schema.unicode_table",
-            columns=[Column(name="unicode__reserved__quote__列", dataType=DataType.STRING)],
+            columns=[
+                Column(name="unicode__reserved__quote__列", dataType=DataType.STRING)
+            ],
         )
-        
+
         result = transform_entity_names(table_unicode, "Table")
         self.assertEqual(result.name.root, "測試::表格>名稱")
         # Column names should also be decoded since Table config includes columns
         self.assertEqual(result.columns[0].name.root, 'unicode"列')
 
-        # Test emojis with separators  
+        # Test emojis with separators
         table_emoji = Table(
             id=self.sample_table_id,
             name="table🚀__reserved__colon__data📊__reserved__arrow__chart",
             databaseSchema=self.sample_schema_ref,
             fullyQualifiedName="db.schema.emoji_table",
-            columns=[Column(name="emoji__reserved__quote__field🎯", dataType=DataType.STRING)],
+            columns=[
+                Column(name="emoji__reserved__quote__field🎯", dataType=DataType.STRING)
+            ],
         )
-        
+
         result = transform_entity_names(table_emoji, "Table")
         self.assertEqual(result.name.root, "table🚀::data📊>chart")
         self.assertEqual(result.columns[0].name.root, 'emoji"field🎯')
@@ -398,8 +457,14 @@ class TestCustomBasemodelValidation(TestCase):
     def test_very_long_strings(self):
         """Test handling of long strings within validation limits."""
         # Create long names within validation limits (under 256 chars)
-        long_name = "a" * 50 + "__reserved__colon__" + "b" * 50 + "__reserved__arrow__" + "c" * 50
-        
+        long_name = (
+            "a" * 50
+            + "__reserved__colon__"
+            + "b" * 50
+            + "__reserved__arrow__"
+            + "c" * 50
+        )
+
         table = Table(
             id=self.sample_table_id,
             name=long_name,
@@ -407,9 +472,9 @@ class TestCustomBasemodelValidation(TestCase):
             fullyQualifiedName="db.schema.long_table",
             columns=[],
         )
-        
+
         result = transform_entity_names(table, "Table")
-        
+
         # Should still transform correctly
         expected = "a" * 50 + "::" + "b" * 50 + ">" + "c" * 50
         self.assertEqual(result.name.root, expected)
@@ -418,7 +483,7 @@ class TestCustomBasemodelValidation(TestCase):
         """Test handling of nested/overlapping reserved keywords."""
         # Test overlapping patterns
         overlapping_name = "test__reserved__colon____reserved__colon__reserved__name"
-        
+
         table = Table(
             id=self.sample_table_id,
             name=overlapping_name,
@@ -426,7 +491,7 @@ class TestCustomBasemodelValidation(TestCase):
             fullyQualifiedName="db.schema.overlapping_table",
             columns=[],
         )
-        
+
         result = transform_entity_names(table, "Table")
         # This should handle the overlapping keywords correctly
         expected = "test::::reserved__name"
@@ -438,7 +503,7 @@ class TestCustomBasemodelValidation(TestCase):
         class ProblematicEntity:
             def __init__(self):
                 self.name = "test_name"
-            
+
             def __getattribute__(self, name):
                 if name == "name" and hasattr(self, "_fail_count"):
                     self._fail_count += 1
@@ -448,9 +513,11 @@ class TestCustomBasemodelValidation(TestCase):
 
         problematic_entity = ProblematicEntity()
         problematic_entity._fail_count = 0
-        
+
         # Should handle errors gracefully and return original entity
-        with patch('metadata.ingestion.models.custom_basemodel_validation.logger') as mock_logger:
+        with patch(
+            "metadata.ingestion.models.custom_basemodel_validation.logger"
+        ) as mock_logger:
             result = transform_entity_names(problematic_entity, "Table")
             # Should return original entity on error
             self.assertEqual(result, problematic_entity)
@@ -464,7 +531,7 @@ class TestCustomBasemodelValidation(TestCase):
             large_columns.append(
                 Column(name=ColumnName(col_name), dataType=DataType.STRING)
             )
-        
+
         large_table = Table(
             id=self.sample_table_id,
             name="large__reserved__arrow__table",
@@ -472,13 +539,13 @@ class TestCustomBasemodelValidation(TestCase):
             fullyQualifiedName="db.schema.large_table",
             columns=large_columns,
         )
-        
+
         # Should handle large datasets efficiently
         result = transform_entity_names(large_table, "Table")
-        
+
         self.assertEqual(result.name.root, "large>table")
         self.assertEqual(len(result.columns), 100)
-        
+
         # Verify first and last columns are transformed correctly
         self.assertEqual(result.columns[0].name.root, "col_0::field_0")
         self.assertEqual(result.columns[99].name.root, "col_99::field_99")
@@ -487,25 +554,31 @@ class TestCustomBasemodelValidation(TestCase):
         """Test DashboardDataModel specific transformations."""
         # Test DashboardDataModel with nested columns
         child_columns = [
-            Column(name=ColumnName("nested__reserved__colon__metric"), dataType=DataType.DOUBLE),
-            Column(name=ColumnName('nested__reserved__arrow__dimension'), dataType=DataType.STRING)
+            Column(
+                name=ColumnName("nested__reserved__colon__metric"),
+                dataType=DataType.DOUBLE,
+            ),
+            Column(
+                name=ColumnName("nested__reserved__arrow__dimension"),
+                dataType=DataType.STRING,
+            ),
         ]
-        
+
         parent_column = Column(
-            name=ColumnName('complex__reserved__quote__field'),
+            name=ColumnName("complex__reserved__quote__field"),
             dataType=DataType.STRUCT,
-            children=child_columns
+            children=child_columns,
         )
-        
+
         dashboard_model = DashboardDataModel(
             id=uuid.uuid4(),
             name="dashboard__reserved__colon__model__reserved__quote__name",
             dataModelType=DataModelType.TableauDataModel,
-            columns=[parent_column]
+            columns=[parent_column],
         )
-        
+
         result = transform_entity_names(dashboard_model, "DashboardDataModel")
-        
+
         # Verify transformations
         self.assertEqual(result.name.root, 'dashboard::model"name')
         self.assertEqual(result.columns[0].name.root, 'complex"field')
@@ -517,13 +590,24 @@ class TestCustomBasemodelValidation(TestCase):
         # Verify that all configured entities have consistent field mappings
         for entity_name, config in TRANSFORMABLE_ENTITIES.items():
             # All entities should have 'name' field
-            self.assertIn("name", config["fields"], f"{entity_name} should have 'name' field configured")
-            
+            self.assertIn(
+                "name",
+                config["fields"],
+                f"{entity_name} should have 'name' field configured",
+            )
+
             # Verify direction is valid
-            self.assertIn(config["direction"], [TransformDirection.ENCODE, TransformDirection.DECODE])
-            
+            self.assertIn(
+                config["direction"],
+                [TransformDirection.ENCODE, TransformDirection.DECODE],
+            )
+
             # Verify fields is not empty
-            self.assertGreater(len(config["fields"]), 0, f"{entity_name} should have at least one field configured")
+            self.assertGreater(
+                len(config["fields"]),
+                0,
+                f"{entity_name} should have at least one field configured",
+            )
 
 
 class TestTransformationConstants(TestCase):
@@ -537,20 +621,30 @@ class TestTransformationConstants(TestCase):
 
     def test_reserved_keywords_uniqueness(self):
         """Test that reserved keywords are unique and don't conflict."""
-        keywords = [RESERVED_COLON_KEYWORD, RESERVED_ARROW_KEYWORD, RESERVED_QUOTE_KEYWORD]
-        self.assertEqual(len(keywords), len(set(keywords)), "Reserved keywords should be unique")
-        
+        keywords = [
+            RESERVED_COLON_KEYWORD,
+            RESERVED_ARROW_KEYWORD,
+            RESERVED_QUOTE_KEYWORD,
+        ]
+        self.assertEqual(
+            len(keywords), len(set(keywords)), "Reserved keywords should be unique"
+        )
+
         # Test that keywords don't contain each other
         for i, keyword1 in enumerate(keywords):
             for j, keyword2 in enumerate(keywords):
                 if i != j:
-                    self.assertNotIn(keyword1, keyword2, f"{keyword1} should not be contained in {keyword2}")
+                    self.assertNotIn(
+                        keyword1,
+                        keyword2,
+                        f"{keyword1} should not be contained in {keyword2}",
+                    )
 
     def test_transform_direction_enum(self):
         """Test TransformDirection enum values."""
         self.assertEqual(TransformDirection.ENCODE.value, "encode")
         self.assertEqual(TransformDirection.DECODE.value, "decode")
-        
+
         # Test enum has exactly two values
         self.assertEqual(len(list(TransformDirection)), 2)
 
@@ -561,64 +655,85 @@ class TestDashboardDataModelValidation(TestCase):
     def setUp(self):
         """Set up test data."""
         self.sample_dashboard_id = uuid.uuid4()
-        self.sample_service_ref = EntityReference(id=uuid.uuid4(), type="dashboardService")
+        self.sample_service_ref = EntityReference(
+            id=uuid.uuid4(), type="dashboardService"
+        )
 
     def test_dashboard_datamodel_create_transformation(self):
         """Test CreateDashboardDataModelRequest transformations with nested children."""
         from metadata.generated.schema.api.data.createDashboardDataModel import (
             CreateDashboardDataModelRequest,
         )
-        from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
+        from metadata.generated.schema.entity.data.dashboardDataModel import (
+            DataModelType,
+        )
 
         create_request = CreateDashboardDataModelRequest(
             name=EntityName('analytics::report>model"quarterly'),
-            displayName='Analytics Report Model',
+            displayName="Analytics Report Model",
             dataModelType=DataModelType.PowerBIDataModel,
             service=FullyQualifiedEntityName("service.powerbi"),
             columns=[
                 Column(
-                    name=ColumnName('revenue::summary>metrics'),
+                    name=ColumnName("revenue::summary>metrics"),
                     displayName="Revenue Summary",
                     dataType=DataType.STRUCT,
                     children=[
                         Column(
                             name=ColumnName('total::amount>"USD"'),
                             displayName="Total Amount",
-                            dataType=DataType.DECIMAL
+                            dataType=DataType.DECIMAL,
                         ),
                         Column(
-                            name=ColumnName('nested::data>structure'),
+                            name=ColumnName("nested::data>structure"),
                             displayName="Nested Data",
                             dataType=DataType.STRUCT,
                             children=[
                                 Column(
                                     name=ColumnName('deep::field>"value"'),
                                     displayName="Deep Field",
-                                    dataType=DataType.STRING
+                                    dataType=DataType.STRING,
                                 )
-                            ]
-                        )
-                    ]
+                            ],
+                        ),
+                    ],
                 )
-            ]
+            ],
         )
 
-        result = transform_entity_names(create_request, "CreateDashboardDataModelRequest")
+        result = transform_entity_names(
+            create_request, "CreateDashboardDataModelRequest"
+        )
 
         # Verify main name transformation (ENCODE for Create operations)
-        self.assertEqual(result.name.root, "analytics__reserved__colon__report__reserved__arrow__model__reserved__quote__quarterly")
+        self.assertEqual(
+            result.name.root,
+            "analytics__reserved__colon__report__reserved__arrow__model__reserved__quote__quarterly",
+        )
 
         # Verify top-level column transformation
-        self.assertEqual(result.columns[0].name.root, "revenue__reserved__colon__summary__reserved__arrow__metrics")
+        self.assertEqual(
+            result.columns[0].name.root,
+            "revenue__reserved__colon__summary__reserved__arrow__metrics",
+        )
 
         # Verify nested children transformations (first level)
         revenue_column = result.columns[0]
-        self.assertEqual(revenue_column.children[0].name.root, "total__reserved__colon__amount__reserved__arrow____reserved__quote__USD__reserved__quote__")
-        self.assertEqual(revenue_column.children[1].name.root, "nested__reserved__colon__data__reserved__arrow__structure")
+        self.assertEqual(
+            revenue_column.children[0].name.root,
+            "total__reserved__colon__amount__reserved__arrow____reserved__quote__USD__reserved__quote__",
+        )
+        self.assertEqual(
+            revenue_column.children[1].name.root,
+            "nested__reserved__colon__data__reserved__arrow__structure",
+        )
 
         # Verify deeply nested transformations (second level)
         nested_struct = revenue_column.children[1]
-        self.assertEqual(nested_struct.children[0].name.root, "deep__reserved__colon__field__reserved__arrow____reserved__quote__value__reserved__quote__")
+        self.assertEqual(
+            nested_struct.children[0].name.root,
+            "deep__reserved__colon__field__reserved__arrow____reserved__quote__value__reserved__quote__",
+        )
 
     def test_dashboard_datamodel_fetch_transformation(self):
         """Test DashboardDataModel fetch transformations with nested children."""
@@ -636,30 +751,38 @@ class TestDashboardDataModelValidation(TestCase):
             fullyQualifiedName="service.analytics__reserved__colon__report__reserved__arrow__model__reserved__quote__quarterly",
             columns=[
                 Column(
-                    name=ColumnName("revenue__reserved__colon__summary__reserved__arrow__metrics"),
+                    name=ColumnName(
+                        "revenue__reserved__colon__summary__reserved__arrow__metrics"
+                    ),
                     displayName="Revenue Summary",
                     dataType=DataType.STRUCT,
                     children=[
                         Column(
-                            name=ColumnName("total__reserved__colon__amount__reserved__arrow____reserved__quote__USD__reserved__quote__"),
+                            name=ColumnName(
+                                "total__reserved__colon__amount__reserved__arrow____reserved__quote__USD__reserved__quote__"
+                            ),
                             displayName="Total Amount",
-                            dataType=DataType.DECIMAL
+                            dataType=DataType.DECIMAL,
                         ),
                         Column(
-                            name=ColumnName("nested__reserved__colon__data__reserved__arrow__structure"),
+                            name=ColumnName(
+                                "nested__reserved__colon__data__reserved__arrow__structure"
+                            ),
                             displayName="Nested Data",
                             dataType=DataType.STRUCT,
                             children=[
                                 Column(
-                                    name=ColumnName("deep__reserved__colon__field__reserved__arrow____reserved__quote__value__reserved__quote__"),
+                                    name=ColumnName(
+                                        "deep__reserved__colon__field__reserved__arrow____reserved__quote__value__reserved__quote__"
+                                    ),
                                     displayName="Deep Field",
-                                    dataType=DataType.STRING
+                                    dataType=DataType.STRING,
                                 )
-                            ]
-                        )
-                    ]
+                            ],
+                        ),
+                    ],
                 )
-            ]
+            ],
         )
 
         result = transform_entity_names(dashboard_model, "DashboardDataModel")
@@ -682,7 +805,7 @@ class TestDashboardDataModelValidation(TestCase):
     def test_dashboard_datamodel_edge_cases(self):
         """Test edge cases for DashboardDataModel transformations."""
         from metadata.generated.schema.entity.data.dashboardDataModel import (
-            DashboardDataModel, 
+            DashboardDataModel,
             DataModelType,
         )
 
@@ -699,12 +822,14 @@ class TestDashboardDataModelValidation(TestCase):
                     name=ColumnName("parent__reserved__arrow__column"),
                     displayName="Parent Column",
                     dataType=DataType.STRUCT,
-                    children=[]  # Empty children list
+                    children=[],  # Empty children list
                 )
-            ]
+            ],
         )
 
-        result_empty = transform_entity_names(model_empty_children, "DashboardDataModel")
+        result_empty = transform_entity_names(
+            model_empty_children, "DashboardDataModel"
+        )
         self.assertEqual(result_empty.name.root, "test::model")
         self.assertEqual(result_empty.columns[0].name.root, "parent>column")
 
@@ -721,9 +846,9 @@ class TestDashboardDataModelValidation(TestCase):
                     name=ColumnName("parent__reserved__quote__column"),
                     displayName="Parent Column",
                     dataType=DataType.STRING,
-                    children=None  # None children
+                    children=None,  # None children
                 )
-            ]
+            ],
         )
 
         result_none = transform_entity_names(model_none_children, "DashboardDataModel")
@@ -746,38 +871,46 @@ class TestDashboardDataModelValidation(TestCase):
             fullyQualifiedName="service.complex__reserved__colon__model__reserved__arrow__test",
             columns=[
                 Column(
-                    name=ColumnName("level1__reserved__colon__struct__reserved__arrow__data"),
+                    name=ColumnName(
+                        "level1__reserved__colon__struct__reserved__arrow__data"
+                    ),
                     displayName="Level 1 Struct",
                     dataType=DataType.STRUCT,
                     children=[
                         Column(
-                            name=ColumnName("level2__reserved__quote__array__reserved__colon__items"),
+                            name=ColumnName(
+                                "level2__reserved__quote__array__reserved__colon__items"
+                            ),
                             displayName="Level 2 Array",
                             dataType=DataType.ARRAY,
                             arrayDataType=DataType.STRUCT,
                             children=[
                                 Column(
-                                    name=ColumnName("level3__reserved__arrow__nested__reserved__quote__field"),
+                                    name=ColumnName(
+                                        "level3__reserved__arrow__nested__reserved__quote__field"
+                                    ),
                                     displayName="Level 3 Nested",
                                     dataType=DataType.STRUCT,
                                     children=[
                                         Column(
-                                            name=ColumnName("level4__reserved__colon__deep__reserved__arrow__value"),
+                                            name=ColumnName(
+                                                "level4__reserved__colon__deep__reserved__arrow__value"
+                                            ),
                                             displayName="Level 4 Deep",
-                                            dataType=DataType.STRING
+                                            dataType=DataType.STRING,
                                         )
-                                    ]
+                                    ],
                                 )
-                            ]
+                            ],
                         ),
                         Column(
                             name=ColumnName("simple__reserved__quote__field"),
                             displayName="Simple Field",
-                            dataType=DataType.INT
-                        )
-                    ]
+                            dataType=DataType.INT,
+                        ),
+                    ],
                 )
-            ]
+            ],
         )
 
         result = transform_entity_names(complex_model, "DashboardDataModel")
@@ -811,9 +944,15 @@ class TestDashboardDataModelValidation(TestCase):
 
         # Test data with mixed special characters
         test_cases = [
-            ('simple::name', 'simple__reserved__colon__name'),
-            ('complex::name>with"quotes', 'complex__reserved__colon__name__reserved__arrow__with__reserved__quote__quotes'),
-            ('edge::case>test"data', 'edge__reserved__colon__case__reserved__arrow__test__reserved__quote__data'),
+            ("simple::name", "simple__reserved__colon__name"),
+            (
+                'complex::name>with"quotes',
+                "complex__reserved__colon__name__reserved__arrow__with__reserved__quote__quotes",
+            ),
+            (
+                'edge::case>test"data',
+                "edge__reserved__colon__case__reserved__arrow__test__reserved__quote__data",
+            ),
         ]
 
         for original_name, encoded_name in test_cases:
@@ -828,12 +967,14 @@ class TestDashboardDataModelValidation(TestCase):
                         Column(
                             name=ColumnName(original_name),
                             displayName="Test Column",
-                            dataType=DataType.STRING
+                            dataType=DataType.STRING,
                         )
-                    ]
+                    ],
                 )
 
-                create_result = transform_entity_names(create_request, "CreateDashboardDataModelRequest")
+                create_result = transform_entity_names(
+                    create_request, "CreateDashboardDataModelRequest"
+                )
                 self.assertEqual(create_result.name.root, encoded_name)
                 self.assertEqual(create_result.columns[0].name.root, encoded_name)
 
@@ -849,9 +990,9 @@ class TestDashboardDataModelValidation(TestCase):
                         Column(
                             name=ColumnName(encoded_name),
                             displayName="Test Column",
-                            dataType=DataType.STRING
+                            dataType=DataType.STRING,
                         )
-                    ]
+                    ],
                 )
 
                 fetch_result = transform_entity_names(fetch_model, "DashboardDataModel")
@@ -861,4 +1002,5 @@ class TestDashboardDataModelValidation(TestCase):
 
 if __name__ == "__main__":
     import unittest
+
     unittest.main()
