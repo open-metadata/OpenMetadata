@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Collapse, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Collapse, Row, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
 import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../../../constants/Services.constant';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
 import { WorkflowStatus } from '../../../generated/governance/workflows/workflowInstanceState';
@@ -28,6 +29,7 @@ import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import {
   getAgentStatusSummary,
   getFormattedAgentsList,
+  getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
 import {
   getCurrentMillis,
@@ -35,6 +37,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './agents-status-widget.less';
 import {
   AgentsInfo,
@@ -142,8 +145,9 @@ function AgentsStatusWidget({
               <div
                 className={classNames('agent-status-summary-item', key)}
                 key={key}>
-                <Typography.Text>{key}</Typography.Text>
+                {getIconFromStatus(key)}
                 <Typography.Text>{value}</Typography.Text>
+                <Typography.Text>{key}</Typography.Text>
               </div>
             ))}
           </div>
@@ -170,6 +174,15 @@ function AgentsStatusWidget({
           </div>
         }
         key="1">
+        {!isLoading && isEmpty(agentsList) && (
+          <div className="flex-center p-y-md">
+            <ErrorPlaceHolder
+              size={SIZE.SMALL}
+              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+            />
+          </div>
+        )}
+
         <Row gutter={[16, 16]}>
           {isLoading
             ? Array(8)
@@ -188,7 +201,11 @@ function AgentsStatusWidget({
                       'agent-status-card',
                       agent.isCollateAgent ? 'collate-agent' : ''
                     )}>
-                    <Typography.Text>{agent.label}</Typography.Text>
+                    <Space align="center" size={8}>
+                      {agent.agentIcon}
+                      <Typography.Text>{agent.label}</Typography.Text>
+                    </Space>
+                    {getIconFromStatus(agent.status)}
                   </Card>
                 </Col>
               ))}

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
+import { AgentStatus } from '../../../enums/ServiceInsights.enum';
 import { App } from '../../../generated/entity/applications/app';
-import { Status } from '../../../generated/entity/applications/appRunRecord';
-import { PipelineState } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from '../../../interface/service.interface';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 
@@ -24,6 +24,7 @@ export interface AgentsStatusWidgetProps
 
 export interface AgentsInfo {
   label: string;
-  status?: PipelineState | Status;
+  status?: AgentStatus;
   isCollateAgent: boolean;
+  agentIcon: ReactNode;
 }

@@ -13,15 +13,76 @@
 @import (reference) '../../../styles/variables.less';
 
 .agents-status-widget {
-  .agent-status-card {
+  .ant-card.agent-status-card {
     height: 100%;
-    display: flex;
-    align-items: center;
+
+    .ant-card-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+
+      &::before,
+      &::after {
+        display: none;
+      }
+
+      .agent-icon-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        padding: 10px;
+        background-color: @grey-50;
+        color: @grey-600;
+      }
+    }
   }
 
   .collate-agent.ant-card.ant-card-bordered {
     border-color: @blue-32;
     background-color: @blue-33;
+
+    .agent-icon-container {
+      background-color: @white;
+      color: @blue-32;
+    }
+  }
+
+  .status-summary-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 50%;
+    padding: 4px;
+
+    &.Running {
+      border-color: @blue-39;
+      background-color: @blue-22;
+      color: @blue-31;
+    }
+
+    &.Successful {
+      border-color: @green-16;
+      background-color: @green-9;
+      color: @green-10;
+    }
+
+    &.Pending {
+      border-color: @yellow-12;
+      background-color: @yellow-10;
+      color: @yellow-11;
+    }
+
+    &.Failed {
+      border-color: @red-13;
+      background-color: @red-9;
+      color: @red-10;
+    }
   }
 
   .ant-collapse-arrow.expand-icon-container {
@@ -37,11 +98,12 @@
       .agent-status-summary-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         border-width: 1px;
         border-style: solid;
-        border-radius: 12px;
+        border-radius: 50vh;
         padding: 2px 12px;
+        font-size: 14px;
         font-weight: 500;
 
         &.Running {
@@ -52,7 +114,7 @@
           }
         }
 
-        &.Success {
+        &.Successful {
           background-color: @green-9;
           border-color: @green-10;
           .ant-typography {
