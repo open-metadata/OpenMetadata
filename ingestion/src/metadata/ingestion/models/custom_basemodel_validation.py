@@ -64,7 +64,8 @@ TRANSFORMABLE_ENTITIES: Dict[str, Dict[str, Any]] = {
     "CustomColumnName": {"fields": {"name"}, "direction": TransformDirection.DECODE},
     # Create/Store models - encode special characters to reserved keywords
     "ProfilerResponse": {"fields": {"name"}, "direction": TransformDirection.ENCODE},
-    "SampleData": {"fields": {"name"}, "direction": TransformDirection.ENCODE},
+    "TableData": {"fields": {"columns"}, "direction": TransformDirection.ENCODE},
+    "ColumnName": {"fields": {"root"}, "direction": TransformDirection.ENCODE},
     "CreateTableRequest": {
         "fields": {"name", "columns", "children", "tableConstraints"},
         "direction": TransformDirection.ENCODE,
@@ -116,9 +117,12 @@ def transform_all_names(obj, transformer):
     if not obj:
         return
 
-    # Transform name field if it exists
-    if hasattr(obj, "name") and hasattr(obj.name, "root"):
-        obj.name.root = transformer(obj.name.root)
+    # Transform name field if it exists (supports both obj.name.root and obj.root)
+    name = getattr(obj, "name", None)
+    if name and hasattr(name, "root") and name.root is not None:
+        name.root = transformer(name.root)
+    elif hasattr(obj, "root") and obj.root is not None:
+        obj.root = transformer(obj.root)
 
     # Transform nested collections in a single loop each
     for attr_name in ["columns", "children"]:
@@ -137,6 +141,8 @@ def transform_all_names(obj, transformer):
                     constraint.columns = [
                         transformer(col) for col in constraint.columns
                     ]
+                    
+    
 
 
 def transform_entity_names(entity: Any, model_name: str) -> Any:
@@ -147,7 +153,7 @@ def transform_entity_names(entity: Any, model_name: str) -> Any:
         return entity
 
     # Root attribute handling
-    if hasattr(entity, "root"):
+    if hasattr(entity, "root") and entity.root is not None:
         entity.root = (
             replace_separators(entity.root)
             if model_name.startswith("Create")
