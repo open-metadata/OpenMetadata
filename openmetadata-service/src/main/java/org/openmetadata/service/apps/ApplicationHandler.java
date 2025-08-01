@@ -103,6 +103,28 @@ public class ApplicationHandler {
     }
   }
 
+  /**
+   * Load the apps private parameters
+   */
+  public void setAppPrivateConfig(App app) {
+    try {
+      AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
+      if (appPrivateConfig.getParameters() != null
+          && appPrivateConfig.getParameters().getAdditionalProperties() != null) {
+        app.setPrivateConfiguration(appPrivateConfig.getParameters().getAdditionalProperties());
+
+        if ((app.getAppType() == AppType.External)) {
+          if (secretsManager instanceof ExternalSecretsManager) {
+            String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
+            app.setPrivateConfiguration("secret:" + baseSecretId);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error setting private config for app {}", app.getName(), e);
+    }
+  }
+
   public Boolean isPreview(String appName) {
     try {
       AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(appName);
