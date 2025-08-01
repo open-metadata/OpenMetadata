@@ -118,7 +118,7 @@ entities.forEach((EntityClass) => {
     });
 
     // Need to address fixes for Domain / Data Product update
-    test.fixme('Domain Add, Update and Remove', async ({ page }) => {
+    test('Domain Add, Update and Remove', async ({ page }) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
