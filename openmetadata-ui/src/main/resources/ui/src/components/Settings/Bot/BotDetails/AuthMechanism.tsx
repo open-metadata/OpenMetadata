@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../../assets/svg/copy-right-squared.svg';
 import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
+import { Bot } from '../../../../generated/entity/bot';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getTokenExpiry } from '../../../../utils/BotsUtils';
@@ -33,6 +34,7 @@ interface Props {
   onTokenRevoke?: () => void;
   isBot: boolean;
   isSCIMBot?: boolean;
+  botData?: Bot;
 }
 
 const AuthMechanism: FC<Props> = ({
@@ -42,6 +44,7 @@ const AuthMechanism: FC<Props> = ({
   onTokenRevoke,
   isBot,
   isSCIMBot,
+  botData,
 }: Props) => {
   const { t } = useTranslation();
   const { JWTToken, JWTTokenExpiresAt } = useMemo(() => {
@@ -197,9 +200,9 @@ const AuthMechanism: FC<Props> = ({
               <div className="flex items-center gap-2 mt-1">
                 <UserPopOverCard
                   showUserName
-                  key={currentUser?.name}
+                  key={botData?.updatedBy}
                   profileWidth={20}
-                  userName={currentUser?.name ?? ''}
+                  userName={botData?.updatedBy ?? ''}
                 />
               </div>
             </div>
@@ -209,7 +212,7 @@ const AuthMechanism: FC<Props> = ({
               </Typography.Text>
 
               <Typography.Text className="created-on-value">
-                {new Date().toLocaleString()}
+                {new Date(botData?.updatedAt ?? '').toLocaleString()}
               </Typography.Text>
             </div>
           </div>

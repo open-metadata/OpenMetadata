@@ -242,6 +242,7 @@ const AccessTokenCard: FC<MockProps> = ({
       <AuthMechanism
         hasPermission
         authenticationMechanism={authenticationMechanismData}
+        botData={botData}
         isBot={isBot}
         isSCIMBot={isSCIMBot}
         onEdit={handleAuthMechanismEdit}
