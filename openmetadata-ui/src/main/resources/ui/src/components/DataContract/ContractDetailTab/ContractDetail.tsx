@@ -56,6 +56,7 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
@@ -532,7 +533,9 @@ const ContractDetail: React.FC<{
                                     {item.name}
                                   </Typography.Text>
                                   <Typography.Text className="data-quality-item-description">
-                                    {item.description}
+                                    <RichTextEditorPreviewerNew
+                                      markdown={item.description ?? ''}
+                                    />
                                   </Typography.Text>
                                 </div>
                               </div>

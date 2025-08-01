@@ -18,14 +18,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table as TableType } from '../../../generated/entity/data/table';
-import { TestCase } from '../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { listTestCases, TestCaseType } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Table from '../../common/Table/Table';
 
+import { ColumnsType } from 'antd/lib/table';
+import { toLower } from 'lodash';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
 export const ContractQualityFormTab: React.FC<{
@@ -44,7 +48,7 @@ export const ContractQualityFormTab: React.FC<{
   );
   const { t } = useTranslation();
 
-  const columns = useMemo(
+  const columns: ColumnsType<TestCase> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -52,10 +56,20 @@ export const ContractQualityFormTab: React.FC<{
       },
       {
         title: t('label.status'),
-        dataIndex: 'status',
+        dataIndex: 'testCaseStatus',
+        key: 'testCaseStatus',
+        render: (testCaseStatus: TestCaseStatus) => {
+          return (
+            <StatusBadge
+              dataTestId={`status-badge-${testCaseStatus}`}
+              label={testCaseStatus}
+              status={toLower(testCaseStatus) as StatusType}
+            />
+          );
+        },
       },
     ],
-    [t]
+    []
   );
 
   const fetchAllTests = async () => {
