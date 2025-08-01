@@ -10,9 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
-import { SettingMenuItem } from './GlobalSettingsUtils';
-
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
@@ -21,6 +18,7 @@ import { ReactComponent as ApplicationIcon } from '../assets/svg/application-col
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored.svg';
+import { ReactComponent as DataAssetRulesIcon } from '../assets/svg/data-asset-rules.svg';
 import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/data-product-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
@@ -58,6 +56,7 @@ import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-new.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
+import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
 import {
@@ -70,6 +69,7 @@ import {
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { userPermissions } from '../utils/PermissionsUtils';
 import brandClassBase from './BrandData/BrandClassBase';
+import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
   settingCategories: Record<string, { name: string; url: string }> = {
@@ -297,6 +297,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
             icon: AdminIcon,
           },
+          {
+            label: t('label.online-user-plural'),
+            description: t('message.page-sub-header-for-online-users'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ONLINE_USERS}`,
+            icon: UsersIcon,
+          },
         ],
       },
       {
@@ -318,6 +325,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
             icon: PoliciesIcon,
+          },
+          {
+            label: t('label.permission-debugger'),
+            description: t('message.page-sub-header-for-permission-debugger'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
+            icon: AccessControlIcon,
           },
         ],
       },
@@ -545,6 +559,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
             icon: LinkIcon,
+          },
+          {
+            label: t('label.data-asset-rules'),
+            description: t('message.data-asset-rules-message'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
+            icon: DataAssetRulesIcon,
           },
         ],
       },

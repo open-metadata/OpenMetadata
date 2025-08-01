@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useHistory } from 'react-router';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
@@ -30,6 +31,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
+import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import {
   CommentIconButton,
   EditIconButton,
@@ -58,9 +60,9 @@ const DescriptionV1 = ({
   showSuggestions = false,
   isDescriptionExpanded,
   entityFullyQualifiedName,
-  newLook = false,
 }: DescriptionProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
+  const { isVersionView } = useGenericContext<Domain>();
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -71,11 +73,11 @@ const DescriptionV1 = ({
   }, [entityFullyQualifiedName, fqn]);
 
   const handleRequestDescription = useCallback(() => {
-    history.push(getRequestDescriptionPath(entityType, entityFqn));
+    navigate(getRequestDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   const handleUpdateDescription = useCallback(() => {
-    history.push(getUpdateDescriptionPath(entityType, entityFqn));
+    navigate(getUpdateDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   // Callback to handle the edit button from description
@@ -122,8 +124,8 @@ const DescriptionV1 = ({
 
     return (
       <RequestIconButton
+        newLook
         data-testid="request-description"
-        newLook={newLook}
         size="small"
         title={
           hasDescription
@@ -140,16 +142,15 @@ const DescriptionV1 = ({
     entityType,
     handleUpdateDescription,
     handleRequestDescription,
-    newLook,
   ]);
 
   const actionButtons = useMemo(
     () => (
       <Space size={12}>
-        {!isReadOnly && hasEditAccess && (
+        {!isVersionView && !isReadOnly && hasEditAccess && (
           <EditIconButton
+            newLook
             data-testid="edit-description"
-            newLook={newLook}
             size="small"
             title={t('label.edit-entity', {
               entity: t('label.description'),
@@ -160,8 +161,8 @@ const DescriptionV1 = ({
         {taskActionButton}
         {showCommentsIcon && (
           <CommentIconButton
+            newLook
             data-testid="description-thread"
-            newLook={newLook}
             size="small"
             title={t('label.list-entity', {
               entity: t('label.conversation'),
@@ -175,12 +176,12 @@ const DescriptionV1 = ({
     ),
     [
       isReadOnly,
+      isVersionView,
       hasEditAccess,
       handleEditDescription,
       taskActionButton,
       showCommentsIcon,
       onThreadLinkSelect,
-      newLook,
     ]
   );
 
@@ -216,30 +217,35 @@ const DescriptionV1 = ({
     }
   }, [description, suggestionData, isDescriptionExpanded]);
 
+  const header = useMemo(() => {
+    return (
+      <div
+        className={classNames('d-flex justify-between flex-wrap', {
+          'm-t-sm': suggestions?.length > 0,
+        })}>
+        <div className="d-flex items-center gap-2">
+          <Text className={classNames('text-sm font-medium')}>
+            {t('label.description')}
+          </Text>
+          {showActions && actionButtons}
+        </div>
+        {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
+      </div>
+    );
+  }, [showActions, actionButtons, suggestions, showSuggestions]);
+
   const content = (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
       <Space
+        {...(wrapInCard
+          ? {}
+          : {
+              'data-testid': 'asset-description-container',
+            })}
         className={classNames('schema-description d-flex', className)}
-        data-testid="asset-description-container"
         direction="vertical"
         size={16}>
-        <div
-          className={classNames('d-flex justify-between flex-wrap', {
-            'm-t-sm': suggestions?.length > 0,
-          })}>
-          <div className="d-flex items-center gap-2">
-            <Text
-              className={classNames({
-                'text-sm font-medium': newLook,
-                'right-panel-label': !newLook,
-              })}>
-              {t('label.description')}
-            </Text>
-            {showActions && actionButtons}
-          </div>
-          {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
-        </div>
-
+        {!wrapInCard ? header : null}
         <div>
           {descriptionContent}
           <ModalWithMarkdownEditor
@@ -258,9 +264,11 @@ const DescriptionV1 = ({
   );
 
   return wrapInCard ? (
-    <Card className={classNames({ 'new-description-card': newLook })}>
+    <ExpandableCard
+      cardProps={{ title: header, className: 'new-description-card' }}
+      dataTestId="asset-description-container">
       {content}
-    </Card>
+    </ExpandableCard>
   ) : (
     content
   );

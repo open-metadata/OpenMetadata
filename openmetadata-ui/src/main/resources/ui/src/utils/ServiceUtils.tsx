@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
 import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -57,6 +56,7 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
+import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
 import { showErrorToast } from './ToastUtils';
@@ -198,7 +198,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural')}:</label>
+          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -212,7 +212,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -226,7 +226,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase')}:</label>
+          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -329,33 +329,29 @@ export const getDeleteEntityMessage = (
 };
 
 export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
-  if (type === 'messagingServices') {
-    return GlobalSettingOptions.MESSAGING;
+  switch (type) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return GlobalSettingOptions.MESSAGING;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return GlobalSettingOptions.DASHBOARDS;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return GlobalSettingOptions.PIPELINES;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return GlobalSettingOptions.MLMODELS;
+    case ServiceCategory.METADATA_SERVICES:
+      return GlobalSettingOptions.METADATA;
+    case ServiceCategory.STORAGE_SERVICES:
+      return GlobalSettingOptions.STORAGES;
+    case ServiceCategory.SEARCH_SERVICES:
+      return GlobalSettingOptions.SEARCH;
+    case ServiceCategory.API_SERVICES:
+      return GlobalSettingOptions.APIS;
+    case ServiceCategory.SECURITY_SERVICES:
+      return GlobalSettingOptions.SECURITY;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return GlobalSettingOptions.DATABASES;
   }
-  if (type === 'dashboardServices') {
-    return GlobalSettingOptions.DASHBOARDS;
-  }
-  if (type === 'pipelineServices') {
-    return GlobalSettingOptions.PIPELINES;
-  }
-  if (type === 'mlmodelServices') {
-    return GlobalSettingOptions.MLMODELS;
-  }
-  if (type === 'metadataServices') {
-    return GlobalSettingOptions.METADATA;
-  }
-  if (type === 'storageServices') {
-    return GlobalSettingOptions.STORAGES;
-  }
-  if (type === 'searchServices') {
-    return GlobalSettingOptions.SEARCH;
-  }
-
-  if (type === ServiceCategory.API_SERVICES) {
-    return GlobalSettingOptions.APIS;
-  }
-
-  return GlobalSettingOptions.DATABASES;
 };
 
 export const getResourceEntityFromServiceCategory = (
@@ -450,6 +446,8 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.SEARCH_SERVICES;
     case EntityType.API_SERVICE:
       return ServiceCategory.API_SERVICES;
+    case EntityType.SECURITY_SERVICE:
+      return ServiceCategory.SECURITY_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;
@@ -476,6 +474,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.SEARCH_SERVICE;
     case ServiceCategory.API_SERVICES:
       return EntityType.API_SERVICE;
+    case ServiceCategory.SECURITY_SERVICES:
+      return EntityType.SECURITY_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;

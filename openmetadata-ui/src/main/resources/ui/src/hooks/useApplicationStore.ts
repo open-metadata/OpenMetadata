@@ -18,10 +18,7 @@ import { AuthorizerConfiguration } from '../generated/configuration/authorizerCo
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
-import {
-  ApplicationStore,
-  HelperFunctions,
-} from '../interface/store.interface';
+import { ApplicationStore } from '../interface/store.interface';
 import { getOidcToken } from '../utils/LocalStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 
@@ -48,16 +45,13 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   inlineAlertDetails: undefined,
   applications: [],
   appPreferences: {},
+  appVersion: undefined,
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
   },
 
-  setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
-    set({ ...helperFunctions });
-  },
-
-  setSelectedPersona: (persona: EntityReference) => {
+  setSelectedPersona: (persona: EntityReference | undefined) => {
     set({ selectedPersona: persona });
   },
 
@@ -66,13 +60,16 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setCurrentUser: (user) => {
     const { personas, defaultPersona } = user;
-    // Update selected Persona to fetch the customized pages
-    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
-      set({ selectedPersona: defaultPersona });
-    }
+
+    const doesDefaultPersonaExist = personas?.find(
+      (p) => p.id === defaultPersona?.id
+    );
 
     // Update the current user
-    set({ currentUser: user });
+    set({
+      currentUser: user,
+      selectedPersona: doesDefaultPersonaExist ? defaultPersona : undefined,
+    });
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
     set({ authConfig });
@@ -101,25 +98,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ isApplicationLoading: loading });
   },
 
-  onLoginHandler: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-  /**
-   * Handler to perform logout within application
-   */
-  onLogoutHandler: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-
-  handleSuccessfulLogin: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-  handleFailedLogin: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
-  updateAxiosInterceptors: () => {
-    // This is a placeholder function that will be replaced by the actual function
-  },
   updateCurrentUser: (user) => {
     const { personas, defaultPersona } = user;
     const { selectedPersona } = get();
@@ -174,5 +152,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setApplicationsName: (applications: string[]) => {
     set({ applications: applications });
+  },
+  setAppVersion: (version: string) => {
+    set({ appVersion: version });
   },
 }));

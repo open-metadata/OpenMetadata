@@ -20,7 +20,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
@@ -68,6 +67,7 @@ const PipelineDetailsProps: PipeLineDetailsProp = {
   onExtensionUpdate: jest.fn(),
   handleToggleDelete: jest.fn(),
   onUpdateVote: jest.fn(),
+  onPipelineUpdate: jest.fn(),
 };
 
 jest.mock(
@@ -145,7 +145,6 @@ jest.mock('../../common/EntityDescription/DescriptionV1', () => {
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => ({ tab: 'tasks' })),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
 }));
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => {

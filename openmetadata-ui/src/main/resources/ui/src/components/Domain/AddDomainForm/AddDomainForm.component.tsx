@@ -13,7 +13,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, FormProps, Space } from 'antd';
 import { omit } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
@@ -117,6 +117,9 @@ const AddDomainForm = ({
         selectProps: {
           'data-testid': 'glossary-terms-container',
         },
+        open: false,
+        hasNoActionButtons: true,
+        isTreeSelect: true,
         tagType: TagSource.Glossary,
         placeholder: t('label.select-field', {
           field: t('label.glossary-term-plural'),
@@ -248,7 +251,7 @@ const AddDomainForm = ({
       style,
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
-      tags: [...(formData.tags || []), ...(formData.glossaryTerms || [])],
+      tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
     } as CreateDomain | CreateDataProduct;
 
     onSubmit(data);

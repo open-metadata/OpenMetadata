@@ -48,6 +48,10 @@ export interface SearchSettings {
      */
     allowedFields?: AllowedSearchFields[];
     /**
+     * Configurations of allowed field value boost fields for each entity type
+     */
+    allowedFieldValueBoosts?: AllowedFieldValueBoostFields[];
+    /**
      * List of per-asset search configurations that override the global settings.
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
@@ -62,15 +66,35 @@ export interface SearchSettings {
     nlqConfiguration?: NlqConfiguration;
 }
 
+export interface AllowedFieldValueBoostFields {
+    /**
+     * Entity type this field value boost configuration applies to
+     */
+    entityType: string;
+    fields:     AllowedFieldValueBoostField[];
+}
+
+export interface AllowedFieldValueBoostField {
+    /**
+     * Detailed explanation of what this numeric field represents and how it can be used for
+     * boosting relevance
+     */
+    description: string;
+    /**
+     * Field name that can be used in fieldValueBoosts
+     */
+    name: string;
+}
+
 export interface AllowedSearchFields {
     /**
      * Entity type this field configuration applies to
      */
     entityType: string;
-    fields:     Field[];
+    fields:     AllowedFieldField[];
 }
 
-export interface Field {
+export interface AllowedFieldField {
     /**
      * Detailed explanation of what this field represents and how it affects search behavior
      */
@@ -109,6 +133,10 @@ export interface AssetTypeConfiguration {
      * Which fields to highlight for this asset.
      */
     highlightFields?: string[];
+    /**
+     * Multipliers applied to different match types to control their relative importance.
+     */
+    matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
     /**
      * How to combine function scores if multiple boosts are applied.
      */
@@ -224,6 +252,24 @@ export enum Modifier {
 }
 
 /**
+ * Multipliers applied to different match types to control their relative importance.
+ */
+export interface MatchTypeBoostMultipliers {
+    /**
+     * Multiplier for exact match queries (term queries on .keyword fields)
+     */
+    exactMatchMultiplier?: number;
+    /**
+     * Multiplier for fuzzy match queries
+     */
+    fuzzyMatchMultiplier?: number;
+    /**
+     * Multiplier for phrase match queries
+     */
+    phraseMatchMultiplier?: number;
+}
+
+/**
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -244,6 +290,24 @@ export interface FieldBoost {
      * Field name to search/boost.
      */
     field: string;
+    /**
+     * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+     * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+     * behavior.
+     */
+    matchType?: MatchType;
+}
+
+/**
+ * Type of matching to use for this field. 'exact' uses term query for .keyword fields,
+ * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
+ * behavior.
+ */
+export enum MatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
 }
 
 export interface TermBoost {

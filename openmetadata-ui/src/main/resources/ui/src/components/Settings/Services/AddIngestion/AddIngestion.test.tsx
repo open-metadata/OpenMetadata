@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
-import React from 'react';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -60,6 +59,11 @@ jest.mock('./Steps/ScheduleInterval', () => {
 jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {
   return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
 });
+
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
+  getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
+}));
 
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {

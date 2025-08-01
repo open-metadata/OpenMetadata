@@ -14,7 +14,10 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { PAGE_SIZE_MEDIUM } from '../constants/constants';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE_MEDIUM,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
@@ -134,4 +137,27 @@ export const searchDomains = async (search: string, page = 1) => {
   });
 
   return data;
+};
+
+export const addFollower = async (domainID: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(
+    `${BASE_URL}/${domainID}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeFollower = async (domainID: string, userId: string) => {
+  const response = await APIClient.delete<{
+    changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+  }>(`${BASE_URL}/${domainID}/followers/${userId}`);
+
+  return response.data;
 };

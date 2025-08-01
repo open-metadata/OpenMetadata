@@ -1,5 +1,6 @@
 ---
-title: Glossary Export
+title: Glossary Export | OpenMetadata Export Guide
+description: Export glossary terms in bulk for backup, migration, or sharing with stakeholders or external systems.
 slug: /how-to-guides/data-governance/glossary/export
 ---
 

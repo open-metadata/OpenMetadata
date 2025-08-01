@@ -17,7 +17,7 @@ import java.util.List;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
 import org.openmetadata.schema.services.connections.database.sapHana.SapHanaHDBConnection;
 import org.openmetadata.schema.services.connections.database.sapHana.SapHanaSQLConnection;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `Sap Hana` object. */
 public class SapHanaConnectionClassConverter extends ClassConverter {

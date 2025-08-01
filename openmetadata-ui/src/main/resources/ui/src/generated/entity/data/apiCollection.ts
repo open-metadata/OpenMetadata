@@ -42,10 +42,10 @@ export interface APICollection {
      */
     displayName?: string;
     /**
-     * Domain the API Collection belongs to. When not set, the API Collection inherits the
+     * Domains the API Collection belongs to. When not set, the API Collection inherits the
      * domain from the API service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * EndPoint URL for the API Collection. Capture the Root URL of the collection.
      */
@@ -130,9 +130,6 @@ export interface APICollection {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the API Collection belongs to. When not set, the API Collection inherits the
- * domain from the API service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -247,6 +244,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

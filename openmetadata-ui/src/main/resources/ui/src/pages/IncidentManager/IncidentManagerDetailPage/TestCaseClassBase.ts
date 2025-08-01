@@ -22,13 +22,13 @@ import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { FieldProp } from '../../../interface/FormUtils.interface';
 import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { IncidentManagerTabs } from '../IncidentManager.interface';
+import { TestCasePageTabs } from '../IncidentManager.interface';
 
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;
   Tab: () => ReactElement;
-  key: IncidentManagerTabs;
+  key: TestCasePageTabs;
 }
 
 class TestCaseClassBase {
@@ -38,7 +38,10 @@ class TestCaseClassBase {
     this.showSqlQueryTab = false;
   }
 
-  public getTab(openTaskCount: number): TestCaseTabType[] {
+  public getTab(
+    openTaskCount: number,
+    isVersionPage: boolean
+  ): TestCaseTabType[] {
     return [
       {
         LabelComponent: TabsLabel,
@@ -47,18 +50,22 @@ class TestCaseClassBase {
           name: i18n.t('label.test-case-result'),
         },
         Tab: TestCaseResultTab,
-        key: IncidentManagerTabs.TEST_CASE_RESULTS,
+        key: TestCasePageTabs.TEST_CASE_RESULTS,
       },
-      {
-        LabelComponent: TabsLabel,
-        labelProps: {
-          id: 'incident',
-          name: i18n.t('label.incident'),
-          count: openTaskCount,
-        },
-        Tab: TestCaseIncidentTab,
-        key: IncidentManagerTabs.ISSUES,
-      },
+      ...(isVersionPage
+        ? []
+        : [
+            {
+              LabelComponent: TabsLabel,
+              labelProps: {
+                id: 'incident',
+                name: i18n.t('label.incident'),
+                count: openTaskCount,
+              },
+              Tab: TestCaseIncidentTab,
+              key: TestCasePageTabs.ISSUES,
+            },
+          ]),
     ];
   }
 
@@ -73,6 +80,7 @@ class TestCaseClassBase {
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.TAGS,
     ];
   }
 

@@ -13,23 +13,17 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
 import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
-
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
   LIGHT_GREEN_COLOR,
   TERM_ADMIN,
@@ -37,8 +31,8 @@ import {
 } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { updateUserDetail } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -48,6 +42,7 @@ import {
   getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
+import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
@@ -101,12 +96,9 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const {
-    currentUser,
-    onLogoutHandler,
-    selectedPersona,
-    setSelectedPersona: updateSelectedPersona,
-  } = useApplicationStore();
+  const { currentUser, selectedPersona, setCurrentUser } =
+    useApplicationStore();
+  const { onLogoutHandler } = useAuthProvider();
 
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
@@ -115,6 +107,7 @@ export const UserProfileIcon = () => {
     currentUser?.profile?.images
   );
   const [showAllPersona, setShowAllPersona] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
@@ -126,7 +119,18 @@ export const UserProfileIcon = () => {
     if (!currentUser) {
       return;
     }
-    updateSelectedPersona(persona);
+
+    const isAlreadySelected = selectedPersona?.id === persona.id;
+
+    const updatedDetails = {
+      ...currentUser,
+      defaultPersona: isAlreadySelected ? undefined : persona,
+    };
+    const jsonPatch = compare(currentUser, updatedDetails);
+
+    const response = await updateUserDetail(currentUser?.id, jsonPatch);
+
+    setCurrentUser(response);
   };
 
   useEffect(() => {
@@ -157,10 +161,12 @@ export const UserProfileIcon = () => {
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
       <Space
-        className="w-full d-flex justify-between"
+        className="w-full d-flex justify-between persona-label"
         data-testid="persona-label"
         onClick={() => handleSelectedPersonaChange(item)}>
-        {getEntityName(item)}
+        <Typography.Text ellipsis={{ tooltip: { placement: 'left' } }}>
+          {getEntityName(item)}
+        </Typography.Text>
         {selectedPersona?.id === item.id && (
           <CheckOutlined
             className="m-x-xs"
@@ -174,10 +180,9 @@ export const UserProfileIcon = () => {
   );
 
   const teamLabelRenderer = useCallback(
-    (item) => (
+    (item: EntityReference) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
       </Link>
@@ -206,6 +211,10 @@ export const UserProfileIcon = () => {
     [currentUser]
   );
 
+  const handleCloseDropdown = useCallback(() => {
+    setIsDropdownOpen(false);
+  }, []);
+
   const items: ItemType[] = useMemo(
     () => [
       {
@@ -214,7 +223,8 @@ export const UserProfileIcon = () => {
         label: (
           <Link
             data-testid="user-name"
-            to={getUserPath(currentUser?.name as string)}>
+            to={getUserPath(currentUser?.name as string)}
+            onClick={handleCloseDropdown}>
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
               ellipsis={{ rows: 1, tooltip: true }}>
@@ -241,7 +251,7 @@ export const UserProfileIcon = () => {
           <div className="text-base-color d-flex items-center gap-2">
             <RoleIcon height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.role-plural')}
+              {t('label.role-plural')}
             </span>
           </div>
         ),
@@ -264,7 +274,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <IconStruct className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.inherited-role-plural')}
+              {t('label.inherited-role-plural')}
             </span>
           </div>
         ),
@@ -288,7 +298,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <PersonaIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.persona-plural')}
+              {t('label.persona-plural')}
             </span>
           </div>
         ),
@@ -311,7 +321,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <TeamIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.team-plural')}
+              {t('label.team-plural')}
             </span>
           </div>
         ),
@@ -329,7 +339,7 @@ export const UserProfileIcon = () => {
             type="text"
             onClick={onLogoutHandler}>
             <LogoutIcon height={20} width={20} />
-            {i18n.t('label.logout')}
+            {t('label.logout')}
           </Button>
         ),
         type: 'group',
@@ -353,7 +363,10 @@ export const UserProfileIcon = () => {
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
         rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
-      trigger={['click']}>
+      open={isDropdownOpen}
+      overlayClassName="user-profile-dropdown-overlay"
+      trigger={['click']}
+      onOpenChange={setIsDropdownOpen}>
       <Button
         className="user-profile-btn flex-center"
         data-testid="dropdown-profile"

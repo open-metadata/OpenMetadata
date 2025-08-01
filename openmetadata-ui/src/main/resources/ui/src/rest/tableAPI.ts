@@ -52,7 +52,7 @@ export const getTableVersions = async (id: string) => {
   return response.data;
 };
 
-export const getTableVersion = async (id: string, version: string) => {
+export const getTableVersion = async (id: string, version?: string) => {
   const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);
@@ -206,7 +206,10 @@ export const getSampleDataByTableId = async (id: string) => {
 export const getLatestTableProfileByFqn = async (fqn: string) => {
   const encodedFQN = getEncodedFqn(fqn);
   const response = await APIClient.get<Table>(
-    `${BASE_URL}/${encodedFQN}/tableProfile/latest`
+    `${BASE_URL}/${encodedFQN}/tableProfile/latest`,
+    {
+      params: { includeColumnProfile: false },
+    }
   );
 
   return response.data;
@@ -239,10 +242,12 @@ export const exportTableDetailsInCSV = async (
     recursive?: boolean;
   }
 ) => {
-  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`tables/name/${fqn}/exportAsync`, {
-    params,
-  });
+  const res = await APIClient.get(
+    `tables/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
 
   return res.data;
 };
@@ -262,4 +267,83 @@ export const importTableInCSVFormat = async (
   );
 
   return res.data;
+};
+
+export type GetTableColumnsParams = {
+  limit?: number;
+  offset?: number;
+  fields?: string;
+  include?: Include;
+};
+
+export const getTableColumnsById = async (
+  id: string,
+  params?: GetTableColumnsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Table['columns']>>(
+    `${BASE_URL}/${id}/columns`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
+
+  return response.data;
+};
+
+export const getTableColumnsByFQN = async (
+  fqn: string,
+  params?: GetTableColumnsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Table['columns']>>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/columns`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
+
+  return response.data;
+};
+
+export interface SearchTableColumnsParams extends GetTableColumnsParams {
+  q?: string; // Search query
+}
+
+export const searchTableColumnsById = async (
+  id: string,
+  params?: SearchTableColumnsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Table['columns']>>(
+    `${BASE_URL}/${id}/columns/search`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
+
+  return response.data;
+};
+
+export const searchTableColumnsByFQN = async (
+  fqn: string,
+  params?: SearchTableColumnsParams
+) => {
+  const response = await APIClient.get<PagingResponse<Table['columns']>>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/columns/search`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
+  );
+
+  return response.data;
+};
+
+export const updateTableColumn = async (
+  fqn: string,
+  data: Partial<Table['columns'][number]>
+) => {
+  const response = await APIClient.put<
+    Partial<Table['columns'][number]>,
+    AxiosResponse<Table['columns'][number]>
+  >(`/columns/name/${getEncodedFqn(fqn)}?entityType=table`, data);
+
+  return response.data;
 };

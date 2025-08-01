@@ -103,6 +103,9 @@ pre {
 .text-gray-400 {
   color: @grey-7;
 }
+.text-grey-600 {
+  color: @grey-600;
+}
 .text-red-3 {
   color: @red-3;
 }
@@ -147,6 +150,19 @@ a.ant-typography,
   font-weight: 500;
   font-size: 14px;
   line-height: 21px;
+  color: @blue-9;
+
+  &:hover {
+    color: @blue-26;
+  }
+
+  &:focus {
+    color: @blue-9;
+  }
+
+  &:disabled {
+    color: @grey-300;
+  }
 }
 
 // font style
@@ -244,6 +260,44 @@ a.ant-typography,
 }
 .text-xs {
   .text-style(12px, 18px);
+}
+
+.ant-typography {
+  &.display-lg {
+    .display-lg();
+  }
+
+  &.display-md {
+    .display-md();
+  }
+
+  &.display-sm {
+    .display-sm();
+  }
+
+  &.display-xs {
+    .display-xs();
+  }
+
+  &.text-xl {
+    .text-xl();
+  }
+
+  &.text-lg {
+    .text-lg();
+  }
+
+  &.text-md {
+    .text-md();
+  }
+
+  &.text-sm {
+    .text-sm();
+  }
+
+  &.text-xs {
+    .text-xs();
+  }
 }
 
 // =============================== End of New Design System ===============================

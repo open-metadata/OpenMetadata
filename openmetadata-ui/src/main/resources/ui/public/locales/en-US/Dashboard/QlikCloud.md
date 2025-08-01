@@ -37,5 +37,5 @@ $$section
 
 Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform.
 
-Example: `Personal`, `Shared`, `Managed`
+Example: `Personal`, `Shared`, `Managed`, `Data`
 $$

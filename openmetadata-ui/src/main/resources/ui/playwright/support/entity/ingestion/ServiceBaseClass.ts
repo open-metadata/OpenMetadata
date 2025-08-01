@@ -22,6 +22,7 @@ import {
 import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
+  executeWithRetry,
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
@@ -88,9 +89,6 @@ class ServiceBaseClass {
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
 
-    const statusPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/status'
-    );
     const ipPromise = page.waitForRequest(
       '/api/v1/services/ingestionPipelines/ip'
     );
@@ -98,7 +96,6 @@ class ServiceBaseClass {
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
-    await statusPromise;
     await ipPromise;
 
     await page.click('[data-testid="service-requirements"]');
@@ -280,7 +277,7 @@ class ServiceBaseClass {
 
     await expect(
       page.getByText(
-        'Error: Expression has only 4 parts. At least 5 parts are required.'
+        'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)'
       )
     ).toBeAttached();
 
@@ -293,6 +290,18 @@ class ServiceBaseClass {
       .click();
 
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+
+    await page.click('#root\\/raiseOnError');
+
+    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -634,11 +643,15 @@ class ServiceBaseClass {
 
   async deleteServiceByAPI(apiContext: APIRequestContext) {
     if (this.serviceResponseData.fullyQualifiedName) {
-      await apiContext.delete(
-        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-          this.serviceResponseData.fullyQualifiedName
-        )}?recursive=true&hardDelete=true`
-      );
+      await executeWithRetry(async () => {
+        await apiContext.delete(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
+            this.serviceResponseData.fullyQualifiedName
+          )}?recursive=true&hardDelete=true`
+        );
+      }, 'delete service');
     }
   }
 }

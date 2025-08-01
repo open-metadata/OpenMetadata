@@ -1,5 +1,6 @@
 ---
 title: Detailed View of the Data Assets
+description: Dive into dataset details including lineage, profiling, ownership, and glossary context for complete understanding.
 slug: /how-to-guides/data-discovery/details
 ---
 
@@ -31,7 +32,7 @@ caption="Version History and Other Details"
 /%}
 
 # Data Asset Tabs
-There are separate tabs each for Schema, Activity Feeds & Tasks, Sample Data, Queries, Profiler & Data Quality, Lineage, Custom Properties, Config, Details, Features, Children, and Executions based on the type of data asset selected. Let's take a look at each of the tabs.
+There are separate tabs each for Schema, Activity Feeds & Tasks, Sample Data, Queries, Data Observability, Lineage, Custom Properties, Config, Details, Features, Children, and Executions based on the type of data asset selected. Let's take a look at each of the tabs.
 
 | **TABS** | **Table** | **Topic** | **Dashboard** | **Pipeline** | **ML Model** | **Container** |
 |:--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -39,7 +40,7 @@ There are separate tabs each for Schema, Activity Feeds & Tasks, Sample Data, Qu
 | **Activity Feeds & Tasks** | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} |
 | **Sample Data** | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} |
 | **Queries** | {% icon iconName="check" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} |
-| **Profiler & Data Quality** | {% icon iconName="check" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} |
+| **Data Observability** | {% icon iconName="check" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} |
 | **Lineage** | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} |
 | **Custom Properties** | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} | {% icon iconName="check" /%} |
 | **Config** | {% icon iconName="cross" /%} | {% icon iconName="check" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} | {% icon iconName="cross" /%} |
@@ -88,14 +89,14 @@ alt="Queries Tab"
 caption="Queries Tab"
 /%}
 
-## Profiler & Data Quality Tab
+## Data Observability Tab
 
-The Profiler & Data Quality tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. The Profiler brings in details like number of rows and columns for the table profile alongwith the details of the data volume, table updates, and volume change. For the column profile, it brings in the details of the type of each column, the value count, null value %, distinct value %, unique %, etc. Data quality tests can be run on this sample data. We can add tests at the table and column level.
+The Data Observability tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. The Data Observability brings in details like number of rows and columns for the table profile alongwith the details of the data volume, table updates, and volume changes. For the column profile, it provides details about the type of each column, the value count, null value %, distinct value %, unique %, etc. Data quality tests can be run on this sample data, and tests can be added at both the table and column levels.
 
 {% image
 src="/images/v1.7/how-to-guides/discovery/dq1.png"
-alt="Profiler & Data Quality"
-caption="Profiler & Data Quality"
+alt="Data Observability"
+caption="Data Observability"
 /%}
 
 {% image

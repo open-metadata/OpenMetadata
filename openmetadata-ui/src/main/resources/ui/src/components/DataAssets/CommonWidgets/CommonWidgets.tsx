@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -30,6 +30,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   ChangeDescription,
   EntityReference,
@@ -37,7 +38,10 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
@@ -64,7 +68,7 @@ interface GenericEntity
       | 'deleted'
       | 'description'
       | 'owners'
-      | 'domain'
+      | 'domains'
       | 'dataProducts'
       | 'extension'
       | 'tags'
@@ -129,7 +133,7 @@ export const CommonWidgets = ({
     tags,
     deleted,
     owners,
-    domain,
+    domains,
     dataProducts,
     description,
     entityName,
@@ -179,6 +183,7 @@ export const CommonWidgets = ({
   }, [data, entityType]);
 
   const {
+    editDataProductPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
@@ -186,6 +191,7 @@ export const CommonWidgets = ({
     viewAllPermission,
   } = useMemo(
     () => ({
+      editDataProductPermission: permissions.EditAll && !deleted,
       editTagsPermission:
         (permissions.EditTags || permissions.EditAll) && !deleted,
       editDescriptionPermission:
@@ -208,6 +214,18 @@ export const CommonWidgets = ({
       viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
     }),
     [permissions, deleted]
+  );
+
+  const handleDataProductsSave = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      // Create a clean updated list of entity references
+      const updatedDataProducts = dataProducts.map((dataProduct) =>
+        getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+      );
+
+      await onUpdate({ ...data, dataProducts: updatedDataProducts });
+    },
+    [data, onUpdate]
   );
 
   const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
@@ -245,10 +263,28 @@ export const CommonWidgets = ({
     await handleTagsUpdate(updatedTags);
   };
 
+  const dataProductsWidget = useMemo(() => {
+    return (
+      <DataProductsContainer
+        newLook
+        activeDomains={domains}
+        dataProducts={dataProducts ?? []}
+        hasPermission={editDataProductPermission}
+        onSave={handleDataProductsSave}
+      />
+    );
+  }, [
+    dataProducts,
+    domains,
+    editDataProductPermission,
+    handleDataProductsSave,
+  ]);
+
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -272,6 +308,7 @@ export const CommonWidgets = ({
     return (
       <TagsContainerV2
         newLook
+        useGenericControls
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -294,7 +331,6 @@ export const CommonWidgets = ({
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
-        newLook
         showSuggestions
         wrapInCard
         description={description}
@@ -326,14 +362,7 @@ export const CommonWidgets = ({
     if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
       return descriptionWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
-      return (
-        <DataProductsContainer
-          newLook
-          activeDomain={domain}
-          dataProducts={dataProducts ?? []}
-          hasPermission={false}
-        />
-      );
+      return dataProductsWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {
       return tagsWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.GLOSSARY_TERMS)) {
@@ -344,7 +373,6 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
-          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
@@ -360,7 +388,7 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 showDomainHeading />;
+      return <DomainLabelV2 multiple showDomainHeading />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer
@@ -375,17 +403,17 @@ export const CommonWidgets = ({
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 
     return Widget ? <Widget /> : null;
-  }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
+  }, [
+    widgetConfig,
+    descriptionWidget,
+    glossaryWidget,
+    tagsWidget,
+    dataProductsWidget,
+  ]);
 
   return (
     <>
-      <div
-        data-grid={widgetConfig}
-        data-testid={widgetConfig.i}
-        id={widgetConfig.i}
-        key={widgetConfig.i}>
-        {widget}
-      </div>
+      {widget}
       {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={updatedData as unknown as GlossaryTerm}

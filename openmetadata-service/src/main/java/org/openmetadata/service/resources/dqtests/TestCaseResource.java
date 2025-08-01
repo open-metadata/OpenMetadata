@@ -13,39 +13,37 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
-import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -96,7 +94,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
-  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
+  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domains,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
 
@@ -156,8 +154,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limitParam,
       @Parameter(
               description = "Returns list of tests before this cursor",
@@ -217,14 +215,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                       allowableValues = {"column", "table", "all"}))
           @QueryParam("testCaseType")
           @DefaultValue("all")
-          String type) {
+          String type,
+      @Parameter(
+              description = "Filter test cases by the user who created them",
+              schema = @Schema(type = "string"))
+          @QueryParam("createdBy")
+          String createdBy) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
             .addQueryParam("includeAllTests", includeAllTests.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type)
-            .addQueryParam("entityFQN", entityFQN);
+            .addQueryParam("entityFQN", entityFQN)
+            .addQueryParam("createdBy", createdBy);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
@@ -278,15 +282,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           int limit,
       @Parameter(
               description = "Returns list of tests after this offset",
               schema = @Schema(type = "string"))
           @QueryParam("offset")
           @DefaultValue("0")
-          @Min(0)
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int offset,
       @Parameter(
               description = "Return list of tests by entity link",
@@ -406,7 +410,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "raw elasticsearch query to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("queryString")
-          String queryString)
+          String queryString,
+      @Parameter(
+              description = "Filter test cases by the user who created them",
+              schema = @Schema(type = "string"))
+          @QueryParam("createdBy")
+          String createdBy)
       throws IOException {
     if ((startTimestamp == null && endTimestamp != null)
         || (startTimestamp != null && endTimestamp == null)) {
@@ -424,10 +433,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("includeFields", includeFields);
-    searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("domains", domain);
     searchListFilter.addQueryParam("tags", tags);
     searchListFilter.addQueryParam("tier", tier);
     searchListFilter.addQueryParam("serviceName", serviceName);
+    searchListFilter.addQueryParam("createdBy", createdBy);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       StringBuilder owners = new StringBuilder();
@@ -677,7 +687,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(tableOpContext, tableResourceContext),
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    repository.isTestSuiteBasic(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
   }
@@ -708,8 +717,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestCase> testCases = new ArrayList<>();
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
-    Set<String> testSuites =
-        createTestCases.stream().map(CreateTestCase::getTestSuite).collect(Collectors.toSet());
 
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
 
@@ -721,7 +728,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           authorizer.authorize(securityContext, operationContext, resourceContext);
         });
 
-    testSuites.forEach(repository::isTestSuiteBasic);
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
 
     createTestCases.forEach(
@@ -787,54 +793,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
-  @PATCH
-  @Path("/{fqn}/testCaseResult/{timestamp}")
-  @Operation(
-      operationId = "patchTestCaseResult",
-      summary = "Update a test case result",
-      description = "Update an existing test case using JsonPatch.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response patchTestCaseResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "fqn of the test case", schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
-          @PathParam("timestamp")
-          Long timestamp,
-      @RequestBody(
-              description = "JsonPatch with array of operations",
-              content =
-                  @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {
-                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                      }))
-          JsonPatch patch) {
-    OperationContext tableOpContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface tableRC = TestCaseResourceContext.builder().name(fqn).build();
-
-    OperationContext testCaseOpContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().name(fqn).build();
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(tableOpContext, tableRC),
-            new AuthRequest(testCaseOpContext, testCaseRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    PatchResponse<TestCaseResult> patchResponse =
-        repository.patchTestCaseResults(
-            fqn, timestamp, patch, securityContext.getUserPrincipal().toString());
-    return patchResponse.toResponse();
-  }
-
   @PUT
   @Operation(
       operationId = "createOrUpdateTest",
@@ -874,7 +832,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpUpdate, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.isTestSuiteBasic(create.getTestSuite());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
@@ -1018,148 +975,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @PUT
-  @Path("/{fqn}/testCaseResult")
-  @Operation(
-      operationId = "addTestCaseResult",
-      summary = "Add test case result data",
-      description = "Add test case result data to the testCase.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully updated the TestCase. ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestCase.class)))
-      })
-  public Response addTestCaseResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the test case",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Valid TestCaseResult testCaseResult) {
-    OperationContext tableOpContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface tableRC = TestCaseResourceContext.builder().name(fqn).build();
-
-    OperationContext testCaseOpContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().name(fqn).build();
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(tableOpContext, tableRC),
-            new AuthRequest(testCaseOpContext, testCaseRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
-      TestCase testCase = repository.findByName(fqn, Include.ALL);
-      repository.deleteTestCaseFailedRowsSample(testCase.getId());
-    }
-    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
-    CreateTestCaseResult createTestCaseResult =
-        new CreateTestCaseResult()
-            .withTimestamp(testCaseResult.getTimestamp())
-            .withTestCaseStatus(testCaseResult.getTestCaseStatus())
-            .withResult(testCaseResult.getResult())
-            .withSampleData(testCaseResult.getSampleData())
-            .withTestResultValue(testCaseResult.getTestResultValue())
-            .withPassedRows(testCaseResult.getPassedRows())
-            .withFailedRows(testCaseResult.getFailedRows())
-            .withPassedRowsPercentage(testCaseResult.getPassedRowsPercentage())
-            .withFailedRowsPercentage(testCaseResult.getFailedRowsPercentage())
-            .withIncidentId(testCaseResult.getIncidentId())
-            .withMaxBound(testCaseResult.getMaxBound())
-            .withMinBound(testCaseResult.getMinBound())
-            .withFqn(fqn);
-    return repository
-        .addTestCaseResult(
-            securityContext.getUserPrincipal().getName(),
-            uriInfo,
-            fqn,
-            testCaseResultMapper.createToEntity(
-                createTestCaseResult, securityContext.getUserPrincipal().getName()))
-        .toResponse();
-  }
-
-  @GET
-  @Path("/{fqn}/testCaseResult")
-  @Operation(
-      operationId = "listTestCaseResults",
-      summary = "List of test case results",
-      description =
-          "Get a list of all the test case results for the given testCase id, optionally filtered by  `startTs` and `endTs` of the profile. "
-              + "Use cursor-based pagination to limit the number of "
-              + "entries in the list using `limit` and `before` or `after` query params.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of testCase results",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResource.TestCaseResultList.class)))
-      })
-  public ResultList<TestCaseResult> listTestCaseResults(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the test case",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(
-              description = "Filter testCase results after the given start timestamp",
-              schema = @Schema(type = "number"))
-          @NonNull
-          @QueryParam("startTs")
-          Long startTs,
-      @Parameter(
-              description = "Filter testCase results before the given end timestamp",
-              schema = @Schema(type = "number"))
-          @NonNull
-          @QueryParam("endTs")
-          Long endTs) {
-    return repository.getTestCaseResults(fqn, startTs, endTs);
-  }
-
-  @DELETE
-  @Path("/{fqn}/testCaseResult/{timestamp}")
-  @Operation(
-      operationId = "DeleteTestCaseResult",
-      summary = "Delete test case result",
-      description = "Delete testCase result for a testCase.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully deleted the TestCaseResult",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestCase.class)))
-      })
-  public Response deleteTestCaseResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the test case",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
-          @PathParam("timestamp")
-          Long timestamp) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository
-        .deleteTestCaseResult(securityContext.getUserPrincipal().getName(), fqn, timestamp)
-        .toResponse();
   }
 
   @PUT

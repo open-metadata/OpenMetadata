@@ -655,3 +655,25 @@ export const checkIfExpandViewSupported = (
       return false;
   }
 };
+
+export const updateWidgetHeightRecursively = (
+  widgetId: string,
+  height: number,
+  widgets: WidgetConfig[]
+) =>
+  widgets.reduce((acc, widget) => {
+    if (widget.i === widgetId) {
+      acc.push({ ...widget, h: height });
+    } else if (widget.children) {
+      acc.push({
+        ...widget,
+        children: widget.children.map((child) =>
+          child.i === widgetId ? { ...child, h: height } : child
+        ),
+      });
+    } else {
+      acc.push(widget);
+    }
+
+    return acc;
+  }, [] as WidgetConfig[]);

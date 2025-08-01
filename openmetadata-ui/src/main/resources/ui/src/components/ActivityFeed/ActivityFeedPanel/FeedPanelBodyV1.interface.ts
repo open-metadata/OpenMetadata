@@ -32,4 +32,7 @@ export interface FeedPanelBodyPropV1 {
   onUpdateEntityDetails?: any;
   handlePanelResize?: (isFullWidth: boolean) => void;
   isFullWidth?: boolean;
+  hideCardBorder?: boolean;
+  isFeedWidget?: boolean;
+  isFullSizeWidget?: boolean;
 }

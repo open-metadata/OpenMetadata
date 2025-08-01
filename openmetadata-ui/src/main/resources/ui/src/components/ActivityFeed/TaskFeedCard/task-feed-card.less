@@ -44,8 +44,8 @@
   border: 0.5px solid #eaecf5;
 
   &.active {
-    border-left: 4px solid #1570ef;
-    background: #eff8ff;
+    border-left: 4px solid @primary-color;
+    background: @primary-50;
   }
   .task-created-by-text {
     color: @primary-heading-color;
@@ -114,6 +114,11 @@
   .assignee-item {
     margin: 0;
     margin-right: 4px;
+  }
+  .task-body {
+    padding: 0 @size-sm;
+    background-color: @grey-9;
+    border-radius: @size-sm;
   }
 }
 .no-bg-border {

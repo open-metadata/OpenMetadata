@@ -1,5 +1,6 @@
 ---
-title: Qlik Sense
+title: Qlik Sense Connector | OpenMetadata Integration Guide
+description: Connect QlikSense dashboards to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/dashboard/qliksense
 ---
 

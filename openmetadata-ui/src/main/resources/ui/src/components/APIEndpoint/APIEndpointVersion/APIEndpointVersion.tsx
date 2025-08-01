@@ -13,9 +13,9 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/apiEndpoint';
@@ -26,6 +26,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -49,11 +50,11 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
 }: APIEndpointVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -65,9 +66,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -77,7 +78,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.API_ENDPOINT,
         currentVersionData.fullyQualifiedName ?? '',
@@ -134,12 +135,14 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
-                  activeDomain={domain}
+                  newLook
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.API_ENDPOINT}
                     key={tagType}
                     permission={false}
@@ -217,7 +220,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.API_ENDPOINT}
         versionHandler={versionHandler}
         versionList={versionList}

@@ -60,6 +60,9 @@ entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
+    const rowSelector =
+      entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -124,7 +127,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
@@ -147,8 +150,8 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
@@ -165,9 +168,36 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
+      });
+
+      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+        test('DisplayName Add, Update and Remove for child entities', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.displayNameChildren({
+            page,
+            columnName: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector,
+          entity.endpoint
+        );
       });
     }
 
@@ -177,6 +207,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });

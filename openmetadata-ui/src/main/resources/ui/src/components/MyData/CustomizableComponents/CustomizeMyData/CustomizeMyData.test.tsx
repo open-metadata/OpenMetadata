@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PageType } from '../../../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
@@ -24,8 +22,6 @@ import {
 } from '../../../../mocks/MyDataPage.mock';
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
-const mockPush = jest.fn();
 
 const mockProps: CustomizeMyDataProps = {
   initialPageData: mockDocumentData.data.pages[0],
@@ -43,25 +39,23 @@ jest.mock(
   }
 );
 
-jest.mock('../AddWidgetModal/AddWidgetModal', () => {
-  return jest.fn().mockImplementation(({ handleCloseAddWidgetModal }) => (
+jest.mock('../CustomiseHomeModal/CustomiseHomeModal', () => {
+  return jest.fn().mockImplementation(({ onClose }) => (
     <div>
-      AddWidgetModal{' '}
-      <button onClick={handleCloseAddWidgetModal}>
-        handleCloseAddWidgetModal
-      </button>
+      CustomiseHomeModal
+      <button onClick={onClose}>handleCloseCustomiseHomeModal</button>
     </div>
   ));
 });
 
 jest.mock(
-  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder',
+  '../../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1',
   () => {
     return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
       <div>
-        EmptyWidgetPlaceholder{' '}
+        EmptyWidgetPlaceholderV1{' '}
         <button onClick={handleOpenAddWidgetModal}>
-          handleOpenAddWidgetModal
+          handleOpenAddWidgetModalV1
         </button>
       </div>
     ));
@@ -111,14 +105,12 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: mockPersonaName,
     pageFqn: PageType.LandingPage,
   })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('react-grid-layout', () => ({
@@ -144,8 +136,11 @@ jest.mock(
   () => ({
     CustomizablePageHeader: jest
       .fn()
-      .mockImplementation(({ onReset, onSave }) => (
+      .mockImplementation(({ onAddWidget, onReset, onSave }) => (
         <div data-testid="customizable-page-header">
+          <button data-testid="add-widget-button" onClick={onAddWidget}>
+            Add Widget
+          </button>
           <button data-testid="cancel-button" onClick={onReset}>
             Cancel
           </button>
@@ -158,6 +153,27 @@ jest.mock(
         </div>
       )),
   })
+);
+
+jest.mock(
+  '../../../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({
+    AdvanceSearchProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="advance-search-provider">{children}</div>
+      )),
+  })
+);
+
+jest.mock('../CustomiseLandingPageHeader/CustomiseLandingPageHeader', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="customise-landing-page-header">
+        CustomiseLandingPageHeader
+      </div>
+    ))
 );
 
 describe('CustomizeMyData component', () => {
@@ -184,7 +200,9 @@ describe('CustomizeMyData component', () => {
 
     const resetButton = screen.getByTestId('reset-button');
 
-    await act(async () => userEvent.click(resetButton));
+    await act(async () => {
+      fireEvent.click(resetButton);
+    });
 
     expect(mockProps.onSaveLayout).toHaveBeenCalled();
   });
@@ -198,48 +216,40 @@ describe('CustomizeMyData component', () => {
 
     const saveButton = screen.getByTestId('save-button');
 
-    await act(async () => userEvent.click(saveButton));
+    fireEvent.click(saveButton);
 
     expect(mockProps.onSaveLayout).toHaveBeenCalledTimes(1);
 
     expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
   });
 
-  it('CustomizeMyData should display EmptyWidgetPlaceholder', async () => {
+  it('CustomizeMyData should display CustomiseHomeModal after handleOpenAddWidgetModal is called', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    expect(screen.getByText('EmptyWidgetPlaceholder')).toBeInTheDocument();
+    const addWidgetButton = screen.getByTestId('add-widget-button');
+
+    fireEvent.click(addWidgetButton);
+
+    expect(screen.getByText('CustomiseHomeModal')).toBeInTheDocument();
   });
 
-  it('CustomizeMyData should display AddWidgetModal after handleOpenAddWidgetModal is called', async () => {
+  it('CustomizeMyData should not display CustomiseHomeModal after handleCloseAddWidgetModal is called', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
+    const addWidgetButton = screen.getByTestId('add-widget-button');
 
-    await act(async () => userEvent.click(addWidgetButton));
+    fireEvent.click(addWidgetButton);
 
-    expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
-  });
+    expect(screen.getByText('CustomiseHomeModal')).toBeInTheDocument();
 
-  it('CustomizeMyData should not display AddWidgetModal after handleCloseAddWidgetModal is called', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
+    const closeWidgetButton = screen.getByText('handleCloseCustomiseHomeModal');
 
-    const addWidgetButton = screen.getByText('handleOpenAddWidgetModal');
+    fireEvent.click(closeWidgetButton);
 
-    await act(async () => userEvent.click(addWidgetButton));
-
-    expect(screen.getByText('AddWidgetModal')).toBeInTheDocument();
-
-    const closeWidgetButton = screen.getByText('handleCloseAddWidgetModal');
-
-    await act(async () => userEvent.click(closeWidgetButton));
-
-    expect(screen.queryByText('AddWidgetModal')).toBeNull();
+    expect(screen.queryByText('CustomiseHomeModal')).toBeNull();
   });
 });

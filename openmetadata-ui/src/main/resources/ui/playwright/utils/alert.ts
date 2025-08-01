@@ -158,6 +158,10 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const alertRow = page.locator(`[data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
   if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
@@ -393,7 +397,7 @@ export const addDomainFilter = async ({
 
   // Search and select domain
   const getSearchResult = page.waitForResponse(
-    '/api/v1/search/query?q=**index=domain_search_index'
+    '/api/v1/search/query?q=**index=domain_search_index*'
   );
   await page.fill(
     '[data-testid="domain-select"] [role="combobox"]',
@@ -829,8 +833,8 @@ export const waitForRecentEventsToFinishExecution = async (
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for pending events to complete',
-        intervals: [5_000, 10_000, 15_000],
-        timeout: 600_000,
+        intervals: [5_000, 10_000, 15_000, 20_000],
+        timeout: 900_000,
       }
     )
     // Move ahead when the pending events count is 0

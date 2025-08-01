@@ -14,11 +14,12 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
@@ -36,7 +37,9 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
+import { updateCertificationTag } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
@@ -59,8 +62,8 @@ const DataModelDetails = ({
   onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedDataModelFQN } = useFqn();
   const { customizedPage, isLoading } = useCustomPages(
     PageType.DashboardDataModel
@@ -107,7 +110,7 @@ const DataModelDetails = ({
   };
 
   const versionHandler = () => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.DASHBOARD_DATA_MODEL,
         decodedDataModelFQN,
@@ -118,13 +121,16 @@ const DataModelDetails = ({
 
   const handleTabChange = (tabValue: EntityTabs) => {
     if (tabValue !== activeTab) {
-      history.push({
-        pathname: getEntityDetailsPath(
+      navigate(
+        getEntityDetailsPath(
           EntityType.DASHBOARD_DATA_MODEL,
           decodedDataModelFQN,
           tabValue
         ),
-      });
+        {
+          replace: true,
+        }
+      );
     }
   };
 
@@ -136,8 +142,7 @@ const DataModelDetails = ({
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.data-model'),
-        }),
-        2000
+        })
       );
       handleToggleDelete(newVersion);
     } catch (error) {
@@ -151,8 +156,8 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const { editLineagePermission } = useMemo(() => {
@@ -168,7 +173,7 @@ const DataModelDetails = ({
     const allTabs =
       dashboardDataModelClassBase.getDashboardDataModelDetailPageTabs({
         feedCount,
-        activeTab,
+        activeTab: activeTab ?? EntityTabs.MODEL,
         handleFeedCount,
         editLineagePermission,
         dataModelData,
@@ -202,10 +207,25 @@ const DataModelDetails = ({
     () =>
       checkIfExpandViewSupported(
         tabs[0],
-        activeTab,
+        activeTab ?? EntityTabs.MODEL,
         PageType.DashboardDataModel
       ),
     [tabs[0], activeTab]
+  );
+  const onCertificationUpdate = useCallback(
+    async (newCertification?: Tag) => {
+      if (dataModelData) {
+        const certificationTag: DashboardDataModel['certification'] =
+          updateCertificationTag(newCertification);
+        const updatedTableDetails = {
+          ...dataModelData,
+          certification: certificationTag,
+        };
+
+        await onUpdateDataModel(updatedTableDetails as DashboardDataModel);
+      }
+    },
+    [onUpdateDataModel, dataModelData]
   );
 
   if (isLoading) {
@@ -229,6 +249,7 @@ const DataModelDetails = ({
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             openTaskCount={feedCount.openTaskCount}
             permissions={dataModelPermissions}
+            onCertificationUpdate={onCertificationUpdate}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={handleFollowDataModel}
             onOwnerUpdate={handleUpdateOwner}
@@ -245,7 +266,7 @@ const DataModelDetails = ({
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

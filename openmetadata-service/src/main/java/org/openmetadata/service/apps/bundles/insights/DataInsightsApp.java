@@ -31,6 +31,8 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
@@ -45,9 +47,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.Web
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
@@ -168,7 +168,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
-    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();
     String language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
@@ -186,8 +186,6 @@ public class DataInsightsApp extends AbstractNativeApplication {
               dataAssetIndex,
               language,
               dataAssetsConfig.getRetention());
-        } else {
-          searchInterface.updateLifecyclePolicy(dataAssetsConfig.getRetention());
         }
       }
     } catch (IOException ex) {
@@ -216,7 +214,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     super.init(app);
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
-
+    JsonUtils.validateJsonSchema(config, DataInsightsAppConfig.class);
     // Get the configuration for the different modules
     costAnalysisConfig = config.getModuleConfiguration().getCostAnalysis();
     dataAssetsConfig = parseDataAssetsConfig(config.getModuleConfiguration().getDataAssets());

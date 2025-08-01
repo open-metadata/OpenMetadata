@@ -136,7 +136,17 @@ class TestSuiteSource(Source):
                         f"Service with name `{service_name}` does not have a connection. "
                         "If the connection is not stored in OpenMetadata, please provide it in the YAML file."
                     )
-                self.service_connection_map[service_name] = service.connection
+
+                # TODO: Clean after https://github.com/open-metadata/OpenMetadata/issues/21259
+                # We are forcing the secret evaluation to "ignore" null secrets down the line
+                # Remove this when the issue above is fixed and empty secrets migrated
+                source_config_class = type(service.connection)
+                dumped_config = service.connection.model_dump()
+                service_connection_clean = source_config_class.model_validate(
+                    dumped_config
+                )
+
+                self.service_connection_map[service_name] = service_connection_clean
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -279,7 +289,9 @@ class TestSuiteSource(Source):
             test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)
         )
         for table_fqn, group in grouped_by_table:
-            table_entity: Table = self.metadata.get_by_name(Table, table_fqn)
+            table_entity: Table = self.metadata.get_by_name(
+                Table, table_fqn, fields=["tableProfilerConfig"]
+            )
             if table_entity is None:
                 yield Either(
                     left=StackTraceError(

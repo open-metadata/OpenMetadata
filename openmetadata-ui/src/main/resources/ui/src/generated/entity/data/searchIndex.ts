@@ -37,10 +37,10 @@ export interface SearchIndex {
      */
     displayName?: string;
     /**
-     * Domain the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from
-     * the messaging service it belongs to.
+     * Domains the SearchIndex belongs to. When not set, the SearchIndex inherits the domain
+     * from the messaging service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -195,6 +195,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -308,9 +309,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from
- * the messaging service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *

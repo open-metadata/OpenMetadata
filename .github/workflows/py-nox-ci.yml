@@ -1,0 +1,68 @@
+name: Python Nox CI
+
+# This is a temporary workflow to run format and unit tests using Nox.
+# It is intended to be manually triggered and will not run on pull requests or pushes.
+# Once this is fully tested and stable, we might replace the existing Python CI workflow with this one
+# to speed it up and simplify the process.
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  format-and-unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./ingestion
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev build-essential
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Generate Python Data Models
+        run: |
+          cd ..
+          make install_antlr_cli
+          pip install datamodel-code-generator==0.25.6
+          mkdir -p ingestion/src/metadata/generated
+          python scripts/datamodel_generation.py
+          antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr \
+            ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
+
+
+      - name: Set up Nox
+        run: |
+          # Install uv to speed up virtual environments installation
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          pip install nox
+
+      - name: Run Code Quality Checks
+        if: ${{ matrix.python-version == '3.10' }}
+        run: |
+          nox -s lint
+
+      - name: Run Unit Tests
+        run: |
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit
+
+      - name: Run Unit Tests (specific plugins)
+        run: |
+          PYTHON_VERSIONS="${{ matrix.python-version }}" nox -s unit-plugins

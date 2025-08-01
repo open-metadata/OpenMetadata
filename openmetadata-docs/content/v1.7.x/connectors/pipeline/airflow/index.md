@@ -1,5 +1,6 @@
 ---
-title: Airflow
+title: Airflow Connector | OpenMetadata Workflow Orchestration
+description: Connect Apache Airflow to OpenMetadata effortlessly. Complete setup guide, configuration steps, and pipeline metadata extraction for seamless data lineage tracking.
 slug: /connectors/pipeline/airflow
 ---
 
@@ -15,9 +16,22 @@ In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
-- [Troubleshooting](/connectors/search/airflow/troubleshooting)
+- [Troubleshooting](/connectors/pipeline/airflow/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
+
+{% tilesContainer %}
+{% tile
+    title="MWAA"
+    description="Run the ingestion framework externally!"
+    link="/deployment/ingestion/external/mwaa"
+  / %}
+{% tile
+    title="GCP Composer "
+    description="Run the ingestion from GCP Composer ."
+    link="/deployment/ingestion/external/gcs-composer"
+  / %}
+{% /tilesContainer %}
 
 ## Requirements
 

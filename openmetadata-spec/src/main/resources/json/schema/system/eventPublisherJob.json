@@ -113,55 +113,64 @@
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 1
     },
     "payLoadSize": {
       "description": "Payload size in bytes depending on config.",
       "type": "integer",
       "existingJavaType": "java.lang.Long",
-      "default": 104857600
+      "default": 104857600,
+      "minimum": 1
     },
     "producerThreads": {
       "title": "Number of Producer Threads to use",
       "description": "Number of producer threads to use for reindexing",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "minimum": 1
     },
     "consumerThreads": {
       "title": "Number of Consumer Threads to use",
       "description": "Number of consumer threads to use for reindexing",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "minimum": 1
     },
     "queueSize": {
       "title": "Queue Size to use.",
       "description": "Queue Size to use internally for reindexing.",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 1
     },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",
       "description": "Maximum number of concurrent requests to the search index",
       "type": "integer",
-      "default": 100
+      "default": 100,
+      "minimum": 1
     },
     "maxRetries": {
       "title": "Max Retries",
       "description": "Maximum number of retries for a failed request",
       "type": "integer",
-      "default": 5
+      "default": 5,
+      "minimum": 0
     },
     "initialBackoff": {
       "title": "Initial Backoff Millis",
       "description": "Initial backoff time in milliseconds",
       "type": "integer",
-      "default": 1000
+      "default": 1000,
+      "minimum": 0
     },
     "maxBackoff": {
       "title": "Max Backoff Millis",
       "description": "Maximum backoff time in milliseconds",
       "type": "integer",
-      "default": 10000
+      "default": 10000,
+      "minimum": 0
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
@@ -170,11 +179,25 @@
     "afterCursor": {
       "description": "Provide After in case of failure to start reindexing after the issue is solved",
       "type": "string"
+    },
+    "autoTune": {
+      "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
+      "type": "boolean",
+      "default": false
+    },
+    "force": {
+      "description": "Force reindexing even if no index mapping changes are detected",
+      "type": "boolean",
+      "default": false
+    },
+    "slackBotToken": {
+      "description": "Optional Slack bot token for sending progress notifications with real-time updates",
+      "type": "string"
+    },
+    "slackChannel": {
+      "description": "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general')",
+      "type": "string"
     }
   },
-  "required": [
-    "timestamp",
-    "status"
-  ],
   "additionalProperties": false
 }

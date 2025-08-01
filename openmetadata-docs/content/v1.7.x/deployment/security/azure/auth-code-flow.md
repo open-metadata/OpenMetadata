@@ -1,5 +1,6 @@
 ---
-title: Auth0 SSO for Docker
+title: Auth0 SSO for Docker | OpenMetadata Deployment Guide
+description: Set up Azure Authorization Code Flow to authenticate users via backend services, using secure token exchange and standards-based login flow.
 slug: /deployment/security/azure/auth-code-flow
 collate: false
 ---

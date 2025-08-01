@@ -93,6 +93,10 @@
       },
       "default": []
     },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -130,9 +134,9 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the API service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the API service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

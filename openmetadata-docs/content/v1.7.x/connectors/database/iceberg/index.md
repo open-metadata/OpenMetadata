@@ -1,5 +1,6 @@
 ---
-title: Iceberg
+title: Iceberg Connector | OpenMetadata Data Lake Integration Guide
+description: Learn how to connect Apache Iceberg with OpenMetadata using our comprehensive connector guide. Configure metadata extraction, lineage tracking, and data...
 slug: /connectors/database/iceberg
 ---
 
@@ -9,7 +10,7 @@ name="Iceberg"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Owners"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data", "Auto-Classification"]
 / %}
 
 

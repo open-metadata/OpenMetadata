@@ -12,6 +12,7 @@
  */
 import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
+import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
@@ -136,6 +137,34 @@ export const getRelativeTime = (timeStamp?: number): string => {
 };
 
 /**
+ * Returns a relative time like "10 mins ago" by converting the long form from Luxon.
+ * Falls back to "" if timestamp is undefined or too recent.
+ */
+export const getShortRelativeTime = (timeStamp?: number): string => {
+  if (isNil(timeStamp)) {
+    return '';
+  }
+
+  const longForm = getRelativeTime(timeStamp); // e.g. "10 minutes ago"
+
+  if (!longForm) {
+    return '';
+  }
+
+  // Replace long time units with short ones
+  const shortForm = longForm
+    .split(' ')
+    .map(
+      (word) =>
+        DATE_TIME_SHORT_UNITS[
+          word.toUpperCase() as keyof typeof DATE_TIME_SHORT_UNITS
+        ] || word
+    )
+    .join(' ');
+
+  return shortForm;
+};
+/**
  *
  * @param timeStamp
  * @param baseTimeStamp
@@ -245,13 +274,22 @@ export const calculateInterval = (
 export const convertMillisecondsToHumanReadableFormat = (
   timestamp: number,
   length?: number,
-  showMilliseconds = false
+  showMilliseconds = false,
+  prependForNegativeValue = '-'
 ): string => {
-  if (timestamp <= 0 || (!showMilliseconds && timestamp < 1000)) {
+  // Handle zero and very small positive values
+  if (
+    timestamp === 0 ||
+    (!showMilliseconds && timestamp > 0 && timestamp < 1000)
+  ) {
     return '0s';
   }
 
-  const duration = Duration.fromMillis(timestamp);
+  // Handle negative values
+  const isNegative = timestamp < 0;
+  const absoluteTimestamp = Math.abs(timestamp);
+
+  const duration = Duration.fromMillis(absoluteTimestamp);
   const result: string[] = [];
 
   // Extract each unit from the duration
@@ -286,11 +324,21 @@ export const convertMillisecondsToHumanReadableFormat = (
     result.push(`${milliseconds}ms`);
   }
 
-  if (length && result.length > length) {
-    return result.slice(0, length).join(' ');
+  // If no units found, return 0s
+  if (result.length === 0) {
+    return '0s';
   }
 
-  return result.join(' ');
+  let formattedResult = result.join(' ');
+
+  if (length && result.length > length) {
+    formattedResult = result.slice(0, length).join(' ');
+  }
+
+  // Prepend minus sign for negative values
+  return isNegative
+    ? `${prependForNegativeValue}${formattedResult}`
+    : formattedResult;
 };
 
 export const formatDuration = (ms: number) => {
@@ -308,6 +356,9 @@ export const formatDuration = (ms: number) => {
   } else {
     return pluralize(hours, 'hour');
   }
+};
+export const formatDurationToHHMMSS = (ms: number) => {
+  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 
 export const getStartOfDayInMillis = (timestamp: number) =>

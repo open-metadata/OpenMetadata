@@ -1,5 +1,6 @@
 ---
-title: Kafka Connector Troubleshooting
+title: Kafka Connector Troubleshooting | Official Documentation
+description: Resolve Kafka ingestion problems including schema registry errors, consumer group misalignments, or lag detection issues.
 slug: /connectors/messaging/kafka/troubleshooting
 ---
 
@@ -27,6 +28,7 @@ like this:
       type: Kafka
       bootstrapServers: localhost:9092
       schemaRegistryURL: http://localhost:8081
+      schemaRegistryTopicSuffixName: "suffix-name"
       consumerConfig:
         "ssl.truststore.password": "password"
       schemaRegistryConfig:

@@ -15,12 +15,13 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.annotation.Priority;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.HashSet;
-import javax.annotation.Priority;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -50,12 +51,7 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     String principal = extractAuthorizedUserName(email);
     LOG.debug("AuthorizedUserName:{}", principal);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(principal, email);
-    String scheme = containerRequestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(
-            catalogPrincipal, scheme, CatalogSecurityContext.OPENID_AUTH, new HashSet<>());
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
-    containerRequestContext.setSecurityContext(catalogSecurityContext);
+    setSecurityContext(containerRequestContext, catalogPrincipal);
   }
 
   protected boolean isHealthEndpoint(ContainerRequestContext containerRequestContext) {
@@ -75,5 +71,14 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
       throw new AuthenticationException("Not authorized; User's Email is not present");
     }
     return openIdEmail;
+  }
+
+  private void setSecurityContext(
+      ContainerRequestContext requestContext, CatalogPrincipal catalogPrincipal) {
+    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(
+            catalogPrincipal, scheme, SecurityContext.BASIC_AUTH, new HashSet<>());
+    requestContext.setSecurityContext(catalogSecurityContext);
   }
 }

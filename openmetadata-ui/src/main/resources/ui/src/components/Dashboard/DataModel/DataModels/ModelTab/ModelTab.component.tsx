@@ -12,22 +12,28 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
+import { groupBy, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../../../constants/TableKeys.constants';
-import { EntityType } from '../../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import {
   Column,
   DashboardDataModel,
 } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
-import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
+import { usePaging } from '../../../../../hooks/paging/usePaging';
+import {
+  getDataModelColumnsByFQN,
+  searchDataModelColumnsByFQN,
+  updateDataModelColumn,
+} from '../../../../../rest/dataModelsAPI';
 import {
   getColumnSorter,
   getEntityName,
@@ -37,33 +43,107 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
-import { updateFieldTags } from '../../../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
-  const {
-    data: dataModel,
-    permissions,
-    onUpdate,
-  } = useGenericContext<DashboardDataModel>();
-  const {
-    columns: data,
-    fullyQualifiedName: entityFqn,
-    deleted: isReadOnly,
-  } = dataModel;
+  const [searchText, setSearchText] = useState('');
 
+  const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
+  const [columnsLoading, setColumnsLoading] = useState(true);
+
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging(PAGE_SIZE_LARGE);
+
+  const { data: dataModel, permissions } =
+    useGenericContext<DashboardDataModel>();
+  const { fullyQualifiedName: entityFqn, deleted: isReadOnly } = dataModel;
+
+  // Always use paginated columns, never dataModel.columns directly
+  const data = paginatedColumns;
+
+  // Function to fetch paginated columns or search results
+  const fetchPaginatedColumns = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!entityFqn) {
+        return;
+      }
+
+      setColumnsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        // Use search API if there's a search query, otherwise use regular pagination
+        const response = searchQuery
+          ? await searchDataModelColumnsByFQN(entityFqn, {
+              limit: pageSize,
+              offset,
+              fields: TabSpecificField.TAGS,
+              q: searchQuery,
+            })
+          : await getDataModelColumnsByFQN(entityFqn, {
+              limit: pageSize,
+              offset,
+              fields: TabSpecificField.TAGS,
+            });
+
+        setPaginatedColumns(pruneEmptyChildren(response.data) || []);
+        handlePagingChange(response.paging);
+      } catch (error) {
+        setPaginatedColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      }
+      setColumnsLoading(false);
+    },
+    [entityFqn, pageSize, handlePagingChange]
+  );
+
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchPaginatedColumns(currentPage, searchText);
+
+      handlePageChange(currentPage);
+    },
+    [paging, fetchPaginatedColumns, searchText, handlePageChange]
+  );
+
+  const { deleted } = useMemo(
+    () => ({
+      deleted: dataModel?.deleted,
+    }),
+    [dataModel]
+  );
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
     hasEditGlossaryTermPermission,
+    editDisplayNamePermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
@@ -71,6 +151,8 @@ const ModelTab = () => {
       hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
       hasEditGlossaryTermPermission:
         permissions.EditAll || permissions.EditGlossaryTerms,
+      editDisplayNamePermission:
+        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
     };
   }, [permissions]);
 
@@ -83,40 +165,117 @@ const ModelTab = () => {
     >;
   }, [data]);
 
+  useEffect(() => {
+    if (entityFqn) {
+      fetchPaginatedColumns(1, searchText || undefined);
+    }
+  }, [entityFqn, searchText, fetchPaginatedColumns, pageSize]);
+
+  const updateColumnDetails = async (
+    columnFqn: string,
+    column: Partial<Column>,
+    field?: keyof Column
+  ) => {
+    const response = await updateDataModelColumn(columnFqn, column);
+
+    setPaginatedColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === columnFqn
+          ? // Have to omit the field which is being updated to avoid persisted old value
+            { ...omit(col, field ?? ''), ...response }
+          : col
+      )
+    );
+
+    return response;
+  };
+
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
-      const dataModelData = cloneDeep(data);
-
-      updateFieldTags<Column>(
-        editColumnTag.fullyQualifiedName ?? '',
-        selectedTags,
-        dataModelData
-      );
-
-      await onUpdate({ ...dataModel, columns: dataModelData });
+      if (editColumnTag.fullyQualifiedName) {
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
+      }
     },
-    [data, updateFieldTags]
+    [updateColumnDetails]
   );
 
   const handleColumnDescriptionChange = useCallback(
     async (updatedDescription: string) => {
-      if (!isUndefined(editColumnDescription)) {
-        const dataModelColumns = cloneDeep(data);
-        updateDataModelColumnDescription(
-          dataModelColumns,
-          editColumnDescription?.fullyQualifiedName ?? '',
-          updatedDescription
+      if (editColumnDescription?.fullyQualifiedName) {
+        await updateColumnDetails(
+          editColumnDescription.fullyQualifiedName,
+          {
+            description: updatedDescription,
+          },
+          'description'
         );
-        await onUpdate({
-          ...dataModel,
-          columns: dataModelColumns,
-        });
+
+        setEditColumnDescription(undefined);
       }
-      setEditColumnDescription(undefined);
     },
-    [editColumnDescription, data]
+    [updateColumnDetails, editColumnDescription]
   );
 
+  const handleEditColumnData = async (
+    data: EntityName,
+    fullyQualifiedName?: string
+  ) => {
+    const { displayName } = data as EntityNameWithAdditionFields;
+
+    if (!fullyQualifiedName) {
+      return; // Early return if id is not provided
+    }
+
+    await updateColumnDetails(
+      fullyQualifiedName,
+      {
+        displayName,
+      },
+      'displayName'
+    );
+  };
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      onSearch: (value: string) => {
+        setSearchText(value);
+        handlePageChange(1);
+      },
+      onClear: () => setSearchText(''),
+    }),
+    [searchText, handlePageChange, t]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: columnsLoading,
+      isNumberBased: Boolean(searchText),
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      columnsLoading,
+      searchText,
+      pageSize,
+      paging,
+      handleColumnsPageChange,
+      handlePageSizeChange,
+    ]
+  );
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -126,9 +285,19 @@ const ModelTab = () => {
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
-        render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
-        ),
+        render: (_, record: Column) => {
+          const { displayName } = record;
+
+          return (
+            <DisplayName
+              displayName={displayName}
+              hasEditPermission={editDisplayNamePermission}
+              id={record.fullyQualifiedName ?? ''}
+              name={record.name}
+              onEditDisplayName={handleEditColumnData}
+            />
+          );
+        },
       },
       {
         title: t('label.type'),
@@ -145,7 +314,6 @@ const ModelTab = () => {
         title: t('label.description'),
         dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -166,7 +334,6 @@ const ModelTab = () => {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
@@ -190,7 +357,6 @@ const ModelTab = () => {
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -228,12 +394,18 @@ const ModelTab = () => {
       <Table
         className="p-t-xs align-table-filter-left"
         columns={tableColumn}
+        customPaginationProps={paginationProps}
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
+        loading={columnsLoading}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1200 }}
+        searchProps={searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />

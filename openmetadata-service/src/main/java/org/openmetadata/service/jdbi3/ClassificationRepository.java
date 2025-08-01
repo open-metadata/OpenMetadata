@@ -19,11 +19,16 @@ import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -35,12 +40,13 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -80,6 +86,124 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         fields.contains("termCount") ? classification.getTermCount() : null);
     classification.withUsageCount(
         fields.contains("usageCount") ? classification.getUsageCount() : null);
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Classification> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+    fetchAndSetFields(entities, fields);
+    fetchAndSetClassificationSpecificFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Classification entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetClassificationSpecificFields(
+      List<Classification> classifications, Fields fields) {
+    if (classifications == null || classifications.isEmpty()) {
+      return;
+    }
+    if (fields.contains("termCount")) {
+      fetchAndSetTermCounts(classifications);
+    }
+    if (fields.contains("usageCount")) {
+      fetchAndSetUsageCounts(classifications);
+    }
+  }
+
+  private void fetchAndSetTermCounts(List<Classification> classifications) {
+    // Batch fetch term counts for all classifications
+    Map<String, Integer> termCountMap = batchFetchTermCounts(classifications);
+    for (Classification classification : classifications) {
+      classification.withTermCount(
+          termCountMap.getOrDefault(classification.getFullyQualifiedName(), 0));
+    }
+  }
+
+  private void fetchAndSetUsageCounts(List<Classification> classifications) {
+    Map<String, Integer> usageCountMap = batchFetchUsageCounts(classifications);
+    for (Classification classification : classifications) {
+      classification.withUsageCount(
+          usageCountMap.getOrDefault(classification.getFullyQualifiedName(), 0));
+    }
+  }
+
+  private Map<String, Integer> batchFetchTermCounts(List<Classification> classifications) {
+    Map<String, Integer> termCountMap = new HashMap<>();
+    if (classifications == null || classifications.isEmpty()) {
+      return termCountMap;
+    }
+
+    try {
+      // Convert classifications to their hash representations
+      List<String> classificationHashes = new ArrayList<>();
+      Map<String, String> hashToFqnMap = new HashMap<>();
+
+      for (Classification classification : classifications) {
+        String fqn = classification.getFullyQualifiedName();
+        String hash = FullyQualifiedName.buildHash(fqn);
+        classificationHashes.add(hash);
+        hashToFqnMap.put(hash, fqn);
+      }
+
+      // Convert the list to JSON array for MySQL
+      String jsonHashes = JsonUtils.pojoToJson(classificationHashes);
+
+      // Use the DAO method for database-specific query
+      List<Pair<String, Integer>> results =
+          daoCollection.classificationDAO().bulkGetTermCounts(jsonHashes, classificationHashes);
+
+      // Process results
+      for (Pair<String, Integer> result : results) {
+        String classificationHash = result.getLeft();
+        Integer count = result.getRight();
+        String fqn = hashToFqnMap.get(classificationHash);
+        if (fqn != null) {
+          termCountMap.put(fqn, count);
+        }
+      }
+
+      // Set 0 for classifications with no tags
+      for (Classification classification : classifications) {
+        termCountMap.putIfAbsent(classification.getFullyQualifiedName(), 0);
+      }
+
+      return termCountMap;
+    } catch (Exception e) {
+      LOG.error("Error batch fetching term counts, falling back to individual queries", e);
+      // Fall back to individual queries
+      for (Classification classification : classifications) {
+        ListFilter filterWithParent =
+            new ListFilter(Include.NON_DELETED)
+                .addQueryParam("parent", classification.getFullyQualifiedName());
+        int count = daoCollection.tagDAO().listCount(filterWithParent);
+        termCountMap.put(classification.getFullyQualifiedName(), count);
+      }
+      return termCountMap;
+    }
+  }
+
+  private Map<String, Integer> batchFetchUsageCounts(List<Classification> classifications) {
+    Map<String, Integer> usageCountMap = new HashMap<>();
+    if (classifications == null || classifications.isEmpty()) {
+      return usageCountMap;
+    }
+
+    // Batch fetch usage counts for all classifications at once
+    List<String> classificationFQNs =
+        classifications.stream()
+            .map(Classification::getFullyQualifiedName)
+            .collect(Collectors.toList());
+
+    Map<String, Integer> counts =
+        daoCollection
+            .tagUsageDAO()
+            .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), classificationFQNs);
+
+    return counts != null ? counts : usageCountMap;
   }
 
   @Override

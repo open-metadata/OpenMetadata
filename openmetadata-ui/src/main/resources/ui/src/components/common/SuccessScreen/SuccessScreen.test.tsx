@@ -12,20 +12,22 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { FormSubmitType } from '../../../enums/form.enum';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SuccessScreen, { SuccessScreenProps } from './SuccessScreen';
 
-jest.mock('../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isAirflowAvailable: true,
-    fetchAirflowStatus: jest.fn(),
-    isFetchingStatus: false,
-    platform: PIPELINE_SERVICE_PLATFORM,
-  })),
-}));
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    })),
+  })
+);
 
 const mockViewService = jest.fn();
 const mockDeployService = jest.fn();

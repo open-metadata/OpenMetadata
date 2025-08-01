@@ -1,0 +1,208 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/dataContract.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataContract",
+  "$comment": "@om-entity-type",
+  "description": "A `DataContract` entity defines the schema and quality guarantees for a data asset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.DataContract",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "contractStatus": {
+      "javaType": "org.openmetadata.schema.type.ContractStatus",
+      "description": "Status of the data contract.",
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Active",
+        "Deprecated"
+      ],
+      "javaEnums": [
+        {
+          "name": "Draft"
+        },
+        {
+          "name": "Active"
+        },
+        {
+          "name": "Deprecated"
+        }
+      ]
+    },
+    "contractUpdate": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ContractUpdate",
+      "description": "Record of updates to the data contract.",
+      "properties": {
+        "timestamp": {
+          "description": "Timestamp when the contract was updated.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": {
+          "description": "User who updated the contract.",
+          "type": "string"
+        },
+        "changeDescription": {
+          "description": "Description of changes made to the contract.",
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "version": {
+          "description": "Version number of the contract after the update.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp",
+        "updatedBy",
+        "version"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this data contract instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name of the data contract.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this data contract resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "status": {
+      "$ref": "#/definitions/contractStatus",
+      "default": "Draft"
+    },
+    "entity": {
+      "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "testSuite": {
+      "description": "Reference to the test suite that contains tests related to this data contract.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "schema": {
+      "description": "Schema definition for the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "./table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "semantics": {
+      "description": "Semantics rules defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
+      },
+      "default": null
+    },
+    "qualityExpectations": {
+      "description": "Quality expectations defined in the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "contractUpdates": {
+      "description": "History of updates to the data contract.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/contractUpdate"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this data contract.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "effectiveFrom": {
+      "description": "Date from which this data contract is effective.",
+      "$ref": "../../type/basic.json#/definitions/dateTime",
+      "default": null
+    },
+    "effectiveUntil": {
+      "description": "Date until which this data contract is effective.",
+      "$ref": "../../type/basic.json#/definitions/dateTime",
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change description of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "sourceUrl": {
+      "description": "Source URL of the data contract.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "latestResult": {
+      "description": "Latest validation result for this data contract.",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "status": {
+          "$ref": "../../type/contractExecutionStatus.json"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resultId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "entity"
+  ],
+  "additionalProperties": false
+}

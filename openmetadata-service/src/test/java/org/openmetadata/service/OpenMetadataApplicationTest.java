@@ -15,31 +15,43 @@ package org.openmetadata.service;
 
 import static java.lang.String.format;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
+import io.dropwizard.configuration.ConfigurationException;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.FileConfigurationSourceProvider;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
+import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.jackson.JacksonFeature;
+import io.dropwizard.jersey.validation.Validators;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import jakarta.validation.Validator;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.eclipse.jetty.client.HttpClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
+import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -50,6 +62,12 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -60,10 +78,14 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
 import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -92,6 +114,7 @@ public abstract class OpenMetadataApplicationTest {
 
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
+  private static GenericContainer<?> REDIS_CONTAINER;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -125,7 +148,7 @@ public abstract class OpenMetadataApplicationTest {
     if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
       elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
     }
-    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    OpenMetadataApplicationConfig config = readTestAppConfig(CONFIG_PATH);
     // The system properties are provided by maven-surefire for testing with mysql and postgres
     LOG.info(
         "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
@@ -197,11 +220,17 @@ public abstract class OpenMetadataApplicationTest {
     overrideElasticSearchConfig();
     overrideDatabaseConfig(sqlContainer);
 
+    // Init IndexMapping class
+    IndexMappingLoader.init(getEsConfig());
+
     // Migration overrides
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
+
+    // Redis cache configuration (if enabled by system properties)
+    setupRedisIfEnabled();
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = getApp(configOverridesArray);
@@ -242,18 +271,57 @@ public abstract class OpenMetadataApplicationTest {
             config,
             forceMigrations);
     // Initialize search repository
-    SearchRepository searchRepository = new SearchRepository(getEsConfig());
+    SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
+    WorkflowHandler.initialize(config);
+    SettingsCache.initialize(config);
+    ApplicationHandler.initialize(config);
+    ApplicationContext.initialize();
     Entity.cleanup();
   }
 
+  protected OpenMetadataApplicationConfig readTestAppConfig(String path)
+      throws ConfigurationException, IOException {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
+    Validator validator = Validators.newValidator();
+    YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
+    return factory.build(
+        new SubstitutingSourceProvider(
+            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+        path);
+  }
+
   protected CollectionDAO getDao(Jdbi jdbi) {
-    return jdbi.onDemand(CollectionDAO.class);
+    CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
+
+    // Wrap with caching decorator if Redis is enabled
+    String enableCache = System.getProperty("enableCache");
+    String cacheType = System.getProperty("cacheType");
+
+    if ("true".equals(enableCache) && "redis".equals(cacheType)) {
+      LOG.info("Wrapping CollectionDAO with Redis caching support for tests");
+      try {
+        // Import dynamically to avoid compilation issues if cache classes aren't available
+        Class<?> cachedDAOClass =
+            Class.forName("org.openmetadata.service.cache.CachedCollectionDAO");
+        return (CollectionDAO)
+            cachedDAOClass.getConstructor(CollectionDAO.class).newInstance(originalDAO);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to enable caching support, falling back to original DAO: {}", e.getMessage());
+        return originalDAO;
+      }
+    }
+
+    return originalDAO;
   }
 
   @NotNull
@@ -264,8 +332,11 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void createClient() {
+    HttpClient httpClient = new HttpClient();
+    httpClient.setIdleTimeout(0);
     ClientConfig config = new ClientConfig();
     config.connectorProvider(new JettyConnectorProvider());
+    config.register(new JettyHttpClientSupplier(httpClient));
     config.register(new JacksonFeature(APP.getObjectMapper()));
     config.property(ClientProperties.CONNECT_TIMEOUT, 0);
     config.property(ClientProperties.READ_TIMEOUT, 0);
@@ -284,6 +355,16 @@ public abstract class OpenMetadataApplicationTest {
     }
     ELASTIC_SEARCH_CONTAINER.stop();
 
+    // Stop Redis container if it was started
+    if (REDIS_CONTAINER != null) {
+      try {
+        REDIS_CONTAINER.stop();
+        LOG.info("Redis container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping Redis container", e);
+      }
+    }
+
     if (client != null) {
       client.close();
     }
@@ -291,7 +372,9 @@ public abstract class OpenMetadataApplicationTest {
 
   private void createIndices() {
     ElasticSearchConfiguration esConfig = getEsConfig();
-    SearchRepository searchRepository = new SearchRepository(esConfig);
+    SearchRepository searchRepository =
+        SearchRepositoryFactory.createSearchRepository(esConfig, 50);
+    Entity.setSearchRepository(searchRepository);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
   }
@@ -351,6 +434,59 @@ public abstract class OpenMetadataApplicationTest {
         ConfigOverride.config("elasticsearch.clusterAlias", ELASTIC_SEARCH_CLUSTER_ALIAS));
     configOverrides.add(
         ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
+  }
+
+  private static void setupRedisIfEnabled() {
+    String enableCache = System.getProperty("enableCache");
+    String cacheType = System.getProperty("cacheType");
+    String redisContainerImage = System.getProperty("redisContainerImage");
+
+    if ("true".equals(enableCache) && "redis".equals(cacheType)) {
+      LOG.info("Redis cache enabled for tests");
+
+      if (CommonUtil.nullOrEmpty(redisContainerImage)) {
+        redisContainerImage = "redis:7-alpine";
+      }
+
+      LOG.info("Starting Redis container with image: {}", redisContainerImage);
+
+      REDIS_CONTAINER =
+          new GenericContainer<>(DockerImageName.parse(redisContainerImage))
+              .withExposedPorts(6379)
+              .withCommand("redis-server", "--requirepass", "test-password")
+              .withReuse(false)
+              .withStartupTimeout(Duration.ofMinutes(2));
+
+      REDIS_CONTAINER.start();
+
+      String redisHost = REDIS_CONTAINER.getHost();
+      Integer redisPort = REDIS_CONTAINER.getFirstMappedPort();
+
+      LOG.info("Redis container started at {}:{}", redisHost, redisPort);
+
+      // Add Redis configuration overrides
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.enabled", "true"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.provider", "REDIS_STANDALONE"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.host", redisHost));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.port", redisPort.toString()));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.authType", "PASSWORD"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.password", "test-password"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.useSsl", "false"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.database", "0"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.ttlSeconds", "3600"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.connectionTimeoutSecs", "5"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.socketTimeoutSecs", "60"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.maxRetries", "3"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupEnabled", "true"));
+      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupThreads", "2"));
+
+      LOG.info("Redis configuration overrides added");
+    } else {
+      LOG.info(
+          "Redis cache not enabled for tests (enableCache={}, cacheType={})",
+          enableCache,
+          cacheType);
+    }
   }
 
   private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {

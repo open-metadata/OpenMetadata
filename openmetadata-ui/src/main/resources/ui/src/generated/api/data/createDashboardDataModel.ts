@@ -33,9 +33,9 @@ export interface CreateDashboardDataModel {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Dashboard Data Model belongs to.
+     * Fully qualified names of the domains the Dashboard Data Model belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -189,6 +189,7 @@ export enum DataType {
     Float = "FLOAT",
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
+    Heirarchy = "HEIRARCHY",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -198,12 +199,14 @@ export enum DataType {
     Ipv4 = "IPV4",
     Ipv6 = "IPV6",
     JSON = "JSON",
+    Kpi = "KPI",
     Largeint = "LARGEINT",
     Long = "LONG",
     Longblob = "LONGBLOB",
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    Measure = "MEASURE",
     MeasureHidden = "MEASURE HIDDEN",
     MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
@@ -556,6 +559,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -599,6 +603,8 @@ export enum DataModelType {
     LookMlExplore = "LookMlExplore",
     LookMlView = "LookMlView",
     MetabaseDataModel = "MetabaseDataModel",
+    MicroStrategyDataset = "MicroStrategyDataset",
+    PowerBIDataFlow = "PowerBIDataFlow",
     PowerBIDataModel = "PowerBIDataModel",
     QlikDataModel = "QlikDataModel",
     QuickSightDataModel = "QuickSightDataModel",
@@ -607,6 +613,7 @@ export enum DataModelType {
     TableauDataModel = "TableauDataModel",
     TableauEmbeddedDatasource = "TableauEmbeddedDatasource",
     TableauPublishedDatasource = "TableauPublishedDatasource",
+    ThoughtSpotDataModel = "ThoughtSpotDataModel",
 }
 
 /**
@@ -676,4 +683,5 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }

@@ -175,6 +175,7 @@ export const updateRelatedMetric = async (
       hasText: dataAsset.entity.name,
     })
     .click();
+
   await page.locator('[data-testid="saveRelatedMetrics"]').click();
 
   await patchPromise;
@@ -186,6 +187,9 @@ export const updateRelatedMetric = async (
   await page
     .getByRole('link', { name: dataAsset.entity.name, exact: true })
     .click();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.getByRole('link', { name: title }).click();
 };

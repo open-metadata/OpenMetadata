@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -31,7 +32,6 @@ import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ActivityFeedPublisher implements Destination<ChangeEvent> {

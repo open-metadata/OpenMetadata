@@ -41,6 +41,7 @@
   }
 
   .ant-menu-item {
+    width: 100%;
     height: 30px;
     line-height: 30px;
     margin-top: 2px;
@@ -91,5 +92,48 @@
     .ant-menu-item-selected
     .ant-menu-title-content {
     font-weight: 400;
+  }
+}
+
+.custom-menu-v1.ant-menu-root.ant-menu-inline {
+  // need to add !important as in AntD menu padding is given inline
+  padding: @padding-mlg !important;
+  background-color: @grey-9;
+
+  // for unselected menu items
+  .ant-menu-item:not(.ant-menu-item-selected, .ant-menu-item-active) {
+    svg {
+      color: @grey-400;
+    }
+    .ant-menu-title-content {
+      color: @grey-500;
+    }
+  }
+  .ant-menu-item {
+    border: 1px solid transparent;
+    border-radius: @border-rad-xs;
+    &::after {
+      border: none;
+    }
+    // need to add !important as in AntD menu padding is given inline
+    padding: @padding-xs @padding-sm !important;
+  }
+
+  .ant-menu-item-selected,
+  .ant-menu-item-active {
+    border-color: @primary-color;
+    background-color: @white;
+    font-weight: @font-semibold;
+
+    border-radius: @border-rad-xs;
+    box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.04);
+
+    transition: all 0.2s ease-in-out;
+  }
+
+  .ant-menu-item {
+    .ant-menu-title-content {
+      font-size: 16px;
+    }
   }
 }

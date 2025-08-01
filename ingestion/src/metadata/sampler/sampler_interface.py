@@ -13,12 +13,13 @@ Interface for sampler
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Set, Union
+from typing import List, Optional, Set, Union
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
+    PartitionProfilerConfig,
     Table,
     TableData,
 )
@@ -29,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    ProcessingEngine,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
@@ -65,24 +69,26 @@ class SamplerInterface(ABC):
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
         sample_config: SampleConfig = SampleConfig(),
-        partition_details: Optional[Dict] = None,
+        partition_details: Optional[PartitionProfilerConfig] = None,
         sample_query: Optional[str] = None,
-        storage_config: DataStorageConfig = None,
+        storage_config: Optional[DataStorageConfig] = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        processing_engine: Optional[ProcessingEngine] = None,
         **__,
     ):
         self.ometa_client = ometa_client
         self._sample = None
-        self._columns: Optional[List[SQALikeColumn]] = None
+        self._columns: List[SQALikeColumn] = []
         self.sample_config = sample_config
 
         self.entity = entity
-        self.include_columns = include_columns
-        self.exclude_columns = exclude_columns
+        self.include_columns = include_columns or []
+        self.exclude_columns = exclude_columns or []
         self.sample_query = sample_query
         self.sample_limit = sample_data_count
         self.partition_details = partition_details
         self.storage_config = storage_config
+        self.processing_engine = processing_engine
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
@@ -99,7 +105,8 @@ class SamplerInterface(ABC):
         table_config: Optional[TableConfig] = None,
         storage_config: Optional[DataStorageConfig] = None,
         default_sample_config: Optional[SampleConfig] = None,
-        default_sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
+        processing_engine: Optional[ProcessingEngine] = None,
         **kwargs,
     ) -> "SamplerInterface":
         """Create sampler"""
@@ -136,6 +143,7 @@ class SamplerInterface(ABC):
             sample_query=sample_query,
             storage_config=storage_config,
             sample_data_count=sample_data_count,
+            processing_engine=processing_engine,
             **kwargs,
         )
 
@@ -165,16 +173,20 @@ class SamplerInterface(ABC):
 
         return self._columns
 
-    def _get_excluded_columns(self) -> Optional[Set[str]]:
+    def _get_excluded_columns(self) -> Set[str]:
         """Get excluded  columns for table being profiled"""
         if self.exclude_columns:
             return set(self.exclude_columns)
         return set()
 
-    def _get_included_columns(self) -> Optional[Set[str]]:
+    def _get_included_columns(self) -> Set[str]:
         """Get include columns for table being profiled"""
         if self.include_columns:
-            return {include_col.columnName for include_col in self.include_columns}
+            return {
+                include_col.columnName
+                for include_col in self.include_columns
+                if include_col.columnName
+            }
         return set()
 
     @property
@@ -245,3 +257,6 @@ class SamplerInterface(ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
             raise err
+
+    def close(self):
+        """Default noop"""

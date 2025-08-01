@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { OwnerType } from '../../../enums/user.enum';
@@ -22,20 +23,20 @@ import { OwnerAvatar } from '../OwnerAvtar/OwnerAvatar';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 interface OwnerItemProps {
   owner: EntityReference;
-  index: number;
   isCompactView: boolean;
   className?: string;
   ownerDisplayName?: ReactNode;
   avatarSize?: number;
+  isAssignee?: boolean;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
   owner,
-  index,
   isCompactView,
   className,
   ownerDisplayName,
   avatarSize = 32,
+  isAssignee,
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
@@ -57,25 +58,23 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
         </div>
         <Link
           className={classNames(
-            'no-underline font-medium text-xs text-primary',
+            'truncate no-underline font-medium text-xs text-primary',
             className
           )}
           data-testid="owner-link"
           to={ownerPath}>
-          <span data-testid={getEntityName(owner)}>
+          <Typography.Text
+            data-testid={getEntityName(owner)}
+            ellipsis={{ tooltip: true }}>
             {ownerDisplayName ?? displayName}
-          </span>
+          </Typography.Text>
         </Link>
       </div>
     );
   }
 
   return (
-    <div
-      className={classNames('owner-avatar-container stacked-view')}
-      style={{
-        zIndex: index + 1,
-      }}>
+    <div className={classNames('owner-avatar-container stacked-view')}>
       {isTeam ? (
         <Link
           className="d-flex no-underline"
@@ -84,6 +83,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           <OwnerAvatar
             avatarSize={avatarSize}
             inheritedIcon={inheritedIcon}
+            isAssignee={isAssignee}
             isCompactView={isCompactView}
             owner={owner}
           />
@@ -97,6 +97,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             <OwnerAvatar
               avatarSize={avatarSize}
               inheritedIcon={inheritedIcon}
+              isAssignee={isAssignee}
               isCompactView={isCompactView}
               owner={owner}
             />

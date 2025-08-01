@@ -10,15 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Space, Typography } from 'antd';
 import { isString, isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { CHART_BASE_SIZE } from '../../../constants/Chart.constants';
-import { WHITE_SMOKE } from '../../../constants/Color.constants';
+import { useMemo } from 'react';
+import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
+import { GREY_200 } from '../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
+import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { CustomPieChartProps } from './Chart.interface';
+import './chart.less';
 
-const CustomPieChart = ({ name, data, label }: CustomPieChartProps) => {
+const CustomPieChart = ({
+  name,
+  data,
+  label,
+  showLegends = false,
+}: CustomPieChartProps) => {
   const centerLabel = useMemo(() => {
     if (isUndefined(label)) {
       return '';
@@ -36,28 +44,28 @@ const CustomPieChart = ({ name, data, label }: CustomPieChartProps) => {
   }, [label]);
 
   return (
-    <ResponsiveContainer
-      height={CHART_BASE_SIZE}
-      id={`${name}-pie-chart`}
-      width={CHART_BASE_SIZE}>
-      <PieChart height={CHART_BASE_SIZE} width={CHART_BASE_SIZE}>
+    <div className="custom-pie-chart">
+      <PieChart
+        height={CHART_SMALL_SIZE}
+        id={`${name}-pie-chart`}
+        width={CHART_SMALL_SIZE}>
         <Pie
           cx="50%"
           cy="50%"
           data={data}
           dataKey="value"
-          fill={WHITE_SMOKE}
-          innerRadius={78}
-          outerRadius={107}>
-          <Cell fill={WHITE_SMOKE} />
+          fill={GREY_200}
+          innerRadius={55}
+          outerRadius={80}>
+          <Cell fill={GREY_200} />
         </Pie>
         <Pie
           cx="50%"
           cy="50%"
           data={data}
           dataKey="value"
-          innerRadius={85}
-          outerRadius={100}>
+          innerRadius={60}
+          outerRadius={80}>
           {data.map((entry) => (
             <Cell fill={entry.color} key={`cell-${entry.name}`} />
           ))}
@@ -65,7 +73,26 @@ const CustomPieChart = ({ name, data, label }: CustomPieChartProps) => {
         <Tooltip />
         {centerLabel}
       </PieChart>
-    </ResponsiveContainer>
+
+      {showLegends && (
+        <Space wrap size={16}>
+          {data.map((item) => (
+            <Space key={item.name} size={8}>
+              <div
+                className="legend-dot"
+                style={{ backgroundColor: item.color }}
+              />
+              <Typography.Paragraph className="text-grey-muted m-b-0">
+                {item.name}{' '}
+                <Typography.Text strong className="text-grey-muted">
+                  {formatNumberWithComma(item.value)}
+                </Typography.Text>
+              </Typography.Paragraph>
+            </Space>
+          ))}
+        </Space>
+      )}
+    </div>
   );
 };
 

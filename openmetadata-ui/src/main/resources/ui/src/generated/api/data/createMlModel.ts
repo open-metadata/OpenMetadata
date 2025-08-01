@@ -36,9 +36,9 @@ export interface CreateMlModel {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the MLModel belongs to.
+     * Fully qualified names of the domains the MLModel belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -327,6 +327,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

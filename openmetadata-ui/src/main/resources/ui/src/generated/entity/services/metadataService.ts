@@ -32,10 +32,14 @@ export interface MetadataService {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -559,6 +563,10 @@ export interface AlationDatabaseConnection {
      * attempts to scan all the schemas.
      */
     databaseSchema?: string;
+    /**
+     * Use slow logs to extract lineage.
+     */
+    useSlowLogs?: boolean;
 }
 
 /**
@@ -863,6 +871,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -916,8 +925,13 @@ export enum VerifySSL {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -925,13 +939,6 @@ export enum VerifySSL {
  * the relationship of a table `belongs to a` database.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
- *
- * Owners of this database service.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -979,9 +986,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -1037,6 +1046,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

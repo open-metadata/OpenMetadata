@@ -13,9 +13,9 @@
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -65,7 +65,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const NotificationListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -164,7 +164,7 @@ const NotificationListPage = () => {
 
         handlePagingChange(paging);
         fetchAllAlertsPermission(data);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -206,7 +206,7 @@ const NotificationListPage = () => {
   const columns = useMemo(
     () => [
       {
-        title: t('label.name'),
+        title: t('label.name').toString(),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
@@ -223,7 +223,7 @@ const NotificationListPage = () => {
         },
       },
       {
-        title: t('label.trigger'),
+        title: t('label.trigger').toString(),
         dataIndex: ['filteringRules', 'resources'],
         width: '200px',
         key: 'FilteringRules.resources',
@@ -232,7 +232,7 @@ const NotificationListPage = () => {
         },
       },
       {
-        title: t('label.description'),
+        title: t('label.description').toString(),
         dataIndex: 'description',
         flex: true,
         key: 'description',
@@ -248,7 +248,7 @@ const NotificationListPage = () => {
           ),
       },
       {
-        title: t('label.action-plural'),
+        title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
         width: 90,
         key: 'fullyQualifiedName',
@@ -322,7 +322,7 @@ const NotificationListPage = () => {
                   data-testid="create-notification"
                   type="primary"
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION
@@ -356,9 +356,12 @@ const NotificationListPage = () => {
                   className="p-y-md"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.alert'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
-                    history.push(
+                    navigate(
                       getSettingPath(
                         GlobalSettingsMenuCategory.NOTIFICATIONS,
                         GlobalSettingOptions.ADD_NOTIFICATION

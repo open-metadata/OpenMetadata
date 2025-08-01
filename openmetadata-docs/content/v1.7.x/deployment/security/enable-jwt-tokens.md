@@ -1,5 +1,6 @@
 ---
-title: Enable JWT Tokens
+title: Enable JWT Tokens | OpenMetadata Security Features
+description: Enable JWT-based security for user authentication, session management, and platform API access using tokens.
 slug: /deployment/security/enable-jwt-tokens
 collate: false
 ---

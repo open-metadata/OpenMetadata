@@ -20,7 +20,6 @@ const TerserPlugin = require('terser-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const outputPath = path.join(__dirname, 'dist/assets');
-const subPath = process.env.APP_SUB_PATH ?? '';
 
 module.exports = {
   cache: {
@@ -28,6 +27,9 @@ module.exports = {
     buildDependencies: {
       config: [__filename], // Cache invalidation on config file changes
     },
+    cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/webpack'),
+    compression: 'gzip', // Compress cache files
+    store: 'pack', // More efficient storage
   },
 
   // Production mode
@@ -39,10 +41,12 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: '[name].[contenthash].js', // Use contenthash for unique filenames
-    chunkFilename: '[name].[contenthash].js', // Ensure unique chunk filenames
-    clean: true, // Clean the output directory before emit
-    publicPath: `${subPath ?? ''}/`,
+    filename: '[name].[fullhash].js',
+    chunkFilename: '[name].[fullhash].js',
+    // Clean the output directory before emit.
+    clean: true,
+    // Ensures bundle is served from absolute path as opposed to relative
+    publicPath: '/',
   },
 
   // Loaders
@@ -66,7 +70,8 @@ module.exports = {
           {
             loader: 'thread-loader',
             options: {
-              workers: require('os').cpus().length - 1, // Use all available CPU cores minus one
+              workers: Math.max(require('os').cpus().length - 2, 2), // More conservative CPU usage
+              poolTimeout: 2000, // Faster pool termination
             },
           },
           {
@@ -240,12 +245,19 @@ module.exports = {
       test: /\.(js|css|html|svg)$/,
     }),
 
-    // Bundle analyzer (optional, for debugging)
-    new BundleAnalyzerPlugin({
+    // Bundle analyzer (only when explicitly requested)
+    ...(process.env.ANALYZE_BUNDLE === 'true' ? [new BundleAnalyzerPlugin({
       analyzerMode: 'static', // Outputs an HTML report
       openAnalyzer: false, // Set to true to open report automatically
-    }),
+    })] : []),
   ],
+
+  // Performance budgets
+  performance: {
+    maxAssetSize: 300000, // 300KB
+    maxEntrypointSize: 300000, // 300KB
+    hints: 'warning', // Show warnings for budget violations
+  },
 
   // Disable source maps for production
   devtool: false,

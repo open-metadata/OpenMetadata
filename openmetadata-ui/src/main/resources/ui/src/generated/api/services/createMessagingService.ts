@@ -29,9 +29,9 @@ export interface CreateMessagingService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Messaging Service belongs to.
+     * Fully qualified names of the domains the Messaging Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
@@ -390,6 +390,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

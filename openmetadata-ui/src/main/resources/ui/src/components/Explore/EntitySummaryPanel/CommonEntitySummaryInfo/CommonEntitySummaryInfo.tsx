@@ -14,80 +14,69 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
+import './common-entity-summary.less';
+
 function CommonEntitySummaryInfo({
   entityInfo,
   componentType,
+  isDomainVisible,
 }: CommonEntitySummaryInfoProps) {
   const { t } = useTranslation();
 
   return (
-    <Row className="text-sm" gutter={[0, 4]}>
+    <Row className="text-sm common-entity-summary-info" gutter={[0, 4]}>
       {entityInfo.map((info) => {
-        const isOwner = info.name === t('label.owner-plural');
+        const isDomain =
+          isDomainVisible && info.name === t('label.domain-plural');
 
-        return info.visible?.includes(componentType) ? (
+        return info.visible?.includes(componentType) || isDomain ? (
           <Col key={info.name} span={24}>
-            <Row
-              className={classNames('', {
-                'p-b-md': isOwner,
-              })}
-              gutter={[16, 32]}>
-              {!isOwner ? (
-                <>
-                  <Col span={8}>
-                    <Typography.Text
-                      className="summary-item-key font-semibold"
-                      data-testid={`${info.name}-label`}>
-                      {info.name}
-                    </Typography.Text>
-                  </Col>
-                  <Col span={16}>
-                    {info.isLink ? (
-                      <Link
-                        component={Typography.Link}
-                        data-testid={`${info.name}-value`}
-                        target={info.isExternal ? '_blank' : '_self'}
-                        to={
-                          info.linkProps
-                            ? info.linkProps
-                            : { pathname: info.url }
-                        }>
-                        {info.value}
-                        {info.isExternal ? (
-                          <Icon
-                            className="m-l-xs"
-                            component={IconExternalLink}
-                            data-testid="external-link-icon"
-                            style={ICON_DIMENSION}
-                          />
-                        ) : null}
-                      </Link>
-                    ) : (
-                      <Typography.Text
-                        className={classNames(
-                          'summary-item-value text-grey-muted',
-                          {
-                            'text-grey-body': !isOwner,
-                          }
-                        )}
-                        data-testid={`${info.name}-value`}>
-                        {info.value}
-                      </Typography.Text>
-                    )}
-                  </Col>
-                </>
-              ) : (
-                <Col data-testid={`${info.name}-value`} span={24}>
-                  {info.value}
-                </Col>
-              )}
+            <Row gutter={[16, 32]}>
+              <Col span={8}>
+                <Typography.Text
+                  className="summary-item-key font-semibold"
+                  data-testid={`${info.name}-label`}>
+                  {info.name}
+                </Typography.Text>
+              </Col>
+              <Col span={16}>
+                {info.isLink ? (
+                  info.isExternal ? (
+                    <a
+                      className="summary-item-link"
+                      data-testid={`${info.name}-value`}
+                      href={info.url}
+                      target="_blank">
+                      {info.value}
+                      <Icon
+                        className="m-l-xs"
+                        component={IconExternalLink}
+                        data-testid="external-link-icon"
+                        style={ICON_DIMENSION}
+                      />
+                    </a>
+                  ) : (
+                    <Link
+                      className="summary-item-link"
+                      data-testid={`${info.name}-value`}
+                      to={info.linkProps ?? info.url ?? ''}>
+                      {info.value}
+                    </Link>
+                  )
+                ) : (
+                  <Typography.Text
+                    className={classNames('summary-item-value text-grey-body')}
+                    data-testid={`${info.name}-value`}>
+                    {info.value}
+                  </Typography.Text>
+                )}
+              </Col>
             </Row>
           </Col>
         ) : null;

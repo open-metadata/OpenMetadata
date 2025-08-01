@@ -37,9 +37,13 @@ export interface MlmodelService {
      */
     displayName?: string;
     /**
-     * Domain the MLModel service belongs to.
+     * Domains the MLModel service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -433,8 +437,6 @@ export enum MlModelServiceType {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the MLModel service belongs to.
- *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
@@ -531,6 +533,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

@@ -72,7 +72,9 @@ def get_inspector_details(
                 "lifetime"
             ] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
-    client = get_bigquery_client(project_id=database_name, **kwargs)
+    client = get_bigquery_client(
+        project_id=new_service_connection.billingProjectId or database_name, **kwargs
+    )
     engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 
@@ -86,15 +88,15 @@ def get_pk_constraint(
     This function overrides to get primary key constraint
     """
     try:
-        constraints = PK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        project, schema = schema.split(".")
+        constraints = PK_CACHE.get(f"{project}.{schema}")
         if constraints is None:
             constraints = connection.engine.execute(
                 BIGQUERY_TABLE_CONSTRAINTS.format(
-                    project_id=connection.engine.url.host,
-                    schema_name=schema,
+                    project_id=project, schema_name=schema
                 )
             )
-            PK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+            PK_CACHE[f"{project}.{schema}"] = constraints.fetchall()
 
         col_name = []
         table_constraints = [row for row in constraints if row.table_name == table_name]
@@ -116,15 +118,15 @@ def get_foreign_keys(
     This function overrides to get foreign key constraint
     """
     try:
-        constraints = FK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        project, schema = schema.split(".")
+        constraints = FK_CACHE.get(f"{project}.{schema}")
         if constraints is None:
             constraints = connection.engine.execute(
                 BIGQUERY_FOREIGN_CONSTRAINTS.format(
-                    project_id=connection.engine.url.host,
-                    schema_name=schema,
+                    project_id=project, schema_name=schema
                 )
             )
-            FK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+            FK_CACHE[f"{project}.{schema}"] = constraints.fetchall()
 
         col_name = []
         table_constraints = [row for row in constraints if row.table_name == table_name]

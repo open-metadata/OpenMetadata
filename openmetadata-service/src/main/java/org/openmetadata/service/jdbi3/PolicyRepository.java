@@ -25,17 +25,21 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -63,6 +67,78 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public void setFields(Policy policy, Fields fields) {
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : policy.getTeams());
     policy.withRoles(fields.contains("roles") ? getRoles(policy) : policy.getRoles());
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Policy> policies) {
+    if (policies == null || policies.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains("teams")) {
+      fetchAndSetTeams(policies);
+    }
+
+    if (fields.contains("roles")) {
+      fetchAndSetRoles(policies);
+    }
+
+    // Handle standard fields that are managed by the parent class
+    super.setFieldsInBulk(fields, policies);
+  }
+
+  private void fetchAndSetTeams(List<Policy> policies) {
+    List<String> policyIds =
+        policies.stream().map(Policy::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch teams
+    List<CollectionDAO.EntityRelationshipObject> teamRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(policyIds, Relationship.HAS.ordinal(), POLICY, Entity.TEAM);
+
+    // Create a map of policy ID to team references
+    Map<UUID, List<EntityReference>> policyToTeams = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+      UUID policyId = UUID.fromString(record.getFromId());
+      EntityReference teamRef =
+          Entity.getEntityReferenceById(
+              Entity.TEAM, UUID.fromString(record.getToId()), Include.ALL);
+      policyToTeams.computeIfAbsent(policyId, k -> new ArrayList<>()).add(teamRef);
+    }
+
+    // Set teams on policies
+    for (Policy policy : policies) {
+      List<EntityReference> teams = policyToTeams.get(policy.getId());
+      policy.setTeams(teams != null ? teams : new ArrayList<>());
+    }
+  }
+
+  private void fetchAndSetRoles(List<Policy> policies) {
+    List<String> policyIds =
+        policies.stream().map(Policy::getId).map(UUID::toString).distinct().toList();
+
+    // Bulk fetch roles
+    List<CollectionDAO.EntityRelationshipObject> roleRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(policyIds, Relationship.HAS.ordinal(), POLICY, Entity.ROLE);
+
+    // Create a map of policy ID to role references
+    Map<UUID, List<EntityReference>> policyToRoles = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
+      UUID policyId = UUID.fromString(record.getFromId());
+      EntityReference roleRef =
+          Entity.getEntityReferenceById(
+              Entity.ROLE, UUID.fromString(record.getToId()), Include.ALL);
+      policyToRoles.computeIfAbsent(policyId, k -> new ArrayList<>()).add(roleRef);
+    }
+
+    // Set roles on policies
+    for (Policy policy : policies) {
+      List<EntityReference> roles = policyToRoles.get(policy.getId());
+      policy.setRoles(roles != null ? roles : new ArrayList<>());
+    }
   }
 
   @Override

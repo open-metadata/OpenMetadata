@@ -18,7 +18,9 @@ import {
   Checkbox,
   Col,
   Dropdown,
+  MenuProps,
   Modal,
+  Popover,
   Row,
   Space,
   TableProps,
@@ -29,17 +31,11 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
@@ -88,7 +84,11 @@ import {
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import {
+  getEntityBulkEditPath,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
@@ -108,6 +108,7 @@ import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import WorkflowHistory from '../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -116,6 +117,7 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -400,22 +402,32 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             termTaskThreads
           );
 
+          if (status === Status.InReview && permission) {
+            return (
+              <StatusAction
+                dataTestId={record.name}
+                onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
+                onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
+              />
+            );
+          }
+
           return (
-            <div>
-              {status === Status.InReview && permission ? (
-                <StatusAction
-                  dataTestId={record.name}
-                  onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
-                  onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
-                />
-              ) : (
+            <Popover
+              content={
+                <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+              }
+              overlayStyle={{ minWidth: '260px' }}
+              placement="topLeft"
+              trigger="hover">
+              <div>
                 <StatusBadge
                   dataTestId={termFQN + '-status'}
                   label={status}
                   status={StatusClass[status]}
                 />
-              )}
-            </div>
+              </div>
+            </Popover>
           );
         },
         onFilter: (value, record) => record.status === value,
@@ -577,7 +589,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
-  const statusDropdownMenu = useMemo(
+  const statusDropdownMenu: MenuProps = useMemo(
     () => ({
       items: [
         {
@@ -638,6 +650,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ]
   );
 
+  const handleEditGlossary = () => {
+    navigate({
+      pathname: getEntityBulkEditPath(
+        EntityType.GLOSSARY_TERM,
+        activeGlossary?.fullyQualifiedName ?? ''
+      ),
+    });
+  };
+
   const extraTableFilters = useMemo(() => {
     return (
       <>
@@ -658,6 +679,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </Space>
           </Button>
         </Dropdown>
+
+        {getBulkEditButton(permissions.EditAll, handleEditGlossary)}
+
         <Button
           className="text-primary remove-button-background-hover"
           data-testid="expand-collapse-all-button"
@@ -834,6 +858,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary-term')}
           permission={permissions.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.glossary-term'),
+          })}
           placeholderText={t('message.no-glossary-term')}
           type={
             permissions.Create && glossaryTermStatus === Status.Approved

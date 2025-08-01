@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { Table } from '../../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
@@ -102,26 +101,51 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => {
   };
 });
 
-jest.mock('../../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockReturnValue({
-    isAirflowAvailable: true,
-    isFetchingStatus: false,
-  }),
-}));
+jest.mock(
+  '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+    }),
+  })
+);
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useLocation: jest.fn().mockReturnValue({
     pathname: '/test/path',
     search: '',
     hash: '',
     state: null,
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {},
+  }),
+}));
+
+jest.mock('../../../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn().mockReturnValue({
+    paging: {
+      after: 'after-id',
+      before: 'before-id',
+      total: 10,
+    },
+    handlePagingChange: jest.fn(),
+    currentPage: 1,
+    handlePageChange: jest.fn(),
+    pageSize: 15,
+    handlePageSizeChange: jest.fn(),
+    showPagination: true,
+    pagingCursor: {
+      cursorType: undefined,
+      cursorValue: undefined,
+      currentPage: '1',
+      pageSize: 15,
+    },
   }),
 }));
 

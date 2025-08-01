@@ -19,6 +19,7 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -26,10 +27,10 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineFormatter implements EntityFormatter {
   private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";
@@ -105,6 +106,21 @@ public class IngestionPipelineFormatter implements EntityFormatter {
                 "ingestions")
             : "";
       }
+    }
+    return "";
+  }
+
+  // Provide the URL of the table the Data Contract belongs to
+  public static String getDataContractUrl(
+      MessageDecorator<?> formatter, String entityType, EntityInterface entityInterface) {
+    if (entityType.equals(Entity.DATA_CONTRACT)) {
+      DataContract contract = (DataContract) entityInterface;
+      EntityReference tableRef = contract.getEntity();
+
+      tableRef = Entity.getEntityReferenceById(tableRef.getType(), tableRef.getId(), Include.ALL);
+      return !nullOrEmpty(tableRef)
+          ? formatter.getEntityUrl(tableRef.getType(), tableRef.getFullyQualifiedName(), "contract")
+          : "";
     }
     return "";
   }

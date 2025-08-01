@@ -13,16 +13,18 @@
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import './entity-header-title.less';
@@ -64,6 +66,11 @@ const EntityHeaderTitle = ({
   const isTourRoute = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
     [location.pathname]
+  );
+
+  const formattedEntityType = useMemo(
+    () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
+    [entityType]
   );
 
   const entityName = useMemo(
@@ -112,9 +119,12 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={classNames('d-flex flex-col gap-1 w-min-0 ', {
-          'w-max-full-200': deleted || badge,
-        })}>
+        className={classNames(
+          'd-flex flex-col gap-1 w-min-0 entity-header-container',
+          {
+            'w-max-full-200': deleted || badge,
+          }
+        )}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <div className="d-flex items-center gap-2">
@@ -177,7 +187,7 @@ const EntityHeaderTitle = ({
               <Tooltip
                 title={t('label.field-entity', {
                   field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                  entity: capitalize(entityType),
+                  entity: formattedEntityType,
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "
@@ -201,7 +211,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-40  "
+      className="no-underline d-inline-block w-max-full entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

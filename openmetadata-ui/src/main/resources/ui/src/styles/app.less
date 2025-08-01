@@ -74,7 +74,7 @@ p {
   margin-left: 4px;
   padding: 2px 8px;
   font-weight: 500;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   color: @error-color;
   background-color: @error-light-color;
 }
@@ -236,7 +236,7 @@ a[href].link-text-grey,
 // Radius
 
 .rounded-4 {
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
 }
 
 .rounded-full {
@@ -387,20 +387,6 @@ a[href].link-text-grey,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* SSO layout style  */
-.sso-container {
-  width: 100%;
-  height: 580px;
-  display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  flex-direction: column;
-
-  span {
-    margin: 0;
-  }
 }
 
 .transform-180 {
@@ -861,8 +847,6 @@ a[href].link-text-grey,
 
 .text-highlighter {
   background-color: @text-highlighter;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
 }
 
 // Collapse able headers
@@ -985,4 +969,20 @@ a[href].link-text-grey,
   font-size: 12px;
   margin-top: -3px;
   transform: rotate(180deg);
+}
+
+// transition
+
+.transition-all-200ms {
+  transition: all 200ms ease;
+}
+
+// Test Case Status Icon
+
+.test-status-icon {
+  svg {
+    fill: none;
+    height: @size-lg;
+    width: @size-lg;
+  }
 }

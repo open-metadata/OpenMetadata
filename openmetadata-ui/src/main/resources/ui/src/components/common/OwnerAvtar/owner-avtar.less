@@ -16,13 +16,19 @@
   color: @grey-700;
 }
 
+.multi-team-container {
+  background-color: @grey-9;
+  border-radius: 16px;
+  padding: 4px 12px;
+}
+
 .avatar-group {
   display: flex;
   align-items: center;
   flex-direction: row;
 
   .owner-avatar-container {
-    margin-right: -4px;
+    margin-left: -4px;
     transition: transform 0.2s;
 
     &:not(.is-compact-view) {
@@ -30,15 +36,6 @@
         transform: translateY(-2px);
         z-index: 20 !important;
       }
-    }
-
-    &:first-child {
-      z-index: 1;
-    }
-
-    &:last-child {
-      margin-right: 0;
-      z-index: 4;
     }
   }
 }
@@ -54,7 +51,6 @@
     border-radius: 50%;
     width: 12px;
     height: 12px;
-    z-index: 5;
     border: 1px solid @primary-heading-color;
     display: flex;
     align-items: center;

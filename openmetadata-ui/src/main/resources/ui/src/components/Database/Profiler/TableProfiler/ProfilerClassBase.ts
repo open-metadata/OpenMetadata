@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/incident-icon.svg';
-import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/table-profile.svg';
+import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
+import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/ic-column.svg';
+import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-info-circle.svg';
+import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/ic-table-test.svg';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
@@ -42,17 +42,14 @@ class ProfilerClassBase {
     } as GetProfilerTabsType;
   }
 
-  public getProfilerTabOptions({
-    viewProfiler,
-    viewTest,
-  }: GetProfilerTabOptionsType) {
+  public getProfilerTabOptions() {
     return [
       {
         label: i18n.t('label.table-entity-text', {
           entityText: i18n.t('label.profile'),
         }),
         key: TableProfilerTab.TABLE_PROFILE,
-        disabled: !viewProfiler,
+
         icon: TableProfileIcon,
       },
       {
@@ -60,7 +57,7 @@ class ProfilerClassBase {
           entity: i18n.t('label.profile'),
         }),
         key: TableProfilerTab.COLUMN_PROFILE,
-        disabled: !viewProfiler,
+
         icon: ColumnProfileIcon,
       },
       {
@@ -68,13 +65,13 @@ class ProfilerClassBase {
           entity: i18n.t('label.quality'),
         }),
         key: TableProfilerTab.DATA_QUALITY,
-        disabled: !viewTest,
+
         icon: DataQualityIcon,
       },
       {
         label: i18n.t('label.incident-plural'),
         key: TableProfilerTab.INCIDENTS,
-        disabled: !viewTest,
+
         icon: IncidentIcon,
       },
     ];

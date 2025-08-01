@@ -56,13 +56,10 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -150,18 +147,18 @@ class AmundsenSource(Source):
     def _iter(self, *_, **__) -> Iterable[Either[Entity]]:
         table_entities = self.client.execute_query(NEO4J_AMUNDSEN_TABLE_QUERY)
         for table in table_entities:
-            yield from Either(right=self.create_table_entity(table))
+            yield from self.create_table_entity(table)
 
         user_entities = self.client.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
         for user in user_entities:
-            yield from Either(right=self.create_user_entity(user))
-            yield from Either(right=self.add_owner_to_entity(user))
+            yield from self.create_user_entity(user)
+            yield from self.add_owner_to_entity(user)
 
         dashboard_entities = self.client.execute_query(NEO4J_AMUNDSEN_DASHBOARD_QUERY)
         for dashboard in dashboard_entities:
-            yield from Either(right=self.create_dashboard_service(dashboard))
-            yield from Either(right=self.create_chart_entity(dashboard))
-            yield from Either(right=self.create_dashboard_entity(dashboard))
+            yield from self.create_dashboard_service(dashboard)
+            yield from self.create_chart_entity(dashboard)
+            yield from self.create_dashboard_entity(dashboard)
 
     def create_user_entity(self, user) -> Iterable[Either[OMetaUserProfile]]:
         try:
@@ -465,8 +462,6 @@ class AmundsenSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(
+        test_connection_common(
             self.metadata, self.connection_obj, self.service_connection
         )
-        raise_test_connection_exception(result)

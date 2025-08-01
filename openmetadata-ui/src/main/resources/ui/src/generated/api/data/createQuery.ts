@@ -27,9 +27,9 @@ export interface CreateQuery {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Query belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * How long did the query took to run in milliseconds.
      */
@@ -197,6 +197,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

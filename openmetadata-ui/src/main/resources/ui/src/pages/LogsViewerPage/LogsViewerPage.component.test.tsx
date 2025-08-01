@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { TextDecoder, TextEncoder } from 'util';
+global.TextEncoder = TextEncoder as unknown as typeof TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -28,11 +38,14 @@ import {
 } from '../../rest/applicationAPI';
 import LogsViewerPage from './LogsViewerPage';
 
+const mockScrollToIndex = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     logEntityType: 'TestSuite',
     ingestionName: 'ingestion_123456',
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../utils/LogsClassBase', () => ({
@@ -48,12 +61,6 @@ jest.mock(
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-
-jest.mock('react-lazylog', () => ({
-  LazyLog: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
-}));
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
@@ -91,21 +98,47 @@ jest.mock('../../rest/applicationAPI', () => ({
     ),
 }));
 
+jest.mock('../../hooks/useDownloadProgressStore', () => ({
+  useDownloadProgressStore: jest.fn(() => ({
+    progress: 0,
+    reset: jest.fn(),
+    updateProgress: jest.fn(),
+  })),
+}));
+
+jest.mock('@melloware/react-logviewer', () => ({
+  LazyLog: React.forwardRef(({ text }: { text: string }, ref) => {
+    // Mock the ref structure that the component expects
+    if (ref) {
+      (ref as { current: Record<string, unknown> }).current = {
+        state: {
+          count: 230,
+        },
+        listRef: {
+          current: {
+            scrollToIndex: mockScrollToIndex,
+          },
+        },
+      };
+    }
+
+    return <div data-testid="lazy-log">{text}</div>;
+  }),
+}));
+
 describe('LogsViewerPage.component', () => {
   it('On initial, component should render', async () => {
-    await act(async () => {
-      render(<LogsViewerPage />);
+    render(<LogsViewerPage />);
 
-      expect(
-        await screen.findByText('TitleBreadcrumb.component')
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText('TitleBreadcrumb.component')
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByText('test-redshift_metadata_ZeCajs9g')
     ).toBeInTheDocument();
 
-    const logElement = await screen.findByTestId('logs');
+    const logElement = await screen.findByText(mockLogsData.ingestion_task);
 
     expect(logElement).toBeInTheDocument();
   });
@@ -116,13 +149,13 @@ describe('LogsViewerPage.component', () => {
       fqn: 'DataInsightsApplication',
     });
 
-    await act(async () => {
-      render(<LogsViewerPage />);
-    });
+    render(<LogsViewerPage />);
 
-    expect(getApplicationByName).toHaveBeenCalled();
-    expect(getExternalApplicationRuns).toHaveBeenCalled();
-    expect(getLatestApplicationRuns).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getApplicationByName).toHaveBeenCalled();
+      expect(getExternalApplicationRuns).toHaveBeenCalled();
+      expect(getLatestApplicationRuns).toHaveBeenCalled();
+    });
   });
 
   it('should show basic configuration for application in right panel', async () => {
@@ -143,5 +176,26 @@ describe('LogsViewerPage.component', () => {
 
     expect(screen.getByText('Recent Runs')).toBeInTheDocument();
     expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
+  });
+
+  it('should show logs for ingestion pipeline', async () => {
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('jump-to-end-button')).toBeInTheDocument();
+    });
+
+    const jumpToEndButton = screen.getByTestId('jump-to-end-button');
+
+    expect(jumpToEndButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(jumpToEndButton);
+    });
+
+    // Verify that scrollToIndex was called with the correct parameter (totalLines - 1)
+    expect(mockScrollToIndex).toHaveBeenCalledWith(229);
   });
 });

@@ -140,9 +140,13 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the search service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains" : {
+      "description": "Domains the search service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",

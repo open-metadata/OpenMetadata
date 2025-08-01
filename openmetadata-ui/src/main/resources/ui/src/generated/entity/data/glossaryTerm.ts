@@ -47,10 +47,10 @@ export interface GlossaryTerm {
      */
     displayName?: string;
     /**
-     * Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
+     * Domains the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
      * from the Glossary it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -227,9 +227,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain
- * from the Glossary it belongs to.
- *
  * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
@@ -281,9 +278,11 @@ export interface EntityReference {
 /**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
- * deleted and can only be disabled.
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
 export enum ProviderType {
+    Automation = "automation",
     System = "system",
     User = "user",
 }
@@ -376,6 +375,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

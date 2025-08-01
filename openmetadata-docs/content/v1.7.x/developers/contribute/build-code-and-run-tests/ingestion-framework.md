@@ -1,5 +1,6 @@
 ---
-title: Ingestion Framework
+title: Ingestion Framework | OpenMetadata Developer Guide
+description: Contribute to ingestion framework by setting up the local dev environment, running tests, and validating workflows.
 slug: /developers/contribute/build-code-and-run-tests/ingestion-framework
 ---
 

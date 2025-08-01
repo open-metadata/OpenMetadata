@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ColumnsType } from 'antd/lib/table';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -116,14 +116,17 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isFetchingStatus: false,
-    isAirflowAvailable: true,
-    fetchAirflowStatus: jest.fn(),
-    platform: PIPELINE_SERVICE_PLATFORM,
-  })),
-}));
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isFetchingStatus: false,
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      platform: PIPELINE_SERVICE_PLATFORM,
+    })),
+  })
+);
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('Pipeline Service'),
@@ -170,6 +173,18 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
 }));
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div>OwnerLabel</div>,
+    },
+  ]),
+}));
+
 jest.mock('../../common/ListView/ListView.component', () => ({
   ListView: jest.fn().mockImplementation(({ cardRenderer, tableProps }) => (
     <div data-testid="mocked-list-view">
@@ -184,8 +199,10 @@ jest.mock('../../common/ListView/ListView.component', () => ({
           (column: ColumnsType[0], key: string) =>
             column.render && (
               <>
-                <div key={key}>{column.title}</div>
-                <div key={key}>{column.render(column.title, column, 1)}</div>
+                <div key={key}>{column.title as string}</div>
+                <div key={key}>
+                  {column.render(column.title, column, 1) as ReactNode}
+                </div>
               </>
             )
         )}
@@ -237,12 +254,10 @@ jest.mock('antd', () => ({
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -303,7 +318,7 @@ describe('Services', () => {
       fireEvent.click(await screen.findByTestId('add-service-button'));
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/pipelineServices/add-service');
+    expect(mockNavigate).toHaveBeenCalledWith('/pipelineServices/add-service');
   });
 
   it('should render columns', async () => {

@@ -14,13 +14,13 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-
+import { useNavigate } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -54,7 +54,7 @@ const APIEndpointPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: apiEndpointFqn } = useFqn();
@@ -105,7 +105,7 @@ const APIEndpointPage = () => {
         entityFqn
       );
       setApiEndpointPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -124,7 +124,7 @@ const APIEndpointPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,
@@ -148,7 +148,7 @@ const APIEndpointPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN, { replace: true });
       } else {
         showErrorToast(
           error as AxiosError,
@@ -203,7 +203,7 @@ const APIEndpointPage = () => {
 
   const versionHandler = () => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.API_ENDPOINT,
           apiEndpointFqn,
@@ -243,11 +243,11 @@ const APIEndpointPage = () => {
     }
   };
 
-  const updateApiEndpointDetails = useCallback((data) => {
+  const updateApiEndpointDetails = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as APIEndpoint;
 
     setApiEndpointDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -273,7 +273,15 @@ const APIEndpointPage = () => {
     );
   }
   if (!apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.api-endpoint'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

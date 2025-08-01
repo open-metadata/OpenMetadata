@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
@@ -189,7 +188,7 @@ export const getMetricDetailsPageTabs = ({
 
 export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
-    return <RelatedMetrics newLook />;
+    return <RelatedMetrics />;
   }
 
   return (

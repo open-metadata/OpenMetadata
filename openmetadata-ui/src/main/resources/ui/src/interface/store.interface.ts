@@ -14,7 +14,6 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
-  OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
@@ -32,14 +31,6 @@ import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 
-export interface HelperFunctions {
-  onLoginHandler: () => void;
-  onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
-  handleFailedLogin: () => void;
-  updateAxiosInterceptors: () => void;
-}
-
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
   searchConfig?: SearchSettings;
@@ -49,6 +40,7 @@ export interface ApplicationStore
   extends IAuthContext,
     LogoConfiguration,
     LoginConfiguration {
+  appVersion?: string;
   isApplicationLoading: boolean;
   setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
@@ -62,7 +54,7 @@ export interface ApplicationStore
   applications: string[];
   appPreferences: AppPreferences;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
-  setSelectedPersona: (persona: EntityReference) => void;
+  setSelectedPersona: (persona?: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
   setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
@@ -74,7 +66,6 @@ export interface ApplicationStore
   setJwtPrincipalClaimsMapping: (
     claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
-  setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
   updateCachedEntityData: (data: {
     id: string;
@@ -82,6 +73,7 @@ export interface ApplicationStore
   }) => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   setApplicationsName: (applications: string[]) => void;
+  setAppVersion: (version: string) => void;
 }
 
 export interface DomainStore {

@@ -33,6 +33,10 @@
         },
         {
           "$ref": "internal/autoPilotAppConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ]
     },
@@ -40,6 +44,10 @@
       "oneOf": [
         {
           "$ref": "private/external/collateAIAppPrivateConfig.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ]
     }

@@ -38,8 +38,8 @@ export const searchAndClickOnOption = async (
     testId = filter.value ?? '';
   }
 
-  await page.waitForSelector(`[data-testid="${testId}"]`);
-  await page.click(`[data-testid="${testId}"]`);
+  await page.getByTestId(testId).click();
+
   await checkCheckboxStatus(page, `${testId}-checkbox`, checkedAfterClick);
 };
 
@@ -91,16 +91,15 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  const queryResponseData = await queryRes;
-  const request = await queryResponseData.request();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await queryRes;
 
-  const queryParams = request.url().split('?')[1];
+  const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
 
-  const queryParamValue = queryParamsObj.get('query_filter');
-  const isQueryFilterPresent = queryParamValue === queryFilter;
+  const queryParamValue = queryParamsObj.get('quickFilter');
 
-  expect(isQueryFilterPresent).toBeTruthy();
+  expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
     await page.click(`[data-testid="clear-filters"]`);
@@ -122,6 +121,9 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
+  await page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
   await page.getByTestId(`${filterValue}-checkbox`).check();
   await page.getByTestId('update-btn').click();
@@ -150,4 +152,93 @@ export const validateBucketsForIndex = async (page: Page, index: string) => {
       `Bucket "${expectedKey}" has doc_count <= 0`
     ).toBeGreaterThan(0);
   });
+};
+
+export const expandServiceInExploreTree = async (
+  page: Page,
+  serviceName: string,
+  serviceExpanded = false
+) => {
+  if (!serviceExpanded) {
+    // Check that the service exists in the explore tree
+    const serviceNameRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+    );
+    await page
+      .locator('div')
+      .filter({ hasText: /^mysql$/ })
+      .locator('svg')
+      .first()
+      .click();
+    await serviceNameRes;
+  }
+
+  // Expand the service to see databases
+  const databaseRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=dataAsset*serviceType*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: serviceName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await databaseRes;
+};
+
+export const expandDatabaseInExploreTree = async (
+  page: Page,
+  dbName: string
+) => {
+  // Expand the database to see schemas
+  const databaseSchemaRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: dbName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await databaseSchemaRes;
+};
+
+export const verifyDatabaseAndSchemaInExploreTree = async (
+  page: Page,
+  serviceName: string,
+  dbName: string,
+  schemaName: string,
+  serviceExpanded = false
+) => {
+  await expandServiceInExploreTree(page, serviceName, serviceExpanded);
+
+  // Verify the database name is visible
+  await expect(page.getByTestId(`explore-tree-title-${dbName}`)).toBeVisible();
+
+  await expandDatabaseInExploreTree(page, dbName);
+
+  // Verify the schema name is visible
+  await expect(
+    page.getByTestId(`explore-tree-title-${schemaName}`)
+  ).toBeVisible();
+};
+
+export const validateBucketsForIndexAndSort = async (
+  page: Page,
+  asset: {
+    key: string;
+    label: string;
+    indexType: string;
+  },
+  docCount: number
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=pw&index=${asset.indexType}&from=0&size=15&deleted=false&sort_field=_score&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const totalCount = response.hits.total.value ?? 0;
+
+  expect(totalCount).toEqual(docCount);
 };

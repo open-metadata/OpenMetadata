@@ -5,13 +5,16 @@ import static org.openmetadata.service.jdbi3.EntityRepository.validateOwners;
 
 import java.util.List;
 import java.util.UUID;
+import javax.validation.ConstraintViolationException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.mapper.EntityMapper;
@@ -65,6 +68,11 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
 
   private void validateAndAddBot(App app, String botName) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    try {
+      JsonUtils.validateJsonSchema(app, App.class);
+    } catch (ConstraintViolationException e) {
+      throw BadRequestException.of("Invalid App: " + e.getMessage());
+    }
     if (!CommonUtil.nullOrEmpty(botName)) {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {

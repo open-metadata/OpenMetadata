@@ -109,9 +109,9 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain": {
-      "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes": {
       "description": "Votes on the entity.",
@@ -120,6 +120,10 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "followers": {
+      "description": "Followers of this entity.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "certification": {
       "$ref": "../../type/assetCertification.json"

@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/helloPipeliesConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hello Pipelines App Configuration",
+  "description": "This is an example external application.",
+  "properties": {
+    "sleep": {
+      "title": "Sleep time (seconds)",
+      "type": "integer"
+    },
+    "echo": {
+      "title": "Echo message",
+      "type": "string"
+    }
+  },
+  "required": [
+    "sleep",
+    "echo"
+  ],
+  "additionalProperties": false
+}

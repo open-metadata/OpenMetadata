@@ -214,7 +214,7 @@
 }
 
 .lineage-root {
-  border-radius: @border-radius-sm;
+  border-radius: @border-rad-sm;
   border: 1px solid @grey-15;
   position: relative;
 
@@ -247,6 +247,16 @@
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
   height: calc(100vh - @om-navbar-height);
+
+  &.sidebar-collapsed {
+    left: calc(72px + @padding-md);
+    width: calc(100% - 72px - @size-xl);
+  }
+
+  &.sidebar-expanded {
+    left: calc(228px + @padding-md);
+    width: calc(100% - 228px - @size-xl);
+  }
 
   .lineage-card {
     height: calc(100vh - @om-navbar-height);

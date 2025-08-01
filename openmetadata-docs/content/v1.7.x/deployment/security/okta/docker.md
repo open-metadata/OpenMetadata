@@ -1,5 +1,6 @@
 ---
-title: Okta SSO for Docker
+title: Okta SSO for Docker | OpenMetadata Deployment Guide
+description: Set up Okta authentication in Docker to streamline secure identity workflows, token validation, and backend integration for containers.
 slug: /deployment/security/okta/docker
 collate: false
 ---
@@ -17,7 +18,7 @@ Check the more information about environment variable [here](/deployment/securit
 
 {% codeWithLanguageSelector title="Auth Configuration" id="container-1" languagesArray=["implicit","authcode"] theme="dark" %}
 
-``implicit
+```implicit
 # Implicit Flow
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter

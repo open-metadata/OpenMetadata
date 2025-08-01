@@ -14,7 +14,7 @@ import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
@@ -24,7 +24,6 @@ import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
   TEST_CONNECTION_FAILURE_MESSAGE,
-  TEST_CONNECTION_INFO_MESSAGE,
   TEST_CONNECTION_INITIAL_MESSAGE,
   TEST_CONNECTION_PROGRESS_PERCENTAGE,
   TEST_CONNECTION_SUCCESS_MESSAGE,
@@ -32,6 +31,7 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
 import {
   StatusType,
@@ -41,7 +41,6 @@ import {
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -71,6 +70,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
+  hostIp,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -328,7 +328,15 @@ const TestConnection: FC<TestConnectionProps> = ({
         );
 
         if (!isWorkflowCompleted) {
-          setMessage(TEST_CONNECTION_INFO_MESSAGE);
+          let message = t('message.test-connection-taking-too-long.default', {
+            service_type: serviceType,
+          });
+          if (hostIp) {
+            message += t('message.test-connection-taking-too-long.withIp', {
+              ip: hostIp,
+            });
+          }
+          setMessage(message);
           setIsConnectionTimeout(true);
         }
 
@@ -496,10 +504,12 @@ const TestConnection: FC<TestConnectionProps> = ({
       <TestConnectionModal
         errorMessage={errorMessage}
         handleCloseErrorMessage={handleCloseErrorMessage}
+        hostIp={hostIp}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
         progress={progress}
+        serviceType={serviceType}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={handleCancelTestConnectionModal}

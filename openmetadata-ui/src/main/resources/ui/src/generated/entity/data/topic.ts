@@ -42,10 +42,10 @@ export interface Topic {
      */
     displayName?: string;
     /**
-     * Domain the Topic belongs to. When not set, the Topic inherits the domain from the
+     * Domains the Topic belongs to. When not set, the Topic inherits the domain from the
      * messaging service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -222,6 +222,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -343,9 +344,6 @@ export enum CleanupPolicy {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Topic belongs to. When not set, the Topic inherits the domain from the
- * messaging service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *

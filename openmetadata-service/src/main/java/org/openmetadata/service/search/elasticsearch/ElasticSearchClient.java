@@ -1,14 +1,10 @@
 package org.openmetadata.service.search.elasticsearch;
 
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
@@ -16,8 +12,10 @@ import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.g
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
+import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
@@ -39,23 +37,27 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
+import es.org.elasticsearch.client.ResponseException;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
+import es.org.elasticsearch.client.indices.DeleteDataStreamRequest;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
-import es.org.elasticsearch.common.unit.Fuzziness;
+import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
+import es.org.elasticsearch.index.query.IdsQueryBuilder;
 import es.org.elasticsearch.index.query.MatchQueryBuilder;
 import es.org.elasticsearch.index.query.Operator;
 import es.org.elasticsearch.index.query.PrefixQueryBuilder;
@@ -66,6 +68,7 @@ import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
+import es.org.elasticsearch.index.reindex.ReindexRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
@@ -90,13 +93,12 @@ import es.org.elasticsearch.search.sort.NestedSortBuilder;
 import es.org.elasticsearch.search.sort.SortBuilders;
 import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
-import es.org.elasticsearch.search.suggest.Suggest;
-import es.org.elasticsearch.search.suggest.SuggestBuilder;
-import es.org.elasticsearch.search.suggest.SuggestBuilders;
-import es.org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import es.org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
+import es.org.elasticsearch.xcontent.NamedXContentRegistry;
+import es.org.elasticsearch.xcontent.XContentLocation;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
+import jakarta.json.JsonObject;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,14 +108,15 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -125,8 +128,12 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -148,9 +155,12 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -182,18 +192,16 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
-import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
-public class ElasticSearchClient implements SearchClient {
+public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @SuppressWarnings("deprecated")
   @Getter
@@ -207,6 +215,7 @@ public class ElasticSearchClient implements SearchClient {
   private final String clusterAlias;
 
   private final ESLineageGraphBuilder lineageGraphBuilder;
+  private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -234,6 +243,7 @@ public class ElasticSearchClient implements SearchClient {
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
+    entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
     nlqService = null;
   }
 
@@ -367,15 +377,27 @@ public class ElasticSearchClient implements SearchClient {
   public Response doSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+            request.getIndex(),
+            request.getQuery(),
+            request.getFrom(),
+            request.getSize(),
+            request.getExplain());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
     // Add Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
+
+    // Log the actual query being sent to Elasticsearch
+    LOG.debug(
+        "Elasticsearch query for index '{}' with sanitized query '{}': {}",
+        request.getIndex(),
+        request.getQuery(),
+        searchSourceBuilder.toString());
 
     if (!nullOrEmpty(request.getPostFilter())) {
       try {
@@ -398,60 +420,26 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .mustNot(QueryBuilders.existsQuery("deleted")));
-      searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(DATA_PRODUCT)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+    if (!nullOrEmpty(request.getDeleted())) {
+      if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.existsQuery("deleted"))
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        boolQueryBuilder.should(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("deleted")));
+        searchSourceBuilder.query(boolQueryBuilder);
+      } else {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+      }
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
@@ -476,7 +464,7 @@ public class ElasticSearchClient implements SearchClient {
         new FetchSourceContext(
             request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
-            new String[] {}));
+            request.getExcludeSourceFields().toArray(String[]::new)));
 
     if (request.getTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
@@ -486,13 +474,25 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
 
+    LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
+    LOG.debug("SearchSourceBuilder query: {}", searchSourceBuilder.query());
+    LOG.debug("Full SearchSourceBuilder: {}", searchSourceBuilder);
+
     try {
+      io.micrometer.core.instrument.Timer.Sample searchTimerSample =
+          org.openmetadata.service.monitoring.RequestLatencyContext.startSearchOperation();
 
       SearchResponse searchResponse =
           client.search(
               new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
+
+      // End search operation timing
+      if (searchTimerSample != null) {
+        org.openmetadata.service.monitoring.RequestLatencyContext.endSearchOperation(
+            searchTimerSample);
+      }
 
       if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
@@ -873,8 +873,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) {
     LOG.info("Searching with NLQ: {}", request.getQuery());
     if (nlqService != null) {
       try {
@@ -1310,22 +1309,151 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index)
+  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(index));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
+    BoolQueryBuilder query =
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.wildcardQuery(fieldName, fieldValue))
+            .filter(QueryBuilders.termQuery("deleted", deleted));
+    searchSourceBuilder.query(query);
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
   }
 
   @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    try {
+      // Use the EXACT same search building logic as the regular search method
+      // to ensure consistency across all endpoints
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      ElasticSearchSourceBuilderFactory searchBuilderFactory =
+          new ElasticSearchSourceBuilderFactory(searchSettings);
+
+      // Build the search exactly as doSearch does
+      SearchSourceBuilder searchSourceBuilder =
+          searchBuilderFactory.getSearchSourceBuilder(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // No RBAC for now as per user's comment about it being disabled
+
+      // Apply deleted filter if specified
+      if (request.getDeleted() != null && request.getDeleted()) {
+        QueryBuilder currentQuery = searchSourceBuilder.query();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        if (currentQuery != null) {
+          boolQuery.must(currentQuery);
+        }
+        boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+        searchSourceBuilder.query(boolQuery);
+      }
+
+      // Apply query filter if specified
+      if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
+        try {
+          // Parse the query filter as JSON
+          XContentParser filterParser =
+              XContentType.JSON
+                  .xContent()
+                  .createParser(
+                      NamedXContentRegistry.EMPTY,
+                      LoggingDeprecationHandler.INSTANCE,
+                      request.getQueryFilter());
+          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+          if (filter != null) {
+            QueryBuilder currentQuery = searchSourceBuilder.query();
+            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+            if (currentQuery != null) {
+              boolQuery.must(currentQuery);
+            }
+            boolQuery.must(filter);
+            searchSourceBuilder.query(boolQuery);
+          }
+        } catch (Exception ex) {
+          LOG.warn(
+              "Error parsing query_filter from query parameters, ignoring filter: {}",
+              request.getQueryFilter(),
+              ex);
+        }
+      }
+
+      if (!nullOrEmpty(request.getPostFilter())) {
+        QueryBuilder postFilter = QueryBuilders.queryStringQuery(request.getPostFilter());
+        searchSourceBuilder.postFilter(postFilter);
+      }
+
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.from(0);
+      searchSourceBuilder.trackTotalHits(true);
+
+      // The entityType aggregation is already added by the search builder factory
+      // from the global aggregations configuration, so we don't need to add it again
+
+      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+      es.org.elasticsearch.action.search.SearchRequest esSearchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(resolvedIndex);
+      esSearchRequest.source(searchSourceBuilder);
+
+      LOG.debug("Sending entity type counts request to ElasticSearch: {}", searchSourceBuilder);
+      SearchResponse searchResponse = client.search(esSearchRequest, RequestOptions.DEFAULT);
+
+      // Convert to API response using toString() which returns proper JSON
+      // (not JsonUtils.pojoToJson which fails on internal ES objects)
+      return Response.status(OK).entity(searchResponse.toString()).build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
+  }
+
+  @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    // Check if query is JSON format or simple search query
+    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
+      // Try to parse as JSON first (for backward compatibility with filters)
+      if (request.getQuery().trim().startsWith("{")) {
+        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+      } else {
+        // Handle as a search query (including field:value syntax)
+        ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+        // Use getSearchSourceBuilder which properly handles field:value syntax
+        SearchSourceBuilder tempBuilder =
+            searchBuilderFactory.getSearchSourceBuilder(
+                request.getIndex(), request.getQuery(), 0, 10);
+        searchSourceBuilder.query(tempBuilder.query());
+      }
+    }
+
+    // Apply deleted filter if specified
+    if (request.getDeleted() != null) {
+      QueryBuilder currentQuery = searchSourceBuilder.query();
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+
+      if (currentQuery != null) {
+        boolQuery.must(currentQuery);
+      }
+      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+
+      searchSourceBuilder.query(boolQuery);
+    }
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
@@ -1458,43 +1586,6 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response suggest(SearchRequest request) throws IOException {
-    String fieldName = request.getFieldName();
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder =
-        SuggestBuilders.completionSuggestion(fieldName)
-            .prefix(request.getQuery(), Fuzziness.AUTO)
-            .size(request.getSize())
-            .skipDuplicates(true);
-    if (fieldName.equalsIgnoreCase("suggest")) {
-      suggestionBuilder.contexts(
-          Collections.singletonMap(
-              "deleted",
-              Collections.singletonList(
-                  CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.getDeleted()))
-                      .build())));
-    }
-    SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder
-        .suggest(suggestBuilder)
-        .timeout(new TimeValue(30, TimeUnit.SECONDS))
-        .fetchSource(
-            new FetchSourceContext(
-                request.getFetchSource(),
-                request.getIncludeSourceFields().toArray(String[]::new),
-                new String[] {}));
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-                Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-            .source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    Suggest suggest = searchResponse.getSuggest();
-    return Response.status(OK).entity(suggest.toString()).build();
-  }
-
-  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }
@@ -1511,8 +1602,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-      throws IOException {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
     if (isClientAvailable) {
       BulkRequest bulkRequest = new BulkRequest();
       for (Map<String, String> docAndId : docsAndIds) {
@@ -1802,6 +1892,33 @@ public class ElasticSearchClient implements SearchClient {
               params);
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
+    }
+  }
+
+  @Override
+  public void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds) {
+    String[] queryIDs = entityIds.stream().map(UUID::toString).toArray(String[]::new);
+
+    ReindexRequest request = new ReindexRequest();
+    request.setSourceIndices(sourceIndices.toArray(new String[0]));
+    request.setDestIndex(destinationIndex);
+    request.setDestPipeline(pipelineName);
+
+    // Add query to filter by IDs
+    IdsQueryBuilder idsQuery = QueryBuilders.idsQuery();
+    idsQuery.addIds(queryIDs);
+    request.setSourceQuery(idsQuery);
+
+    try {
+      client.reindex(request, RequestOptions.DEFAULT);
+      LOG.info("Reindexed {} entities of type {} to vector index", entityIds.size(), entityType);
+    } catch (IOException e) {
+      LOG.error("Failed to reindex entities: {}", e.getMessage());
     }
   }
 
@@ -2347,6 +2464,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public RestHighLevelClient getHighLevelClient() {
+    return client;
+  }
+
+  @Override
   public SearchHealthStatus getSearchHealthStatus() throws IOException {
     ClusterHealthRequest request = new ClusterHealthRequest();
     ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
@@ -2389,7 +2511,12 @@ public class ElasticSearchClient implements SearchClient {
         }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+        LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
+        String errorMessage =
+            String.format(
+                "Error: %s.\nCause: %s",
+                ex.getMessage(), ex.getCause() != null ? ex.getCause().toString() : "Unknown");
+        throw new ParsingException(XContentLocation.UNKNOWN, errorMessage, ex);
       }
     }
   }
@@ -2398,5 +2525,531 @@ public class ElasticSearchClient implements SearchClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     return new ElasticSearchSourceBuilderFactory(searchSettings);
+  }
+
+  @Override
+  public List<String> getDataStreams(String prefix) throws IOException {
+    try {
+      // Use low-level client to get data streams
+      Request request = new Request("GET", "/_data_stream/" + prefix);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+
+      // Parse the response body
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode jsonNode = JsonUtils.readTree(responseBody);
+      JsonNode dataStreams = jsonNode.get("data_streams");
+
+      List<String> streams = new ArrayList<>();
+      if (dataStreams != null && dataStreams.isArray()) {
+        for (JsonNode stream : dataStreams) {
+          streams.add(stream.get("name").asText());
+        }
+      }
+
+      return streams;
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
+        return Collections.emptyList();
+      } else {
+        throw new IOException(
+            "Failed to find DataStreams: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to get data streams for prefix {}", prefix, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteDataStream(String dataStreamName) throws IOException {
+    try {
+      DeleteDataStreamRequest request = new DeleteDataStreamRequest(dataStreamName);
+      client.indices().deleteDataStream(request, RequestOptions.DEFAULT);
+      LOG.debug("Deleted data stream {}", dataStreamName);
+    } catch (ElasticsearchStatusException e) {
+      if (e.status().getStatus() == 404) {
+        LOG.warn("Data Stream {} does not exist. Skipping Deletion.", dataStreamName);
+      } else {
+        LOG.error("Failed to delete data stream {}", dataStreamName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete data stream {}", dataStreamName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteILMPolicy(String policyName) throws IOException {
+    try {
+      // Elasticsearch uses the low-level REST client for ILM operations
+      Request request = new Request("DELETE", "/_ilm/policy/" + policyName);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted ILM policy {}", policyName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        LOG.error(
+            "Failed to delete ILM policy {}. Status: {}",
+            policyName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete ILM policy: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        throw new IOException(
+            "Failed to delete ILM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete ILM policy {}", policyName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteIndexTemplate(String templateName) throws IOException {
+    try {
+      // Elasticsearch uses the low-level REST client for index template operations
+      Request request = new Request("DELETE", "/_index_template/" + templateName);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 200) {
+        LOG.debug("Deleted index template {}", templateName);
+      } else if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        LOG.error(
+            "Failed to delete index template {}. Status: {}",
+            templateName,
+            response.getStatusLine().getStatusCode());
+        throw new IOException(
+            "Failed to delete index template: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        throw new IOException(
+            "Failed to delete index template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index template {}", templateName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    try {
+      Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
+        return;
+      }
+      if (response.getStatusLine().getStatusCode() != 200) {
+        throw new IOException(
+            "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
+      }
+      LOG.info("Successfully deleted component template: {}", componentTemplateName);
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to delete component template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Error deleting component template: {}", componentTemplateName, e);
+      throw new IOException("Failed to delete component template: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    try {
+      // 1. Get all indices matching the pattern
+      Request catRequest = new Request("GET", "/_cat/indices/" + indexPattern);
+      catRequest.addParameter("format", "json");
+      es.org.elasticsearch.client.Response catResponse =
+          client.getLowLevelClient().performRequest(catRequest);
+      String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
+      com.fasterxml.jackson.databind.JsonNode indices = JsonUtils.readTree(responseBody);
+      if (!indices.isArray()) {
+        LOG.warn("No indices found matching pattern: {}", indexPattern);
+        return;
+      }
+      for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
+        String indexName = indexNode.get("index").asText();
+        try {
+          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
+          putSettings.setJsonEntity("{\"index.lifecycle.name\": null}");
+          es.org.elasticsearch.client.Response putResponse =
+              client.getLowLevelClient().performRequest(putSettings);
+          if (putResponse.getStatusLine().getStatusCode() == 200) {
+            LOG.info("Detached ILM policy from index: {}", indexName);
+          } else {
+            LOG.warn(
+                "Failed to detach ILM policy from index: {}. Status: {}",
+                indexName,
+                putResponse.getStatusLine().getStatusCode());
+          }
+        } catch (Exception e) {
+          LOG.error("Error detaching ILM policy from index: {}", indexName, e);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Error detaching ILM policy from indexes matching pattern: {}", indexPattern, e);
+      throw new IOException("Failed to detach ILM policy from indexes: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    try {
+      // 1. Get the existing component template
+      Request getRequest = new Request("GET", "/_component_template/" + componentTemplateName);
+      es.org.elasticsearch.client.Response getResponse =
+          client.getLowLevelClient().performRequest(getRequest);
+      String responseBody = org.apache.http.util.EntityUtils.toString(getResponse.getEntity());
+      com.fasterxml.jackson.databind.JsonNode templateNode = JsonUtils.readTree(responseBody);
+
+      if (!templateNode.has("component_templates")
+          || templateNode.get("component_templates").isEmpty()) {
+        LOG.warn("Component template {} does not exist", componentTemplateName);
+        return;
+      }
+
+      // 2. Update the template in place
+      com.fasterxml.jackson.databind.JsonNode template =
+          templateNode.get("component_templates").get(0).get("component_template");
+      if (template.has("template") && template.get("template").has("settings")) {
+        ((com.fasterxml.jackson.databind.node.ObjectNode) template.get("template").get("settings"))
+            .put("index.lifecycle.name", (String) null);
+      }
+
+      // 3. Update the component template
+      Request putRequest = new Request("PUT", "/_component_template/" + componentTemplateName);
+      putRequest.setJsonEntity(template.toString());
+      es.org.elasticsearch.client.Response putResponse =
+          client.getLowLevelClient().performRequest(putRequest);
+
+      if (putResponse.getStatusLine().getStatusCode() == 200) {
+        LOG.info(
+            "Successfully removed ILM policy from component template: {}", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to update component template: "
+                + putResponse.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        throw new IOException(
+            "Failed to remove ILM from component template: "
+                + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing ILM policy from component template: {}", componentTemplateName, e);
+      throw new IOException(
+          "Failed to remove ILM policy from component template: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/stats");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> nodesStats() throws IOException {
+    try {
+      Request request = new Request("GET", "/_nodes/stats");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public Map<String, Object> clusterSettings() throws IOException {
+    try {
+      Request request = new Request("GET", "/_cluster/settings");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+      return JsonUtils.readValue(responseBody, Map.class);
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    if (isClientAvailable) {
+      // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
+      PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
+
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      updateByQueryRequest.setQuery(prefixQuery);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("oldParentFQN", oldParentFQN);
+      params.put("newParentFQN", newParentFQN);
+
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE,
+              Script.DEFAULT_SCRIPT_LANG,
+              UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT,
+              params);
+
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateElasticSearchByQuery(updateByQueryRequest);
+        LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
+      } catch (Exception e) {
+        LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("columnUpdates", originalUpdatedColumnFqnMap);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateElasticSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("deletedFQNs", deletedColumns);
+
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      Script inlineScript =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
+      updateByQueryRequest.setScript(inlineScript);
+
+      try {
+        updateElasticSearchByQuery(updateByQueryRequest);
+      } catch (Exception e) {
+        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
+      }
+    }
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    int upstreamDepth = entityRelationshipRequest.getUpstreamDepth();
+    int downstreamDepth = entityRelationshipRequest.getDownstreamDepth();
+    SearchEntityRelationshipResult result =
+        entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .DOWNSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .DOWNSTREAM)));
+    SearchEntityRelationshipResult upstreamResult =
+        entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .UPSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .UPSTREAM)));
+
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        org.openmetadata.schema.type.entityRelationship.NodeInformation existingNode =
+            upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
+    }
+
+    // since paging from downstream is merged into upstream, we can just put the upstream result
+    result.getNodes().putAll(upstreamResult.getNodes());
+    result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
+    return result;
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    Set<String> directionValue =
+        getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+    entityRelationshipRequest.setDirectionValue(directionValue);
+
+    entityRelationshipRequest =
+        entityRelationshipRequest
+            .withUpstreamDepth(entityRelationshipRequest.getUpstreamDepth() + 1)
+            .withDownstreamDepth(entityRelationshipRequest.getDownstreamDepth() + 1);
+
+    if (entityRelationshipRequest.getDirection()
+        == org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection.DOWNSTREAM) {
+      return entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+          entityRelationshipRequest);
+    } else {
+      directionValue = getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+      entityRelationshipRequest.setDirectionValue(directionValue);
+      return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+          entityRelationshipRequest);
+    }
+  }
+
+  @Override
+  public SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException {
+    SearchSchemaEntityRelationshipResult result = new SearchSchemaEntityRelationshipResult();
+    result.setData(
+        new SearchEntityRelationshipResult()
+            .withNodes(new TreeMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>()));
+    SearchEntityRelationshipRequest request =
+        new SearchEntityRelationshipRequest()
+            .withUpstreamDepth(0) // Node + Immediate Upstream
+            .withDownstreamDepth(1) // Node + Immediate Downstream
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withLayerFrom(from)
+            .withLayerSize(size)
+            .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields));
+    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
+    String tableIndex = Entity.getSearchRepository().getIndexOrAliasName(TABLE_SEARCH_INDEX);
+    SearchResponse searchResponse =
+        EsUtils.searchEntitiesWithLimitOffset(tableIndex, finalQueryFilter, offset, limit, deleted);
+    int total = 0;
+    if (searchResponse == null
+        || searchResponse.getHits() == null
+        || searchResponse.getHits().getTotalHits() == null) {
+      result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
+      return result;
+    }
+    for (SearchHit hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> source = hit.getSourceAsMap();
+      Object fqn = source.get(FQN_FIELD);
+      if (fqn != null) {
+        String fqnString = fqn.toString();
+        request.withFqn(fqnString);
+        SearchEntityRelationshipResult tableER = this.searchEntityRelationship(request);
+        // Find the table Node
+        Map.Entry<String, org.openmetadata.schema.type.entityRelationship.NodeInformation>
+            tableNode =
+                tableER.getNodes().entrySet().stream()
+                    .filter(e -> fqn.toString().equals(e.getKey()))
+                    .findFirst()
+                    .orElse(null);
+        result
+            .getData()
+            .getNodes()
+            .putIfAbsent(fqnString, Objects.requireNonNull(tableNode).getValue());
+        result.getData().getUpstreamEdges().putAll(tableER.getUpstreamEdges());
+        result.getData().getDownstreamEdges().putAll(tableER.getDownstreamEdges());
+      }
+    }
+    total = (int) searchResponse.getHits().getTotalHits().value;
+    result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
+    return result;
+  }
+
+  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
+    String schemaFqnWildcardClause =
+        String.format(
+            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
+            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
+    String innerBoolFilter;
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(queryFilter)
+        && !"{}".equals(queryFilter)) {
+      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
+    } else {
+      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
+    }
+    return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
   }
 }

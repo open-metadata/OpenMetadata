@@ -10,8 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.data-quality-page-left-panel-menu {
-  &.ant-menu-root.ant-menu-inline {
-    margin-top: 16px;
+
+@import (reference) '../../styles/variables.less';
+
+.data-quality-page-tabs.ant-tabs.tabs-new {
+  .ant-tabs-tabpane {
+    margin-top: @size-md;
+    background-color: unset;
+  }
+}
+
+.data-quality-page {
+  .data-assets-coverage-icon,
+  .all-tests-icon {
+    &.icon-container {
+      background-color: @blue-13;
+      svg {
+        color: @blue-500;
+      }
+    }
+  }
+
+  .health-check-icon {
+    &.icon-container {
+      background-color: @green-12;
+      svg {
+        color: @green-500;
+      }
+    }
   }
 }

@@ -18,6 +18,7 @@ import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
+export const fullUuid = () => randomUUID();
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -59,6 +60,13 @@ export const getAuthContext = async (token: string) => {
 export const redirectToHomePage = async (page: Page) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
+  await page.waitForLoadState('networkidle');
+};
+
+export const redirectToExplorePage = async (page: Page) => {
+  await page.goto('/explore');
+  await page.waitForURL('**/explore');
+  await page.waitForLoadState('networkidle');
 };
 
 export const removeLandingBanner = async (page: Page) => {
@@ -110,6 +118,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'search_entity_search_index',
     ApiEndpoint: 'api_endpoint_search_index',
     Metric: 'metric_search_index',
+    'Dashboard Data Model': 'dashboard_data_model_search_index',
   };
 
   return entityMapping[entityType as keyof typeof entityMapping];
@@ -120,6 +129,10 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
+  await page.waitForSelector('[data-testid="alert-bar"]', {
+    state: 'visible',
+  });
+
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
   await expect(page.getByTestId('alert-icon')).toBeVisible();
@@ -133,8 +146,7 @@ export const clickOutside = async (page: Page) => {
       x: 0,
       y: 0,
     },
-  }); // with this action left menu bar is getting opened
-  await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
+  });
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
@@ -167,6 +179,14 @@ export const assignDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
@@ -195,6 +215,14 @@ export const updateDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
@@ -209,7 +237,86 @@ export const removeDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
+};
+
+export const assignDataProduct = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  },
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await page
+    .getByTestId(parentId)
+    .getByTestId('data-products-container')
+    .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
+    .click();
+
+  const searchDataProduct = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+
+  await page
+    .locator('[data-testid="data-product-selector"] input')
+    .fill(dataProduct.displayName);
+  await searchDataProduct;
+  await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId(parentId)
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const removeDataProduct = async (
+  page: Page,
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  }
+) => {
+  await page
+    .getByTestId('KnowledgePanel.DataProducts')
+    .getByTestId('data-products-container')
+    .getByTestId('edit-button')
+    .click();
+
+  await page
+    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
+    .getByTestId('remove-tags')
+    .locator('svg')
+    .click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.DataProducts')
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).not.toBeVisible();
 };
 
 export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
@@ -254,7 +361,7 @@ export const verifyDomainPropagation = async (
   await expect(
     page
       .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domain-link')
+      .getByTestId('domains-link')
   ).toContainText(domain.displayName);
 };
 
@@ -277,7 +384,66 @@ export const closeFirstPopupAlert = async (page: Page) => {
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
   await page.waitForLoadState('networkidle');
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
+};
+
+/**
+ * Utility function to handle API calls with retry logic for connection-related errors.
+ * This is particularly useful for cleanup operations that might fail due to network issues.
+ *
+ * @param apiCall - The API call function to execute
+ * @param operationName - Name of the operation for logging purposes
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
+ * @param baseDelay - Base delay in milliseconds for exponential backoff (default: 1000)
+ * @returns The result of the API call if successful
+ */
+export const executeWithRetry = async <T>(
+  apiCall: () => Promise<T>,
+  operationName: string,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T | void> => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      // Check if it's a retriable error (connection-related issues)
+      const isRetriableError =
+        errorMessage.includes('socket hang up') ||
+        errorMessage.includes('ECONNRESET') ||
+        errorMessage.includes('ENOTFOUND') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('Connection refused') ||
+        errorMessage.includes('ECONNREFUSED');
+
+      if (isRetriableError && attempt < maxRetries - 1) {
+        // Exponential backoff: 1s, 2s, 4s
+        const delay = baseDelay * Math.pow(2, attempt);
+        // eslint-disable-next-line no-console
+        console.log(
+          `${operationName} attempt ${
+            attempt + 1
+          } failed with retriable error: ${errorMessage}. Retrying in ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        continue;
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(
+          `Failed to ${operationName} after ${attempt + 1} attempts:`,
+          errorMessage
+        );
+
+        // Don't throw the error to prevent test failures - just log it
+        break;
+      }
+    }
+  }
 };

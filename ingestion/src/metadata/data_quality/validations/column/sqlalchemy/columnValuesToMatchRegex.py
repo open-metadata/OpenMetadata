@@ -76,7 +76,7 @@ class ColumnValuesToMatchRegexValidator(
             res = dict(
                 self.runner.dispatch_query_select_first(
                     Metrics.COUNT(column).fn(),
-                    regex_count,
+                    regex_count_fn,
                 )
             )
 

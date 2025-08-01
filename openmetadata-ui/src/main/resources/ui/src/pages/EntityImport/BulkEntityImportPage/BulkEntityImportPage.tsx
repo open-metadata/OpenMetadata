@@ -10,31 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import ReactDataGrid from '@inovua/reactdatagrid-community';
-import '@inovua/reactdatagrid-community/index.css';
-import {
-  TypeColumn,
-  TypeComputedProps,
-} from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import React, {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { capitalize, isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import DataGrid, { Column } from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
-import {
-  CSVImportAsyncWebsocketResponse,
-  CSVImportJobType,
-} from '../../../components/BulkImport/BulkEntityImport.interface';
 import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -42,7 +27,7 @@ import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb
 import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
-import { UploadFile } from '../../../components/UploadFile/UploadFile';
+import UploadFile from '../../../components/UploadFile/UploadFile';
 import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
@@ -52,31 +37,41 @@ import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSoc
 import { EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { useFqn } from '../../../hooks/useFqn';
-import {
-  importEntityInCSVFormat,
-  importServiceInCSVFormat,
-} from '../../../rest/importExportAPI';
+import { useGridEditController } from '../../../hooks/useGridEditController';
 import {
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../../utils/CSV/CSV.utils';
+import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getBulkEntityBreadcrumbList,
   getImportedEntityType,
+  getImportValidateAPIEntityType,
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './bulk-entity-import-page.less';
-
-let inEdit = false;
+import {
+  CSVImportAsyncWebsocketResponse,
+  CSVImportJobType,
+} from './BulkEntityImportPage.interface';
 
 const BulkEntityImportPage = () => {
   const { socket } = useWebSocketConnector();
   const [activeAsyncImportJob, setActiveAsyncImportJob] =
     useState<CSVImportJobType>();
   const activeAsyncImportJobRef = useRef<CSVImportJobType>();
+  // This ref is used to track the bulk action processing for the Current/Active Page or Tab
+  const isBulkActionProcessingRef = useRef<{
+    isProcessing: boolean;
+    entityType?: EntityType;
+  }>({
+    isProcessing: false,
+    entityType: undefined,
+  });
 
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
@@ -85,20 +80,44 @@ const BulkEntityImportPage = () => {
 
   const location = useLocation();
   const { t } = useTranslation();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();
-  const [columns, setColumns] = useState<TypeColumn[]>([]);
+  const [columns, setColumns] = useState<Column<Record<string, string>[]>[]>(
+    []
+  );
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
-  const history = useHistory();
+  const navigate = useNavigate();
   const { readString } = usePapaParse();
-  const [validateCSVData, setValidateCSVData] =
-    useState<{ columns: TypeColumn[]; dataSource: Record<string, string>[] }>();
-  const [gridRef, setGridRef] = useState<
-    MutableRefObject<TypeComputedProps | null>
-  >({ current: null });
+  const [validateCSVData, setValidateCSVData] = useState<{
+    columns: Column<Record<string, string>>[];
+    dataSource: Record<string, string>[];
+  }>();
+
   const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+
+  const filterColumns = useMemo(
+    () =>
+      columns?.filter(
+        (col) =>
+          !csvUtilsClassBase.hideImportsColumnList().includes(col.key ?? '')
+      ),
+    [columns]
+  );
+
+  const {
+    handleCopy,
+    handlePaste,
+    pushToUndoStack,
+    handleOnRowsChange,
+    setGridContainer,
+    handleAddRow,
+  } = useGridEditController({
+    dataSource,
+    setDataSource,
+    columns: filterColumns,
+  });
 
   const fetchEntityData = useCallback(async () => {
     try {
@@ -107,7 +126,7 @@ const BulkEntityImportPage = () => {
         fqn
       );
       setEntity(response);
-    } catch (error) {
+    } catch {
       // not show error here
     }
   }, [entityType, fqn]);
@@ -141,64 +160,46 @@ const BulkEntityImportPage = () => {
     activeAsyncImportJobRef.current = undefined;
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
-  const focusToGrid = useCallback(() => {
-    setGridRef((ref) => {
-      ref.current?.focus();
-
-      return ref;
-    });
-  }, [setGridRef]);
-
   const onCSVReadComplete = useCallback(
     (results: { data: string[][] }) => {
       // results.data is returning data with unknown type
+      const cellEditable = true;
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         results.data as string[][],
-        importedEntityType
+        importedEntityType,
+        cellEditable
       );
       setDataSource(dataSource);
       setColumns(columns);
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
-      setTimeout(focusToGrid, 500);
     },
-    [setDataSource, setColumns, handleActiveStepChange, focusToGrid]
+    [setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
     async (e: ProgressEvent<FileReader>) => {
       try {
-        const result = e.target?.result as string;
-        const validationResponse = await validateCsvString(
-          result,
+        isBulkActionProcessingRef.current = {
+          isProcessing: true,
           entityType,
-          fqn,
-          isBulkEdit
-        );
+        };
+        const result = e.target?.result as string;
 
-        const jobData: CSVImportJobType = {
-          ...validationResponse,
+        const initialLoadJobData: CSVImportJobType = {
           type: 'initialLoad',
           initialResult: result,
         };
 
-        setActiveAsyncImportJob(jobData);
-        activeAsyncImportJobRef.current = jobData;
+        setActiveAsyncImportJob(initialLoadJobData);
+        activeAsyncImportJobRef.current = initialLoadJobData;
+
+        await validateCsvString(result, entityType, fqn, isBulkEdit);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
     [onCSVReadComplete, entityType, fqn]
-  );
-
-  const onEditComplete = useCallback(
-    ({ value, columnId, rowId }) => {
-      const data = [...dataSource];
-      data[rowId][columnId] = value;
-
-      setDataSource(data);
-    },
-    [dataSource]
   );
 
   const handleBack = () => {
@@ -216,109 +217,32 @@ const BulkEntityImportPage = () => {
       // Call the validate API
       const csvData = getCSVStringFromColumnsAndDataSource(columns, dataSource);
 
-      const api =
-        entityType === EntityType.DATABASE_SERVICE
-          ? importServiceInCSVFormat
-          : importEntityInCSVFormat;
+      const api = getImportValidateAPIEntityType(entityType);
 
-      const response = await api({
+      isBulkActionProcessingRef.current = {
+        isProcessing: true,
+        entityType,
+      };
+
+      const validateLoadData: CSVImportJobType = {
+        type: 'onValidate',
+      };
+
+      setActiveAsyncImportJob(validateLoadData);
+      activeAsyncImportJobRef.current = validateLoadData;
+
+      await api({
         entityType,
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
         recursive: !isBulkEdit,
       });
-
-      const jobData: CSVImportJobType = {
-        ...response,
-        type: 'onValidate',
-      };
-
-      setActiveAsyncImportJob(jobData);
-      activeAsyncImportJobRef.current = jobData;
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
     }
   };
-
-  const onEditStart = () => {
-    inEdit = true;
-  };
-
-  const onEditStop = () => {
-    requestAnimationFrame(() => {
-      inEdit = false;
-      gridRef.current?.focus();
-    });
-  };
-
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (inEdit) {
-      if (event.key === 'Escape') {
-        const [rowIndex, colIndex] = gridRef.current?.computedActiveCell ?? [
-          0, 0,
-        ];
-        const column = gridRef.current?.getColumnBy(colIndex);
-
-        gridRef.current?.cancelEdit?.({
-          rowIndex,
-          columnId: column?.name ?? '',
-        });
-      }
-
-      return;
-    }
-    const grid = gridRef.current;
-    if (!grid) {
-      return;
-    }
-    let [rowIndex, colIndex] = grid.computedActiveCell ?? [0, 0];
-
-    if (event.key === ' ' || event.key === 'Enter') {
-      const column = grid.getColumnBy(colIndex);
-      grid.startEdit?.({ columnId: column.name ?? '', rowIndex });
-      event.preventDefault();
-
-      return;
-    }
-    if (event.key !== 'Tab') {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-
-    const direction = event.shiftKey ? -1 : 1;
-
-    const columns = grid.visibleColumns;
-    const rowCount = grid.count;
-
-    colIndex += direction;
-    if (colIndex === -1) {
-      colIndex = columns.length - 1;
-      rowIndex -= 1;
-    }
-    if (colIndex === columns.length) {
-      rowIndex += 1;
-      colIndex = 0;
-    }
-    if (rowIndex < 0 || rowIndex === rowCount) {
-      return;
-    }
-
-    grid?.setActiveCell([rowIndex, colIndex]);
-  };
-
-  const handleAddRow = useCallback(() => {
-    setDataSource((data) => {
-      setTimeout(() => {
-        gridRef.current?.scrollToId(data.length + '');
-        gridRef.current?.focus();
-      }, 1);
-
-      return [...data, { id: data.length + '' }];
-    });
-  }, [gridRef]);
 
   const handleRetryCsvUpload = () => {
     setValidationData(undefined);
@@ -341,7 +265,8 @@ const BulkEntityImportPage = () => {
               setValidateCSVData(
                 getEntityColumnsAndDataSourceFromCSV(
                   results.data as string[][],
-                  importedEntityType
+                  importedEntityType,
+                  false
                 )
               );
             },
@@ -351,11 +276,11 @@ const BulkEntityImportPage = () => {
         } else {
           showSuccessToast(
             t('message.entity-details-updated', {
-              entityType,
+              entityType: capitalize(entityType),
               fqn,
             })
           );
-          history.push(entityUtilClassBase.getEntityLink(entityType, fqn));
+          navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
           handleResetImportJob();
           setIsValidating(false);
         }
@@ -370,7 +295,8 @@ const BulkEntityImportPage = () => {
             setValidateCSVData(
               getEntityColumnsAndDataSourceFromCSV(
                 results.data as string[][],
-                importedEntityType
+                importedEntityType,
+                false
               )
             );
           },
@@ -386,7 +312,6 @@ const BulkEntityImportPage = () => {
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
-      history,
     ]
   );
 
@@ -396,8 +321,42 @@ const BulkEntityImportPage = () => {
         return;
       }
 
-      const activeImportJob = activeAsyncImportJobRef.current;
+      // If the job is started, then save the job data and message to the active job.
+      // This will help in case of restAPI response, didn't come in time.
+      if (
+        websocketResponse.status === 'STARTED' &&
+        isBulkActionProcessingRef.current.isProcessing &&
+        isBulkActionProcessingRef.current.entityType === entityType
+      ) {
+        const processedStartedResponse = {
+          ...websocketResponse,
+          message: t('message.import-data-in-progress'),
+        };
 
+        setActiveAsyncImportJob((job) => {
+          if (!job) {
+            return;
+          }
+
+          return {
+            ...job,
+            ...processedStartedResponse,
+          };
+        });
+
+        activeAsyncImportJobRef.current = {
+          ...(activeAsyncImportJobRef.current as CSVImportJobType),
+          ...processedStartedResponse,
+        };
+
+        isBulkActionProcessingRef.current = {
+          isProcessing: false,
+          entityType: undefined,
+        };
+
+        return;
+      }
+      const activeImportJob = activeAsyncImportJobRef.current;
       if (websocketResponse.jobId === activeImportJob?.jobId) {
         setActiveAsyncImportJob((job) => {
           if (!job) {
@@ -452,12 +411,13 @@ const BulkEntityImportPage = () => {
       }
     },
     [
-      activeStepRef,
+      isBulkActionProcessingRef,
       activeAsyncImportJobRef,
       onCSVReadComplete,
       setActiveAsyncImportJob,
       handleResetImportJob,
       handleActiveStepChange,
+      handleImportWebsocketResponseWithActiveStep,
     ]
   );
 
@@ -479,9 +439,38 @@ const BulkEntityImportPage = () => {
     }
 
     return () => {
-      socket && socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
+      socket?.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
+      handleResetImportJob();
     };
   }, [socket]);
+
+  /*
+    Owner dropdown uses <ProfilePicture /> which uses useUserProfile hook
+    useUserProfile hook uses useApplicationStore hook
+    Updating store will trigger re-render of the component
+    This will cause the owner dropdown or full grid to re-render
+  */
+  const editDataGrid = useMemo(() => {
+    return (
+      <div className="om-rdg" ref={setGridContainer}>
+        <DataGrid
+          className="rdg-light"
+          columns={filterColumns}
+          rows={dataSource}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onRowsChange={handleOnRowsChange}
+        />
+      </div>
+    );
+  }, [
+    columns,
+    dataSource,
+    handleCopy,
+    handlePaste,
+    handleOnRowsChange,
+    setGridContainer,
+  ]);
 
   return (
     <PageLayoutV1
@@ -494,19 +483,19 @@ const BulkEntityImportPage = () => {
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
             breadcrumbList={breadcrumbList}
-            columns={columns}
+            columns={filterColumns as Column<Record<string, string>[]>[]}
             dataSource={dataSource}
             handleBack={handleBack}
+            handleCopy={handleCopy}
+            handleOnRowsChange={handleOnRowsChange}
+            handlePaste={handlePaste}
             handleValidate={handleValidate}
             isValidating={isValidating}
-            setGridRef={setGridRef}
+            pushToUndoStack={pushToUndoStack}
+            setGridContainer={setGridContainer}
             validateCSVData={validateCSVData}
             validationData={validationData}
             onCSVReadComplete={onCSVReadComplete}
-            onEditComplete={onEditComplete}
-            onEditStart={onEditStart}
-            onEditStop={onEditStop}
-            onKeyDown={onKeyDown}
           />
         ) : (
           <>
@@ -569,24 +558,7 @@ const BulkEntityImportPage = () => {
                   )}
                 </>
               )}
-              {activeStep === 1 && (
-                <ReactDataGrid
-                  editable
-                  columns={columns}
-                  dataSource={dataSource}
-                  defaultActiveCell={[0, 0]}
-                  handle={setGridRef}
-                  idProperty="id"
-                  loading={isValidating}
-                  minRowHeight={30}
-                  showZebraRows={false}
-                  style={{ height: 'calc(100vh - 245px)' }}
-                  onEditComplete={onEditComplete}
-                  onEditStart={onEditStart}
-                  onEditStop={onEditStop}
-                  onKeyDown={onKeyDown}
-                />
-              )}
+              {activeStep === 1 && editDataGrid}
               {activeStep === 2 && validationData && (
                 <Row gutter={[16, 16]}>
                   <Col span={24}>
@@ -595,12 +567,13 @@ const BulkEntityImportPage = () => {
 
                   <Col span={24}>
                     {validateCSVData && (
-                      <ReactDataGrid
-                        idProperty="id"
-                        loading={isValidating}
-                        style={{ height: 'calc(100vh - 300px)' }}
-                        {...validateCSVData}
-                      />
+                      <div className="om-rdg">
+                        <DataGrid
+                          className="rdg-light"
+                          columns={validateCSVData.columns}
+                          rows={validateCSVData.dataSource}
+                        />
+                      </div>
                     )}
                   </Col>
                 </Row>

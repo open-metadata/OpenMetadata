@@ -42,37 +42,11 @@
     }
   }
 
-  & + .refresh-alert {
-    width: 470px;
-    bottom: 30px;
-    align-items: center;
-    z-index: 9999;
-    margin: 0 auto;
-    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
-    border-radius: 10px;
-    border: 1px solid @text-color;
-    background: @text-color;
-    color: @white;
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-
-    .ant-alert-message {
-      color: @white;
-    }
-
-    .ant-alert-description {
-      color: @grey-4;
-    }
-
-    .ant-alert-content {
-      border-right: 1px solid @white;
-    }
-
-    .ant-btn {
-      font-weight: 700;
-      color: @white;
-    }
+  .navbar-title {
+    font-size: 18px;
+    line-height: 32px;
+    font-weight: 600;
+    color: @grey-700;
   }
 }
 
@@ -117,5 +91,38 @@
     color: @primary-color;
     border: 1px solid @primary-color;
     background-color: @primary-button-background;
+  }
+}
+
+.ant-alert.ant-alert-info.refresh-alert {
+  width: 470px;
+  bottom: 30px;
+  align-items: center;
+  z-index: 9999;
+  margin: 0 auto;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  border: 1px solid @text-color;
+  background: @text-color;
+  color: @white;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+
+  .ant-alert-message {
+    color: @white;
+  }
+
+  .ant-alert-description {
+    color: @grey-4;
+  }
+
+  .ant-alert-content {
+    border-right: 1px solid @white;
+  }
+
+  .ant-btn {
+    font-weight: 700;
+    color: @white;
   }
 }

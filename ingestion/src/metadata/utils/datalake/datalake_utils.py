@@ -66,6 +66,7 @@ def fetch_dataframe(
                     return df_wrapper.dataframes, df_wrapper.raw_data
                 return df_wrapper.dataframes
             except Exception as err:
+                logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
@@ -131,7 +132,13 @@ class DataFrameColumnParser:
             shuffle: whether to shuffle the dataframe list or not if sample is True. (default: False)
         """
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
-        if file_type == SupportedTypes.PARQUET:
+        if file_type in {
+            SupportedTypes.PARQUET,
+            SupportedTypes.PARQUET_PQ,
+            SupportedTypes.PARQUET_PQT,
+            SupportedTypes.PARQUET_PARQ,
+            SupportedTypes.PARQUET_SNAPPY,
+        }:
             parser = ParquetDataFrameColumnParser(data_frame)
         elif file_type in {
             SupportedTypes.JSON,
@@ -248,7 +255,7 @@ class GenericDataFrameColumnParser:
             data_frame (DataFrame)
             column_name (string)
         """
-        data_type = None
+        data_type = None  # default to string
         try:
             if data_frame[column_name].dtypes.name == "object" and any(
                 data_frame[column_name].dropna().values
@@ -310,7 +317,7 @@ class GenericDataFrameColumnParser:
                 f"Failed to distinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
             )
             logger.debug(traceback.format_exc())
-        return data_type
+        return data_type or DataType.STRING
 
     @classmethod
     def unique_json_structure(cls, dicts: List[Dict]) -> Dict:

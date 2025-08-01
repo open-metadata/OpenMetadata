@@ -26,24 +26,24 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import javax.validation.Valid;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.PreviewSearchRequest;
@@ -114,10 +114,9 @@ public class SearchResource {
           @QueryParam("index")
           String index,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
-          @DefaultValue("false")
           @QueryParam("deleted")
           @Deprecated(forRemoval = true)
-          boolean deleted,
+          Boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
           @QueryParam("from")
@@ -167,6 +166,11 @@ public class SearchResource {
           List<String> includeSourceFields,
       @Parameter(
               description =
+                  "Exclude specified fields from the document body for each hit. Use this to exclude heavy fields like 'columns' for better performance")
+          @QueryParam("exclude_source_fields")
+          List<String> excludeSourceFields,
+      @Parameter(
+              description =
                   "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
@@ -203,6 +207,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
+            .withExcludeSourceFields(excludeSourceFields)
             .withIsHierarchy(getHierarchy)
             .withDomains(domains)
             .withApplyDomainFilter(
@@ -321,6 +326,9 @@ public class SearchResource {
       @Parameter(description = "Get only selected fields of the document body")
           @QueryParam("include_source_fields")
           List<String> includeSourceFields,
+      @Parameter(description = "Exclude specified fields from the document body for each hit")
+          @QueryParam("exclude_source_fields")
+          List<String> excludeSourceFields,
       @Parameter(description = "Fetch results in hierarchical order")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
@@ -352,6 +360,7 @@ public class SearchResource {
             .withDeleted(deleted)
             .withSortOrder(sortOrder)
             .withIncludeSourceFields(includeSourceFields)
+            .withExcludeSourceFields(excludeSourceFields)
             .withIsHierarchy(getHierarchy)
             .withDomains(domains)
             .withApplyDomainFilter(
@@ -409,10 +418,14 @@ public class SearchResource {
       @Parameter(description = "Search Index name, defaults to table_search_index")
           @DefaultValue("table_search_index")
           @QueryParam("index")
-          String index)
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @DefaultValue("false")
+          @QueryParam("deleted")
+          boolean deleted)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index);
+    return searchRepository.searchByField(fieldName, fieldValue, index, deleted);
   }
 
   @GET
@@ -436,74 +449,6 @@ public class SearchResource {
       throws IOException {
 
     return searchRepository.searchBySourceUrl(sourceUrl);
-  }
-
-  @GET
-  @Path("/suggest")
-  @Operation(
-      operationId = "getSuggestedEntities",
-      summary = "Suggest entities",
-      description = "Get suggested entities used for auto-completion.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Table Suggestion API",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Suggest.class)))
-      })
-  public Response suggest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Suggest API can be used to auto-fill the entities name while "
-                      + "use is typing search text <br/>"
-                      + " 1. To get suggest results pass q=us or q=user etc.. <br/>"
-                      + " 2. Do not add any wild-cards such as * like in search api <br/>"
-                      + " 3. suggest api is a prefix suggestion <br/>",
-              required = true)
-          @QueryParam("q")
-          String query,
-      @DefaultValue("table_search_index") @QueryParam("index") String index,
-      @Parameter(
-              description =
-                  "Field in object containing valid suggestions. Defaults to 'suggest`. "
-                      + "All indices has a `suggest` field, only some indices have other `suggest_*` fields.")
-          @DefaultValue("suggest")
-          @QueryParam("field")
-          String fieldName,
-      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
-          @DefaultValue("10")
-          @QueryParam("size")
-          int size,
-      @Parameter(description = "Get document body for each hit")
-          @DefaultValue("true")
-          @QueryParam("fetch_source")
-          boolean fetchSource,
-      @Parameter(
-              description =
-                  "Get only selected fields of the document body for each hit. Empty value will return all fields")
-          @QueryParam("include_source_fields")
-          List<String> includeSourceFields,
-      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
-      throws IOException {
-
-    if (nullOrEmpty(query)) {
-      query = "*";
-    }
-
-    SearchRequest request =
-        new SearchRequest()
-            .withQuery(query)
-            .withSize(size)
-            .withIndex(index)
-            .withFieldName(fieldName)
-            .withDeleted(deleted)
-            .withFetchSource(fetchSource)
-            .withIncludeSourceFields(includeSourceFields);
-    return searchRepository.suggest(request);
   }
 
   @GET
@@ -591,5 +536,67 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     return searchRepository.aggregate(aggregationRequest);
+  }
+
+  @GET
+  @Path("/entityTypeCounts")
+  @Operation(
+      operationId = "getEntityTypeCounts",
+      summary = "Get exact entity type counts",
+      description =
+          "Get exact counts of entities by type for a given search query. This endpoint provides accurate counts when searching across all entity types.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity type counts response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response getEntityTypeCounts(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query text", required = true) @QueryParam("q") String query,
+      @Parameter(description = "Index to search in (all, dataAsset, table, etc.)")
+          @DefaultValue("dataAsset")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter)
+      throws IOException {
+
+    if (nullOrEmpty(query)) {
+      query = "*";
+    }
+
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    SearchRequest request =
+        new SearchRequest()
+            .withQuery(query)
+            .withSize(0)
+            .withFrom(0)
+            .withDeleted(deleted)
+            .withFetchSource(false)
+            .withTrackTotalHits(true)
+            .withQueryFilter(queryFilter)
+            .withPostFilter(postFilter)
+            .withDomains(domains);
+
+    return searchRepository.getEntityTypeCounts(request, index);
   }
 }

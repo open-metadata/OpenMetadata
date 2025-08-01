@@ -14,18 +14,13 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -60,7 +55,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -98,7 +93,7 @@ const DataModelsPage = () => {
         dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),
@@ -114,7 +109,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
         // eslint-disable-next-line max-len
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
         include: Include.All,
       });
       setDataModelData(response);
@@ -131,7 +126,7 @@ const DataModelsPage = () => {
       showErrorToast(error as AxiosError);
       setHasError(true);
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN);
       }
     } finally {
       setIsLoading(false);
@@ -217,8 +212,7 @@ const DataModelsPage = () => {
     try {
       const response = await handleUpdateDataModelData(updatedDataModel);
 
-      setDataModelData((prev) => ({
-        ...prev,
+      setDataModelData(() => ({
         ...response,
         ...(key && { [key]: response[key] }),
       }));
@@ -253,7 +247,7 @@ const DataModelsPage = () => {
             TabSpecificField.TAGS,
             TabSpecificField.FOLLOWERS,
             TabSpecificField.VOTES,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
             TabSpecificField.DATA_PRODUCTS,
           ],
           include: Include.All,
@@ -265,14 +259,17 @@ const DataModelsPage = () => {
     }
   };
 
-  const updateDataModelDetailsState = useCallback((data) => {
-    const updatedData = data as DashboardDataModel;
+  const updateDataModelDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as DashboardDataModel;
 
-    setDataModelData((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setDataModelData((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   useEffect(() => {
     if (hasViewPermission) {
@@ -298,7 +295,15 @@ const DataModelsPage = () => {
   }
 
   if (!hasViewPermission && !isLoading) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-model'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

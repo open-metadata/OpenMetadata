@@ -51,14 +51,18 @@ export interface Database {
      */
     displayName?: string;
     /**
-     * Domain the Database belongs to. When not set, the Database inherits the domain from the
+     * Domains the Database belongs to. When not set, the Database inherits the domain from the
      * database service it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
+    /**
+     * Followers of this entity.
+     */
+    followers?: EntityReference[];
     /**
      * Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.
      */
@@ -205,6 +209,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }
@@ -318,9 +323,6 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Database belongs to. When not set, the Database inherits the domain from the
- * database service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -578,6 +580,7 @@ export enum DatabaseServiceType {
     SapHana = "SapHana",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
+    Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
     Trino = "Trino",

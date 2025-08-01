@@ -10,15 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { Typography } from 'antd';
+import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import TagButton from '../../common/TagButton/TagButton.component';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
@@ -33,67 +36,64 @@ export const OwnerLabelV2 = <
 ) => {
   const { dataTestId = 'glossary-right-panel-owner-link' } = props;
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
-
+  const { t } = useTranslation();
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedEntity = { ...data };
     updatedEntity.owners = updatedUser;
     await onUpdate(updatedEntity);
   };
 
-  return (
-    <Card
-      className="new-header-border-card"
-      data-testid={dataTestId}
-      title={
-        <div className="d-flex items-center gap-2">
-          <Typography.Text className="text-sm font-medium">
-            {t('label.owner-plural')}
-          </Typography.Text>
-          {(permissions.EditOwners || permissions.EditAll) &&
-            data.owners &&
-            data.owners.length > 0 && (
-              <UserTeamSelectableList
-                hasPermission={permissions.EditOwners || permissions.EditAll}
-                listHeight={200}
-                multiple={{ user: true, team: false }}
-                owner={data.owners}
-                onUpdate={handleUpdatedOwner}>
-                <EditIconButton
-                  newLook
-                  data-testid="edit-owner"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.owner-plural'),
-                  })}
-                />
-              </UserTeamSelectableList>
+  const header = useMemo(
+    () => (
+      <div className="d-flex items-center gap-2">
+        <Typography.Text className="text-sm font-medium">
+          {t('label.owner-plural')}
+        </Typography.Text>
+        {!isVersionView && (permissions.EditOwners || permissions.EditAll) && (
+          <UserTeamSelectableList
+            hasPermission={permissions.EditOwners || permissions.EditAll}
+            listHeight={200}
+            multiple={{ user: true, team: false }}
+            owner={data.owners}
+            onUpdate={handleUpdatedOwner}>
+            {isEmpty(data.owners) ? (
+              <PlusIconButton
+                data-testid="add-owner"
+                size="small"
+                title={t('label.add-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            ) : (
+              <EditIconButton
+                newLook
+                data-testid="edit-owner"
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
             )}
-        </div>
-      }>
+          </UserTeamSelectableList>
+        )}
+      </div>
+    ),
+    [data, permissions, handleUpdatedOwner, isVersionView]
+  );
+
+  return (
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId={dataTestId}
+      isExpandDisabled={isEmpty(data.owners)}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,
         TabSpecificField.OWNERS,
         permissions.EditOwners || permissions.EditAll
       )}
-
-      {data.owners?.length === 0 &&
-        (permissions.EditOwners || permissions.EditAll) && (
-          <UserTeamSelectableList
-            hasPermission={permissions.EditOwners || permissions.EditAll}
-            listHeight={200}
-            multiple={{ user: true, team: false }}
-            owner={data.owners}
-            onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
-            <TagButton
-              className="text-primary cursor-pointer"
-              dataTestId="add-owner"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-            />
-          </UserTeamSelectableList>
-        )}
-    </Card>
+    </ExpandableCard>
   );
 };

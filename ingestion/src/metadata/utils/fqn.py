@@ -151,7 +151,7 @@ def build(
 def _(
     metadata: Optional[OpenMetadata],
     *,
-    service_name: str,
+    service_name: Optional[str],
     database_name: Optional[str],
     schema_name: Optional[str],
     table_name: str,
@@ -161,7 +161,7 @@ def _(
     """
     Building logic for tables
     :param metadata: OMeta client
-    :param service_name: Service Name to filter
+    :param service_name: Service Name to filter or None
     :param database_name: DB name or None
     :param schema_name: Schema name or None
     :param table_name: Table name
@@ -180,8 +180,8 @@ def _(
             service_name=service_name,
         )
 
-    # if entity not found in ES proceed to build FQN with database_name and schema_name
-    if not entity and database_name and schema_name:
+    # if entity not found in ES proceed to build FQN with service_name, database_name and schema_name
+    if not entity and service_name and database_name and schema_name:
         fqn = _build(service_name, database_name, schema_name, table_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:

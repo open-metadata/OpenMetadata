@@ -12,6 +12,7 @@
  */
 import {
   act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -38,7 +39,7 @@ let mockGetApplicationRuns = jest.fn().mockReturnValue({
   },
 });
 const mockShowErrorToast = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
@@ -107,6 +108,10 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn().mockReturnValue('startDay'),
   getIntervalInMilliseconds: jest.fn().mockReturnValue('interval'),
   formatDuration: jest.fn().mockReturnValue('formatDuration'),
+  formatDurationToHHMMSS: jest.fn().mockImplementation((_ms) => {
+    // Return a consistent formatted duration for all cases
+    return '02:30:15';
+  }),
 }));
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -137,9 +142,7 @@ jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../../constants/constants', () => ({
@@ -211,7 +214,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
@@ -232,7 +235,7 @@ describe('AppRunsHistory', () => {
       limit: 10,
     });
 
-    userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
+    fireEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
@@ -268,13 +271,13 @@ describe('AppRunsHistory', () => {
     });
   });
 
-  it('onclick of logs button should call history.push method of external apps', async () => {
+  it('onclick of logs button should call navigate method of external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    userEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText('label.log-plural'));
 
-    expect(mockPush).toHaveBeenCalledWith('logs viewer path');
+    expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
@@ -305,9 +308,7 @@ describe('AppRunsHistory', () => {
 
     expect(stopButton).toBeInTheDocument();
 
-    act(() => {
-      userEvent.click(stopButton);
-    });
+    fireEvent.click(stopButton);
 
     expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
   });

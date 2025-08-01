@@ -123,14 +123,16 @@ export const SEARCH_INDEX_DUMMY_DATA: SearchIndex = {
   ],
   tags: [],
   deleted: false,
-  domain: {
-    id: 'a440b3a9-fbbf-464d-91d4-c9cfeeccc8e4',
-    type: 'domain',
-    name: 'Domain 1.6.0',
-    fullyQualifiedName: '"Domain 1.6.0"',
-    description: 'csacasc',
-    displayName: 'Domain 1.6.0',
-  },
+  domains: [
+    {
+      id: 'a440b3a9-fbbf-464d-91d4-c9cfeeccc8e4',
+      type: 'domain',
+      name: 'Domain 1.6.0',
+      fullyQualifiedName: '"Domain 1.6.0"',
+      description: 'csacasc',
+      displayName: 'Domain 1.6.0',
+    },
+  ],
   dataProducts: [
     {
       id: '8c046cc5-ab23-40c0-a0bf-b58d206290f7',

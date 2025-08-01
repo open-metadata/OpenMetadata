@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -21,17 +21,13 @@ import {
   InputNumber,
   Select,
   Switch,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
-import React, {
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -51,6 +47,7 @@ import {
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../../utils/formUtils';
 import {
   validateEquals,
   validateGreaterThanOrEquals,
@@ -58,7 +55,7 @@ import {
   validateNotEquals,
 } from '../../../../utils/ParameterForm/ParameterFormUtils';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
+import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
@@ -68,6 +65,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     data: TestCaseParameterDefinition,
     DynamicField?: ReactElement
   ) => {
+    const label = getEntityName(data);
     const ruleValidation: RuleRender = ({ getFieldValue }) => ({
       validator(_, formValue) {
         if (data?.validationRule) {
@@ -97,15 +95,16 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     let Field = (
       <Input
         placeholder={`${t('message.enter-a-field', {
-          field: data.displayName,
+          field: label,
         })}`}
       />
     );
     if (data.optionValues?.length) {
       Field = (
         <Select
+          getPopupContainer={getPopupContainer}
           placeholder={`${t('label.please-select-entity', {
-            entity: data.displayName,
+            entity: label,
           })}`}>
           {data.optionValues.map((value) => (
             <Select.Option key={value}>{value}</Select.Option>
@@ -142,21 +141,35 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             );
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={partitionColumnOptions}
                 placeholder={t('message.select-column-name')}
               />
             );
           } else if (data.name === 'sqlExpression') {
             Field = (
-              <SchemaEditor
+              <CodeEditor
+                showCopyButton
                 className="custom-query-editor query-editor-h-200"
                 mode={{ name: CSMode.SQL }}
-                showCopyButton={false}
+                title={
+                  <div className="ant-form-item-label">
+                    <label className="d-flex align-items-center">
+                      <Typography.Text className="form-label-title">
+                        {label}
+                      </Typography.Text>
+                      <Tooltip title={data.description}>
+                        <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                      </Tooltip>
+                    </label>
+                  </div>
+                }
               />
             );
           } else if (data.name === 'column') {
             Field = (
               <Select
+                getPopupContainer={getPopupContainer}
                 options={table?.columns.map((column) => ({
                   label: getEntityName(column),
                   value: column.name,
@@ -168,7 +181,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             Field = (
               <Input
                 placeholder={`${t('message.enter-a-field', {
-                  field: data.displayName,
+                  field: label,
                 })}`}
               />
             );
@@ -184,7 +197,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             <InputNumber
               className="w-full"
               placeholder={`${t('message.enter-a-field', {
-                field: data.displayName,
+                field: label,
               })}`}
             />
           );
@@ -203,7 +216,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           Field = (
             <Input
               placeholder={`${t('message.enter-comma-separated-field', {
-                field: data.displayName,
+                field: label,
               })}`}
             />
           );
@@ -220,7 +233,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                     <>
                       <span>{data.displayName}</span>
                       <Button
-                        className="m-x-sm"
+                        className="m-x-sm list-add-btn"
                         icon={<PlusOutlined />}
                         size="small"
                         type="primary"
@@ -233,21 +246,21 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   {fields.map(({ key, name, ...restField }) => (
                     <div className="d-flex w-full" key={key}>
                       <Form.Item
-                        className="w-full"
+                        className="w-full m-b-0"
                         {...restField}
                         name={[name, 'value']}
                         rules={[
                           {
                             required: data.required,
                             message: `${t('message.field-text-is-required', {
-                              fieldText: data.displayName,
+                              fieldText: label,
                             })}`,
                           },
                         ]}>
                         {DynamicField ?? (
                           <Input
                             placeholder={`${t('message.enter-a-field', {
-                              field: data.displayName,
+                              field: label,
                             })}`}
                           />
                         )}
@@ -272,23 +285,35 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       }
     }
 
-    return (
+    const commonFormItemProps = {
+      'data-testid': 'parameter',
+      key: data.name,
+
+      name: data.name,
+      rules: [
+        {
+          required: data.required,
+          message: `${t('message.field-text-is-required', {
+            fieldText: label,
+          })}`,
+        },
+        ruleValidation,
+      ],
+      tooltip: data.description,
+      ...internalFormItemProps,
+    };
+
+    return data.dataType === TestDataType.Boolean ? (
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item {...commonFormItemProps} className="m-b-0">
+          {Field}
+        </Form.Item>
+        <Typography.Text className="font-medium">{label}</Typography.Text>
+      </div>
+    ) : (
       <Form.Item
-        data-testid="parameter"
-        key={data.name}
-        label={`${data.displayName}:`}
-        name={data.name}
-        rules={[
-          {
-            required: data.required,
-            message: `${t('message.field-text-is-required', {
-              fieldText: data.displayName,
-            })}`,
-          },
-          ruleValidation,
-        ]}
-        tooltip={data.description}
-        {...internalFormItemProps}>
+        {...commonFormItemProps}
+        label={data.name === 'sqlExpression' ? undefined : label}>
         {DynamicField ?? Field}
       </Form.Item>
     );
@@ -345,6 +370,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               allowClear
               showSearch
               data-testid="table2"
+              getPopupContainer={getPopupContainer}
               loading={isOptionsLoading}
               options={tableOptions}
               placeholder={t('label.table')}
@@ -388,6 +414,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                   <Select
                     allowClear
                     showSearch
+                    getPopupContainer={getPopupContainer}
                     options={columns}
                     placeholder={t('label.column')}
                   />

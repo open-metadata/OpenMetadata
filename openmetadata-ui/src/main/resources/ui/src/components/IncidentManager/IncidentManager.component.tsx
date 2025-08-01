@@ -17,9 +17,9 @@ import { compare } from 'fast-json-patch';
 import { isEqual, isUndefined, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
@@ -35,6 +35,7 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../generated/tests/testCaseResolutionStatus';
+import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -65,7 +66,7 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityDetailsPath,
-  getIncidentManagerDetailPagePath,
+  getTestCaseDetailPagePath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
@@ -88,7 +89,7 @@ const IncidentManager = ({
   tableDetails,
 }: IncidentManagerProps) => {
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const searchParams = useMemo(() => {
     const param = location.search;
@@ -154,6 +155,7 @@ const IncidentManager = ({
         const { data, paging } = await getListTestCaseIncidentStatus({
           limit: pageSize,
           latest: true,
+          include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
           ...params,
         });
@@ -361,9 +363,14 @@ const IncidentManager = ({
     ) {
       fetchTestCaseIncidents(filters);
       if (searchParams) {
-        history.replace({
-          search: QueryString.stringify(filters),
-        });
+        navigate(
+          {
+            search: QueryString.stringify(filters),
+          },
+          {
+            replace: true,
+          }
+        );
       }
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
@@ -389,8 +396,7 @@ const IncidentManager = ({
             <Link
               className="m-0 break-all text-primary"
               data-testid={`test-case-${record.testCaseReference?.name}`}
-              style={{ maxWidth: 280 }}
-              to={getIncidentManagerDetailPagePath(
+              to={getTestCaseDetailPagePath(
                 record.testCaseReference?.fullyQualifiedName ?? ''
               )}>
               {getEntityName(record.testCaseReference)}
@@ -449,7 +455,7 @@ const IncidentManager = ({
         title: t('label.status'),
         dataIndex: 'testCaseResolutionStatusType',
         key: 'testCaseResolutionStatusType',
-        width: 100,
+        width: 120,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -463,7 +469,7 @@ const IncidentManager = ({
           return (
             <TestCaseIncidentManagerStatus
               data={record}
-              hasPermission={hasPermission?.EditAll}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               onSubmit={handleStatusSubmit}
             />
           );
@@ -473,7 +479,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 100,
+        width: 120,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -487,7 +493,7 @@ const IncidentManager = ({
 
           return (
             <Severity
-              hasPermission={hasPermission?.EditAll}
+              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               severity={value}
               onSubmit={(severity) => handleSeveritySubmit(severity, record)}
             />
@@ -507,7 +513,12 @@ const IncidentManager = ({
         ),
       },
     ],
-    [testCaseListData.data, testCasePermissions, isPermissionLoading]
+    [
+      tableDetails?.deleted,
+      testCaseListData.data,
+      testCasePermissions,
+      isPermissionLoading,
+    ]
   );
 
   if (
@@ -517,6 +528,9 @@ const IncidentManager = ({
     return (
       <ErrorPlaceHolder
         className="border-none"
+        permissionValue={t('label.view-entity', {
+          entity: t('label.test-case'),
+        })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
@@ -603,7 +617,7 @@ const IncidentManager = ({
           pagination={false}
           rowKey="id"
           scroll={{
-            x: true,
+            x: '100%',
           }}
           size="small"
         />

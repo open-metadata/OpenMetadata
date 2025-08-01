@@ -1,5 +1,6 @@
 ---
-title: Okta SSO
+title: Okta SSO | OpenMetadata Authentication Integration
+description: Configure Okta as your authentication provider to support secure login, identity federation, and enterprise-grade access control.
 slug: /deployment/security/okta
 collate: false
 ---

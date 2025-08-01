@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import React from 'react';
+import { Table } from '../../generated/entity/data/table';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';
@@ -49,9 +49,7 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
-  useHistory: jest.fn().mockImplementation(() => ({
-    replace: jest.fn(),
-  })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -153,6 +151,29 @@ describe('IncidentManagerPage', () => {
       latest: true,
       limit: 10,
       startTs: 1709556624254,
+      include: 'non-deleted',
+    });
+  });
+
+  it('Incident should be fetch with deleted', async () => {
+    const mockGetListTestCaseIncidentStatus =
+      getListTestCaseIncidentStatus as jest.Mock;
+    await act(async () => {
+      render(<IncidentManager tableDetails={{ deleted: true } as Table} />);
+    });
+
+    const timeFilterButton = await screen.findByTestId('time-filter');
+
+    await act(async () => {
+      fireEvent.click(timeFilterButton);
+    });
+
+    expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
+      endTs: 1710161424255,
+      latest: true,
+      limit: 10,
+      startTs: 1709556624254,
+      include: 'deleted',
     });
   });
 

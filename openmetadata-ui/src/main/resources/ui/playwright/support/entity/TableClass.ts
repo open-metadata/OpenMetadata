@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { uuid } from '../../utils/common';
+import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
@@ -60,6 +60,8 @@ export class TableClass extends EntityClass {
     `name${uuid()}`,
     `first_name${uuid()}`,
     `last_name${uuid()}`,
+    `address${uuid()}`,
+    `mail${uuid()}`,
     `email${uuid()}`,
   ];
   entityLinkColumnsName = [
@@ -68,7 +70,9 @@ export class TableClass extends EntityClass {
     this.columnsName[2],
     `${this.columnsName[2]}.${this.columnsName[3]}`,
     `${this.columnsName[2]}.${this.columnsName[4]}`,
-    this.columnsName[5],
+    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
+    this.columnsName[7],
   ];
 
   children = [
@@ -106,11 +110,27 @@ export class TableClass extends EntityClass {
           dataType: 'ARRAY',
           dataLength: 100,
           dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+          children: [
+            {
+              name: this.columnsName[5],
+              dataType: 'STRUCT',
+              dataLength: 100,
+              dataTypeDisplay:
+                'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+              description: 'First name of the staff member.',
+            },
+            {
+              name: this.columnsName[6],
+              dataType: 'ARRAY',
+              dataLength: 100,
+              dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+            },
+          ],
         },
       ],
     },
     {
-      name: this.columnsName[5],
+      name: this.columnsName[7],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
@@ -119,8 +139,8 @@ export class TableClass extends EntityClass {
   ];
 
   entity = {
-    name: `pw-table-${uuid()}`,
-    displayName: `pw table ${uuid()}`,
+    name: `pw-table-${fullUuid()}`,
+    displayName: `pw table ${fullUuid()}`,
     description: 'description',
     columns: this.children,
     tableType: 'SecureView',
@@ -158,19 +178,25 @@ export class TableClass extends EntityClass {
         data: this.service,
       }
     );
+    const service = await serviceResponse.json();
+
     const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
+      data: { ...this.database, service: service.fullyQualifiedName },
     });
+    const database = await databaseResponse.json();
+
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
+      data: { ...this.schema, database: database.fullyQualifiedName },
     });
+    const schema = await schemaResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/tables', {
-      data: this.entity,
+      data: {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      },
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
     const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
@@ -220,10 +246,10 @@ export class TableClass extends EntityClass {
     };
   }
 
-  async visitEntityPage(page: Page) {
+  async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }
@@ -324,7 +350,6 @@ export class TableClass extends EntityClass {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
-          testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
           parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
@@ -344,8 +369,8 @@ export class TableClass extends EntityClass {
     testCaseFqn: string,
     testCaseResult: unknown
   ) {
-    const testCaseResultResponse = await apiContext.put(
-      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+    const testCaseResultResponse = await apiContext.post(
+      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
       { data: testCaseResult }
     );
 

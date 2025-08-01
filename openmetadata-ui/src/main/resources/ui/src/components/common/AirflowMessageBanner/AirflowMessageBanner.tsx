@@ -13,9 +13,9 @@
 import { Space, SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 

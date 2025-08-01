@@ -1,5 +1,6 @@
 ---
 title: Building Blocks of Authorization - Rules, Policies, and Roles
+description: Understand authorization policies to manage read, write, and discover permissions for users and service accounts.
 slug: /how-to-guides/admin-guide/roles-policies/authorization
 ---
 
@@ -157,7 +158,7 @@ caption="Roles Based Access Controls (RBAC) Search Option"
 
 **Testing**: After enabling Search RBAC, conduct thorough testing to verify that users can access only the data assets permitted by their roles and policies.​
 
-For a comprehensive understanding of configuring roles and policies, refer to the [Advanced Guide for Roles and Policies](/how-to-guides/admin-guide/roles-policies/overview). Implementing Search RBAC ensures that OpenMetadata's search functionality aligns with your organization's data governance and security requirements.​
+For a comprehensive understanding of configuring roles and policies, refer to the [Advanced Guide for Roles and Policies](/how-to-guides/admin-guide/roles-policies). Implementing Search RBAC ensures that OpenMetadata's search functionality aligns with your organization's data governance and security requirements.​
 
 {%inlineCallout
   color="violet-70"

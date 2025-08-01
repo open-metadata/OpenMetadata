@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.settings;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
@@ -27,7 +28,10 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
@@ -39,20 +43,26 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SettingsCache {
@@ -150,7 +160,7 @@ public class SettingsCache {
     if (storedSearchSettings == null) {
       try {
         List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
@@ -208,6 +218,28 @@ public class SettingsCache {
                       .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    Settings entityRulesSettings =
+        Entity.getSystemRepository()
+            .getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    if (entityRulesSettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/entityRulesSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(ENTITY_RULES_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, EntityRulesSettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default Enitty Rules settings. Message: {}", e.getMessage(), e);
+      }
+    }
   }
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {
@@ -239,6 +271,10 @@ public class SettingsCache {
   public static void invalidateSettings(String settingsName) {
     try {
       CACHE.invalidate(settingsName);
+      // If search settings are being invalidated, also invalidate aggregated fields
+      if (SEARCH_SETTINGS.toString().equals(settingsName)) {
+        CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);
     }
@@ -254,10 +290,68 @@ public class SettingsCache {
         .withTemplates(SmtpSettings.Templates.OPENMETADATA);
   }
 
+  @SuppressWarnings("unchecked")
+  public static Map<String, Float> getAggregatedSearchFields() {
+    try {
+      Settings aggregatedFields = CACHE.get(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      Map<String, Float> fields = (Map<String, Float>) aggregatedFields.getConfigValue();
+      return fields;
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch aggregated search fields", ex);
+      // Return default fields as fallback
+      return SearchIndex.getDefaultFields();
+    }
+  }
+
+  private static Settings computeAggregatedSearchFields() {
+    Map<String, Float> fields = new HashMap<>(SearchIndex.getDefaultFields());
+
+    try {
+      SearchSettings searchSettings = getSetting(SEARCH_SETTINGS, SearchSettings.class);
+      if (searchSettings != null && searchSettings.getAssetTypeConfigurations() != null) {
+        SearchRepository searchRepository = Entity.getSearchRepository();
+
+        for (AssetTypeConfiguration assetConfig : searchSettings.getAssetTypeConfigurations()) {
+          String entityType = assetConfig.getAssetType();
+
+          // Check if this entity type's index has dataAsset as a parent alias
+          IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
+          if (indexMapping != null
+              && indexMapping.getParentAliases() != null
+              && indexMapping.getParentAliases().contains("dataAsset")) {
+            // Add fields from this asset type
+            if (assetConfig.getSearchFields() != null) {
+              for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+                fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue());
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error("Error computing aggregated search fields", ex);
+    }
+
+    // Create a dummy Settings object to store in cache
+    return new Settings()
+        .withConfigType(SettingsType.SEARCH_SETTINGS)
+        .withConfigValue(Collections.unmodifiableMap(fields));
+  }
+
+  // Special key for caching aggregated search fields
+  public static final String SEARCH_SETTINGS_AGGREGATED_FIELDS =
+      "SEARCH_SETTINGS_AGGREGATED_FIELDS";
+
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
     public @NonNull Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
+
+      // Handle special case for aggregated fields
+      if (SEARCH_SETTINGS_AGGREGATED_FIELDS.equals(settingsName)) {
+        return computeAggregatedSearchFields();
+      }
+
       switch (SettingsType.fromValue(settingsName)) {
         case EMAIL_CONFIGURATION -> {
           fetchedSettings = Entity.getSystemRepository().getEmailConfigInternal();
@@ -290,6 +384,12 @@ public class SettingsCache {
           // Only if available
           fetchedSettings = Entity.getSystemRepository().getSlackStateConfigInternal();
           LOG.info("Loaded Slack state Configuration");
+        }
+        case SEARCH_SETTINGS -> {
+          fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
+          LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
+          // When SEARCH_SETTINGS are loaded, invalidate aggregated fields cache
+          CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
         }
         default -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);

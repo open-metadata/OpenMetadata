@@ -13,13 +13,13 @@
 package org.openmetadata.service.monitoring;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.monitoring.EventMonitorProvider;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
 import software.amazon.awssdk.services.cloudwatch.model.CloudWatchException;
 
 @Slf4j
@@ -38,7 +38,15 @@ public class PrometheusEventMonitor extends EventMonitor {
       EventMonitorConfiguration config,
       String clusterPrefix) {
     super(eventMonitorProvider, config, clusterPrefix);
-    meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
+    meterRegistry =
+        (PrometheusMeterRegistry)
+            Metrics.globalRegistry.getRegistries().stream()
+                .filter(registry -> registry instanceof PrometheusMeterRegistry)
+                .findFirst()
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "No PrometheusMeterRegistry found in global registry"));
   }
 
   @Override

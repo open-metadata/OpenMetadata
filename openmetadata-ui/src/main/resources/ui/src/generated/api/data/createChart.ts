@@ -33,9 +33,9 @@ export interface CreateChart {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Chart belongs to.
+     * Fully qualified names of the domains the Chart belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Life Cycle of the entity
      */
@@ -235,6 +235,7 @@ export interface TagLabel {
 export enum LabelType {
     Automated = "Automated",
     Derived = "Derived",
+    Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
 }

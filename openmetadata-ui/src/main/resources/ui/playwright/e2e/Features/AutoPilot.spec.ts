@@ -24,9 +24,11 @@ import { UserClass } from '../../support/user/UserClass';
 import { checkAutoPilotStatus } from '../../utils/AutoPilot';
 import {
   createNewPage,
+  getApiContext,
   redirectToHomePage,
   reloadAndWaitForNetworkIdle,
 } from '../../utils/common';
+import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const user = new UserClass();
@@ -49,11 +51,6 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
   trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
-});
-
-test.describe.configure({
-  // 6 minutes max for AutoPilot tests.
-  timeout: 6 * 60 * 1000,
 });
 
 test.beforeAll(async ({ browser }) => {
@@ -83,21 +80,24 @@ services.forEach((ServiceClass) => {
     service.serviceType,
     PLAYWRIGHT_INGESTION_TAG_OBJ,
     () => {
+      const testData = {
+        service: {
+          name: '',
+          id: '',
+          fullyQualifiedName: '',
+        },
+      };
+
       test.beforeEach('Visit entity details page', async ({ page }) => {
         await redirectToHomePage(page);
-      });
-
-      test.afterAll('Delete service by API', async ({ browser }) => {
-        const { afterAction, apiContext } = await createNewPage(browser);
-
-        await service.deleteServiceByAPI(apiContext);
-
-        await afterAction();
       });
 
       test('Create Service and check the AutoPilot status', async ({
         page,
       }) => {
+        // 8 minutes max for AutoPilot tests to complete agents running.
+        test.setTimeout(8 * 60 * 1000);
+
         await settingClick(
           page,
           service.category as unknown as SettingOptionsType
@@ -105,6 +105,8 @@ services.forEach((ServiceClass) => {
 
         // Create service
         await service.createService(page);
+
+        testData.service = service.serviceResponseData;
 
         // Wait for the service details page to load
         await page.waitForURL('**/service/**');
@@ -162,6 +164,44 @@ services.forEach((ServiceClass) => {
             .getByTestId('auto-pilot-status-banner')
             .getByTestId('status-banner-icon-FINISHED')
         ).toBeHidden();
+      });
+
+      test('Agents created by AutoPilot should be deleted', async ({
+        page,
+      }) => {
+        const { apiContext } = await getApiContext(page);
+
+        // Get the agents created by AutoPilot
+        const getAgents = await apiContext.get(
+          `/api/v1/services/ingestionPipelines?fields=owners%2CpipelineStatuses&service=${
+            testData.service.name
+          }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+            service.category
+          )}&limit=15`
+        );
+
+        const agentsList = (await getAgents.json()).data;
+
+        // Check if the agents are created
+        expect(agentsList.length).toBeGreaterThan(0);
+
+        // Delete the service
+        await service.deleteService(page);
+
+        // Get the agents after deleting the service
+        const getAfterDeletingAgents = await apiContext.get(
+          `/api/v1/services/ingestionPipelines?fields=owners%2CpipelineStatuses&service=${
+            testData.service.name
+          }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+            service.category
+          )}&limit=15`
+        );
+
+        const agentsListAfterDeleting = (await getAfterDeletingAgents.json())
+          .data;
+
+        // Check if the agents are deleted
+        expect(agentsListAfterDeleting).toHaveLength(0);
       });
     }
   );

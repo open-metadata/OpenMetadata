@@ -10,20 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import ReactDataGrid from '@inovua/reactdatagrid-community';
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import DataGrid from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEncodedFqn } from '../../utils/StringsUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
@@ -33,14 +34,9 @@ import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionSt
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
 const BulkEditEntity = ({
-  onKeyDown,
-  onEditStop,
-  onEditStart,
-  onEditComplete,
   dataSource,
   columns,
   breadcrumbList,
-  setGridRef,
   activeStep,
   handleBack,
   handleValidate,
@@ -49,22 +45,26 @@ const BulkEditEntity = ({
   validateCSVData,
   activeAsyncImportJob,
   onCSVReadComplete,
+  setGridContainer,
+  handleCopy,
+  handlePaste,
+  handleOnRowsChange,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
 
   const handleCancel = () => {
     clearCSVExportData();
-    history.push(entityUtilClassBase.getEntityLink(entityType, fqn));
+    navigate(entityUtilClassBase.getEntityLink(entityType, fqn));
   };
 
   useEffect(() => {
     triggerExportForBulkEdit({
-      name: getEncodedFqn(fqn),
+      name: fqn,
       onExport: getBulkEditCSVExportEntityApi(entityType),
       exportTypes: [ExportTypes.CSV],
     });
@@ -86,6 +86,27 @@ const BulkEditEntity = ({
       clearCSVExportData();
     };
   }, []);
+
+  /*
+    Owner dropdown uses <ProfilePicture /> which uses useUserProfile hook
+    useUserProfile hook uses useApplicationStore hook
+    Updating store will trigger re-render of the component
+    This will cause the owner dropdown or full grid to re-render
+  */
+  const editDataGrid = useMemo(() => {
+    return (
+      <div className="om-rdg" ref={setGridContainer}>
+        <DataGrid
+          className="rdg-light"
+          columns={columns}
+          rows={dataSource}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onRowsChange={handleOnRowsChange}
+        />
+      </div>
+    );
+  }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
 
   return (
     <>
@@ -118,24 +139,7 @@ const BulkEditEntity = ({
       ) : (
         <>
           <Col span={24}>
-            {activeStep === 1 && (
-              <ReactDataGrid
-                editable
-                columns={columns}
-                dataSource={dataSource}
-                defaultActiveCell={[0, 0]}
-                handle={setGridRef}
-                idProperty="id"
-                loading={isValidating}
-                minRowHeight={30}
-                showZebraRows={false}
-                style={{ height: 'calc(100vh - 245px)' }}
-                onEditComplete={onEditComplete}
-                onEditStart={onEditStart}
-                onEditStop={onEditStop}
-                onKeyDown={onKeyDown}
-              />
-            )}
+            {activeStep === 1 && editDataGrid}
 
             {activeStep === 2 && validationData && (
               <Row gutter={[16, 16]}>
@@ -145,12 +149,13 @@ const BulkEditEntity = ({
 
                 <Col span={24}>
                   {validateCSVData && (
-                    <ReactDataGrid
-                      idProperty="id"
-                      loading={isValidating}
-                      style={{ height: 'calc(100vh - 300px)' }}
-                      {...validateCSVData}
-                    />
+                    <div className="om-rdg">
+                      <DataGrid
+                        className="rdg-light"
+                        columns={validateCSVData.columns}
+                        rows={validateCSVData.dataSource}
+                      />
+                    </div>
                   )}
                 </Col>
               </Row>

@@ -68,32 +68,41 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId or ''}"
+                return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root or ''}"
             if (
                 not connection.credentials.gcpConfig.privateKey
                 and connection.credentials.gcpConfig.projectId.root
             ):
                 project_id = connection.credentials.gcpConfig.projectId.root
-                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+                os.environ["GOOGLE_CLOUD_PROJECT"] = (
+                    connection.billingProjectId or project_id
+                )
+            return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
-                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                return f"{connection.scheme.value}://{project_id}"
-            return f"{connection.scheme.value}://"
+                    os.environ["GOOGLE_CLOUD_PROJECT"] = (
+                        connection.billingProjectId or project_id
+                    )
+                return f"{connection.scheme.value}://{connection.billingProjectId or project_id}"
+            return f"{connection.scheme.value}://{connection.billingProjectId or ''}"
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
         isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
         and connection.credentials.gcpConfig.projectId
     ):
-        return (
-            f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
-        )
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root}"
 
-    return f"{connection.scheme.value}://"
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                return f"{connection.scheme.value}://{connection.billingProjectId or project_id}"
+
+    return f"{connection.scheme.value}://{connection.billingProjectId or ''}"
 
 
 def get_connection(connection: BigQueryConnection) -> Engine:

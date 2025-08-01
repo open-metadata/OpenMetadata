@@ -342,6 +342,7 @@ def build_patch(
     array_entity_fields: Optional[List] = None,
     remove_change_description: bool = True,
     override_metadata: Optional[bool] = False,
+    skip_on_failure: Optional[bool] = True,
 ) -> Optional[jsonpatch.JsonPatch]:
     """
     Given an Entity type and Source entity and Destination entity,
@@ -352,6 +353,10 @@ def build_patch(
         destination: payload with changes applied to the source.
         allowed_fields: List of field names to filter from source and destination models
         restrict_update_fields: List of field names which will only support add operation
+        array_entity_fields: List of array fields to sort for consistent patching
+        remove_change_description: Whether to remove change description from entities
+        override_metadata: Whether to override existing metadata fields
+        skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
     Returns
         Updated Entity
@@ -368,6 +373,9 @@ def build_patch(
                 destination=destination,
                 array_entity_fields=array_entity_fields,
             )
+
+        # special handler for tableConstraints
+        _table_constraints_handler(source, destination)
 
         # Get the difference between source and destination
         if allowed_fields:
@@ -418,10 +426,100 @@ def build_patch(
             patch.patch = updated_operations
 
         return patch
-    except Exception:
+    except Exception as exc:
         logger.debug(traceback.format_exc())
-        logger.warning("Couldn't build patch for Entity.")
-        return None
+        if skip_on_failure:
+            entity_info = ""
+            try:
+                if hasattr(source, "fullyQualifiedName"):
+                    entity_info = f" for '{source.fullyQualifiedName.root}'"
+                elif hasattr(source, "name"):
+                    entity_info = f" for '{source.name.root}'"
+            except Exception:
+                pass
+
+            logger.warning(
+                f"Failed to build patch{entity_info}. The patch generation was skipped. "
+                f"Reason: {exc}"
+            )
+            return None
+        else:
+            entity_info = ""
+            try:
+                if hasattr(source, "fullyQualifiedName"):
+                    entity_info = f" for '{source.fullyQualifiedName.root}'"
+                elif hasattr(source, "name"):
+                    entity_info = f" for '{source.name.root}'"
+            except Exception:
+                pass
+
+            raise RuntimeError(
+                f"Failed to build patch{entity_info}. The patch generation failed. "
+                f"Set 'skip_on_failure=True' to skip failed patch operations. Error: {exc}"
+            ) from exc
+
+
+def _get_attribute_name(attr: T) -> str:
+    """Get the attribute name from the attribute."""
+    if hasattr(attr, "name"):
+        return model_str(attr.name)
+    return model_str(attr)
+
+
+def rearrange_attributes(final_attributes: List[T], source_attributes: List[T]):
+    source_staging_list = []
+    destination_staging_list = []
+    for attribute in final_attributes or []:
+        if attribute in source_attributes:
+            source_staging_list.append(attribute)
+        else:
+            destination_staging_list.append(attribute)
+    return source_staging_list + destination_staging_list
+
+
+def _table_constraints_handler(source: T, destination: T):
+    """
+    Handle table constraints patching properly.
+    This ensures we only perform allowed operations on constraints and maintain the structure.
+    """
+    if not hasattr(source, "tableConstraints") or not hasattr(
+        destination, "tableConstraints"
+    ):
+        return
+
+    source_table_constraints = getattr(source, "tableConstraints")
+    destination_table_constraints = getattr(destination, "tableConstraints")
+
+    if not source_table_constraints or not destination_table_constraints:
+        return
+
+    # Create a dictionary of source constraints for easy lookup
+    source_constraints_dict = {}
+    for constraint in source_table_constraints:
+        # Create a unique key based on constraintType and columns
+        key = f"{constraint.constraintType}:{','.join(sorted(constraint.columns))}"
+        source_constraints_dict[key] = constraint
+
+    # Rearrange destination constraints to match source order when possible
+    rearranged_constraints = []
+
+    # First add constraints that exist in both source and destination (preserving order from source)
+    for source_constraint in source_table_constraints:
+        key = f"{source_constraint.constraintType}:{','.join(sorted(source_constraint.columns))}"
+        for dest_constraint in destination_table_constraints:
+            dest_key = f"{dest_constraint.constraintType}:{','.join(sorted(dest_constraint.columns))}"
+            if key == dest_key:
+                rearranged_constraints.append(dest_constraint)
+                break
+
+    # Then add new constraints from destination that don't exist in source
+    for dest_constraint in destination_table_constraints:
+        dest_key = f"{dest_constraint.constraintType}:{','.join(sorted(dest_constraint.columns))}"
+        if dest_key not in source_constraints_dict:
+            rearranged_constraints.append(dest_constraint)
+
+    # Update the destination constraints with the rearranged list
+    setattr(destination, "tableConstraints", rearranged_constraints)
 
 
 def _sort_array_entity_fields(
@@ -439,19 +537,21 @@ def _sort_array_entity_fields(
 
             # Create a dictionary of destination attributes for easy lookup
             destination_dict = {
-                model_str(attr.name): attr for attr in destination_attributes
+                _get_attribute_name(attr): attr for attr in destination_attributes
             }
 
             updated_attributes = []
             for source_attr in source_attributes or []:
                 # Update the destination attribute with the source attribute
-                destination_attr = destination_dict.get(model_str(source_attr.name))
+                destination_attr = destination_dict.get(
+                    _get_attribute_name(source_attr)
+                )
                 if destination_attr:
                     updated_attributes.append(
                         source_attr.model_copy(update=destination_attr.__dict__)
                     )
                     # Remove the updated attribute from the destination dictionary
-                    del destination_dict[model_str(source_attr.name)]
+                    del destination_dict[_get_attribute_name(source_attr)]
                 else:
                     updated_attributes.append(None)
 
@@ -466,7 +566,7 @@ def _remove_change_description(entity: T) -> T:
     We never want to patch that, and we won't have that information
     from the source. It's fully handled in the server.
     """
-    if getattr(entity, "changeDescription"):
+    if hasattr(entity, "changeDescription") and getattr(entity, "changeDescription"):
         entity.changeDescription = None
 
     return entity

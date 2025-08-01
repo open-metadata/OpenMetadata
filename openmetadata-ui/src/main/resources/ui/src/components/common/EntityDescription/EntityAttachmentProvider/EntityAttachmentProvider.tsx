@@ -12,8 +12,8 @@
  */
 import { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
-import { isString, noop } from 'lodash';
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import { isString, isUndefined, noop } from 'lodash';
+import { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -162,6 +162,9 @@ export const EntityAttachmentProvider = ({
       currentTr.replaceWith(tempNodePos, tempNodePos + 1, finalNode);
       view.dispatch(currentTr);
     } catch (error) {
+      const errorMessage = (error as AxiosError<{ message: string }>).response
+        ?.data?.message;
+
       // Get the current state for error handling
       const currentState = view.state;
       const currentTr = currentState.tr;
@@ -182,7 +185,9 @@ export const EntityAttachmentProvider = ({
 
       showInlineAlert
         ? setErrorMessage(
-            isString(error) ? error : t('label.failed-to-upload-file')
+            !isUndefined(errorMessage) && isString(errorMessage)
+              ? errorMessage
+              : t('label.failed-to-upload-file')
           )
         : showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
     }

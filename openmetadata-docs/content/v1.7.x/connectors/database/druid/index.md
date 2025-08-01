@@ -1,5 +1,6 @@
 ---
-title: Druid
+title: Druid Connector | OpenMetadata Real-Time Analytics Guide
+description: Learn how to connect Apache Druid to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/druid
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/druid
 name="Druid"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

@@ -12,16 +12,16 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { t } from 'i18next';
-import React, { VFC } from 'react';
-
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { VFC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { setOidcToken } from '../../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../../AuthProviders/AuthProvider';
 import { OidcUser } from '../../AuthProviders/AuthProvider.interface';
 
 const Auth0Callback: VFC = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();
-  const { handleSuccessfulLogin } = useApplicationStore();
+  const { handleSuccessfulLogin } = useAuthProvider();
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
@@ -51,7 +51,7 @@ const Auth0Callback: VFC = () => {
     if (error) {
       return (
         <div data-testid="auth0-error">
-          {t('server.unexpected-error')} {error.message}
+          {t('server.unexpected-error')} <span>{error.message}</span>
         </div>
       );
     }

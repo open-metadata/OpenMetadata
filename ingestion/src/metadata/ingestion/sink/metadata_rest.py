@@ -34,6 +34,7 @@ from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteR
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
@@ -41,6 +42,9 @@ from metadata.generated.schema.entity.data.searchIndex import (
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -79,7 +83,7 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestSuiteSample,
 )
 from metadata.ingestion.models.user import OMetaUserProfile
-from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -118,6 +122,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.metadata = metadata
         self.role_entities = {}
         self.team_entities = {}
+        self.limit_reached = set()
 
     @classmethod
     def create(
@@ -166,16 +171,30 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Send to OM the request creation received as is.
         :param entity_request: Create Entity request
         """
-        created = self.metadata.create_or_update(entity_request)
-        if created:
-            return Either(right=created)
+        if type(entity_request).__name__ in self.limit_reached:
+            # If the limit has been reached, we don't need to try to ingest the entity
+            # Note: We use PatchRequest to update the entity, so updating is not affected by the limit
+            return None
+        try:
+            created = self.metadata.create_or_update(entity_request)
+            if created:
+                return Either(right=created)
 
-        error = f"Failed to ingest {type(entity_request).__name__}"
-        return Either(
-            left=StackTraceError(
-                name=type(entity_request).__name__, error=error, stackTrace=None
+            error = f"Failed to ingest {type(entity_request).__name__}"
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__, error=error, stackTrace=None
+                )
             )
-        )
+        except LimitsException as _:
+            self.limit_reached.add(type(entity_request).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(entity_request).__name__,
+                    error=f"Limit reached for {type(entity_request).__name__}",
+                    stackTrace=None,
+                )
+            )
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -329,12 +348,26 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             team = self.metadata.create_or_update(create_team)
             self.team_entities[team.name.root] = str(team.id.root)
             return team
+        except LimitsException as _:
+            if type(create_team).__name__ in self.limit_reached:
+                # Note: We do not have a way to patch the team,
+                # so we try to put and handle exception
+                return None
+            self.limit_reached.add(type(create_team).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(create_team).__name__,
+                    error=f"Limit reached for {type(create_team).__name__}",
+                    stackTrace=None,
+                )
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error creating team [{create_team}]: {exc}")
 
         return None
 
+    # pylint: disable=too-many-branches
     @_run_dispatch.register
     def write_users(self, record: OMetaUserProfile) -> Either[User]:
         """
@@ -388,8 +421,22 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         metadata_user = CreateUserRequest(**user_profile)
 
         # Create user
-        user = self.metadata.create_or_update(metadata_user)
-        return Either(right=user)
+        try:
+            user = self.metadata.create_or_update(metadata_user)
+            return Either(right=user)
+        except LimitsException as _:
+            if type(metadata_user).__name__ in self.limit_reached:
+                # Note: We do not have a way to patch the user,
+                # so we try to put and handle exception
+                return None
+            self.limit_reached.add(type(metadata_user).__name__)
+            return Either(
+                left=StackTraceError(
+                    name=type(metadata_user).__name__,
+                    error=f"Limit reached for {type(metadata_user).__name__}",
+                    stackTrace=None,
+                )
+            )
 
     @_run_dispatch.register
     def delete_entity(self, record: DeleteEntity) -> Either[Entity]:
@@ -641,6 +688,53 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             self.status.scanned(result)
 
         return Either(right=record)
+
+    @_run_dispatch.register
+    def write_data_contract_result(
+        self, record: DataContractResult
+    ) -> Either[DataContractResult]:
+        """
+        Send a DataContractResult to OM API
+        :param record: DataContractResult to be created/updated
+        """
+        try:
+            # Find the data contract by FQN to get its ID
+            data_contract = self.metadata.get_by_name(
+                entity=DataContract, fqn=record.dataContractFQN
+            )
+
+            if not data_contract:
+                error = f"Data contract not found: {record.dataContractFQN}"
+                return Either(
+                    left=StackTraceError(
+                        name="DataContractResult", error=error, stackTrace=None
+                    )
+                )
+
+            # Create or update the result using the mixin method
+            result = self.metadata.put_data_contract_result(
+                data_contract_id=data_contract.id, result=record
+            )
+
+            if result:
+                return Either(right=result)
+            else:
+                error = f"Failed to create data contract result for {record.dataContractFQN}"
+                return Either(
+                    left=StackTraceError(
+                        name="DataContractResult", error=error, stackTrace=None
+                    )
+                )
+
+        except Exception as exc:
+            error = f"Error processing data contract result: {exc}"
+            return Either(
+                left=StackTraceError(
+                    name="DataContractResult",
+                    error=error,
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     @_run_dispatch.register
     def write_pipeline_usage(self, pipeline_usage: PipelineUsage) -> Either[Pipeline]:

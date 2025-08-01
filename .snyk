@@ -9,3 +9,4 @@ exclude:
     - openmetadata-ui/src/main/resources/ui/src/pages/service/mocks/**
     - openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/TestConnection.mock.ts
     - openmetadata-service/src/test/**
+    - ingestion/src/_openmetadata_testutils/**

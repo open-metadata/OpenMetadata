@@ -42,10 +42,11 @@ export enum EntityFields {
   TABLE_TYPE = 'tableType',
   COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
   DISPLAY_NAME_KEYWORD = 'displayName.keyword',
+  DISPLAY_NAME_ACTUAL_CASE = 'displayName.actualCase',
   NAME_KEYWORD = 'name.keyword',
   GLOSSARY = 'glossary.name.keyword',
   CLASSIFICATION = 'classification.name.keyword',
-  DOMAIN = 'domain.displayName.keyword',
+  DOMAINS = 'domains.displayName.keyword',
   DATA_MODEL = 'dataModels.displayName.keyword',
   CONTAINER_COLUMN = 'dataModel.columns.name.keyword',
   PROJECT = 'project.keyword',
@@ -71,6 +72,8 @@ export enum EntityFields {
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
   SERVICE_NAME = 'service.name.keyword',
+  SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
+  TAGS_LABEL_TYPE = 'tags.labelType',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
@@ -84,16 +87,18 @@ export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
 // This enum contains list of fields that are there in the object of the entity
 // For example, in Glossary object, there are fields like name, description, parent, etc.
 export enum EntityReferenceFields {
-  REVIEWERS = 'reviewers.fullyQualifiedName',
-  OWNERS = 'owners.fullyQualifiedName',
+  REVIEWERS = 'reviewers',
+  OWNERS = 'owners',
   DATABASE = 'database.name',
   DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
-  TAG = 'tags.tagFQN',
+  TAG = 'tags',
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
   SERVICE = 'service.name',
+  UPDATED_BY = 'updatedBy',
+  CHANGE_DESCRIPTION = 'changeDescription',
 }

@@ -12,15 +12,14 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Col, Drawer, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -34,8 +33,10 @@ import {
 } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import './entity-info-drawer.less';
 import {
@@ -55,6 +56,8 @@ const EdgeInfoDrawer = ({
   const [mysqlQuery, setMysqlQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
+  const [showSqlFunctionModal, setShowSqlFunctionModal] = useState(false);
+  const [sqlFunction, setSqlFunction] = useState('');
 
   const { t } = useTranslation();
 
@@ -62,11 +65,213 @@ const EdgeInfoDrawer = ({
     return edge.data.edge;
   }, [edge]);
 
+  const isColumnLineage = useMemo(() => {
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+
+    return Boolean(sourceHandle && targetHandle);
+  }, [edge]);
+
+  const onDescriptionUpdate = useCallback(
+    async (updatedHTML: string) => {
+      if (edgeEntity?.description !== updatedHTML && edge) {
+        const lineageDetails = {
+          ...getLineageDetailsObject(edge),
+          description: updatedHTML,
+        };
+
+        const updatedEdgeDetails = {
+          edge: {
+            fromEntity: {
+              id: edgeEntity.fromEntity.id,
+              type: edgeEntity.fromEntity.type,
+            },
+            toEntity: {
+              id: edgeEntity.toEntity.id,
+              type: edgeEntity.toEntity.type,
+            },
+            lineageDetails,
+          },
+        } as AddLineage;
+        await onEdgeDetailsUpdate?.(updatedEdgeDetails);
+      }
+    },
+    [edgeEntity, edge]
+  );
+
+  const onFunctionUpdate = useCallback(
+    async (updatedFunction: string) => {
+      if (edge) {
+        const { sourceHandle, targetHandle } =
+          getColumnSourceTargetHandles(edge);
+        const updatedColumnLineage = [...(edgeEntity.columns || [])];
+
+        // Find and update the function for the specific column connection
+        const columnIndex = updatedColumnLineage.findIndex(
+          (col) =>
+            col.fromColumns.includes(sourceHandle) &&
+            col.toColumn === targetHandle
+        );
+
+        if (columnIndex >= 0) {
+          updatedColumnLineage[columnIndex] = {
+            ...updatedColumnLineage[columnIndex],
+            function: updatedFunction,
+          };
+          const lineageDetails = {
+            ...getLineageDetailsObject(edge),
+            columnsLineage: updatedColumnLineage,
+          };
+
+          const updatedEdgeDetails = {
+            edge: {
+              fromEntity: {
+                id: edgeEntity.fromEntity.id,
+                type: edgeEntity.fromEntity.type,
+              },
+              toEntity: {
+                id: edgeEntity.toEntity.id,
+                type: edgeEntity.toEntity.type,
+              },
+              lineageDetails,
+            },
+          } as AddLineage;
+
+          await onEdgeDetailsUpdate?.(updatedEdgeDetails);
+          setSqlFunction(updatedFunction);
+          setShowSqlFunctionModal(false);
+        }
+      }
+    },
+    [edgeEntity, edge]
+  );
+
+  const edgeDetailsSection = useMemo(() => {
+    const { data } = edge;
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+
+    if (isColumnLineage) {
+      const functionValue = getColumnFunctionValue(
+        data?.edge?.columns ?? [],
+        sourceHandle ?? '',
+        targetHandle ?? ''
+      );
+
+      return (
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
+          <Col span={24}>
+            <div className="d-flex items-center m-b-xs gap-2">
+              <Typography.Paragraph className="right-panel-label m-b-0">
+                {`${t('label.sql-function')}`}
+              </Typography.Paragraph>
+              {hasEditAccess && (
+                <EditIconButton
+                  newLook
+                  data-testid="edit-function"
+                  size="small"
+                  title={t('label.edit-entity', {
+                    entity: t('label.sql-function'),
+                  })}
+                  onClick={() => {
+                    setSqlFunction(functionValue ?? '');
+                    setShowSqlFunctionModal(true);
+                  }}
+                />
+              )}
+            </div>
+            <Typography.Text className="m-b-0" data-testid="sql-function">
+              {functionValue ?? NO_DATA_PLACEHOLDER}
+            </Typography.Text>
+          </Col>
+        </Row>
+      );
+    }
+
+    return (
+      <>
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
+          <Col span={24}>
+            <DescriptionV1
+              description={edgeEntity?.description ?? ''}
+              entityName="Edge"
+              entityType={EntityType.LINEAGE_EDGE}
+              hasEditAccess={hasEditAccess}
+              showCommentsIcon={false}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
+          </Col>
+        </Row>
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
+          <Col span={24}>
+            <div className="d-flex items-center m-b-xs gap-2">
+              <Typography.Paragraph className="right-panel-label m-b-0 ">
+                {`${t('label.sql-uppercase-query')}`}
+              </Typography.Paragraph>
+              {hasEditAccess && (
+                <EditIconButton
+                  newLook
+                  data-testid="edit-sql"
+                  size="small"
+                  title={t('label.edit-entity', {
+                    entity: t('label.sql-uppercase-query'),
+                  })}
+                  onClick={() => setShowSqlQueryModal(true)}
+                />
+              )}
+            </div>
+            {mysqlQuery ? (
+              <SchemaEditor
+                className="edge-drawer-sql-editor"
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  styleActiveLine: false,
+                  readOnly: 'nocursor',
+                }}
+                value={mysqlQuery}
+              />
+            ) : (
+              <Typography.Paragraph className="m-b-0">
+                {t('server.no-query-available')}
+              </Typography.Paragraph>
+            )}
+          </Col>
+        </Row>
+        <Row
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
+          <Col span={24}>
+            <div className="m-b-xs">
+              <Typography.Paragraph className="right-panel-label m-b-0">
+                {`${t('label.lineage-source')}`}
+              </Typography.Paragraph>
+            </div>
+            <Typography.Text className="m-b-0">
+              {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
+            </Typography.Text>
+          </Col>
+        </Row>
+      </>
+    );
+  }, [
+    isColumnLineage,
+    edgeEntity?.description,
+    hasEditAccess,
+    edgeEntity.source,
+    mysqlQuery,
+    onDescriptionUpdate,
+    edge,
+    sqlFunction,
+  ]);
+
   const getEdgeInfo = () => {
     const { source, target, data } = edge;
     const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
     const { pipeline, pipelineEntityType } = data?.edge ?? {};
-    const isColumnLineage = sourceHandle && targetHandle;
 
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
@@ -120,50 +325,9 @@ const EdgeInfoDrawer = ({
             pipeline.fullyQualifiedName
           ),
       },
-      functionInfo: {
-        key: t('label.function'),
-        value: isColumnLineage
-          ? getColumnFunctionValue(
-              data?.edge?.columns ?? [],
-              sourceHandle ?? '',
-              targetHandle ?? ''
-            )
-          : undefined,
-      },
     });
     setIsLoading(false);
   };
-
-  const edgeDescription = useMemo(() => {
-    return edgeEntity?.description ?? '';
-  }, [edgeEntity]);
-
-  const onDescriptionUpdate = useCallback(
-    async (updatedHTML: string) => {
-      if (edgeDescription !== updatedHTML && edge) {
-        const lineageDetails = {
-          ...getLineageDetailsObject(edge),
-          description: updatedHTML,
-        };
-
-        const updatedEdgeDetails = {
-          edge: {
-            fromEntity: {
-              id: edgeEntity.fromEntity.id,
-              type: edgeEntity.fromEntity.type,
-            },
-            toEntity: {
-              id: edgeEntity.toEntity.id,
-              type: edgeEntity.toEntity.type,
-            },
-            lineageDetails,
-          },
-        } as AddLineage;
-        await onEdgeDetailsUpdate?.(updatedEdgeDetails);
-      }
-    },
-    [edgeDescription, edgeEntity, edge]
-  );
 
   const onSqlQueryUpdate = useCallback(
     async (updatedQuery: string) => {
@@ -217,78 +381,33 @@ const EdgeInfoDrawer = ({
         {isLoading ? (
           <Loader />
         ) : (
-          <Row gutter={[8, 8]}>
-            {edgeData &&
-              Object.values(edgeData).map(
-                (data) =>
-                  data.value && (
-                    <Col data-testid={data.key} key={data.key} span={24}>
-                      <Typography.Text className="m-r-sm summary-panel-section-title">
-                        {`${data.key}:`}
-                      </Typography.Text>
+          <>
+            {edgeData && (
+              <div className="d-flex gap-5 flex-col">
+                <Row
+                  className="p-md border-radius-card summary-panel-card"
+                  gutter={[0, 8]}>
+                  {Object.values(edgeData).map(
+                    (data) =>
+                      data.value && (
+                        <Col data-testid={data.key} key={data.key} span={24}>
+                          <Typography.Text className="m-r-sm font-semibold">
+                            {`${data.key}:`}
+                          </Typography.Text>
 
-                      {isUndefined(data.link) ? (
-                        <Typography.Text>{data.value}</Typography.Text>
-                      ) : (
-                        <Link to={data.link}>{data.value}</Link>
-                      )}
-                    </Col>
-                  )
-              )}
-            <Col span={24}>
-              <Divider />
-              <DescriptionV1
-                description={edgeDescription}
-                entityName="Edge"
-                entityType={EntityType.LINEAGE_EDGE}
-                hasEditAccess={hasEditAccess}
-                showCommentsIcon={false}
-                onDescriptionUpdate={onDescriptionUpdate}
-              />
-            </Col>
-            <Col span={24}>
-              <Divider />
-              <div className="d-flex items-center gap-4 m-b-sm">
-                <Typography.Paragraph className="right-panel-label m-b-0">
-                  {`${t('label.sql-uppercase-query')}`}
-                </Typography.Paragraph>
-                {hasEditAccess && (
-                  <Button
-                    className="p-0 flex-center"
-                    data-testid="edit-sql"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setShowSqlQueryModal(true)}
-                  />
-                )}
+                          {isUndefined(data.link) ? (
+                            <Typography.Text>{data.value}</Typography.Text>
+                          ) : (
+                            <Link to={data.link}>{data.value}</Link>
+                          )}
+                        </Col>
+                      )
+                  )}
+                </Row>
+                {edgeDetailsSection}
               </div>
-              {mysqlQuery ? (
-                <SchemaEditor
-                  className="edge-drawer-sql-editor"
-                  mode={{ name: CSMode.SQL }}
-                  options={{
-                    styleActiveLine: false,
-                    readOnly: 'nocursor',
-                  }}
-                  value={mysqlQuery}
-                />
-              ) : (
-                <Typography.Paragraph className="m-b-0">
-                  {t('server.no-query-available')}
-                </Typography.Paragraph>
-              )}
-            </Col>
-            <Col>
-              <Divider />
-              <Typography.Paragraph className="right-panel-label m-b-sm">
-                {`${t('label.lineage-source')}`}
-              </Typography.Paragraph>
-              <Typography.Text className="m-b-0">
-                {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
-              </Typography.Text>
-            </Col>
-          </Row>
+            )}
+          </>
         )}
       </Drawer>
       {showSqlQueryModal && (
@@ -300,6 +419,17 @@ const EdgeInfoDrawer = ({
           visible={showSqlQueryModal}
           onCancel={() => setShowSqlQueryModal(false)}
           onSave={onSqlQueryUpdate}
+        />
+      )}
+      {showSqlFunctionModal && (
+        <ModalWithFunctionEditor
+          header={t('label.edit-entity', {
+            entity: t('label.sql-function'),
+          })}
+          value={sqlFunction}
+          visible={showSqlFunctionModal}
+          onCancel={() => setShowSqlFunctionModal(false)}
+          onSave={onFunctionUpdate}
         />
       )}
     </>

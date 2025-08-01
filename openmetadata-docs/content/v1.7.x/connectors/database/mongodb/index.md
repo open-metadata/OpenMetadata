@@ -1,5 +1,6 @@
 ---
-title: MongoDB
+title: MongoDB Connector | OpenMetadata NoSQL Database Integration
+description: Connect MongoDB to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction for seamless integration.
 slug: /connectors/database/mongodb
 ---
 
@@ -7,7 +8,7 @@ slug: /connectors/database/mongodb
 name="MongoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Sample Data", "Auto-Classification"]
 unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 

@@ -15,7 +15,7 @@ import test from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassification';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const mysqlService = new MysqlIngestionClass({
@@ -34,92 +34,75 @@ test.describe.configure({
   timeout: 11 * 60 * 1000,
 });
 
-test.describe.skip(
-  'Auto Classification',
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
-  async () => {
-    test('should be able to auto classify data', async ({ page }) => {
-      await redirectToHomePage(page);
-      await settingClick(
-        page,
-        mysqlService.category as unknown as SettingOptionsType
-      );
+test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
+  test('should be able to auto classify data', async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(
+      page,
+      mysqlService.category as unknown as SettingOptionsType
+    );
 
-      // Create and ingest service data
-      await mysqlService.createService(page);
+    // Create and ingest service data
+    await mysqlService.createService(page);
 
-      await addAndTriggerAutoClassificationPipeline(page, mysqlService);
+    await addAndTriggerAutoClassificationPipeline(page, mysqlService);
 
-      // Check if the classification is successful
-      const getDatabases = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/databases?service=') &&
-          response.request().method() === 'GET' &&
-          response.status() === 200
-      );
+    // Check if the classification is successful
+    const getDatabases = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/databases?service=') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
+    );
 
-      // Click on databases tab
-      await page.click('.ant-tabs-nav-list [data-testid="databases"]');
+    // Click on databases tab
+    await page.click('.ant-tabs-nav-list [data-testid="databases"]');
 
-      await getDatabases;
+    await getDatabases;
 
-      // Click on the database name
-      await page.getByTestId('column-name').getByText('default').click();
+    // Click on the database name
+    await page.getByTestId('column-name').getByText('default').click();
 
-      await page.waitForSelector(
-        '[data-testid="cypress_integrations_test_db"]'
-      );
+    await page.waitForSelector('[data-testid="cypress_integrations_test_db"]');
 
-      // Click on the database schema name
-      await page.getByTestId('cypress_integrations_test_db').click();
+    // Click on the database schema name
+    await page.getByTestId('cypress_integrations_test_db').click();
 
-      await page.waitForSelector('[data-testid="sensitive_customers"]');
+    await page.waitForSelector('[data-testid="sensitive_customers"]');
 
-      // Click on the table name
-      await page.getByTestId('sensitive_customers').click();
+    // Click on the table name
+    await page.getByTestId('sensitive_customers').click();
 
-      // Verify the sensitive tags
-      await test
-        .expect(
-          page.locator(
-            `[data-row-key*="user_name"] [data-testid="tag-PII.Sensitive"] `
-          )
+    // Verify the sensitive tags
+    await test
+      .expect(
+        page.locator(
+          `[data-row-key*="user_name"] [data-testid="tag-PII.Sensitive"] `
         )
-        .toBeAttached();
+      )
+      .toBeAttached();
 
-      await test
-        .expect(
-          page.locator(
-            `[data-row-key*="SSN"] [data-testid="tag-PII.Sensitive"] `
-          )
+    await test
+      .expect(
+        page.locator(
+          `[data-row-key*="DWH_X10"] [data-testid="tag-PII.Sensitive"] `
         )
-        .toBeAttached();
+      )
+      .toBeAttached();
 
-      await test
-        .expect(
-          page.locator(
-            `[data-row-key*="DWH_X10"] [data-testid="tag-PII.Sensitive"] `
-          )
+    mysqlService.name;
+
+    // Verify the non sensitive tags
+    await test
+      .expect(
+        page.locator(
+          `[data-row-key*="address"] [data-testid="tag-PII.Sensitive"] `
         )
-        .toBeAttached();
+      )
+      .toBeAttached();
 
-      mysqlService.name;
-
-      // Verify the non sensitive tags
-      await test
-        .expect(
-          page.locator(
-            `[data-row-key*="address"] [data-testid="tag-PII.Sensitive"] `
-          )
-        )
-        .toBeAttached();
-
-      // Delete the created service
-      await settingClick(
-        page,
-        mysqlService.category as unknown as SettingOptionsType
-      );
-      await mysqlService.deleteService(page);
-    });
-  }
-);
+    // Delete the created service
+    const { apiContext } = await getApiContext(page);
+    await mysqlService.deleteServiceByAPI(apiContext);
+  });
+});

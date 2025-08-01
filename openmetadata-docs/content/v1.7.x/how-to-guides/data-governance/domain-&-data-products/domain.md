@@ -1,5 +1,6 @@
 ---
-title:  How to Use Domains
+title:  How to Use Domains | OpenMetadata Governance Guide
+description: Organize datasets into domains to group related data assets, assign responsibilities, and support distributed data ownership.
 slug: /how-to-guides/data-governance/domains-&-data-products/domains
 ---
 

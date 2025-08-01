@@ -118,6 +118,7 @@ services:
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
       OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
       OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -333,6 +334,7 @@ services:
       OIDC_CUSTOM_PARAMS: ${OIDC_CUSTOM_PARAMS:-{}}
       OIDC_MAX_AGE: ${OIDC_MAX_AGE:-"0"}
       OIDC_PROMPT_TYPE: ${OIDC_PROMPT_TYPE:-"consent"}
+      OIDC_SESSION_EXPIRY: ${OIDC_SESSION_EXPIRY:-"604800"}
       # For SAML Authentication
       # SAML_DEBUG_MODE: ${SAML_DEBUG_MODE:-false}
       # SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-""}
@@ -527,6 +529,8 @@ services:
       # To integrate GCP
       AIRFLOW__OPENMETADATA_SECRETS_MANAGER__GCP_PROJECT_ID: ${OM_SM_PROJECT_ID:-""}
 
+      # Apps
+      ENABLE_APP_HelloPipelines: "true"
 
     entrypoint: /bin/bash
     command:

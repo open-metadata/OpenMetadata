@@ -14,13 +14,7 @@
 import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -258,12 +252,7 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-save"
                     data-testid="user-profile-edit-roles-cancel-button"
-                    icon={
-                      <ClosePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<ClosePopoverIcon height={24} />}
                     size="small"
                     style={{
                       width: '30px',
@@ -279,12 +268,7 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-cancel"
                     data-testid="user-profile-edit-roles-save-button"
-                    icon={
-                      <SavePopoverIcon
-                        height={24}
-                        style={{ marginTop: '2px' }}
-                      />
-                    }
+                    icon={<SavePopoverIcon height={24} />}
                     loading={isLoading}
                     size="small"
                     style={{

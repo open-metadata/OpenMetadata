@@ -15,9 +15,9 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -68,13 +68,14 @@ import {
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { serviceCategory, version } = useParams<{
+  const { serviceCategory, version } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     version: string;
   }>();
@@ -105,7 +106,7 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
       [currentVersionData, entityType]
@@ -123,9 +124,9 @@ function ServiceVersionPage() {
           currentVersionData.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData.changeDescription, owners, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domains]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -324,7 +325,7 @@ function ServiceVersionPage() {
           default:
             break;
         }
-      } catch (error) {
+      } catch {
         setData([]);
         setPaging(pagingObject);
       } finally {
@@ -371,7 +372,7 @@ function ServiceVersionPage() {
 
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -383,7 +384,7 @@ function ServiceVersionPage() {
   );
 
   const backHandler = useCallback(() => {
-    history.push(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
+    navigate(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
   }, [decodedServiceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
@@ -451,7 +452,17 @@ function ServiceVersionPage() {
     }
 
     if (!viewVersionPermission) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <ErrorPlaceHolder
+          className="border-none"
+          permissionValue={t('label.view-entity', {
+            entity: `${getEntityName(currentVersionData)} ${t(
+              'label.service'
+            )}`,
+          })}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
     }
 
     return (

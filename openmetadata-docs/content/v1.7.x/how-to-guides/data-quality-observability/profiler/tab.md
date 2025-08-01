@@ -1,11 +1,12 @@
 ---
-title: Profiler Tab
+title: Profiler Tab | OpenMetadata Data Profiling Interface
+description: Use the profiler tab to configure, view, and manage profiling metrics including null counts, uniqueness, and stats.
 slug: /how-to-guides/data-quality-observability/profiler/tab
 ---
 
 # Profiler Tab
 
-The Profiler & Data Quality tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. 
+The Data Observability tab is displayed only for Tables. It has three sub-tabs for **Table Profile, Column Profile, and Data Quality**. 
 
 ## Table Profile Tab
 

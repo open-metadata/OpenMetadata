@@ -10,36 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
 interface RelatedMetricsProps {
   isInSummaryPanel?: boolean;
-  newLook?: boolean;
 }
 
 const RelatedMetrics: FC<RelatedMetricsProps> = ({
   isInSummaryPanel = false,
-  newLook = false,
 }) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -156,82 +156,66 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
   const header = (
     <Space className="w-full items-center">
       <Typography.Text
-        className={classNames({
-          'text-sm font-medium': newLook,
-          'right-panel-label': !newLook,
-        })}
+        className={classNames('text-sm font-medium')}
         data-testid="header-label">
         {t('label.related-metric-plural')}
       </Typography.Text>
       {!isEdit &&
-        !isEmpty(relatedMetrics) &&
         permissions.EditAll &&
-        !metricDetails.deleted && (
-          <EditIconButton
-            data-testid="edit-related-metrics"
-            newLook={newLook}
+        !metricDetails.deleted &&
+        (isEmpty(relatedMetrics) ? (
+          <PlusIconButton
+            data-testid="add-related-metrics-container"
             size="small"
+            title={t('label.add-entity', {
+              entity: t('label.related-metric-plural'),
+            })}
             onClick={() => setIsEdit(true)}
           />
-        )}
+        ) : (
+          <EditIconButton
+            newLook
+            data-testid="edit-related-metrics"
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.related-metric-plural'),
+            })}
+            onClick={() => setIsEdit(true)}
+          />
+        ))}
     </Space>
   );
 
-  const content = (
-    <>
-      {isEmpty(relatedMetrics) &&
-        !isEdit &&
-        permissions.EditAll &&
-        !metricDetails.deleted && (
-          <Col
-            className="m-t-xss"
-            data-testid="add-related-metrics-container"
-            onClick={() => setIsEdit(true)}>
-            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-          </Col>
-        )}
-      <Col span={24}>
-        {isEdit ? (
-          <RelatedMetricsForm
-            defaultValue={defaultValue}
-            initialOptions={initialOptions}
-            metricFqn={metricDetails.fullyQualifiedName ?? ''}
-            onCancel={() => setIsEdit(false)}
-            onSubmit={handleRelatedMetricUpdate}
-          />
-        ) : (
-          <>
-            {isEmpty(relatedMetrics) &&
-            (metricDetails.deleted || isInSummaryPanel) ? (
-              <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
-            ) : (
-              <div
-                className="metric-entity-list-body"
-                data-testid="metric-entity-list-body">
-                {getRelatedMetricListing(visibleRelatedMetrics)}
-                {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
-                {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
-              </div>
-            )}
-          </>
-        )}
-      </Col>
-    </>
+  const content = isEdit ? (
+    <RelatedMetricsForm
+      defaultValue={defaultValue}
+      initialOptions={initialOptions}
+      metricFqn={metricDetails.fullyQualifiedName ?? ''}
+      onCancel={() => setIsEdit(false)}
+      onSubmit={handleRelatedMetricUpdate}
+    />
+  ) : isEmpty(relatedMetrics) && (metricDetails.deleted || isInSummaryPanel) ? (
+    <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+  ) : (
+    !isEmpty(relatedMetrics) && (
+      <div
+        className="metric-entity-list-body"
+        data-testid="metric-entity-list-body">
+        {getRelatedMetricListing(visibleRelatedMetrics)}
+        {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
+        {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
+      </div>
+    )
   );
 
-  if (newLook) {
-    return (
-      <Card className="new-header-border-card" title={header}>
-        <Row gutter={[0, 8]}>{content}</Row>
-      </Card>
-    );
-  }
-
   return (
-    <Row gutter={[0, 8]}>
-      <Col span={24}>{header}</Col>
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      isExpandDisabled={isEmpty(relatedMetrics)}>
       {content}
-    </Row>
+    </ExpandableCard>
   );
 };
 

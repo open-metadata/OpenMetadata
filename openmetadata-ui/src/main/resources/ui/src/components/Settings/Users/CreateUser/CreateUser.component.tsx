@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
@@ -50,7 +50,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
-import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
+import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -62,8 +62,6 @@ import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
-
-const { Option } = Select;
 
 const CreateUser = ({
   roles,
@@ -95,7 +93,7 @@ const CreateUser = ({
     name: 'domains',
     id: 'root/domains',
     required: false,
-    label: t('label.domain'),
+    label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
       selectedDomain: activeDomainEntityRef
@@ -235,24 +233,6 @@ const CreateUser = ({
               fieldText: t('label.email'),
             }),
           },
-          {
-            type: 'email',
-            required: true,
-            validator: async (_, value) => {
-              if (EMAIL_REG_EX.test(value) && !forceBot) {
-                const isEmailAlreadyExists = await checkEmailInUse(value);
-                if (isEmailAlreadyExists) {
-                  return Promise.reject(
-                    t('message.entity-already-exists', {
-                      entity: value,
-                    })
-                  );
-                }
-
-                return Promise.resolve();
-              }
-            },
-          },
         ]}>
         <Input
           data-testid="email"
@@ -280,9 +260,7 @@ const CreateUser = ({
             className="w-full"
             data-testid="token-expiry"
             placeholder={t('message.select-token-expiration')}>
-            {getJWTTokenExpiryOptions().map((option) => (
-              <Option key={option.value}>{option.label}</Option>
-            ))}
+            {getJWTTokenExpiryOptions()}
           </Select>
         </Form.Item>
       )}
@@ -413,6 +391,7 @@ const CreateUser = ({
                   data-testid="roles-dropdown"
                   disabled={isEmpty(roles)}
                   filterOption={handleSearchFilterOption}
+                  getPopupContainer={(triggerNode) => triggerNode.parentElement}
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {
@@ -445,7 +424,7 @@ const CreateUser = ({
           {selectedDomain && selectedDomain.length > 0 && (
             <DomainLabel
               multiple
-              domain={selectedDomain}
+              domains={selectedDomain}
               entityFqn=""
               entityId=""
               entityType={EntityType.USER}

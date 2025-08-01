@@ -305,7 +305,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "TABLE",
             (
                 TestCaseResult,
-                "10",
+                "11",
                 None,
                 TestCaseStatus.Success,
                 None,
@@ -318,7 +318,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
-            (TestCaseResult, "10", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_column_name_to_exist",
@@ -430,6 +430,12 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
                 None,
                 None,
             ),
+        ),
+        (
+            "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 66.67, 0.0),
         ),
     ],
 )
