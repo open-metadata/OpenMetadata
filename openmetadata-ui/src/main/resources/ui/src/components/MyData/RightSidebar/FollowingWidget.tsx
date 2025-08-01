@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
 import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
@@ -61,6 +61,7 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
@@ -216,16 +217,16 @@ function FollowingWidget({
                         </div>
                       }
                       type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                      <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
-                            className="text-left text-sm font-regular"
+                            className="text-left text-sm font-regular text-grey-600"
                             ellipsis={{ tooltip: true }}>
                             {item.serviceType}
                           </Typography.Text>
                         )}
                         <Typography.Text
-                          className="text-left text-sm font-semibold"
+                          className="text-left text-sm font-regular text-grey-800"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -255,24 +256,43 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<FollowingAssetsIcon height={22} width={22} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedEntityFilter}
+        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        title={t('label.following-assets')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleEntityFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
+        }
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedEntityFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleEntityFilterChange,
+    ]
+  );
+
   const WidgetContent = useMemo(() => {
     return (
       <div
         className="following-widget-container"
         data-testId="following-widget">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<FollowingAssetsIcon height={24} width={24} />}
-          isEditView={isEditView}
-          selectedSortBy={selectedEntityFilter}
-          sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
-          title={t('label.following-assets')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleEntityFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter
@@ -291,21 +311,17 @@ function FollowingWidget({
   }, [
     followedData,
     emptyState,
-    isExpanded,
-    isLoadingOwnedData,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    followingContent,
+    currentUser?.name,
     showMoreCount,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
       dataLength={followedData.length !== 0 ? followedData.length : 10}
+      header={widgetHeader}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

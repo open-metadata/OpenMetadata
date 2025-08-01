@@ -26,6 +26,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import './customizable-page-header.less';
 
 export const CustomizablePageHeader = ({
   disableSave,
@@ -98,7 +99,7 @@ export const CustomizablePageHeader = ({
     () => ({
       persona: personaName,
       entity: isLandingPage
-        ? t('label.homepage')
+        ? t('label.home-page')
         : t(`label.${kebabCase(currentPageType as string)}`),
     }),
     [personaName, isLandingPage]
@@ -121,7 +122,7 @@ export const CustomizablePageHeader = ({
             level={5}>
             {t('label.customize-entity', {
               entity: isLandingPage
-                ? t('label.homepage')
+                ? t('label.home-page')
                 : t(`label.${kebabCase(currentPageType as string)}`),
             })}
           </Typography.Title>
@@ -129,7 +130,7 @@ export const CustomizablePageHeader = ({
             <Transi18next
               i18nKey={
                 isLandingPage
-                  ? 'message.customize-homepage-page-header-for-persona'
+                  ? 'message.customize-home-page-page-header-for-persona'
                   : 'message.customize-entity-landing-page-header-for-persona'
               }
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
@@ -173,6 +174,7 @@ export const CustomizablePageHeader = ({
           </Button>
           {isLandingPage && (
             <Button
+              className="landing-page-cancel-button"
               data-testid="cancel-button"
               disabled={saving}
               icon={<CloseOutlined />}

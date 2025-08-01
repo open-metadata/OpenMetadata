@@ -1864,7 +1864,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<CollectionDAO.ExtensionRecordWithId> records =
         daoCollection
             .entityExtensionDAO()
-            .getExtensionsBatch(entityListToStrings(tables), TABLE_PROFILER_CONFIG_EXTENSION);
+            .getExtensionBatch(entityListToStrings(tables), TABLE_PROFILER_CONFIG_EXTENSION);
 
     for (CollectionDAO.ExtensionRecordWithId record : records) {
       try {

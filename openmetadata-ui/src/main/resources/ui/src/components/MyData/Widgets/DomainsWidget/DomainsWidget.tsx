@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
@@ -35,6 +37,7 @@ import {
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
+import { getDomainDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -55,6 +58,7 @@ const DomainsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
+  const navigate = useNavigate();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DOMAIN_SORT_BY_KEYS.LATEST
   );
@@ -89,6 +93,13 @@ const DomainsWidget = ({
     }
   }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
 
+  const handleDomainClick = useCallback(
+    (domain: Domain) => {
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+    },
+    [navigate]
+  );
+
   const domainsWidget = useMemo(() => {
     const widget = currentLayout?.find(
       (widget: WidgetConfig) => widget.i === widgetKey
@@ -109,6 +120,10 @@ const DomainsWidget = ({
     setSelectedSortBy(key);
   }, []);
 
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.DOMAIN);
+  }, [navigate]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
@@ -127,11 +142,15 @@ const DomainsWidget = ({
       <div className="entity-list-body">
         <div className="domains-widget-grid">
           {domains.map((domain) => (
-            <div
-              className={`domain-card${isFullSize ? ' domain-card-full' : ''}`}
-              key={domain.id}>
+            <Button
+              className={classNames('domain-card', {
+                'domain-card-full': isFullSize,
+                'p-0': !isFullSize,
+              })}
+              key={domain.id}
+              onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
-                <>
+                <div className="d-flex gap-2">
                   <div
                     className="domain-card-full-icon"
                     style={{ background: domain.style?.color }}>
@@ -140,11 +159,10 @@ const DomainsWidget = ({
                   <div className="domain-card-full-content">
                     <div className="domain-card-full-title-row">
                       <Typography.Text
-                        className="text-md"
+                        className="font-semibold"
                         ellipsis={{
                           tooltip: true,
-                        }}
-                        style={{ fontWeight: 600 }}>
+                        }}>
                         {domain.displayName || domain.name}
                       </Typography.Text>
                       <span className="domain-card-full-count">
@@ -152,13 +170,11 @@ const DomainsWidget = ({
                       </span>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <div
-                    className="domain-card-bar"
-                    style={{ background: domain.style?.color }}
-                  />
+                <div
+                  className="d-flex domain-card-bar"
+                  style={{ borderLeftColor: domain.style?.color }}>
                   <div className="domain-card-content">
                     <span className="domain-card-title">
                       <div className="domain-card-icon">
@@ -166,8 +182,7 @@ const DomainsWidget = ({
                       </div>
                       <Typography.Text
                         className="domain-card-name"
-                        ellipsis={{ tooltip: true }}
-                        style={{ marginBottom: 0 }}>
+                        ellipsis={{ tooltip: true }}>
                         {domain.displayName || domain.name}
                       </Typography.Text>
                     </span>
@@ -175,9 +190,9 @@ const DomainsWidget = ({
                       {domain.assets?.length || 0}
                     </span>
                   </div>
-                </>
+                </div>
               )}
-            </div>
+            </Button>
           ))}
         </div>
       </div>
@@ -203,28 +218,41 @@ const DomainsWidget = ({
     [t, domains.length, loading]
   );
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={
+          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+        }
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DOMAIN_SORT_BY_OPTIONS}
+        title={t('label.domain-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={2}
+        onSortChange={handleSortByClick}
+        onTitleClick={handleTitleClick}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedSortBy,
+      t,
+      widgetKey,
+      handleSortByClick,
+      handleTitleClick,
+    ]
+  );
+
   return (
-    <WidgetWrapper dataLength={10} loading={loading}>
+    <WidgetWrapper dataLength={10} header={widgetHeader} loading={loading}>
       <div className="domains-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={
-            <DomainIcon
-              className="domains-widget-globe"
-              height={24}
-              width={24}
-            />
-          }
-          isEditView={isEditView}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DOMAIN_SORT_BY_OPTIONS}
-          title={t('label.domain-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={2}
-          onSortChange={handleSortByClick}
-        />
         <div className="widget-content flex-1">
           {error ? (
             <ErrorPlaceHolder

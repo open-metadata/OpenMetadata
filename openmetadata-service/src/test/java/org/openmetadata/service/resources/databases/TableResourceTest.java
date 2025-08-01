@@ -21,6 +21,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -2567,6 +2568,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
     // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest
@@ -2605,6 +2607,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyDomainsInSearch(
         table.getEntityReference(),
         List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    toggleMultiDomainSupport(true);
   }
 
   @Test
@@ -5851,5 +5855,81 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
       assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
     }
+
+  @Test
+  void test_compositeKeyConstraintIndexOutOfBounds_fixed(TestInfo test) throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("composite_key_test_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("user_ref").withDataType(ColumnDataType.STRING);
+    Column c2 = new Column().withName("tenant_id").withDataType(ColumnDataType.STRING);
+    Column c3 = new Column().withName("user_id").withDataType(ColumnDataType.STRING);
+
+    // Create target table (referenced table with 2 columns)
+    Table targetTable =
+        createEntity(
+            createRequest("target_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c2, c3)),
+            ADMIN_AUTH_HEADERS);
+
+    // Create source table (no constraints initially)
+    Table sourceTable =
+        createEntity(
+            createRequest("source_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c1))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table targetRef = getEntityByName(targetTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Step 2: Create the problematic constraint using deep copy method (1 local column -> 2
+    // referred columns)
+    String targetCol1FQN = targetRef.getColumns().get(0).getFullyQualifiedName();
+    String targetCol2FQN = targetRef.getColumns().get(1).getFullyQualifiedName();
+
+    String originalJson = JsonUtils.pojoToJson(sourceTable);
+    Table sourceTableV2 = JsonUtils.deepCopy(sourceTable, Table.class);
+
+    // Create the problematic constraint: 1 local column referencing 2 referred columns
+    TableConstraint problematicConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(Arrays.asList("user_ref")) // 1 local column
+            .withReferredColumns(Arrays.asList(targetCol1FQN, targetCol2FQN)); // 2 referred columns
+
+    sourceTableV2.setTableConstraints(Arrays.asList(problematicConstraint));
+
+    Table updatedTable =
+        patchEntity(sourceTable.getId(), originalJson, sourceTableV2, ADMIN_AUTH_HEADERS);
+
+    // Step 3: Verify constraint structure (the problematic case: 1 column -> 2 referred columns)
+    assertNotNull(updatedTable.getTableConstraints());
+    assertEquals(1, updatedTable.getTableConstraints().size());
+    TableConstraint constraint = updatedTable.getTableConstraints().get(0);
+    assertEquals(TableConstraint.ConstraintType.FOREIGN_KEY, constraint.getConstraintType());
+    assertEquals(1, constraint.getColumns().size()); // 1 local column
+    assertEquals(
+        2,
+        constraint
+            .getReferredColumns()
+            .size()); // 2 referred columns - this causes IndexOutOfBounds!
+
+    // Step 4: Build search index doc - this should NOT crash with our fix
+    assertDoesNotThrow(
+        () -> {
+          Entity.buildSearchIndex(Entity.TABLE, updatedTable);
+        },
+        "Search index building should not crash with composite key constraints");
+
+    // Step 5: Verify the constraint was properly stored
+    Table fetchedTable = getEntity(updatedTable.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedTable.getTableConstraints());
+    assertEquals(1, fetchedTable.getTableConstraints().size());
   }
 }

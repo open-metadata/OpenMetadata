@@ -13,6 +13,7 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
 import { ROUTES } from '../../../constants/constants';
@@ -20,14 +21,14 @@ import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant'
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getAllFeeds } from '../../../rest/feedsAPI';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedListV1New from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -42,33 +43,12 @@ const MyFeedWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const [loading, setLoading] = useState(false);
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
   );
-
-  const getFeeds = useCallback(async (filter: FeedFilter) => {
-    try {
-      setLoading(true);
-      const { data } = await getAllFeeds(
-        undefined,
-        undefined,
-        ThreadType.Conversation,
-        filter,
-        undefined,
-        undefined,
-        10
-      );
-      const { updatedFeedList } = getFeedListWithRelativeDays(data);
-      setEntityThread(updatedFeedList);
-    } catch (error) {
-      showErrorToast(error as string);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const handleFilterChange = useCallback(
     (key: string) => {
@@ -86,13 +66,25 @@ const MyFeedWidgetInternal = ({
   }, [getAllFeeds]);
 
   useEffect(() => {
-    getFeeds(selectedFilter);
-  }, [selectedFilter]);
+    getFeedData(
+      selectedFilter as unknown as FeedFilter,
+      undefined,
+      ThreadType.Conversation,
+      undefined,
+      undefined,
+      undefined,
+      10
+    );
+  }, [getFeedData, selectedFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
     [currentLayout, widgetKey]
   );
+
+  const isFullSizeWidget = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
+  }, [currentLayout, widgetKey]);
 
   const showWidgetFooterMoreButton = useMemo(
     () => Boolean(!loading) && entityThread?.length > 10,
@@ -130,6 +122,7 @@ const MyFeedWidgetInternal = ({
                 emptyPlaceholderText={t('label.no-recent-activity')}
                 feedList={entityThread}
                 hidePopover={false}
+                isFullSizeWidget={isFullSizeWidget}
                 isLoading={loading}
                 onAfterClose={handleCloseClick}
                 onUpdateEntityDetails={handleUpdateEntityDetails}
@@ -146,27 +139,46 @@ const MyFeedWidgetInternal = ({
     handleCloseClick,
     handleUpdateEntityDetails,
     currentUser,
+    isFullSizeWidget,
   ]);
+
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<ActivityFeedIcon height={22} width={22} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedFilter}
+        sortOptions={FEED_WIDGET_FILTER_OPTIONS}
+        title={t('label.activity-feed')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleFilterChange(key)}
+        onTitleClick={() => navigate(ROUTES.EXPLORE)}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleFilterChange,
+    ]
+  );
 
   return (
     <WidgetWrapper
       data-testid="feed-widget"
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      header={widgetHeader}
       loading={loading}>
       <div className="feed-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon height={24} width={24} />}
-          isEditView={isEditView}
-          selectedSortBy={selectedFilter}
-          sortOptions={FEED_WIDGET_FILTER_OPTIONS}
-          title={t('label.activity-feed')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange(key)}
-        />
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter
@@ -185,4 +197,4 @@ const MyFeedWidgetInternal = ({
   );
 };
 
-export const MyFeedWidget = MyFeedWidgetInternal;
+export const MyFeedWidget = withActivityFeed(MyFeedWidgetInternal);
