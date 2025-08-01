@@ -22,6 +22,7 @@ import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { DomainTag } from '../components/Domains/DomainTag/DomainTag.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ResourceEntity,
@@ -257,6 +258,35 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         </Typography.Paragraph>
       </Tooltip>
     </AntdTag>
+  );
+};
+
+export const domainTagRender = (customTagProps: CustomTagProps) => {
+  const { label, onClose } = customTagProps;
+  const tagLabel = isString(label)
+    ? getTagDisplay(label) || label || 'Tag'
+    : String(label || '').trim() || 'Tag';
+
+  const onPreventMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleRemove = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  return (
+    <div onMouseDown={onPreventMouseDown}>
+      <DomainTag
+        removable
+        data-testid={`selected-domain-tag-${tagLabel}`}
+        label={tagLabel}
+        onRemove={handleRemove}
+      />
+    </div>
   );
 };
 

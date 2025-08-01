@@ -31,6 +31,7 @@ export interface SearchDropdownProps {
   hideCounts?: boolean; // Determines if the count should be displayed or not.
   hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
   prefix?: React.ReactNode;
+  dropdownClassName?: string;
 }
 
 export interface SearchDropdownOption {

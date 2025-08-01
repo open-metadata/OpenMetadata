@@ -12,13 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Input, Popover, Row, Select, Space } from 'antd';
+import { Button, Col, Form, Input, Row, Select, Space } from 'antd';
 import { cloneDeep } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
-import { ReactComponent as LayersIcon } from '../../../assets/svg/ic-layers-white.svg';
+import { ReactComponent as LightningIcon } from '../../../assets/svg/domain-icons/lightning-01.svg';
 import { COLOR_PALETTE } from '../../../constants/AddEntityForm.constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -37,6 +37,7 @@ import {
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import { getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { domainTagRender } from '../../../utils/TagsUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 import { Panel } from '../../Panel/Panel.component';
@@ -46,6 +47,8 @@ import {
   FormValues,
 } from './AddEntityForm.interface';
 import './AddEntityForm.less';
+import { DOMAIN_ICONS } from './IconSelector/icon-selector.constant';
+import { IconSelector } from './IconSelector/IconSelector.component';
 
 function AddEntityForm<T extends CreateEntityType>({
   open,
@@ -58,8 +61,9 @@ function AddEntityForm<T extends CreateEntityType>({
   const [form] = Form.useForm();
   const { permissions } = usePermissionProvider();
   const [coverImageUrl, setCoverImageUrl] = useState<string>('');
-  const [isIconModalOpen, setIsIconModalOpen] = useState(false);
-  const [iconUrlInput, setIconUrlInput] = useState('');
+  const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
+  const [selectedIconFileName, setSelectedIconFileName] = useState<string>('');
+  const [selectedIconUrl, setSelectedIconUrl] = useState<string>('');
 
   const {
     entityType,
@@ -93,12 +97,17 @@ function AddEntityForm<T extends CreateEntityType>({
       }
 
       form.setFieldsValue(initialValues);
+
+      // Reset icon selection state
+      setSelectedIconFileName('');
+      setSelectedIconUrl('');
     } else {
       // Clear form when closing
       form.resetFields();
       setCoverImageUrl('');
-      setIconUrlInput('');
-      setIsIconModalOpen(false);
+      setSelectedIconFileName('');
+      setSelectedIconUrl('');
+      setIsIconSelectorOpen(false);
     }
   }, [open, form, defaultColor, defaultValues, parentDomain]);
 
@@ -106,26 +115,41 @@ function AddEntityForm<T extends CreateEntityType>({
   const handleClose = useCallback(() => {
     form.resetFields();
     setCoverImageUrl('');
-    setIconUrlInput('');
-    setIsIconModalOpen(false);
+    setSelectedIconFileName('');
+    setSelectedIconUrl('');
+    setIsIconSelectorOpen(false);
     onClose();
   }, [form, onClose]);
 
-  const handleIconUrlSubmit = () => {
-    if (iconUrlInput.trim()) {
-      form.setFieldValue('iconURL', iconUrlInput.trim());
-      setIconUrlInput('');
-      setIsIconModalOpen(false);
-    }
+  const handleIconSelectorOpen = () => {
+    setIsIconSelectorOpen(true);
   };
 
-  const handleIconModalCancel = () => {
-    setIconUrlInput('');
-    setIsIconModalOpen(false);
+  const handleIconSelectorClose = () => {
+    setIsIconSelectorOpen(false);
   };
 
-  const handleIconClick = () => {
-    setIsIconModalOpen(!isIconModalOpen);
+  const handleIconSelect = (fileName: string) => {
+    setSelectedIconFileName(fileName);
+    setSelectedIconUrl(''); // Clear URL when icon is selected
+    form.setFieldValue('iconFileName', fileName);
+    form.setFieldValue('iconURL', '');
+    setIsIconSelectorOpen(false);
+  };
+
+  const handleIconUrlSelect = (url: string) => {
+    setSelectedIconUrl(url);
+    setSelectedIconFileName(''); // Clear icon when URL is selected
+    form.setFieldValue('iconURL', url);
+    form.setFieldValue('iconFileName', '');
+    setIsIconSelectorOpen(false);
+  };
+
+  const handleIconClear = () => {
+    setSelectedIconFileName('');
+    setSelectedIconUrl('');
+    form.setFieldValue('iconFileName', '');
+    form.setFieldValue('iconURL', '');
   };
 
   const handleCoverImageUrlChange = (
@@ -134,6 +158,38 @@ function AddEntityForm<T extends CreateEntityType>({
     const url = e.target.value;
     setCoverImageUrl(url);
     form.setFieldValue('coverImageURL', url);
+  };
+
+  // Get the selected icon component for display
+  const getSelectedIconComponent = () => {
+    if (selectedIconFileName) {
+      const domainIcon = DOMAIN_ICONS.find(
+        (icon) => icon.fileName === selectedIconFileName
+      );
+      if (domainIcon) {
+        const IconComponent = domainIcon.svg;
+
+        return (
+          <IconComponent
+            className="domain-icon"
+            data-testid="selected-domain-icon"
+          />
+        );
+      }
+    }
+
+    if (selectedIconUrl) {
+      return (
+        <img
+          alt="Custom icon"
+          className="domain-icon"
+          data-testid="selected-url-icon"
+          src={selectedIconUrl}
+        />
+      );
+    }
+
+    return <LightningIcon className="domain-icon" data-testid="domain-icon" />;
   };
 
   const nameField: FieldProp = {
@@ -182,6 +238,7 @@ function AddEntityForm<T extends CreateEntityType>({
     props: {
       selectProps: {
         'data-testid': 'tags-container',
+        tagRender: domainTagRender,
       },
     },
   };
@@ -306,19 +363,13 @@ function AddEntityForm<T extends CreateEntityType>({
   };
 
   const handleFormSubmit = async (formData: FormValues): Promise<void> => {
+    const iconURL = selectedIconUrl || formData.iconURL;
     const style = {
       color: formData.color || defaultColor,
-      iconURL: formData.iconURL,
+      iconURL,
     };
 
     const extension = cloneDeep(formData.extension) ?? {};
-
-    // Clean up extension if needed
-    // Object.keys(extension).forEach((key) => {
-    //   if (CUSTOM_PROPERTY_INVALID_NAMES.includes(key)) {
-    //     delete extension[key];
-    //   }
-    // });
 
     const updatedData = {
       name: formData.name?.trim(),
@@ -379,8 +430,9 @@ function AddEntityForm<T extends CreateEntityType>({
     // Clear form and close on successful submission
     form.resetFields();
     setCoverImageUrl('');
-    setIconUrlInput('');
-    setIsIconModalOpen(false);
+    setSelectedIconFileName('');
+    setSelectedIconUrl('');
+    setIsIconSelectorOpen(false);
     onClose();
 
     // Redirect after successful creation
@@ -393,38 +445,6 @@ function AddEntityForm<T extends CreateEntityType>({
       }
     }
   };
-
-  const iconPopoverContent = (
-    <div>
-      <div style={{ marginBottom: '8px' }}>
-        <label style={{ fontWeight: 500 }}>
-          {t('label.enter-entity', { entity: t('label.url-uppercase') })}
-        </label>
-      </div>
-      <Input
-        placeholder="Enter icon URL"
-        value={iconUrlInput}
-        onChange={(e) => setIconUrlInput(e.target.value)}
-        onPressEnter={handleIconUrlSubmit}
-      />
-      <div
-        className="url-input-actions"
-        style={{
-          marginTop: '12px',
-          display: 'flex',
-          gap: '8px',
-          justifyContent: 'flex-end',
-        }}>
-        <Button onClick={handleIconModalCancel}>{t('label.cancel')}</Button>
-        <Button
-          disabled={!iconUrlInput.trim()}
-          type="primary"
-          onClick={handleIconUrlSubmit}>
-          {t('label.add')}
-        </Button>
-      </div>
-    </div>
-  );
 
   return (
     <Panel
@@ -458,22 +478,21 @@ function AddEntityForm<T extends CreateEntityType>({
                 label={t('label.icon')}
                 tooltip={t('message.icon-tooltip')}>
                 <div className="icon-selector">
-                  <Popover
-                    content={iconPopoverContent}
-                    open={isIconModalOpen}
-                    placement="bottomLeft"
-                    trigger="click"
-                    onOpenChange={setIsIconModalOpen}>
-                    <div
-                      className="selected-icon clickable"
-                      style={{ backgroundColor: selectedColor || defaultColor }}
-                      onClick={handleIconClick}>
-                      <LayersIcon
-                        className="domain-icon"
-                        data-testid="domain-icon"
-                      />
-                    </div>
-                  </Popover>
+                  <div
+                    className="selected-icon clickable"
+                    style={{ backgroundColor: selectedColor || defaultColor }}
+                    onClick={handleIconSelectorOpen}>
+                    {getSelectedIconComponent()}
+                  </div>
+                  <IconSelector
+                    open={isIconSelectorOpen}
+                    selectedIconFileName={selectedIconFileName}
+                    selectedIconUrl={selectedIconUrl}
+                    onClear={handleIconClear}
+                    onClose={handleIconSelectorClose}
+                    onIconSelect={handleIconSelect}
+                    onUrlSelect={handleIconUrlSelect}
+                  />
                 </div>
               </Form.Item>
             </Col>
@@ -502,7 +521,6 @@ function AddEntityForm<T extends CreateEntityType>({
           </Row>
         </div>
 
-        {/* Name and Display Name Row */}
         <Row gutter={16}>
           <Col span={12}>{getField(nameField)}</Col>
           <Col span={12}>
@@ -512,16 +530,12 @@ function AddEntityForm<T extends CreateEntityType>({
           </Col>
         </Row>
 
-        {/* Description */}
         {getField(descriptionField)}
 
-        {/* Tags */}
         {getField(tagsField)}
 
-        {/* Glossary Terms */}
         {getField(glossaryTermsField)}
 
-        {/* Domain Selector - only for data products */}
         {showDomainSelector && (
           <Form.Item
             label={t('label.domain')}
@@ -544,10 +558,8 @@ function AddEntityForm<T extends CreateEntityType>({
           </Form.Item>
         )}
 
-        {/* Domain Type - only for domains and subdomains */}
         {showDomainType && getField(domainTypeField)}
 
-        {/* Owner */}
         <div className="owner-section">
           {getField(ownerField)}
           {Boolean(ownersList.length) && (
@@ -557,7 +569,6 @@ function AddEntityForm<T extends CreateEntityType>({
           )}
         </div>
 
-        {/* Experts */}
         <div className="experts-section">
           {getField(expertsField)}
           {Boolean(expertsList.length) && (
@@ -571,8 +582,15 @@ function AddEntityForm<T extends CreateEntityType>({
           )}
         </div>
 
-        {/* Hidden color field for form data */}
         <Form.Item hidden initialValue={defaultColor} name="color">
+          <input type="hidden" />
+        </Form.Item>
+
+        <Form.Item hidden name="iconFileName">
+          <input type="hidden" />
+        </Form.Item>
+
+        <Form.Item hidden name="iconURL">
           <input type="hidden" />
         </Form.Item>
       </Form>

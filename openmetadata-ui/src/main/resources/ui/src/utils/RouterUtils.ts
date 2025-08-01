@@ -36,6 +36,7 @@ import {
   PLACEHOLDER_WEBHOOK_NAME,
   ROUTES,
 } from '../constants/constants';
+import { NEW_DOMAINS_PAGE } from '../constants/Domain.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -138,7 +139,7 @@ export const getEditIngestionPath = (
 export const getDomainPath = (fqn?: string) => {
   let path = ROUTES.DOMAIN;
   if (fqn) {
-    path = ROUTES.DOMAIN_DETAILS;
+    path = NEW_DOMAINS_PAGE ? ROUTES.DOMAINS_DETAILS : ROUTES.DOMAIN_DETAILS;
     path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
   }
 

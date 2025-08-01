@@ -70,6 +70,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   hasNullOption = false,
   triggerButtonSize = 'small',
   prefix,
+  dropdownClassName = '',
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -241,7 +242,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     (menuNode: ReactNode) => (
       <Card
         bodyStyle={{ padding: 0 }}
-        className="custom-dropdown-render"
+        className={classNames('custom-dropdown-render', dropdownClassName)}
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
           <div className="p-t-sm p-x-sm">
