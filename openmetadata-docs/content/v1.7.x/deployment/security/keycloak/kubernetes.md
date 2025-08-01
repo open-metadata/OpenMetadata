@@ -64,6 +64,7 @@ openmetadata:
       clientId: "{Client ID}"                                        # Update your Client ID
       callbackUrl: "http://localhost:8585/callback"
       oidcConfiguration:
+        enabled: true
         oidcType: "Keycloak"  
         clientId:
           secretRef: oidc-secrets
