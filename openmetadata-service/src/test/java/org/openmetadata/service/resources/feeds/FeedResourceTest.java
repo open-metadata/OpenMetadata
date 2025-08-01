@@ -799,6 +799,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @ParameterizedTest
   @NullSource
   @MethodSource("provideStringsForListThreads")
+  @Order(3)
   void get_listThreadsWithPagination(String entityLink) throws HttpResponseException {
     EventSubscriptionResourceTest eventSubscriptionResourceTest =
         new EventSubscriptionResourceTest();
@@ -1523,12 +1524,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     return TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
   }
 
-  private void cleanupTable(Table table) {
-    try {
-      TABLE_RESOURCE_TEST.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
-    } catch (Exception e) {
-      // Ignore cleanup errors to avoid failing tests
-    }
+  private void cleanupTable(Table table) throws HttpResponseException {
+    TABLE_RESOURCE_TEST.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
   }
 
   @Test

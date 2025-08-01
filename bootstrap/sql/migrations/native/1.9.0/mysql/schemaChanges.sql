@@ -142,6 +142,7 @@ UPDATE test_definition
   SET json = JSON_SET(json, '$.supportedDataTypes', JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'BOOLEAN'))
 WHERE name in ('columnValuesToBeInSet', 'columnValuesToBeNotInSet');
 
+
 -- 1. Add generated classificationHash column to support fast lookup and grouping by classification fqnHash
 ALTER TABLE tag
   ADD COLUMN classificationHash VARCHAR(255)
@@ -183,3 +184,6 @@ ALTER TABLE thread_entity DROP COLUMN domain;
        ELSE JSON_UNQUOTE(JSON_EXTRACT(json, '$.domains'))
      END
    ) STORED;
+
+-- Update activity feed alert after domain changes
+DELETE FROM  event_subscription_entity where name = 'ActivityFeedAlert';
