@@ -63,6 +63,7 @@ import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/T
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import {
+  DATA_CONTRACT_STATUS_OPTIONS,
   DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
@@ -776,6 +777,14 @@ export const getMessageFromArgumentName = (argumentName: string) => {
           }),
         }),
       });
+    case 'entityNameList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.entity'),
+          }),
+        }),
+      });
     case 'ownerNameList':
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
@@ -826,6 +835,12 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
           entity: t('label.test-case-result'),
+        }),
+      });
+    case 'contractStatusList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.data-contract-status'),
         }),
       });
     case 'testSuiteList':
@@ -903,6 +918,23 @@ export const getFieldByArgumentType = (
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.table-lowercase'),
+          })}
+        />
+      );
+
+      break;
+
+    case 'entityNameList':
+      field = (
+        <AsyncSelect
+          api={getTableSuggestions}
+          className="w-full"
+          data-testid="entity-name-select"
+          maxTagTextLength={45}
+          mode="tags"
+          optionFilterProp="label"
+          placeholder={t('label.search-by-type', {
+            type: t('label.entity-lowercase'),
           })}
         />
       );
@@ -1030,6 +1062,21 @@ export const getFieldByArgumentType = (
           options={getSelectOptionsFromEnum(TestCaseStatus)}
           placeholder={t('label.select-field', {
             field: t('label.test-case-result'),
+          })}
+        />
+      );
+
+      break;
+
+    case 'contractStatusList':
+      field = (
+        <Select
+          className="w-full"
+          data-testid="contract-status-select"
+          mode="multiple"
+          options={DATA_CONTRACT_STATUS_OPTIONS}
+          placeholder={t('label.select-field', {
+            field: t('label.data-contract-status'),
           })}
         />
       );

@@ -248,7 +248,7 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "65"
                         }
                     ],
@@ -260,7 +260,7 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "25"
                         }
                     ],
@@ -272,7 +272,7 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "56"
                         }
                     ]
@@ -282,7 +282,7 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "99"
                         }
                     ],
@@ -294,7 +294,7 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "190"
                         }
                     ],
@@ -306,7 +306,7 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "66"
                         }
                     ],
@@ -318,7 +318,7 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "76"
                         }
                     ]
@@ -328,7 +328,7 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "46"
                         }
                     ],
@@ -340,7 +340,7 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "100"
                         }
                     ],
@@ -351,7 +351,7 @@
                     "testCaseStatus": "Aborted",
                     "testResultValues": [
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "None"
                         }
                     ]
@@ -471,11 +471,11 @@
                     "testCaseStatus": "Aborted",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "None"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "None"
                         }
                     ]
@@ -485,11 +485,11 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "35005"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "92808"
                         }
                     ]
@@ -499,11 +499,11 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "90006"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "92808"
                         }
                     ]
@@ -513,11 +513,11 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "90002"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "95640"
                         }
                     ]
@@ -527,11 +527,11 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "90004"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "99001"
                         }
                     ]
@@ -541,11 +541,11 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "1001"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "2789"
                         }
                     ]
@@ -555,11 +555,11 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "91009"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "92808"
                         }
                     ]
@@ -569,11 +569,11 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "90008"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "92808"
                         }
                     ]
@@ -583,11 +583,11 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "92000"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "92808"
                         }
                     ]
@@ -597,11 +597,11 @@
                     "testCaseStatus": "Success",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "90001"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "96612"
                         }
                     ]
@@ -616,11 +616,11 @@
                     "testCaseStatus": "Failed",
                     "testResultValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "1001"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "2789"
                         }
                     ],

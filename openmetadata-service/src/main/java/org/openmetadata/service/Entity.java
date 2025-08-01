@@ -230,6 +230,7 @@ public final class Entity {
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
+  public static final String DATA_CONTRACT_RESULT = "dataContractResult";
 
   //
   // Other entities

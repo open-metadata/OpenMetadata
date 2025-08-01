@@ -1966,7 +1966,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     Response response2 =
         SecurityUtil.addHeaders(resultsTarget, ADMIN_AUTH_HEADERS).put(Entity.json(createResult2));
     DataContractResult result2 =
-        TestUtils.readResponse(response2, DataContractResult.class, Status.OK.getStatusCode());
+        TestUtils.readResponse(response2, DataContractResult.class, Status.CREATED.getStatusCode());
 
     // Verify latestResult is NOT updated (should still be first result)
     DataContract contractAfterSecond = getDataContract(dataContract.getId(), "");

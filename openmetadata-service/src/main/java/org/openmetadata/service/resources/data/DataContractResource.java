@@ -768,8 +768,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     DataContractResult result = getContractResult(dataContract, newResult);
-    result = repository.addContractResult(dataContract, result);
-    return Response.ok(result).build();
+    return repository.addContractResult(dataContract, result).toResponse();
   }
 
   @DELETE
