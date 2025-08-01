@@ -302,6 +302,7 @@ export const testTableSpecificOperations = async (
   entity: TableClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   // Test ViewQueries
@@ -362,6 +363,7 @@ export const testTopicSpecificOperations = async (
   entity: TopicClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   // Test ViewSampleData for Topic
@@ -378,6 +380,7 @@ export const testPipelineSpecificOperations = async (
   entity: PipelineClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   // Test Edit Lineage for Pipeline
@@ -398,6 +401,7 @@ export const testSearchIndexSpecificOperations = async (
   entity: SearchIndexClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   // Test ViewUsage for Search Index
@@ -414,6 +418,7 @@ export const testStoredProcedureSpecificOperations = async (
   entity: TableClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   // Test ViewUsage for Stored Procedure
@@ -430,6 +435,7 @@ export const testDashboardDataModelSpecificOperations = async (
   entity: DashboardDataModelClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   // Test Edit Lineage for Dashboard Data Model
@@ -450,6 +456,7 @@ export const testDashboardSpecificOperations = async (
   entity: DashboardClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   await checkElementVisibility(
@@ -467,6 +474,7 @@ export const testMlModelSpecificOperations = async (
   entity: MlModelClass,
   effect: 'allow' | 'deny'
 ) => {
+  await redirectToHomePage(testUserPage);
   await entity.visitEntityPage(testUserPage);
 
   await checkElementVisibility(

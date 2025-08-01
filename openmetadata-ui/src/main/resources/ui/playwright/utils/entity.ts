@@ -58,8 +58,6 @@ export const visitEntityPage = async (data: {
       .waitFor({ state: 'detached' }),
   ]);
 
-  await page.waitForResponse('/api/v1/users/name/*?fields=profile');
-
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
     .isVisible();
