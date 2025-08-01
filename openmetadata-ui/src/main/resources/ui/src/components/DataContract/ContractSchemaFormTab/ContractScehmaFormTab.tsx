@@ -56,7 +56,7 @@ export const ContractSchemaFormTab: React.FC<{
         ),
       });
     },
-    [onChange]
+    [schema, onChange]
   );
 
   const fetchTableColumns = useCallback(async () => {
