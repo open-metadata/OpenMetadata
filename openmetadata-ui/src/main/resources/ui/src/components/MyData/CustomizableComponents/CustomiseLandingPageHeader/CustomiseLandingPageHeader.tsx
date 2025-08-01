@@ -52,6 +52,7 @@ import CustomiseSearchBar from './CustomiseSearchBar';
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
   backgroundColor,
+  dataTestId,
   handleAddWidget,
   hideCustomiseButton = false,
   isPreviewHeader = false,
@@ -153,7 +154,10 @@ const CustomiseLandingPageHeader = ({
   }, [fetchAnnouncements]);
 
   return (
-    <div className="customise-landing-page-header" style={landingPageStyle}>
+    <div
+      className="customise-landing-page-header"
+      data-testid={dataTestId}
+      style={landingPageStyle}>
       <div className="header-container">
         <div className="dashboard-header">
           <div

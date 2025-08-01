@@ -40,7 +40,7 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
+base.beforeAll('Setup pre-requests', async ({ browser, page }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
@@ -56,7 +56,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Widgets', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeAll(async ({ page }) => {
     test.slow(true);
 
     await redirectToHomePage(page);
@@ -68,6 +68,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
 
@@ -90,6 +91,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
 
@@ -110,6 +112,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
 
@@ -132,6 +135,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
 
@@ -152,6 +156,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
 
@@ -174,6 +179,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
 
@@ -196,6 +202,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.Domains')).not.toBeVisible();
 
@@ -218,6 +225,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await redirectToHomePage(page);
+    await page.getByTestId('welcome-screen-close-btn').click();
 
     await expect(page.getByTestId('KnowledgePanel.MyTask')).not.toBeVisible();
 

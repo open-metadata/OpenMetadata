@@ -1376,7 +1376,7 @@
     "select-a-metric-type": "Выбрать тип показателя",
     "select-a-policy": "Выбрать политику",
     "select-add-test-suite": "Выбрать/добавить набор тестов",
-    "select-all-entity":  "Выбрать все {{entity}}",
+    "select-all-entity": "Выбрать все {{entity}}",
     "select-asset-type": "Выбрать тип актива",
     "select-background": "Выбрать фон",
     "select-column-plural-to-exclude": "Выберите столбцы для исключения",
