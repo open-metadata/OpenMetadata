@@ -89,7 +89,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <div className="h-full text-center w-full">
+      <div className="h-full text-center w-full p-x-box">
         <ErrorPlaceHolder
           buttonId="add-persona-button"
           className="border-none"
