@@ -226,12 +226,3 @@ export const updateDefaultOrganizationPolicy = async (
     },
   });
 };
-
-export const cleanupPermissions = async (apiContext: APIRequestContext) => {
-  if (role && role.responseData?.id) {
-    await role.delete(apiContext);
-  }
-  if (policy && policy.responseData?.id) {
-    await policy.delete(apiContext);
-  }
-};
