@@ -16,8 +16,19 @@
         "type": "string"
       },
       "config": {
-        "description": "Additional Spark configuration properties as key-value pairs.",
-        "$ref": "../../type/basic.json#/definitions/map"
+        "type": "object",
+        "properties": {
+          "tempPath": {
+            "description": "Temporary path to store the data.",
+            "type": "string",
+            "default": "/tmp/openmetadata"
+          },
+          "extraConfig": {
+            "title": "Additional Spark Configuration",
+              "description": "Additional Spark configuration properties as key-value pairs.",
+              "$ref": "../../type/basic.json#/definitions/map"
+            }
+        }
       }
     },
     "required": ["type", "remote"],

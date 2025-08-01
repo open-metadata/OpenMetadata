@@ -99,7 +99,7 @@ for (const EntityClass of entities) {
     try {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
+        await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
         // enable fullscreen
@@ -262,7 +262,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   // Verify column lineage
   await redirectToHomePage(page);
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="lineage-export"]');
@@ -543,7 +543,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
     );
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
     await visitLineageTab(page);
     await page.getByTestId('full-screen').click();
     await editLineage(page);

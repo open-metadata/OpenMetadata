@@ -131,7 +131,7 @@ test.describe('Ingestion Bot ', () => {
         // Check if entity page is accessible & it has domain
         for (const asset of domainAsset1) {
           await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPageWithCustomSearchBox(ingestionBotPage);
+          await asset.visitEntityPage(ingestionBotPage);
 
           await expect(
             ingestionBotPage.getByTestId('permission-error-placeholder')
@@ -144,7 +144,7 @@ test.describe('Ingestion Bot ', () => {
         // Check if entity page is accessible & it has domain
         for (const asset of domainAsset2) {
           await redirectToHomePage(ingestionBotPage);
-          await asset.visitEntityPageWithCustomSearchBox(ingestionBotPage);
+          await asset.visitEntityPage(ingestionBotPage);
 
           await expect(
             ingestionBotPage.getByTestId('permission-error-placeholder')
