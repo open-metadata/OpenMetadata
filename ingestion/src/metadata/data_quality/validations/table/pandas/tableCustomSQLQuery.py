@@ -54,8 +54,26 @@ class TableCustomSQLQueryValidator(
             return None
 
         total_rows = 0
+        partition_expression = next(
+            (
+                param.value
+                for param in self.test_case.parameterValues
+                if param.name == "partitionExpression"
+            ),
+            None,
+        )
         for dataframe in runner:
             if dataframe is not None:
-                total_rows += len(dataframe.index)
+                if partition_expression:
+                    try:
+                        total_rows += len(dataframe.query(partition_expression))
+                    except Exception as e:
+                        logger.error(
+                            "Error executing partition expression, "
+                            f"expression may be invalid: {partition_expression} - {e}"
+                        )
+                        return None
+                else:
+                    total_rows += len(dataframe.index)
 
         return total_rows if total_rows > 0 else None

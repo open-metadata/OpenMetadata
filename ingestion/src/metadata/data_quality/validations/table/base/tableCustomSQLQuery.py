@@ -109,7 +109,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             f"Found {result_value} row(s). Test query is expected to return {threshold} row.",
             [TestResultValue(name=RESULT_ROW_COUNT, value=str(result_value))],
             row_count=row_count,
-            passed_rows=result_value,
+            failed_rows=result_value,
         )
 
     @abstractmethod

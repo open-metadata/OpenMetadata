@@ -16,6 +16,7 @@ from metadata.data_quality.validations.models import (
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 
 
 class TableCustomSQLQueryParamsSetter(RuntimeParameterSetter):
@@ -23,6 +24,8 @@ class TableCustomSQLQueryParamsSetter(RuntimeParameterSetter):
 
     def get_parameters(self, test_case) -> TableCustomSQLQueryRuntimeParameters:
         return TableCustomSQLQueryRuntimeParameters(
-            conn_config=self.service_connection_config,
+            conn_config=DatabaseConnection(
+                config=self.service_connection_config,
+            ),
             entity=self.table_entity,
         )

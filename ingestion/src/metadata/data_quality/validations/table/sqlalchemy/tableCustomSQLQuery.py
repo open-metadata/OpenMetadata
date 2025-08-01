@@ -16,6 +16,7 @@ Validator for table custom SQL Query test case
 from typing import Optional, cast
 
 from sqlalchemy import text
+from sqlalchemy.sql import func, select
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -27,6 +28,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.processor.runner import QueryRunner
@@ -36,7 +38,16 @@ from metadata.utils.helpers import is_safe_sql_query
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    runtime_params: TableCustomSQLQueryRuntimeParameters
+    def run_validation(self) -> TestCaseResult:
+        """Run validation for the given test case
+
+        Returns:
+            TestCaseResult:
+        """
+        self.runtime_params = self.get_runtime_parameters(
+            TableCustomSQLQueryRuntimeParameters
+        )
+        return super().run_validation()
 
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         """compute result of the test case"""
@@ -65,6 +76,22 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         Raises:
             NotImplementedError:
         """
+        partition_expression = next(
+            (
+                param.value
+                for param in self.test_case.parameterValues
+                if param.name == "partitionExpression"
+            ),
+            None,
+        )
+        if partition_expression:
+            stmt = (
+                select(func.count())
+                .select_from(self.runner.table)
+                .filter(text(partition_expression))
+            )
+            return self.runner.session.execute(stmt).scalar()
+
         self.runner = cast(QueryRunner, self.runner)
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(
@@ -76,5 +103,5 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         )
         row = table_metric_computer.compute()
         if row:
-            return row.get(Metrics.ROW_COUNT.value)
+            return dict(row).get(Metrics.ROW_COUNT.value.name())
         return None
