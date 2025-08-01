@@ -12,12 +12,10 @@
 Generic Workflow entrypoint to execute Applications
 """
 import json
-import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from cryptography.fernet import Fernet
-
+from metadata.generated.schema.entity.applications.app import App
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -30,15 +28,10 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.workflow.base import BaseWorkflow
 
 logger = ingestion_logger()
-
-FERNET_KEY = "FERNET_KEY"
-# default ferney key provided in openmetadata.yaml
-DEFAULT_FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA="
 
 
 class InvalidAppConfiguration(Exception):
@@ -58,200 +51,103 @@ class AppRunner(Step, ABC):
     ):
         self.app_config = config.appConfig.root if config.appConfig else None
         self.metadata = metadata
-        private_config = (
-            config.appPrivateConfig.root if config.appPrivateConfig else None
+        self.private_config = self._retrieve_app_private_config(
+            config.appPrivateConfig.root if config.appPrivateConfig else None,
+            config.ingestionPipelineFQN,
         )
-        self.private_config = self._retrieve_app_private_config(private_config)
 
         super().__init__()
 
     def _retrieve_app_private_config(
-        self, private_config: Any
+        self, private_config: Any, ingestion_pipeline_fqn: Optional[str]
     ) -> Optional[Dict[str, Any]]:
         """
-        Retrieve private config from secrets manager for applications.
+        Retrieve private config from the API using the bot token.
+        Bots will get the service unmasked (without fernet encryption).
 
         Args:
-            pipeline_fqn: Fully qualified name of the ingestion pipeline (e.g., "OpenMetadata.appName")
+            private_config: The private config from the request (may be None or dict)
+            ingestion_pipeline_fqn: Fully qualified name of the ingestion pipeline (e.g., "OpenMetadata.AppName")
 
         Returns:
             Dictionary containing the private config or None if not found
         """
         try:
-            # If it's already a dictionary, return it as-is
             if isinstance(private_config, dict):
                 logger.debug("Private config is already a dictionary")
                 return private_config
-            # If it's None or empty, return None
-            elif not private_config:
-                logger.debug("Private config is None or empty")
-                return None
-            # If it's not a string, return None
-            elif not isinstance(private_config, str):
-                logger.warning(
-                    f"Private config has unexpected type: {type(private_config)}"
+            # Extract app name from ingestion pipeline FQN
+            # Format: "OpenMetadata.AppName" -> "AppName"
+            if not isinstance(ingestion_pipeline_fqn, str):
+                logger.debug(
+                    f"ingestion_pipeline_fqn is not a string: {type(ingestion_pipeline_fqn)}"
                 )
                 return None
-            else:
-                logger.debug("Private config is a string")
-
-            secrets_manager = SecretsManagerFactory().get_secrets_manager()
-            logger.debug(f"Secrets manager used: {str(type(secrets_manager))}")
-            if isinstance(secrets_manager, DBSecretsManager):
-                logger.debug("Using db secrets manager with Fernet encryption")
-                private_config_decrypted = None
-                if isinstance(private_config, str):
-                    private_config_decrypted = self._decrypt_fernet_private_config(
-                        private_config
+            app_name = (
+                ingestion_pipeline_fqn.split(".")[-1]
+                if "." in ingestion_pipeline_fqn
+                else ingestion_pipeline_fqn
+            )
+            # Use the bot to fetch the app from the API (bots get unmasked data)
+            app: App = self.metadata.get_by_name(
+                entity=App,
+                fqn=app_name,
+            )
+            if app and app.privateConfiguration:
+                # The bot gets the unmasked private config from the API
+                fetched_private_config = app.privateConfiguration.root
+                if isinstance(fetched_private_config, dict):
+                    parsed_private_config = self._mask_private_config_token(
+                        fetched_private_config
                     )
-                if private_config_decrypted:
-                    try:
-                        private_config_json = json.loads(private_config_decrypted)
-                        if private_config_json.get("token") and isinstance(
-                            private_config_json["token"], str
-                        ):
-                            private_config_json["token"] = CustomSecretStr(
-                                private_config_json["token"]
-                            )
+                    logger.debug(
+                        "Successfully retrieved app private config from API using bot token"
+                    )
+                    return parsed_private_config
+                elif isinstance(
+                    fetched_private_config, str
+                ) and fetched_private_config.startswith("secret:"):
+                    # The bot gets the masked private config and fetch the secret from the secrets manager
+                    fetched_private_config = fetched_private_config.replace(
+                        "secret:", ""
+                    )
+                    secrets_manager = SecretsManagerFactory().get_secrets_manager()
+                    fetched_private_config = secrets_manager.get_string_value(
+                        fetched_private_config
+                    )
+                    if fetched_private_config:
+                        parsed_private_config = json.loads(fetched_private_config)
+                        parsed_private_config = self._mask_private_config_token(
+                            parsed_private_config
+                        )
                         logger.debug(
-                            "Successfully retrieved and decrypted private config from db secrets manager"
+                            "Successfully retrieved private config from secrets manager"
                         )
-                        return private_config_json
-                    except json.JSONDecodeError as json_exc:
-                        logger.error(
-                            f"Failed to parse decrypted private config as JSON: {json_exc}"
-                        )
+                        return parsed_private_config
+                    else:
+                        logger.debug("No private config found in secrets manager")
                         return None
                 else:
-                    logger.debug(
-                        "Could not decrypt private config from db secrets manager"
-                    )
+                    logger.debug("App private config is not a dictionary or string")
+                    return None
             else:
-                if isinstance(private_config, str) and private_config.startswith(
-                    "secret:"
-                ):
-                    private_config = private_config.replace("secret:", "")
-                private_config_fetched = secrets_manager.get_string_value(
-                    private_config
-                )
-                if private_config_fetched:
-                    private_config_json = json.loads(private_config_fetched)
-                    if private_config_json.get("token") and isinstance(
-                        private_config_json["token"], str
-                    ):
-                        private_config_json["token"] = CustomSecretStr(
-                            private_config_json["token"]
-                        )
-                    logger.debug(
-                        f"Successfully retrieved private config from external secrets manager"
-                    )
-                    return private_config_json
-                else:
-                    logger.debug(f"No private config found in external secrets manager")
-            return None
-
+                logger.debug("App not found or has no private config")
+                return None
         except Exception as exc:
-            logger.error(
-                f"Failed to retrieve private config from secrets manager: {exc}"
-            )
-            logger.debug(
-                "App will run without private config due to secrets manager error"
-            )
-            return None
-
-    def _get_fernet_key(self) -> Optional[str]:
-        """Get Fernet key from various sources in priority order"""
-        # Priority 1: Environment variable
-        fernet_key = os.getenv(FERNET_KEY)
-        if fernet_key and fernet_key != DEFAULT_FERNET_KEY:
-            logger.debug("Using Fernet key from environment variable")
-            return fernet_key
-
-        # Priority 2: Default key as last resort (with warning)
-        if DEFAULT_FERNET_KEY:
-            logger.warning(
-                "Using default Fernet key - this should only be used for development"
-            )
-            return DEFAULT_FERNET_KEY
+            logger.debug(f"Failed to retrieve private config: {exc}")
+            logger.debug("App will run without private config due to error")
         return None
 
-    def _process_fernet_key(self, fernet_key: str) -> Optional[str]:
-        """Process Fernet key to match Java format conversion"""
-        try:
-            # Convert base64 to base64url (matching Java logic exactly)
-            processed_key = (
-                fernet_key.replace("/", "_").replace("+", "-").replace("=", "")
-            )
-
-            # Take first key if comma-separated (matching Java behavior)
-            processed_key = processed_key.split(",")[0].strip()
-
-            # Validate key length (Fernet keys should be 32 bytes)
-            # When base64url encoded without padding, this is typically 43 chars
-            if len(processed_key) < 32:
-                logger.error(
-                    f"Fernet key too short: {len(processed_key)} characters (minimum 32)"
-                )
-                return None
-
-            # Add proper base64url padding
-            padding_needed = 4 - (len(processed_key) % 4)
-            if padding_needed != 4:
-                processed_key += "=" * padding_needed
-
-            # Test key validity by attempting to create Fernet instance
-            try:
-                test_fernet = Fernet(processed_key.encode())
-                # If we get here, the key format is valid
-                return processed_key
-            except Exception as fernet_exc:
-                logger.error(f"Invalid Fernet key format: {fernet_exc}")
-                return None
-
-        except Exception as exc:
-            logger.error(f"Failed to process Fernet key: {exc}")
-            return None
-
-    def _decrypt_fernet_private_config(self, encrypted_config: str) -> Optional[str]:
+    def _mask_private_config_token(
+        self, private_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
-        Decrypt Fernet-encrypted private config using the server's Fernet key
-
-        Args:
-            encrypted_config: Fernet-encrypted string starting with "fernet:"
-
-        Returns:
-            Decrypted private config as JSON string, or None if decryption fails
+        Mask the token in the private config
         """
-        if not encrypted_config.startswith("fernet:"):
-            logger.error(
-                f"Input does not appear to be Fernet encrypted: {encrypted_config[:10]}***"
-            )
-            return None
-
-        try:
-            fernet_key = self._get_fernet_key()
-            if not fernet_key:
-                logger.error("No Fernet key available for decryption")
-                return None
-
-            fernet_key = self._process_fernet_key(fernet_key)
-            if not fernet_key:
-                logger.error("Failed to process Fernet key")
-                return None
-
-            # Create Fernet instance
-            fernet_instance = Fernet(fernet_key.encode())
-
-            # Remove "fernet:" prefix and decrypt
-            encrypted_data = encrypted_config.replace("fernet:", "")
-            decrypted_json = fernet_instance.decrypt(encrypted_data.encode()).decode()
-
-            logger.debug(f"Successfully decrypted Fernet-encrypted private config")
-            return decrypted_json
-
-        except Exception as exc:
-            logger.error(f"Failed to decrypt Fernet-encrypted private config: {exc}")
-            return None
+        if private_config.get("token") and isinstance(private_config["token"], str):
+            private_config["token"] = CustomSecretStr(private_config["token"])
+            logger.debug("Masked token in private config")
+        return private_config
 
     @property
     def name(self) -> str:
