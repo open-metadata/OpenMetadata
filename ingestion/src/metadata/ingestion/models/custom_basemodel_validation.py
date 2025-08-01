@@ -141,8 +141,6 @@ def transform_all_names(obj, transformer):
                     constraint.columns = [
                         transformer(col) for col in constraint.columns
                     ]
-                    
-    
 
 
 def transform_entity_names(entity: Any, model_name: str) -> Any:
