@@ -12,6 +12,7 @@
  */
 
 import { Button, Form, FormProps, Select, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,11 @@ import {
   AuthType,
   JWTTokenExpiry,
 } from '../../../../generated/entity/teams/user';
+import { ScimConfiguration } from '../../../../generated/scim/scimConfiguration';
+import { SettingType } from '../../../../generated/settings/settings';
+import { updateSettingsConfig } from '../../../../rest/settingConfigAPI';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 
 const { Option } = Select;
 
@@ -87,14 +92,32 @@ const AuthMechanismForm: FC<Props> = ({
     };
   }, [isBot, authenticationMechanism]);
 
-  const handleGenerateSCIMToken = useCallback(() => {
+  const handleGenerateSCIMToken = useCallback(async () => {
+    // Update SCIM configuration when generating token for SCIM bot
+    if (isSCIMBot) {
+      try {
+        const scimConfig: ScimConfiguration = {
+          enabled: true,
+          identityProvider: 'default',
+        };
+
+        await updateSettingsConfig({
+          config_type: SettingType.ScimConfiguration,
+          config_value: scimConfig,
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        showErrorToast(error as AxiosError);
+      }
+    }
+
     onSave({
       authType: AuthType.Jwt,
       config: {
         JWTTokenExpiry: JWTTokenExpiry.OneHour,
       },
     });
-  }, [onSave]);
+  }, [onSave, isSCIMBot]);
 
   return isSCIMBot ? (
     <div className="flex  justify-between items-center">
