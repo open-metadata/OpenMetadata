@@ -18,6 +18,7 @@ import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
 interface ExpandableCardProps {
   children: React.ReactNode;
+  defaultExpanded?: boolean;
   onExpandStateChange?: (isExpanded: boolean) => void;
   isExpandDisabled?: boolean;
   cardProps: CardProps;
@@ -30,9 +31,10 @@ const ExpandableCard = ({
   onExpandStateChange,
   isExpandDisabled,
   dataTestId,
+  defaultExpanded = true,
 }: ExpandableCardProps) => {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const handleExpandClick = useCallback(() => {
     setIsExpanded((prev) => {

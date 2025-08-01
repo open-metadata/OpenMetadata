@@ -12,12 +12,13 @@
  */
 
 import Icon, { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Actions } from '@react-awesome-query-builder/antd';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { EntityType } from '../../../enums/entity.enum';
@@ -40,17 +41,26 @@ export const ContractSemanticFormTab: React.FC<{
   const [form] = Form.useForm();
   const semanticsData = Form.useWatch('semantics', form);
   const [editingKey, setEditingKey] = useState<number | null>(null);
+  const [queryBuilderAddRule, setQueryBuilderAddRule] = useState<Actions>();
   const addFunctionRef = useRef<((defaultValue?: any) => void) | null>(null);
+
+  const handleAddQueryBuilderRule = (actionFunctions: Actions) => {
+    setQueryBuilderAddRule(actionFunctions);
+  };
 
   const handleAddSemantic = () => {
     addFunctionRef.current?.({
       name: '',
       description: '',
       rule: '',
-      enabled: false,
+      enabled: true,
     });
     setEditingKey(semanticsData.length);
   };
+
+  const handleAddNewRule = useCallback(() => {
+    queryBuilderAddRule?.addRule([]);
+  }, [queryBuilderAddRule]);
 
   useEffect(() => {
     form.setFieldsValue({
@@ -58,7 +68,7 @@ export const ContractSemanticFormTab: React.FC<{
         {
           name: '',
           description: '',
-          enabled: false,
+          enabled: true,
           rule: '',
         },
       ],
@@ -151,74 +161,90 @@ export const ContractSemanticFormTab: React.FC<{
                             </div>
                           ),
                         }}
+                        defaultExpanded={editingKey === field.key}
                         key={field.key}>
                         {editingKey === field.key ? (
-                          <Row>
-                            <Col span={24}>
-                              <Form.Item
-                                {...field}
-                                label={t('label.name')}
-                                name={[field.name, 'name']}>
-                                <Input />
-                              </Form.Item>
-                            </Col>
-                            <Col span={24}>
-                              <Form.Item
-                                {...field}
-                                label={t('label.description')}
-                                name={[field.name, 'description']}>
-                                <TextArea />
-                              </Form.Item>
-                            </Col>
-                            <Col span={24}>
-                              <Form.Item
-                                {...field}
-                                label={t('label.enabled')}
-                                name={[field.name, 'enabled']}>
-                                <Switch />
-                              </Form.Item>
-                            </Col>
-                            <Col span={24}>
-                              <Form.Item
-                                {...field}
-                                label={t('label.add-entity', {
+                          <>
+                            <Row className="semantic-form-item-content">
+                              <Col span={24}>
+                                <Form.Item
+                                  {...field}
+                                  label={t('label.name')}
+                                  name={[field.name, 'name']}>
+                                  <Input />
+                                </Form.Item>
+                              </Col>
+                              <Col span={24}>
+                                <Form.Item
+                                  {...field}
+                                  label={t('label.description')}
+                                  name={[field.name, 'description']}>
+                                  <TextArea />
+                                </Form.Item>
+                              </Col>
+                              <Col span={24}>
+                                <Form.Item
+                                  {...field}
+                                  label={t('label.enabled')}
+                                  name={[field.name, 'enabled']}>
+                                  <Switch />
+                                </Form.Item>
+                              </Col>
+                              <Col span={24}>
+                                <Form.Item
+                                  {...field}
+                                  label={t('label.add-entity', {
+                                    entity: t('label.rule-plural'),
+                                  })}
+                                  name={[field.name, 'rule']}>
+                                  {/* @ts-expect-error because Form.Item will provide value and onChange */}
+                                  <QueryBuilderWidget
+                                    formContext={{
+                                      entityType: EntityType.TABLE,
+                                    }}
+                                    getQueryActions={handleAddQueryBuilderRule}
+                                    id="rule"
+                                    name={`${field.name}.rule`}
+                                    options={{
+                                      addButtonText: t('label.add-semantic'),
+                                      removeButtonText: t(
+                                        'label.remove-semantic'
+                                      ),
+                                    }}
+                                    registry={{} as FieldErrorProps['registry']}
+                                    schema={{
+                                      outputType: SearchOutputType.JSONLogic,
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                            </Row>
+
+                            <div className="semantic-form-item-actions">
+                              <Button
+                                className="add-semantic-button"
+                                disabled={!queryBuilderAddRule?.addRule}
+                                icon={<Icon component={PlusIcon} />}
+                                type="link"
+                                onClick={handleAddNewRule}>
+                                {t('label.add-new-entity', {
                                   entity: t('label.rule'),
                                 })}
-                                name={[field.name, 'rule']}>
-                                {/* @ts-expect-error because Form.Item will provide value and onChange */}
-                                <QueryBuilderWidget
-                                  formContext={{
-                                    entityType: EntityType.TABLE,
-                                  }}
-                                  id="rule"
-                                  label={t('label.rule')}
-                                  name={`${field.name}.rule`}
-                                  options={{
-                                    addButtonText: t('label.add-semantic'),
-                                    removeButtonText: t(
-                                      'label.remove-semantic'
-                                    ),
-                                  }}
-                                  registry={{} as FieldErrorProps['registry']}
-                                  schema={{
-                                    outputType: SearchOutputType.JSONLogic,
-                                  }}
-                                />
-                              </Form.Item>
-                            </Col>
+                              </Button>
 
-                            <Col className="d-flex justify-end" span={24}>
-                              <Button onClick={() => setEditingKey(null)}>
-                                {t('label.cancel')}
-                              </Button>
-                              <Button
-                                className="m-l-md"
-                                type="primary"
-                                onClick={() => setEditingKey(null)}>
-                                {t('label.save')}
-                              </Button>
-                            </Col>
-                          </Row>
+                              <div className="d-flex items-center">
+                                <Button onClick={() => setEditingKey(null)}>
+                                  {t('label.cancel')}
+                                </Button>
+                                <Button
+                                  className="m-l-md"
+                                  type="primary"
+                                  onClick={() => setEditingKey(null)}>
+                                  {t('label.save')}
+                                </Button>
+                              </div>
+                            </div>
+                          </>
                         ) : (
                           <div className="semantic-rule-editor-view-only">
                             {/* @ts-expect-error because Form.Item will provide value and onChange */}
