@@ -16,6 +16,7 @@ import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ROUTES } from '../../../../constants/constants';
@@ -47,6 +48,7 @@ const DataAssetsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
@@ -93,6 +95,10 @@ const DataAssetsWidget = ({
     },
     [setSelectedSortBy]
   );
+
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.EXPLORE);
+  }, [navigate]);
 
   const sortedServices = useMemo(() => {
     switch (selectedSortBy) {
@@ -150,32 +156,22 @@ const DataAssetsWidget = ({
     [services, loading]
   );
 
-  const widgetContent = useMemo(
+  const widgetHeader = useMemo(
     () => (
-      <div className="data-assets-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<DataAssetIcon height={24} width={24} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
-          title={t('label.data-asset-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={handleSortByClick}
-        />
-        <div className="widget-content flex-1">
-          {isEmpty(services) ? emptyState : dataAssetsContent}
-          <WidgetFooter
-            moreButtonLink={ROUTES.EXPLORE}
-            moreButtonText={t('label.view-more')}
-            showMoreButton={showWidgetFooterMoreButton}
-          />
-        </div>
-      </div>
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<DataAssetIcon height={24} width={24} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        title={t('label.data-asset-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={handleSortByClick}
+        onTitleClick={handleTitleClick}
+      />
     ),
     [
       currentLayout,
@@ -186,16 +182,32 @@ const DataAssetsWidget = ({
       widgetKey,
       widgetData?.w,
       selectedSortBy,
-      emptyState,
-      dataAssetsContent,
-      services,
+      handleSortByClick,
+      handleTitleClick,
     ]
+  );
+
+  const widgetContent = useMemo(
+    () => (
+      <div className="data-assets-widget-container">
+        <div className="widget-content flex-1">
+          {isEmpty(services) ? emptyState : dataAssetsContent}
+          <WidgetFooter
+            moreButtonLink={ROUTES.EXPLORE}
+            moreButtonText={t('label.view-more')}
+            showMoreButton={showWidgetFooterMoreButton}
+          />
+        </div>
+      </div>
+    ),
+    [emptyState, dataAssetsContent, services, showWidgetFooterMoreButton, t]
   );
 
   return (
     <WidgetWrapper
       dataLength={services.length !== 0 ? services.length : 10}
       dataTestId="KnowledgePanel.DataAssets"
+      header={widgetHeader}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

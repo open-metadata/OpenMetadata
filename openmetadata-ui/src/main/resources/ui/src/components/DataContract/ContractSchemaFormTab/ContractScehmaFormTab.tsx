@@ -12,10 +12,12 @@
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
@@ -23,7 +25,10 @@ import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
-import { highlightSearchArrayElement } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchArrayElement,
+} from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import Table from '../../common/Table/Table';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
@@ -75,22 +80,31 @@ export const ContractSchemaFormTab: React.FC<{
     );
   };
 
-  const columns = useMemo(
+  const columns: ColumnsType<Column> = useMemo(
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        render: (_, record: Column) => (
+          <Typography.Text className="schema-table-name">
+            {getEntityName(record)}
+          </Typography.Text>
+        ),
       },
       {
         title: t('label.type'),
-        dataIndex: 'type',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         render: renderDataTypeDisplay,
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
+            isReadOnly
             entityFqn={fqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
@@ -104,9 +118,11 @@ export const ContractSchemaFormTab: React.FC<{
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'glossaryTerms',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
+            isReadOnly
             entityFqn={fqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
@@ -120,7 +136,7 @@ export const ContractSchemaFormTab: React.FC<{
       },
       {
         title: t('label.constraint-plural'),
-        dataIndex: 'contraints',
+        dataIndex: 'constraint',
       },
     ],
     [t]
@@ -130,10 +146,10 @@ export const ContractSchemaFormTab: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div className="m-b-sm">
-          <Typography.Title className="m-0" level={5}>
+          <Typography.Text className="contract-detail-form-tab-title">
             {t('label.schema')}
-          </Typography.Title>
-          <Typography.Paragraph className="m-0 text-sm" type="secondary">
+          </Typography.Text>
+          <Typography.Paragraph className="contract-detail-form-tab-description">
             {t('message.data-contract-schema-description')}
           </Typography.Paragraph>
         </div>

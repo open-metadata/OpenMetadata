@@ -37,6 +37,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
+import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -44,8 +45,6 @@ import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFo
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
-
-import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -204,13 +203,13 @@ const AddDataContract: React.FC<{
 
   const cardTitle = useMemo(() => {
     return (
-      <div className="d-flex items-center justify-between">
+      <div className="add-contract-card-header d-flex items-center justify-between">
         <div className="d-flex item-center justify-between flex-1">
           <div>
-            <Typography.Title className="m-0" level={5}>
+            <Typography.Text className="add-contract-card-title">
               {t('label.add-contract-detail-plural')}
-            </Typography.Title>
-            <Typography.Paragraph className="m-0 text-sm" type="secondary">
+            </Typography.Text>
+            <Typography.Paragraph className="add-contract-card-description">
               {t('message.add-contract-detail-description')}
             </Typography.Paragraph>
           </div>
@@ -267,7 +266,11 @@ const AddDataContract: React.FC<{
     );
   }, [mode, items, handleTabChange, activeTab, yaml]);
 
-  return <Card title={cardTitle}>{cardContent}</Card>;
+  return (
+    <Card className="add-contract-card" title={cardTitle}>
+      {cardContent}
+    </Card>
+  );
 };
 
 export default AddDataContract;

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,31 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactComponent as SkippedIcon } from '../assets/svg/ic-aborted.svg';
+import { ReactComponent as FailedIcon } from '../assets/svg/ic-fail.svg';
+import { ReactComponent as SuccessIcon } from '../assets/svg/ic-successful.svg';
 
-.user-listing,
-.reactive-modal {
-  .ant-btn {
-    border-radius: 4px;
-  }
-
-  .user-list-table {
-    .ant-table-row .ant-table-cell:first-child,
-    .ant-table-thead .ant-table-cell:first-child {
-      padding-left: 16px;
-    }
-  }
-
-  .persona-list-container {
-    .ant-col {
-      padding: 0 !important;
-    }
-  }
-}
-
-.action-icons {
-  .ant-btn {
-    height: 20px;
-    width: 20px;
-    padding: 0px;
-  }
-}
+export const TEST_CASE_STATUS_ICON = {
+  Aborted: SkippedIcon,
+  Failed: FailedIcon,
+  Queued: SkippedIcon,
+  Success: SuccessIcon,
+};

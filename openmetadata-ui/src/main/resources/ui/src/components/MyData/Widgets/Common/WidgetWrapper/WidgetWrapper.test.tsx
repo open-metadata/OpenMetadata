@@ -125,4 +125,31 @@ describe('WidgetWrapper', () => {
     expect(screen.getByText('Child 2')).toBeInTheDocument();
     expect(screen.getByText('Child 3')).toBeInTheDocument();
   });
+
+  it('renders header when provided', () => {
+    const headerElement = <div data-testid="widget-header">Widget Header</div>;
+
+    renderWidgetWrapper({ header: headerElement });
+
+    expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+    expect(screen.getByText('Widget Header')).toBeInTheDocument();
+    expect(screen.getByTestId('widget-content')).toBeInTheDocument();
+  });
+
+  it('renders header even when loading', () => {
+    const headerElement = <div data-testid="widget-header">Widget Header</div>;
+
+    renderWidgetWrapper({ header: headerElement, loading: true });
+
+    expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+    expect(screen.getByText('Widget Header')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-list-skeleton')).toBeInTheDocument();
+  });
+
+  it('renders without header when not provided', () => {
+    renderWidgetWrapper({ header: undefined });
+
+    expect(screen.queryByTestId('widget-header')).not.toBeInTheDocument();
+    expect(screen.getByTestId('widget-content')).toBeInTheDocument();
+  });
 });

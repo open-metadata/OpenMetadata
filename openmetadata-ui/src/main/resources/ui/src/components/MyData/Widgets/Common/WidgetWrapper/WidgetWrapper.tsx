@@ -21,6 +21,7 @@ export interface WidgetWrapperProps {
   className?: string;
   dataLength?: number;
   dataTestId?: string;
+  header?: ReactNode;
   loading?: boolean;
 }
 
@@ -29,12 +30,18 @@ const WidgetWrapper = ({
   className = '',
   dataLength = 5,
   dataTestId,
+  header,
   loading = false,
 }: WidgetWrapperProps) => {
   return (
     <Card
       className={`widget-wrapper-container card-widget ${className}`}
       data-testid={dataTestId}>
+      data-testid="widget-wrapper">
+      {/* Header stays visible during loading */}
+      {header}
+
+      {/* Only content area shows skeleton during loading */}
       <EntityListSkeleton
         dataLength={dataLength}
         loading={loading}
