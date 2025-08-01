@@ -2083,6 +2083,7 @@
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "Minuut",
     "missing-config-value": "Ontbrekende configuratiewaarde: {{field}}",
+    "modified-time-ago-by": "Aangepast {{time}} geleden door {{by}}",
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "Toont de meest actieve gebruikers op het platform op basis van paginaweergaven.",
     "most-expensive-queries-widget-description": "Top 5 meest kostbare queries voor de data-assets in de service. <0>meer informatie.</0>",

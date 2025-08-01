@@ -2083,6 +2083,7 @@
     "minimum-value-error": "최소값은 최대값보다 작아야 합니다.",
     "minute": "분",
     "missing-config-value": "누락된 구성 값: {{field}}",
+    "modified-time-ago-by": "{{time}} 전에 {{by}}에 의해 수정됨",
     "modify-hierarchy-entity-description": "상위 {{entity}}를 변경하여 계층 구조를 수정합니다.",
     "most-active-users": "페이지 조회수를 기반으로 플랫폼에서 가장 활발한 사용자를 표시합니다.",
     "most-expensive-queries-widget-description": "서비스 내에서 가장 많이 사용된 데이터 자산 상위 5개입니다. <0>자세히 알아보기.</0>",
