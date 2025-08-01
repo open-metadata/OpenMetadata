@@ -37,9 +37,9 @@
         "required": false
       },
       {
-        "name": "partitionCondition",
-        "displayName": "Partition Condition",
-        "description": "Partition condition that will be used to compute the passed/failed row count, if compute row count is enabled.",
+        "name": "partitionExpression",
+        "displayName": "Partition Expression",
+        "description": "Partition expression that will be used to compute the passed/failed row count, if compute row count is enabled.",
         "dataType": "STRING",
         "required": false
       }
