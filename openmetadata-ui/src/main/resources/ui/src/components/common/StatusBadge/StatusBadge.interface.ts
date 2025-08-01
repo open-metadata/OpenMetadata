@@ -28,4 +28,5 @@ export interface StatusBadgeProps {
   status: StatusType;
   dataTestId?: string;
   className?: string;
+  externalIcon?: SvgComponent;
 }

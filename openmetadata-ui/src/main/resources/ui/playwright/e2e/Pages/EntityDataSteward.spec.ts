@@ -96,7 +96,7 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPageWithCustomSearchBox(page);
+      await entity.visitEntityPage(page);
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
