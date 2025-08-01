@@ -23,10 +23,7 @@ import TextArea from 'antd/lib/input/TextArea';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
-import {
-  DataContract,
-  SemanticsRule,
-} from '../../../generated/entity/data/dataContract';
+import { DataContract } from '../../../generated/entity/data/dataContract';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -34,12 +31,13 @@ import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSea
 import './contract-semantic-form-tab.less';
 
 export const ContractSemanticFormTab: React.FC<{
-  onNext: (data: Partial<DataContract>) => void;
+  onChange: (data: Partial<DataContract>) => void;
+  onNext: () => void;
   onPrev: () => void;
   initialValues?: Partial<DataContract>;
   nextLabel?: string;
   prevLabel?: string;
-}> = ({ onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
+}> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const semanticsData = Form.useWatch('semantics', form);
@@ -57,18 +55,6 @@ export const ContractSemanticFormTab: React.FC<{
       ],
     });
   }, []);
-
-  const handleNext = () => {
-    const semantics = form.getFieldValue('semantics') as SemanticsRule[];
-
-    const validSemantics = semantics.filter((semantic) => {
-      return semantic.name && semantic.rule;
-    });
-
-    onNext({
-      semantics: validSemantics,
-    });
-  };
 
   useEffect(() => {
     if (initialValues?.semantics) {
@@ -90,7 +76,12 @@ export const ContractSemanticFormTab: React.FC<{
           </Typography.Text>
         </div>
 
-        <Form form={form} layout="vertical">
+        <Form
+          form={form}
+          layout="vertical"
+          onValuesChange={(_, allValues) => {
+            onChange(allValues);
+          }}>
           <Form.List name="semantics">
             {(fields, { add }) => (
               <>
@@ -244,7 +235,7 @@ export const ContractSemanticFormTab: React.FC<{
         <Button icon={<ArrowLeftOutlined />} onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button type="primary" onClick={handleNext}>
+        <Button type="primary" onClick={onNext}>
           {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>

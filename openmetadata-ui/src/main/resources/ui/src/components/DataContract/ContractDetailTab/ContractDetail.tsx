@@ -22,6 +22,7 @@ import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
+import { isEmpty } from 'lodash';
 import { Cell, Pie, PieChart } from 'recharts';
 import {
   ICON_DIMENSION,
@@ -183,13 +184,13 @@ const ContractDetail: React.FC<{
   };
 
   useEffect(() => {
-    if (contract?.id && !contract?.latestResult?.resultId) {
+    if (contract?.id && contract?.latestResult?.resultId) {
       fetchLatestContractResults();
+    }
 
-      if (contract?.testSuite?.id) {
-        fetchTestCaseSummary();
-        fetchTestCases();
-      }
+    if (contract?.testSuite?.id) {
+      fetchTestCaseSummary();
+      fetchTestCases();
     }
   }, [contract]);
 
@@ -226,7 +227,7 @@ const ContractDetail: React.FC<{
             </Typography.Text>
 
             <Typography.Text className="contract-time">
-              {t('message.created-time-ago-by', {
+              {t('message.modified-time-ago-by', {
                 time: getRelativeTime(contract.updatedAt),
                 by: contract.updatedBy,
               })}
@@ -235,7 +236,7 @@ const ContractDetail: React.FC<{
             <div className="d-flex items-center gap-2 m-t-xs">
               <StatusBadgeV2
                 externalIcon={FlagIcon}
-                label={t('label.active')}
+                label={contract.status ?? t('label.active')}
                 status={StatusType.Success}
               />
 
@@ -250,16 +251,18 @@ const ContractDetail: React.FC<{
           </Col>
           <Col>
             <div className="contract-action-container">
-              <div className="contract-owner-label-container">
-                <Typography.Text>{t('label.owner-plural')}</Typography.Text>
-                <OwnerLabel
-                  avatarSize={24}
-                  isCompactView={false}
-                  maxVisibleOwners={5}
-                  owners={contract.owners}
-                  showLabel={false}
-                />
-              </div>
+              {!isEmpty(contract.owners) && (
+                <div className="contract-owner-label-container">
+                  <Typography.Text>{t('label.owner-plural')}</Typography.Text>
+                  <OwnerLabel
+                    avatarSize={24}
+                    isCompactView={false}
+                    maxVisibleOwners={5}
+                    owners={contract.owners}
+                    showLabel={false}
+                  />
+                </div>
+              )}
 
               <Button
                 className="contract-run-now-button"

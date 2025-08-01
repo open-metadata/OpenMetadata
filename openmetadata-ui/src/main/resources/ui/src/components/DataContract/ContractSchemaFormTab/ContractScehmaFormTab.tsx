@@ -14,7 +14,7 @@ import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
@@ -36,24 +36,33 @@ import TableTags from '../../Database/TableTags/TableTags.component';
 
 export const ContractSchemaFormTab: React.FC<{
   selectedSchema: string[];
-  onNext: (data: Partial<DataContract>) => void;
+  onNext: () => void;
+  onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
   nextLabel?: string;
   prevLabel?: string;
-}> = ({ selectedSchema, onNext, onPrev, nextLabel, prevLabel }) => {
+}> = ({ selectedSchema, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [schema, setSchema] = useState<Column[]>([]);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(selectedSchema);
+
+  const handleChangeTable = useCallback(
+    (selectedRowKeys: Key[]) => {
+      setSelectedKeys(selectedRowKeys as string[]);
+      onChange({
+        schema: schema.filter((column) =>
+          selectedRowKeys.includes(column.name)
+        ),
+      });
+    },
+    [onChange]
+  );
 
   const fetchTableColumns = useCallback(async () => {
     const response = await getTableColumnsByFQN(fqn);
     setSchema(pruneEmptyChildren(response.data));
   }, [fqn]);
-
-  useEffect(() => {
-    setSelectedKeys(selectedSchema);
-  }, [selectedSchema]);
 
   useEffect(() => {
     fetchTableColumns();
@@ -160,9 +169,7 @@ export const ContractSchemaFormTab: React.FC<{
           rowKey="name"
           rowSelection={{
             selectedRowKeys: selectedKeys,
-            onChange: (selectedRowKeys) => {
-              setSelectedKeys(selectedRowKeys as string[]);
-            },
+            onChange: handleChangeTable,
           }}
         />
       </Card>
@@ -170,15 +177,7 @@ export const ContractSchemaFormTab: React.FC<{
         <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          type="primary"
-          onClick={() =>
-            onNext({
-              schema: schema.filter((column) =>
-                selectedKeys.includes(column.name)
-              ),
-            })
-          }>
+        <Button type="primary" onClick={onNext}>
           {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>
