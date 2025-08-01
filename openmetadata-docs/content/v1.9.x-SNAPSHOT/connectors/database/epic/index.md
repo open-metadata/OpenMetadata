@@ -20,7 +20,7 @@ Configure and schedule Epic metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.8/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/epic/yaml"} /%}
+{% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/epic/yaml"} /%}
 
 ## Requirements
 
@@ -32,12 +32,12 @@ To fetch metadata from Epic FHIR into OpenMetadata you will need:
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.8/connectors/metadata-ingestion-ui.md" 
+  file="/v1.9/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Epic FHIR", 
-    selectServicePath: "/images/v1.8/connectors/epic/select-service.png",
-    addNewServicePath: "/images/v1.8/connectors/epic/add-new-service.png",
-    serviceConnectionPath: "/images/v1.8/connectors/epic/service-connection.png",
+    selectServicePath: "/images/v1.9/connectors/epic/select-service.png",
+    addNewServicePath: "/images/v1.9/connectors/epic/add-new-service.png",
+    serviceConnectionPath: "/images/v1.9/connectors/epic/service-connection.png",
 } 
 /%}
 
@@ -50,16 +50,16 @@ To fetch metadata from Epic FHIR into OpenMetadata you will need:
 - **FHIR Version**: FHIR specification version supported by the server (`R4`, `STU3`, or `DSTU2`).
 - **Database Name**: Optional; name that will be shown inside OpenMetadata. Defaults to `epic`.
 
-{% partial file="/v1.8/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.9/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.8/connectors/test-connection.md" /%}
+{% partial file="/v1.9/connectors/test-connection.md" /%}
 
-{% partial file="/v1.8/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.9/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.8/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.9/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.8/connectors/database/related.md" /%}
+{% partial file="/v1.9/connectors/database/related.md" /%}
