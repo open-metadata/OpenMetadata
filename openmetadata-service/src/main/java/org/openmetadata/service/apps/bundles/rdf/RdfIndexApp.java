@@ -7,6 +7,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.RDF_INDEX_JOB_BROADCAST_CHANNEL;
 
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -170,7 +171,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void reIndexFromStartToEnd() throws InterruptedException {
-    int numThreads = Math.min(jobData.getEntities().size(), 10);
+    // Reduce thread count to avoid overwhelming Fuseki with concurrent updates
+    int numThreads = Math.min(jobData.getEntities().size(), 5);
     executorService = Executors.newFixedThreadPool(numThreads);
     CountDownLatch latch = new CountDownLatch(jobData.getEntities().size());
 
@@ -267,6 +269,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private void processAllRelationships(
       String entityType, EntityInterface entity, EntityRepository<?> repository) {
     try {
+      List<org.openmetadata.schema.type.EntityRelationship> allRelationships = new ArrayList<>();
+
       // Process relationships where this entity is the "to" side (incoming relationships)
       for (Relationship relationshipType : Relationship.values()) {
         try {
@@ -288,7 +292,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
                       .withRelation(relationshipType.ordinal())
                       .withRelationshipType(relationshipType);
 
-              rdfRepository.addRelationship(relationship);
+              allRelationships.add(relationship);
             } catch (Exception e) {
               LOG.debug(
                   "Failed to process incoming relationship {} for entity {}",
@@ -325,7 +329,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
                       .withRelation(relationshipType.ordinal())
                       .withRelationshipType(relationshipType);
 
-              rdfRepository.addRelationship(relationship);
+              allRelationships.add(relationship);
             } catch (Exception e) {
               LOG.debug(
                   "Failed to process outgoing relationship {} for entity {}",
@@ -339,6 +343,13 @@ public class RdfIndexApp extends AbstractNativeApplication {
           LOG.debug(
               "Skipping relationship type {} for entity type {}", relationshipType, entityType);
         }
+      }
+
+      // Bulk add all relationships for this entity
+      if (!allRelationships.isEmpty()) {
+        rdfRepository.bulkAddRelationships(allRelationships);
+        LOG.debug(
+            "Bulk added {} relationships for entity {}", allRelationships.size(), entity.getId());
       }
 
     } catch (Exception e) {

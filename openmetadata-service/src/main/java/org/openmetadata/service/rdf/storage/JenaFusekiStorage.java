@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
@@ -33,21 +34,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private final RDFConnection connection;
   private final String baseUri;
-  private final String endpoint;
 
   public JenaFusekiStorage(RdfConfiguration config) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
-    // Default to Kubernetes service name if no endpoint specified
-    this.endpoint =
-        config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
-            ? config.getRemoteEndpoint().toString()
-            : "http://openmetadata-fuseki:3030/openmetadata";
+    String endpoint = config.getRemoteEndpoint() != null && !config.getRemoteEndpoint().toString().isEmpty()
+        ? config.getRemoteEndpoint().toString()
+        : "http://openmetadata-fuseki:3030/openmetadata";
 
-    // Create connection with authentication if provided
     if (config.getUsername() != null && config.getPassword() != null) {
-      // Create authenticated connection using Java 11 HttpClient
       java.net.http.HttpClient httpClient =
           java.net.http.HttpClient.newBuilder()
               .authenticator(
@@ -65,26 +61,36 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     } else {
       this.connection = RDFConnectionFuseki.create().destination(endpoint).build();
     }
-
     LOG.info("Connected to Apache Jena Fuseki at {}", endpoint);
-
-    // Load ontology on startup
     loadOntology();
   }
 
   private void loadOntology() {
     try {
+      String checkQuery = String.format("ASK { GRAPH <%s> { ?s ?p ?o } }", METADATA_GRAPH);
+      boolean ontologyExists = false;
+
+      try (QueryExecution qe = connection.query(checkQuery)) {
+        ontologyExists = qe.execAsk();
+      } catch (Exception e) {
+        LOG.debug("Could not check if ontology exists, will attempt to load", e);
+      }
+
+      if (ontologyExists) {
+        LOG.info("OpenMetadata ontology already exists in Fuseki");
+        return;
+      }
+
       Model ontologyModel = ModelFactory.createDefaultModel();
       RDFDataMgr.read(
           ontologyModel,
-          getClass().getResourceAsStream("/rdf/ontology/openmetadata-complete.ttl"),
+          Objects.requireNonNull(getClass().getResourceAsStream("/rdf/ontology/openmetadata-complete.ttl")),
           org.apache.jena.riot.Lang.TURTLE);
 
-      // Upload ontology to remote server
       connection.load(METADATA_GRAPH, ontologyModel);
       LOG.info("Loaded OpenMetadata ontology to Fuseki");
     } catch (Exception e) {
-      LOG.warn("Failed to load ontology to Fuseki (may already exist)", e);
+      LOG.error("Failed to load ontology to Fuseki", e);
     }
   }
 
@@ -93,15 +99,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     String graphUri = baseUri + "graph/" + entityType;
 
     try {
-      // Clear existing data for this entity
       String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
       String deleteQuery =
           String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", graphUri, entityUri);
 
       UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
       connection.update(deleteRequest);
-
-      // Load new data
       connection.load(graphUri, entityModel);
       LOG.debug("Stored entity {} in graph {}", entityId, graphUri);
     } catch (Exception e) {
@@ -132,14 +135,49 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             toType,
             toId);
 
-    try {
-      UpdateRequest request = UpdateFactory.create(updateQuery);
-      connection.update(request);
-      LOG.debug("Stored relationship: {} -{}- {}", fromId, relationshipType, toId);
-    } catch (Exception e) {
-      LOG.error("Failed to store relationship in Fuseki", e);
-      throw new RuntimeException("Failed to store relationship in RDF", e);
+    int maxRetries = 3;
+    int retryCount = 0;
+    Exception lastException = null;
+
+    while (retryCount < maxRetries) {
+      try {
+        LOG.debug("SPARQL Update Query: {}", updateQuery);
+        UpdateRequest request = UpdateFactory.create(updateQuery);
+        connection.update(request);
+        LOG.debug("Stored relationship: {} -{}- {}", fromId, relationshipType, toId);
+        return; // Success
+      } catch (org.apache.jena.atlas.web.HttpException e) {
+        if (e.getMessage() != null
+            && e.getMessage().contains("500")
+            && retryCount < maxRetries - 1) {
+          lastException = e;
+          retryCount++;
+          try {
+            long waitTime = (long) (100 * Math.pow(2, retryCount - 1)); // 100ms, 200ms, 400ms
+            LOG.debug(
+                "Retrying relationship storage after {} ms (attempt {}/{})",
+                waitTime,
+                retryCount + 1,
+                maxRetries);
+            Thread.sleep(waitTime);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while retrying", ie);
+          }
+        } else {
+          LOG.error("Failed to store relationship in Fuseki. Query was: {}", updateQuery, e);
+          throw new RuntimeException("Failed to store relationship in RDF", e);
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to store relationship in Fuseki. Query was: {}", updateQuery, e);
+        throw new RuntimeException("Failed to store relationship in RDF", e);
+      }
     }
+
+    // If we get here, all retries failed
+    LOG.error(
+        "Failed to store relationship after {} retries. Query was: {}", maxRetries, updateQuery);
+    throw new RuntimeException("Failed to store relationship in RDF after retries", lastException);
   }
 
   @Override
@@ -251,7 +289,6 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       } else if (query.isAskType()) {
         boolean result = connection.queryAsk(query);
         LOG.info("ASK query result: {}", result);
-        // Return standard SPARQL JSON format for ASK queries
         return "{\"head\": {}, \"boolean\": " + result + "}";
       } else if (query.isDescribeType()) {
         Model resultModel = connection.queryDescribe(query);
@@ -288,6 +325,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL update on Fuseki", e);
       throw new RuntimeException("Failed to execute SPARQL update", e);
+    }
+  }
+
+  @Override
+  public void loadTurtleFile(java.io.InputStream turtleStream, String graphUri) {
+    try {
+      Model model = ModelFactory.createDefaultModel();
+      model.read(turtleStream, null, "TURTLE");
+      try {
+        connection.delete(graphUri);
+      } catch (org.apache.jena.atlas.web.HttpException e) {
+        // Ignore 404 errors - graph doesn't exist yet
+        if (!e.getMessage().contains("404")) {
+          throw e;
+        }
+      }
+
+      // Then load the new data
+      connection.load(graphUri, model);
+
+      LOG.info("Loaded Turtle file into graph {} with {} triples", graphUri, model.size());
+    } catch (Exception e) {
+      LOG.error("Failed to load Turtle file into Fuseki", e);
+      throw new RuntimeException("Failed to load Turtle file", e);
     }
   }
 

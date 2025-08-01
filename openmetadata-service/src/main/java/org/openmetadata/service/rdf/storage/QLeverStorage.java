@@ -66,6 +66,11 @@ public class QLeverStorage implements RdfStorageInterface {
   }
 
   @Override
+  public void loadTurtleFile(java.io.InputStream turtleStream, String graphUri) {
+    throw new UnsupportedOperationException("QLever storage not yet implemented");
+  }
+
+  @Override
   public List<String> getAllGraphs() {
     throw new UnsupportedOperationException("QLever storage not yet implemented");
   }

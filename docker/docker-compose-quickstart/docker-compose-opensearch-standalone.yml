@@ -1,0 +1,84 @@
+# Standalone OpenSearch 2.19 with security disabled for local testing
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    platform: linux/arm64  # Native ARM64 support
+    container_name: opensearch-standalone
+    hostname: opensearch
+    environment:
+      # Cluster settings
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      
+      # Disable security for local testing
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      
+      # JVM memory settings - adjust based on your system
+      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx4g
+      
+      # Performance settings
+      - indices.memory.index_buffer_size=20%
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      
+      # Compatibility mode for Elasticsearch clients
+      - compatibility.override_main_response_version=true
+      
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      # Mount directory for persistent storage (configurable via .env)
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/opensearch:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"  # Performance analyzer
+    networks:
+      - opensearch-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # Optional: OpenSearch Dashboards for visualization
+  # Commented out to save space - uncomment if needed
+  # opensearch-dashboards:
+  #   image: opensearchproject/opensearch-dashboards:2.19.0
+  #   platform: linux/arm64  # Native ARM64 support
+  #   container_name: opensearch-dashboards
+  #   ports:
+  #     - "5601:5601"
+  #   environment:
+  #     - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+  #     - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+  #   networks:
+  #     - opensearch-net
+  #   depends_on:
+  #     opensearch:
+  #       condition: service_healthy
+
+networks:
+  opensearch-net:
+    driver: bridge
+
+# Usage:
+# 1. Set vm.max_map_count: sudo sysctl -w vm.max_map_count=262144
+# 2. Create the volume directory: mkdir -p search-volume
+# 3. Start: docker-compose -f docker-compose-opensearch-standalone.yml up -d
+# 4. Access OpenSearch: http://localhost:9200
+# 5. Access OpenSearch Dashboards: http://localhost:5601
+# 6. No authentication required (security disabled)

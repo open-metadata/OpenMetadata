@@ -1,6 +1,8 @@
 package org.openmetadata.service.rdf;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,10 +38,27 @@ public class RdfRepository {
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
+
+      // Load ontologies on initialization
+      loadOntologies();
     } else {
       this.storageService = null;
       this.translator = null;
       LOG.info("RDF Repository disabled");
+    }
+  }
+
+  private void loadOntologies() {
+    try {
+      OntologyLoader loader = new OntologyLoader(this);
+      if (!loader.areOntologiesLoaded()) {
+        LOG.info("Loading OpenMetadata ontologies into RDF store");
+        loader.loadOntologies();
+      } else {
+        LOG.info("OpenMetadata ontologies already loaded");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to load ontologies", e);
     }
   }
 
@@ -135,6 +154,29 @@ public class RdfRepository {
     }
   }
 
+  public void bulkAddRelationships(List<EntityRelationship> relationships) {
+    if (!isEnabled() || relationships.isEmpty()) {
+      return;
+    }
+
+    try {
+      List<RdfStorageInterface.RelationshipData> relationshipDataList = new ArrayList<>();
+      for (EntityRelationship relationship : relationships) {
+        relationshipDataList.add(
+            new RdfStorageInterface.RelationshipData(
+                relationship.getFromEntity(),
+                relationship.getFromId(),
+                relationship.getToEntity(),
+                relationship.getToId(),
+                relationship.getRelationshipType().value()));
+      }
+      storageService.bulkStoreRelationships(relationshipDataList);
+      LOG.debug("Bulk added {} relationships to RDF store", relationships.size());
+    } catch (Exception e) {
+      LOG.error("Failed to bulk add relationships to RDF", e);
+    }
+  }
+
   public void removeRelationship(EntityRelationship relationship) {
     if (!isEnabled()) {
       return;
@@ -206,6 +248,140 @@ public class RdfRepository {
     }
 
     return storageService.executeSparqlQuery(query, format);
+  }
+
+  public List<Map<String, String>> executeSparqlQueryAsJson(String query) {
+    String result = executeSparqlQuery(query, "json");
+    return parseSparqlJsonResults(result);
+  }
+
+  public List<Map<String, String>> executeSparqlQueryWithInferenceAsJson(
+      String query, String inferenceLevel) {
+    String result = executeSparqlQueryWithInference(query, "json", inferenceLevel);
+    return parseSparqlJsonResults(result);
+  }
+
+  private List<Map<String, String>> parseSparqlJsonResults(String jsonResult) {
+    List<Map<String, String>> results = new ArrayList<>();
+    try {
+      JsonNode root = JsonUtils.readTree(jsonResult);
+      JsonNode bindings = root.path("results").path("bindings");
+
+      for (JsonNode binding : bindings) {
+        Map<String, String> row = new HashMap<>();
+        binding
+            .fields()
+            .forEachRemaining(
+                entry -> {
+                  JsonNode value = entry.getValue();
+                  String val = value.path("value").asText();
+                  row.put(entry.getKey(), val);
+                });
+        results.add(row);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to parse SPARQL JSON results", e);
+    }
+    return results;
+  }
+
+  public String executeSparqlQueryWithInference(
+      String query, String format, String inferenceLevel) {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF not enabled");
+    }
+
+    try {
+      // Convert inference level string to enum
+      org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel level =
+          switch (inferenceLevel.toLowerCase()) {
+            case "rdfs" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
+                .RDFS;
+            case "owl" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
+                .OWL_LITE;
+            case "custom" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
+                .CUSTOM;
+            default -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE;
+          };
+
+      if (level == org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE) {
+        return executeSparqlQuery(query, format);
+      }
+
+      // For inference queries, we need to work with the full model
+      // This is a simplified implementation - in production, you'd want to cache the inference
+      // model
+      LOG.info("Executing SPARQL query with {} inference", inferenceLevel);
+
+      // Get all data from the store (simplified - in production, use named graphs)
+      String allDataQuery = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
+      String allData = storageService.executeSparqlQuery(allDataQuery, "text/turtle");
+
+      // Create models
+      org.apache.jena.rdf.model.Model baseModel =
+          org.apache.jena.rdf.model.ModelFactory.createDefaultModel();
+      baseModel.read(new java.io.StringReader(allData), null, "TURTLE");
+
+      // Load ontology model
+      org.apache.jena.rdf.model.Model ontologyModel =
+          org.apache.jena.rdf.model.ModelFactory.createDefaultModel();
+      String ontologyQuery =
+          "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://open-metadata.org/graph/ontology> { ?s ?p ?o } }";
+      String ontologyData = storageService.executeSparqlQuery(ontologyQuery, "text/turtle");
+      if (ontologyData != null && !ontologyData.isEmpty()) {
+        ontologyModel.read(new java.io.StringReader(ontologyData), null, "TURTLE");
+      }
+
+      // Create inference engine and inference model
+      org.openmetadata.service.rdf.reasoning.InferenceEngine engine =
+          new org.openmetadata.service.rdf.reasoning.InferenceEngine(level);
+      org.apache.jena.rdf.model.InfModel infModel =
+          engine.createInferenceModel(baseModel, ontologyModel);
+
+      // Execute query on inference model
+      org.apache.jena.query.Query jenaQuery = org.apache.jena.query.QueryFactory.create(query);
+      org.apache.jena.query.QueryExecution qe =
+          org.apache.jena.query.QueryExecutionFactory.create(jenaQuery, infModel);
+
+      // Format results based on query type
+      java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+      if (jenaQuery.isSelectType()) {
+        org.apache.jena.query.ResultSet results = qe.execSelect();
+        if (format.contains("json")) {
+          org.apache.jena.query.ResultSetFormatter.outputAsJSON(out, results);
+        } else if (format.contains("xml")) {
+          org.apache.jena.query.ResultSetFormatter.outputAsXML(out, results);
+        } else if (format.contains("csv")) {
+          org.apache.jena.query.ResultSetFormatter.outputAsCSV(out, results);
+        } else if (format.contains("tsv")) {
+          org.apache.jena.query.ResultSetFormatter.outputAsTSV(out, results);
+        }
+      } else if (jenaQuery.isConstructType()) {
+        org.apache.jena.rdf.model.Model constructModel = qe.execConstruct();
+        constructModel.write(out, getJenaFormat(format));
+      } else if (jenaQuery.isAskType()) {
+        boolean result = qe.execAsk();
+        out.write(("{\"head\":{},\"boolean\":" + result + "}").getBytes());
+      } else if (jenaQuery.isDescribeType()) {
+        org.apache.jena.rdf.model.Model describeModel = qe.execDescribe();
+        describeModel.write(out, getJenaFormat(format));
+      }
+
+      qe.close();
+      return out.toString();
+
+    } catch (Exception e) {
+      LOG.error("Error executing SPARQL query with inference", e);
+      throw new RuntimeException("Failed to execute query with inference: " + e.getMessage(), e);
+    }
+  }
+
+  private String getJenaFormat(String mimeType) {
+    if (mimeType.contains("turtle")) return "TURTLE";
+    if (mimeType.contains("rdf+xml")) return "RDF/XML";
+    if (mimeType.contains("n-triples")) return "N-TRIPLES";
+    if (mimeType.contains("json-ld") || mimeType.contains("ld+json")) return "JSON-LD";
+    return "TURTLE"; // default
   }
 
   public String getEntityGraph(UUID entityId, String entityType, int depth) throws IOException {
@@ -524,6 +700,17 @@ public class RdfRepository {
     }
 
     storageService.executeSparqlUpdate(update);
+  }
+
+  /**
+   * Load a Turtle file directly into a named graph
+   */
+  public void loadTurtleFile(InputStream turtleStream, String graphUri) {
+    if (!isEnabled()) {
+      throw new IllegalStateException("RDF not enabled");
+    }
+
+    storageService.loadTurtleFile(turtleStream, graphUri);
   }
 
   public RdfStatistics getStatistics() {

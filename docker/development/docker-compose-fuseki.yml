@@ -9,9 +9,16 @@ services:
       - "3030:3030"
     environment:
       - ADMIN_PASSWORD=admin
-      - JVM_ARGS=-Xmx2g
+      - JVM_ARGS=-Xmx4g -Xms2g
+      - FUSEKI_BASE=/fuseki
     volumes:
       - fuseki-data:/fuseki
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
     networks:
       - app_net
     # Create the database directory before starting Fuseki

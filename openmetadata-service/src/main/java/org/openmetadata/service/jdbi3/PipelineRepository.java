@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -57,6 +58,8 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -65,6 +68,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "tasks";
@@ -293,6 +297,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
     pipeline.setIncrementalChangeDescription(change);
+
+    // Store PROV-O execution details in RDF
+    if (RdfUpdater.isEnabled()) {
+      storePipelineExecutionInRdf(pipeline, pipelineStatus);
+    }
 
     // Update ES Indexes and usage of this pipeline index
     searchRepository.updateEntityIndex(pipeline);
@@ -705,5 +714,188 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             () ->
                 new IllegalArgumentException(
                     CatalogExceptionMessage.invalidFieldName("task", taskName)));
+  }
+
+  private void storePipelineExecutionInRdf(Pipeline pipeline, PipelineStatus pipelineStatus) {
+    try {
+      RdfRepository rdfRepository = RdfRepository.getInstance();
+
+      // Create unique execution URI
+      String executionUri =
+          String.format(
+              "https://open-metadata.org/execution/%s/%d",
+              pipeline.getId(), pipelineStatus.getTimestamp());
+      String pipelineUri = "https://open-metadata.org/entity/pipeline/" + pipeline.getId();
+
+      StringBuilder sparql = new StringBuilder();
+      sparql.append("PREFIX prov: <http://www.w3.org/ns/prov#>\n");
+      sparql.append("PREFIX om: <https://open-metadata.org/ontology/>\n");
+      sparql.append("PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n");
+      sparql.append("INSERT DATA {\n");
+
+      // Basic execution info
+      sparql.append(
+          String.format("  <%s> a om:PipelineExecution, prov:Activity ;\n", executionUri));
+      sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", pipelineUri));
+      sparql.append(
+          String.format(
+              "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
+              formatTimestamp(pipelineStatus.getTimestamp())));
+
+      // Add end time if available
+      if (pipelineStatus.getEndTime() != null) {
+        sparql.append(
+            String.format(
+                "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
+                formatTimestamp(pipelineStatus.getEndTime())));
+      }
+
+      sparql.append(
+          String.format("    om:executionStatus \"%s\" ;\n", pipelineStatus.getExecutionStatus()));
+
+      // Add execution ID if available
+      if (pipelineStatus.getExecutionId() != null) {
+        sparql.append(
+            String.format("    om:executionId \"%s\" ;\n", pipelineStatus.getExecutionId()));
+      }
+
+      // Add executed by if available
+      if (pipelineStatus.getExecutedBy() != null) {
+        String agentUri =
+            "https://open-metadata.org/entity/"
+                + pipelineStatus.getExecutedBy().getType()
+                + "/"
+                + pipelineStatus.getExecutedBy().getId();
+        sparql.append(String.format("    prov:wasAssociatedWith <%s> ;\n", agentUri));
+      }
+
+      // Add inputs (prov:used)
+      if (pipelineStatus.getInputs() != null) {
+        for (var input : pipelineStatus.getInputs()) {
+          if (input.getDatasetFQN() != null) {
+            try {
+              EntityReference dataset =
+                  Entity.getEntityReferenceByName(
+                      Entity.TABLE, input.getDatasetFQN(), Include.NON_DELETED);
+              String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
+              sparql.append(String.format("    prov:used <%s> ;\n", datasetUri));
+
+              if (input.getRowCount() != null) {
+                sparql.append(
+                    String.format(
+                        "    om:inputRowCount_%s %d ;\n", dataset.getId(), input.getRowCount()));
+              }
+            } catch (Exception e) {
+              // Dataset not found, skip
+            }
+          }
+        }
+      }
+
+      // Add outputs (prov:generated)
+      if (pipelineStatus.getOutputs() != null) {
+        for (var output : pipelineStatus.getOutputs()) {
+          if (output.getDatasetFQN() != null) {
+            try {
+              EntityReference dataset =
+                  Entity.getEntityReferenceByName(
+                      Entity.TABLE, output.getDatasetFQN(), Include.NON_DELETED);
+              String datasetUri = "https://open-metadata.org/entity/table/" + dataset.getId();
+              sparql.append(String.format("    prov:generated <%s> ;\n", datasetUri));
+
+              if (output.getRowCount() != null) {
+                sparql.append(
+                    String.format(
+                        "    om:outputRowCount_%s %d ;\n", dataset.getId(), output.getRowCount()));
+              }
+            } catch (Exception e) {
+              // Dataset not found, skip
+            }
+          }
+        }
+      }
+
+      // Add metrics
+      if (pipelineStatus.getMetrics() != null) {
+        if (pipelineStatus.getMetrics().getTotalRowsProcessed() != null) {
+          sparql.append(
+              String.format(
+                  "    om:rowsProcessed %d ;\n",
+                  pipelineStatus.getMetrics().getTotalRowsProcessed()));
+        }
+        if (pipelineStatus.getMetrics().getTotalBytesProcessed() != null) {
+          sparql.append(
+              String.format(
+                  "    om:bytesProcessed %d ;\n",
+                  pipelineStatus.getMetrics().getTotalBytesProcessed()));
+        }
+      }
+
+      // Add parameters as JSON
+      if (pipelineStatus.getParameters() != null) {
+        String paramsJson =
+            JsonUtils.pojoToJson(pipelineStatus.getParameters()).replace("\"", "\\\"");
+        sparql.append(String.format("    om:parameters \"%s\" ;\n", paramsJson));
+      }
+
+      // Close the execution entity
+      sparql.setLength(sparql.length() - 2); // Remove last semicolon and newline
+      sparql.append(" .\n");
+
+      // Add task executions
+      if (pipelineStatus.getTaskStatus() != null) {
+        for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+          String taskUri =
+              executionUri + "/task/" + taskStatus.getName().replaceAll("[^a-zA-Z0-9]", "_");
+          sparql.append(String.format("\n  <%s> a om:Transformation, prov:Activity ;\n", taskUri));
+          sparql.append(String.format("    prov:wasInformedBy <%s> ;\n", executionUri));
+          sparql.append(String.format("    om:taskName \"%s\" ;\n", taskStatus.getName()));
+          sparql.append(
+              String.format("    om:executionStatus \"%s\" ;\n", taskStatus.getExecutionStatus()));
+
+          if (taskStatus.getStartTime() != null) {
+            sparql.append(
+                String.format(
+                    "    prov:startedAtTime \"%s\"^^xsd:dateTime ;\n",
+                    formatTimestamp(taskStatus.getStartTime())));
+          }
+
+          if (taskStatus.getEndTime() != null) {
+            sparql.append(
+                String.format(
+                    "    prov:endedAtTime \"%s\"^^xsd:dateTime ;\n",
+                    formatTimestamp(taskStatus.getEndTime())));
+          }
+
+          if (taskStatus.getTransformationType() != null) {
+            sparql.append(
+                String.format(
+                    "    om:transformationType \"%s\" ;\n", taskStatus.getTransformationType()));
+          }
+
+          if (taskStatus.getTransformationLogic() != null) {
+            String logic = taskStatus.getTransformationLogic().replace("\"", "\\\"");
+            sparql.append(String.format("    om:transformationLogic \"%s\" ;\n", logic));
+          }
+
+          sparql.setLength(sparql.length() - 2);
+          sparql.append(" .\n");
+        }
+      }
+
+      sparql.append("}");
+
+      // Execute the SPARQL update
+      rdfRepository.executeSparqlUpdate(sparql.toString());
+
+    } catch (Exception e) {
+      LOG.error("Failed to store pipeline execution in RDF", e);
+    }
+  }
+
+  private String formatTimestamp(Long timestamp) {
+    if (timestamp == null) return "";
+    return new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        .format(new java.util.Date(timestamp));
   }
 }

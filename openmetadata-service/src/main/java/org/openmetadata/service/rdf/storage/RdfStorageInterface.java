@@ -2,6 +2,8 @@ package org.openmetadata.service.rdf.storage;
 
 import java.util.List;
 import java.util.UUID;
+
+import lombok.Getter;
 import org.apache.jena.rdf.model.Model;
 
 /**
@@ -49,6 +51,11 @@ public interface RdfStorageInterface {
   void executeSparqlUpdate(String sparqlUpdate);
 
   /**
+   * Load a Turtle file directly into a named graph
+   */
+  void loadTurtleFile(java.io.InputStream turtleStream, String graphUri);
+
+  /**
    * Get all graph URIs in the store
    */
   List<String> getAllGraphs();
@@ -81,6 +88,7 @@ public interface RdfStorageInterface {
   /**
    * Data class for relationship information
    */
+  @Getter
   class RelationshipData {
     private final String fromType;
     private final UUID fromId;
@@ -97,24 +105,5 @@ public interface RdfStorageInterface {
       this.relationshipType = relationshipType;
     }
 
-    public String getFromType() {
-      return fromType;
-    }
-
-    public UUID getFromId() {
-      return fromId;
-    }
-
-    public String getToType() {
-      return toType;
-    }
-
-    public UUID getToId() {
-      return toId;
-    }
-
-    public String getRelationshipType() {
-      return relationshipType;
-    }
   }
 }

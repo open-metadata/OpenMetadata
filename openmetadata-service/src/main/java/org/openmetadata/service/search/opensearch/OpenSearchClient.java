@@ -398,6 +398,15 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
+    // Check if semantic search is enabled and override the query
+    if (Boolean.TRUE.equals(request.getSemanticSearch())) {
+      SemanticSearchQueryBuilder semanticBuilder = new SemanticSearchQueryBuilder();
+      QueryBuilder semanticQuery = semanticBuilder.buildSemanticQuery(request);
+      if (semanticQuery != null) {
+        searchSourceBuilder.query(semanticQuery);
+      }
+    }
+
     // Add Query Filter
     buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
 

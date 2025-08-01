@@ -7,6 +7,7 @@ import com.github.jsonldjava.core.JsonLdError;
 import com.github.jsonldjava.utils.JsonUtils;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +64,7 @@ public class JsonLdTranslator {
     }
   }
 
-  public ObjectNode toJsonLd(EntityInterface entity) throws IOException {
+  public ObjectNode toJsonLd(EntityInterface entity)  {
     JsonNode jsonNode = objectMapper.valueToTree(entity);
     ObjectNode objectNode = (ObjectNode) jsonNode;
 
@@ -79,10 +80,9 @@ public class JsonLdTranslator {
     return objectNode;
   }
 
-  public Model toRdf(EntityInterface entity) throws IOException, JsonLdError {
+  public Model toRdf(EntityInterface entity) throws JsonLdError {
     Model model = ModelFactory.createDefaultModel();
 
-    // Define prefixes
     model.setNsPrefix("om", "https://open-metadata.org/ontology/");
     model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#");
     model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#");
@@ -95,10 +95,8 @@ public class JsonLdTranslator {
     String entityType = entity.getEntityReference().getType();
     String entityUri = baseUri + "entity/" + entityType + "/" + entity.getId();
 
-    // Create the entity resource
     org.apache.jena.rdf.model.Resource entityResource = model.createResource(entityUri);
 
-    // Add type - ensure we use the full URI for RDF types
     String rdfType = getEntityRdfType(entityType);
     if (rdfType.contains(":")) {
       String[] parts = rdfType.split(":", 2);
@@ -108,13 +106,18 @@ public class JsonLdTranslator {
       if (namespace != null) {
         entityResource.addProperty(RDF.type, model.createResource(namespace + localName));
       } else {
-        // If namespace not found, use the prefixed form as-is
         LOG.warn("Namespace not found for prefix: {}, using as-is: {}", prefix, rdfType);
         entityResource.addProperty(RDF.type, model.createResource(rdfType));
       }
     } else {
       entityResource.addProperty(RDF.type, model.createResource(rdfType));
     }
+    
+    // Hybrid approach: Always add OpenMetadata-specific type as defined in our ontology
+    // This aligns with our ontology where om:Table is subClassOf dcat:Dataset
+    String omNamespace = model.getNsPrefixURI("om");
+    String omType = entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
+    entityResource.addProperty(RDF.type, model.createResource(omNamespace + omType));
 
     // Add basic properties
     entityResource.addProperty(
@@ -134,7 +137,6 @@ public class JsonLdTranslator {
           entity.getDescription());
     }
 
-    // Add owner relationships
     if (entity.getOwners() != null && !entity.getOwners().isEmpty()) {
       for (org.openmetadata.schema.type.EntityReference owner : entity.getOwners()) {
         String ownerUri = baseUri + "entity/" + owner.getType() + "/" + owner.getId();
@@ -144,11 +146,10 @@ public class JsonLdTranslator {
       }
     }
 
-    // Add tags
     if (entity.getTags() != null && !entity.getTags().isEmpty()) {
       for (org.openmetadata.schema.type.TagLabel tag : entity.getTags()) {
         String tagUri =
-            baseUri + "entity/tag/" + java.net.URLEncoder.encode(tag.getTagFQN(), "UTF-8");
+            baseUri + "entity/tag/" + java.net.URLEncoder.encode(tag.getTagFQN(), StandardCharsets.UTF_8);
         String predicate =
             tag.getSource() == org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY
                 ? "hasGlossaryTerm"
@@ -173,90 +174,24 @@ public class JsonLdTranslator {
   }
 
   private Object selectContext(String entityType) {
-    switch (entityType.toLowerCase()) {
-      case "table":
-      case "database":
-      case "databaseschema":
-      case "storedprocedure":
-      case "query":
-      case "dashboard":
-      case "chart":
-      case "report":
-      case "pipeline":
-      case "topic":
-      case "mlmodel":
-      case "container":
-      case "metric":
-      case "searchindex":
-      case "apicollection":
-      case "apiendpoint":
-      case "directory":
-      case "file":
-      case "spreadsheet":
-      case "worksheet":
-        return contextCache.get("dataAsset-complete");
-
-      case "databaseservice":
-      case "dashboardservice":
-      case "messagingservice":
-      case "pipelineservice":
-      case "mlmodelservice":
-      case "storageservice":
-      case "searchservice":
-      case "metadataservice":
-      case "apiservice":
-      case "reportingservice":
-      case "qualityservice":
-      case "observabilityservice":
-      case "driveservice":
-        return contextCache.get("service");
-
-      case "user":
-      case "team":
-      case "role":
-      case "bot":
-      case "policy":
-        return contextCache.get("team");
-
-      case "thread":
-      case "post":
-        return contextCache.get("thread");
-
-      case "glossary":
-      case "glossaryterm":
-      case "classification":
-      case "tag":
-      case "datacontract":
-      case "dataproduct":
-      case "domain":
-      case "persona":
-        return contextCache.get("governance");
-
-      case "testdefinition":
-      case "testsuite":
-      case "testcase":
-      case "testcaseresult":
-      case "testcaseresolutionstatus":
-        return contextCache.get("quality");
-
-      case "ingestionpipeline":
-      case "workflow":
-      case "workflowdefinition":
-      case "workflowinstance":
-      case "workflowinstancestate":
-      case "eventsubscription":
-      case "kpi":
-      case "datainsightchart":
-      case "webanalyticevent":
-      case "app":
-      case "appmarketplacedefinition":
-      case "document":
-      case "page":
-        return contextCache.get("operations");
-
-      default:
-        return contextCache.get("base");
-    }
+    return switch (entityType.toLowerCase()) {
+      case "table", "database", "databaseschema", "storedprocedure", "query", "dashboard", "chart", "report",
+           "pipeline", "topic", "mlmodel", "container", "metric", "searchindex", "apicollection", "apiendpoint",
+           "directory", "file", "spreadsheet", "worksheet" -> contextCache.get("dataAsset-complete");
+      case "databaseservice", "dashboardservice", "messagingservice", "pipelineservice", "mlmodelservice",
+           "storageservice", "searchservice", "metadataservice", "apiservice", "reportingservice", "qualityservice",
+           "observabilityservice", "driveservice" -> contextCache.get("service");
+      case "user", "team", "role", "bot", "policy" -> contextCache.get("team");
+      case "thread", "post" -> contextCache.get("thread");
+      case "glossary", "glossaryterm", "classification", "tag", "datacontract", "dataproduct", "domain", "persona" ->
+          contextCache.get("governance");
+      case "testdefinition", "testsuite", "testcase", "testcaseresult", "testcaseresolutionstatus" ->
+          contextCache.get("quality");
+      case "ingestionpipeline", "workflow", "workflowdefinition", "workflowinstance", "workflowinstancestate",
+           "eventsubscription", "kpi", "datainsightchart", "webanalyticevent", "app", "appmarketplacedefinition",
+           "document", "page" -> contextCache.get("operations");
+      default -> contextCache.get("base");
+    };
   }
 
   private String getEntityRdfType(String entityType) {

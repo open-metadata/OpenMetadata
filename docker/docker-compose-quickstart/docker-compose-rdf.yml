@@ -47,8 +47,10 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - ES_JAVA_OPTS=-Xms2g -Xmx4g
       - xpack.security.enabled=false
+      - indices.memory.index_buffer_size=20%
+      - cluster.routing.allocation.disk.threshold_enabled=false
     networks:
       - app_net
     ports:
@@ -61,6 +63,12 @@ services:
       retries: 10
     volumes:
       - es-data:/usr/share/elasticsearch/data
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
   # Apache Jena Fuseki for RDF/Knowledge Graph storage
   fuseki:
@@ -70,6 +78,8 @@ services:
     environment:
       - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
       - FUSEKI_DATASET_1=openmetadata
+      - JVM_ARGS=-Xmx4g -Xms2g
+      - FUSEKI_BASE=/fuseki
     ports:
       - "3030:3030"
     volumes:
@@ -82,6 +92,12 @@ services:
       timeout: 10s
       retries: 10
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
 
   execute-migrate-all:
     container_name: execute_migrate_all
@@ -212,7 +228,7 @@ services:
       SMTP_SERVER_STRATEGY: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
       # Heap OPTS Configurations
-      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
+      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx2G -Xms1G}
       # Mask passwords values in UI
       MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
 
@@ -382,7 +398,7 @@ services:
       SMTP_SERVER_STRATEGY: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
       # Heap OPTS Configurations
-      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
+      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx2G -Xms1G}
       # Mask passwords values in UI
       MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
 
