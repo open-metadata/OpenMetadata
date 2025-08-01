@@ -58,7 +58,7 @@ export const visitEntityPage = async (data: {
       .waitFor({ state: 'detached' }),
   ]);
 
-  await page.waitForTimeout(500); // Wait for welcome screen to potentially appear after page load
+  await page.waitForTimeout(1000); // Wait for welcome screen to potentially appear after page load
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
     .isVisible();

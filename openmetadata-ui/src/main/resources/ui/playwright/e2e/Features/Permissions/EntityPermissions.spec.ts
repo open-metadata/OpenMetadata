@@ -41,13 +41,11 @@ const test = base.extend<{
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
     await use(adminPage);
-    await adminPage.close();
   },
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await testUser.login(page);
     await use(page);
-    await page.close();
   },
 });
 
@@ -89,7 +87,6 @@ Object.entries(entityConfig).forEach(([, config]) => {
         await adminUser.login(page);
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
-        await page.close();
       });
 
       test(`${entityType} allow common operations permissions`, async ({
@@ -128,7 +125,6 @@ Object.entries(entityConfig).forEach(([, config]) => {
         await adminUser.login(page);
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
-        await page.close();
       });
 
       test(`${entityType} deny common operations permissions`, async ({
