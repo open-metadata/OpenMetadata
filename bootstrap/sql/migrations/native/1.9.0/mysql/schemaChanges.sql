@@ -158,15 +158,16 @@ UPDATE thread_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domai
  -- 2. Migrate nested feedInfo.entitySpecificInfo.entity.domain to domains
  UPDATE thread_entity
  SET json = JSON_SET(
-               JSON_REMOVE(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
-               '$.feedInfo.entitySpecificInfo.entity.domains',
-               JSON_ARRAY(
-                   IF(
-                       JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL,
-                       JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
-                       NULL
-                   )
-               )
+     JSON_REMOVE(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
+     '$.feedInfo.entitySpecificInfo.entity.domains',
+     JSON_ARRAY(
+         IF(
+             JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL,
+             JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
+             NULL
+         )
+     )
+ )
  WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.entity.domain')
    AND JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL;
 
