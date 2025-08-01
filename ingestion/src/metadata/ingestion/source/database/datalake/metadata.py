@@ -88,15 +88,14 @@ class DatalakeSource(DatabaseServiceSource):
         )
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
+        self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
-        self.connection_obj = self.connection
+        self.connection_obj = self.client
         self.test_connection()
         self.reader = get_reader(
-            config_source=self.config_source, client=self.client._client
+            config_source=self.config_source, client=self.client.client
         )
 
     @classmethod
