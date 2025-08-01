@@ -14,6 +14,11 @@
 @import (reference) url('../../../../../styles/variables.less');
 
 .kpi-legend {
+  border: 1px solid @grey-15;
+  border-radius: @border-rad-sm;
+  overflow-y: auto;
+  max-height: 350px;
+
   .legend-dot {
     border-radius: 50%;
     display: inline-block;
@@ -23,5 +28,73 @@
   .kpi-full-legend {
     min-width: 235px;
     background-color: @purple-4;
+    border: 1px solid @grey-16;
+    border-radius: @border-rad-sm;
+    background-color: @grey-26;
+  }
+
+  .kpi-legend-title {
+    color: @grey-700;
+    font-size: @size-sm;
+    line-height: 1.2;
+    font-weight: @font-regular;
+    max-width: 180px;
+  }
+
+  .kpi-legend-info-icon {
+    svg {
+      height: @size-sm;
+      width: @size-sm;
+      color: @grey-400;
+    }
+  }
+
+  .kpi-legend-value {
+    color: @grey-33;
+    font-weight: @font-regular;
+  }
+
+  .kpi-legend-days-left {
+    color: @grey-600;
+    font-weight: @font-medium;
+  }
+
+  .goal-completed-container {
+    padding: 4px 8px;
+    border-radius: @border-rad-xs;
+    background-color: @green-9;
+    font-size: 10px;
+    max-width: 115px;
+
+    .ant-typography {
+      color: @green-10;
+      margin-left: @size-xxs;
+    }
+
+    svg {
+      width: @size-sm;
+      height: @size-sm;
+      color: @green-10;
+    }
+  }
+
+  .goal-missed-container {
+    padding: 4px 8px;
+    border-radius: @border-rad-xs;
+    background-color: @yellow-10;
+    color: @yellow-11;
+    font-size: 10px;
+    max-width: 100px;
+
+    .ant-typography {
+      color: @yellow-11;
+      margin-left: @size-xxs;
+    }
+
+    svg {
+      width: @size-sm;
+      height: @size-sm;
+      color: @yellow-11;
+    }
   }
 }
