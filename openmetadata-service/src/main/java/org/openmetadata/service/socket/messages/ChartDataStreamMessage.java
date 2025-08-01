@@ -1,6 +1,7 @@
 package org.openmetadata.service.socket.messages;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +19,8 @@ public class ChartDataStreamMessage {
       Map<String, DataInsightCustomChartResultList> data,
       String error,
       Long remainingTime,
-      Long nextUpdate) {
+      Long nextUpdate,
+      List<Map> ingestionPipelineStatus) {
     this.sessionId = sessionId;
     this.status = status;
     this.serviceName = serviceName;
@@ -27,6 +29,7 @@ public class ChartDataStreamMessage {
     this.error = error;
     this.remainingTime = remainingTime;
     this.nextUpdate = nextUpdate;
+    this.ingestionPipelineStatus = ingestionPipelineStatus;
   }
 
   @JsonProperty("sessionId")
@@ -52,4 +55,7 @@ public class ChartDataStreamMessage {
 
   @JsonProperty("nextUpdate")
   private Long nextUpdate; // milliseconds until next update
+
+  @JsonProperty("ingestionPipelineStatus")
+  private List<Map> ingestionPipelineStatus;
 }

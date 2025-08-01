@@ -1,8 +1,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.type.Include;
@@ -130,6 +133,152 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return index;
   }
 
+  /**
+   * Fetch ingestion pipeline status for a specific service
+   * @param serviceName Service name to search for
+   * @return List of pipeline statuses for the service
+   */
+  private List<Map> getIngestionPipelineStatus(String serviceName) {
+    try {
+      if (serviceName == null || serviceName.trim().isEmpty()) {
+        return List.of();
+      }
+
+      // Get the ingestion pipeline repository
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+      if (ingestionPipelineRepository == null) {
+        LOG.warn("IngestionPipelineRepository not available");
+        return List.of();
+      }
+
+      // Get current timestamp for recent pipeline status
+      long currentTime = System.currentTimeMillis();
+      long startTime = currentTime - (24 * 60 * 60 * 1000); // Last 24 hours
+      long endTime = currentTime;
+
+      // Search for ingestion pipelines by service name using search
+      SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+      if (searchClient != null) {
+        try {
+          // Search for ingestion pipelines with the service name
+          String searchIndex = INGESTION_PIPELINE;
+          var response =
+              searchClient.searchByField("service.name.keyword", serviceName, searchIndex, false);
+
+          if (response != null && response.getStatus() == 200) {
+            // Parse the response to extract pipeline information
+            String responseBody =
+                (String) ((OutboundJaxrsResponse) response).getContext().getEntity();
+            return parseIngestionPipelineResponse(responseBody);
+          }
+        } catch (Exception e) {
+          LOG.error("Error searching for ingestion pipelines for service: {}", serviceName, e);
+        }
+      }
+
+      // Fallback: try to get pipeline status directly if search fails
+      try {
+        // This would require implementing a method to get pipelines by service name
+        // For now, we'll return an empty list
+        LOG.info("Using fallback method for service: {}", serviceName);
+        return List.of();
+      } catch (Exception e) {
+        LOG.error("Error in fallback method for service: {}", serviceName, e);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error fetching ingestion pipeline status for service: {}", serviceName, e);
+    }
+
+    return List.of();
+  }
+
+  /**
+   * Parse the search response to extract ingestion pipeline information
+   * @param responseBody JSON response from search
+   * @return List of pipeline statuses
+   */
+  private List<Map> parseIngestionPipelineResponse(String responseBody) {
+    try {
+      // Parse the JSON response
+      Map<String, Object> responseMap = JsonUtils.readValue(responseBody, Map.class);
+
+      if (responseMap == null || !responseMap.containsKey("hits")) {
+        LOG.warn("Invalid search response format");
+        return List.of();
+      }
+
+      Map<String, Object> hits = (Map<String, Object>) responseMap.get("hits");
+      if (hits == null || !hits.containsKey("hits")) {
+        LOG.warn("No hits found in search response");
+        return List.of();
+      }
+
+      List<Map<String, Object>> hitsList = (List<Map<String, Object>>) hits.get("hits");
+      if (hitsList == null || hitsList.isEmpty()) {
+        LOG.info("No ingestion pipelines found");
+        return List.of();
+      }
+
+      List<Map> pipelineStatuses = new ArrayList<>();
+
+      for (Map<String, Object> hit : hitsList) {
+        Map<String, Object> source = (Map<String, Object>) hit.get("_source");
+        if (source == null) {
+          continue;
+        }
+
+        // Extract required information
+        String id = (String) source.get("id");
+        String name = (String) source.get("name");
+        String displayName = (String) source.get("displayName");
+        String fqn = (String) source.get("fullyQualifiedName");
+        String pipelineType = (String) source.get("pipelineType");
+        String provider = (String) source.get("provider");
+
+        // Get pipeline state from pipelineStatuses
+        String pipelineState = "unknown";
+        Map<String, Object> pipelineStatusesMap =
+            (Map<String, Object>) source.get("pipelineStatuses");
+        if (pipelineStatusesMap != null) {
+          pipelineState = (String) pipelineStatusesMap.get("pipelineState");
+          if (pipelineState == null) {
+            pipelineState = "unknown";
+          }
+        }
+
+        // Add metadata with the required information
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("id", id);
+        metadata.put("name", name);
+        metadata.put("displayName", displayName);
+        metadata.put("fullyQualifiedName", fqn);
+        metadata.put("pipelineType", pipelineType);
+        metadata.put("provider", provider);
+        metadata.put("status", pipelineState);
+
+        pipelineStatuses.add(metadata);
+
+        LOG.info(
+            "Found pipeline: {} ({}), Type: {}, Status: {}, Provider: {}",
+            displayName,
+            fqn,
+            pipelineType,
+            pipelineState,
+            provider);
+      }
+
+      LOG.info("Parsed {} ingestion pipelines for service", pipelineStatuses.size());
+      return pipelineStatuses;
+
+    } catch (Exception e) {
+      LOG.error("Error parsing ingestion pipeline response", e);
+      return List.of();
+    }
+  }
+
   @Override
   public void setFields(DataInsightCustomChart entity, EntityUtil.Fields fields) {
     /* Nothing to do */
@@ -204,7 +353,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         }
         if (IGNORE_OTHER_SERVICE_CHARTS.contains(chart.getName()) && serviceName != null) {
           HashMap chartDetails = (HashMap) chart.getChartDetails();
-          chartDetails.put("includeXAxisFiled", serviceName);
+          chartDetails.put("includeXAxisFiled", serviceName.toLowerCase());
         }
         DataInsightCustomChartResultList data =
             searchClient.buildDIChart(chart, startTimestamp, endTimestamp, live);
@@ -286,7 +435,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           null,
           null,
           existingSession.getRemainingTime(),
-          UPDATE_INTERVAL_MS);
+          UPDATE_INTERVAL_MS,
+          getIngestionPipelineStatus(serviceName));
 
       // Calculate remaining time for existing session
       long remainingTime = existingSession.getRemainingTime();
@@ -377,7 +527,14 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     activeSessions.put(sessionId, session);
 
     // Send initial status message to all users in the session
-    sendMessageToAllUsers(session, "STARTED", null, null, STREAM_DURATION_MS, UPDATE_INTERVAL_MS);
+    sendMessageToAllUsers(
+        session,
+        "STARTED",
+        null,
+        null,
+        STREAM_DURATION_MS,
+        UPDATE_INTERVAL_MS,
+        getIngestionPipelineStatus(serviceName));
 
     // Schedule the streaming task
     ScheduledFuture<?> future =
@@ -409,7 +566,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         session.getFuture().cancel(true);
       }
 
-      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L);
+      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of());
       activeSessions.remove(sessionId);
     }
   }
@@ -450,7 +607,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       if (session.getFuture() != null) {
         session.getFuture().cancel(true);
       }
-      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L);
+      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of());
       activeSessions.remove(sessionId);
 
       response.put("status", "stopped");
@@ -459,7 +616,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     } else {
       // Send message to remaining users that one user left
       sendMessageToAllUsers(
-          session, "USER_LEFT", null, null, session.getRemainingTime(), UPDATE_INTERVAL_MS);
+          session,
+          "USER_LEFT",
+          null,
+          null,
+          session.getRemainingTime(),
+          UPDATE_INTERVAL_MS,
+          getIngestionPipelineStatus(session.getServiceName()));
 
       response.put("status", "user_removed");
       response.put("message", "User removed from streaming session");
@@ -497,17 +660,34 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               true,
               session.getServiceName());
 
+      // Fetch ingestion pipeline status for the service
+      List<Map> ingestionPipelineStatus = getIngestionPipelineStatus(session.getServiceName());
+
       // Send the data to all users in the session
-      sendMessageToAllUsers(session, "DATA", chartData, null, remainingTime, UPDATE_INTERVAL_MS);
+      sendMessageToAllUsers(
+          session,
+          "DATA",
+          chartData,
+          null,
+          remainingTime,
+          UPDATE_INTERVAL_MS,
+          ingestionPipelineStatus);
 
     } catch (IOException e) {
       LOG.error("Error streaming chart data for session {}", session.getSessionId(), e);
       sendMessageToAllUsers(
-          session, "FAILED", null, "Error fetching chart data: " + e.getMessage(), 0L, 0L);
+          session,
+          "FAILED",
+          null,
+          "Error fetching chart data: " + e.getMessage(),
+          0L,
+          0L,
+          List.of());
       stopStreaming(session.getSessionId());
     } catch (Exception e) {
       LOG.error("Unexpected error in streaming session {}", session.getSessionId(), e);
-      sendMessageToAllUsers(session, "FAILED", null, "Unexpected error: " + e.getMessage(), 0L, 0L);
+      sendMessageToAllUsers(
+          session, "FAILED", null, "Unexpected error: " + e.getMessage(), 0L, 0L, List.of());
       stopStreaming(session.getSessionId());
     }
   }
@@ -523,7 +703,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       Map<String, DataInsightCustomChartResultList> data,
       String error,
       Long remainingTime,
-      Long nextUpdate) {
+      Long nextUpdate,
+      List<Map> ingestionPipelineStatus) {
     ChartDataStreamMessage message =
         new ChartDataStreamMessage(
             sessionId,
@@ -533,7 +714,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             data,
             error,
             remainingTime,
-            nextUpdate);
+            nextUpdate,
+            ingestionPipelineStatus);
 
     String messageJson = JsonUtils.pojoToJson(message);
 
@@ -551,7 +733,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       Map<String, DataInsightCustomChartResultList> data,
       String error,
       Long remainingTime,
-      Long nextUpdate) {
+      Long nextUpdate,
+      List<Map> ingestionPipelineStatus) {
     for (UUID userId : session.getUserIds()) {
       sendMessageToUser(
           userId,
@@ -561,7 +744,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           data,
           error,
           remainingTime,
-          nextUpdate);
+          nextUpdate,
+          ingestionPipelineStatus);
     }
   }
 
