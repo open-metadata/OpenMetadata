@@ -75,8 +75,9 @@ public class RuleEngine {
     if (!incomingOnly) {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
       DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
-      if (entityContract != null && entityContract.getStatus() == ContractStatus.Active &&
-          !nullOrEmpty(entityContract.getSemantics())) {
+      if (entityContract != null
+          && entityContract.getStatus() == ContractStatus.Active
+          && !nullOrEmpty(entityContract.getSemantics())) {
         rulesToEvaluate.addAll(entityContract.getSemantics());
       }
     }
