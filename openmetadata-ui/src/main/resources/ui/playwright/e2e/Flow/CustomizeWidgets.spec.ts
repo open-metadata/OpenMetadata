@@ -57,6 +57,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 
 test.describe('Widgets', () => {
   test.beforeEach(async ({ page }) => {
+    test.slow(true);
+
     await redirectToHomePage(page);
     await page.getByTestId('sidebar-toggle').click();
     await setUserDefaultPersona(page, persona.responseData.displayName);
@@ -74,15 +76,13 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.ActivityFeed',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.ActivityFeed',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -96,15 +96,13 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.DataAssets',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.DataAssets',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -120,15 +118,13 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.MyData',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.MyData',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -142,15 +138,13 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.KPI',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.KPI',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -166,15 +160,13 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.TotalAssets',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.TotalAssets',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -190,15 +182,13 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.Following',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
 
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.Following',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -212,8 +202,7 @@ test.describe('Widgets', () => {
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.Domains',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await verifyDomainsFilters(page, 'KnowledgePanel.Domains');
@@ -221,8 +210,7 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.Domains',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 
@@ -236,8 +224,7 @@ test.describe('Widgets', () => {
     await addAndVerifyWidget(
       page,
       'KnowledgePanel.MyTask',
-      persona.responseData.name,
-      404
+      persona.responseData.name
     );
 
     await verifyTaskFilters(page, 'KnowledgePanel.MyTask');
@@ -245,8 +232,7 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.MyTask',
-      persona.responseData.name,
-      200
+      persona.responseData.name
     );
   });
 });

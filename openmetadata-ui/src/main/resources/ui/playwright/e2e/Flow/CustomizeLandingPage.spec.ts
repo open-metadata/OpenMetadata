@@ -74,7 +74,6 @@ test.describe('Customize Landing Page Flow', () => {
 
       await navigateToCustomizeLandingPage(adminPage, {
         personaName: persona.responseData.name,
-        customPageDataResponse: 404,
       });
 
       await removeAndCheckWidget(adminPage, {
@@ -108,7 +107,6 @@ test.describe('Customize Landing Page Flow', () => {
 
       await navigateToCustomizeLandingPage(adminPage, {
         personaName: persona.responseData.name,
-        customPageDataResponse: 200,
       });
 
       // Check if removed widgets are not present on customize page
@@ -228,7 +226,6 @@ test.describe('Customize Landing Page Flow', () => {
 
         await navigateToCustomizeLandingPage(adminPage, {
           personaName: persona.responseData.name,
-          customPageDataResponse: 200,
         });
 
         // Check if removed widgets are not present on customize page

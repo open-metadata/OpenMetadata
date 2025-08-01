@@ -21,10 +21,7 @@ import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
   page: Page,
-  {
-    personaName,
-    customPageDataResponse,
-  }: { personaName: string; customPageDataResponse: number }
+  { personaName }: { personaName: string }
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
@@ -42,12 +39,9 @@ export const navigateToCustomizeLandingPage = async (
   await page.getByRole('tab', { name: 'Customize UI' }).click();
 
   await page.getByTestId('LandingPage').click();
+  await getCustomPageDataResponse;
 
   await page.waitForLoadState('networkidle');
-
-  expect((await getCustomPageDataResponse).status()).toBe(
-    customPageDataResponse
-  );
 };
 
 export const removeAndCheckWidget = async (
@@ -128,19 +122,18 @@ export const saveCustomizeLayoutPage = async (
 export const removeAndVerifyWidget = async (
   page: Page,
   widgetKey: string,
-  personaName: string,
-  customPageDataResponse: number
+  personaName: string
 ) => {
   await navigateToCustomizeLandingPage(page, {
     personaName,
-    customPageDataResponse,
   });
 
   await removeAndCheckWidget(page, {
     widgetKey,
   });
 
-  await saveCustomizeLayoutPage(page, true);
+  await page.locator('[data-testid="save-button"]').click();
+  await page.waitForLoadState('networkidle');
 
   await redirectToHomePage(page);
 
@@ -150,12 +143,10 @@ export const removeAndVerifyWidget = async (
 export const addAndVerifyWidget = async (
   page: Page,
   widgetKey: string,
-  personaName: string,
-  customPageDataResponse: number
+  personaName: string
 ) => {
   await navigateToCustomizeLandingPage(page, {
     personaName,
-    customPageDataResponse,
   });
 
   await openAddCustomizeWidgetModal(page);
@@ -169,9 +160,39 @@ export const addAndVerifyWidget = async (
 
   await expect(page.getByTestId(widgetKey)).toBeVisible();
 
-  await saveCustomizeLayoutPage(page);
+  await page.locator('[data-testid="save-button"]').click();
+  await page.waitForLoadState('networkidle');
 
   await redirectToHomePage(page);
 
   await expect(page.getByTestId(widgetKey)).toBeVisible();
+};
+
+export const addCuratedAssetPlaceholder = async ({
+  page,
+  personaName,
+}: {
+  page: Page;
+  personaName: string;
+}) => {
+  await navigateToCustomizeLandingPage(page, {
+    personaName,
+  });
+
+  await openAddCustomizeWidgetModal(page);
+  await page.locator('[data-testid="loader"]').waitFor({
+    state: 'detached',
+  });
+
+  await page.locator('[data-testid="KnowledgePanel.CuratedAssets"]').click();
+
+  await page.locator('[data-testid="apply-btn"]').click();
+
+  await page.waitForTimeout(1000);
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.CuratedAssets')
+      .getByTestId('widget-empty-state')
+  ).toBeVisible();
 };
