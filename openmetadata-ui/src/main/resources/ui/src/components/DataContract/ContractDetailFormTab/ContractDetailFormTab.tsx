@@ -96,24 +96,26 @@ export const ContractDetailFormTab: React.FC<{
   return (
     <>
       <Card className="container bg-grey p-box">
-        <div className="m-b-sm">
-          <Typography.Title className="m-0" level={5}>
+        <div>
+          <Typography.Text className="contract-detail-form-tab-title">
             {t('label.contract-detail-plural')}
-          </Typography.Title>
-          <Typography.Paragraph className="m-0 text-sm" type="secondary">
+          </Typography.Text>
+          <Typography.Paragraph className="contract-detail-form-tab-description">
             {t('message.contract-detail-plural-description')}
           </Typography.Paragraph>
         </div>
 
-        <Form
-          className="bg-white p-box"
-          form={form}
-          layout="vertical"
-          onFinish={onNext}>
-          {generateFormFields(fields)}
+        <div className="contract-form-content-container">
+          <Form
+            className="contract-detail-form"
+            form={form}
+            layout="vertical"
+            onFinish={onNext}>
+            {generateFormFields(fields)}
 
-          {owners?.length > 0 && <OwnerLabel owners={owners} />}
-        </Form>
+            {owners?.length > 0 && <OwnerLabel owners={owners} />}
+          </Form>
+        </div>
       </Card>
       <div className="d-flex justify-end m-t-md">
         <Button htmlType="submit" type="primary" onClick={handleSubmit}>

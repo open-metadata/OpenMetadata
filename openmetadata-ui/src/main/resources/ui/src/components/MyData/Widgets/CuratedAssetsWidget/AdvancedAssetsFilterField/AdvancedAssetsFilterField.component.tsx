@@ -23,6 +23,8 @@ import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   AlertMessage,
@@ -65,15 +67,26 @@ export const AdvancedAssetsFilterField = ({
   const selectedResource: Array<string> =
     Form.useWatch('resources', form) || [];
 
-  const queryURL = useMemo(
-    () =>
-      getExploreURLWithFilters({
-        queryFilter,
-        selectedResource,
-        config,
-      }),
-    [queryFilter, config, selectedResource]
-  );
+  // Helper function to expand 'all' selection to all individual entity types
+  const getExpandedResourceList = useCallback((resources: Array<string>) => {
+    if (resources.includes(EntityType.ALL)) {
+      // Return all entity types except 'all' itself
+      return CURATED_ASSETS_LIST.filter((type) => type !== EntityType.ALL);
+    }
+
+    return resources;
+  }, []);
+
+  const queryURL = useMemo(() => {
+    // Expand 'all' selection to individual entity types for the query URL
+    const expandedResources = getExpandedResourceList(selectedResource);
+
+    return getExploreURLWithFilters({
+      queryFilter,
+      selectedResource: expandedResources,
+      config,
+    });
+  }, [queryFilter, config, selectedResource, getExpandedResourceList]);
 
   const handleChange = useCallback(
     (nTree: ImmutableTree, nConfig: Config) => {
@@ -91,23 +104,26 @@ export const AdvancedAssetsFilterField = ({
       try {
         setIsCountLoading(true);
 
+        // Expand 'all' selection to individual entity types for the API call
+        const expandedResources = getExpandedResourceList(selectedResource);
+
         const queryFilterObject = JSON.parse(queryFilter || '{}');
 
         const modifiedQueryFilter = getModifiedQueryFilterWithSelectedAssets(
           queryFilterObject,
-          selectedResource
+          expandedResources
         );
 
         await fetchEntityCount?.({
           countKey: 'filteredResourceCount',
-          selectedResource,
+          selectedResource: expandedResources,
           queryFilter: JSON.stringify(modifiedQueryFilter),
         });
       } finally {
         setIsCountLoading(false);
       }
     },
-    [fetchEntityCount, selectedResource]
+    [fetchEntityCount, selectedResource, getExpandedResourceList]
   );
 
   const debouncedFetchEntityCount = useCallback(

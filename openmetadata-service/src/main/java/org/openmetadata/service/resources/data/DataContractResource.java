@@ -62,6 +62,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -302,6 +303,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract dataContract =
         repository.loadEntityDataContract(
             new EntityReference().withId(entityId).withType(entityType));
+    if (dataContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("Data contract for entity %s is not found", entityId));
+    }
     return addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
   }
 
@@ -768,8 +773,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     DataContractResult result = getContractResult(dataContract, newResult);
-    result = repository.addContractResult(dataContract, result);
-    return Response.ok(result).build();
+    return repository.addContractResult(dataContract, result).toResponse();
   }
 
   @DELETE

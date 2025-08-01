@@ -14,12 +14,16 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -65,6 +69,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Repository
@@ -521,7 +526,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContractResult addContractResult(
+  public RestUtil.PutResponse<DataContractResult> addContractResult(
       DataContract dataContract, DataContractResult result) {
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
 
@@ -555,9 +560,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         || dataContract.getLatestResult().getTimestamp() < result.getTimestamp()
         || dataContract.getLatestResult().getResultId().equals(result.getId())) {
       updateLatestResult(dataContract, result);
+      return new RestUtil.PutResponse<>(Response.Status.OK, result, ENTITY_UPDATED);
     }
 
-    return result;
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, result, ENTITY_CREATED);
   }
 
   public DataContractResult updateContractDQResults(
@@ -625,6 +631,59 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
+      recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
+      updateSchema(original, updated);
+      updateQualityExpectations(original, updated);
+      updateSemantics(original, updated);
+    }
+
+    private void updateSchema(DataContract original, DataContract updated) {
+      List<Column> addedColumns = new ArrayList<>();
+      List<Column> deletedColumns = new ArrayList<>();
+      recordListChange(
+          "schema",
+          original.getSchema(),
+          updated.getSchema(),
+          addedColumns,
+          deletedColumns,
+          EntityUtil.columnMatch);
+    }
+
+    private void updateQualityExpectations(DataContract original, DataContract updated) {
+      List<EntityReference> addedQualityExpectations = new ArrayList<>();
+      List<EntityReference> deletedQualityExpectations = new ArrayList<>();
+      recordListChange(
+          "qualityExpectations",
+          original.getQualityExpectations(),
+          updated.getQualityExpectations(),
+          addedQualityExpectations,
+          deletedQualityExpectations,
+          EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateSemantics(DataContract original, DataContract updated) {
+      List<SemanticsRule> addedSemantics = new ArrayList<>();
+      List<SemanticsRule> deletedSemantics = new ArrayList<>();
+      recordListChange(
+          "semantics",
+          original.getSemantics(),
+          updated.getSemantics(),
+          addedSemantics,
+          deletedSemantics,
+          this::semanticsRuleMatch);
+    }
+
+    private boolean semanticsRuleMatch(SemanticsRule rule1, SemanticsRule rule2) {
+      if (rule1 == null || rule2 == null) {
+        return false;
+      }
+      return Objects.equals(rule1.getName(), rule2.getName())
+          && Objects.equals(rule1.getRule(), rule2.getRule())
+          && Objects.equals(rule1.getDescription(), rule2.getDescription())
+          && Objects.equals(rule1.getEnabled(), rule2.getEnabled())
+          && Objects.equals(rule1.getEntityType(), rule2.getEntityType())
+          && Objects.equals(rule1.getProvider(), rule2.getProvider());
     }
   }
 
@@ -654,6 +713,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .dataContractDAO()
             .getContractByEntityId(entity.getId().toString(), entity.getType()),
         DataContract.class);
+  }
+
+  public DataContract getEntityDataContractSafely(EntityInterface entity) {
+    try {
+      return loadEntityDataContract(entity.getEntityReference());
+    } catch (Exception e) {
+      LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
+      return null;
+    }
   }
 
   @Override
