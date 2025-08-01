@@ -146,7 +146,7 @@ describe('MyTaskWidget', () => {
     renderMyTaskWidget();
 
     expect(mockGetFeedData).toHaveBeenCalledWith(
-      'OWNER',
+      'OWNER_OR_FOLLOWS',
       undefined,
       'Task',
       undefined,
