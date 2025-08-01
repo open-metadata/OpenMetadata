@@ -28,6 +28,7 @@ const EntityNameModal = <T extends EntityName>({
   allowRename = false,
   nameValidationRules = [],
   additionalFields,
+  displayNameValidationRules = [],
 }: EntityNameModalProps<T>) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -95,7 +96,10 @@ const EntityNameModal = <T extends EntityName>({
             })}
           />
         </Form.Item>
-        <Form.Item label={t('label.display-name')} name="displayName">
+        <Form.Item
+          label={t('label.display-name')}
+          name="displayName"
+          rules={displayNameValidationRules}>
           <SanitizedInput placeholder={t('message.enter-display-name')} />
         </Form.Item>
 
