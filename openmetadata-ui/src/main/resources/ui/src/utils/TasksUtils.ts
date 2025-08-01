@@ -913,7 +913,7 @@ export const getTaskMessage = ({
   )} ${entityColumnsName}`;
 };
 
-export const getTaskAssignee = (entityData: Glossary): Option[] => {
+export const getTaskAssignee = (entityData: Glossary): EntityReference[] => {
   const { owners, reviewers } = entityData;
   let assignee: EntityReference[] = [];
 
@@ -923,17 +923,7 @@ export const getTaskAssignee = (entityData: Glossary): Option[] => {
     assignee = owners ?? [];
   }
 
-  let defaultAssignee: Option[] = [];
-  if (!isUndefined(assignee)) {
-    defaultAssignee = assignee.map((item) => ({
-      label: getEntityName(item),
-      value: item.id || '',
-      type: item.type,
-      name: item.name,
-    }));
-  }
-
-  return defaultAssignee;
+  return assignee;
 };
 
 export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {

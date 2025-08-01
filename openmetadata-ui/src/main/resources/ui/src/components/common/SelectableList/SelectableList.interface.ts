@@ -12,6 +12,7 @@
  */
 import { PagingResponse } from 'Models';
 import { ReactNode } from 'react';
+import { ACTION_TYPE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 
 export interface SelectableListProps {
@@ -28,6 +29,10 @@ export interface SelectableListProps {
   searchBarDataTestId?: string;
   removeIconTooltipLabel?: string;
   emptyPlaceholderText?: ReactNode;
-  onChange?: (selectedItems: EntityReference[]) => void;
+  onChange?: (
+    selectedItems: EntityReference[],
+    changeItem?: EntityReference,
+    actionType?: ACTION_TYPE
+  ) => void;
   height?: number;
 }

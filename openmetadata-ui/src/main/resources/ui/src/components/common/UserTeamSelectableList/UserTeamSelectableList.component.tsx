@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Popover, Space, Tabs, Typography } from 'antd';
-import { isArray, isEmpty, noop, toString } from 'lodash';
+import { isArray, isEmpty, noop, toString, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -22,6 +22,7 @@ import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
+import { ACTION_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
@@ -60,6 +61,7 @@ export const UserTeamSelectableList = ({
   children,
   popoverProps,
   multiple = { user: false, team: false },
+  selectBoth,
   label,
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
@@ -159,7 +161,7 @@ export const UserTeamSelectableList = ({
   const handleUpdate = async (updateItems: EntityReference[]) => {
     let updateData: EntityReference[] = [];
     if (!isEmpty(updateItems)) {
-      updateData = updateItems;
+      updateData = selectBoth ? selectedUsers : updateItems;
     }
 
     try {
@@ -239,8 +241,25 @@ export const UserTeamSelectableList = ({
     });
   };
 
-  const handleChange = (selectedItems: EntityReference[]) => {
-    setSelectedUsers(selectedItems);
+  const handleChange = (
+    selectedItems: EntityReference[],
+    changeItem?: EntityReference,
+    actionType?: ACTION_TYPE
+  ) => {
+    setSelectedUsers((prev) => {
+      if (!selectBoth) {
+        return selectedItems;
+      } else {
+        let newItemsMap = uniqBy([...prev, ...selectedItems], 'name');
+        if (actionType === ACTION_TYPE.REMOVE && changeItem) {
+          newItemsMap = newItemsMap?.filter(
+            (item) => item.id !== changeItem.id
+          );
+        }
+
+        return newItemsMap;
+      }
+    });
   };
 
   useEffect(() => {
