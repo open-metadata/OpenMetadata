@@ -191,7 +191,7 @@ export const testCommonOperations = async (
 ) => {
   // Navigate to entity page
   await redirectToHomePage(testUserPage);
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Define test configurations with special handling
   const testIdsConfigs = [
@@ -302,7 +302,7 @@ export const testTableSpecificOperations = async (
   entity: TableClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Test ViewQueries
   await testPermissionErrorVisibility(
@@ -362,7 +362,7 @@ export const testTopicSpecificOperations = async (
   entity: TopicClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Test ViewSampleData for Topic
   await testPermissionErrorVisibility(
@@ -378,7 +378,7 @@ export const testPipelineSpecificOperations = async (
   entity: PipelineClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Test Edit Lineage for Pipeline
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
@@ -398,7 +398,7 @@ export const testSearchIndexSpecificOperations = async (
   entity: SearchIndexClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Test ViewUsage for Search Index
   await testPermissionErrorVisibility(
@@ -414,7 +414,7 @@ export const testStoredProcedureSpecificOperations = async (
   entity: TableClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Test ViewUsage for Stored Procedure
   await testPermissionErrorVisibility(
@@ -430,7 +430,7 @@ export const testDashboardDataModelSpecificOperations = async (
   entity: DashboardDataModelClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   // Test Edit Lineage for Dashboard Data Model
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
@@ -450,7 +450,7 @@ export const testDashboardSpecificOperations = async (
   entity: DashboardClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   await checkElementVisibility(
     testUserPage,
@@ -467,7 +467,7 @@ export const testMlModelSpecificOperations = async (
   entity: MlModelClass,
   effect: 'allow' | 'deny'
 ) => {
-  await entity.visitEntityPageWithCustomSearchBox(testUserPage);
+  await entity.visitEntityPage(testUserPage);
 
   await checkElementVisibility(
     testUserPage,
