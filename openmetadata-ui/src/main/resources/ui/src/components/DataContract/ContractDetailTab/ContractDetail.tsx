@@ -28,6 +28,7 @@ import {
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
+import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -47,7 +48,6 @@ import {
   getContractStatusType,
   getTestCaseSummaryChartItems,
 } from '../../../utils/DataContract/DataContractUtils';
-import { getTestCaseStatusIcon } from '../../../utils/DataQuality/DataQualityUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
@@ -169,6 +169,18 @@ const ContractDetail: React.FC<{
   const testCaseSummaryChartItems = useMemo(() => {
     return getTestCaseSummaryChartItems(testCaseSummary);
   }, [testCaseSummary]);
+
+  const getTestCaseStatusIcon = (record: TestCase) => (
+    <Icon
+      className="test-status-icon"
+      component={
+        TEST_CASE_STATUS_ICON[
+          (record?.testCaseResult?.testCaseStatus ??
+            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
+        ]
+      }
+    />
+  );
 
   const handleRunNow = () => {
     if (contract?.id) {
@@ -434,15 +446,17 @@ const ContractDetail: React.FC<{
                     <Typography.Text className="card-subtitle">
                       {t('label.custom-integrity-rules')}
                     </Typography.Text>
-                    {(contract?.semantics ?? []).map((item) => (
-                      <div className="rule-item">
-                        <Icon className="rule-icon" component={CheckIcon} />
-                        <span className="rule-name">{item.name}</span>{' '}
-                        <span className="rule-description">
-                          {item.description}
-                        </span>
-                      </div>
-                    ))}
+                    <div className="rule-item-container">
+                      {(contract?.semantics ?? []).map((item) => (
+                        <div className="rule-item">
+                          <Icon className="rule-icon" component={CheckIcon} />
+                          <span className="rule-name">{item.name}</span>{' '}
+                          <span className="rule-description">
+                            {item.description}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </ExpandableCard>
               </Col>
@@ -507,21 +521,23 @@ const ContractDetail: React.FC<{
                           ))}
                         </div>
                         <Space direction="vertical">
-                          {testCaseResult.map((item) => (
-                            <div
-                              className="data-quality-item d-flex items-center"
-                              key={item.id}>
-                              {getTestCaseStatusIcon(item)}
-                              <div className="data-quality-item-content">
-                                <Typography.Text className="data-quality-item-name">
-                                  {item.name}
-                                </Typography.Text>
-                                <Typography.Text className="data-quality-item-description">
-                                  {item.description}
-                                </Typography.Text>
+                          {testCaseResult.map((item) => {
+                            return (
+                              <div
+                                className="data-quality-item d-flex items-center"
+                                key={item.id}>
+                                {getTestCaseStatusIcon(item)}
+                                <div className="data-quality-item-content">
+                                  <Typography.Text className="data-quality-item-name">
+                                    {item.name}
+                                  </Typography.Text>
+                                  <Typography.Text className="data-quality-item-description">
+                                    {item.description}
+                                  </Typography.Text>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </Space>
                       </div>
                     )}
