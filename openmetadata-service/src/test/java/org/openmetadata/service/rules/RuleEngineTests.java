@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -376,5 +377,55 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     // Table is patched properly and is not blowing up anymore
     assertNotNull(fixedTable);
     RuleEngine.getInstance().evaluate(fixedTable);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void validateRuleApplicationLogic(TestInfo test) {
+    Table table = getMockTable(test);
+
+    SemanticsRule ruleWithoutFilters =
+        new SemanticsRule()
+            .withName("Rule without filters")
+            .withDescription("This rule has no filters applied.")
+            .withRule("");
+
+    Assertions.assertTrue(RuleEngine.getInstance().shouldApplyRule(table, ruleWithoutFilters));
+
+    SemanticsRule ruleWithIgnoredEntities =
+        new SemanticsRule()
+            .withName("Rule without filters")
+            .withDescription("This rule has no filters applied.")
+            .withRule("")
+            .withIgnoredEntities(List.of(Entity.DOMAIN, Entity.GLOSSARY_TERM));
+    // Not ignored the table, should pass
+    Assertions.assertTrue(RuleEngine.getInstance().shouldApplyRule(table, ruleWithIgnoredEntities));
+
+    SemanticsRule ruleWithTableEntity =
+        new SemanticsRule()
+            .withName("Rule without filters")
+            .withDescription("This rule has no filters applied.")
+            .withRule("")
+            .withEntityType(Entity.TABLE);
+    // Not ignored the table, should pass
+    Assertions.assertTrue(RuleEngine.getInstance().shouldApplyRule(table, ruleWithTableEntity));
+
+    SemanticsRule ruleWithDomainEntity =
+        new SemanticsRule()
+            .withName("Rule without filters")
+            .withDescription("This rule has no filters applied.")
+            .withRule("")
+            .withEntityType(Entity.DOMAIN);
+    // Ignored the table, should not pass
+    Assertions.assertFalse(RuleEngine.getInstance().shouldApplyRule(table, ruleWithDomainEntity));
+
+    SemanticsRule ruleWithIgnoredTable =
+        new SemanticsRule()
+            .withName("Rule without filters")
+            .withDescription("This rule has no filters applied.")
+            .withRule("")
+            .withIgnoredEntities(List.of(Entity.TABLE));
+    // Ignored the table, should not pass
+    Assertions.assertFalse(RuleEngine.getInstance().shouldApplyRule(table, ruleWithIgnoredTable));
   }
 }

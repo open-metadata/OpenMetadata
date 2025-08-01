@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
@@ -45,8 +44,8 @@ export const ContractTab = () => {
         TabSpecificField.OWNERS,
       ]);
       setContract(contract);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+    } catch {
+      //
     } finally {
       setIsLoading(false);
     }

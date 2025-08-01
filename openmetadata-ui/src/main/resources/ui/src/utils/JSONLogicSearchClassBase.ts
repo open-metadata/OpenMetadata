@@ -297,15 +297,23 @@ class JSONLogicSearchClassBase {
       },
       [EntityReferenceFields.OWNERS]: {
         label: t('label.owner-plural'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: advancedSearchClassBase.autocomplete({
-            searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-          }),
-          useAsyncSearch: true,
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Owners',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: advancedSearchClassBase.autocomplete({
+                searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+              }),
+              useAsyncSearch: true,
+            },
+          },
         },
       },
       [EntityReferenceFields.DISPLAY_NAME]: {
@@ -347,19 +355,26 @@ class JSONLogicSearchClassBase {
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: this.searchAutocomplete({
-            searchIndex: SearchIndex.TAG,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
+        type: '!group',
+        mode: 'some',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: 'Tags',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.TAG,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
         },
       },
-
       [EntityReferenceFields.EXTENSION]: {
         label: t('label.custom-property-plural'),
         type: '!struct',
@@ -424,7 +439,6 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        defaultField: EntityReferenceFields.OWNERS,
         renderButton: renderJSONLogicQueryBuilderButtons,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,

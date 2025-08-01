@@ -88,13 +88,13 @@ export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
 // For example, in Glossary object, there are fields like name, description, parent, etc.
 export enum EntityReferenceFields {
   REVIEWERS = 'reviewers',
-  OWNERS = 'owners.fullyQualifiedName',
+  OWNERS = 'owners',
   DATABASE = 'database.name',
   DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
-  TAG = 'tags.tagFQN',
+  TAG = 'tags',
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',

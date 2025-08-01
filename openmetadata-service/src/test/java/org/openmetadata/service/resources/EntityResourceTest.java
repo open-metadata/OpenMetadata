@@ -138,6 +138,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -293,6 +294,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
       new Builder().filteredBy(Character::isLetterOrDigit).build();
+
+  public static final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
 
   public static Domain DOMAIN;
   public static Domain SUB_DOMAIN;
@@ -671,6 +674,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Assert field change in an entity recorded during PUT or POST operations
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException;
+
+  public void toggleMultiDomainSupport(Boolean enable) {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+
+    Settings currentSettings =
+        systemRepository.getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    EntityRulesSettings entityRulesSettings =
+        (EntityRulesSettings) currentSettings.getConfigValue();
+    entityRulesSettings
+        .getEntitySemantics()
+        .forEach(
+            rule -> {
+              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+                rule.setEnabled(enable);
+              }
+            });
+    systemRepository.updateSetting(currentSettings);
+  }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for GET operations

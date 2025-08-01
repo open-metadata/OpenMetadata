@@ -81,15 +81,13 @@ export const ContractSemanticFormTab: React.FC<{
   return (
     <>
       <Card className="container bg-grey p-box">
-        <div className="d-flex justify-between items-center">
-          <div>
-            <Typography.Title level={5}>
-              {t('label.semantic-plural')}
-            </Typography.Title>
-            <Typography.Text type="secondary">
-              {t('message.semantics-description')}
-            </Typography.Text>
-          </div>
+        <div>
+          <Typography.Text className="contract-detail-form-tab-title">
+            {t('label.semantic-plural')}
+          </Typography.Text>
+          <Typography.Text className="contract-detail-form-tab-description">
+            {t('message.semantics-description')}
+          </Typography.Text>
         </div>
 
         <Form form={form} layout="vertical">
