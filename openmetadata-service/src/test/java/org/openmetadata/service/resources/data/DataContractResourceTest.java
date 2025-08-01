@@ -357,6 +357,13 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
 
+  private void deleteDataContract(UUID id, boolean recursive) throws IOException {
+    WebTarget target = getResource(id);
+    target = target.queryParam("recursive", recursive);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
+    TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+  }
+
   private void deleteTable(UUID id) {
     WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
@@ -1886,6 +1893,18 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(PipelineType.TEST_SUITE, pipeline.getPipelineType());
     assertEquals(testSuite.getId(), pipeline.getService().getId());
     assertEquals("testSuite", pipeline.getService().getType());
+
+    // Test deletion with recursive=true - should also delete the test suite
+    deleteDataContract(dataContract.getId(), true);
+
+    // Verify the data contract is deleted
+    assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
+
+    // Verify the test suite is also deleted
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
   }
 
   @Test

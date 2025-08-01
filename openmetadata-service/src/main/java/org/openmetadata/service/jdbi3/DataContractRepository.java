@@ -17,7 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.getEntityReferenceById;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -43,7 +43,6 @@ import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
-import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
@@ -140,10 +139,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               entityRef.getType(), failedFieldsStr));
     }
 
-    if (dataContract.getOwners() != null) {
+    if (!nullOrEmpty(dataContract.getOwners())) {
       dataContract.setOwners(EntityUtil.populateEntityReferences(dataContract.getOwners()));
     }
-    if (dataContract.getReviewers() != null) {
+    if (!nullOrEmpty(dataContract.getReviewers())) {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
 
@@ -314,10 +313,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                       .withFullyQualifiedName(dataContract.getFullyQualifiedName())
                       .withType(Entity.DATA_CONTRACT));
       TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-      return testSuiteRepository.create(null, newTestSuite);
+      TestSuite createdSuite = testSuiteRepository.create(null, newTestSuite);
+      storeTestSuiteRelationship(dataContract, createdSuite);
+      return createdSuite;
     }
 
     return maybeTestSuite.get();
+  }
+
+  public void storeTestSuiteRelationship(DataContract dataContract, TestSuite testSuite) {
+    addRelationship(
+        dataContract.getId(),
+        testSuite.getId(),
+        Entity.DATA_CONTRACT,
+        TEST_SUITE,
+        Relationship.CONTAINS);
   }
 
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution
@@ -327,7 +337,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     CreateIngestionPipeline createPipeline =
         new CreateIngestionPipeline()
-            .withName(testSuite.getName())
+            .withName(UUID.randomUUID().toString())
             .withDisplayName(testSuite.getDisplayName())
             .withPipelineType(PipelineType.TEST_SUITE)
             .withService(
