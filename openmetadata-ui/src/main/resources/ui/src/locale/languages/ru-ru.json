@@ -712,6 +712,8 @@
     "glossary-term-plural": "Термины глоссария",
     "go-back": "Вернуться назад",
     "go-to-home-page": "Вернуться на стартовую страницу",
+    "goal-completed": "Цель Достигнута",
+    "goal-missed": "Цель Не Достигнута",
     "google": "Google",
     "google-account-service-type": "Тип учетной записи Google Cloud.",
     "google-client-id": "Идентификатор облачного клиента Google.",
