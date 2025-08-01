@@ -37,7 +37,6 @@ const WidgetWrapper = ({
     <Card
       className={`widget-wrapper-container card-widget ${className}`}
       data-testid={dataTestId}>
-      data-testid="widget-wrapper">
       {/* Header stays visible during loading */}
       {header}
 
