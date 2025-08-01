@@ -219,3 +219,10 @@ update_dockerfile_ri_version:  ## To update the dockerfile RI_VERSION argument
 #make update_dockerfile_ri_version RELEASE_VERSION=2.2.2
 
 #Upgrade release automation scripts above
+
+.PHONY: update_typescript_files
+update_typescript_files:
+	@echo "Generating JSON to TS files"
+	./openmetadata-ui/src/main/resources/ui/json2ts-generate-all.sh -l true
+	@echo "Generating antlr typescript files"
+	$(MAKE) js_antlr
