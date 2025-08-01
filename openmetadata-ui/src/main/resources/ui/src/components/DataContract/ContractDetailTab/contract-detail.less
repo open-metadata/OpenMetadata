@@ -156,25 +156,31 @@
   }
 }
 
-.rule-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.rule-item-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 
-  .rule-icon {
-    font-size: 20px;
-    margin-right: 4px;
-  }
+  .rule-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 
-  .rule-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: @grey-900;
-  }
+    .rule-icon {
+      font-size: 20px;
+      margin-right: 4px;
+    }
 
-  .rule-description {
-    font-size: 12px;
-    font-weight: 300;
+    .rule-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: @grey-900;
+    }
+
+    .rule-description {
+      font-size: 12px;
+      font-weight: 300;
+    }
   }
 }
 
