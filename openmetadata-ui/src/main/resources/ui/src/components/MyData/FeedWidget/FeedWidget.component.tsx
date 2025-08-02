@@ -111,7 +111,7 @@ const MyFeedWidgetInternal = ({
 
   const widgetBody = useMemo(() => {
     return (
-      <div id="feedWidgetData">
+      <>
         {isEmpty(entityThread) ? (
           emptyState
         ) : (
@@ -130,7 +130,7 @@ const MyFeedWidgetInternal = ({
             </div>
           </div>
         )}
-      </div>
+      </>
     );
   }, [
     emptyState,
@@ -178,7 +178,7 @@ const MyFeedWidgetInternal = ({
       dataTestId="KnowledgePanel.ActivityFeed"
       header={widgetHeader}
       loading={loading}>
-      <div className="feed-widget-container">
+      <div className="feed-widget-container" id="feedWidgetData">
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter

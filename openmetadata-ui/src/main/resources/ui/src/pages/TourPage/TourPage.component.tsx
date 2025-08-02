@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -31,6 +31,7 @@ const TourPage = () => {
     updateTourSearch,
   } = useTourProvider();
   const { t } = useTranslation();
+  const [isTourReady, setIsTourReady] = useState(false);
 
   const clearSearchTerm = () => {
     updateTourSearch('');
@@ -38,6 +39,17 @@ const TourPage = () => {
 
   useEffect(() => {
     updateIsTourOpen(true);
+
+    const waitForElement = () => {
+      const el = document.querySelector('#feedWidgetData');
+      if (el) {
+        setIsTourReady(true);
+      } else {
+        setTimeout(waitForElement, 100);
+      }
+    };
+
+    waitForElement();
   }, []);
 
   const currentPageComponent = useMemo(() => {
@@ -58,15 +70,17 @@ const TourPage = () => {
 
   return (
     <>
-      <Tour
-        steps={getTourSteps({
-          searchTerm: TOUR_SEARCH_TERM,
-          clearSearchTerm,
-          updateActiveTab,
-          updateTourPage,
-        })}
-      />
       {currentPageComponent}
+      {isTourReady && (
+        <Tour
+          steps={getTourSteps({
+            searchTerm: TOUR_SEARCH_TERM,
+            clearSearchTerm,
+            updateActiveTab,
+            updateTourPage,
+          })}
+        />
+      )}
     </>
   );
 };
