@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} Kapsamı",
     "entity-detail-plural": "{{entity}} Detayları",
     "entity-distribution": "{{entity}} Dağılımı",
+    "entity-failed": "{{entity}} Başarısız",
     "entity-feed-plural": "Varlık akışları",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} Kimliği",

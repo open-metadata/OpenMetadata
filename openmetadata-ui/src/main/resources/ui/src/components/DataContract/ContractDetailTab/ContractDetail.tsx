@@ -18,8 +18,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
+import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
+import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
 import { isEmpty } from 'lodash';
@@ -52,6 +54,7 @@ import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
@@ -170,6 +173,22 @@ const ContractDetail: React.FC<{
   const testCaseSummaryChartItems = useMemo(() => {
     return getTestCaseSummaryChartItems(testCaseSummary);
   }, [testCaseSummary]);
+
+  const getSemanticIconPerLastExecution = (semanticName: string) => {
+    if (!latestContractResults) {
+      return DefaultIcon;
+    }
+    const isRuleFailed =
+      latestContractResults?.semanticsValidation?.failedRules?.find(
+        (rule) => rule.ruleName === semanticName
+      );
+
+    if (isRuleFailed) {
+      return FailIcon;
+    }
+
+    return CheckIcon;
+  };
 
   const getTestCaseStatusIcon = (record: TestCase) => (
     <Icon
@@ -389,38 +408,49 @@ const ContractDetail: React.FC<{
                   {isLoading ? (
                     <Loading />
                   ) : (
-                    constraintStatus.map((item) => (
-                      <div
-                        className="contract-status-card-item d-flex justify-between items-center"
-                        key={item.label}>
-                        <div className="d-flex items-center">
-                          <Icon
-                            className="contract-status-card-icon"
-                            component={item.icon}
-                            data-testid={`${item.label}-icon`}
-                          />
+                    <>
+                      {latestContractResults?.result && (
+                        <AlertBar
+                          defafultExpand
+                          className="h-full m-b-md"
+                          message={latestContractResults.result}
+                          type="error"
+                        />
+                      )}
 
-                          <div className="d-flex flex-column m-l-md">
-                            <Typography.Text className="contract-status-card-label">
-                              {item.label}
-                            </Typography.Text>
-                            <div>
-                              <Typography.Text className="contract-status-card-desc">
-                                {item.desc}
+                      {constraintStatus.map((item) => (
+                        <div
+                          className="contract-status-card-item d-flex justify-between items-center"
+                          key={item.label}>
+                          <div className="d-flex items-center">
+                            <Icon
+                              className="contract-status-card-icon"
+                              component={item.icon}
+                              data-testid={`${item.label}-icon`}
+                            />
+
+                            <div className="d-flex flex-column m-l-md">
+                              <Typography.Text className="contract-status-card-label">
+                                {item.label}
                               </Typography.Text>
-                              <Typography.Text className="contract-status-card-time">
-                                {item.time}
-                              </Typography.Text>
+                              <div>
+                                <Typography.Text className="contract-status-card-desc">
+                                  {item.desc}
+                                </Typography.Text>
+                                <Typography.Text className="contract-status-card-time">
+                                  {item.time}
+                                </Typography.Text>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <StatusBadgeV2
-                          label={item.status}
-                          status={getContractStatusType(item.status)}
-                        />
-                      </div>
-                    ))
+                          <StatusBadgeV2
+                            label={item.status}
+                            status={getContractStatusType(item.status)}
+                          />
+                        </div>
+                      ))}
+                    </>
                   )}
                 </ExpandableCard>
               </Col>
@@ -450,7 +480,12 @@ const ContractDetail: React.FC<{
                     <div className="rule-item-container">
                       {(contract?.semantics ?? []).map((item) => (
                         <div className="rule-item">
-                          <Icon className="rule-icon" component={CheckIcon} />
+                          <Icon
+                            className="rule-icon"
+                            component={getSemanticIconPerLastExecution(
+                              item.name
+                            )}
+                          />
                           <span className="rule-name">{item.name}</span>{' '}
                           <span className="rule-description">
                             {item.description}
