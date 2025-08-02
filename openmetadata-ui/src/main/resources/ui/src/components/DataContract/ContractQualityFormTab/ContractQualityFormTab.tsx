@@ -10,17 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
-import { Card, Radio, Table, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Button, Card, Radio, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
+import { Table as TableType } from '../../../generated/entity/data/table';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { listTestCases, TestCaseType } from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Table from '../../common/Table/Table';
 
-export const ContractQualityFormTab: React.FC = () => {
-  const [testType, setTestType] = useState<'table' | 'column'>('table');
+import { ColumnsType } from 'antd/lib/table';
+import { toLower } from 'lodash';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
+export const ContractQualityFormTab: React.FC<{
+  selectedQuality: string[];
+  onChange: (data: Partial<DataContract>) => void;
+  onPrev: () => void;
+  prevLabel?: string;
+}> = ({ selectedQuality, onChange, onPrev, prevLabel }) => {
+  const [testType, setTestType] = useState<TestCaseType>(TestCaseType.table);
+  const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
+  const { data: table } = useGenericContext<TableType>();
+  const { pageSize, handlePagingChange } = usePaging();
+  const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(
+    selectedQuality ?? []
+  );
   const { t } = useTranslation();
 
-  const columns = useMemo(
+  const columns: ColumnsType<TestCase> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -28,27 +56,108 @@ export const ContractQualityFormTab: React.FC = () => {
       },
       {
         title: t('label.status'),
-        dataIndex: 'status',
+        dataIndex: 'testCaseStatus',
+        key: 'testCaseStatus',
+        render: (testCaseStatus: TestCaseStatus) => {
+          return (
+            <StatusBadge
+              dataTestId={`status-badge-${testCaseStatus}`}
+              label={testCaseStatus}
+              status={toLower(testCaseStatus) as StatusType}
+            />
+          );
+        },
       },
     ],
-    [t]
+    []
   );
 
+  const fetchAllTests = async () => {
+    if (!table?.fullyQualifiedName) {
+      return;
+    }
+    setIsTestsLoading(true);
+    try {
+      const { data, paging } = await listTestCases({
+        entityFQN: table.fullyQualifiedName,
+        testCaseType: testType,
+        limit: pageSize,
+      });
+
+      setAllTestCases(data);
+      handlePagingChange(paging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsTestsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllTests();
+  }, [testType]);
+
+  const handleSelection = (selectedRowKeys: string[]) => {
+    const qualityExpectations = selectedRowKeys.map((id) => {
+      const testCase = allTestCases.find((test) => test.id === id);
+
+      return {
+        description: testCase?.description,
+        name: testCase?.name,
+        id: testCase?.id,
+        type: EntityType.TEST_CASE,
+      } as EntityReference;
+    });
+
+    onChange({
+      qualityExpectations,
+    });
+  };
+
   return (
-    <div className="container">
-      <Typography.Title level={5}>{t('label.quality')}</Typography.Title>
-      <Typography.Text type="secondary">
-        {t('label.quality-description')}
-      </Typography.Text>
-      <Card>
+    <Card className="container bg-grey p-box">
+      <div>
+        <Typography.Text className="contract-detail-form-tab-title">
+          {t('label.quality')}
+        </Typography.Text>
+        <Typography.Text className="contract-detail-form-tab-description">
+          {t('message.quality-contract-description')}
+        </Typography.Text>
+      </div>
+
+      <div className="contract-form-content-container">
         <Radio.Group
+          className="m-b-sm"
           value={testType}
           onChange={(e) => setTestType(e.target.value)}>
-          <Radio.Button value="table">Table</Radio.Button>
-          <Radio.Button value="column">Column</Radio.Button>
+          <Radio.Button value={TestCaseType.table}>
+            {t('label.table')}
+          </Radio.Button>
+          <Radio.Button value={TestCaseType.column}>
+            {t('label.column')}
+          </Radio.Button>
         </Radio.Group>
-        <Table columns={columns} dataSource={[]} />
-      </Card>
-    </div>
+        <Table
+          columns={columns}
+          dataSource={allTestCases}
+          loading={isTestsLoading}
+          pagination={false}
+          rowKey="id"
+          rowSelection={{
+            selectedRowKeys: selectedKeys,
+            onChange: (selectedRowKeys) => {
+              setSelectedKeys(selectedRowKeys as string[]);
+              handleSelection(selectedRowKeys as string[]);
+            },
+          }}
+        />
+      </div>
+
+      <div className="d-flex justify-between m-t-md">
+        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+          {prevLabel ?? t('label.previous')}
+        </Button>
+      </div>
+    </Card>
   );
 };

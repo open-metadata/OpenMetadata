@@ -17,6 +17,7 @@ import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
@@ -74,8 +75,10 @@ public class RuleEngine {
     ArrayList<SemanticsRule> rulesToEvaluate = new ArrayList<>();
     if (!incomingOnly) {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
-      DataContract entityContract = getEntityDataContractSafely(facts);
-      if (entityContract != null && entityContract.getStatus() == ContractStatus.Active) {
+      DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
+      if (entityContract != null
+          && entityContract.getStatus() == ContractStatus.Active
+          && !nullOrEmpty(entityContract.getSemantics())) {
         rulesToEvaluate.addAll(entityContract.getSemantics());
       }
     }
@@ -90,12 +93,7 @@ public class RuleEngine {
     List<SemanticsRule> erroredRules = new ArrayList<>();
     rulesToEvaluate.forEach(
         rule -> {
-          // Only evaluate the rule if it's a generic rule or the rule's entity type matches the
-          // facts class
-          if (rule.getEntityType() == null
-              || Entity.getEntityRepository(rule.getEntityType())
-                  .getEntityClass()
-                  .isInstance(facts)) {
+          if (shouldApplyRule(facts, rule)) {
             try {
               validateRule(facts, rule);
             } catch (RuleValidationException e) {
@@ -105,6 +103,27 @@ public class RuleEngine {
         });
 
     return erroredRules;
+  }
+
+  public Boolean shouldApplyRule(EntityInterface facts, SemanticsRule rule) {
+    // If the rule is not entity-specific, apply it
+    if (rule.getEntityType() == null && nullOrEmpty(rule.getIgnoredEntities())) {
+      return true;
+    }
+    // Then, apply the rule only if type matches
+    if (rule.getEntityType() != null) {
+      return Entity.getEntityRepository(rule.getEntityType()).getEntityClass().isInstance(facts);
+    }
+    // Finally, check if the rule is not ignored for the entity type
+    if (!nullOrEmpty(rule.getIgnoredEntities())) {
+      List<? extends Class<? extends EntityInterface>> ignoredEntities =
+          rule.getIgnoredEntities().stream()
+              .map(Entity::getEntityRepository)
+              .map(EntityRepository::getEntityClass)
+              .toList();
+      return !ignoredEntities.contains(facts.getClass());
+    }
+    return true; // Default case, apply the rule
   }
 
   private List<SemanticsRule> getEnabledEntitySemantics() {
@@ -123,15 +142,6 @@ public class RuleEngine {
       }
     } catch (JsonLogicException e) {
       throw new RuleValidationException(rule, e.getMessage(), e);
-    }
-  }
-
-  private DataContract getEntityDataContractSafely(EntityInterface entity) {
-    try {
-      return dataContractRepository.loadEntityDataContract(entity.getEntityReference());
-    } catch (Exception e) {
-      LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
-      return null;
     }
   }
 }

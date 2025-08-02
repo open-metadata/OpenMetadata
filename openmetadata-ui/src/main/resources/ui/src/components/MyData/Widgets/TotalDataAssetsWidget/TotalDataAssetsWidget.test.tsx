@@ -70,14 +70,17 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../Common/WidgetWrapper/WidgetWrapper', () => {
-  return jest.fn().mockImplementation(({ children, loading, dataLength }) => (
-    <div
-      data-length={dataLength}
-      data-loading={loading}
-      data-testid="widget-wrapper">
-      {children}
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ children, loading, dataLength, header }) => (
+      <div
+        data-length={dataLength}
+        data-loading={loading}
+        data-testid="widget-wrapper">
+        {header}
+        {children}
+      </div>
+    ));
 });
 
 jest.mock('../Common/WidgetHeader/WidgetHeader', () => {

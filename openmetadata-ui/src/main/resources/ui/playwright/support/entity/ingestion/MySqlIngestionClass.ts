@@ -25,7 +25,7 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
-import { visitEntityPageWithCustomSearchBox } from '../../../utils/entity';
+import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
@@ -189,7 +189,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     });
 
     await test.step('Validate profiler ingestion', async () => {
-      await visitEntityPageWithCustomSearchBox({
+      await visitEntityPage({
         page,
         searchTerm: this.profilerTable,
         dataTestId: `${this.serviceName}-${this.profilerTable}`,

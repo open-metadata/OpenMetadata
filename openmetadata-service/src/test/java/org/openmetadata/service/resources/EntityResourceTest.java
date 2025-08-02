@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -139,6 +138,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -228,6 +228,7 @@ import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
+import org.openmetadata.service.resources.services.SecurityServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
@@ -293,6 +294,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
       new Builder().filteredBy(Character::isLetterOrDigit).build();
+
+  public static final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
 
   public static Domain DOMAIN;
   public static Domain SUB_DOMAIN;
@@ -515,6 +518,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new MetricResourceTest().setupMetrics();
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
+    new SecurityServiceResourceTest().setupSecurityServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
     new PipelineServiceResourceTest().setupPipelineServices(test);
     new DashboardServiceResourceTest().setupDashboardServices(test);
@@ -670,6 +674,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Assert field change in an entity recorded during PUT or POST operations
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException;
+
+  public void toggleMultiDomainSupport(Boolean enable) {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+
+    Settings currentSettings =
+        systemRepository.getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    EntityRulesSettings entityRulesSettings =
+        (EntityRulesSettings) currentSettings.getConfigValue();
+    entityRulesSettings
+        .getEntitySemantics()
+        .forEach(
+            rule -> {
+              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+                rule.setEnabled(enable);
+              }
+            });
+    systemRepository.updateSetting(currentSettings);
+  }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for GET operations
