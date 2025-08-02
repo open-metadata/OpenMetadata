@@ -22,7 +22,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { cleanupGlobalPermissions } from '../../utils/permission';
+import { cleanupPermissions } from '../../utils/permission';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
 
@@ -38,7 +38,7 @@ test.describe.serial('Add role and assign it to the user', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     const { apiContext } = await getApiContext(page);
-    await cleanupGlobalPermissions(apiContext);
+    await cleanupPermissions(apiContext);
   });
 
   test.afterAll('cleanup', async ({ browser }) => {
