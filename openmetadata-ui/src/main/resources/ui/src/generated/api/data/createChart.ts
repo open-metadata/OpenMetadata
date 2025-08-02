@@ -37,6 +37,10 @@ export interface CreateChart {
      */
     domains?: string[];
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Life Cycle of the entity
      */
     lifeCycle?: LifeCycle;

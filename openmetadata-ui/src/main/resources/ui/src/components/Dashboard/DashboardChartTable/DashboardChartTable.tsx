@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -19,8 +18,7 @@ import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
+import { Link } from 'react-router-dom';
 import {
   DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
@@ -35,6 +33,7 @@ import { updateChart } from '../../../rest/chartAPI';
 import { fetchCharts } from '../../../utils/DashboardDetailsUtils';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getChartDetailsPath } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
@@ -276,20 +275,12 @@ export const DashboardChartTable = ({
         render: (_, record) => {
           const chartName = getEntityName(record);
 
-          return record.sourceUrl ? (
+          return (
             <div className="d-flex items-center">
-              <Typography.Link href={record.sourceUrl} target="_blank">
+              <Link to={getChartDetailsPath(record?.fullyQualifiedName ?? '')}>
                 <span className="break-all">{chartName}</span>
-
-                <Icon
-                  className="m-l-xs flex-none align-middle"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
-              </Typography.Link>
+              </Link>
             </div>
-          ) : (
-            <Typography.Text className="w-full">{chartName}</Typography.Text>
           );
         },
       },

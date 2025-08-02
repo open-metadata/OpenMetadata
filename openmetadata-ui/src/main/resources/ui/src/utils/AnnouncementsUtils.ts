@@ -38,6 +38,7 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.METRIC,
+  EntityType.CHART,
 ];
 
 /* 

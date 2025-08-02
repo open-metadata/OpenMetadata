@@ -695,7 +695,9 @@ test.describe('Glossary tests', () => {
         const assetContainerText = await assetContainer.innerText();
 
         expect(assetContainerText).toContain(dashboardEntity.entity.name);
-        expect(assetContainerText).toContain(dashboardEntity.charts.name);
+        expect(assetContainerText).toContain(
+          dashboardEntity.charts.displayName
+        );
       });
     } finally {
       await glossaryTerm1.delete(apiContext);

@@ -74,7 +74,8 @@ import org.openmetadata.service.util.ResultList;
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
   private final ChartMapper mapper = new ChartMapper();
-  static final String FIELDS = "owners,followers,tags,domains,dataProducts,sourceHash,dashboards";
+  static final String FIELDS =
+      "owners,followers,tags,domains,dataProducts,sourceHash,dashboards,extension";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {

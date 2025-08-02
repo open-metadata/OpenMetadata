@@ -260,40 +260,6 @@ describe('SearchClassBase', () => {
     expect(getTestSuiteDetailsPath).toHaveBeenCalled();
   });
 
-  it('should call getEntityLinkFromType with dashboard data if entity type is Chart', () => {
-    searchClassBase.getEntityLink({
-      id: '123',
-      service: {
-        id: '11',
-        type: 'dashboard',
-        fullyQualifiedName: 'superset',
-        name: 'superset',
-      },
-      fullyQualifiedName: 'test.chart',
-      entityType: EntityType.CHART,
-      name: 'chart',
-      dashboards: [
-        {
-          id: '12',
-          fullyQualifiedName: 'test.dashboard',
-          name: 'dashboard',
-          type: 'dashboard',
-        },
-      ],
-    } as Chart);
-
-    expect(getEntityLinkFromType).toHaveBeenCalledWith(
-      'test.dashboard',
-      'dashboard',
-      {
-        fullyQualifiedName: 'test.dashboard',
-        id: '12',
-        name: 'dashboard',
-        type: 'dashboard',
-      }
-    );
-  });
-
   it('should call not getEntityLinkFromType entity type is Chart and there is no dashboard in it', () => {
     const result = searchClassBase.getEntityLink({
       id: '123',
@@ -309,7 +275,7 @@ describe('SearchClassBase', () => {
     } as Chart);
 
     expect(getEntityLinkFromType).not.toHaveBeenCalledWith();
-    expect(result).toBe('');
+    expect(result).toBe('/chart/test.chart');
   });
 
   it('should not call getTestSuiteDetailsPath if entity type is not TestSuite', () => {

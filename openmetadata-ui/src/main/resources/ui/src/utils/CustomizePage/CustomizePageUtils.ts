@@ -21,6 +21,7 @@ import { Page, PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
+import chartDetailsClassBase from '../ChartDetailsClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
@@ -205,6 +206,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return metricDetailsClassBase.getDefaultLayout(tab);
     case PageType.MlModel:
       return mlModelClassBase.getDefaultLayout(tab);
+    case PageType.Chart:
+      return chartDetailsClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -356,6 +359,8 @@ export const getWidgetsFromKey = (
       return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Chart:
+      return chartDetailsClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -398,6 +403,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return customizeGlossaryPageClassBase.getWidgetHeight(widgetName);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
+    case PageType.Chart:
+      return chartDetailsClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }
