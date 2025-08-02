@@ -164,9 +164,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   // If we update the contract adding DQ validation, add the pipeline if needed
   @Override
-  protected void postUpdate(DataContract dataContract) {
-    super.postUpdate(dataContract);
-    postCreateOrUpdate(dataContract);
+  protected void postUpdate(DataContract original, DataContract updated) {
+    super.postUpdate(original, updated);
+    postCreateOrUpdate(updated);
   }
 
   private void postCreateOrUpdate(DataContract dataContract) {
@@ -175,6 +175,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       // Create the ingestion pipeline only if needed
       if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
         IngestionPipeline pipeline = createIngestionPipeline(testSuite);
+        EntityReference pipelineRef =
+            Entity.getEntityReference(
+                new EntityReference().withId(pipeline.getId()).withType(Entity.INGESTION_PIPELINE),
+                Include.NON_DELETED);
+        testSuite.setPipelines(List.of(pipelineRef));
+        TestSuiteRepository testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
         if (!pipeline.getDeployed()) {
           prepareAndDeployIngestionPipeline(pipeline, testSuite);
         }
