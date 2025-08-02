@@ -1937,6 +1937,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         HttpResponseException.class,
         () ->
             testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Pipeline is also deleted
+    assertThrows(
+        HttpResponseException.class,
+        () -> ingestionPipelineResourceTest.getEntity(pipeline.getId(), "*", ADMIN_AUTH_HEADERS));
   }
 
   @Test

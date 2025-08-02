@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -167,6 +166,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
     postCreateOrUpdate(updated);
+  }
+
+  @Override
+  protected void postDelete(DataContract dataContract) {
+    super.postDelete(dataContract);
+    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
+      TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      testSuiteRepository.delete(ADMIN_USER_NAME, testSuite.getId(), true, true);
+    }
+    // Clean status
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
   }
 
   private void postCreateOrUpdate(DataContract dataContract) {
@@ -350,21 +364,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                       .withFullyQualifiedName(dataContract.getFullyQualifiedName())
                       .withType(Entity.DATA_CONTRACT));
       TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-      TestSuite createdSuite = testSuiteRepository.create(null, newTestSuite);
-      storeTestSuiteRelationship(dataContract, createdSuite);
-      return createdSuite;
+      return testSuiteRepository.create(null, newTestSuite);
     }
 
     return maybeTestSuite.get();
-  }
-
-  public void storeTestSuiteRelationship(DataContract dataContract, TestSuite testSuite) {
-    addRelationship(
-        dataContract.getId(),
-        testSuite.getId(),
-        Entity.DATA_CONTRACT,
-        TEST_SUITE,
-        Relationship.CONTAINS);
   }
 
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution
