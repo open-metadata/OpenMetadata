@@ -135,9 +135,13 @@ export const ContractSemanticFormTab: React.FC<{
                               {editingKey === field.key ? null : (
                                 <>
                                   <div className="d-flex items-center gap-6">
-                                    <Switch
-                                      checked={semanticsData[field.key].enabled}
-                                    />
+                                    <Form.Item
+                                      {...field}
+                                      name={[field.name, 'enabled']}
+                                      valuePropName="checked">
+                                      <Switch />
+                                    </Form.Item>
+
                                     <div className="d-flex flex-column">
                                       <Typography.Text>
                                         {semanticsData[field.key]?.name ||
@@ -186,7 +190,8 @@ export const ContractSemanticFormTab: React.FC<{
                                 <Form.Item
                                   {...field}
                                   label={t('label.enabled')}
-                                  name={[field.name, 'enabled']}>
+                                  name={[field.name, 'enabled']}
+                                  valuePropName="checked">
                                   <Switch />
                                 </Form.Item>
                               </Col>

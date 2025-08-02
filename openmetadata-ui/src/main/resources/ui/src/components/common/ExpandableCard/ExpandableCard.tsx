@@ -12,7 +12,7 @@
  */
 import { Card, CardProps } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
@@ -43,6 +43,10 @@ const ExpandableCard = ({
       return !prev;
     });
   }, [onExpandStateChange]);
+
+  useEffect(() => {
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
 
   return (
     <Card
