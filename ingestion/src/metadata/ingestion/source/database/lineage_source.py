@@ -262,10 +262,18 @@ class LineageSource(QueryParserSource, ABC):
 
         for table_query in table_queries or []:
             if not self._query_already_processed(table_query):
+                # Prepare service names for lineage processing
+                service_names = [table_query.serviceName]
+                if (
+                    self.source_config.processCrossDatabaseLineage
+                    and self.source_config.crossDatabaseServiceNames
+                ):
+                    service_names.extend(self.source_config.crossDatabaseServiceNames)
+
                 lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
                     self.metadata,
                     query=table_query.query,
-                    service_name=table_query.serviceName,
+                    service_names=service_names,
                     database_name=table_query.databaseName,
                     schema_name=table_query.databaseSchema,
                     dialect=self.dialect,
@@ -334,10 +342,18 @@ class LineageSource(QueryParserSource, ABC):
                         "View Filtered Out",
                     )
                     continue
+                # Prepare service names for view lineage processing
+                service_names = [self.config.serviceName]
+                if (
+                    self.source_config.processCrossDatabaseLineage
+                    and self.source_config.crossDatabaseServiceNames
+                ):
+                    service_names.extend(self.source_config.crossDatabaseServiceNames)
+
                 for lineage in get_view_lineage(
                     view=view,
                     metadata=self.metadata,
-                    service_name=self.config.serviceName,
+                    service_names=service_names,
                     connection_type=self.service_connection.type.value,
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                 ):
