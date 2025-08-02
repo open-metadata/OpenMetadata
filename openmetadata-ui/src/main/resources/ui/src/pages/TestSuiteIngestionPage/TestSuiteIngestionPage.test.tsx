@@ -51,6 +51,11 @@ jest.mock('../../rest/testAPI', () => {
     getTestSuiteByName: jest
       .fn()
       .mockImplementation(() => Promise.resolve(mockTestSuite)),
+    TestCaseType: {
+      all: 'all',
+      table: 'table',
+      column: 'column',
+    },
   };
 });
 jest.mock('../../rest/ingestionPipelineAPI', () => {

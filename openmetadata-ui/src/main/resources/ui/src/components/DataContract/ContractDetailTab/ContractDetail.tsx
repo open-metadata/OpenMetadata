@@ -142,7 +142,11 @@ const ContractDetail: React.FC<{
       title: t('label.type'),
       dataIndex: 'dataType',
       key: 'dataType',
-      render: (type: string) => <Tag color="purple">{type}</Tag>,
+      render: (type: string) => (
+        <Tag className="custom-tag" color="purple">
+          {type}
+        </Tag>
+      ),
     },
     {
       title: t('label.constraint-plural'),
@@ -151,7 +155,9 @@ const ContractDetail: React.FC<{
       render: (constraint: string) => (
         <div>
           {constraint ? (
-            <Tag color="blue">{constraint}</Tag>
+            <Tag className="custom-tag" color="blue">
+              {constraint}
+            </Tag>
           ) : (
             <Typography.Text data-testid="no-constraints">
               {NO_DATA_PLACEHOLDER}
