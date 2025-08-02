@@ -1904,6 +1904,7 @@
     "delete-action-description": "Deleting this {{entityType}} would permanently delete its metadata.",
     "delete-asset-from-entity-type": "Deleting this will remove {{entityType}} from the entity.",
     "delete-data-asset-rule-confirmation": "Are you sure you want to delete the data asset rule '{{name}}'?",
+    "delete-entity-message": "Are you sure you want to delete {{entity}}? This action cannot be undone.",
     "delete-entity-permanently": "Once you delete this {{entityType}}, it will be removed permanently.",
     "delete-entity-type-action-description": "Deleting this {{entityType}} would permanently delete its metadata.",
     "delete-message-question-mark": "Delete Message?",
