@@ -144,7 +144,34 @@ test.describe('Curated Assets', () => {
 
     await saveCustomizeLayoutPage(page);
 
+    const chartResponsePromise = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/search/query') &&
+        url.includes('index=chart') &&
+        response.status() === 200
+      );
+    });
+
     await redirectToHomePage(page);
+
+    const chartResponse = await chartResponsePromise;
+
+    expect(chartResponse.status()).toBe(200);
+
+    const chartResponseJson = await chartResponse.json();
+    const chartHits = chartResponseJson.hits.hits;
+
+    if (chartHits.length > 0) {
+      const firstSource = chartHits[0]._source;
+      const displayName = firstSource.displayName;
+      const name = firstSource.name;
+
+      await expect(
+        page.locator(`[data-testid="Curated Assets-${displayName ?? name}"]`)
+      ).toBeVisible();
+    }
 
     await expect(
       page
