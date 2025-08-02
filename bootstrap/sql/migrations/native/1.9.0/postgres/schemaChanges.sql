@@ -217,3 +217,4 @@ ADD COLUMN domains TEXT GENERATED ALWAYS AS (
 
 -- Update activity feed alert after domain changes
 DELETE FROM  event_subscription_entity where name = 'ActivityFeedAlert';
+
