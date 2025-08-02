@@ -32,6 +32,12 @@ type AppListParams = ListParams & {
   endTs?: number;
 };
 
+interface GetAgentRunsParams {
+  service: string;
+  startTs?: number;
+  endTs?: number;
+}
+
 export const getApplicationList = async (params?: AppListParams) => {
   const response = await APIClient.get<PagingResponse<App[]>>(BASE_URL, {
     params,
@@ -159,4 +165,16 @@ export const getApplicationLogs = (appName: string, after?: string) => {
       after,
     },
   });
+};
+
+export const getAgentRuns = async (
+  applicationName: string,
+  params?: GetAgentRunsParams
+) => {
+  const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
+    `/collate/apps/name/${applicationName}/agentRuns`,
+    { params }
+  );
+
+  return response.data;
 };

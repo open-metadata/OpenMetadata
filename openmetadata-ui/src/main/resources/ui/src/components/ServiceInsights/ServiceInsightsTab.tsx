@@ -17,11 +17,21 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SOCKET_EVENTS } from '../../constants/constants';
+import {
+  LIVE_CHARTS_LIST,
+  PLATFORM_INSIGHTS_CHARTS,
+  PLATFORM_INSIGHTS_LIVE_CHARTS,
+} from '../../constants/ServiceInsightsTab.constants';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
-import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
+import {
+  getMultiChartsPreviewByName,
+  setChartDataStreamConnection,
+  stopChartDataStreamConnection,
+} from '../../rest/DataInsightAPI';
 import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
@@ -30,32 +40,31 @@ import { updateAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import {
   checkIfAutoPilotStatusIsDismissed,
   filterDistributionChartItem,
+  getChartsDataFromWidgetName,
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import {
-  ChartData,
-  ChartSeriesData,
-} from './PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import './service-insights-tab.less';
-import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
+import {
+  ChartsResults,
+  ServiceInsightsTabProps,
+} from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
   isWorkflowStatusLoading,
+  collateAIagentsList,
 }: ServiceInsightsTabProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
-  const [chartsResults, setChartsResults] = useState<{
-    platformInsightsChart: ChartSeriesData[];
-    piiDistributionChart: ChartData[];
-    tierDistributionChart: ChartData[];
-  }>();
+  const { socket } = useWebSocketConnector();
+  const [chartsResults, setChartsResults] = useState<ChartsResults>();
   const [isLoading, setIsLoading] = useState(false);
+  const sessionIdRef = useRef<string>();
 
   const serviceName = serviceDetails.name;
 
@@ -68,7 +77,7 @@ const ServiceInsightsTab = ({
       const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(6);
 
       const chartsList = [
-        ...PLATFORM_INSIGHTS_CHART,
+        ...PLATFORM_INSIGHTS_CHARTS,
         ...(widgets.PIIDistributionWidget
           ? [SystemChartType.PIIDistribution]
           : []),
@@ -83,7 +92,7 @@ const ServiceInsightsTab = ({
         filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
       });
 
-      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
+      const platformInsightsChart = PLATFORM_INSIGHTS_CHARTS.map(
         getPlatformInsightsChartDataFormattingMethod(chartsData)
       );
 
@@ -106,12 +115,7 @@ const ServiceInsightsTab = ({
     }
   };
 
-  useEffect(() => {
-    fetchChartsData();
-  }, []);
-
   const arrayOfWidgets = [
-    { Widget: widgets.PlatformInsightsWidget, name: 'PlatformInsightsWidget' },
     { Widget: widgets.CollateAIWidget, name: 'CollateAIWidget' },
     { Widget: widgets.PIIDistributionWidget, name: 'PIIDistributionWidget' },
     { Widget: widgets.TierDistributionWidget, name: 'TierDistributionWidget' },
@@ -123,18 +127,8 @@ const ServiceInsightsTab = ({
     { Widget: widgets.DataQualityWidget, name: 'DataQualityWidget' },
   ];
 
-  const getChartsDataFromWidgetName = (widgetName: string) => {
-    switch (widgetName) {
-      case 'PlatformInsightsWidget':
-        return chartsResults?.platformInsightsChart ?? [];
-      case 'PIIDistributionWidget':
-        return chartsResults?.piiDistributionChart ?? [];
-      case 'TierDistributionWidget':
-        return chartsResults?.tierDistributionChart ?? [];
-      default:
-        return [];
-    }
-  };
+  const { PlatformInsightsWidget, TotalDataAssetsWidget, AgentsStatusWidget } =
+    widgets;
 
   const {
     Icon: StatusIcon,
@@ -175,6 +169,61 @@ const ServiceInsightsTab = ({
     workflowStatesData?.mainInstanceState?.status,
   ]);
 
+  const triggerSocketConnection = useCallback(async () => {
+    if (isUndefined(sessionIdRef.current)) {
+      const { sessionId } = await setChartDataStreamConnection({
+        chartNames: LIVE_CHARTS_LIST,
+        serviceName,
+        startTime: getCurrentDayStartGMTinMillis(),
+        endTime: getCurrentDayStartGMTinMillis() + 360000000,
+      });
+
+      sessionIdRef.current = sessionId;
+    }
+  }, [serviceName, sessionIdRef.current]);
+
+  useEffect(() => {
+    // Start the socket connection if the workflow is running
+    // if (
+    //   workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+    // ) {
+    triggerSocketConnection();
+    // }
+    fetchChartsData();
+
+    return () => {
+      // Stop the socket connection if it is started and set the sessionId to undefined
+      if (sessionIdRef.current) {
+        stopChartDataStreamConnection(sessionIdRef.current);
+        sessionIdRef.current = undefined;
+      }
+    };
+  }, [workflowStatesData?.mainInstanceState.status]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, (newActivity) => {
+        if (newActivity) {
+          const data = JSON.parse(newActivity);
+
+          const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
+            getPlatformInsightsChartDataFormattingMethod(data.data)
+          );
+
+          setChartsResults((prev) => ({
+            platformInsightsChart,
+            piiDistributionChart: prev?.piiDistributionChart ?? [],
+            tierDistributionChart: prev?.tierDistributionChart ?? [],
+          }));
+        }
+      });
+    }
+
+    return () => {
+      socket?.off(SOCKET_EVENTS.CHART_DATA_STREAM);
+    };
+  }, [socket]);
+
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
       {showAutoPilotStatus && (
@@ -205,6 +254,33 @@ const ServiceInsightsTab = ({
           onClose={onStatusBannerClose}
         />
       )}
+      <Col span={18}>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <AgentsStatusWidget
+              collateAIagentsList={collateAIagentsList}
+              serviceDetails={serviceDetails}
+              workflowStatesData={workflowStatesData}
+            />
+          </Col>
+          <Col span={24}>
+            <PlatformInsightsWidget
+              chartsData={getChartsDataFromWidgetName(
+                'PlatformInsightsWidget',
+                chartsResults
+              )}
+              isLoading={isLoading}
+            />
+          </Col>
+        </Row>
+      </Col>
+      <Col span={6}>
+        <TotalDataAssetsWidget
+          serviceName={serviceName}
+          workflowStatesData={workflowStatesData}
+        />
+      </Col>
+
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
@@ -218,7 +294,7 @@ const ServiceInsightsTab = ({
                   : 24
               }>
               <Widget
-                chartsData={getChartsDataFromWidgetName(name)}
+                chartsData={getChartsDataFromWidgetName(name, chartsResults)}
                 isLoading={isLoading}
                 serviceName={serviceName}
                 workflowStatesData={workflowStatesData}

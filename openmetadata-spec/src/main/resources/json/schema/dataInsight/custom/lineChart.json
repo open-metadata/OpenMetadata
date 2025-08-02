@@ -94,6 +94,10 @@
         "excludeXAxisField": {
             "description": "Regex to exclude fields from the data insight chart when xAxisField is specified.",
             "type": "string"
+        },
+        "searchIndex": {
+            "description": "Search index for the data insight chart.",
+            "type": "string"
         }
     },
     "additionalProperties": false
