@@ -38,18 +38,9 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-@inject
-def get_row_count_metric(metrics: Inject[Type[MetricRegistry]] = None):
-    if metrics is None:
-        raise DependencyNotFoundError(
-            "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
-        )
-    return metrics.ROW_COUNT().name()
-
-
 COLUMN_COUNT = "columnCount"
 COLUMN_NAMES = "columnNames"
-ROW_COUNT = get_row_count_metric()
+ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 

@@ -98,13 +98,37 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             status = TestCaseStatus.Failed
             result_value = len_rows
 
+        if self.test_case.computePassedFailedRowCount:
+            row_count = self.get_row_count()
+        else:
+            row_count = None
+
         return self.get_test_case_result_object(
             self.execution_date,
             status,
             f"Found {result_value} row(s). Test query is expected to return {threshold} row.",
             [TestResultValue(name=RESULT_ROW_COUNT, value=str(result_value))],
+            row_count=row_count,
+            failed_rows=result_value,
         )
 
     @abstractmethod
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         raise NotImplementedError
+
+    @abstractmethod
+    def compute_row_count(self):
+        """Compute row count for the given column
+
+        Raises:
+            NotImplementedError:
+        """
+        raise NotImplementedError
+
+    def get_row_count(self) -> int:
+        """Get row count
+
+        Returns:
+            Tuple[int, int]:
+        """
+        return self.compute_row_count()
