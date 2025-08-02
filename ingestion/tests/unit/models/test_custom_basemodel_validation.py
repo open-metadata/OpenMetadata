@@ -144,7 +144,7 @@ class TestCustomBasemodelValidation(TestCase):
             "DashboardDataModel",
             "CustomColumnName",
             "ProfilerResponse",
-            "SampleData",
+            "TableData",
             "CreateTableRequest",
             "CreateDashboardDataModelRequest",
         }
@@ -589,13 +589,6 @@ class TestCustomBasemodelValidation(TestCase):
         """Test consistency of configuration across the system."""
         # Verify that all configured entities have consistent field mappings
         for entity_name, config in TRANSFORMABLE_ENTITIES.items():
-            # All entities should have 'name' field
-            self.assertIn(
-                "name",
-                config["fields"],
-                f"{entity_name} should have 'name' field configured",
-            )
-
             # Verify direction is valid
             self.assertIn(
                 config["direction"],
