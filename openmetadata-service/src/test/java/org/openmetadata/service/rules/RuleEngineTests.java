@@ -174,11 +174,11 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     table.withOwners(List.of(USER1_REF));
     assertThrows(
         RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(rule), true));
+        () -> RuleEngine.getInstance().evaluate(table, List.of(rule), false, false));
 
     // Single team ownership should pass the Semantics Rule
     table.withOwners(List.of(TEAM11_REF));
-    RuleEngine.getInstance().evaluate(table, List.of(rule), true);
+    RuleEngine.getInstance().evaluate(table, List.of(rule), false, false);
   }
 
   @Test
@@ -202,7 +202,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                         "No glossary validation rule found for tables. Review the entityRulesSettings.json file."));
 
     // No glossary terms, should pass
-    RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), true);
+    RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), false, false);
 
     // Single glossary term, should pass
     table.withTags(
@@ -211,7 +211,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                 .withTagFQN("Glossary.Term1")
                 .withSource(TagLabel.TagSource.GLOSSARY)));
 
-    RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), true);
+    RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), false, false);
 
     // Multiple glossary terms, should fail
     table.withTags(
@@ -224,7 +224,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                 .withSource(TagLabel.TagSource.GLOSSARY)));
     assertThrows(
         RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), true));
+        () -> RuleEngine.getInstance().evaluate(table, List.of(glossaryRule), false, false));
   }
 
   @Test
@@ -287,16 +287,18 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
     String tableJsonWithContract = JsonUtils.pojoToJson(table);
     table.withOwners(List.of(TEAM11_REF));
 
-    assertResponse(
-        () ->
-            tableResourceTest.patchEntity(
-                table.getId(), tableJsonWithContract, table, ADMIN_AUTH_HEADERS),
-        Response.Status.BAD_REQUEST,
-        "Rule [Description can't be empty] validation failed: Entity does not satisfy the rule. Rule context: Validates that the table has a description.");
-
-    // However, I can PATCH the table to add a proper description
-    table.withDescription("This is a valid description");
+    // I can still PATCH the table to change the owners, even if the contract is broken.
+    // We don't have hard contract enforcement yet, so this is allowed.
     Table patched =
+        tableResourceTest.patchEntity(
+            table.getId(), tableJsonWithContract, table, ADMIN_AUTH_HEADERS);
+    assertNotNull(patched);
+    assertEquals(table.getOwners().getFirst().getId(), TEAM11_REF.getId());
+
+    // I can PATCH the table to add a proper description as well
+    tableJsonWithContract = JsonUtils.pojoToJson(patched);
+    table.withDescription("This is a valid description");
+    patched =
         tableResourceTest.patchEntity(
             table.getId(), tableJsonWithContract, table, ADMIN_AUTH_HEADERS);
     assertNotNull(patched);
@@ -350,7 +352,8 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
     // Table does indeed blow up
     assertThrows(
-        RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(tableWithContract));
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(tableWithContract, false, true));
 
     String tableJsonWithContract = JsonUtils.pojoToJson(tableWithContract);
     tableWithContract.withDescription("This is a valid description");
@@ -364,7 +367,9 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
             ADMIN_AUTH_HEADERS);
 
     // The patched table still blows up, since we've only fixed one rule
-    assertThrows(RuleValidationException.class, () -> RuleEngine.getInstance().evaluate(patched));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(patched, true, true));
 
     String patchedJson = JsonUtils.pojoToJson(patched);
     patched.withOwners(List.of(TEAM11_REF));
@@ -376,7 +381,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
 
     // Table is patched properly and is not blowing up anymore
     assertNotNull(fixedTable);
-    RuleEngine.getInstance().evaluate(fixedTable);
+    RuleEngine.getInstance().evaluate(fixedTable, true, true);
   }
 
   @Test

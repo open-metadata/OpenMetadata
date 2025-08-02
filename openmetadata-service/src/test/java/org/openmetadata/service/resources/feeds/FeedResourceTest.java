@@ -120,6 +120,7 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
@@ -1529,7 +1530,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void list_threadsWithUserHavingMultipleDomains() throws HttpResponseException, IOException {
+  void list_threadsWithUserHavingMultipleDomains() throws IOException {
+    EntityResourceTest.toggleMultiDomainSupport(false);
     // Create domains for this test
     DomainResourceTest domainResourceTest = new DomainResourceTest();
     Domain testDomain1 =
@@ -1632,11 +1634,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       // Clean up domains
       domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
       domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
+      EntityResourceTest.toggleMultiDomainSupport(true);
     }
   }
 
   @Test
-  void list_threadsWithComplexDomainScenarios() throws HttpResponseException, IOException {
+  void list_threadsWithComplexDomainScenarios() throws IOException {
+    EntityResourceTest.toggleMultiDomainSupport(false);
     // Create test domains
     DomainResourceTest domainResourceTest = new DomainResourceTest();
     Domain testDomain1 =
@@ -1793,6 +1797,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
       domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
       domainResourceTest.deleteEntity(testDomain3.getId(), ADMIN_AUTH_HEADERS);
+      EntityResourceTest.toggleMultiDomainSupport(true);
     }
   }
 
