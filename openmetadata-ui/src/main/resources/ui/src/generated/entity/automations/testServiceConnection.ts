@@ -194,6 +194,8 @@ export interface TestServiceConnectionConnection {
  *
  * ThoughtSpot Connection Config
  *
+ * Grafana Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -445,6 +447,8 @@ export interface ConfigClass {
      * Sigma API url.
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
+     * URL to the Grafana instance.
      *
      * Pipeline Service Management/UI URI.
      *
@@ -1110,6 +1114,11 @@ export interface ConfigClass {
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * Fivetran API Secret.
      */
     apiKey?: string;
@@ -1122,6 +1131,8 @@ export interface ConfigClass {
      */
     paginationLimit?: number;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -1306,6 +1317,10 @@ export interface ConfigClass {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3774,6 +3789,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3854,6 +3871,7 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",

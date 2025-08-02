@@ -2680,6 +2680,8 @@ export interface ServiceConnection {
  *
  * ThoughtSpot Connection Config
  *
+ * Grafana Connection Config
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -2983,6 +2985,8 @@ export interface ConfigClass {
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
+     * URL to the Grafana instance.
+     *
      * BigQuery APIs URL.
      *
      * Host and port of the AzureSQL service.
@@ -3280,6 +3284,11 @@ export interface ConfigClass {
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * API key to authenticate with the SAP ERP APIs.
      *
      * Fivetran API Secret.
@@ -3349,6 +3358,8 @@ export interface ConfigClass {
      */
     sslConfig?: SSLConfigObject;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Flag to verify SSL Certificate for OpenMetadata Server.
      *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
@@ -3461,6 +3472,10 @@ export interface ConfigClass {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
     /**
      * Billing Project ID
      */
@@ -6000,6 +6015,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Service type.
  *
  * Custom database service type
@@ -6084,6 +6101,7 @@ export enum PurpleType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
