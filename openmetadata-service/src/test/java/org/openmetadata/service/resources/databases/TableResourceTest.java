@@ -5855,6 +5855,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
       assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
     }
+  }
 
   @Test
   void test_compositeKeyConstraintIndexOutOfBounds_fixed(TestInfo test) throws IOException {
