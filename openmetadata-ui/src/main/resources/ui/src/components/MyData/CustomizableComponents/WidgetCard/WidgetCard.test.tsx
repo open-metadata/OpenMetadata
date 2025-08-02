@@ -58,7 +58,9 @@ describe('WidgetCard', () => {
         />
       );
 
-      expect(screen.getByTestId('widget-card')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('KnowledgePanel.TestWidget')
+      ).toBeInTheDocument();
       expect(screen.getByText('Test Widget')).toBeInTheDocument();
       expect(
         screen.getByText('This is a test widget description')
@@ -104,7 +106,9 @@ describe('WidgetCard', () => {
         />
       );
 
-      expect(screen.getByTestId('widget-card')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('KnowledgePanel.TestWidget')
+      ).toBeInTheDocument();
 
       expect(screen.getByTestId('widget-description')).toBeInTheDocument();
 
@@ -124,7 +128,7 @@ describe('WidgetCard', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('widget-card'));
+      fireEvent.click(screen.getByTestId('KnowledgePanel.TestWidget'));
 
       expect(mockOnSelectWidget).toHaveBeenCalledWith('widget-test-1');
       expect(mockOnSelectWidget).toHaveBeenCalledTimes(1);
@@ -139,7 +143,7 @@ describe('WidgetCard', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('widget-card'));
+      fireEvent.click(screen.getByTestId('KnowledgePanel.NoId'));
 
       expect(mockOnSelectWidget).toHaveBeenCalledWith('');
       expect(mockOnSelectWidget).toHaveBeenCalledTimes(1);
@@ -155,7 +159,7 @@ describe('WidgetCard', () => {
       );
 
       expect(() => {
-        fireEvent.click(screen.getByTestId('widget-card'));
+        fireEvent.click(screen.getByTestId('KnowledgePanel.TestWidget'));
       }).not.toThrow();
     });
 
@@ -168,7 +172,7 @@ describe('WidgetCard', () => {
         />
       );
 
-      const card = screen.getByTestId('widget-card');
+      const card = screen.getByTestId('KnowledgePanel.TestWidget');
 
       fireEvent.click(card);
       fireEvent.click(card);

@@ -255,6 +255,7 @@ const MyDataPage = () => {
           <CustomiseLandingPageHeader
             overlappedContainer
             backgroundColor={backgroundColor}
+            dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}

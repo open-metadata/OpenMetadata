@@ -177,6 +177,7 @@ const MyTaskWidget = ({
   return (
     <WidgetWrapper
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      dataTestId="KnowledgePanel.MyTask"
       header={widgetHeader}
       loading={loading}>
       {widgetContent}

@@ -233,6 +233,7 @@ function CustomizeMyData({
             overlappedContainer
             addedWidgetsList={addedWidgetsList}
             backgroundColor={backgroundColor}
+            dataTestId="customise-landing-page-header"
             handleAddWidget={handleMainPanelAddWidget}
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />

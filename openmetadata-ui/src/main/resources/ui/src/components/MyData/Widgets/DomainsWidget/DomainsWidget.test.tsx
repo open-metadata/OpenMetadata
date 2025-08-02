@@ -141,7 +141,9 @@ describe('DomainsWidget', () => {
   it('renders widget wrapper', async () => {
     renderDomainsWidget();
 
-    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('KnowledgePanel.Domains')
+    ).toBeInTheDocument();
   });
 
   it('renders a list of domains successfully', async () => {
@@ -361,7 +363,7 @@ describe('DomainsWidget', () => {
 
     renderDomainsWidget();
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.Domains')).toBeInTheDocument();
     // Widget wrapper handles loading state internally
   });
 

@@ -251,7 +251,11 @@ const DomainsWidget = ({
   );
 
   return (
-    <WidgetWrapper dataLength={10} header={widgetHeader} loading={loading}>
+    <WidgetWrapper
+      dataLength={10}
+      dataTestId="KnowledgePanel.Domains"
+      header={widgetHeader}
+      loading={loading}>
       <div className="domains-widget-container">
         <div className="widget-content flex-1">
           {error ? (

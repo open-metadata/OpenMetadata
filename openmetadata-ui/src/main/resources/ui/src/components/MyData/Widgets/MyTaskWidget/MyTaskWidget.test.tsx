@@ -133,7 +133,7 @@ describe('MyTaskWidget', () => {
   it('renders widget wrapper', () => {
     renderMyTaskWidget();
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.MyTask')).toBeInTheDocument();
   });
 
   it('calls getFeedData on mount with correct parameters', () => {
