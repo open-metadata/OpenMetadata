@@ -18,21 +18,27 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table as TableType } from '../../../generated/entity/data/table';
-import { TestCase } from '../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { listTestCases, TestCaseType } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Table from '../../common/Table/Table';
+
+import { ColumnsType } from 'antd/lib/table';
+import { toLower } from 'lodash';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
 export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];
-  onUpdate: (data: EntityReference[]) => void;
+  onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
   prevLabel?: string;
-}> = ({ selectedQuality, onUpdate, onPrev, prevLabel }) => {
-  const [testType, setTestType] = useState<'table' | 'column'>('table');
+}> = ({ selectedQuality, onChange, onPrev, prevLabel }) => {
+  const [testType, setTestType] = useState<TestCaseType>(TestCaseType.table);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const { pageSize, handlePagingChange } = usePaging();
@@ -42,7 +48,7 @@ export const ContractQualityFormTab: React.FC<{
   );
   const { t } = useTranslation();
 
-  const columns = useMemo(
+  const columns: ColumnsType<TestCase> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -50,10 +56,20 @@ export const ContractQualityFormTab: React.FC<{
       },
       {
         title: t('label.status'),
-        dataIndex: 'status',
+        dataIndex: 'testCaseStatus',
+        key: 'testCaseStatus',
+        render: (testCaseStatus: TestCaseStatus) => {
+          return (
+            <StatusBadge
+              dataTestId={`status-badge-${testCaseStatus}`}
+              label={testCaseStatus}
+              status={toLower(testCaseStatus) as StatusType}
+            />
+          );
+        },
       },
     ],
-    [t]
+    []
   );
 
   const fetchAllTests = async () => {
@@ -64,8 +80,7 @@ export const ContractQualityFormTab: React.FC<{
     try {
       const { data, paging } = await listTestCases({
         entityFQN: table.fullyQualifiedName,
-        testCaseType:
-          testType === 'table' ? TestCaseType.table : TestCaseType.column,
+        testCaseType: testType,
         limit: pageSize,
       });
 
@@ -80,7 +95,7 @@ export const ContractQualityFormTab: React.FC<{
 
   useEffect(() => {
     fetchAllTests();
-  }, []);
+  }, [testType]);
 
   const handleSelection = (selectedRowKeys: string[]) => {
     const qualityExpectations = selectedRowKeys.map((id) => {
@@ -94,22 +109,33 @@ export const ContractQualityFormTab: React.FC<{
       } as EntityReference;
     });
 
-    onUpdate(qualityExpectations);
+    onChange({
+      qualityExpectations,
+    });
   };
 
   return (
     <Card className="container bg-grey p-box">
-      <Typography.Title level={5}>{t('label.quality')}</Typography.Title>
-      <Typography.Text type="secondary">
-        {t('message.quality-contract-description')}
-      </Typography.Text>
-      <Card>
+      <div>
+        <Typography.Text className="contract-detail-form-tab-title">
+          {t('label.quality')}
+        </Typography.Text>
+        <Typography.Text className="contract-detail-form-tab-description">
+          {t('message.quality-contract-description')}
+        </Typography.Text>
+      </div>
+
+      <div className="contract-form-content-container">
         <Radio.Group
           className="m-b-sm"
           value={testType}
           onChange={(e) => setTestType(e.target.value)}>
-          <Radio.Button value="table">{t('label.table')}</Radio.Button>
-          <Radio.Button value="column">{t('label.column')}</Radio.Button>
+          <Radio.Button value={TestCaseType.table}>
+            {t('label.table')}
+          </Radio.Button>
+          <Radio.Button value={TestCaseType.column}>
+            {t('label.column')}
+          </Radio.Button>
         </Radio.Group>
         <Table
           columns={columns}
@@ -125,7 +151,8 @@ export const ContractQualityFormTab: React.FC<{
             },
           }}
         />
-      </Card>
+      </div>
+
       <div className="d-flex justify-between m-t-md">
         <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
           {prevLabel ?? t('label.previous')}

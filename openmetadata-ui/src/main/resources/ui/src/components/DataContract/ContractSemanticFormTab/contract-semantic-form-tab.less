@@ -10,6 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
+.add-semantic-button {
+  span {
+    font-weight: 600;
+  }
+  .anticon {
+    font-size: 14px;
+    rotate: 45deg;
+  }
+}
+
+.contract-semantic-form-container {
+  .expandable-card {
+    margin-top: 16px;
+
+    .ant-card-head {
+      background: @white !important;
+      border-bottom: 1px solid @grey-200 !important;
+    }
+  }
+
+  .expanded-active-card {
+    .ant-card-head {
+      display: none;
+    }
+  }
+}
+
 .semantic-rule-editor-view-only {
   .ant-divider,
   .group--conjunctions {

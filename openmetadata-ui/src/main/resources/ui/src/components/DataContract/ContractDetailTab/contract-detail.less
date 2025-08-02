@@ -12,6 +12,108 @@
  */
 @import (reference) url('../../../styles/variables.less');
 
+.contract-header-container {
+  .contract-title {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    color: @grey-900;
+  }
+
+  .contract-time {
+    font-size: 14px;
+    color: @grey-600;
+    font-weight: 400;
+  }
+
+  .contract-status-badge {
+    padding: 2px 8px;
+  }
+
+  .contract-action-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .contract-owner-label-container {
+      width: fit-content;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: @global-border;
+      box-shadow: 0 2px 2px -1px @grey-27, 0 4px 6px -2px @grey-27;
+
+      .ant-typography {
+        font-size: 14px;
+        font-weight: 600;
+        color: @grey-900;
+      }
+
+      .owner-label-container {
+        width: auto;
+      }
+    }
+
+    .contract-run-now-button {
+      color: @primary-color;
+
+      &:not(:hover) {
+        border-color: @primary-color;
+      }
+    }
+  }
+}
+
+.contract-detail-container {
+  .contract-card-title-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .contract-card-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: @grey-900;
+    }
+
+    .contract-card-description {
+      font-size: 14px;
+      font-weight: 400;
+      color: @grey-600;
+    }
+  }
+
+  .schema-description {
+    gap: 8px !important;
+  }
+
+  .expandable-card-contract {
+    background: @grey-50;
+
+    .ant-card-body {
+      padding: 0 20px 20px 20px;
+
+      .expandable-card-contract-body {
+        padding: 24px;
+        background: @white;
+        border-radius: @border-rad-sm;
+        border: 1px solid @grey-9;
+        box-shadow: 0 1px 2px 0 @grey-27;
+
+        .card-subtitle {
+          margin-bottom: 12px;
+          display: block;
+          font-size: 14px;
+          font-weight: 500;
+          color: @grey-700;
+        }
+      }
+    }
+  }
+}
+
 .delete-button {
   background: transparent !important;
   border-color: @error-color !important;
@@ -54,45 +156,47 @@
   }
 }
 
-.card-subtitle {
-  margin-bottom: 12px;
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: @grey-700;
-}
+.rule-item-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 
-.rule-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  .rule-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 
-  .rule-icon {
-    font-size: 20px;
-    margin-right: 4px;
-  }
+    .rule-icon {
+      font-size: 20px;
+      margin-right: 4px;
+    }
 
-  .rule-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: @grey-900;
-  }
+    .rule-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: @grey-900;
+    }
 
-  .rule-description {
-    font-size: 12px;
-    font-weight: 300;
+    .rule-description {
+      font-size: 12px;
+      font-weight: 300;
+    }
   }
 }
 
 .data-quality-card-container {
   .chart-label {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: @grey-900;
   }
 
   .data-quality-chart-container {
-    border: 1px solid @border-color;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 16px;
+    border: 1px solid @border-color-8;
     border-radius: @card-radius;
     padding: @padding-md;
     box-shadow: @button-box-shadow-default;
@@ -130,5 +234,12 @@
     font-size: 14px;
     font-weight: 400;
     color: @grey-600;
+  }
+
+  .test-status-icon {
+    svg {
+      height: 32px;
+      width: 32px;
+    }
   }
 }
