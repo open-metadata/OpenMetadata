@@ -533,34 +533,13 @@ public final class Entity {
     return getEntityByName(entityType, fqn, fields, include, true);
   }
 
-  /**
-   * Retrieve the entity by name excluding specific fields.
-   * This is useful for CSV imports where you want to preserve existing fields
-   * that are not coming from the import data (like table constraints).
-   *
-   * @param entityType Type of the entity
-   * @param fqn Fully qualified name of the entity
-   * @param excludeFields Comma-separated field names to exclude
-   * @param include Include parameter for deleted/non-deleted entities
-   * @return Entity with all fields except the excluded ones
-   */
   public static <T> T getEntityByNameWithExcludedFields(
       String entityType, String fqn, String excludeFields, Include include) {
     return getEntityByNameWithExcludedFields(entityType, fqn, excludeFields, include, false);
   }
 
-  /**
-   * Retrieve the entity by name excluding specific fields.
-   * This is useful for CSV imports where you want to preserve existing fields
-   * that are not coming from the import data (like table constraints).
-   *
-   * @param entityType Type of the entity
-   * @param fqn Fully qualified name of the entity
-   * @param excludeFields Comma-separated field names to exclude
-   * @param include Include parameter for deleted/non-deleted entities
-   * @param fromCache Whether to use cache
-   * @return Entity with all fields except the excluded ones
-   */
+  // Retrieve the entity by name excluding specific fields. Useful for import using CSV where
+  // certain fields are already sent in the csv
   public static <T> T getEntityByNameWithExcludedFields(
       String entityType, String fqn, String excludeFields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
