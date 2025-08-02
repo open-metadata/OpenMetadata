@@ -11,28 +11,39 @@
  *  limitations under the License.
  */
 
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import Icon, { ArrowLeftOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
-import { Table as TableType } from '../../../generated/entity/data/table';
-import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
-import { EntityReference } from '../../../generated/type/entityReference';
-import { usePaging } from '../../../hooks/paging/usePaging';
-import { listTestCases, TestCaseType } from '../../../rest/testAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import Table from '../../common/Table/Table';
-
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
+import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Table as TableType } from '../../../generated/entity/data/table';
+import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { Include } from '../../../generated/type/include';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+  TestCaseType,
+} from '../../../rest/testAPI';
 import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils';
+import { generateEntityLink } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { SelectionCard } from '../../common/SelectionCardGroup/SelectionCardGroup';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
+import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import TestCaseFormV1 from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
+import './contract-quality-form-tab.less';
 
 export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];
@@ -43,47 +54,38 @@ export const ContractQualityFormTab: React.FC<{
   const [testType, setTestType] = useState<TestCaseType>(TestCaseType.table);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
-  const { pageSize, handlePagingChange } = usePaging();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(
     selectedQuality ?? []
   );
+  const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] =
+    useState<boolean>(false);
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging();
   const { t } = useTranslation();
 
-  const columns: ColumnsType<TestCase> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-      },
-      {
-        title: t('label.status'),
-        dataIndex: 'testCaseStatus',
-        key: 'testCaseStatus',
-        render: (testCaseStatus: TestCaseStatus) => {
-          return (
-            <StatusBadge
-              dataTestId={`status-badge-${testCaseStatus}`}
-              label={testCaseStatus}
-              status={toLower(testCaseStatus) as StatusType}
-            />
-          );
-        },
-      },
-    ],
-    []
-  );
-
-  const fetchAllTests = async () => {
+  const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     if (!table?.fullyQualifiedName) {
       return;
     }
     setIsTestsLoading(true);
     try {
-      const { data, paging } = await listTestCases({
-        entityFQN: table.fullyQualifiedName,
+      const { data, paging } = await getListTestCaseBySearch({
+        ...DEFAULT_SORT_ORDER,
+        ...params,
         testCaseType: testType,
+        fields: [TabSpecificField.TEST_CASE_RESULT],
+        entityLink: generateEntityLink(table.fullyQualifiedName ?? ''),
+        includeAllTests: true,
         limit: pageSize,
+        include: Include.NonDeleted,
       });
 
       setAllTestCases(data);
@@ -95,9 +97,77 @@ export const ContractQualityFormTab: React.FC<{
     }
   };
 
-  useEffect(() => {
+  const handleTestPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchAllTests({
+        offset: (currentPage - 1) * pageSize,
+      });
+
+      handlePageChange(currentPage);
+    },
+    [pageSize, fetchAllTests, handlePageChange]
+  );
+
+  const handleOpenTestCaseDrawer = useCallback(() => {
+    setIsTestCaseDrawerOpen(true);
+  }, []);
+
+  const handleCloseTestCaseDrawer = useCallback(() => {
+    setIsTestCaseDrawerOpen(false);
+  }, []);
+
+  const handleTestCaseSubmit = useCallback(() => {
+    handleCloseTestCaseDrawer();
     fetchAllTests();
-  }, [testType]);
+  }, [handleCloseTestCaseDrawer, fetchAllTests]);
+
+  const columns: ColumnsType<TestCase> = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+      },
+      {
+        title: t('label.status'),
+        dataIndex: 'testCaseResult',
+        key: 'testCaseResult',
+        render: (result: TestCaseResult, record) => {
+          return result?.testCaseStatus ? (
+            <StatusBadge
+              dataTestId={`status-badge-${record.name}`}
+              label={result.testCaseStatus}
+              status={toLower(result.testCaseStatus) as StatusType}
+            />
+          ) : (
+            '--'
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: isTestsLoading,
+      isNumberBased: false,
+      pageSize,
+      paging,
+      pagingHandler: handleTestPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      isTestsLoading,
+      pageSize,
+      paging,
+      handleTestPageChange,
+      handlePageSizeChange,
+    ]
+  );
 
   const handleSelection = (selectedRowKeys: string[]) => {
     const qualityExpectations = selectedRowKeys.map((id) => {
@@ -116,15 +186,31 @@ export const ContractQualityFormTab: React.FC<{
     });
   };
 
+  useEffect(() => {
+    fetchAllTests();
+  }, [testType]);
+
   return (
-    <Card className="container bg-grey p-box">
-      <div>
-        <Typography.Text className="contract-detail-form-tab-title">
-          {t('label.quality')}
-        </Typography.Text>
-        <Typography.Text className="contract-detail-form-tab-description">
-          {t('message.quality-contract-description')}
-        </Typography.Text>
+    <Card className="contract-quality-form-tab-container container bg-grey p-box">
+      <div className="d-flex justify-between">
+        <div>
+          <Typography.Text className="contract-detail-form-tab-title">
+            {t('label.quality')}
+          </Typography.Text>
+          <Typography.Text className="contract-detail-form-tab-description">
+            {t('message.quality-contract-description')}
+          </Typography.Text>
+        </div>
+
+        <Button
+          className="add-test-case-button"
+          data-testid="add-test-button"
+          icon={<Icon className="anticon" component={PlusIcon} />}
+          onClick={handleOpenTestCaseDrawer}>
+          {t('label.add-entity', {
+            entity: t('label.test'),
+          })}
+        </Button>
       </div>
 
       <div className="contract-form-content-container ">
@@ -140,6 +226,7 @@ export const ContractQualityFormTab: React.FC<{
         </div>
         <Table
           columns={columns}
+          customPaginationProps={paginationProps}
           dataSource={allTestCases}
           loading={isTestsLoading}
           pagination={false}
@@ -159,6 +246,18 @@ export const ContractQualityFormTab: React.FC<{
           {prevLabel ?? t('label.previous')}
         </Button>
       </div>
+
+      {isTestCaseDrawerOpen && (
+        <TestCaseFormV1
+          drawerProps={{
+            open: isTestCaseDrawerOpen,
+          }}
+          table={table}
+          testLevel={TestLevel.TABLE}
+          onCancel={handleCloseTestCaseDrawer}
+          onFormSubmit={handleTestCaseSubmit}
+        />
+      )}
     </Card>
   );
 };
