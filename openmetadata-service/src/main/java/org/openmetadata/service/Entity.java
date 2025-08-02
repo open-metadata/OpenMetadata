@@ -533,6 +533,24 @@ public final class Entity {
     return getEntityByName(entityType, fqn, fields, include, true);
   }
 
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include) {
+    return getEntityByNameWithExcludedFields(entityType, fqn, excludeFields, include, false);
+  }
+
+  // Retrieve the entity by name excluding specific fields. Useful for import using CSV where
+  // certain fields are already sent in the csv
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include, boolean fromCache) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    T entity =
+        (T)
+            entityRepository.getByNameWithExcludedFields(
+                null, fqn, excludeFields, include, fromCache);
+    return entity;
+  }
+
   public static <T> List<T> getEntityByNames(
       String entityType, List<String> tagFQNs, String fields, Include include) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
