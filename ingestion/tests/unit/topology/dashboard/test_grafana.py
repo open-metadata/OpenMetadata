@@ -417,7 +417,7 @@ class GrafanaUnitTest(TestCase):
         dashboard_response = GrafanaDashboardResponse(
             dashboard=MOCK_DASHBOARD_RESPONSE.dashboard,
             meta=GrafanaDashboardMeta(
-                **{**MOCK_DASHBOARD_RESPONSE.meta.dict(), "folderTitle": None}
+                **{**MOCK_DASHBOARD_RESPONSE.meta.model_dump(), "folderTitle": None}
             ),
         )
 
