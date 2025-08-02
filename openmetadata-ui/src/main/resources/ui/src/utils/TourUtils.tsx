@@ -41,7 +41,7 @@ export const getTourSteps = ({
         />
       </p>
     ),
-    selector: '#feedData',
+    selector: '#feedWidgetData',
     stepInteraction: false,
   },
   {
