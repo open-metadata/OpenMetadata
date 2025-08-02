@@ -44,7 +44,7 @@ public class RuleEngine {
   public Object apply(String rule, Map<String, Object> context) {
     try {
       rule = unescapeFilter(rule);
-      return jsonLogic.apply(rule, context);
+      return jsonLogicThreadLocal.get().apply(rule, context);
     } catch (Exception e) {
       // Return false, falls back to triggering workflow
       return false;
