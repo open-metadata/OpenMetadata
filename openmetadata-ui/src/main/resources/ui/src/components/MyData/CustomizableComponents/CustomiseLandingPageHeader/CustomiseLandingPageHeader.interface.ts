@@ -15,6 +15,7 @@ import { Document } from '../../../../generated/entity/docStore/document';
 export interface CustomiseLandingPageHeaderProps {
   addedWidgetsList?: string[];
   backgroundColor?: string;
+  dataTestId?: string;
   handleAddWidget?: (
     newWidgetData: Document,
     placeholderWidgetKey: string,
