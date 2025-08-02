@@ -96,10 +96,11 @@ export const getChartDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <CustomPropertyTable
+        <CustomPropertyTable<EntityType.CHART>
           entityType={EntityType.CHART}
           hasEditAccess={editCustomAttributePermission}
           hasPermission={viewAllPermission}
+          isVersionView={false}
         />
       ),
     },
