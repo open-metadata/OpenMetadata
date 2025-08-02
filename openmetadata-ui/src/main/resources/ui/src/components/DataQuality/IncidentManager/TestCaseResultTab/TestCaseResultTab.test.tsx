@@ -127,6 +127,11 @@ jest.mock('../../../../rest/testAPI', () => ({
   updateTestCaseById: jest
     .fn()
     .mockImplementation(() => mockUpdateTestCaseById()),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 // Mock TagsContainerV2 to capture props

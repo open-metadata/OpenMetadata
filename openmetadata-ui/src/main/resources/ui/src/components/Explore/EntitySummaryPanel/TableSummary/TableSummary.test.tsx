@@ -41,6 +41,11 @@ jest.mock('../../../../rest/tableAPI', () => ({
 }));
 jest.mock('../../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>

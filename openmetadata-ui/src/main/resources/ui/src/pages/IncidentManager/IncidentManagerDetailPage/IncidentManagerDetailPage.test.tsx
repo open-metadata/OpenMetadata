@@ -96,6 +96,11 @@ jest.mock('../../../rest/testAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockTestCaseData })),
   updateTestCaseById: jest.fn(),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {

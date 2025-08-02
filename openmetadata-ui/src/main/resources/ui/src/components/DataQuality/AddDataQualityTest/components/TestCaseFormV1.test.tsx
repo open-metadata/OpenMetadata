@@ -165,6 +165,11 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestCase: jest.fn().mockResolvedValue({ data: [] }),
   createTestCase: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
   getTestCaseByFqn: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
