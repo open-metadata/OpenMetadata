@@ -224,7 +224,7 @@ public class MigrationUtil {
             if (configNode instanceof ObjectNode) {
               ObjectNode configObj = (ObjectNode) configNode;
               if (!configObj.has("filter")) {
-                configObj.put("filter", "{\"and\":[]}");
+                configObj.put("filter", "");
 
                 // Convert back to trigger object using WorkflowTriggerInterface
                 WorkflowTriggerInterface updatedTrigger =

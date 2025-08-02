@@ -12,7 +12,7 @@
       "entityType": "glossaryTerm",
       "events": ["Created", "Updated"],
       "exclude": ["reviewers"],
-      "filter": "{\"and\":[]}"
+      "filter": ""
     }
   },
   "nodes": [
