@@ -5749,6 +5749,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Order(2)
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     TagLabel tableTagLabel = USER_ADDRESS_TAG_LABEL;
     TagLabel columnTagLabel = GLOSSARY1_TERM1_LABEL;
@@ -5839,7 +5840,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
       assertNotNull(
           col1.getTags(), "Column tags should not be null when fields=columns,tags in pagination");
-      assertTrue(col1.getTags().size() >= 1, "Column should have at least one tag");
+      assertTrue(!col1.getTags().isEmpty(), "Column should have at least one tag");
       // Check that our expected tag is present
       boolean hasExpectedTag =
           col1.getTags().stream()
