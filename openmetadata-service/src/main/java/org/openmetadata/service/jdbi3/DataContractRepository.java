@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -42,10 +43,12 @@ import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -67,8 +70,10 @@ import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -87,6 +92,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private final TestSuiteMapper testSuiteMapper = new TestSuiteMapper();
   private final IngestionPipelineMapper ingestionPipelineMapper;
   @Getter @Setter private PipelineServiceClientInterface pipelineServiceClient;
+  private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
   private static final List<TestCaseStatus> FAILED_DQ_STATUSES =
       List.of(TestCaseStatus.Failed, TestCaseStatus.Aborted);
@@ -100,6 +106,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DATA_CONTRACT_PATCH_FIELDS,
         DATA_CONTRACT_UPDATE_FIELDS);
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
+    this.openMetadataApplicationConfig = config;
   }
 
   @Override
@@ -138,17 +145,18 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               entityRef.getType(), failedFieldsStr));
     }
 
-    if (dataContract.getOwners() != null) {
+    if (!nullOrEmpty(dataContract.getOwners())) {
       dataContract.setOwners(EntityUtil.populateEntityReferences(dataContract.getOwners()));
     }
-    if (dataContract.getReviewers() != null) {
+    if (!nullOrEmpty(dataContract.getReviewers())) {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
 
     TestSuite testSuite = createOrUpdateDataContractTestSuite(dataContract);
     // Create the ingestion pipeline only if needed
     if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
-      createIngestionPipeline(testSuite);
+      IngestionPipeline pipeline = createIngestionPipeline(testSuite);
+      prepareAndDeployIngestionPipeline(pipeline, testSuite);
     }
   }
 
@@ -312,31 +320,43 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                       .withFullyQualifiedName(dataContract.getFullyQualifiedName())
                       .withType(Entity.DATA_CONTRACT));
       TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-      return testSuiteRepository.create(null, newTestSuite);
+      TestSuite createdSuite = testSuiteRepository.create(null, newTestSuite);
+      storeTestSuiteRelationship(dataContract, createdSuite);
+      return createdSuite;
     }
 
     return maybeTestSuite.get();
   }
 
+  public void storeTestSuiteRelationship(DataContract dataContract, TestSuite testSuite) {
+    addRelationship(
+        dataContract.getId(),
+        testSuite.getId(),
+        Entity.DATA_CONTRACT,
+        TEST_SUITE,
+        Relationship.CONTAINS);
+  }
+
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution
-  private void createIngestionPipeline(TestSuite testSuite) {
+  private IngestionPipeline createIngestionPipeline(TestSuite testSuite) {
     IngestionPipelineRepository pipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     CreateIngestionPipeline createPipeline =
         new CreateIngestionPipeline()
-            .withName(testSuite.getName())
+            .withName(UUID.randomUUID().toString())
             .withDisplayName(testSuite.getDisplayName())
             .withPipelineType(PipelineType.TEST_SUITE)
             .withService(
                 new EntityReference().withId(testSuite.getId()).withType(Entity.TEST_SUITE))
-            .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+            .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()))
+            .withAirflowConfig(new AirflowConfig());
 
     IngestionPipeline pipeline =
         ingestionPipelineMapper.createToEntity(createPipeline, ADMIN_USER_NAME);
 
     // Create the Ingestion Pipeline
-    pipelineRepository.create(null, pipeline);
+    return pipelineRepository.create(null, pipeline);
   }
 
   private void abortRunningValidation(DataContract dataContract) {
@@ -434,8 +454,19 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
-    pipelineServiceClient.deployPipeline(pipeline, testSuite);
+
+    prepareAndDeployIngestionPipeline(pipeline, testSuite);
     pipelineServiceClient.runPipeline(pipeline, testSuite);
+  }
+
+  private void prepareAndDeployIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
+    pipeline.setOpenMetadataServerConnection(
+        SecretsManagerFactory.getSecretsManager()
+            .encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    pipelineServiceClient.deployPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {

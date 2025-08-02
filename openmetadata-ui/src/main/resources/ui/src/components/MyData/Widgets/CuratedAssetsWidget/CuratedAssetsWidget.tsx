@@ -465,6 +465,7 @@ const CuratedAssetsWidget = ({
     <>
       <WidgetWrapper
         dataLength={data.length !== 0 ? data.length : 10}
+        dataTestId="KnowledgePanel.CuratedAssets"
         header={widgetHeader}
         loading={isLoading}>
         {widgetContent}

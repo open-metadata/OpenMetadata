@@ -20,6 +20,7 @@ export interface WidgetWrapperProps {
   children: ReactNode;
   className?: string;
   dataLength?: number;
+  dataTestId?: string;
   header?: ReactNode;
   loading?: boolean;
 }
@@ -28,13 +29,14 @@ const WidgetWrapper = ({
   children,
   className = '',
   dataLength = 5,
+  dataTestId,
   header,
   loading = false,
 }: WidgetWrapperProps) => {
   return (
     <Card
       className={`widget-wrapper-container card-widget ${className}`}
-      data-testid="widget-wrapper">
+      data-testid={dataTestId}>
       {/* Header stays visible during loading */}
       {header}
 
