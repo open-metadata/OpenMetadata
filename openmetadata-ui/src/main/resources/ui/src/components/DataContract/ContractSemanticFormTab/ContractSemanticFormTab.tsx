@@ -18,6 +18,7 @@ import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
+import { isNull } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
@@ -98,7 +99,7 @@ export const ContractSemanticFormTab: React.FC<{
 
           <Button
             className="add-semantic-button"
-            disabled={!!editingKey || !addFunctionRef.current}
+            disabled={!isNull(editingKey) || !addFunctionRef.current}
             icon={<Icon className="anticon" component={PlusIcon} />}
             type="link"
             onClick={handleAddSemantic}>
