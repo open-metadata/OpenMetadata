@@ -111,7 +111,7 @@ const MyFeedWidgetInternal = ({
 
   const widgetBody = useMemo(() => {
     return (
-      <>
+      <div id="feedData">
         {isEmpty(entityThread) ? (
           emptyState
         ) : (
@@ -130,7 +130,7 @@ const MyFeedWidgetInternal = ({
             </div>
           </div>
         )}
-      </>
+      </div>
     );
   }, [
     emptyState,
