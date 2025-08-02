@@ -52,4 +52,6 @@ public abstract class EntityMasker {
       AuthenticationMechanism originalAuthenticationMechanism);
 
   public abstract Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow);
+
+  public abstract Object maskAppPrivateConfig(Object privateConfig, String appType);
 }
