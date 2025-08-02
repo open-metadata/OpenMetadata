@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} 커버리지",
     "entity-detail-plural": "{{entity}} 세부사항",
     "entity-distribution": "{{entity}} 분포",
+    "entity-failed": "{{entity}} 실패",
     "entity-feed-plural": "엔티티 피드",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",

@@ -336,6 +336,7 @@ const MyDataWidgetInternal = ({
   return (
     <WidgetWrapper
       dataLength={data.length > 0 ? data.length : 10}
+      dataTestId="KnowledgePanel.MyData"
       header={widgetHeader}
       loading={isLoading}>
       {widgetContent}
