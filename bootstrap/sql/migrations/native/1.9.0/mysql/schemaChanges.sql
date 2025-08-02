@@ -188,4 +188,3 @@ ALTER TABLE thread_entity DROP COLUMN domain;
 
 -- Update activity feed alert after domain changes
 DELETE FROM  event_subscription_entity where name = 'ActivityFeedAlert';
-
