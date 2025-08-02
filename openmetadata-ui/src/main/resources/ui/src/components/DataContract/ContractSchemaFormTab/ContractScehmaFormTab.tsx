@@ -16,12 +16,13 @@ import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
@@ -29,12 +30,13 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   highlightSearchArrayElement,
 } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
-import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -49,10 +51,19 @@ export const ContractSchemaFormTab: React.FC<{
 }> = ({ selectedSchema, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const [schema, setSchema] = useState<Column[]>([]);
   const [allColumns, setAllColumns] = useState<Column[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(selectedSchema);
   const [isLoading, setIsLoading] = useState(false);
+
+  const tableFqn = useMemo(
+    () =>
+      getPartialNameFromTableFQN(
+        fqn,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    [fqn]
+  );
 
   const {
     currentPage,
@@ -75,31 +86,68 @@ export const ContractSchemaFormTab: React.FC<{
     [allColumns, onChange]
   );
 
-  const fetchTableColumns = useCallback(async () => {
-    try {
+  const fetchTableColumns = useCallback(
+    async (page = 1) => {
+      if (!tableFqn) {
+        return;
+      }
+
       setIsLoading(true);
-      const response = await getTableColumnsByFQN(fqn);
-      const prunedColumns = pruneEmptyChildren(response.data);
-      setAllColumns(prunedColumns);
+      try {
+        const offset = (page - 1) * pageSize;
 
-      // Handle pagination logic
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedColumns = prunedColumns.slice(startIndex, endIndex);
-      setSchema(paginatedColumns);
+        const response = await getTableColumnsByFQN(tableFqn, {
+          limit: pageSize,
+          offset: offset,
+          fields: 'tags',
+        });
 
-      // Update paging info
-      handlePagingChange({
-        total: prunedColumns.length,
-      });
-    } finally {
+        const prunedColumns = pruneEmptyChildren(response.data);
+        setAllColumns(prunedColumns);
+        handlePagingChange(response.paging);
+      } catch {
+        // Set empty state if API fails
+        setAllColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      }
       setIsLoading(false);
-    }
-  }, [fqn, currentPage, pageSize, handlePagingChange]);
+    },
+    [tableFqn, pageSize]
+  );
 
-  useEffect(() => {
-    fetchTableColumns();
-  }, [fetchTableColumns]);
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchTableColumns(currentPage);
+      handlePageChange(currentPage);
+    },
+    [fetchTableColumns]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: isLoading,
+      isNumberBased: false,
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      isLoading,
+      pageSize,
+      paging,
+      handlePageSizeChange,
+      handleColumnsPageChange,
+    ]
+  );
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
     dataTypeDisplay,
@@ -165,7 +213,7 @@ export const ContractSchemaFormTab: React.FC<{
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             isReadOnly
-            entityFqn={fqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
             hasTagEditAccess={false}
@@ -183,7 +231,7 @@ export const ContractSchemaFormTab: React.FC<{
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             isReadOnly
-            entityFqn={fqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
             hasTagEditAccess={false}
@@ -201,8 +249,12 @@ export const ContractSchemaFormTab: React.FC<{
         render: renderConstraint,
       },
     ],
-    [t]
+    []
   );
+
+  useEffect(() => {
+    fetchTableColumns();
+  }, [fetchTableColumns]);
 
   return (
     <>
@@ -217,20 +269,8 @@ export const ContractSchemaFormTab: React.FC<{
         </div>
         <Table
           columns={columns}
-          customPaginationProps={{
-            currentPage,
-            pageSize,
-            paging,
-            pagingHandler: ({
-              currentPage: newPage,
-            }: Pick<NextPreviousProps, 'currentPage'>) => {
-              handlePageChange(newPage);
-            },
-            onShowSizeChange: handlePageSizeChange,
-            showPagination,
-            isLoading,
-          }}
-          dataSource={schema}
+          customPaginationProps={paginationProps}
+          dataSource={allColumns}
           loading={isLoading}
           pagination={false}
           rowKey="name"
