@@ -47,7 +47,7 @@ export const visitEntityPage = async (data: {
   await page.waitForLoadState('networkidle');
 
   await Promise.all([
-    page.getByRole('main').getByTestId('loader').waitFor({ state: 'detached' }),
+    page.waitForSelector('main [data-testid="loader"]', { state: 'detached' }),
     page
       .getByTestId('content-resizable-panel-container')
       .getByTestId('loader')
