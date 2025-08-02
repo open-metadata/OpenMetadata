@@ -16,13 +16,17 @@ import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import {
@@ -30,6 +34,7 @@ import {
   highlightSearchArrayElement,
 } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
+import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -45,28 +50,56 @@ export const ContractSchemaFormTab: React.FC<{
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [schema, setSchema] = useState<Column[]>([]);
+  const [allColumns, setAllColumns] = useState<Column[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(selectedSchema);
+  const [isLoading, setIsLoading] = useState(false);
 
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging(PAGE_SIZE_MEDIUM);
   const handleChangeTable = useCallback(
     (selectedRowKeys: Key[]) => {
       setSelectedKeys(selectedRowKeys as string[]);
       onChange({
-        schema: schema.filter((column) =>
+        schema: allColumns.filter((column) =>
           selectedRowKeys.includes(column.name)
         ),
       });
     },
-    [schema, onChange]
+    [allColumns, onChange]
   );
 
   const fetchTableColumns = useCallback(async () => {
-    const response = await getTableColumnsByFQN(fqn);
-    setSchema(pruneEmptyChildren(response.data));
-  }, [fqn]);
+    try {
+      setIsLoading(true);
+      const response = await getTableColumnsByFQN(fqn);
+      const prunedColumns = pruneEmptyChildren(response.data);
+      setAllColumns(prunedColumns);
+
+      // Handle pagination logic
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedColumns = prunedColumns.slice(startIndex, endIndex);
+      setSchema(paginatedColumns);
+
+      // Update paging info
+      handlePagingChange({
+        total: prunedColumns.length,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fqn, currentPage, pageSize, handlePagingChange]);
 
   useEffect(() => {
     fetchTableColumns();
-  }, [fqn]);
+  }, [fetchTableColumns]);
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
     dataTypeDisplay,
@@ -86,6 +119,23 @@ export const ContractSchemaFormTab: React.FC<{
         color="purple"
         title={displayValue}>
         {highlightSearchArrayElement(dataTypeDisplay, '')}
+      </Tag>
+    );
+  };
+
+  const renderConstraint: TableCellRendered<Column, 'constraint'> = (
+    constraint
+  ) => {
+    if (isEmpty(constraint)) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
+    return (
+      <Tag
+        className="cursor-pointer custom-tag"
+        color="blue"
+        title={constraint}>
+        {constraint}
       </Tag>
     );
   };
@@ -147,6 +197,8 @@ export const ContractSchemaFormTab: React.FC<{
       {
         title: t('label.constraint-plural'),
         dataIndex: 'constraint',
+        key: 'constraint',
+        render: renderConstraint,
       },
     ],
     [t]
@@ -165,7 +217,21 @@ export const ContractSchemaFormTab: React.FC<{
         </div>
         <Table
           columns={columns}
+          customPaginationProps={{
+            currentPage,
+            pageSize,
+            paging,
+            pagingHandler: ({
+              currentPage: newPage,
+            }: Pick<NextPreviousProps, 'currentPage'>) => {
+              handlePageChange(newPage);
+            },
+            onShowSizeChange: handlePageSizeChange,
+            showPagination,
+            isLoading,
+          }}
           dataSource={schema}
+          loading={isLoading}
           pagination={false}
           rowKey="name"
           rowSelection={{
