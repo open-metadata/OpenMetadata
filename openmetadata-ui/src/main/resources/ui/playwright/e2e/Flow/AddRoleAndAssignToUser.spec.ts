@@ -22,7 +22,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
-import { cleanupPermissions } from '../../utils/permission';
+import { cleanupGlobalPermissions } from '../../utils/permission';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
 
@@ -36,9 +36,9 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.serial('Add role and assign it to the user', () => {
   test.beforeEach(async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-    await cleanupPermissions(apiContext);
     await redirectToHomePage(page);
+    const { apiContext } = await getApiContext(page);
+    await cleanupGlobalPermissions(apiContext);
   });
 
   test.afterAll('cleanup', async ({ browser }) => {
