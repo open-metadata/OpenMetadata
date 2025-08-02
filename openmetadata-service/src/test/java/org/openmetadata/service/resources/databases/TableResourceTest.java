@@ -5860,7 +5860,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertResponse(
         () -> patchEntity(finalTable.getId(), currentJson, finalTable, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Rule [Multiple Domains are not allowed] validation failed: Entity does not satisfy the rule. Rule context: By default, we only allow entities to be assigned to a single domain");
+        MULTIDOMAIN_RULE_ERROR);
 
     Table refreshedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
 

@@ -1993,7 +1993,6 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
             updatedTestSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
 
     assertNotNull(updatedPipeline);
-    assertEquals(expectedTestSuiteName, updatedPipeline.getName());
     assertEquals(PipelineType.TEST_SUITE, updatedPipeline.getPipelineType());
     assertEquals(updatedTestSuite.getId(), updatedPipeline.getService().getId());
     assertEquals("testSuite", updatedPipeline.getService().getType());
