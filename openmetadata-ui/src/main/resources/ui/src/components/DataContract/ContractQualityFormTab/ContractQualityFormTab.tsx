@@ -12,7 +12,7 @@
  */
 
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Card, Radio, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +28,8 @@ import Table from '../../common/Table/Table';
 import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils';
+import { SelectionCard } from '../../common/SelectionCardGroup/SelectionCardGroup';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -125,18 +127,17 @@ export const ContractQualityFormTab: React.FC<{
         </Typography.Text>
       </div>
 
-      <div className="contract-form-content-container">
-        <Radio.Group
-          className="m-b-sm"
-          value={testType}
-          onChange={(e) => setTestType(e.target.value)}>
-          <Radio.Button value={TestCaseType.table}>
-            {t('label.table')}
-          </Radio.Button>
-          <Radio.Button value={TestCaseType.column}>
-            {t('label.column')}
-          </Radio.Button>
-        </Radio.Group>
+      <div className="contract-form-content-container ">
+        <div className="w-full selection-card-group">
+          {TEST_LEVEL_OPTIONS.map((option) => (
+            <SelectionCard
+              isSelected={testType === option.value}
+              key={option.value}
+              option={option}
+              onClick={() => setTestType(option.value as TestCaseType)}
+            />
+          ))}
+        </div>
         <Table
           columns={columns}
           dataSource={allTestCases}

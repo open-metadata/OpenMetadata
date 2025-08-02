@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -81,11 +81,12 @@ export const ContractSchemaFormTab: React.FC<{
     }
 
     return (
-      <Typography.Paragraph
-        className="cursor-pointer"
-        ellipsis={{ tooltip: displayValue, rows: 3 }}>
+      <Tag
+        className="cursor-pointer custom-tag"
+        color="purple"
+        title={displayValue}>
         {highlightSearchArrayElement(dataTypeDisplay, '')}
-      </Typography.Paragraph>
+      </Tag>
     );
   };
 
