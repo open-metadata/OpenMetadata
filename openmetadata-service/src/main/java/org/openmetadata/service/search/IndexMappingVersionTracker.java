@@ -113,7 +113,7 @@ public class IndexMappingVersionTracker {
     try {
       ObjectMapper mapper = new ObjectMapper();
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
-      String[] languages = {"en", "zh", "jp"};
+      String[] languages = {"en", "jp", "ru", "zh"};
 
       for (String lang : languages) {
         String mappingPath =
