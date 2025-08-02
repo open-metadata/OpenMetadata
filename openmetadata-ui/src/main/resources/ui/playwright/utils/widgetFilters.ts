@@ -158,33 +158,33 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
 
-  const followingFilter = page.waitForResponse(
-    '/api/v1/feed?type=Task&filterType=FOLLOWS&taskStatus=Open&*'
+  const mentionsTaskFilter = page.waitForResponse(
+    '/api/v1/feed?type=Task&filterType=MENTIONS&*'
   );
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  await page.getByRole('menuitem', { name: 'Following' }).click();
-  await followingFilter;
+  await page.getByRole('menuitem', { name: 'Mentions' }).click();
+  await mentionsTaskFilter;
 
-  const myDataFilter = page.waitForResponse(
-    '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&*'
+  const assignedTasksFilter = page.waitForResponse(
+    '/api/v1/feed?type=Task&filterType=ASSIGNED_TO&*'
   );
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  await page.getByRole('menuitem', { name: 'My Data' }).click();
-  await myDataFilter;
+  await page.getByRole('menuitem', { name: 'Assigned' }).click();
+  await assignedTasksFilter;
 
-  const allActivityFilter = page.waitForResponse(
-    '/api/v1/feed?type=Task&taskStatus=Open'
+  const allTasksFilter = page.waitForResponse(
+    '/api/v1/feed?type=Task&filterType=OWNER_OR_FOLLOWS&*'
   );
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
   await page.getByRole('menuitem', { name: 'All Activity' }).click();
-  await allActivityFilter;
+  await allTasksFilter;
 };
