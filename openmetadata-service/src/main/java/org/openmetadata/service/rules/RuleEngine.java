@@ -166,11 +166,11 @@ public class RuleEngine {
     }
   }
 
-    private static String unescapeFilter(String filterLogic) throws JsonProcessingException {
-        Object ruleObj = JsonUtils.getObjectMapper().readValue(filterLogic, Object.class);
-        if (ruleObj instanceof String) {
-            ruleObj = JsonUtils.getObjectMapper().readValue((String) ruleObj, Object.class);
-        }
-        return JsonUtils.getObjectMapper().writeValueAsString(ruleObj);
+  private static String unescapeFilter(String filterLogic) throws JsonProcessingException {
+    Object ruleObj = JsonUtils.getObjectMapper().readValue(filterLogic, Object.class);
+    if (ruleObj instanceof String) {
+      ruleObj = JsonUtils.getObjectMapper().readValue((String) ruleObj, Object.class);
     }
+    return JsonUtils.getObjectMapper().writeValueAsString(ruleObj);
+  }
 }
