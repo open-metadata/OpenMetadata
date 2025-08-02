@@ -185,6 +185,6 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  await page.getByRole('menuitem', { name: 'All Activity' }).click();
+  await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
 };
