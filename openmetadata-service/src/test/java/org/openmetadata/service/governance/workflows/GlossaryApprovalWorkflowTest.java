@@ -333,11 +333,16 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     // Sort states by timestamp before asserting
     states.sort(Comparator.comparing(WorkflowInstanceState::getTimestamp));
 
+    // [GlossaryTermCreated, CheckGlossaryTermHasReviewers, CheckIfGlossaryTermUpdatedByIsReviewer,
+    // CheckGlossaryTermIsReadyToBeReviewed, SetGlossaryTermStatusToInReview, ApproveGlossaryTerm,
+    // SetGlossaryTermStatusToApprovedAfterApproval, ApprovedEndAfterApproval]
+
     // Assert the expected sequence of workflow states for reviewer approval
     List<String> expectedStages =
         List.of(
             "GlossaryTermCreated",
             "CheckGlossaryTermHasReviewers",
+            "CheckIfGlossaryTermUpdatedByIsReviewer",
             "CheckGlossaryTermIsReadyToBeReviewed",
             "SetGlossaryTermStatusToInReview",
             "ApproveGlossaryTerm",
@@ -350,6 +355,8 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
         Map.of(
             "GlossaryTermCreated", "Glossary Term Created or Updated",
             "CheckGlossaryTermHasReviewers", "Check if Glossary Term has Reviewers",
+            "CheckIfGlossaryTermUpdatedByIsReviewer",
+                "Check if Glossary Term Updated By is Reviewer",
             "CheckGlossaryTermIsReadyToBeReviewed",
                 "Check if Glossary Term is Ready to be Reviewed",
             "SetGlossaryTermStatusToInReview", "Set Status to 'In Review'",

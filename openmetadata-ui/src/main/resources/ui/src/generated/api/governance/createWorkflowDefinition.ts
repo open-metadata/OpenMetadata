@@ -235,6 +235,12 @@ export interface TriggerConfiguration {
      */
     exclude?: string[];
     /**
+     * JSON Logic expression to determine if the workflow should be triggered. The expression
+     * has access to: entity (current entity), changeDescription (what changed), updatedBy (user
+     * who made the change), changedFields (array of field names that changed).
+     */
+    filter?: string;
+    /**
      * Number of Entities to process at once.
      */
     batchSize?: number;
