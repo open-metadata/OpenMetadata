@@ -21,6 +21,10 @@ from cryptography.hazmat.primitives import serialization
 from google import auth
 from google.auth import impersonated_credentials
 
+from metadata.clients.azure_client import AzureClient
+from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
+    AzureConfigurationSource,
+)
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpADC,
     GCPCredentials,
@@ -237,3 +241,34 @@ def get_gcp_impersonate_credentials(
         target_scopes=scopes,
         lifetime=lifetime,
     )
+
+
+def get_azure_access_token(azure_config: AzureConfigurationSource) -> str:
+    """
+    Get Azure access token using the provided Azure configuration.
+
+    Args:
+        azure_config: Azure configuration containing the necessary credentials and scopes
+
+    Returns:
+        str: The access token
+
+    Raises:
+        ValueError: If Azure config is missing or scopes are not provided
+    """
+    if not azure_config.azureConfig:
+        raise ValueError("Azure Config is missing")
+
+    if not azure_config.azureConfig.scopes:
+        raise ValueError(
+            "Azure Scopes are missing, please refer https://learn.microsoft.com/"
+            "en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token "
+            "and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+        )
+
+    azure_client = AzureClient(azure_config.azureConfig).create_client()
+    access_token_obj = azure_client.get_token(
+        *azure_config.azureConfig.scopes.split(",")
+    )
+
+    return access_token_obj.token

@@ -10,18 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .ant-tabs.ant-tabs-left.contract-tabs {
   .ant-tabs-content-holder {
-    background: #fff;
-    border-radius: 0 8px 8px 8px;
-    border: 1px solid #e5e7eb;
-    border-left: none;
-    margin-left: 0;
     flex: 1;
+    padding: @size-lg;
+    border-radius: 0 8px 8px 8px;
 
     .ant-tabs-tabpane {
       margin-top: 0;
       border: none;
+      padding: 0;
+      background: @white;
+      height: initial;
+      overflow: initial;
     }
   }
 
@@ -34,6 +38,7 @@
     height: initial;
     border: none;
     padding: 0;
+    padding-top: 20px;
     background: transparent;
 
     .ant-tabs-nav-list {
@@ -90,21 +95,50 @@
 
   .ant-tabs-tabpane {
     padding: 24px;
-    background: #fff;
+    background: @white;
   }
 
   // Content area styling
   .ant-tabs-content {
-    background: #fff;
+    background: @white;
     min-height: 500px;
     border-radius: 0 8px 8px 8px;
+  }
+
+  // Contract detail Forms
+  .contract-detail-form-tab-title {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    color: @grey-900;
+  }
+
+  .contract-detail-form-tab-description {
+    font-size: 14px;
+    color: @grey-600;
+    font-weight: 400;
+  }
+
+  .contract-form-content-container {
+    margin-top: 20px;
+    background: @white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid @border-color-7;
+    box-shadow: @button-box-shadow-default;
+  }
+
+  // Table styling
+
+  .ant-table-tbody > tr.ant-table-row-selected > td {
+    background: transparent;
   }
 }
 
 // Additional styling for the contract form container
 .container.bg-grey {
-  background: transparent;
-  padding: 0;
+  background: @grey-50;
+  border: none;
   height: 100%;
 
   & > div:first-child {
@@ -162,5 +196,31 @@
         }
       }
     }
+  }
+}
+
+.contract-tab-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+.add-contract-card {
+  .add-contract-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: @grey-900;
+  }
+
+  .add-contract-card-description {
+    font-size: 14px;
+    color: @grey-600;
+    font-weight: 400;
+    margin-bottom: 0;
+  }
+
+  > .ant-card-body {
+    padding: 0;
+    padding-left: 20px;
   }
 }

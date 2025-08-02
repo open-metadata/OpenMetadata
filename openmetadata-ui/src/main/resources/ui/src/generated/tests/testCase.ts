@@ -220,6 +220,8 @@ export interface FieldChange {
  * Entity reference the test suite needs to execute the test against. Only applicable if the
  * test suite is basic.
  *
+ * Reference to the data contract that this test suite is associated with.
+ *
  * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  */
 export interface EntityReference {
@@ -510,6 +512,10 @@ export interface TestSuite {
      * TestSuite mock connection, since it needs to implement a Service.
      */
     connection?: TestSuiteConnection;
+    /**
+     * Reference to the data contract that this test suite is associated with.
+     */
+    dataContract?: EntityReference;
     /**
      * When `true` indicates the entity has been soft deleted.
      */

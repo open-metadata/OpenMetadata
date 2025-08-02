@@ -45,6 +45,7 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
 
   @Test
   void test_listWithDomainFilter(TestInfo test) throws HttpResponseException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
     DomainResourceTest domainTest = new DomainResourceTest();
     String domain1 =
         domainTest
@@ -83,5 +84,7 @@ public abstract class ServiceResourceTest<T extends EntityInterface, K extends C
     assertEquals(3, list.size()); // appears in c1, c3 and c4
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s3.getName())));
     assertTrue(list.stream().anyMatch(s -> s.getName().equals(s4.getName())));
+
+    toggleMultiDomainSupport(true);
   }
 }
