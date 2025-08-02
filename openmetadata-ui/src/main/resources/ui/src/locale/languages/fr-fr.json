@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} Couverture",
     "entity-detail-plural": "Détails de {{entity}}",
     "entity-distribution": "Distribution de {{entity}}",
+    "entity-failed": "{{entity}} Échoué",
     "entity-feed-plural": "Flux de l'Entité",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} Id",

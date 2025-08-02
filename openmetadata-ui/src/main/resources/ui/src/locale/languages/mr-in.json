@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} कवर",
     "entity-detail-plural": "{{entity}} तपशील",
     "entity-distribution": "{{entity}} वितरण",
+    "entity-failed": "{{entity}} अयशस्वी",
     "entity-feed-plural": "घटक फीड्स",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} आयडी",

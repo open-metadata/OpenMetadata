@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} カバレッジ",
     "entity-detail-plural": "{{entity}}の詳細",
     "entity-distribution": "{{entity}} の分布",
+    "entity-failed": "{{entity}} 失敗",
     "entity-feed-plural": "エンティティフィード",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",

@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} כיסוי",
     "entity-detail-plural": "פרטי {{entity}}",
     "entity-distribution": "הפצת {{entity}}",
+    "entity-failed": "{{entity}} נכשל",
     "entity-feed-plural": "הזנות ישויות",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} Id",

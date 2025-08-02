@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} 覆盖",
     "entity-detail-plural": "{{entity}}详情",
     "entity-distribution": "{{entity}} 分布",
+    "entity-failed": "{{entity}} 失败",
     "entity-feed-plural": "实体信息流",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",
