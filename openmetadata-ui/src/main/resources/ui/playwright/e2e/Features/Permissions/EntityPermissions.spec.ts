@@ -16,7 +16,7 @@ import { EntityClass } from '../../../support/entity/EntityClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { uuid } from '../../../utils/common';
+import { getApiContext, uuid } from '../../../utils/common';
 import {
   ALL_OPERATIONS,
   createCustomPropertyForEntity,
@@ -26,6 +26,7 @@ import {
 } from '../../../utils/entityPermissionUtils';
 import {
   assignRoleToUser,
+  cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
 
@@ -115,6 +116,14 @@ Object.entries(entityConfig).forEach(([, config]) => {
           );
         });
       }
+
+      test.afterAll('Cleanup allow permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
+      });
     });
 
     // Deny permissions tests
@@ -153,6 +162,14 @@ Object.entries(entityConfig).forEach(([, config]) => {
           );
         });
       }
+
+      test.afterAll('Cleanup deny permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
+      });
     });
   });
 });

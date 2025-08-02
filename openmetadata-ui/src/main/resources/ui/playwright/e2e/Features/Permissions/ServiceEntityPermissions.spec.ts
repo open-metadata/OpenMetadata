@@ -23,12 +23,14 @@ import { SearchIndexServiceClass } from '../../../support/entity/service/SearchI
 import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { getApiContext } from '../../../utils/common';
 import {
   ALL_OPERATIONS,
   runCommonPermissionTests,
 } from '../../../utils/entityPermissionUtils';
 import {
   assignRoleToUser,
+  cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
 
@@ -101,6 +103,14 @@ serviceEntities.forEach((EntityClass) => {
 
         await runCommonPermissionTests(testUserPage, entity, 'allow');
       });
+
+      test.afterAll('Cleanup allow permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
+      });
     });
 
     test.describe('Deny permissions', () => {
@@ -118,6 +128,14 @@ serviceEntities.forEach((EntityClass) => {
         test.slow(true);
 
         await runCommonPermissionTests(testUserPage, entity, 'deny');
+      });
+
+      test.afterAll('Cleanup deny permissions', async ({ browser }) => {
+        const page = await browser.newPage();
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
       });
     });
   });
