@@ -168,6 +168,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
+    DatabaseServiceType.Epic,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

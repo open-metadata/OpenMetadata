@@ -257,6 +257,8 @@ export interface ServiceConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -972,6 +974,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -999,6 +1003,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1017,6 +1023,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -1369,6 +1378,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1793,6 +1810,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  *
  * Regex to only fetch topics that matches the pattern.
  *
@@ -3228,6 +3249,15 @@ export interface ConfigElasticsSearch {
 }
 
 /**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
+}
+
+/**
  * Credentials to extract the .lkml files from a repository. This is required to get all the
  * lineage and definitions.
  *
@@ -3922,6 +3952,7 @@ export enum PurpleType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
