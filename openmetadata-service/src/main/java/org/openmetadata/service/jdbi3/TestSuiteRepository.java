@@ -670,6 +670,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       recordChange(UPDATE_FIELDS, origTests, updatedTests);
       recordChange(
           "testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
+      recordChange("dataContract", original.getDataContract(), updated.getDataContract());
     }
   }
 }

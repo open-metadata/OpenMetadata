@@ -290,6 +290,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static final String ENTITY_LINK_MATCH_ERROR =
       "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
+  public static final String MULTIDOMAIN_RULE_ERROR =
+      "Rule [Multiple Domains are not allowed] validation failed: Entity does not satisfy the rule. Rule context: "
+          + "By default, we only allow entities to be assigned to a single domain, except for Users and Teams.";
 
   // Random unicode string generator to test entity name accepts all the unicode characters
   protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
