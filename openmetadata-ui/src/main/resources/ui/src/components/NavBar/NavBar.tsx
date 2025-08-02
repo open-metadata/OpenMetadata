@@ -439,6 +439,18 @@ const NavBar = () => {
     navigate(0);
   }, []);
 
+  const homePageTitle = useMemo(() => {
+    if (isHomePage && isSidebarCollapsed) {
+      return (
+        <Typography.Text className="font-semibold navbar-title">
+          {t('label.home')}
+        </Typography.Text>
+      );
+    }
+
+    return <></>;
+  }, [isHomePage, isSidebarCollapsed]);
+
   return (
     <>
       <Header>
@@ -466,13 +478,8 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {isHomePage ? (
-              <Typography.Text className="font-semibold navbar-title">
-                {t('label.home')}
-              </Typography.Text>
-            ) : isTourPage ? (
-              <></>
-            ) : (
+            {homePageTitle}
+            {!isHomePage && !isTourPage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList
