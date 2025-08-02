@@ -36,6 +36,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.permiss
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.DOMAIN_ONLY_ACCESS_ROLE_REF;
+import static org.openmetadata.service.resources.EntityResourceTest.MULTI_DOMAIN_RULE;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1;
 import static org.openmetadata.service.resources.EntityResourceTest.USER2_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
@@ -90,12 +91,15 @@ import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChatbotDetails;
 import org.openmetadata.schema.type.Column;
@@ -120,6 +124,7 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
@@ -1530,6 +1535,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void list_threadsWithUserHavingMultipleDomains() throws HttpResponseException, IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support rule for this test
     // Create domains for this test
     DomainResourceTest domainResourceTest = new DomainResourceTest();
     Domain testDomain1 =
@@ -1633,10 +1639,12 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
       domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
     }
+    toggleMultiDomainSupport(true);
   }
 
   @Test
   void list_threadsWithComplexDomainScenarios() throws HttpResponseException, IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support rule for this test
     // Create test domains
     DomainResourceTest domainResourceTest = new DomainResourceTest();
     Domain testDomain1 =
@@ -1794,6 +1802,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
       domainResourceTest.deleteEntity(testDomain3.getId(), ADMIN_AUTH_HEADERS);
     }
+    toggleMultiDomainSupport(true);
   }
 
   @Test
@@ -2591,5 +2600,23 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   public static String buildTableFieldLink(String tableFqn, String field) {
     return String.format("<#E::table::%s::%s>", tableFqn, field);
+  }
+
+  public void toggleMultiDomainSupport(Boolean enable) {
+    SystemRepository systemRepository = Entity.getSystemRepository();
+
+    Settings currentSettings =
+        systemRepository.getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
+    EntityRulesSettings entityRulesSettings =
+        (EntityRulesSettings) currentSettings.getConfigValue();
+    entityRulesSettings
+        .getEntitySemantics()
+        .forEach(
+            rule -> {
+              if (MULTI_DOMAIN_RULE.equals(rule.getName())) {
+                rule.setEnabled(enable);
+              }
+            });
+    systemRepository.updateSetting(currentSettings);
   }
 }
