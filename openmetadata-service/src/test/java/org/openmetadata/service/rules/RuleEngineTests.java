@@ -344,7 +344,7 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
                         .withName("Domain should be Data")
                         .withDescription("Validates that the table belongs to the 'Data' domain.")
                         .withRule(
-                            "{\"and\":[{\"!!\":{\"var\":\"domain\"}},{\"==\":[{\"var\":\"domain.name\"},\"Data\"]}]}")));
+                            "{\"and\":[{\"!!\":{\"var\":\"domains\"}},{\"some\":[{\"var\":\"domains\"},{\"==\":[{\"var\":\"name\"},\"Data\"]}]}]}")));
 
     dataContractResourceTest.createDataContract(createContractForTable);
 

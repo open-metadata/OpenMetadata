@@ -457,6 +457,7 @@ const KPIWidget = ({
   return (
     <WidgetWrapper
       dataLength={kpiList.length > 0 ? kpiList.length : 10}
+      dataTestId="KnowledgePanel.KPI"
       header={widgetHeader}
       loading={isKPIListLoading || isLoading}>
       <div className="kpi-widget-container" data-testid="kpi-widget">

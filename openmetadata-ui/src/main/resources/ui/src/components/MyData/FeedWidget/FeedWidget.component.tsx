@@ -174,8 +174,8 @@ const MyFeedWidgetInternal = ({
 
   return (
     <WidgetWrapper
-      data-testid="feed-widget"
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      dataTestId="KnowledgePanel.ActivityFeed"
       header={widgetHeader}
       loading={loading}>
       <div className="feed-widget-container">
