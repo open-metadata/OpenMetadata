@@ -161,10 +161,12 @@ export const UserProfileIcon = () => {
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
       <Space
-        className="w-full d-flex justify-between"
+        className="w-full d-flex justify-between persona-label"
         data-testid="persona-label"
         onClick={() => handleSelectedPersonaChange(item)}>
-        {getEntityName(item)}
+        <Typography.Text ellipsis={{ tooltip: { placement: 'left' } }}>
+          {getEntityName(item)}
+        </Typography.Text>
         {selectedPersona?.id === item.id && (
           <CheckOutlined
             className="m-x-xs"

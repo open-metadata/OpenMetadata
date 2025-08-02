@@ -20,7 +20,10 @@ import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
+import {
+  DISPLAY_NAME_FIELD_RULES,
+  NAME_FIELD_RULES,
+} from '../../../../constants/Form.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -122,6 +125,7 @@ export const AddEditPersonaForm = ({
           autoComplete: 'off',
         },
         placeholder: t('label.display-name'),
+        rules: DISPLAY_NAME_FIELD_RULES,
       },
       {
         name: 'description',

@@ -16,7 +16,7 @@ import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import {
@@ -64,6 +64,7 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
@@ -224,7 +225,7 @@ const MyDataWidgetInternal = ({
                         </div>
                       }
                       type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                      <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
                             className="text-left text-xs font-regular text-grey-600"
@@ -272,23 +273,41 @@ const MyDataWidgetInternal = ({
     [data, isLoading]
   );
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<MyDataIcon height={24} width={24} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedFilter}
+        sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
+        title={t('label.my-data')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.MY_DATA))
+        }
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleFilterChange,
+    ]
+  );
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<MyDataIcon height={24} width={24} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedFilter}
-          sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
-          title={t('label.my-data')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(data) ? emptyState : myDataContent}
           <WidgetFooter
@@ -306,20 +325,18 @@ const MyDataWidgetInternal = ({
     );
   }, [
     data,
-    isLoading,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    emptyState,
+    myDataContent,
+    currentUser?.name,
     showMoreCount,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
       dataLength={data.length > 0 ? data.length : 10}
+      header={widgetHeader}
       loading={isLoading}>
       {widgetContent}
     </WidgetWrapper>
