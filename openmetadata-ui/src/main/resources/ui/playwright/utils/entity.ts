@@ -38,6 +38,32 @@ import {
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
 
+const waitForAllLoadersToDisappear = async (page: Page) => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const allLoaders = page.locator('[data-testid="loader"]');
+    const count = await allLoaders.count();
+
+    let allLoadersGone = true;
+
+    for (let i = 0; i < count; i++) {
+      const loader = allLoaders.nth(i);
+      try {
+        if (await loader.isVisible()) {
+          await loader.waitFor({ state: 'detached', timeout: 1000 });
+          allLoadersGone = false;
+        }
+      } catch {
+        // Do nothing
+      }
+    }
+
+    if (allLoadersGone) {
+      break;
+    }
+    await page.waitForTimeout(100); // slight buffer before next retry
+  }
+};
+
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;
@@ -46,17 +72,8 @@ export const visitEntityPage = async (data: {
   const { page, searchTerm, dataTestId } = data;
   await page.waitForLoadState('networkidle');
 
-  await Promise.all([
-    page.getByRole('main').getByTestId('loader').waitFor({ state: 'detached' }),
-    page
-      .getByTestId('content-resizable-panel-container')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' }),
-    page
-      .getByTestId('content-height-with-resizable-panel')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' }),
-  ]);
+  // Unified loader handling
+  await waitForAllLoadersToDisappear(page);
 
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
@@ -1773,7 +1790,7 @@ export const checkExploreSearchFilter = async (
 export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
   switch (entity.getType()) {
     case 'Table':
-    case 'Dashboard Data Model':
+    case 'DashboardDataModel':
       return '/columns/0/dataTypeDisplay';
     case 'ApiEndpoint':
       return '/requestSchema/schemaFields/0/dataTypeDisplay';

@@ -10,34 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { first, isEmpty, last, round, sortBy, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { FunctionComponent } from 'react';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
-import { ReactComponent as LoadingIcon } from '../assets/svg/ic-loader.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
-import { ReactComponent as WarningIcon } from '../assets/svg/incident-icon.svg';
 import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
+import { totalDataAssetsWidgetColors } from '../constants/TotalDataAssetsWidget.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
-import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
+import {
+  IngestionPipeline,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
+import { getEntityNameLabel } from './EntityUtils';
 import Fqn from './Fqn';
-import { getAutoPilotStatuses } from './LocalStorageUtils';
+import { getEntityIcon } from './TableUtils';
 
 const { t } = i18n;
 
@@ -155,7 +156,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
     // Percentage change for the last 7 days
     const percentageChangeOverall = round(
       Math.abs(lastDayData - earliestDayData),
-      2
+      1
     );
 
     // This is true if the current data is greater than or equal to the earliest day data
@@ -165,50 +166,23 @@ export const getPlatformInsightsChartDataFormattingMethod =
       chartType: getChartTypeForWidget(chartType),
       isIncreased,
       percentageChange: percentageChangeOverall,
-      currentPercentage: round(lastDayData ?? 0, 2),
+      currentPercentage: round(lastDayData ?? 0, 1),
       noRecords: summaryChartData?.results.every((item) => isEmpty(item)),
       numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
   };
 
-export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
-  let Icon: FunctionComponent<any>;
-  let message;
-  let description;
+export const getFormattedTotalAssetsDataFromSocketData = (
+  socketData: DataInsightCustomChartResult
+) => {
+  const entityCountsArray = socketData.results.map((result, index) => ({
+    name: getEntityNameLabel(result.group),
+    value: result.count ?? 0,
+    fill: totalDataAssetsWidgetColors[index],
+    icon: getEntityIcon(result.group, '', { height: 16, width: 16 }) ?? <></>,
+  }));
 
-  switch (status) {
-    case WorkflowStatus.Exception:
-      Icon = WarningIcon;
-      message = t('message.workflow-status-exception');
-      description = t('message.workflow-status-failure-description');
-
-      break;
-    case WorkflowStatus.Failure:
-      Icon = ExclamationCircleOutlined;
-      message = t('message.workflow-status-failure');
-      description = t('message.workflow-status-failure-description');
-
-      break;
-    case WorkflowStatus.Finished:
-      Icon = SuccessIcon;
-      message = t('message.workflow-status-finished');
-      description = t('message.workflow-status-finished-description');
-
-      break;
-    case WorkflowStatus.Running:
-    default:
-      Icon = LoadingIcon;
-      message = t('message.workflow-status-running');
-      description = t('message.workflow-status-running-description');
-
-      break;
-  }
-
-  return {
-    Icon,
-    message,
-    description,
-  };
+  return entityCountsArray;
 };
 
 export const getServiceInsightsWidgetPlaceholder = ({
@@ -361,22 +335,6 @@ export const filterDistributionChartItem = (item: {
   return toLower(tag_name) === toLower(item.group);
 };
 
-export const checkIfAutoPilotStatusIsDismissed = (
-  serviceFQN?: string,
-  workflowStatus?: WorkflowStatus
-) => {
-  if (!serviceFQN || !workflowStatus) {
-    return false;
-  }
-
-  const autoPilotStatuses = getAutoPilotStatuses();
-
-  return autoPilotStatuses.some(
-    (status) =>
-      status.serviceFQN === serviceFQN && status.status === workflowStatus
-  );
-};
-
 export const getChartsDataFromWidgetName = (
   widgetName: string,
   chartsResults?: ChartsResults
@@ -391,4 +349,18 @@ export const getChartsDataFromWidgetName = (
     default:
       return [];
   }
+};
+
+export const getAutoPilotIngestionPipelines = (
+  ingestionPipelines?: IngestionPipeline[]
+) => {
+  if (isEmpty(ingestionPipelines)) {
+    return undefined;
+  }
+
+  return ingestionPipelines?.filter(
+    (pipeline) =>
+      SERVICE_AUTOPILOT_AGENT_TYPES.includes(pipeline.pipelineType) &&
+      pipeline.provider === ProviderType.Automation
+  );
 };

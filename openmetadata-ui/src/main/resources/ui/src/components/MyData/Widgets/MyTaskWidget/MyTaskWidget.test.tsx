@@ -133,7 +133,7 @@ describe('MyTaskWidget', () => {
   it('renders widget wrapper', () => {
     renderMyTaskWidget();
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.MyTask')).toBeInTheDocument();
   });
 
   it('calls getFeedData on mount with correct parameters', () => {
@@ -146,12 +146,12 @@ describe('MyTaskWidget', () => {
     renderMyTaskWidget();
 
     expect(mockGetFeedData).toHaveBeenCalledWith(
-      'OWNER',
+      'OWNER_OR_FOLLOWS',
       undefined,
       'Task',
       undefined,
       undefined,
-      'Open'
+      undefined
     );
   });
 });

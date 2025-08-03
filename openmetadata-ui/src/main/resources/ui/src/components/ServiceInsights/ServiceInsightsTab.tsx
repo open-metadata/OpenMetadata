@@ -11,64 +11,108 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Alert, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import {
   LIVE_CHARTS_LIST,
   PLATFORM_INSIGHTS_CHARTS,
   PLATFORM_INSIGHTS_LIVE_CHARTS,
 } from '../../constants/ServiceInsightsTab.constants';
+import { totalDataAssetsWidgetColors } from '../../constants/TotalDataAssetsWidget.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
+import { getAgentRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import {
+  getFormattedAgentsList,
+  getFormattedAgentsListFromAgentsLiveInfo,
+} from '../../utils/AgentsStatusWidgetUtils';
 import {
   getCurrentDayStartGMTinMillis,
+  getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { updateAutoPilotStatus } from '../../utils/LocalStorageUtils';
+import { getEntityNameLabel } from '../../utils/EntityUtils';
 import {
-  checkIfAutoPilotStatusIsDismissed,
   filterDistributionChartItem,
+  getAssetsByServiceType,
   getChartsDataFromWidgetName,
+  getFormattedTotalAssetsDataFromSocketData,
   getPlatformInsightsChartDataFormattingMethod,
-  getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { getServiceNameQueryFilter } from '../../utils/ServiceUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
 import './service-insights-tab.less';
 import {
   ChartsResults,
   ServiceInsightsTabProps,
+  TotalAssetsCount,
 } from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
-  isWorkflowStatusLoading,
   collateAIagentsList,
+  ingestionPipelines,
+  isIngestionPipelineLoading,
+  isCollateAIagentsLoading,
 }: ServiceInsightsTabProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
   const { socket } = useWebSocketConnector();
   const [chartsResults, setChartsResults] = useState<ChartsResults>();
+  const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);
+  const [collateAgentStatusLoading, setCollateAgentStatusLoading] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [totalAssetsCount, setTotalAssetsCount] =
+    useState<Array<TotalAssetsCount>>();
   const sessionIdRef = useRef<string>();
 
   const serviceName = serviceDetails.name;
 
   const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+
+  const getDataAssetsCount = useCallback(async () => {
+    try {
+      const response = await searchQuery({
+        queryFilter: getServiceNameQueryFilter(serviceName),
+        searchIndex: SearchIndex.ALL,
+      });
+
+      const assets = getAssetsByServiceType(serviceCategory);
+
+      const buckets = response.aggregations['entityType'].buckets.filter(
+        (bucket) => assets.includes(bucket.key)
+      );
+
+      const entityCountsArray = buckets.map((bucket, index) => ({
+        name: getEntityNameLabel(bucket.key),
+        value: bucket.doc_count ?? 0,
+        fill: totalDataAssetsWidgetColors[index],
+        icon: getEntityIcon(bucket.key, '', { height: 16, width: 16 }) ?? <></>,
+      }));
+
+      setTotalAssetsCount(entityCountsArray);
+    } catch {
+      // Error
+    }
+  }, []);
 
   const fetchChartsData = async () => {
     try {
@@ -91,6 +135,8 @@ const ServiceInsightsTab = ({
         end: currentTimestampInMs,
         filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
       });
+
+      await getDataAssetsCount();
 
       const platformInsightsChart = PLATFORM_INSIGHTS_CHARTS.map(
         getPlatformInsightsChartDataFormattingMethod(chartsData)
@@ -130,45 +176,6 @@ const ServiceInsightsTab = ({
   const { PlatformInsightsWidget, TotalDataAssetsWidget, AgentsStatusWidget } =
     widgets;
 
-  const {
-    Icon: StatusIcon,
-    message,
-    description,
-  } = getStatusIconFromStatusType(
-    workflowStatesData?.mainInstanceState?.status
-  );
-
-  const showAutoPilotStatus = useMemo(() => {
-    const isDataPresent =
-      !isWorkflowStatusLoading && !isUndefined(workflowStatesData);
-    const isStatusDismissed = checkIfAutoPilotStatusIsDismissed(
-      serviceDetails.fullyQualifiedName,
-      workflowStatesData?.mainInstanceState?.status
-    );
-
-    return isDataPresent && !isStatusDismissed;
-  }, [
-    isWorkflowStatusLoading,
-    workflowStatesData,
-    serviceDetails.fullyQualifiedName,
-    workflowStatesData?.mainInstanceState?.status,
-  ]);
-
-  const onStatusBannerClose = useCallback(() => {
-    if (
-      serviceDetails.fullyQualifiedName &&
-      workflowStatesData?.mainInstanceState?.status
-    ) {
-      updateAutoPilotStatus({
-        serviceFQN: serviceDetails.fullyQualifiedName,
-        status: workflowStatesData?.mainInstanceState?.status,
-      });
-    }
-  }, [
-    serviceDetails.fullyQualifiedName,
-    workflowStatesData?.mainInstanceState?.status,
-  ]);
-
   const triggerSocketConnection = useCallback(async () => {
     if (isUndefined(sessionIdRef.current)) {
       const { sessionId } = await setChartDataStreamConnection({
@@ -182,14 +189,85 @@ const ServiceInsightsTab = ({
     }
   }, [serviceName, sessionIdRef.current]);
 
+  const getAgentStatuses = async () => {
+    try {
+      setCollateAgentStatusLoading((prev) => prev + 1);
+      let recentRunStatuses: Record<string, AppRunRecord[]> = {};
+
+      if (!isEmpty(collateAIagentsList)) {
+        const endTs = getCurrentMillis();
+        const startTs = workflowStatesData?.mainInstanceState?.startedAt
+          ? workflowStatesData.mainInstanceState.startedAt
+          : getDayAgoStartGMTinMillis(6);
+        const recentRunStatusesPromise = collateAIagentsList.map((app) =>
+          getAgentRuns(app.name, {
+            service: serviceDetails.id,
+            startTs,
+            endTs,
+          })
+        );
+
+        const statusData = await Promise.allSettled(recentRunStatusesPromise);
+
+        recentRunStatuses = statusData.reduce((acc, cv, index) => {
+          const app = collateAIagentsList[index];
+
+          return {
+            ...acc,
+            [app.name]: cv.status === 'fulfilled' ? cv.value.data : [],
+          };
+        }, {});
+      }
+
+      setAgentsInfo(
+        getFormattedAgentsList(
+          recentRunStatuses,
+          ingestionPipelines,
+          collateAIagentsList
+        )
+      );
+    } finally {
+      setCollateAgentStatusLoading((prev) => prev - 1);
+    }
+  };
+
+  const onSocketDataUpdate = useCallback((newActivity: string) => {
+    if (newActivity) {
+      const data = JSON.parse(newActivity);
+
+      const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
+        getPlatformInsightsChartDataFormattingMethod(data.data)
+      );
+
+      setAgentsInfo(
+        getFormattedAgentsListFromAgentsLiveInfo(data.ingestionPipelineStatus)
+      );
+
+      setTotalAssetsCount(
+        getFormattedTotalAssetsDataFromSocketData(
+          data?.data?.total_data_assets_live
+        )
+      );
+
+      setChartsResults((prev) => ({
+        platformInsightsChart,
+        piiDistributionChart: prev?.piiDistributionChart ?? [],
+        tierDistributionChart: prev?.tierDistributionChart ?? [],
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchChartsData();
+  }, []);
+
   useEffect(() => {
     // Start the socket connection if the workflow is running
-    // if (
-    //   workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
-    // ) {
-    triggerSocketConnection();
-    // }
-    fetchChartsData();
+    if (
+      workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+    ) {
+      triggerSocketConnection();
+    }
 
     return () => {
       // Stop the socket connection if it is started and set the sessionId to undefined
@@ -201,22 +279,16 @@ const ServiceInsightsTab = ({
   }, [workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
+    getAgentStatuses();
+  }, [ingestionPipelines, collateAIagentsList]);
+
+  useEffect(() => {
     if (socket) {
-      socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, (newActivity) => {
-        if (newActivity) {
-          const data = JSON.parse(newActivity);
-
-          const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
-            getPlatformInsightsChartDataFormattingMethod(data.data)
-          );
-
-          setChartsResults((prev) => ({
-            platformInsightsChart,
-            piiDistributionChart: prev?.piiDistributionChart ?? [],
-            tierDistributionChart: prev?.tierDistributionChart ?? [],
-          }));
-        }
-      });
+      try {
+        socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, onSocketDataUpdate);
+      } catch {
+        // Error handling
+      }
     }
 
     return () => {
@@ -226,40 +298,16 @@ const ServiceInsightsTab = ({
 
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
-      {showAutoPilotStatus && (
-        <Alert
-          closable
-          showIcon
-          className={classNames(
-            'status-banner',
-            workflowStatesData?.mainInstanceState?.status ??
-              WorkflowStatus.Running
-          )}
-          closeIcon={
-            <CloseOutlined
-              className="text-md"
-              data-testid="status-banner-close-icon"
-            />
-          }
-          data-testid="auto-pilot-status-banner"
-          description={description}
-          icon={
-            <div
-              className="status-banner-icon"
-              data-testid={`status-banner-icon-${workflowStatesData?.mainInstanceState?.status}`}>
-              <StatusIcon height={20} width={20} />
-            </div>
-          }
-          message={message}
-          onClose={onStatusBannerClose}
-        />
-      )}
       <Col span={18}>
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <AgentsStatusWidget
-              collateAIagentsList={collateAIagentsList}
-              serviceDetails={serviceDetails}
+              agentsInfo={agentsInfo}
+              isLoading={
+                collateAgentStatusLoading > 0 ||
+                isCollateAIagentsLoading ||
+                isIngestionPipelineLoading
+              }
               workflowStatesData={workflowStatesData}
             />
           </Col>
@@ -276,8 +324,8 @@ const ServiceInsightsTab = ({
       </Col>
       <Col span={6}>
         <TotalDataAssetsWidget
-          serviceName={serviceName}
-          workflowStatesData={workflowStatesData}
+          isLoading={isLoading}
+          totalAssetsCount={totalAssetsCount}
         />
       </Col>
 

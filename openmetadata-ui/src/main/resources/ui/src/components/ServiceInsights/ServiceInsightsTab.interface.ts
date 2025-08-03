@@ -12,6 +12,10 @@
  */
 
 import { App } from '../../generated/entity/applications/app';
+import {
+  IngestionPipeline,
+  PipelineState,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowInstance } from '../../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../../generated/governance/workflows/workflowInstanceState';
 import { ServicesType } from '../../interface/service.interface';
@@ -23,8 +27,10 @@ import {
 export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
   workflowStatesData?: WorkflowStatesData;
-  isWorkflowStatusLoading: boolean;
-  collateAIagentsList?: App[];
+  collateAIagentsList: App[];
+  ingestionPipelines?: IngestionPipeline[];
+  isIngestionPipelineLoading: boolean;
+  isCollateAIagentsLoading: boolean;
 }
 export interface WorkflowStatesData {
   mainInstanceState: WorkflowInstance;
@@ -34,9 +40,28 @@ export interface ServiceInsightWidgetCommonProps {
   serviceName: string;
   workflowStatesData?: WorkflowStatesData;
 }
-
 export interface ChartsResults {
   platformInsightsChart: ChartSeriesData[];
   piiDistributionChart: ChartData[];
   tierDistributionChart: ChartData[];
+}
+
+export interface AgentsLiveInfo
+  extends Pick<
+    IngestionPipeline,
+    | 'name'
+    | 'pipelineType'
+    | 'provider'
+    | 'id'
+    | 'fullyQualifiedName'
+    | 'displayName'
+  > {
+  status: PipelineState;
+}
+
+export interface TotalAssetsCount {
+  name: string;
+  value: number;
+  fill: string;
+  icon: JSX.Element;
 }

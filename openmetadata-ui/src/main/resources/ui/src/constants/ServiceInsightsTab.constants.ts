@@ -32,7 +32,6 @@ export const PLATFORM_INSIGHTS_LIVE_CHARTS: SystemChartType[] = [
 export const LIVE_CHARTS_LIST = [
   ...PLATFORM_INSIGHTS_LIVE_CHARTS,
   SystemChartType.TotalDataAssetsLive,
-  SystemChartType.PipelineStatusLive,
 ];
 
 export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';

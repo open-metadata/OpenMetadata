@@ -14,6 +14,7 @@
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
 import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
@@ -25,9 +26,11 @@ import {
 } from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import FeedPanelBodyV1New from '../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { UserPageTabs } from '../../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -43,8 +46,9 @@ const MyTaskWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const navigate = useNavigate();
   const [selectedFilter, setSelectedFilter] = useState<MyTaskFilter>(
-    MyTaskFilter.OWNER
+    MyTaskFilter.OWNER_OR_FOLLOWS
   );
 
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
@@ -64,7 +68,7 @@ const MyTaskWidget = ({
       ThreadType.Task,
       undefined,
       undefined,
-      ThreadTaskStatus.Open
+      undefined
     );
   }, [getFeedData, selectedFilter]);
 
@@ -88,26 +92,43 @@ const MyTaskWidget = ({
     [entityThread, loading]
   );
 
-  const widgetContent = (
-    <div className="my-task-widget-container">
-      {/* Widget Header */}
+  const widgetHeader = useMemo(
+    () => (
       <WidgetHeader
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
         icon={<MyTaskIcon data-testid="task-icon" height={22} width={22} />}
         isEditView={isEditView}
-        redirectUrlOnTitleClick={
-          currentUser?.name && `users/${currentUser?.name}/task`
-        }
         selectedSortBy={selectedFilter}
         sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
         title={t('label.my-task-plural')}
         widgetKey={widgetKey}
         widgetWidth={myTaskData?.w}
         onSortChange={(key) => handleSortByClick(key as MyTaskFilter)}
+        onTitleClick={() => {
+          if (currentUser?.name) {
+            navigate(getUserPath(currentUser?.name, UserPageTabs.TASK));
+          }
+        }}
       />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      currentUser?.name,
+      selectedFilter,
+      t,
+      widgetKey,
+      myTaskData?.w,
+      handleSortByClick,
+    ]
+  );
 
+  const widgetContent = (
+    <div className="my-task-widget-container">
       {/* Widget Content */}
       <div className="widget-content flex-1">
         {isEmpty(entityThread) ? (
@@ -156,6 +177,8 @@ const MyTaskWidget = ({
   return (
     <WidgetWrapper
       dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      dataTestId="KnowledgePanel.MyTask"
+      header={widgetHeader}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

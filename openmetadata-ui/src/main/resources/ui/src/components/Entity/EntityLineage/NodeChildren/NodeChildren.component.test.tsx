@@ -50,6 +50,11 @@ jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
 
 jest.mock('../../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 jest.mock('../../../../utils/EntityLink', () => ({

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,35 +11,18 @@
  *  limitations under the License.
  */
 
-@import url('../../../../styles/variables.less');
+@import (reference) url('../../../styles/variables.less');
 
-.right-panel-heading {
-  margin-bottom: 8px !important;
-  color: @text-grey-muted;
-}
+.contract-quality-form-tab-container {
+  .add-test-case-button {
+    font-weight: 600;
+    color: @grey-700;
+    border: 1px solid @grey-300 !important;
+    box-shadow: 0px 1px 2px rgba(10, 13, 18, 0.05),
+      inset 0px -2px 0px rgba(10, 13, 18, 0.05);
 
-.right-panel-list-item:last-child {
-  border-bottom: none;
-}
-
-.right-panel-list-item {
-  .entity-button-icon {
-    height: 24px;
-    width: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    svg {
-      height: 18px;
-      width: 18px;
+    .anticon {
+      transform: rotate(45deg);
     }
-  }
-}
-
-.recently-viewed-widget-container {
-  .ant-card-body {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
   }
 }
