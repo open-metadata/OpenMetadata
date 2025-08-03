@@ -534,6 +534,7 @@
     "embed-link": "Incorporer lien",
     "enable": "Activer",
     "enable-debug-log": "Activer le Journal de Débogage",
+    "enable-entity": "Activer {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "activer",
     "enable-partition": "Activer la Partition",

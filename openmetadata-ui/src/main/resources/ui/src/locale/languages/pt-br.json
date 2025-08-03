@@ -534,6 +534,7 @@
     "embed-link": "Incorporar link",
     "enable": "Habilitar",
     "enable-debug-log": "Habilitar Log de Depuração",
+    "enable-entity": "Habilitar {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "habilitar",
     "enable-partition": "Habilitar Partição",

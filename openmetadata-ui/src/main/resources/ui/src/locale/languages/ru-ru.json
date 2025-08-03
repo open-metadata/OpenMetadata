@@ -534,6 +534,7 @@
     "embed-link": "Встроить ссылку",
     "enable": "Включить",
     "enable-debug-log": "Включить журнал отладки",
+    "enable-entity": "Включить {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "включить",
     "enable-partition": "Включить раздел",

@@ -534,6 +534,7 @@
     "embed-link": "लिंक एम्बेड करा",
     "enable": "सक्षम करा",
     "enable-debug-log": "डिबग लॉग सक्षम करा",
+    "enable-entity": "{{entity}} सक्षम करा",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "सक्षम करा",
     "enable-partition": "विभाजन सक्षम करा",

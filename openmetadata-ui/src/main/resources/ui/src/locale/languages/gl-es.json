@@ -534,6 +534,7 @@
     "embed-link": "Incrustar ligazón",
     "enable": "Activar",
     "enable-debug-log": "Activar rexistro de depuración",
+    "enable-entity": "Habilitar {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "activar",
     "enable-partition": "Activar partición",
