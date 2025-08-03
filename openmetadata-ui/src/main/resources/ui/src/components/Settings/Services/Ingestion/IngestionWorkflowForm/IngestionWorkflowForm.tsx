@@ -77,7 +77,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
   const isIncrementalExtractionSupported =
-    serviceData?.connection.config.supportsIncrementalMetadataExtraction;
+    serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
