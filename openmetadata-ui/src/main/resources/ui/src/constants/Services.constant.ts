@@ -311,6 +311,7 @@ export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
     'name',
     'displayName',
