@@ -556,7 +556,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
     );
 
     await redirectToHomePage(page);
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
     await visitLineageTab(page);
     await page.getByTestId('full-screen').click();
     await editLineage(page);
