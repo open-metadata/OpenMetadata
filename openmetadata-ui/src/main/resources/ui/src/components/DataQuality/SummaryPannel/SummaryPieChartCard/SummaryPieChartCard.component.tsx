@@ -13,6 +13,7 @@
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { WHITE_SMOKE } from '../../../../constants/Color.constants';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';
 import './summary-pie-chart-card.style.less';
@@ -72,16 +73,30 @@ const SummaryPieChartCard = ({
             <Pie
               cx="50%"
               cy="50%"
-              data={chartData}
+              data={[{ name: 'Total', value: 100 }]}
               dataKey="value"
+              endAngle={-270}
               innerRadius={45}
               outerRadius={60}
-              paddingAngle={paddingAngle}>
+              paddingAngle={paddingAngle}
+              startAngle={90}>
+              <Cell fill={WHITE_SMOKE} />
+            </Pie>
+            <Pie
+              cx="50%"
+              cy="50%"
+              data={chartData}
+              dataKey="value"
+              endAngle={-270}
+              innerRadius={45}
+              outerRadius={60}
+              paddingAngle={paddingAngle}
+              startAngle={90}>
               {chartData.map((entry, index) => (
                 <Cell fill={entry.color} key={`cell-${index}`} />
               ))}
             </Pie>
-            <Tooltip />
+            {percentage > 0 && <Tooltip />}
             <text
               className="chart-center-text"
               dominantBaseline="middle"
