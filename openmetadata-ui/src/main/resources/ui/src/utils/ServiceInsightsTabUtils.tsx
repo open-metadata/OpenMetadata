@@ -22,6 +22,7 @@ import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-saf
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
+import { totalDataAssetsWidgetColors } from '../constants/TotalDataAssetsWidget.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -35,7 +36,9 @@ import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
+import { getEntityNameLabel } from './EntityUtils';
 import Fqn from './Fqn';
+import { getEntityIcon } from './TableUtils';
 
 const { t } = i18n;
 
@@ -168,6 +171,19 @@ export const getPlatformInsightsChartDataFormattingMethod =
       numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
   };
+
+export const getFormattedTotalAssetsDataFromSocketData = (
+  socketData: DataInsightCustomChartResult
+) => {
+  const entityCountsArray = socketData.results.map((result, index) => ({
+    name: getEntityNameLabel(result.group),
+    value: result.count ?? 0,
+    fill: totalDataAssetsWidgetColors[index],
+    icon: getEntityIcon(result.group, '', { height: 16, width: 16 }) ?? <></>,
+  }));
+
+  return entityCountsArray;
+};
 
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,

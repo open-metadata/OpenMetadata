@@ -40,7 +40,6 @@ export interface ServiceInsightWidgetCommonProps {
   serviceName: string;
   workflowStatesData?: WorkflowStatesData;
 }
-
 export interface ChartsResults {
   platformInsightsChart: ChartSeriesData[];
   piiDistributionChart: ChartData[];
@@ -58,4 +57,11 @@ export interface AgentsLiveInfo
     | 'displayName'
   > {
   status: PipelineState;
+}
+
+export interface TotalAssetsCount {
+  name: string;
+  value: number;
+  fill: string;
+  icon: JSX.Element;
 }

@@ -22,8 +22,10 @@ import {
   PLATFORM_INSIGHTS_CHARTS,
   PLATFORM_INSIGHTS_LIVE_CHARTS,
 } from '../../constants/ServiceInsightsTab.constants';
+import { totalDataAssetsWidgetColors } from '../../constants/TotalDataAssetsWidget.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
 import { getAgentRuns } from '../../rest/applicationAPI';
 import {
@@ -31,6 +33,7 @@ import {
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   getFormattedAgentsList,
   getFormattedAgentsListFromAgentsLiveInfo,
@@ -40,12 +43,17 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityNameLabel } from '../../utils/EntityUtils';
 import {
   filterDistributionChartItem,
+  getAssetsByServiceType,
   getChartsDataFromWidgetName,
+  getFormattedTotalAssetsDataFromSocketData,
   getPlatformInsightsChartDataFormattingMethod,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { getServiceNameQueryFilter } from '../../utils/ServiceUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
@@ -53,6 +61,7 @@ import './service-insights-tab.less';
 import {
   ChartsResults,
   ServiceInsightsTabProps,
+  TotalAssetsCount,
 } from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab = ({
@@ -70,11 +79,39 @@ const ServiceInsightsTab = ({
   const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);
   const [collateAgentStatusLoading, setCollateAgentStatusLoading] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [totalAssetsCount, setTotalAssetsCount] =
+    useState<Array<TotalAssetsCount>>();
   const sessionIdRef = useRef<string>();
 
   const serviceName = serviceDetails.name;
 
   const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+
+  const getDataAssetsCount = useCallback(async () => {
+    try {
+      const response = await searchQuery({
+        queryFilter: getServiceNameQueryFilter(serviceName),
+        searchIndex: SearchIndex.ALL,
+      });
+
+      const assets = getAssetsByServiceType(serviceCategory);
+
+      const buckets = response.aggregations['entityType'].buckets.filter(
+        (bucket) => assets.includes(bucket.key)
+      );
+
+      const entityCountsArray = buckets.map((bucket, index) => ({
+        name: getEntityNameLabel(bucket.key),
+        value: bucket.doc_count ?? 0,
+        fill: totalDataAssetsWidgetColors[index],
+        icon: getEntityIcon(bucket.key, '', { height: 16, width: 16 }) ?? <></>,
+      }));
+
+      setTotalAssetsCount(entityCountsArray);
+    } catch {
+      // Error
+    }
+  }, []);
 
   const fetchChartsData = async () => {
     try {
@@ -97,6 +134,8 @@ const ServiceInsightsTab = ({
         end: currentTimestampInMs,
         filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
       });
+
+      await getDataAssetsCount();
 
       const platformInsightsChart = PLATFORM_INSIGHTS_CHARTS.map(
         getPlatformInsightsChartDataFormattingMethod(chartsData)
@@ -149,24 +188,6 @@ const ServiceInsightsTab = ({
     }
   }, [serviceName, sessionIdRef.current]);
 
-  useEffect(() => {
-    // Start the socket connection if the workflow is running
-    // if (
-    //   workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
-    // ) {
-    triggerSocketConnection();
-    // }
-    fetchChartsData();
-
-    return () => {
-      // Stop the socket connection if it is started and set the sessionId to undefined
-      if (sessionIdRef.current) {
-        stopChartDataStreamConnection(sessionIdRef.current);
-        sessionIdRef.current = undefined;
-      }
-    };
-  }, [workflowStatesData?.mainInstanceState.status]);
-
   const getAgentStatuses = async () => {
     try {
       setCollateAgentStatusLoading((prev) => prev + 1);
@@ -209,6 +230,53 @@ const ServiceInsightsTab = ({
     }
   };
 
+  const onSocketDataUpdate = useCallback((newActivity: string) => {
+    if (newActivity) {
+      const data = JSON.parse(newActivity);
+
+      const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
+        getPlatformInsightsChartDataFormattingMethod(data.data)
+      );
+
+      setAgentsInfo(
+        getFormattedAgentsListFromAgentsLiveInfo(data.ingestionPipelineStatus)
+      );
+
+      setTotalAssetsCount(
+        getFormattedTotalAssetsDataFromSocketData(
+          data?.data?.total_data_assets_live
+        )
+      );
+
+      setChartsResults((prev) => ({
+        platformInsightsChart,
+        piiDistributionChart: prev?.piiDistributionChart ?? [],
+        tierDistributionChart: prev?.tierDistributionChart ?? [],
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchChartsData();
+  }, []);
+
+  useEffect(() => {
+    // Start the socket connection if the workflow is running
+    // if (
+    //   workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+    // ) {
+    triggerSocketConnection();
+    // }
+
+    return () => {
+      // Stop the socket connection if it is started and set the sessionId to undefined
+      if (sessionIdRef.current) {
+        stopChartDataStreamConnection(sessionIdRef.current);
+        sessionIdRef.current = undefined;
+      }
+    };
+  }, [workflowStatesData?.mainInstanceState.status]);
+
   useEffect(() => {
     getAgentStatuses();
   }, [ingestionPipelines, collateAIagentsList]);
@@ -216,27 +284,7 @@ const ServiceInsightsTab = ({
   useEffect(() => {
     if (socket) {
       try {
-        socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, (newActivity) => {
-          if (newActivity) {
-            const data = JSON.parse(newActivity);
-
-            const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
-              getPlatformInsightsChartDataFormattingMethod(data.data)
-            );
-
-            setAgentsInfo(
-              getFormattedAgentsListFromAgentsLiveInfo(
-                data.ingestionPipelineStatus
-              )
-            );
-
-            setChartsResults((prev) => ({
-              platformInsightsChart,
-              piiDistributionChart: prev?.piiDistributionChart ?? [],
-              tierDistributionChart: prev?.tierDistributionChart ?? [],
-            }));
-          }
-        });
+        socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, onSocketDataUpdate);
       } catch {
         // Error handling
       }
@@ -275,8 +323,8 @@ const ServiceInsightsTab = ({
       </Col>
       <Col span={6}>
         <TotalDataAssetsWidget
-          serviceName={serviceName}
-          workflowStatesData={workflowStatesData}
+          isLoading={isLoading}
+          totalAssetsCount={totalAssetsCount}
         />
       </Col>
 
