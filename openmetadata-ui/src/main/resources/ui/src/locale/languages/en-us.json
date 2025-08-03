@@ -534,6 +534,7 @@
     "embed-link": "Embed link",
     "enable": "Enable",
     "enable-debug-log": "Enable Debug Log",
+    "enable-entity": "Enable {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "enable",
     "enable-partition": "Enable Partition",

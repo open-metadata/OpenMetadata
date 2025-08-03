@@ -110,6 +110,7 @@ export const ContractSemanticFormTab: React.FC<{
         </div>
 
         <Form
+          className="new-form-style"
           form={form}
           layout="vertical"
           onValuesChange={(_, allValues) => {
@@ -134,21 +135,24 @@ export const ContractSemanticFormTab: React.FC<{
                           title: (
                             <div className="w-full d-flex justify-between items-center">
                               {editingKey === field.key ? null : (
-                                <>
+                                <div className="semantic-form-item-title-container">
                                   <div className="d-flex items-center gap-6">
                                     <Form.Item
                                       {...field}
+                                      className="enable-form-item"
                                       name={[field.name, 'enabled']}
                                       valuePropName="checked">
                                       <Switch />
                                     </Form.Item>
 
                                     <div className="d-flex flex-column">
-                                      <Typography.Text>
+                                      <Typography.Text className="semantic-form-item-title">
                                         {semanticsData[field.key]?.name ||
                                           t('label.untitled')}
                                       </Typography.Text>
-                                      <Typography.Text type="secondary">
+                                      <Typography.Text
+                                        ellipsis
+                                        className="semantic-form-item-description">
                                         {semanticsData[field.key]
                                           ?.description ||
                                           t('label.no-description')}
@@ -157,11 +161,12 @@ export const ContractSemanticFormTab: React.FC<{
                                   </div>
                                   <EditIconButton
                                     newLook
-                                    data-testid={`edit-semantic=${field.key}`}
-                                    size="small"
+                                    className="edit-expand-button"
+                                    data-testid={`edit-semantic-${field.key}`}
+                                    size="middle"
                                     onClick={() => setEditingKey(field.key)}
                                   />
-                                </>
+                                </div>
                               )}
                             </div>
                           ),
@@ -188,13 +193,20 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Form.Item>
                               </Col>
                               <Col span={24}>
-                                <Form.Item
-                                  {...field}
-                                  label={t('label.enabled')}
-                                  name={[field.name, 'enabled']}
-                                  valuePropName="checked">
-                                  <Switch />
-                                </Form.Item>
+                                <div className="d-flex gap-2 items-center m-b-md">
+                                  <Form.Item
+                                    {...field}
+                                    className="m-b-0"
+                                    name={[field.name, 'enabled']}
+                                    valuePropName="checked">
+                                    <Switch />
+                                  </Form.Item>
+                                  <Typography.Paragraph className="font-medium m-0">
+                                    {t('label.enable-entity', {
+                                      entity: t('label.semantic-plural'),
+                                    })}
+                                  </Typography.Paragraph>
+                                </div>
                               </Col>
                               <Col span={24}>
                                 <Form.Item

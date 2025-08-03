@@ -271,7 +271,7 @@ const ContractDetail: React.FC<{
               })}
             </Typography.Text>
 
-            <div className="d-flex items-center gap-2 m-t-xs">
+            <div className="contract-status-badge-container">
               <StatusBadgeV2
                 externalIcon={FlagIcon}
                 label={contract.status ?? t('label.active')}

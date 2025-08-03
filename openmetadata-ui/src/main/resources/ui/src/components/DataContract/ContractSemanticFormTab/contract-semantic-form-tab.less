@@ -40,6 +40,58 @@
       background: @white !important;
       border-bottom: 1px solid @grey-200 !important;
     }
+
+    .semantic-form-item-title-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+
+      .enable-form-item {
+        margin-bottom: 0 !important;
+      }
+
+      > div:first-child {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .semantic-form-item-title {
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 32px;
+      }
+
+      .semantic-form-item-description {
+        font-size: 14px;
+        font-weight: 400;
+        color: @grey-600;
+      }
+    }
+
+    .ant-btn.edit-expand-button {
+      border: 6px;
+      border: 1px solid @border-light;
+
+      svg {
+        font-size: 20px;
+        color: @grey-600;
+      }
+    }
+
+    .ant-btn.expand-collapse-icon {
+      width: 30px !important;
+      height: 30px !important;
+      border: 6px;
+      border: 1px solid @border-light;
+
+      svg {
+        font-size: 20px;
+        color: @grey-600;
+      }
+    }
   }
 
   .expanded-active-card {
