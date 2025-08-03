@@ -283,16 +283,14 @@ describe('CuratedAssetsUtils', () => {
             must: [
               {
                 bool: {
-                  must: [
-                    { term: { deleted: false } },
-                    {
-                      bool: {
-                        should: [
-                          { term: { entityType: 'table' } },
-                          { term: { entityType: 'dashboard' } },
-                        ],
-                      },
-                    },
+                  must: [{ bool: { must: [{ term: { deleted: false } }] } }],
+                },
+              },
+              {
+                bool: {
+                  should: [
+                    { term: { entityType: 'table' } },
+                    { term: { entityType: 'dashboard' } },
                   ],
                 },
               },
@@ -311,13 +309,7 @@ describe('CuratedAssetsUtils', () => {
             must: [
               {
                 bool: {
-                  must: [
-                    {
-                      bool: {
-                        should: [{ term: { entityType: 'table' } }],
-                      },
-                    },
-                  ],
+                  should: [{ term: { entityType: 'table' } }],
                 },
               },
             ],
@@ -335,13 +327,7 @@ describe('CuratedAssetsUtils', () => {
             must: [
               {
                 bool: {
-                  must: [
-                    {
-                      bool: {
-                        should: [],
-                      },
-                    },
-                  ],
+                  should: [],
                 },
               },
             ],

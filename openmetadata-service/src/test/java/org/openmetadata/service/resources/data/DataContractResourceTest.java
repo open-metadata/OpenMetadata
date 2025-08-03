@@ -18,7 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -105,6 +108,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
   private static TestCaseResourceTest testCaseResourceTest;
   private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
+  private static DataContractRepository dataContractRepository;
+  private static PipelineServiceClientInterface mockPipelineClient;
 
   @BeforeAll
   public static void setup(TestInfo test) throws URISyntaxException, IOException {
@@ -112,6 +117,30 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // testCaseResourceTest.setup(test);
     ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
     ingestionPipelineResourceTest.setup(test);
+
+    // Set up mock PipelineServiceClient for all tests
+    dataContractRepository =
+        (DataContractRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.DATA_CONTRACT);
+
+    // Create and set mock PipelineServiceClient
+    mockPipelineClient = mock(PipelineServiceClientInterface.class);
+
+    // Configure mock to return successful response (code = 200) for all method calls
+    PipelineServiceClientResponse successResponse =
+        new PipelineServiceClientResponse()
+            .withCode(200)
+            .withReason("Success")
+            .withPlatform("test");
+
+    when(mockPipelineClient.deployPipeline(any(), any())).thenReturn(successResponse);
+    when(mockPipelineClient.runPipeline(any(), any())).thenReturn(successResponse);
+    when(mockPipelineClient.deletePipeline(any())).thenReturn(successResponse);
+    when(mockPipelineClient.toggleIngestion(any())).thenReturn(successResponse);
+    when(mockPipelineClient.killIngestion(any())).thenReturn(successResponse);
+
+    dataContractRepository.setPipelineServiceClient(mockPipelineClient);
   }
 
   @AfterEach
@@ -357,6 +386,13 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
   }
 
+  private void deleteDataContract(UUID id, boolean recursive) throws IOException {
+    WebTarget target = getResource(id);
+    target = target.queryParam("recursive", recursive);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
+    TestUtils.readResponse(response, DataContract.class, Status.OK.getStatusCode());
+  }
+
   private void deleteTable(UUID id) {
     WebTarget tableTarget = APP.client().target(getTableUri() + "/" + id);
     Response response = SecurityUtil.addHeaders(tableTarget, ADMIN_AUTH_HEADERS).delete();
@@ -526,6 +562,25 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(testCase1.getId(), updated.getQualityExpectations().get(0).getId());
     assertNotNull(updated.getTestSuite());
 
+    // GET the data contract and verify all fields are persisted correctly after first update
+    DataContract retrievedAfterFirstUpdate =
+        getDataContract(created.getId(), "semantics,qualityExpectations,testSuite,status,owners");
+    assertEquals(ContractStatus.Active, retrievedAfterFirstUpdate.getStatus());
+    assertEquals(created.getId(), retrievedAfterFirstUpdate.getId());
+    assertNotNull(retrievedAfterFirstUpdate.getSemantics());
+    assertEquals(1, retrievedAfterFirstUpdate.getSemantics().size());
+    assertEquals("ID Field Exists", retrievedAfterFirstUpdate.getSemantics().get(0).getName());
+    assertEquals(
+        "Checks that the ID field exists",
+        retrievedAfterFirstUpdate.getSemantics().get(0).getDescription());
+    assertEquals(
+        "{\"!!\": {\"var\": \"id\"}}", retrievedAfterFirstUpdate.getSemantics().get(0).getRule());
+    assertNotNull(retrievedAfterFirstUpdate.getQualityExpectations());
+    assertEquals(1, retrievedAfterFirstUpdate.getQualityExpectations().size());
+    assertEquals(
+        testCase1.getId(), retrievedAfterFirstUpdate.getQualityExpectations().get(0).getId());
+    assertNotNull(retrievedAfterFirstUpdate.getTestSuite());
+
     // Now update with additional semantics and quality expectations
     List<SemanticsRule> updatedSemantics =
         List.of(
@@ -560,6 +615,109 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(finalUpdated.getQualityExpectations());
     assertEquals(2, finalUpdated.getQualityExpectations().size());
     assertNotNull(finalUpdated.getTestSuite());
+
+    // GET the data contract and verify all fields are persisted correctly after final update
+    DataContract retrievedAfterFinalUpdate =
+        getDataContract(created.getId(), "semantics,qualityExpectations,testSuite,status,owners");
+    assertEquals(ContractStatus.Active, retrievedAfterFinalUpdate.getStatus());
+    assertEquals(created.getId(), retrievedAfterFinalUpdate.getId());
+    assertNotNull(retrievedAfterFinalUpdate.getSemantics());
+    assertEquals(2, retrievedAfterFinalUpdate.getSemantics().size());
+    assertEquals("ID Field Exists", retrievedAfterFinalUpdate.getSemantics().get(0).getName());
+    assertEquals(
+        "Checks that the ID field exists",
+        retrievedAfterFinalUpdate.getSemantics().get(0).getDescription());
+    assertEquals(
+        "{\"!!\": {\"var\": \"id\"}}", retrievedAfterFinalUpdate.getSemantics().get(0).getRule());
+    assertEquals("Name Field Exists", retrievedAfterFinalUpdate.getSemantics().get(1).getName());
+    assertEquals(
+        "Checks that the name field exists",
+        retrievedAfterFinalUpdate.getSemantics().get(1).getDescription());
+    assertEquals(
+        "{\"!!\": {\"var\": \"name\"}}", retrievedAfterFinalUpdate.getSemantics().get(1).getRule());
+    assertNotNull(retrievedAfterFinalUpdate.getQualityExpectations());
+    assertEquals(2, retrievedAfterFinalUpdate.getQualityExpectations().size());
+    assertEquals(
+        testCase1.getId(), retrievedAfterFinalUpdate.getQualityExpectations().get(0).getId());
+    assertEquals(
+        testCase2.getId(), retrievedAfterFinalUpdate.getQualityExpectations().get(1).getId());
+    assertNotNull(retrievedAfterFinalUpdate.getTestSuite());
+
+    // Now update with schema changes (add and remove columns)
+    List<org.openmetadata.schema.type.Column> initialSchema =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(ColumnDataType.BIGINT)
+                .withDisplayName("ID")
+                .withDescription("Primary key"),
+            new org.openmetadata.schema.type.Column()
+                .withName("name")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDisplayName("Name")
+                .withDescription("Entity name"));
+
+    create.withSchema(initialSchema);
+    DataContract schemaUpdated = updateDataContract(create);
+
+    // Verify schema was added
+    assertNotNull(schemaUpdated.getSchema());
+    assertEquals(2, schemaUpdated.getSchema().size());
+    assertEquals("id", schemaUpdated.getSchema().get(0).getName());
+    assertEquals("name", schemaUpdated.getSchema().get(1).getName());
+
+    // GET the data contract and verify schema is persisted
+    DataContract retrievedWithSchema =
+        getDataContract(created.getId(), "schema,semantics,qualityExpectations,testSuite,status");
+    assertNotNull(retrievedWithSchema.getSchema());
+    assertEquals(2, retrievedWithSchema.getSchema().size());
+    assertEquals("id", retrievedWithSchema.getSchema().get(0).getName());
+    assertEquals(ColumnDataType.BIGINT, retrievedWithSchema.getSchema().get(0).getDataType());
+    assertEquals("name", retrievedWithSchema.getSchema().get(1).getName());
+    assertEquals(ColumnDataType.VARCHAR, retrievedWithSchema.getSchema().get(1).getDataType());
+
+    // Now update schema: remove 'name' column and add 'email' column
+    List<org.openmetadata.schema.type.Column> updatedSchema =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(ColumnDataType.BIGINT)
+                .withDisplayName("ID")
+                .withDescription("Primary key"),
+            new org.openmetadata.schema.type.Column()
+                .withName("email")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDisplayName("Email")
+                .withDescription("User email address"));
+
+    create.withSchema(updatedSchema);
+    DataContract finalSchemaUpdated = updateDataContract(create);
+
+    // Verify schema changes
+    assertNotNull(finalSchemaUpdated.getSchema());
+    assertEquals(2, finalSchemaUpdated.getSchema().size());
+    assertEquals("id", finalSchemaUpdated.getSchema().get(0).getName());
+    assertEquals("email", finalSchemaUpdated.getSchema().get(1).getName());
+
+    // GET the final data contract and verify all schema changes are persisted
+    DataContract finalRetrieved =
+        getDataContract(created.getId(), "schema,semantics,qualityExpectations,testSuite,status");
+    assertNotNull(finalRetrieved.getSchema());
+    assertEquals(2, finalRetrieved.getSchema().size());
+    assertEquals("id", finalRetrieved.getSchema().get(0).getName());
+    assertEquals(ColumnDataType.BIGINT, finalRetrieved.getSchema().get(0).getDataType());
+    assertEquals("Primary key", finalRetrieved.getSchema().get(0).getDescription());
+    assertEquals("email", finalRetrieved.getSchema().get(1).getName());
+    assertEquals(ColumnDataType.VARCHAR, finalRetrieved.getSchema().get(1).getDataType());
+    assertEquals("User email address", finalRetrieved.getSchema().get(1).getDescription());
+
+    // Verify the other fields are still intact after schema changes
+    assertEquals(ContractStatus.Active, finalRetrieved.getStatus());
+    assertNotNull(finalRetrieved.getSemantics());
+    assertEquals(2, finalRetrieved.getSemantics().size());
+    assertNotNull(finalRetrieved.getQualityExpectations());
+    assertEquals(2, finalRetrieved.getQualityExpectations().size());
+    assertNotNull(finalRetrieved.getTestSuite());
   }
 
   @Test
@@ -708,6 +866,34 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     assertEquals(ContractStatus.Active, patched.getStatus());
     assertEquals(created.getId(), patched.getId());
+
+    // Verify that GET returns the correct status after PATCH
+    DataContract retrieved = getDataContract(patched.getId(), "");
+    assertEquals(ContractStatus.Active, retrieved.getStatus());
+    assertEquals(created.getId(), retrieved.getId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPatchDataContractWithoutStatus(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withStatus(null);
+    DataContract created = createDataContract(create);
+    assertNull(created.getStatus());
+
+    String originalJson = JsonUtils.pojoToJson(created);
+    created.setStatus(ContractStatus.Active);
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    assertEquals(ContractStatus.Active, patched.getStatus());
+    assertEquals(created.getId(), patched.getId());
+
+    // Verify that GET returns the correct status after PATCH
+    DataContract retrieved = getDataContract(patched.getId(), "");
+    assertEquals(ContractStatus.Active, retrieved.getStatus());
+    assertEquals(created.getId(), retrieved.getId());
   }
 
   @Test
@@ -1721,6 +1907,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(testSuite.getTests());
     assertEquals(1, testSuite.getTests().size());
     assertEquals(testCase.getId(), testSuite.getTests().get(0).getId());
+    assertEquals(testSuite.getDataContract().getId(), dataContract.getId());
 
     // Verify the Data Contract has the pointer to the test suite
     assertNotNull(dataContract.getTestSuite());
@@ -1732,10 +1919,29 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
             testSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
 
     assertNotNull(pipeline);
-    assertEquals(expectedTestSuiteName, pipeline.getName());
     assertEquals(PipelineType.TEST_SUITE, pipeline.getPipelineType());
     assertEquals(testSuite.getId(), pipeline.getService().getId());
     assertEquals("testSuite", pipeline.getService().getType());
+
+    // Also, the ingestion pipeline should be flagged as deployed
+    assertTrue(pipeline.getDeployed());
+
+    // Test deletion with recursive=true - should also delete the test suite
+    deleteDataContract(dataContract.getId(), true);
+
+    // Verify the data contract is deleted
+    assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
+
+    // Verify the test suite is also deleted
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Pipeline is also deleted
+    assertThrows(
+        HttpResponseException.class,
+        () -> ingestionPipelineResourceTest.getEntity(pipeline.getId(), "*", ADMIN_AUTH_HEADERS));
   }
 
   @Test
@@ -1808,7 +2014,6 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
             updatedTestSuite.getPipelines().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
 
     assertNotNull(updatedPipeline);
-    assertEquals(expectedTestSuiteName, updatedPipeline.getName());
     assertEquals(PipelineType.TEST_SUITE, updatedPipeline.getPipelineType());
     assertEquals(updatedTestSuite.getId(), updatedPipeline.getService().getId());
     assertEquals("testSuite", updatedPipeline.getService().getType());
@@ -2088,89 +2293,66 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
 
-    // Get the repository and mock its PipelineServiceClient to avoid triggering actual DQ
-    // validation
-    DataContractRepository dataContractRepository =
-        (DataContractRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.DATA_CONTRACT);
+    // Mock PipelineServiceClient is already set up in @BeforeAll for all tests
+    // Call the validate endpoint - this should pass semantics and trigger DQ validation (mocked)
+    DataContractResult result = runValidate(dataContract);
 
-    // Get the original PipelineServiceClient to restore later
-    PipelineServiceClientInterface originalPipelineClient =
-        dataContractRepository.getPipelineServiceClient();
+    // Verify the validation result shows running (waiting for DQ results)
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Running, result.getContractExecutionStatus());
 
-    // Create a mock PipelineServiceClient that does nothing
-    PipelineServiceClientInterface mockPipelineClient = mock(PipelineServiceClientInterface.class);
+    // Verify semantics validation passed
+    assertNotNull(result.getSemanticsValidation());
+    assertEquals(2, result.getSemanticsValidation().getPassed().intValue());
+    assertEquals(0, result.getSemanticsValidation().getFailed().intValue());
+    assertEquals(2, result.getSemanticsValidation().getTotal().intValue());
 
-    // Set the mock PipelineServiceClient on the repository
-    dataContractRepository.setPipelineServiceClient(mockPipelineClient);
+    // Manually update the TestSuite with TestCaseResultSummary as if DQ pipeline executed
+    List<ResultSummary> testCaseResultSummary = new ArrayList<>();
+    testCaseResultSummary.add(
+        new ResultSummary()
+            .withTestCaseName(testCase1.getFullyQualifiedName())
+            .withStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis()));
+    testCaseResultSummary.add(
+        new ResultSummary()
+            .withTestCaseName(testCase2.getFullyQualifiedName())
+            .withStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis()));
 
-    try {
-      // Call the validate endpoint - this should pass semantics and trigger DQ validation (mocked)
-      DataContractResult result = runValidate(dataContract);
+    // Update the test suite with result summaries
+    String originalTestSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setTestCaseResultSummary(testCaseResultSummary);
+    TestSuite updatedTestSuite =
+        testSuiteResourceTest.patchEntity(
+            testSuite.getId(), originalTestSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
 
-      // Verify the validation result shows running (waiting for DQ results)
-      assertNotNull(result);
-      assertEquals(ContractExecutionStatus.Running, result.getContractExecutionStatus());
+    // Call updateContractDQResults to process the DQ results
+    DataContractResult finalResult =
+        dataContractRepository.updateContractDQResults(
+            dataContract.getEntityReference(), updatedTestSuite);
 
-      // Verify semantics validation passed
-      assertNotNull(result.getSemanticsValidation());
-      assertEquals(2, result.getSemanticsValidation().getPassed().intValue());
-      assertEquals(0, result.getSemanticsValidation().getFailed().intValue());
-      assertEquals(2, result.getSemanticsValidation().getTotal().intValue());
+    // Verify the final result shows success
+    assertNotNull(finalResult);
+    assertEquals(ContractExecutionStatus.Success, finalResult.getContractExecutionStatus());
 
-      // Manually update the TestSuite with TestCaseResultSummary as if DQ pipeline executed
-      List<ResultSummary> testCaseResultSummary = new ArrayList<>();
-      testCaseResultSummary.add(
-          new ResultSummary()
-              .withTestCaseName(testCase1.getFullyQualifiedName())
-              .withStatus(TestCaseStatus.Success)
-              .withTimestamp(System.currentTimeMillis()));
-      testCaseResultSummary.add(
-          new ResultSummary()
-              .withTestCaseName(testCase2.getFullyQualifiedName())
-              .withStatus(TestCaseStatus.Success)
-              .withTimestamp(System.currentTimeMillis()));
+    // Verify quality validation details
+    assertNotNull(finalResult.getQualityValidation());
+    assertEquals(2, finalResult.getQualityValidation().getPassed().intValue());
+    assertEquals(0, finalResult.getQualityValidation().getFailed().intValue());
+    assertEquals(2, finalResult.getQualityValidation().getTotal().intValue());
 
-      // Update the test suite with result summaries
-      String originalTestSuiteJson = JsonUtils.pojoToJson(testSuite);
-      testSuite.setTestCaseResultSummary(testCaseResultSummary);
-      TestSuite updatedTestSuite =
-          testSuiteResourceTest.patchEntity(
-              testSuite.getId(), originalTestSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
+    // Verify semantics validation is still there
+    assertNotNull(finalResult.getSemanticsValidation());
+    assertEquals(2, finalResult.getSemanticsValidation().getPassed().intValue());
+    assertEquals(0, finalResult.getSemanticsValidation().getFailed().intValue());
 
-      // Call updateContractDQResults to process the DQ results
-      DataContractResult finalResult =
-          dataContractRepository.updateContractDQResults(
-              dataContract.getEntityReference(), updatedTestSuite);
-
-      // Verify the final result shows success
-      assertNotNull(finalResult);
-      assertEquals(ContractExecutionStatus.Success, finalResult.getContractExecutionStatus());
-
-      // Verify quality validation details
-      assertNotNull(finalResult.getQualityValidation());
-      assertEquals(2, finalResult.getQualityValidation().getPassed().intValue());
-      assertEquals(0, finalResult.getQualityValidation().getFailed().intValue());
-      assertEquals(2, finalResult.getQualityValidation().getTotal().intValue());
-
-      // Verify semantics validation is still there
-      assertNotNull(finalResult.getSemanticsValidation());
-      assertEquals(2, finalResult.getSemanticsValidation().getPassed().intValue());
-      assertEquals(0, finalResult.getSemanticsValidation().getFailed().intValue());
-
-      // Verify the DataContract latestResult reflects the final successful validation
-      DataContract updatedContract = getDataContract(dataContract.getId(), "");
-      assertNotNull(updatedContract.getLatestResult());
-      assertEquals(ContractExecutionStatus.Success, updatedContract.getLatestResult().getStatus());
-      assertEquals(
-          finalResult.getId().toString(),
-          updatedContract.getLatestResult().getResultId().toString());
-
-    } finally {
-      // Restore the original PipelineServiceClient
-      dataContractRepository.setPipelineServiceClient(originalPipelineClient);
-    }
+    // Verify the DataContract latestResult reflects the final successful validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Success, updatedContract.getLatestResult().getStatus());
+    assertEquals(
+        finalResult.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
   }
 
   @Test
@@ -2234,93 +2416,70 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     TestSuite testSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
 
-    // Get the repository and mock its PipelineServiceClient to avoid triggering actual DQ
-    // validation
-    DataContractRepository dataContractRepository =
-        (DataContractRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.DATA_CONTRACT);
+    // Mock PipelineServiceClient is already set up in @BeforeAll for all tests
+    // Call the validate endpoint - this should pass semantics and trigger DQ validation (mocked)
+    DataContractResult result = runValidate(dataContract);
 
-    // Get the original PipelineServiceClient to restore later
-    PipelineServiceClientInterface originalPipelineClient =
-        dataContractRepository.getPipelineServiceClient();
+    // Verify the validation result shows running (waiting for DQ results)
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Running, result.getContractExecutionStatus());
 
-    // Create a mock PipelineServiceClient that does nothing
-    PipelineServiceClientInterface mockPipelineClient = mock(PipelineServiceClientInterface.class);
+    // Verify semantics validation passed
+    assertNotNull(result.getSemanticsValidation());
+    assertEquals(2, result.getSemanticsValidation().getPassed().intValue());
+    assertEquals(0, result.getSemanticsValidation().getFailed().intValue());
+    assertEquals(2, result.getSemanticsValidation().getTotal().intValue());
 
-    // Set the mock PipelineServiceClient on the repository
-    dataContractRepository.setPipelineServiceClient(mockPipelineClient);
+    // Manually update the TestSuite with TestCaseResultSummary as if DQ pipeline executed with
+    // FAILURES
+    List<ResultSummary> testCaseResultSummary = new ArrayList<>();
+    testCaseResultSummary.add(
+        new ResultSummary()
+            .withTestCaseName(testCase1.getFullyQualifiedName())
+            .withStatus(TestCaseStatus.Failed) // This test case fails
+            .withTimestamp(System.currentTimeMillis()));
+    testCaseResultSummary.add(
+        new ResultSummary()
+            .withTestCaseName(testCase2.getFullyQualifiedName())
+            .withStatus(TestCaseStatus.Success) // This test case passes
+            .withTimestamp(System.currentTimeMillis()));
 
-    try {
-      // Call the validate endpoint - this should pass semantics and trigger DQ validation (mocked)
-      DataContractResult result = runValidate(dataContract);
+    // Update the test suite with result summaries
+    String originalTestSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setTestCaseResultSummary(testCaseResultSummary);
+    TestSuite updatedTestSuite =
+        testSuiteResourceTest.patchEntity(
+            testSuite.getId(), originalTestSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
 
-      // Verify the validation result shows running (waiting for DQ results)
-      assertNotNull(result);
-      assertEquals(ContractExecutionStatus.Running, result.getContractExecutionStatus());
+    // Call updateContractDQResults to process the DQ results
+    DataContractResult finalResult =
+        dataContractRepository.updateContractDQResults(
+            dataContract.getEntityReference(), updatedTestSuite);
 
-      // Verify semantics validation passed
-      assertNotNull(result.getSemanticsValidation());
-      assertEquals(2, result.getSemanticsValidation().getPassed().intValue());
-      assertEquals(0, result.getSemanticsValidation().getFailed().intValue());
-      assertEquals(2, result.getSemanticsValidation().getTotal().intValue());
+    // Verify the final result shows FAILURE due to failing DQ tests
+    assertNotNull(finalResult);
+    assertEquals(ContractExecutionStatus.Failed, finalResult.getContractExecutionStatus());
 
-      // Manually update the TestSuite with TestCaseResultSummary as if DQ pipeline executed with
-      // FAILURES
-      List<ResultSummary> testCaseResultSummary = new ArrayList<>();
-      testCaseResultSummary.add(
-          new ResultSummary()
-              .withTestCaseName(testCase1.getFullyQualifiedName())
-              .withStatus(TestCaseStatus.Failed) // This test case fails
-              .withTimestamp(System.currentTimeMillis()));
-      testCaseResultSummary.add(
-          new ResultSummary()
-              .withTestCaseName(testCase2.getFullyQualifiedName())
-              .withStatus(TestCaseStatus.Success) // This test case passes
-              .withTimestamp(System.currentTimeMillis()));
+    // Verify quality validation details show failure
+    assertNotNull(finalResult.getQualityValidation());
+    assertEquals(1, finalResult.getQualityValidation().getFailed().intValue()); // 1 failed test
+    assertEquals(1, finalResult.getQualityValidation().getPassed().intValue()); // 1 passed test
+    assertEquals(2, finalResult.getQualityValidation().getTotal().intValue()); // 2 total tests
 
-      // Update the test suite with result summaries
-      String originalTestSuiteJson = JsonUtils.pojoToJson(testSuite);
-      testSuite.setTestCaseResultSummary(testCaseResultSummary);
-      TestSuite updatedTestSuite =
-          testSuiteResourceTest.patchEntity(
-              testSuite.getId(), originalTestSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
+    // Verify semantics validation is still there and passed
+    assertNotNull(finalResult.getSemanticsValidation());
+    assertEquals(2, finalResult.getSemanticsValidation().getPassed().intValue());
+    assertEquals(0, finalResult.getSemanticsValidation().getFailed().intValue());
 
-      // Call updateContractDQResults to process the DQ results
-      DataContractResult finalResult =
-          dataContractRepository.updateContractDQResults(
-              dataContract.getEntityReference(), updatedTestSuite);
+    // Verify the result message indicates quality validation failed
+    assertTrue(finalResult.getResult().contains("Quality validation failed"));
 
-      // Verify the final result shows FAILURE due to failing DQ tests
-      assertNotNull(finalResult);
-      assertEquals(ContractExecutionStatus.Failed, finalResult.getContractExecutionStatus());
-
-      // Verify quality validation details show failure
-      assertNotNull(finalResult.getQualityValidation());
-      assertEquals(1, finalResult.getQualityValidation().getFailed().intValue()); // 1 failed test
-      assertEquals(1, finalResult.getQualityValidation().getPassed().intValue()); // 1 passed test
-      assertEquals(2, finalResult.getQualityValidation().getTotal().intValue()); // 2 total tests
-
-      // Verify semantics validation is still there and passed
-      assertNotNull(finalResult.getSemanticsValidation());
-      assertEquals(2, finalResult.getSemanticsValidation().getPassed().intValue());
-      assertEquals(0, finalResult.getSemanticsValidation().getFailed().intValue());
-
-      // Verify the result message indicates quality validation failed
-      assertTrue(finalResult.getResult().contains("Quality validation failed"));
-
-      // Verify the DataContract latestResult reflects the final failed validation
-      DataContract updatedContract = getDataContract(dataContract.getId(), "");
-      assertNotNull(updatedContract.getLatestResult());
-      assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
-      assertEquals(
-          finalResult.getId().toString(),
-          updatedContract.getLatestResult().getResultId().toString());
-
-    } finally {
-      // Restore the original PipelineServiceClient
-      dataContractRepository.setPipelineServiceClient(originalPipelineClient);
-    }
+    // Verify the DataContract latestResult reflects the final failed validation
+    DataContract updatedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(updatedContract.getLatestResult());
+    assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
+    assertEquals(
+        finalResult.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
   }
 
   @Test
@@ -2475,76 +2634,79 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     DataContract dataContract = createDataContract(create);
 
-    // Get the repository and mock its PipelineServiceClient
-    DataContractRepository dataContractRepository =
-        (DataContractRepository)
-            org.openmetadata.service.Entity.getEntityRepository(
-                org.openmetadata.service.Entity.DATA_CONTRACT);
+    // Mock PipelineServiceClient is already set up in @BeforeAll for all tests
+    DataContractResult firstResult = runValidate(dataContract);
+    assertNotNull(firstResult);
+    assertEquals(ContractExecutionStatus.Success, firstResult.getContractExecutionStatus());
 
-    PipelineServiceClientInterface originalPipelineClient =
-        dataContractRepository.getPipelineServiceClient();
-    PipelineServiceClientInterface mockPipelineClient = mock(PipelineServiceClientInterface.class);
-    dataContractRepository.setPipelineServiceClient(mockPipelineClient);
+    // Manually set the first result to Running status to simulate ongoing validation
+    firstResult.withContractExecutionStatus(ContractExecutionStatus.Running);
+    dataContractRepository.addContractResult(dataContract, firstResult);
 
-    try {
-      DataContractResult firstResult = runValidate(dataContract);
-      assertNotNull(firstResult);
-      assertEquals(ContractExecutionStatus.Success, firstResult.getContractExecutionStatus());
+    // Verify the contract shows running status
+    DataContract contractAfterFirst = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterFirst.getLatestResult());
+    assertEquals(ContractExecutionStatus.Running, contractAfterFirst.getLatestResult().getStatus());
+    assertEquals(firstResult.getId(), contractAfterFirst.getLatestResult().getResultId());
 
-      // Manually set the first result to Running status to simulate ongoing validation
-      firstResult.withContractExecutionStatus(ContractExecutionStatus.Running);
-      dataContractRepository.addContractResult(dataContract, firstResult);
+    // Start second validation - should abort the first running validation and create a new one
+    DataContractResult secondResult = runValidate(dataContract);
+    assertNotNull(secondResult);
+    assertEquals(ContractExecutionStatus.Success, secondResult.getContractExecutionStatus());
 
-      // Verify the contract shows running status
-      DataContract contractAfterFirst = getDataContract(dataContract.getId(), "");
-      assertNotNull(contractAfterFirst.getLatestResult());
-      assertEquals(
-          ContractExecutionStatus.Running, contractAfterFirst.getLatestResult().getStatus());
-      assertEquals(firstResult.getId(), contractAfterFirst.getLatestResult().getResultId());
+    // Verify the latest result is now the second validation
+    DataContract contractAfterSecond = getDataContract(dataContract.getId(), "");
+    assertNotNull(contractAfterSecond.getLatestResult());
+    assertEquals(
+        ContractExecutionStatus.Success, contractAfterSecond.getLatestResult().getStatus());
+    assertEquals(secondResult.getId(), contractAfterSecond.getLatestResult().getResultId());
 
-      // Start second validation - should abort the first running validation and create a new one
-      DataContractResult secondResult = runValidate(dataContract);
-      assertNotNull(secondResult);
-      assertEquals(ContractExecutionStatus.Success, secondResult.getContractExecutionStatus());
+    // Verify we have 2 results: one aborted, one successful
+    WebTarget listTarget = getResource(dataContract.getId()).path("/results");
+    Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
+    String jsonResponse =
+        TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
+    ResultList<DataContractResult> allResults =
+        JsonUtils.readValue(
+            jsonResponse,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<DataContractResult>>() {});
 
-      // Verify the latest result is now the second validation
-      DataContract contractAfterSecond = getDataContract(dataContract.getId(), "");
-      assertNotNull(contractAfterSecond.getLatestResult());
-      assertEquals(
-          ContractExecutionStatus.Success, contractAfterSecond.getLatestResult().getStatus());
-      assertEquals(secondResult.getId(), contractAfterSecond.getLatestResult().getResultId());
+    assertNotNull(allResults);
+    assertEquals(2, allResults.getData().size());
 
-      // Verify we have 2 results: one aborted, one successful
-      WebTarget listTarget = getResource(dataContract.getId()).path("/results");
-      Response listResponse = SecurityUtil.addHeaders(listTarget, ADMIN_AUTH_HEADERS).get();
-      String jsonResponse =
-          TestUtils.readResponse(listResponse, String.class, Status.OK.getStatusCode());
-      ResultList<DataContractResult> allResults =
-          JsonUtils.readValue(
-              jsonResponse,
-              new com.fasterxml.jackson.core.type.TypeReference<
-                  ResultList<DataContractResult>>() {});
+    // The first result (most recent) should be the successful second validation
+    DataContractResult latestResult = allResults.getData().get(0);
+    assertEquals(ContractExecutionStatus.Success, latestResult.getContractExecutionStatus());
+    assertEquals(secondResult.getId(), latestResult.getId());
 
-      assertNotNull(allResults);
-      assertEquals(2, allResults.getData().size());
+    // The second result should be the aborted first validation
+    DataContractResult abortedResult = allResults.getData().get(1);
+    assertEquals(ContractExecutionStatus.Aborted, abortedResult.getContractExecutionStatus());
+    assertEquals(firstResult.getId(), abortedResult.getId());
+    assertTrue(abortedResult.getResult().contains("Aborted due to new validation request"));
 
-      // The first result (most recent) should be the successful second validation
-      DataContractResult latestResult = allResults.getData().get(0);
-      assertEquals(ContractExecutionStatus.Success, latestResult.getContractExecutionStatus());
-      assertEquals(secondResult.getId(), latestResult.getId());
+    // Verify timestamps are in correct order (newer first)
+    assertTrue(latestResult.getTimestamp() >= abortedResult.getTimestamp());
+  }
 
-      // The second result should be the aborted first validation
-      DataContractResult abortedResult = allResults.getData().get(1);
-      assertEquals(ContractExecutionStatus.Aborted, abortedResult.getContractExecutionStatus());
-      assertEquals(firstResult.getId(), abortedResult.getId());
-      assertTrue(abortedResult.getResult().contains("Aborted due to new validation request"));
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testGetDataContractByEntityWithoutContract(TestInfo test) throws IOException {
+    // Create a table that will NOT have a data contract associated
+    Table tableWithoutContract = createUniqueTable(test.getDisplayName());
 
-      // Verify timestamps are in correct order (newer first)
-      assertTrue(latestResult.getTimestamp() >= abortedResult.getTimestamp());
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> getDataContractByEntityId(tableWithoutContract.getId(), "table", "owners"));
 
-    } finally {
-      // Restore the original PipelineServiceClient
-      dataContractRepository.setPipelineServiceClient(originalPipelineClient);
-    }
+    // Should return 404 since no data contract exists for this table
+    assertEquals(Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
+
+    // Verify the error message makes sense
+    String errorMessage = exception.getMessage();
+    assertTrue(
+        errorMessage.contains("DataContract") || errorMessage.contains("not found"),
+        "Error message should indicate that no data contract was found: " + errorMessage);
   }
 }

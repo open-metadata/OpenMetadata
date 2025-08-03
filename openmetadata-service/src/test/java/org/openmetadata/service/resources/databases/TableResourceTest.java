@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -116,6 +117,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -126,6 +128,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
@@ -178,6 +181,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -2568,6 +2572,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
     // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest
@@ -2606,6 +2611,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyDomainsInSearch(
         table.getEntityReference(),
         List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    toggleMultiDomainSupport(true);
   }
 
   @Test
@@ -5820,5 +5827,59 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table fetchedTable = getEntity(updatedTable.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(fetchedTable.getTableConstraints());
     assertEquals(1, fetchedTable.getTableConstraints().size());
+  }
+
+  @Test
+  void testTableDomainAndDataProductOperations(TestInfo test) throws IOException {
+    Table table = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertTrue(nullOrEmpty(table.getDomains()));
+
+    DomainResourceTest domainTest = new DomainResourceTest();
+    CreateDomain createDomain = domainTest.createRequest("test-domain-" + test.getDisplayName());
+    Domain domain = domainTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(domain.getEntityReference()));
+
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    fieldAdded(change, "domains", List.of(domain.getEntityReference()));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertNotNull(table.getDomains());
+    assertEquals(1, table.getDomains().size());
+    assertEquals(domain.getId(), table.getDomains().get(0).getId());
+
+    // Adding another domain should fail with the default entity rules settings
+    CreateDomain createDomain2 = domainTest.createRequest("test-domain-2-" + test.getDisplayName());
+    Domain domain2 = domainTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
+
+    String currentJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(domain.getEntityReference(), domain2.getEntityReference()));
+
+    Table finalTable = table;
+    assertResponse(
+        () -> patchEntity(finalTable.getId(), currentJson, finalTable, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        MULTIDOMAIN_RULE_ERROR);
+
+    Table refreshedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductTest
+            .createRequest("test-data-product-" + test.getDisplayName())
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withAssets(List.of(refreshedTable.getEntityReference()));
+
+    DataProduct dataProduct = dataProductTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Verify data product was created successfully
+    assertNotNull(dataProduct);
+    assertNotNull(dataProduct.getAssets());
+    assertEquals(1, dataProduct.getAssets().size());
+    assertEquals(refreshedTable.getId(), dataProduct.getAssets().get(0).getId());
+    assertNotNull(dataProduct.getDomains());
+    assertEquals(1, dataProduct.getDomains().size());
+    assertEquals(domain.getId(), dataProduct.getDomains().get(0).getId());
   }
 }

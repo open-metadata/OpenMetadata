@@ -26,12 +26,16 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden; // Ensure card body contains all content
+    position: relative; // Provide positioning context for absolute elements
   }
 
   .entity-list-skeleton {
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden; // Prevent skeleton from overflowing
+    flex: 1; // Allow skeleton to take remaining space
   }
 
   .widget-wrapper-content {
@@ -39,6 +43,30 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden; // Prevent content from overflowing widget bounds
+
+    // Ensure widget content containers have proper sizing
+    .widget-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0; // Allow flex child to shrink
+      overflow: hidden;
+
+      // Scrollable content areas within widgets
+      .entity-list-body,
+      .cards-scroll-container {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      // Widget footer positioning
+      .widget-footer {
+        flex-shrink: 0;
+        margin-top: auto;
+      }
+    }
   }
 
   .widget-wrapper-more-options {

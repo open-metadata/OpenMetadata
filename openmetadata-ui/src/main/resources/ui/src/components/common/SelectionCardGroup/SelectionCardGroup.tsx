@@ -21,7 +21,7 @@ import {
   SelectionCardProps,
 } from './SelectionCardGroup.interface';
 
-const SelectionCard: FC<SelectionCardProps> = ({
+export const SelectionCard: FC<SelectionCardProps> = ({
   option,
   isSelected,
   onClick,
