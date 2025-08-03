@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -45,6 +44,7 @@ import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
@@ -151,12 +151,56 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getReviewers())) {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
+    createOrUpdateDataContractTestSuite(dataContract);
+  }
 
-    TestSuite testSuite = createOrUpdateDataContractTestSuite(dataContract);
-    // Create the ingestion pipeline only if needed
-    if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
-      IngestionPipeline pipeline = createIngestionPipeline(testSuite);
-      prepareAndDeployIngestionPipeline(pipeline, testSuite);
+  // Ensure we have a pipeline after creation if needed
+  @Override
+  protected void postCreate(DataContract dataContract) {
+    super.postCreate(dataContract);
+    postCreateOrUpdate(dataContract);
+  }
+
+  // If we update the contract adding DQ validation, add the pipeline if needed
+  @Override
+  protected void postUpdate(DataContract original, DataContract updated) {
+    super.postUpdate(original, updated);
+    postCreateOrUpdate(updated);
+  }
+
+  @Override
+  protected void postDelete(DataContract dataContract) {
+    super.postDelete(dataContract);
+    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
+      TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+      testSuiteRepository.delete(ADMIN_USER_NAME, testSuite.getId(), true, true);
+    }
+    // Clean status
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
+  }
+
+  private void postCreateOrUpdate(DataContract dataContract) {
+    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
+      TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      // Create the ingestion pipeline only if needed
+      if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
+        IngestionPipeline pipeline = createIngestionPipeline(testSuite);
+        EntityReference pipelineRef =
+            Entity.getEntityReference(
+                new EntityReference().withId(pipeline.getId()).withType(Entity.INGESTION_PIPELINE),
+                Include.NON_DELETED);
+        testSuite.setPipelines(List.of(pipelineRef));
+        TestSuiteRepository testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
+        if (!pipeline.getDeployed()) {
+          prepareAndDeployIngestionPipeline(pipeline, testSuite);
+        }
+      }
     }
   }
 
@@ -320,21 +364,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                       .withFullyQualifiedName(dataContract.getFullyQualifiedName())
                       .withType(Entity.DATA_CONTRACT));
       TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-      TestSuite createdSuite = testSuiteRepository.create(null, newTestSuite);
-      storeTestSuiteRelationship(dataContract, createdSuite);
-      return createdSuite;
+      return testSuiteRepository.create(null, newTestSuite);
     }
 
     return maybeTestSuite.get();
-  }
-
-  public void storeTestSuiteRelationship(DataContract dataContract, TestSuite testSuite) {
-    addRelationship(
-        dataContract.getId(),
-        testSuite.getId(),
-        Entity.DATA_CONTRACT,
-        TEST_SUITE,
-        Relationship.CONTAINS);
   }
 
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution
@@ -414,7 +447,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     // Otherwise, keep it Running and wait for the DQ results to kick in
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       try {
-        triggerAndDeployDQValidation(dataContract);
+        deployAndTriggerDQValidation(dataContract);
         compileResult(result, ContractExecutionStatus.Running);
       } catch (Exception e) {
         LOG.error(
@@ -435,7 +468,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return result;
   }
 
-  public void triggerAndDeployDQValidation(DataContract dataContract) {
+  public void deployAndTriggerDQValidation(DataContract dataContract) {
     if (dataContract.getTestSuite() == null) {
       throw DataContractValidationException.byMessage(
           String.format(
@@ -455,7 +488,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
-    prepareAndDeployIngestionPipeline(pipeline, testSuite);
+    // ensure pipeline is deployed before running
+    // we deploy the pipeline during post create
+    if (!pipeline.getDeployed()) {
+      prepareAndDeployIngestionPipeline(pipeline, testSuite);
+    }
     pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
@@ -466,7 +503,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         SecretsManagerFactory.getSecretsManager()
             .encryptOpenMetadataConnection(openMetadataServerConnection, false));
 
-    pipelineServiceClient.deployPipeline(pipeline, testSuite);
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.deployPipeline(pipeline, testSuite);
+    if (response.getCode() == 200) {
+      pipeline.setDeployed(true);
+      IngestionPipelineRepository ingestionPipelineRepository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
+    }
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {
@@ -481,8 +525,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               "*",
               Include.NON_DELETED);
 
+      // We don't enforce the contract since we don't want to load it again. We're already passing
+      // its rules
       List<SemanticsRule> failedRules =
-          RuleEngine.getInstance().evaluateAndReturn(entity, dataContract.getSemantics(), true);
+          RuleEngine.getInstance()
+              .evaluateAndReturn(entity, dataContract.getSemantics(), false, false);
 
       validation
           .withFailed(failedRules.size())

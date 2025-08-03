@@ -562,6 +562,7 @@
     "entity-coverage": "Покрытие {{entity}}",
     "entity-detail-plural": "Детали {{entity}}",
     "entity-distribution": "Распределение {{entity}}",
+    "entity-failed": "{{entity}} Неудачно",
     "entity-feed-plural": "Фиды сущностец",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "Идентификатор {{entity}}",
