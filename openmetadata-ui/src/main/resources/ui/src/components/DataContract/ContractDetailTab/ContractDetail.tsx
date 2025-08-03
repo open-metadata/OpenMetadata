@@ -318,10 +318,10 @@ const ContractDetail: React.FC<{
                 onClick={onDelete}
               />
               <Button
+                className="contract-edit-button"
                 icon={
                   <EditIcon className="anticon" style={{ ...ICON_DIMENSION }} />
                 }
-                size="small"
                 type="primary"
                 onClick={onEdit}>
                 {t('label.edit')}

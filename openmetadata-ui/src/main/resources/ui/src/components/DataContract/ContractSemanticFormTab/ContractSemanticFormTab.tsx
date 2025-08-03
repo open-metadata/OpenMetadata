@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import Icon, { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Actions } from '@react-awesome-query-builder/antd';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
@@ -278,12 +278,18 @@ export const ContractSemanticFormTab: React.FC<{
       </Card>
 
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined />}
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button type="primary" onClick={onNext}>
+        <Button
+          className="contract-next-button"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <RightOutlined />
         </Button>
       </div>
     </>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { ArrowLeftOutlined } from '@ant-design/icons';
+import Icon, { LeftOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -36,7 +36,7 @@ import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils'
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import { SelectionCard } from '../../common/SelectionCardGroup/SelectionCardGroup';
+import SelectionCardGroup from '../../common/SelectionCardGroup/SelectionCardGroup';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -214,16 +214,11 @@ export const ContractQualityFormTab: React.FC<{
       </div>
 
       <div className="contract-form-content-container ">
-        <div className="w-full selection-card-group">
-          {TEST_LEVEL_OPTIONS.map((option) => (
-            <SelectionCard
-              isSelected={testType === option.value}
-              key={option.value}
-              option={option}
-              onClick={() => setTestType(option.value as TestCaseType)}
-            />
-          ))}
-        </div>
+        <SelectionCardGroup
+          options={TEST_LEVEL_OPTIONS}
+          value={testType}
+          onChange={(value) => setTestType(value as TestCaseType)}
+        />
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
@@ -242,7 +237,11 @@ export const ContractQualityFormTab: React.FC<{
       </div>
 
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined />}
+          type="default"
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
       </div>

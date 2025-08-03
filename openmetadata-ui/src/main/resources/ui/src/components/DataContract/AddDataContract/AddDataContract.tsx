@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CodeOutlined, EditOutlined } from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -25,10 +24,13 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as BookOutline } from '../../../assets/svg/bookoutline.svg';
+import { ReactComponent as CodeOutline } from '../../../assets/svg/codeOutline.svg';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-grey.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   DataContractMode,
   EDataContractTab,
@@ -231,10 +233,31 @@ const AddDataContract: React.FC<{
           </div>
           <div className="d-flex items-center">
             <Radio.Group
+              className="contract-mode-radio-group"
               optionType="button"
               options={[
-                { label: <CodeOutlined />, value: DataContractMode.YAML },
-                { label: <EditOutlined />, value: DataContractMode.UI },
+                {
+                  label: (
+                    <CodeOutline
+                      className="align-middle"
+                      color={DE_ACTIVE_COLOR}
+                      height={20}
+                      width={20}
+                    />
+                  ),
+                  value: DataContractMode.YAML,
+                },
+                {
+                  label: (
+                    <BookOutline
+                      className="align-middle"
+                      color={DE_ACTIVE_COLOR}
+                      height={20}
+                      width={20}
+                    />
+                  ),
+                  value: DataContractMode.UI,
+                },
               ]}
               value={mode}
               onChange={handleModeChange}

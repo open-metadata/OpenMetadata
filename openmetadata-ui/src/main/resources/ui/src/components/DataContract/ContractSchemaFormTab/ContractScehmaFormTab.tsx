@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Card, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
@@ -281,12 +281,19 @@ export const ContractSchemaFormTab: React.FC<{
         />
       </Card>
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined />}
+          type="default"
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button type="primary" onClick={onNext}>
+        <Button
+          className="contract-next-button"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <RightOutlined />
         </Button>
       </div>
     </>
