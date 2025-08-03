@@ -562,6 +562,7 @@
     "entity-coverage": "{{entity}} ความครอบคลุม",
     "entity-detail-plural": "รายละเอียด {{entity}}",
     "entity-distribution": "{{entity}} การแจกแจง",
+    "entity-failed": "{{entity}} ล้มเหลว",
     "entity-feed-plural": "ฟีดเอนทิตี",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "รหัส {{entity}}",
