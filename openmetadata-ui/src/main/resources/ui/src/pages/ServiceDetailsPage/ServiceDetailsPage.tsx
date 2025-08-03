@@ -1383,6 +1383,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
           children: (
             <ServiceInsightsTab
               collateAIagentsList={collateAgentsList}
+              ingestionPipelines={ingestionPipelines}
+              isCollateAIagentsLoading={isCollateAgentLoading}
+              isIngestionPipelineLoading={isIngestionPipelineLoading}
               isWorkflowStatusLoading={isWorkflowStatusLoading}
               serviceDetails={serviceDetails}
               workflowStatesData={workflowStatesData}
@@ -1482,6 +1485,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     isWorkflowStatusLoading,
     collateAgentsList,
     isSecurityService,
+    ingestionPipelines,
+    isIngestionPipelineLoading,
+    isCollateAgentLoading,
   ]);
 
   const afterAutoPilotAppTrigger = useCallback(() => {

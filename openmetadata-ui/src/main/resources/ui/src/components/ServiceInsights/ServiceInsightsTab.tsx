@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
@@ -26,14 +26,21 @@ import {
 } from '../../constants/ServiceInsightsTab.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
+import { getAgentRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
 import {
+  getFormattedAgentsList,
+  getFormattedAgentsListFromAgentsLiveInfo,
+} from '../../utils/AgentsStatusWidgetUtils';
+import {
   getCurrentDayStartGMTinMillis,
+  getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import { updateAutoPilotStatus } from '../../utils/LocalStorageUtils';
@@ -47,6 +54,7 @@ import {
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
 import './service-insights-tab.less';
 import {
   ChartsResults,
@@ -58,11 +66,16 @@ const ServiceInsightsTab = ({
   workflowStatesData,
   isWorkflowStatusLoading,
   collateAIagentsList,
+  ingestionPipelines,
+  isIngestionPipelineLoading,
+  isCollateAIagentsLoading,
 }: ServiceInsightsTabProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceTypes }>();
   const { socket } = useWebSocketConnector();
   const [chartsResults, setChartsResults] = useState<ChartsResults>();
+  const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);
+  const [collateAgentStatusLoading, setCollateAgentStatusLoading] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const sessionIdRef = useRef<string>();
 
@@ -200,23 +213,79 @@ const ServiceInsightsTab = ({
     };
   }, [workflowStatesData?.mainInstanceState.status]);
 
+  const getAgentStatuses = async () => {
+    try {
+      setCollateAgentStatusLoading((prev) => prev + 1);
+      let recentRunStatuses: Record<string, AppRunRecord[]> = {};
+
+      if (!isEmpty(collateAIagentsList)) {
+        const endTs = getCurrentMillis();
+        const startTs = workflowStatesData?.mainInstanceState?.startedAt
+          ? workflowStatesData.mainInstanceState.startedAt
+          : getDayAgoStartGMTinMillis(6);
+        const recentRunStatusesPromise = collateAIagentsList.map((app) =>
+          getAgentRuns(app.name, {
+            service: serviceDetails.id,
+            startTs,
+            endTs,
+          })
+        );
+
+        const statusData = await Promise.allSettled(recentRunStatusesPromise);
+
+        recentRunStatuses = statusData.reduce((acc, cv, index) => {
+          const app = collateAIagentsList[index];
+
+          return {
+            ...acc,
+            [app.name]: cv.status === 'fulfilled' ? cv.value.data : [],
+          };
+        }, {});
+      }
+
+      setAgentsInfo(
+        getFormattedAgentsList(
+          recentRunStatuses,
+          ingestionPipelines,
+          collateAIagentsList
+        )
+      );
+    } finally {
+      setCollateAgentStatusLoading((prev) => prev - 1);
+    }
+  };
+
+  useEffect(() => {
+    getAgentStatuses();
+  }, [ingestionPipelines, collateAIagentsList]);
+
   useEffect(() => {
     if (socket) {
-      socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, (newActivity) => {
-        if (newActivity) {
-          const data = JSON.parse(newActivity);
+      try {
+        socket.on(SOCKET_EVENTS.CHART_DATA_STREAM, (newActivity) => {
+          if (newActivity) {
+            const data = JSON.parse(newActivity);
 
-          const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
-            getPlatformInsightsChartDataFormattingMethod(data.data)
-          );
+            const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
+              getPlatformInsightsChartDataFormattingMethod(data.data)
+            );
 
-          setChartsResults((prev) => ({
-            platformInsightsChart,
-            piiDistributionChart: prev?.piiDistributionChart ?? [],
-            tierDistributionChart: prev?.tierDistributionChart ?? [],
-          }));
-        }
-      });
+            setAgentsInfo(
+              getFormattedAgentsListFromAgentsLiveInfo(
+                data.ingestionPipelineStatus
+              )
+            );
+
+            setChartsResults((prev) => ({
+              platformInsightsChart,
+              piiDistributionChart: prev?.piiDistributionChart ?? [],
+              tierDistributionChart: prev?.tierDistributionChart ?? [],
+            }));
+          }
+        });
+      } catch {
+        // Error handling
+      }
     }
 
     return () => {
@@ -258,8 +327,12 @@ const ServiceInsightsTab = ({
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <AgentsStatusWidget
-              collateAIagentsList={collateAIagentsList}
-              serviceDetails={serviceDetails}
+              agentsInfo={agentsInfo}
+              isLoading={
+                collateAgentStatusLoading > 0 ||
+                isCollateAIagentsLoading ||
+                isIngestionPipelineLoading
+              }
               workflowStatesData={workflowStatesData}
             />
           </Col>

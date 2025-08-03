@@ -14,147 +14,93 @@
 import { Card, Col, Collapse, Row, Skeleton, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { ServiceTypes } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
-import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
-import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
 import { WorkflowStatus } from '../../../generated/governance/workflows/workflowInstanceState';
-import { useFqn } from '../../../hooks/useFqn';
-import { getAgentRuns } from '../../../rest/applicationAPI';
-import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import {
   getAgentStatusSummary,
-  getFormattedAgentsList,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
-import {
-  getCurrentMillis,
-  getDayAgoStartGMTinMillis,
-} from '../../../utils/date-time/DateTimeUtils';
-import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
-import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './agents-status-widget.less';
-import {
-  AgentsInfo,
-  AgentsStatusWidgetProps,
-} from './AgentsStatusWidget.interface';
+import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
 
 function AgentsStatusWidget({
-  collateAIagentsList,
   workflowStatesData,
-  serviceDetails,
+  isLoading,
+  agentsInfo,
 }: Readonly<AgentsStatusWidgetProps>) {
   const { t } = useTranslation();
-  const { serviceCategory } = useRequiredParams<{
-    serviceCategory: ServiceTypes;
-  }>();
-  const { fqn: decodedServiceFQN } = useFqn();
-  const [agentsList, setAgentsList] = useState<AgentsInfo[]>([]);
-  const [recentRunStatuses, setRecentRunStatuses] = useState<
-    Record<string, AppRunRecord[]>
-  >({});
-  const [isLoading, setIsLoading] = useState(0);
 
   const agentsRunningStatusMessage = useMemo(() => {
+    if (isLoading) {
+      return (
+        <Skeleton active paragraph={{ rows: 1, width: '100%' }} title={false} />
+      );
+    }
+
+    let message = '';
+
     switch (workflowStatesData?.mainInstanceState?.status) {
       case WorkflowStatus.Running:
-        return t('message.auto-pilot-agents-running-message');
+        message = t('message.auto-pilot-agents-running-message');
+
+        break;
       case WorkflowStatus.Failure:
-        return t('message.auto-pilot-agents-failed-message');
+        message = t('message.auto-pilot-agents-failed-message');
+
+        break;
       case WorkflowStatus.Finished:
-        return t('message.auto-pilot-agents-finished-message');
+        message = t('message.auto-pilot-agents-finished-message');
+
+        break;
       case WorkflowStatus.Exception:
-        return t('message.auto-pilot-agents-exception-message');
-      default:
-        return '';
+        message = t('message.auto-pilot-agents-exception-message');
+
+        break;
     }
-  }, [workflowStatesData]);
 
-  const getAgentsList = async () => {
-    try {
-      setIsLoading((prev) => prev + 1);
-
-      const agentsList = await getIngestionPipelines({
-        arrQueryFields: [TabSpecificField.PIPELINE_STATUSES],
-        serviceFilter: decodedServiceFQN,
-        serviceType: getEntityTypeFromServiceCategory(serviceCategory),
-        pipelineType: SERVICE_AUTOPILOT_AGENT_TYPES,
-      });
-
-      if (!isEmpty(collateAIagentsList)) {
-        const endTs = getCurrentMillis();
-        const startTs = workflowStatesData?.mainInstanceState?.startedAt
-          ? workflowStatesData.mainInstanceState.startedAt
-          : getDayAgoStartGMTinMillis(6);
-        const recentRunStatusesPromise = collateAIagentsList.map((app) =>
-          getAgentRuns(app.name, {
-            service: serviceDetails.id,
-            startTs,
-            endTs,
-          })
-        );
-
-        const statusData = await Promise.allSettled(recentRunStatusesPromise);
-
-        const recentRunStatuses = statusData.reduce((acc, cv, index) => {
-          const app = collateAIagentsList[index];
-
-          return {
-            ...acc,
-            [app.name]: cv.status === 'fulfilled' ? cv.value.data : [],
-          };
-        }, {});
-
-        setRecentRunStatuses(recentRunStatuses);
-      }
-
-      setAgentsList(
-        getFormattedAgentsList(
-          agentsList.data,
-          recentRunStatuses,
-          collateAIagentsList
-        )
-      );
-    } catch {
-      // Error
-    } finally {
-      setIsLoading((prev) => prev - 1);
+    if (!isLoading && isEmpty(agentsInfo)) {
+      message = t('message.auto-pilot-no-agents-message');
     }
-  };
+
+    return (
+      <Typography.Text className="text-grey-muted text-sm">
+        {message}
+      </Typography.Text>
+    );
+  }, [workflowStatesData, isLoading, agentsInfo]);
 
   const agentStatusSummary = useMemo(() => {
-    return getAgentStatusSummary(agentsList);
-  }, [agentsList]);
-
-  useEffect(() => {
-    getAgentsList();
-  }, [decodedServiceFQN]);
+    return getAgentStatusSummary(agentsInfo);
+  }, [agentsInfo]);
 
   return (
     <Collapse
       className="service-insights-collapse-widget agents-status-widget"
       expandIcon={() => (
         <div className="expand-icon-container">
-          <div className="agent-status-summary-container">
-            {Object.entries(agentStatusSummary).map(([key, value]) => (
-              <div
-                className={classNames('agent-status-summary-item', key)}
-                key={key}>
-                {getIconFromStatus(key)}
-                <Typography.Text>{value}</Typography.Text>
-                <Typography.Text>{key}</Typography.Text>
-              </div>
-            ))}
-          </div>
-          <Typography.Text className="text-primary text-xs">
+          {isLoading ? (
+            <Skeleton.Input active size="small" />
+          ) : (
+            <div className="agent-status-summary-container">
+              {Object.entries(agentStatusSummary).map(([key, value]) => (
+                <div
+                  className={classNames('agent-status-summary-item', key)}
+                  key={key}>
+                  {getIconFromStatus(key)}
+                  <Typography.Text>{value}</Typography.Text>
+                  <Typography.Text>{key}</Typography.Text>
+                </div>
+              ))}
+            </div>
+          )}
+          <Typography.Text className="text-primary">
             {t('label.view-more')}
           </Typography.Text>
-          <ArrowSvg className="text-primary" height={12} width={12} />
+          <ArrowSvg className="text-primary" height={14} width={14} />
         </div>
       )}
       expandIconPosition="end">
@@ -167,14 +113,13 @@ function AgentsStatusWidget({
                   entity: t('label.agent-plural'),
                 })}
               </Typography.Text>
-              <Typography.Text className="text-grey-muted text-sm">
-                {agentsRunningStatusMessage}
-              </Typography.Text>
+
+              {agentsRunningStatusMessage}
             </div>
           </div>
         }
         key="1">
-        {!isLoading && isEmpty(agentsList) && (
+        {!isLoading && isEmpty(agentsInfo) && (
           <div className="flex-center p-y-md">
             <ErrorPlaceHolder
               size={SIZE.SMALL}
@@ -194,7 +139,7 @@ function AgentsStatusWidget({
                     </Card>
                   </Col>
                 ))
-            : agentsList.map((agent) => (
+            : agentsInfo.map((agent) => (
                 <Col key={agent.label} span={6}>
                   <Card
                     className={classNames(

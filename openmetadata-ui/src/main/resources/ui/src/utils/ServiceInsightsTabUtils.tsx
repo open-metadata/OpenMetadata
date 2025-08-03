@@ -26,11 +26,16 @@ import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
+import {
+  IngestionPipeline,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
@@ -155,7 +160,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
     // Percentage change for the last 7 days
     const percentageChangeOverall = round(
       Math.abs(lastDayData - earliestDayData),
-      2
+      1
     );
 
     // This is true if the current data is greater than or equal to the earliest day data
@@ -165,7 +170,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
       chartType: getChartTypeForWidget(chartType),
       isIncreased,
       percentageChange: percentageChangeOverall,
-      currentPercentage: round(lastDayData ?? 0, 2),
+      currentPercentage: round(lastDayData ?? 0, 1),
       noRecords: summaryChartData?.results.every((item) => isEmpty(item)),
       numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
@@ -391,4 +396,18 @@ export const getChartsDataFromWidgetName = (
     default:
       return [];
   }
+};
+
+export const getAutoPilotIngestionPipelines = (
+  ingestionPipelines?: IngestionPipeline[]
+) => {
+  if (isEmpty(ingestionPipelines)) {
+    return undefined;
+  }
+
+  return ingestionPipelines?.filter(
+    (pipeline) =>
+      SERVICE_AUTOPILOT_AGENT_TYPES.includes(pipeline.pipelineType) &&
+      pipeline.provider === ProviderType.Automation
+  );
 };

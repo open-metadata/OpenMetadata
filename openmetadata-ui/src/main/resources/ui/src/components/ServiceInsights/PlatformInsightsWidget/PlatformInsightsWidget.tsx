@@ -34,10 +34,10 @@ function PlatformInsightsWidget({
       defaultActiveKey={['1']}
       expandIcon={() => (
         <div className="expand-icon-container">
-          <Typography.Text className="text-primary text-xs">
+          <Typography.Text className="text-primary">
             {t('label.view-more')}
           </Typography.Text>
-          <ArrowSvg className="text-primary" height={12} width={12} />
+          <ArrowSvg className="text-primary" height={14} width={14} />
         </div>
       )}
       expandIconPosition="end">

@@ -23,8 +23,13 @@ import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 
-import { groupBy } from 'lodash';
+import { groupBy, isEmpty, isUndefined, reduce } from 'lodash';
 import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
+import { AgentsLiveInfo } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import {
+  AUTOPILOT_AGENTS_ORDERED_LIST,
+  AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
+} from '../constants/AgentsStatusWidget.constant';
 import {
   COLLATE_AUTO_TIER_APP_NAME,
   COLLATE_DATA_QUALITY_APP_NAME,
@@ -40,6 +45,7 @@ import {
   IngestionPipeline,
   PipelineState,
   PipelineType,
+  ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { t } from './i18next/LocalUtil';
 
@@ -141,40 +147,89 @@ export const getAgentStatusLabelFromStatus = (
 };
 
 export const getFormattedAgentsList = (
-  agentsList: IngestionPipeline[],
   recentRunStatuses: Record<string, AppRunRecord[]>,
-  collateAIagentsList?: App[]
+  agentsList: IngestionPipeline[] = [],
+  collateAIagentsList: App[] = []
 ): AgentsInfo[] => {
-  const formattedAgentsList = agentsList.map((agent) => ({
+  const filteredAgentsList = agentsList.filter(
+    (agent) => agent.provider === ProviderType.Automation
+  );
+
+  const formattedAgentsList = filteredAgentsList.map((agent) => ({
+    agentIcon: getAgentIconFromType(agent.pipelineType),
+    agentType: agent.pipelineType,
+    isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
     status: getAgentStatusLabelFromStatus(
       agent.pipelineStatuses?.pipelineState
     ),
-    isCollateAgent: false,
-    agentIcon: getAgentIconFromType(agent.pipelineType),
   }));
 
-  const collateAIagents = collateAIagentsList?.map((agent) => ({
+  const collateAIagents = collateAIagentsList.map((agent) => ({
+    agentIcon: getAgentIconFromType(agent.name),
+    agentType: agent.name,
+    isCollateAgent: true,
     label: getAgentLabelFromType(agent.name),
     status: getAgentStatusLabelFromStatus(
       recentRunStatuses?.[agent.name]?.[0]?.status
     ),
-    isCollateAgent: true,
-    agentIcon: getAgentIconFromType(agent.name),
   }));
 
-  return [...formattedAgentsList, ...(collateAIagents ?? [])];
+  const allAgentsList: AgentsInfo[] = [
+    ...formattedAgentsList,
+    ...collateAIagents,
+  ];
+
+  const orderedAgentsList = reduce(
+    AUTOPILOT_AGENTS_ORDERED_LIST,
+    (acc, agentType) => {
+      const agent = allAgentsList.find(
+        (agent) => agent.agentType === agentType
+      );
+
+      return [...acc, ...(isUndefined(agent) ? [] : [agent])];
+    },
+    [] as AgentsInfo[]
+  );
+
+  return orderedAgentsList;
+};
+
+export const getFormattedAgentsListFromAgentsLiveInfo = (
+  agentsLiveInfo: AgentsLiveInfo[]
+): AgentsInfo[] => {
+  const filteredAgentsList = agentsLiveInfo.filter(
+    (agent) => agent.provider === ProviderType.Automation
+  );
+
+  return filteredAgentsList.map((agent) => ({
+    agentIcon: getAgentIconFromType(agent.pipelineType),
+    agentType: agent.pipelineType,
+    isCollateAgent: false,
+    label: getAgentLabelFromType(agent.pipelineType),
+    status: getAgentStatusLabelFromStatus(agent.status),
+  }));
 };
 
 export const getAgentStatusSummary = (agentsList: AgentsInfo[]) => {
-  const newlist = groupBy(agentsList, 'status');
+  const newList = groupBy(agentsList, 'status');
 
-  return {
-    [AgentStatus.Successful]: newlist[AgentStatus.Successful]?.length,
-    [AgentStatus.Failed]: newlist[AgentStatus.Failed]?.length,
-    [AgentStatus.Running]: newlist[AgentStatus.Running]?.length,
-    [AgentStatus.Pending]: newlist[AgentStatus.Pending]?.length,
-  };
+  const orderedStatusList = reduce(
+    AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
+    (acc, status) => {
+      if (isEmpty(newList[status])) {
+        return acc;
+      }
+
+      return {
+        ...acc,
+        [status]: newList[status].length,
+      };
+    },
+    {} as Record<string, number>
+  );
+
+  return orderedStatusList;
 };
 
 export const getIconFromStatus = (status?: string) => {

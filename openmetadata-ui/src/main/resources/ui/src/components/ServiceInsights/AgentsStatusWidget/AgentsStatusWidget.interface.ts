@@ -12,14 +12,12 @@
  */
 import { ReactNode } from 'react';
 import { AgentStatus } from '../../../enums/ServiceInsights.enum';
-import { App } from '../../../generated/entity/applications/app';
-import { ServicesType } from '../../../interface/service.interface';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 
 export interface AgentsStatusWidgetProps
   extends ServiceInsightWidgetCommonProps {
-  collateAIagentsList: App[];
-  serviceDetails: ServicesType;
+  isLoading: boolean;
+  agentsInfo: AgentsInfo[];
 }
 
 export interface AgentsInfo {
@@ -27,4 +25,5 @@ export interface AgentsInfo {
   status?: AgentStatus;
   isCollateAgent: boolean;
   agentIcon: ReactNode;
+  agentType: string;
 }
