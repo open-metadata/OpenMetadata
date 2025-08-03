@@ -443,6 +443,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DashboardServiceType.ThoughtSpot,
   SecurityServiceType.Ranger,
+  DatabaseServiceType.Epic,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
