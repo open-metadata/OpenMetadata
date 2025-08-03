@@ -29,7 +29,7 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Cell, Pie, PieChart } from 'recharts';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
@@ -37,7 +37,7 @@ import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.s
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import {
-  ICON_DIMENSION,
+  ICON_DIMENSION_USER_PAGE,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
 import { DataContractMode } from '../../../constants/DataContract.constants';
@@ -354,7 +354,10 @@ const ContractDetail: React.FC<{
             <Button
               className="contract-edit-button"
               icon={
-                <EditIcon className="anticon" style={{ ...ICON_DIMENSION }} />
+                <EditIcon
+                  className="anticon"
+                  style={{ ...ICON_DIMENSION_USER_PAGE }}
+                />
               }
               type="primary"
               onClick={onEdit}>
