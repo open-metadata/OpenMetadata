@@ -18,9 +18,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
-import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle.svg';
+import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.svg';
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
@@ -35,7 +35,10 @@ import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
+import {
+  ContractExecutionStatus,
+  DataContractResult,
+} from '../../../generated/entity/datacontract/dataContractResult';
 import { TestCase, TestSummary } from '../../../generated/tests/testCase';
 import {
   getContractResultByResultId,
@@ -75,7 +78,7 @@ const ContractDetail: React.FC<{
   const [isLoading, setIsLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
-    useState<DataContractResult | null>(null);
+    useState<DataContractResult>();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [testCaseResult, setTestCaseResult] = useState<TestCase[]>([]);
 
@@ -176,9 +179,29 @@ const ContractDetail: React.FC<{
     return getConstraintStatus(latestContractResults);
   }, [latestContractResults]);
 
-  const testCaseSummaryChartItems = useMemo(() => {
-    return getTestCaseSummaryChartItems(testCaseSummary);
-  }, [testCaseSummary]);
+  const { showTestCaseSummaryChart, testCaseSummaryChartItems } =
+    useMemo(() => {
+      return {
+        showTestCaseSummaryChart: Boolean(
+          testCaseSummary?.total ??
+            testCaseSummary?.success ??
+            testCaseSummary?.failed ??
+            testCaseSummary?.aborted
+        ),
+        testCaseSummaryChartItems:
+          getTestCaseSummaryChartItems(testCaseSummary),
+      };
+    }, [testCaseSummary]);
+
+  const showContractStatusAlert = useMemo(() => {
+    const { result, contractExecutionStatus } = latestContractResults ?? {};
+
+    return (
+      result &&
+      (contractExecutionStatus === ContractExecutionStatus.Failed ||
+        contractExecutionStatus === ContractExecutionStatus.Aborted)
+    );
+  }, [latestContractResults]);
 
   const getSemanticIconPerLastExecution = (semanticName: string) => {
     if (!latestContractResults) {
@@ -415,11 +438,11 @@ const ContractDetail: React.FC<{
                     <Loading />
                   ) : (
                     <>
-                      {latestContractResults?.result && (
+                      {showContractStatusAlert && (
                         <AlertBar
                           defafultExpand
                           className="h-full m-b-md"
-                          message={latestContractResults.result}
+                          message={latestContractResults?.result ?? ''}
                           type="error"
                         />
                       )}
@@ -526,42 +549,45 @@ const ContractDetail: React.FC<{
                       <Loading />
                     ) : (
                       <div className="data-quality-card-container">
-                        <div className="data-quality-chart-container">
-                          {testCaseSummaryChartItems.map((item) => (
-                            <div
-                              className="data-quality-chart-item"
-                              key={item.label}>
-                              <Typography.Text className="chart-label">
-                                {item.label}
-                              </Typography.Text>
+                        {showTestCaseSummaryChart && (
+                          <div className="data-quality-chart-container">
+                            {testCaseSummaryChartItems.map((item) => (
+                              <div
+                                className="data-quality-chart-item"
+                                key={item.label}>
+                                <Typography.Text className="chart-label">
+                                  {item.label}
+                                </Typography.Text>
 
-                              <PieChart height={120} width={120}>
-                                <Pie
-                                  cx="50%"
-                                  cy="50%"
-                                  data={item.chartData}
-                                  dataKey="value"
-                                  innerRadius={40}
-                                  outerRadius={50}>
-                                  {item.chartData.map((entry, index) => (
-                                    <Cell
-                                      fill={entry.color}
-                                      key={`cell-${index}`}
-                                    />
-                                  ))}
-                                </Pie>
-                                <text
-                                  className="chart-center-text"
-                                  dominantBaseline="middle"
-                                  textAnchor="middle"
-                                  x="50%"
-                                  y="50%">
-                                  {item.value}
-                                </text>
-                              </PieChart>
-                            </div>
-                          ))}
-                        </div>
+                                <PieChart height={120} width={120}>
+                                  <Pie
+                                    cx="50%"
+                                    cy="50%"
+                                    data={item.chartData}
+                                    dataKey="value"
+                                    innerRadius={40}
+                                    outerRadius={50}>
+                                    {item.chartData.map((entry, index) => (
+                                      <Cell
+                                        fill={entry.color}
+                                        key={`cell-${index}`}
+                                      />
+                                    ))}
+                                  </Pie>
+                                  <text
+                                    className="chart-center-text"
+                                    dominantBaseline="middle"
+                                    textAnchor="middle"
+                                    x="50%"
+                                    y="50%">
+                                    {item.value}
+                                  </text>
+                                </PieChart>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <Space direction="vertical">
                           {testCaseResult.map((item) => {
                             return (
