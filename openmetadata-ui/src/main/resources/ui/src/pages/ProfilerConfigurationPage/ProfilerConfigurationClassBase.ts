@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { User } from '../../../../../generated/entity/teams/user';
-
-export interface UserProfileDetailsProps {
-  userData: User;
-  afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+class ProfilerConfigurationClassBase {
+  public getSparkAgentConfigComponent(): (() => JSX.Element) | undefined {
+    return undefined;
+  }
 }
+
+const profilerConfigurationClassBase = new ProfilerConfigurationClassBase();
+
+export default profilerConfigurationClassBase;
+export { ProfilerConfigurationClassBase };

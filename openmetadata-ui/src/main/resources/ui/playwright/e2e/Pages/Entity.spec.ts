@@ -17,6 +17,7 @@ import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -60,6 +61,7 @@ const entities = [
   SearchIndexClass,
   DashboardDataModelClass,
   MetricClass,
+  ChartClass,
 ] as const;
 
 const adminUser = new UserClass();
@@ -244,7 +246,7 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (['Dashboard', 'Dashboard Data Model'].includes(entityName)) {
+    if (['Dashboard', 'DashboardDataModel'].includes(entityName)) {
       test(`${entityName} page should show the project name`, async ({
         page,
       }) => {
@@ -281,7 +283,7 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (!['Store Procedure', 'Metric'].includes(entity.type)) {
+    if (!['Store Procedure', 'Metric', 'Chart'].includes(entity.type)) {
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
       }) => {
@@ -369,7 +371,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName Add, Update and Remove for child entities', async ({
           page,
         }) => {
