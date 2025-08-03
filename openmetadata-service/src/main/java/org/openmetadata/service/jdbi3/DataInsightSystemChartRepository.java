@@ -19,6 +19,13 @@ import java.util.concurrent.TimeUnit;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -26,6 +33,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.ResultList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,9 +147,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * @return List of pipeline statuses for the service
    */
   private List<Map> getIngestionPipelineStatus(String serviceName) {
+    List<Map> combinedStatus = new ArrayList<>();
+
     try {
       if (serviceName == null || serviceName.trim().isEmpty()) {
-        return List.of();
+        return combinedStatus;
       }
 
       // Get the ingestion pipeline repository
@@ -150,7 +160,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
       if (ingestionPipelineRepository == null) {
         LOG.warn("IngestionPipelineRepository not available");
-        return List.of();
+        return combinedStatus;
       }
 
       // Get current timestamp for recent pipeline status
@@ -171,7 +181,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             // Parse the response to extract pipeline information
             String responseBody =
                 (String) ((OutboundJaxrsResponse) response).getContext().getEntity();
-            return parseIngestionPipelineResponse(responseBody);
+            combinedStatus.addAll(parseIngestionPipelineResponse(responseBody));
           }
         } catch (Exception e) {
           LOG.error("Error searching for ingestion pipelines for service: {}", serviceName, e);
@@ -183,7 +193,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         // This would require implementing a method to get pipelines by service name
         // For now, we'll return an empty list
         LOG.info("Using fallback method for service: {}", serviceName);
-        return List.of();
       } catch (Exception e) {
         LOG.error("Error in fallback method for service: {}", serviceName, e);
       }
@@ -192,7 +201,292 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       LOG.error("Error fetching ingestion pipeline status for service: {}", serviceName, e);
     }
 
-    return List.of();
+    return combinedStatus;
+  }
+
+  /**
+   * Get the latest run status of the three Collate applications
+   * @param serviceName The service name to filter app runs
+   * @return List of app status information
+   */
+  private List<Map> getCollateAppStatus(String serviceName) {
+    List<Map> appStatusList = new ArrayList<>();
+    String[] collateAppNames = {
+      "CollateAIApplication", "CollateAIQualityAgentApplication", "CollateAITierAgentApplication"
+    };
+
+    try {
+      AppRepository appRepository = getAppRepository();
+      if (appRepository == null) {
+        return appStatusList;
+      }
+
+      UUID serviceUUID = getServiceUUID(serviceName);
+
+      for (String appName : collateAppNames) {
+        Map<String, Object> appStatus =
+            getAppStatus(appName, appRepository, serviceUUID, serviceName);
+        if (appStatus != null) {
+          appStatusList.add(appStatus);
+        }
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error fetching Collate app status for service {}", serviceName, e);
+    }
+
+    return appStatusList;
+  }
+
+  /**
+   * Get the app repository
+   */
+  private AppRepository getAppRepository() {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    if (appRepository == null) {
+      LOG.warn("AppRepository not available");
+    }
+    return appRepository;
+  }
+
+  /**
+   * Convert service name to UUID
+   */
+  private UUID getServiceUUID(String serviceName) {
+    if (serviceName == null || serviceName.trim().isEmpty()) {
+      return null;
+    }
+
+    try {
+      DatabaseServiceRepository databaseServiceRepository =
+          (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE);
+
+      if (databaseServiceRepository != null) {
+        DatabaseService service =
+            databaseServiceRepository.getByName(null, serviceName, EntityUtil.Fields.EMPTY_FIELDS);
+        if (service != null) {
+          return service.getId();
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Service {} not found or error getting service UUID: {}", serviceName, e.getMessage());
+    }
+    return null;
+  }
+
+  /**
+   * Get app status for a specific app
+   */
+  private Map<String, Object> getAppStatus(
+      String appName, AppRepository appRepository, UUID serviceUUID, String serviceName) {
+    try {
+      App app = appRepository.getByName(null, appName, appRepository.getFields("id,pipelines"));
+      if (app == null) {
+        return null; // App doesn't exist, ignore it completely
+      }
+
+      ResultList<AppRunRecord> appRuns = getAppRuns(app, serviceUUID);
+      return createAppStatusMap(appName, app, appRuns, serviceName);
+
+    } catch (Exception e) {
+      LOG.debug("App {} not found or not available: {}", appName, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Get app runs for internal or external apps
+   */
+  private ResultList<AppRunRecord> getAppRuns(App app, UUID serviceUUID) {
+    try {
+      if (app.getAppType().equals(AppType.Internal)) {
+        return getInternalAppRuns(app, serviceUUID);
+      } else if (!app.getPipelines().isEmpty()) {
+        return getExternalAppRuns(app, serviceUUID);
+      }
+    } catch (Exception e) {
+      LOG.warn("Error fetching app runs for app {}: {}", app.getName(), e.getMessage());
+    }
+    return null;
+  }
+
+  /**
+   * Get app runs for internal apps
+   */
+  private ResultList<AppRunRecord> getInternalAppRuns(App app, UUID serviceUUID) {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    return appRepository.listAppRuns(app, 1, 0, serviceUUID);
+  }
+
+  /**
+   * Get app runs for external apps through ingestion pipeline
+   */
+  private ResultList<AppRunRecord> getExternalAppRuns(App app, UUID serviceUUID) {
+    EntityReference pipelineRef = app.getPipelines().get(0);
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    if (ingestionPipelineRepository == null) {
+      return null;
+    }
+
+    IngestionPipeline ingestionPipeline =
+        ingestionPipelineRepository.get(
+            null,
+            pipelineRef.getId(),
+            ingestionPipelineRepository.getFields("id,name,fullyQualifiedName"));
+
+    if (ingestionPipeline == null) {
+      return null;
+    }
+
+    String serviceNameForExternal = getServiceNameForExternal(serviceUUID);
+    ResultList<PipelineStatus> pipelineStatuses =
+        ingestionPipelineRepository.listExternalAppStatus(
+            ingestionPipeline.getFullyQualifiedName(),
+            serviceNameForExternal,
+            System.currentTimeMillis() - (24 * 60 * 60 * 1000), // Last 24 hours
+            System.currentTimeMillis());
+
+    if (pipelineStatuses != null
+        && pipelineStatuses.getData() != null
+        && !pipelineStatuses.getData().isEmpty()) {
+      PipelineStatus latestPipelineStatus = pipelineStatuses.getData().get(0);
+      AppRunRecord convertedRun = convertPipelineStatusToAppRun(app, latestPipelineStatus);
+
+      ResultList<AppRunRecord> appRuns = new ResultList<>();
+      appRuns.setData(List.of(convertedRun));
+      return appRuns;
+    }
+
+    return null;
+  }
+
+  /**
+   * Get service name for external app status
+   */
+  private String getServiceNameForExternal(UUID serviceUUID) {
+    if (serviceUUID == null) {
+      return null;
+    }
+
+    try {
+      DatabaseServiceRepository databaseServiceRepository =
+          (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE);
+      if (databaseServiceRepository != null) {
+        DatabaseService service =
+            databaseServiceRepository.get(null, serviceUUID, EntityUtil.Fields.EMPTY_FIELDS);
+        if (service != null) {
+          return service.getName();
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Error getting service name for external app: {}", e.getMessage());
+    }
+    return null;
+  }
+
+  /**
+   * Create app status map from app run records
+   */
+  private Map<String, Object> createAppStatusMap(
+      String appName, App app, ResultList<AppRunRecord> appRuns, String serviceName) {
+    try {
+      if (appRuns != null && appRuns.getData() != null && !appRuns.getData().isEmpty()) {
+        AppRunRecord latestRun = appRuns.getData().get(0);
+        return createSuccessfulAppStatus(appName, app, latestRun);
+      } else {
+        return createNoRunsAppStatus(appName, app);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Error creating app status for app {} and service {}: {}",
+          appName,
+          serviceName,
+          e.getMessage());
+      return createErrorAppStatus(appName, app, e.getMessage());
+    }
+  }
+
+  /**
+   * Create successful app status map
+   */
+  private Map<String, Object> createSuccessfulAppStatus(
+      String appName, App app, AppRunRecord latestRun) {
+    Map<String, Object> appStatus = new HashMap<>();
+    appStatus.put("appName", appName);
+    appStatus.put("appId", app.getId().toString());
+    appStatus.put("displayName", app.getDisplayName());
+    appStatus.put("status", latestRun.getStatus());
+    appStatus.put("timestamp", latestRun.getTimestamp());
+    appStatus.put("runId", latestRun.getAppId().toString());
+    appStatus.put("type", "app");
+
+    // Add additional run information if available
+    if (latestRun.getRunType() != null) {
+      appStatus.put("runType", latestRun.getRunType());
+    }
+    if (latestRun.getStartTime() != null) {
+      appStatus.put("startTime", latestRun.getStartTime());
+    }
+    if (latestRun.getEndTime() != null) {
+      appStatus.put("endTime", latestRun.getEndTime());
+    }
+
+    return appStatus;
+  }
+
+  /**
+   * Create no runs app status map
+   */
+  private Map<String, Object> createNoRunsAppStatus(String appName, App app) {
+    Map<String, Object> appStatus = new HashMap<>();
+    appStatus.put("appName", appName);
+    appStatus.put("appId", app.getId().toString());
+    appStatus.put("displayName", app.getDisplayName());
+    appStatus.put("status", "NO_RUNS");
+    appStatus.put("timestamp", System.currentTimeMillis());
+    appStatus.put("type", "app");
+    return appStatus;
+  }
+
+  /**
+   * Create error app status map
+   */
+  private Map<String, Object> createErrorAppStatus(String appName, App app, String errorMessage) {
+    Map<String, Object> appStatus = new HashMap<>();
+    appStatus.put("appName", appName);
+    appStatus.put("appId", app.getId().toString());
+    appStatus.put("displayName", app.getDisplayName());
+    appStatus.put("status", "ERROR");
+    appStatus.put("error", errorMessage);
+    appStatus.put("timestamp", System.currentTimeMillis());
+    appStatus.put("type", "app");
+    return appStatus;
+  }
+
+  /**
+   * Convert pipeline status to app run record (similar to convertPipelineStatus in CollateAppsResource)
+   */
+  private AppRunRecord convertPipelineStatusToAppRun(App app, PipelineStatus pipelineStatus) {
+    return new AppRunRecord()
+        .withAppId(app.getId())
+        .withAppName(app.getName())
+        .withStartTime(pipelineStatus.getStartDate())
+        .withExecutionTime(
+            pipelineStatus.getEndDate() == null
+                ? System.currentTimeMillis() - pipelineStatus.getStartDate()
+                : pipelineStatus.getEndDate() - pipelineStatus.getStartDate())
+        .withEndTime(pipelineStatus.getEndDate())
+        .withStatus(
+            switch (pipelineStatus.getPipelineState()) {
+              case QUEUED -> AppRunRecord.Status.PENDING;
+              case SUCCESS -> AppRunRecord.Status.SUCCESS;
+              case FAILED, PARTIAL_SUCCESS -> AppRunRecord.Status.FAILED;
+              case RUNNING -> AppRunRecord.Status.RUNNING;
+            })
+        .withConfig(pipelineStatus.getConfig());
   }
 
   /**
@@ -436,7 +730,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           null,
           existingSession.getRemainingTime(),
           UPDATE_INTERVAL_MS,
-          getIngestionPipelineStatus(serviceName));
+          getIngestionPipelineStatus(serviceName),
+          getCollateAppStatus(serviceName));
 
       // Calculate remaining time for existing session
       long remainingTime = existingSession.getRemainingTime();
@@ -534,7 +829,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         null,
         STREAM_DURATION_MS,
         UPDATE_INTERVAL_MS,
-        getIngestionPipelineStatus(serviceName));
+        getIngestionPipelineStatus(serviceName),
+        getCollateAppStatus(serviceName));
 
     // Schedule the streaming task
     ScheduledFuture<?> future =
@@ -566,7 +862,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         session.getFuture().cancel(true);
       }
 
-      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of());
+      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of());
       activeSessions.remove(sessionId);
     }
   }
@@ -607,7 +903,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       if (session.getFuture() != null) {
         session.getFuture().cancel(true);
       }
-      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of());
+      sendMessageToAllUsers(session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of());
       activeSessions.remove(sessionId);
 
       response.put("status", "stopped");
@@ -622,7 +918,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           null,
           session.getRemainingTime(),
           UPDATE_INTERVAL_MS,
-          getIngestionPipelineStatus(session.getServiceName()));
+          getIngestionPipelineStatus(session.getServiceName()),
+          getCollateAppStatus(session.getServiceName()));
 
       response.put("status", "user_removed");
       response.put("message", "User removed from streaming session");
@@ -671,7 +968,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           null,
           remainingTime,
           UPDATE_INTERVAL_MS,
-          ingestionPipelineStatus);
+          ingestionPipelineStatus,
+          getCollateAppStatus(session.getServiceName()));
 
     } catch (IOException e) {
       LOG.error("Error streaming chart data for session {}", session.getSessionId(), e);
@@ -682,12 +980,20 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           "Error fetching chart data: " + e.getMessage(),
           0L,
           0L,
-          List.of());
+          List.of(),
+          getCollateAppStatus(session.getServiceName()));
       stopStreaming(session.getSessionId());
     } catch (Exception e) {
       LOG.error("Unexpected error in streaming session {}", session.getSessionId(), e);
       sendMessageToAllUsers(
-          session, "FAILED", null, "Unexpected error: " + e.getMessage(), 0L, 0L, List.of());
+          session,
+          "FAILED",
+          null,
+          "Unexpected error: " + e.getMessage(),
+          0L,
+          0L,
+          List.of(),
+          getCollateAppStatus(session.getServiceName()));
       stopStreaming(session.getSessionId());
     }
   }
@@ -704,7 +1010,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       String error,
       Long remainingTime,
       Long nextUpdate,
-      List<Map> ingestionPipelineStatus) {
+      List<Map> ingestionPipelineStatus,
+      List<Map> appStatus) {
     ChartDataStreamMessage message =
         new ChartDataStreamMessage(
             sessionId,
@@ -715,7 +1022,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             error,
             remainingTime,
             nextUpdate,
-            ingestionPipelineStatus);
+            ingestionPipelineStatus,
+            appStatus);
 
     String messageJson = JsonUtils.pojoToJson(message);
 
@@ -734,7 +1042,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       String error,
       Long remainingTime,
       Long nextUpdate,
-      List<Map> ingestionPipelineStatus) {
+      List<Map> ingestionPipelineStatus,
+      List<Map> appStatus) {
     for (UUID userId : session.getUserIds()) {
       sendMessageToUser(
           userId,
@@ -745,7 +1054,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           error,
           remainingTime,
           nextUpdate,
-          ingestionPipelineStatus);
+          ingestionPipelineStatus,
+          appStatus);
     }
   }
 

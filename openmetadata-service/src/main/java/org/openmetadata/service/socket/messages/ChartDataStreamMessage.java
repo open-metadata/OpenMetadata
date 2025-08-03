@@ -20,7 +20,8 @@ public class ChartDataStreamMessage {
       String error,
       Long remainingTime,
       Long nextUpdate,
-      List<Map> ingestionPipelineStatus) {
+      List<Map> ingestionPipelineStatus,
+      List<Map> appStatus) {
     this.sessionId = sessionId;
     this.status = status;
     this.serviceName = serviceName;
@@ -30,6 +31,7 @@ public class ChartDataStreamMessage {
     this.remainingTime = remainingTime;
     this.nextUpdate = nextUpdate;
     this.ingestionPipelineStatus = ingestionPipelineStatus;
+    this.appStatus = appStatus;
   }
 
   @JsonProperty("sessionId")
@@ -58,4 +60,7 @@ public class ChartDataStreamMessage {
 
   @JsonProperty("ingestionPipelineStatus")
   private List<Map> ingestionPipelineStatus;
+
+  @JsonProperty("appStatus")
+  private List<Map> appStatus;
 }
