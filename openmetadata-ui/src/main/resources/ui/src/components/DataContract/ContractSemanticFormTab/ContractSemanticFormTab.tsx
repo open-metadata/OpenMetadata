@@ -21,6 +21,7 @@ import classNames from 'classnames';
 import { isNull } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -40,7 +41,10 @@ export const ContractSemanticFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const semanticsData = Form.useWatch('semantics', form);
+  const semanticsFormData: DataContract['semantics'] = Form.useWatch(
+    'semantics',
+    form
+  );
   const [editingKey, setEditingKey] = useState<number | null>(null);
   const [queryBuilderAddRule, setQueryBuilderAddRule] = useState<Actions>();
   const addFunctionRef = useRef<((defaultValue?: any) => void) | null>(null);
@@ -56,8 +60,24 @@ export const ContractSemanticFormTab: React.FC<{
       rule: '',
       enabled: true,
     });
-    setEditingKey(semanticsData.length);
+    setEditingKey(semanticsFormData?.length ?? 0);
   };
+
+  const handleDeleteSemantic = useCallback(
+    (key: number) => {
+      const filteredValue = semanticsFormData?.filter(
+        (_, index) => index !== key
+      );
+
+      form.setFieldsValue({
+        semantics: filteredValue,
+      });
+      onChange({
+        semantics: filteredValue,
+      });
+    },
+    [semanticsFormData]
+  );
 
   const handleAddNewRule = useCallback(() => {
     queryBuilderAddRule?.addRule([]);
@@ -147,25 +167,37 @@ export const ContractSemanticFormTab: React.FC<{
 
                                     <div className="d-flex flex-column">
                                       <Typography.Text className="semantic-form-item-title">
-                                        {semanticsData[field.key]?.name ||
+                                        {semanticsFormData?.[field.key]?.name ||
                                           t('label.untitled')}
                                       </Typography.Text>
                                       <Typography.Text
                                         ellipsis
                                         className="semantic-form-item-description">
-                                        {semanticsData[field.key]
+                                        {semanticsFormData?.[field.key]
                                           ?.description ||
                                           t('label.no-description')}
                                       </Typography.Text>
                                     </div>
                                   </div>
-                                  <EditIconButton
-                                    newLook
-                                    className="edit-expand-button"
-                                    data-testid={`edit-semantic-${field.key}`}
-                                    size="middle"
-                                    onClick={() => setEditingKey(field.key)}
-                                  />
+                                  <div className="d-flex items-center gap-2">
+                                    <EditIconButton
+                                      newLook
+                                      className="edit-expand-button"
+                                      data-testid={`edit-semantic-${field.key}`}
+                                      size="middle"
+                                      onClick={() => setEditingKey(field.key)}
+                                    />
+
+                                    <Button
+                                      danger
+                                      className="delete-expand-button"
+                                      icon={<DeleteIcon />}
+                                      size="middle"
+                                      onClick={() => {
+                                        handleDeleteSemantic(field.key);
+                                      }}
+                                    />
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -275,7 +307,7 @@ export const ContractSemanticFormTab: React.FC<{
                               schema={{
                                 outputType: SearchOutputType.JSONLogic,
                               }}
-                              value={semanticsData[field.key]?.rule ?? {}}
+                              value={semanticsFormData?.[field.key]?.rule ?? {}}
                             />
                           </div>
                         )}

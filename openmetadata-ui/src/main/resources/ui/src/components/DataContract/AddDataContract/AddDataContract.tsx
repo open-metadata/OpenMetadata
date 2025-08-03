@@ -114,7 +114,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues]);
+  }, [contract, formValues, table.id]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {

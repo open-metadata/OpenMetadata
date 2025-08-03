@@ -72,8 +72,8 @@
     }
 
     .ant-btn.edit-expand-button {
-      border: 6px;
-      border: 1px solid @border-light;
+      border-radius: 6px !important;
+      border: 1px solid @border-light !important;
 
       svg {
         font-size: 20px;
@@ -81,11 +81,28 @@
       }
     }
 
+    .ant-btn.delete-expand-button {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 6px !important;
+      background: transparent !important;
+      border-color: @error-color !important;
+
+      svg {
+        width: 20px;
+        color: @error-color;
+      }
+    }
+
     .ant-btn.expand-collapse-icon {
       width: 30px !important;
       height: 30px !important;
-      border: 6px;
-      border: 1px solid @border-light;
+      border-radius: 6px !important;
+      border: 1px solid @border-light !important;
 
       svg {
         font-size: 20px;

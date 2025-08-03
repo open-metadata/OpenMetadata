@@ -24,6 +24,7 @@ import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-successful.s
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { Cell, Pie, PieChart } from 'recharts';
 import {
@@ -510,7 +511,9 @@ const ContractDetail: React.FC<{
                       {(contract?.semantics ?? []).map((item) => (
                         <div className="rule-item">
                           <Icon
-                            className="rule-icon"
+                            className={classNames('rule-icon', {
+                              'rule-icon-default': !latestContractResults,
+                            })}
                             component={getSemanticIconPerLastExecution(
                               item.name
                             )}
