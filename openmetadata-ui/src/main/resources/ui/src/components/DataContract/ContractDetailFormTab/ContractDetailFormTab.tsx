@@ -121,7 +121,7 @@ export const ContractDetailFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined />
+          <RightOutlined height={15} width={8} />
         </Button>
       </div>
     </>

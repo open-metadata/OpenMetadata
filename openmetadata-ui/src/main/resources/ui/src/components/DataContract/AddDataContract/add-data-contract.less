@@ -10,6 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/*
+  *  Copyright 2025 Collate.
+  *  Licensed under the Apache License, Version 2.0 (the "License");
+  *  you may not use this file except in compliance with the License.
+  *  You may obtain a copy of the License at
+  *  http://www.apache.org/licenses/LICENSE-2.0
+  *  Unless required by applicable law or agreed to in writing, software
+  *  distributed under the License is distributed on an "AS IS" BASIS,
+  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+*/
 
 @import (reference) url('../../../styles/variables.less');
 
@@ -30,19 +42,52 @@
   }
   .contract-prev-button,
   .contract-next-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: @size-xs @size-sm;
     border: 1px solid @grey-300;
     border-radius: 8px;
+    gap: 4px;
+    font-weight: @font-semibold;
+
     box-shadow: 0px 1px 2px 0px @grey-27;
 
     box-shadow: 0px -2px 0px 0px @grey-27 inset;
 
     box-shadow: 0px 0px 0px 1px @grey-27 inset;
   }
+  .contract-prev-button {
+    color: @grey-700;
+    svg {
+      stroke: @grey-400;
+    }
+  }
   .ant-tabs-left-content {
     height: 100%;
   }
+  .ant-checkbox-checked {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        border-color: @primary-color;
+      }
+    }
+  }
 
+  .ant-checkbox-indeterminate {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        width: 7px;
+        height: 2px;
+        border-radius: 8px;
+        border: 1px solid @primary-color;
+      }
+    }
+  }
   .ant-tabs-nav {
     width: 180px;
     height: initial;
@@ -197,6 +242,14 @@
           }
         }
       }
+      .ant-form-item-control-input-content {
+        input[type='text'] {
+          padding: 8px 14px;
+          color: @grey-700;
+          box-shadow: 0px 1px 2px 0px @grey-27;
+          border: 1px solid @grey-300;
+        }
+      }
 
       .ant-form-item-control {
         .ant-input,
@@ -204,6 +257,8 @@
         .ant-mentions {
           border-radius: 6px;
           border: 1px solid #d1d5db;
+          padding: 10px 14px;
+          color: @grey-700;
 
           &:focus,
           &:hover {

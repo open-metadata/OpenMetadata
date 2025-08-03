@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import Icon, { LeftOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -239,7 +240,7 @@ export const ContractQualityFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          icon={<LeftOutlined />}
+          icon={<LeftOutlined height={22} width={20} />}
           type="default"
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
