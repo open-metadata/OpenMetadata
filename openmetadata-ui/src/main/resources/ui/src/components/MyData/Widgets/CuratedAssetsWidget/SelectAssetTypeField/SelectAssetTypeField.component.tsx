@@ -113,6 +113,7 @@ export const SelectAssetTypeField = ({
   return (
     <>
       <Form.Item
+        data-testid="asset-type-select"
         label={t('label.select-asset-type')}
         messageVariables={{
           fieldName: t('label.data-asset-plural'),
@@ -120,7 +121,6 @@ export const SelectAssetTypeField = ({
         name="resources"
         style={{ marginBottom: 8 }}>
         <Select
-          data-testid="asset-type-select"
           options={resourcesOptions}
           placeholder={t('label.select-asset-type')}
           value={selectedResource}

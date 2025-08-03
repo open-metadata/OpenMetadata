@@ -249,12 +249,13 @@ const MyDataPage = () => {
     <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
         className="p-b-lg"
-        mainContainerClassName="p-t-0"
+        mainContainerClassName="p-t-0 my-data-page-main-container"
         pageTitle={t('label.my-data')}>
         <div className="grid-wrapper">
           <CustomiseLandingPageHeader
             overlappedContainer
             backgroundColor={backgroundColor}
+            dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}

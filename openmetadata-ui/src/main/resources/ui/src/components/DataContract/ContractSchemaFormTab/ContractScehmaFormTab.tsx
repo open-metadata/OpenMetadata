@@ -11,53 +11,143 @@
  *  limitations under the License.
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import { Button, Card, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   highlightSearchArrayElement,
 } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
 
 export const ContractSchemaFormTab: React.FC<{
   selectedSchema: string[];
-  onNext: (data: Partial<DataContract>) => void;
+  onNext: () => void;
+  onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
   nextLabel?: string;
   prevLabel?: string;
-}> = ({ selectedSchema, onNext, onPrev, nextLabel, prevLabel }) => {
+}> = ({ selectedSchema, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const [schema, setSchema] = useState<Column[]>([]);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [allColumns, setAllColumns] = useState<Column[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(selectedSchema);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fetchTableColumns = useCallback(async () => {
-    const response = await getTableColumnsByFQN(fqn);
-    setSchema(pruneEmptyChildren(response.data));
-  }, [fqn]);
+  const tableFqn = useMemo(
+    () =>
+      getPartialNameFromTableFQN(
+        fqn,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    [fqn]
+  );
 
-  useEffect(() => {
-    setSelectedKeys(selectedSchema);
-  }, [selectedSchema]);
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    showPagination,
+  } = usePaging(PAGE_SIZE_MEDIUM);
+  const handleChangeTable = useCallback(
+    (selectedRowKeys: Key[]) => {
+      setSelectedKeys(selectedRowKeys as string[]);
+      onChange({
+        schema: allColumns.filter((column) =>
+          selectedRowKeys.includes(column.name)
+        ),
+      });
+    },
+    [allColumns, onChange]
+  );
 
-  useEffect(() => {
-    fetchTableColumns();
-  }, [fqn]);
+  const fetchTableColumns = useCallback(
+    async (page = 1) => {
+      if (!tableFqn) {
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const offset = (page - 1) * pageSize;
+
+        const response = await getTableColumnsByFQN(tableFqn, {
+          limit: pageSize,
+          offset: offset,
+          fields: 'tags',
+        });
+
+        const prunedColumns = pruneEmptyChildren(response.data);
+        setAllColumns(prunedColumns);
+        handlePagingChange(response.paging);
+      } catch {
+        // Set empty state if API fails
+        setAllColumns([]);
+        handlePagingChange({
+          offset: 1,
+          limit: pageSize,
+          total: 0,
+        });
+      }
+      setIsLoading(false);
+    },
+    [tableFqn, pageSize]
+  );
+
+  const handleColumnsPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchTableColumns(currentPage);
+      handlePageChange(currentPage);
+    },
+    [fetchTableColumns]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: isLoading,
+      isNumberBased: false,
+      pageSize,
+      paging,
+      pagingHandler: handleColumnsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      isLoading,
+      pageSize,
+      paging,
+      handlePageSizeChange,
+      handleColumnsPageChange,
+    ]
+  );
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
     dataTypeDisplay,
@@ -72,11 +162,29 @@ export const ContractSchemaFormTab: React.FC<{
     }
 
     return (
-      <Typography.Paragraph
-        className="cursor-pointer"
-        ellipsis={{ tooltip: displayValue, rows: 3 }}>
+      <Tag
+        className="cursor-pointer custom-tag"
+        color="purple"
+        title={displayValue}>
         {highlightSearchArrayElement(dataTypeDisplay, '')}
-      </Typography.Paragraph>
+      </Tag>
+    );
+  };
+
+  const renderConstraint: TableCellRendered<Column, 'constraint'> = (
+    constraint
+  ) => {
+    if (isEmpty(constraint)) {
+      return NO_DATA_PLACEHOLDER;
+    }
+
+    return (
+      <Tag
+        className="cursor-pointer custom-tag"
+        color="blue"
+        title={constraint}>
+        {constraint}
+      </Tag>
     );
   };
 
@@ -105,7 +213,7 @@ export const ContractSchemaFormTab: React.FC<{
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             isReadOnly
-            entityFqn={fqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
             hasTagEditAccess={false}
@@ -123,7 +231,7 @@ export const ContractSchemaFormTab: React.FC<{
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             isReadOnly
-            entityFqn={fqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
             hasTagEditAccess={false}
@@ -137,10 +245,16 @@ export const ContractSchemaFormTab: React.FC<{
       {
         title: t('label.constraint-plural'),
         dataIndex: 'constraint',
+        key: 'constraint',
+        render: renderConstraint,
       },
     ],
-    [t]
+    []
   );
+
+  useEffect(() => {
+    fetchTableColumns();
+  }, [fetchTableColumns]);
 
   return (
     <>
@@ -155,14 +269,14 @@ export const ContractSchemaFormTab: React.FC<{
         </div>
         <Table
           columns={columns}
-          dataSource={schema}
+          customPaginationProps={paginationProps}
+          dataSource={allColumns}
+          loading={isLoading}
           pagination={false}
           rowKey="name"
           rowSelection={{
             selectedRowKeys: selectedKeys,
-            onChange: (selectedRowKeys) => {
-              setSelectedKeys(selectedRowKeys as string[]);
-            },
+            onChange: handleChangeTable,
           }}
         />
       </Card>
@@ -170,15 +284,7 @@ export const ContractSchemaFormTab: React.FC<{
         <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button
-          type="primary"
-          onClick={() =>
-            onNext({
-              schema: schema.filter((column) =>
-                selectedKeys.includes(column.name)
-              ),
-            })
-          }>
+        <Button type="primary" onClick={onNext}>
           {nextLabel ?? t('label.next')}
           <ArrowRightOutlined />
         </Button>
