@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Actions } from '@react-awesome-query-builder/antd';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
@@ -22,6 +22,8 @@ import { isNull } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
+import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { ReactComponent as RightOutlined } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -324,7 +326,7 @@ export const ContractSemanticFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          icon={<LeftOutlined />}
+          icon={<LeftOutlined height={22} width={20} />}
           onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
@@ -333,7 +335,7 @@ export const ContractSemanticFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined />
+          <RightOutlined height={15} width={8} />
         </Button>
       </div>
     </>
