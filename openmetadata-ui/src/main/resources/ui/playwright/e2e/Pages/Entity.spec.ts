@@ -244,7 +244,7 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (['Dashboard', 'Dashboard Data Model'].includes(entityName)) {
+    if (['Dashboard', 'DashboardDataModel'].includes(entityName)) {
       test(`${entityName} page should show the project name`, async ({
         page,
       }) => {
@@ -369,7 +369,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName Add, Update and Remove for child entities', async ({
           page,
         }) => {

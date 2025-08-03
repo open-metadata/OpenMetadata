@@ -107,6 +107,8 @@ export const getApiContext = async (page: Page) => {
   return { apiContext, afterAction };
 };
 
+const DASHBOARD_DATA_MODEL = 'DashboardDataModel';
+
 export const getEntityTypeSearchIndexMapping = (entityType: string) => {
   const entityMapping = {
     Table: 'table_search_index',
@@ -118,7 +120,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'search_entity_search_index',
     ApiEndpoint: 'api_endpoint_search_index',
     Metric: 'metric_search_index',
-    'Dashboard Data Model': 'dashboard_data_model_search_index',
+    [DASHBOARD_DATA_MODEL]: 'dashboard_data_model_search_index',
   };
 
   return entityMapping[entityType as keyof typeof entityMapping];
