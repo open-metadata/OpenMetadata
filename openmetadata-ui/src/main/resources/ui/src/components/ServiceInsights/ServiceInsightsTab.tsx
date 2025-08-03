@@ -27,6 +27,7 @@ import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocket
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
+import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { getAgentRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
@@ -262,11 +263,11 @@ const ServiceInsightsTab = ({
 
   useEffect(() => {
     // Start the socket connection if the workflow is running
-    // if (
-    //   workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
-    // ) {
-    triggerSocketConnection();
-    // }
+    if (
+      workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
+    ) {
+      triggerSocketConnection();
+    }
 
     return () => {
       // Stop the socket connection if it is started and set the sessionId to undefined
