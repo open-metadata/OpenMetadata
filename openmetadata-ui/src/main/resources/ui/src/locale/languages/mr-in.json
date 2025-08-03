@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot एजंट्स चालणे अयशस्वी झाले.",
     "auto-pilot-agents-finished-message": "AutoPilot एजंट्स यशस्वीरित्या पूर्ण झाले.",
     "auto-pilot-agents-running-message": "AutoPilot एजंट्स चालू आहेत.",
+    "auto-pilot-no-agents-message": "AutoPilot एजंट्स उपस्थित नाहीत.",
     "bot-email-confirmation": "{{botName}} बॉटसाठी {{email}}",
     "can-not-add-widget": "आकार निर्बंधांमुळे या विभागात विजेट जोडता येत नाही.",
     "can-you-add-a-description": "तुम्ही वर्णन जोडू शकता का?",

@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "การทำงานของเอเจนต์ AutoPilot ล้มเหลว",
     "auto-pilot-agents-finished-message": "การทำงานของเอเจนต์ AutoPilot เสร็จสิ้นเรียบร้อยแล้ว",
     "auto-pilot-agents-running-message": "เอเจนต์ AutoPilot กำลังทำงาน",
+    "auto-pilot-no-agents-message": "ไม่มีตัวจัดการ AutoPilot",
     "bot-email-confirmation": "{{email}} สำหรับบอท {{botName}}",
     "can-not-add-widget": "ไม่สามารถเพิ่มวิดเจ็ตในส่วนนี้ได้เนื่องจากข้อจำกัดขนาด",
     "can-you-add-a-description": "คุณสามารถเพิ่มคำอธิบายได้ไหม?",

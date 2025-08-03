@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot-Agenten-Lauf fehlgeschlagen.",
     "auto-pilot-agents-finished-message": "AutoPilot-Agenten-Lauf erfolgreich abgeschlossen.",
     "auto-pilot-agents-running-message": "AutoPilot-Agenten laufen.",
+    "auto-pilot-no-agents-message": "Keine AutoPilot-Agenten vorhanden.",
     "bot-email-confirmation": "{{email}} für den {{botName}}-Bot",
     "can-not-add-widget": "Das Widget kann aufgrund von Größenbeschränkungen nicht zu diesem Abschnitt hinzugefügt werden.",
     "can-you-add-a-description": "Können Sie eine Beschreibung hinzufügen?",

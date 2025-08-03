@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "Запуск агентов AutoPilot завершился неудачно.",
     "auto-pilot-agents-finished-message": "Запуск агентов AutoPilot успешно завершен.",
     "auto-pilot-agents-running-message": "Агенты AutoPilot работают.",
+    "auto-pilot-no-agents-message": "Нет агентов AutoPilot.",
     "bot-email-confirmation": "{{email}} для бота {{botName}}",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "Можете добавить описание?",

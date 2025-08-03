@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilotエージェントの実行が失敗しました。",
     "auto-pilot-agents-finished-message": "AutoPilotエージェントの実行が正常に完了しました。",
     "auto-pilot-agents-running-message": "AutoPilotエージェントが実行中です。",
+    "auto-pilot-no-agents-message": "AutoPilot エージェントが存在しません。",
     "bot-email-confirmation": "{{botName}} ボットのメールアドレス：{{email}}",
     "can-not-add-widget": "このセクションにウィジェットを追加できません（サイズ制限）。",
     "can-you-add-a-description": "説明を追加していただけますか？",

@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot 에이전트 실행이 실패했습니다.",
     "auto-pilot-agents-finished-message": "AutoPilot 에이전트 실행이 성공적으로 완료되었습니다.",
     "auto-pilot-agents-running-message": "AutoPilot 에이전트가 실행 중입니다.",
+    "auto-pilot-no-agents-message": "AutoPilot 에이전트가 없습니다.",
     "bot-email-confirmation": "{{botName}} 봇의 {{email}}",
     "can-not-add-widget": "크기 제한으로 인해 이 섹션에 위젯을 추가할 수 없습니다.",
     "can-you-add-a-description": "설명을 추가하시겠습니까?",

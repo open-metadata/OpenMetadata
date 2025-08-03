@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot-agents uitvoering is mislukt.",
     "auto-pilot-agents-finished-message": "AutoPilot-agents uitvoering is succesvol voltooid.",
     "auto-pilot-agents-running-message": "AutoPilot-agents zijn aan het uitvoeren.",
+    "auto-pilot-no-agents-message": "Geen AutoPilot agents aanwezig.",
     "bot-email-confirmation": "{{email}} voor {{botName}} bot",
     "can-not-add-widget": "Kan de widget niet toevoegen aan deze sectie vanwege beperkingen in grootte.",
     "can-you-add-a-description": "Kunt u een beschrijving toevoegen?",

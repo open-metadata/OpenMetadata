@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "La ejecución de los agentes AutoPilot falló.",
     "auto-pilot-agents-finished-message": "La ejecución de los agentes AutoPilot se completó exitosamente.",
     "auto-pilot-agents-running-message": "Los agentes AutoPilot están ejecutándose.",
+    "auto-pilot-no-agents-message": "No hay agentes AutoPilot presentes.",
     "bot-email-confirmation": "{{email}} para el bot {{botName}}",
     "can-not-add-widget": "No se puede agregar el widget a esta sección debido a restricciones de tamaño.",
     "can-you-add-a-description": "¿Puedes agregar una descripción?",

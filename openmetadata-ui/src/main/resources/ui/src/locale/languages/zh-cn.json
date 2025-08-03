@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot 代理运行失败。",
     "auto-pilot-agents-finished-message": "AutoPilot 代理运行成功完成。",
     "auto-pilot-agents-running-message": "AutoPilot 代理正在运行。",
+    "auto-pilot-no-agents-message": "没有 AutoPilot 代理",
     "bot-email-confirmation": "{{botName}}机器人的邮箱{{email}}",
     "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "您能添加一些描述吗？",

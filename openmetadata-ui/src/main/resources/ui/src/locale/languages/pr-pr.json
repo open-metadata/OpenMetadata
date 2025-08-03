@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot ایجنٹس کا چلانا ناکام ہوا۔",
     "auto-pilot-agents-finished-message": "AutoPilot ایجنٹس کامیابی سے مکمل ہوئے۔",
     "auto-pilot-agents-running-message": "AutoPilot ایجنٹس چل رہے ہیں۔",
+    "auto-pilot-no-agents-message": "هیچ سوئیت AutoPilot وجود ندارد.",
     "bot-email-confirmation": "{{email}} برای ربات {{botName}}",
     "can-not-add-widget": "به دلیل محدودیت‌های اندازه، نمی‌توان ویجت را به این بخش اضافه کرد.",
     "can-you-add-a-description": "آیا می‌توانید توضیحی اضافه کنید؟",

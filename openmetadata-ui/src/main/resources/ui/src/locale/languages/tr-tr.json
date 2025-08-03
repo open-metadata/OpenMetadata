@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "AutoPilot ajanlarının çalışması başarısız oldu.",
     "auto-pilot-agents-finished-message": "AutoPilot ajanlarının çalışması başarıyla tamamlandı.",
     "auto-pilot-agents-running-message": "AutoPilot ajanları çalışıyor.",
+    "auto-pilot-no-agents-message": "AutoPilot ajanları yok.",
     "bot-email-confirmation": "{{botName}} botu için {{email}}",
     "can-not-add-widget": "Boyut kısıtlamaları nedeniyle widget bu bölüme eklenemiyor.",
     "can-you-add-a-description": "Bir açıklama ekleyebilir misiniz?",

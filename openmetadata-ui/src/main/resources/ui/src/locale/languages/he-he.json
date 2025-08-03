@@ -1820,6 +1820,7 @@
     "auto-pilot-agents-failed-message": "הרצת סוכני AutoPilot נכשלה.",
     "auto-pilot-agents-finished-message": "הרצת סוכני AutoPilot הושלמה בהצלחה.",
     "auto-pilot-agents-running-message": "סוכני AutoPilot פועלים.",
+    "auto-pilot-no-agents-message": "אין סוכני AutoPilot נוכחים.",
     "bot-email-confirmation": "{{email}} לבוט {{botName}}",
     "can-not-add-widget": "לא ניתן להוסיף את הווידג'ט לסקשן זה עקב הגבלות בגודל.",
     "can-you-add-a-description": "האם תוכל להוסיף תיאור?",
