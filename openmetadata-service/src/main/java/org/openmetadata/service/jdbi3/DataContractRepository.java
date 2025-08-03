@@ -495,7 +495,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!pipeline.getDeployed()) {
       prepareAndDeployIngestionPipeline(pipeline, testSuite);
     }
-    pipelineServiceClient.runPipeline(pipeline, testSuite);
+    prepareAndRunIngestionPipeline(pipeline, testSuite);
   }
 
   private void prepareAndDeployIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
@@ -513,6 +513,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
     }
+  }
+
+  private void prepareAndRunIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
+    pipeline.setOpenMetadataServerConnection(
+        SecretsManagerFactory.getSecretsManager()
+            .encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {
