@@ -867,6 +867,7 @@ export enum ModelType {
 export enum FileFormat {
     Avro = "avro",
     CSV = "csv",
+    CSVGz = "csv.gz",
     JSON = "json",
     JSONGz = "json.gz",
     JSONZip = "json.zip",
@@ -1058,6 +1059,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",

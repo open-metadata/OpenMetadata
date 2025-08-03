@@ -45,28 +45,27 @@ export const ContractTab = () => {
         TabSpecificField.OWNERS,
       ]);
       setContract(contract);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+    } catch {
+      setContract(undefined);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (contract?.id) {
-      deleteContractById(contract.id)
-        .then(() => {
-          showSuccessToast(
-            t('message.entity-deleted-successfully', {
-              entity: t('label.contract'),
-            })
-          );
-          fetchContract();
-          setTabMode(DataContractTabMode.VIEW);
-        })
-        .catch((err) => {
-          showErrorToast(err);
-        });
+      try {
+        await deleteContractById(contract.id);
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: t('label.contract'),
+          })
+        );
+        fetchContract();
+        setTabMode(DataContractTabMode.VIEW);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
     }
   };
 

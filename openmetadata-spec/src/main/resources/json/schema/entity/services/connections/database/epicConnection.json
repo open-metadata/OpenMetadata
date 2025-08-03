@@ -1,0 +1,59 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/epicConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "EpicConnection",
+    "description": "Epic FHIR Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.EpicConnection",
+    "definitions": {
+      "epicType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Epic"],
+        "default": "Epic"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/epicType",
+        "default": "Epic"
+      },
+      "fhirServerUrl": {
+        "title": "FHIR Server URL",
+        "description": "Base URL of the Epic FHIR server",
+        "type": "string",
+        "default": "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR",
+        "format": "uri"
+      },
+      "fhirVersion": {
+        "title": "FHIR Version",
+        "description": "FHIR specification version (R4, STU3, DSTU2)",
+        "type": "string",
+        "enum": ["R4", "STU3", "DSTU2"],
+        "default": "R4"
+      },
+      "databaseName": {
+        "title": "Database Name",
+        "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic' as the database name.",
+        "type": "string",
+        "default": "epic"
+      },
+      "schemaFilterPattern": {
+        "title": "Schema Filter Pattern",
+        "description": "Regex to include/exclude FHIR resource categories",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      },
+      "tableFilterPattern": {
+        "title": "Table Filter Pattern",
+        "description": "Regex to include/exclude FHIR resource types",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"  
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false
+  }

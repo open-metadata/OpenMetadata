@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection as MysqlConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
+    PostgresConnection as PostgresConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -47,9 +47,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
     FETCH_DASHBOARDS_TEST,
 )
 from metadata.ingestion.source.database.mysql.connection import MySQLConnection
-from metadata.ingestion.source.database.postgres.connection import (
-    get_connection as pg_get_connection,
-)
+from metadata.ingestion.source.database.postgres.connection import PostgresConnection
 from metadata.utils.constants import THREE_MIN
 
 
@@ -61,10 +59,10 @@ def get_connection(
     """
     if isinstance(connection.connection, SupersetApiConnection):
         return SupersetAPIClient(connection)
-    if isinstance(connection.connection, PostgresConnection):
-        return pg_get_connection(connection=connection.connection)
+    if isinstance(connection.connection, PostgresConnectionConfig):
+        return PostgresConnection(connection.connection).client
     if isinstance(connection.connection, MysqlConnectionConfig):
-        return MySQLConnection(connection.connection).get_client()
+        return MySQLConnection(connection.connection).client
     return None
 
 

@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
@@ -34,9 +35,13 @@ import {
 } from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  ContractStatus,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
+import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -44,8 +49,6 @@ import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFo
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
-
-import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -82,15 +85,24 @@ const AddDataContract: React.FC<{
   const handleSave = useCallback(async () => {
     setIsSubmitting(true);
 
+    const validSemantics = formValues.semantics?.filter(
+      (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
+    );
+
     try {
       await (contract
-        ? updateContract(getUpdatedContractDetails(contract, formValues))
+        ? updateContract({
+            ...getUpdatedContractDetails(contract, formValues),
+            semantics: validSemantics,
+          })
         : createContract({
             ...formValues,
             entity: {
               id: table.id,
               type: EntityType.TABLE,
             },
+            semantics: validSemantics,
+            status: ContractStatus.Active,
           }));
 
       showSuccessToast(t('message.data-contract-saved-successfully'));
@@ -102,18 +114,20 @@ const AddDataContract: React.FC<{
     }
   }, [contract, formValues]);
 
-  const onNext = useCallback(
-    async (data: Partial<DataContract>) => {
+  const onFormChange = useCallback(
+    (data: Partial<DataContract>) => {
       setFormValues((prev) => ({ ...prev, ...data }));
-
-      setActiveTab((prev) => (Number(prev) + 1).toString());
     },
-    [activeTab, handleSave]
+    [setFormValues]
   );
+
+  const onNext = useCallback(async () => {
+    setActiveTab((prev) => (Number(prev) + 1).toString());
+  }, [setActiveTab]);
 
   const onPrev = useCallback(() => {
     setActiveTab((prev) => (Number(prev) - 1).toString());
-  }, [activeTab]);
+  }, [setActiveTab]);
 
   const items = useMemo(
     () => [
@@ -127,8 +141,9 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
         children: (
           <ContractDetailFormTab
-            initialValues={formValues}
+            initialValues={contract}
             nextLabel={t('label.schema')}
+            onChange={onFormChange}
             onNext={onNext}
           />
         ),
@@ -146,8 +161,9 @@ const AddDataContract: React.FC<{
             nextLabel={t('label.semantic-plural')}
             prevLabel={t('label.contract-detail-plural')}
             selectedSchema={
-              formValues.schema?.map((column) => column.name) || []
+              contract?.schema?.map((column) => column.name) || []
             }
+            onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
           />
@@ -163,9 +179,10 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SEMANTICS.toString(),
         children: (
           <ContractSemanticFormTab
-            initialValues={formValues}
+            initialValues={contract}
             nextLabel={t('label.quality')}
             prevLabel={t('label.schema')}
+            onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
           />
@@ -183,19 +200,17 @@ const AddDataContract: React.FC<{
           <ContractQualityFormTab
             prevLabel={t('label.semantic-plural')}
             selectedQuality={
-              formValues.qualityExpectations?.map(
+              contract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
               ) ?? []
             }
+            onChange={onFormChange}
             onPrev={onPrev}
-            onUpdate={(qualityExpectations) =>
-              setFormValues((prev) => ({ ...prev, qualityExpectations }))
-            }
           />
         ),
       },
     ],
-    [t, onNext, onPrev]
+    [contract, onFormChange, onNext, onPrev]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
@@ -204,13 +219,13 @@ const AddDataContract: React.FC<{
 
   const cardTitle = useMemo(() => {
     return (
-      <div className="d-flex items-center justify-between">
+      <div className="add-contract-card-header d-flex items-center justify-between">
         <div className="d-flex item-center justify-between flex-1">
           <div>
-            <Typography.Title className="m-0" level={5}>
+            <Typography.Text className="add-contract-card-title">
               {t('label.add-contract-detail-plural')}
-            </Typography.Title>
-            <Typography.Paragraph className="m-0 text-sm" type="secondary">
+            </Typography.Text>
+            <Typography.Paragraph className="add-contract-card-description">
               {t('message.add-contract-detail-description')}
             </Typography.Paragraph>
           </div>
@@ -267,7 +282,11 @@ const AddDataContract: React.FC<{
     );
   }, [mode, items, handleTabChange, activeTab, yaml]);
 
-  return <Card title={cardTitle}>{cardContent}</Card>;
+  return (
+    <Card className="add-contract-card" title={cardTitle}>
+      {cardContent}
+    </Card>
+  );
 };
 
 export default AddDataContract;

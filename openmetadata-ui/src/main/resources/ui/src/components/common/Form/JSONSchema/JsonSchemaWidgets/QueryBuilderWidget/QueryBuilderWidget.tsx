@@ -23,8 +23,10 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
+import { useEffect } from 'react';
 
 import {
+  Actions,
   Builder,
   Config,
   ImmutableTree,
@@ -34,7 +36,7 @@ import {
 import 'antd/dist/antd.css';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EntityFields,
@@ -84,6 +86,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const [initDone, setInitDone] = useState<boolean>(false);
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
+  const [queryActions, setQueryActions] = useState<Actions>();
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
@@ -224,6 +227,12 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     }
   }, [isSearchIndexUpdatedInContext, isUpdating]);
 
+  useEffect(() => {
+    if (props.getQueryActions) {
+      props.getQueryActions(queryActions);
+    }
+  }, [queryActions]);
+
   if (!initDone) {
     return <></>;
   }
@@ -249,11 +258,18 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
             )}
             <Query
               {...config}
-              renderBuilder={(props) => (
-                <div className="query-builder-container query-builder qb-lite">
-                  <Builder {...props} />
-                </div>
-              )}
+              renderBuilder={(props) => {
+                // Store the actions for external access
+                if (!queryActions) {
+                  setQueryActions(props.actions);
+                }
+
+                return (
+                  <div className="query-builder-container query-builder qb-lite">
+                    <Builder {...props} />
+                  </div>
+                );
+              }}
               settings={{
                 ...config.settings,
                 ...(props.readonly ? READONLY_SETTINGS : {}),
