@@ -67,6 +67,10 @@
       "minLength": 1,
       "maxLength": 32
     },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
     "dashboards": {
       "description": "List of fully qualified name of dashboards containing this Chart.",
       "type": "array",
