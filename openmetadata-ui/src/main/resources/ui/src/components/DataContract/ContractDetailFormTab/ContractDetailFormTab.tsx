@@ -61,6 +61,7 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
+        owner: initialValues?.owners,
         hasPermission: true,
         children: (
           <Button
