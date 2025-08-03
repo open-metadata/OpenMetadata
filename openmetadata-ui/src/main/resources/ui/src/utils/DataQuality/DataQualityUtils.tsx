@@ -10,25 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import { t } from 'i18next';
 import { isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
 import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
 import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
 import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg';
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
+import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import { TEST_CASE_STATUS_ICON } from '../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
-import {
-  TestCase,
-  TestCaseParameterValue,
-} from '../../generated/tests/testCase';
+import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   DataQualityDimensions,
   TestDataType,
@@ -328,14 +327,21 @@ export const convertSearchSourceToTable = (
     columns: searchSource.columns || [],
   } as Table);
 
-export const getTestCaseStatusIcon = (record: TestCase) => (
-  <Icon
-    className="test-status-icon"
-    component={
-      TEST_CASE_STATUS_ICON[
-        (record?.testCaseResult?.testCaseStatus ??
-          'Queued') as keyof typeof TEST_CASE_STATUS_ICON
-      ]
-    }
-  />
-);
+export const TEST_LEVEL_OPTIONS: SelectionOption[] = [
+  {
+    value: TestCaseType.table,
+    label: t('label.table-level'),
+    description: t('label.test-applied-on-entity', {
+      entity: t('label.table-lowercase'),
+    }),
+    icon: <TableIcon />,
+  },
+  {
+    value: TestCaseType.column,
+    label: t('label.column-level'),
+    description: t('label.test-applied-on-entity', {
+      entity: t('label.column-lowercase'),
+    }),
+    icon: <ColumnIcon />,
+  },
+];
