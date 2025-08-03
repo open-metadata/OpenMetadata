@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../../generated/entity/type';
-import type { AppPlugin } from '../plugins/AppPlugin';
+import { FC } from 'react';
+import { RouteProps } from 'react-router-dom';
+import { LeftSidebarItem } from '../../../MyData/LeftSidebar/LeftSidebar.interface';
 
-export type ApplicationsContextType = {
-  applications: EntityReference[];
-  plugins: AppPlugin[];
-};
+export interface LeftSidebarItemExample extends LeftSidebarItem {
+  index: number;
+}
+
+export interface AppPlugin {
+  name: string;
+  isInstalled: boolean;
+  getConfigComponent?(): FC | null;
+  getRoutes?(): Array<RouteProps>;
+  getSidebarActions?(): Array<LeftSidebarItemExample>;
+}
