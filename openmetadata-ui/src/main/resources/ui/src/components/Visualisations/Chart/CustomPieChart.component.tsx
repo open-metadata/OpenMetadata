@@ -52,11 +52,16 @@ const CustomPieChart = ({
         <Pie
           cx="50%"
           cy="50%"
-          data={data}
+          // to show the empty pie chart when there is no data
+          data={[{ value: 1 }]}
           dataKey="value"
+          endAngle={-270}
           fill={GREY_200}
           innerRadius={55}
-          outerRadius={80}>
+          outerRadius={80}
+          // to hide tooltip when there is no data
+          pointerEvents="none"
+          startAngle={90}>
           <Cell fill={GREY_200} />
         </Pie>
         <Pie
@@ -64,8 +69,10 @@ const CustomPieChart = ({
           cy="50%"
           data={data}
           dataKey="value"
+          endAngle={-270}
           innerRadius={60}
-          outerRadius={80}>
+          outerRadius={80}
+          startAngle={90}>
           {data.map((entry) => (
             <Cell fill={entry.color} key={`cell-${entry.name}`} />
           ))}
