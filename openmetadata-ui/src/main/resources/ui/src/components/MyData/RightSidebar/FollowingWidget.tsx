@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
 import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
@@ -61,6 +61,7 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
@@ -255,25 +256,43 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<FollowingAssetsIcon height={22} width={22} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedEntityFilter}
+        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        title={t('label.following-assets')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleEntityFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
+        }
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedEntityFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleEntityFilterChange,
+    ]
+  );
+
   const WidgetContent = useMemo(() => {
     return (
       <div
         className="following-widget-container"
         data-testId="following-widget">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<FollowingAssetsIcon height={22} width={22} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedEntityFilter}
-          sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
-          title={t('label.following-assets')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleEntityFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter
@@ -292,21 +311,18 @@ function FollowingWidget({
   }, [
     followedData,
     emptyState,
-    isExpanded,
-    isLoadingOwnedData,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    followingContent,
+    currentUser?.name,
     showMoreCount,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
       dataLength={followedData.length !== 0 ? followedData.length : 10}
+      dataTestId="KnowledgePanel.Following"
+      header={widgetHeader}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

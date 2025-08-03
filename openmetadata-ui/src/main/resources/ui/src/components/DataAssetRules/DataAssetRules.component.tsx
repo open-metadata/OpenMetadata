@@ -12,7 +12,6 @@
  */
 
 import Icon, { PlusOutlined } from '@ant-design/icons';
-import { Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import {
   Button,
   Col,
@@ -33,8 +32,8 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-place
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { SIZE } from '../../enums/common.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import {
+  ProviderType,
   SemanticsRule,
   Settings,
   SettingType,
@@ -43,7 +42,6 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
-import { getTreeConfig } from '../../utils/AdvancedSearchUtils';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
@@ -218,6 +216,7 @@ export const AddEditSemanticsRuleModal: React.FC<{
           ? t('label.edit-data-asset-rule')
           : t('label.add-data-asset-rule')
       }
+      width={800}
       onCancel={onCancel}
       onOk={handleSave}>
       <SemanticsRuleForm
@@ -324,28 +323,6 @@ export const useSemanticsRuleList = ({
     setDeleteSemanticsRule(null);
   };
 
-  const config = getTreeConfig({
-    searchIndex: SearchIndex.DATA_ASSET,
-    searchOutputType: SearchOutputType.JSONLogic,
-    isExplorePage: false,
-    tierOptions: Promise.resolve([]),
-  });
-  const getHumanStringRule = useCallback(
-    (semanticsRule: SemanticsRule) => {
-      const logic = JSON.parse(semanticsRule.rule);
-
-      const tree = QbUtils.loadFromJsonLogic(logic, config);
-      const humanString = tree ? QbUtils.queryString(tree, config) : '';
-
-      // remove all the .fullyQualifiedName, .name, .tagFQN from the humanString
-      return humanString?.replaceAll(
-        /\.fullyQualifiedName|\.name|\.tagFQN/g,
-        ''
-      );
-    },
-    [config]
-  );
-
   const columns = [
     {
       title: t('label.name'),
@@ -358,15 +335,6 @@ export const useSemanticsRuleList = ({
       className: 'col-description',
       render: (description: string) => (
         <RichTextEditorPreviewerNew markdown={description} />
-      ),
-    },
-    {
-      title: t('label.rule'),
-      className: 'col-rule',
-      render: (_: string, record: SemanticsRule) => (
-        <RichTextEditorPreviewerNew
-          markdown={getHumanStringRule(record) || ''}
-        />
       ),
     },
     {
@@ -385,15 +353,17 @@ export const useSemanticsRuleList = ({
       title: t('label.action'),
       dataIndex: 'actions',
       render: (_: unknown, record: SemanticsRule) => (
-        <Space>
+        <Space className="custom-icon-button">
           <Button
             className="text-secondary p-0 remove-button-background-hover"
+            disabled={record.provider === ProviderType.System}
             icon={<Icon component={IconEdit} />}
             type="text"
             onClick={() => handleEditSemanticsRule(record)}
           />
           <Button
             className="text-secondary p-0 remove-button-background-hover"
+            disabled={record.provider === ProviderType.System}
             icon={<Icon component={IconDelete} />}
             type="text"
             onClick={() => handleDelete(record)}
@@ -425,7 +395,11 @@ export const useSemanticsRuleList = ({
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
     <Row align="middle" className="h-full" justify="center">
       <Col>
-        <Space align="center" className="w-full" direction="vertical" size={0}>
+        <Space
+          align="center"
+          className="w-full custom-icon-button"
+          direction="vertical"
+          size={0}>
           <AddPlaceHolderIcon
             data-testid="no-data-image"
             height={SIZE.MEDIUM}

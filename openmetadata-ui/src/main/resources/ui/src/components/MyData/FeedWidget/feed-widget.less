@@ -58,46 +58,6 @@
   }
 }
 
-.cards-scroll-container {
-  display: grid;
-  gap: @size-sm;
-
-  .card-wrapper {
-    width: 100%;
-    height: 100%;
-  }
-
-  .service-card.ant-card {
-    height: 100%;
-    border: none;
-    cursor: pointer;
-    transition: 0.3s ease-in-out;
-
-    &:hover {
-      background: @grey-1;
-    }
-
-    .ant-card-body {
-      display: flex;
-      flex-direction: column;
-      text-align: center;
-      align-items: center;
-      padding: @size-sm @size-mlg;
-      max-height: 100%;
-
-      .data-asset-badge {
-        width: max-content;
-        padding: @size-xs @size-sm;
-        background-color: @blue-1;
-        .ant-typography {
-          color: @primary-color;
-          font-size: @size-sm;
-        }
-      }
-    }
-  }
-}
-
 .timestamp-tooltip {
   .ant-tooltip-inner {
     color: @grey-3;

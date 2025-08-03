@@ -17,18 +17,24 @@ import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class RuleEngine {
 
   @Getter private static final RuleEngine instance = new RuleEngine();
-  private final JsonLogic jsonLogic;
+  private final ThreadLocal<JsonLogic> jsonLogicThreadLocal;
   private final DataContractRepository dataContractRepository;
 
   private RuleEngine() {
-    this.jsonLogic = new JsonLogic();
-    LogicOps.addCustomOps(jsonLogic);
+    this.jsonLogicThreadLocal =
+        ThreadLocal.withInitial(
+            () -> {
+              JsonLogic jsonLogic = new JsonLogic();
+              LogicOps.addCustomOps(jsonLogic);
+              return jsonLogic;
+            });
     dataContractRepository =
         (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
   }
@@ -37,12 +43,16 @@ public class RuleEngine {
    * Evaluates the default platform entity semantics rules against the provided entity
    */
   public void evaluate(EntityInterface facts) {
-    evaluate(facts, null, false);
+    evaluate(facts, null, true, false);
+  }
+
+  public void evaluate(EntityInterface facts, boolean enforcePlatform, boolean enforceContract) {
+    evaluate(facts, null, enforcePlatform, enforceContract);
   }
 
   public void evaluateUpdate(EntityInterface original, EntityInterface updated) {
-    List<SemanticsRule> originalErrors = evaluateAndReturn(original, null, false);
-    List<SemanticsRule> updatedErrors = evaluateAndReturn(updated, null, false);
+    List<SemanticsRule> originalErrors = evaluateAndReturn(original, null, true, false);
+    List<SemanticsRule> updatedErrors = evaluateAndReturn(updated, null, true, false);
 
     // If the updated entity is not fixing anything, throw a validation exception
     if (!nullOrEmpty(updatedErrors) && updatedErrors.size() >= originalErrors.size()) {
@@ -50,12 +60,13 @@ public class RuleEngine {
     }
   }
 
-  public void evaluate(EntityInterface facts, List<SemanticsRule> rules) {
-    evaluate(facts, rules, false);
-  }
-
-  public void evaluate(EntityInterface facts, List<SemanticsRule> rules, boolean incomingOnly) {
-    List<SemanticsRule> erroredRules = evaluateAndReturn(facts, rules, incomingOnly);
+  public void evaluate(
+      EntityInterface facts,
+      List<SemanticsRule> rules,
+      boolean enforcePlatform,
+      boolean enforceContract) {
+    List<SemanticsRule> erroredRules =
+        evaluateAndReturn(facts, rules, enforcePlatform, enforceContract);
     raiseErroredRules(erroredRules);
   }
 
@@ -70,12 +81,41 @@ public class RuleEngine {
   }
 
   public List<SemanticsRule> evaluateAndReturn(
-      EntityInterface facts, List<SemanticsRule> rules, boolean incomingOnly) {
+      EntityInterface facts,
+      List<SemanticsRule> rules,
+      boolean enforcePlatform,
+      boolean enforceContract) {
+    List<SemanticsRule> rulesToEvaluate =
+        getRulesToEvaluate(facts, rules, enforcePlatform, enforceContract);
+    List<SemanticsRule> erroredRules = new ArrayList<>();
+    rulesToEvaluate.forEach(
+        rule -> {
+          if (shouldApplyRule(facts, rule)) {
+            try {
+              validateRule(facts, rule);
+            } catch (RuleValidationException e) {
+              erroredRules.add(rule);
+            }
+          }
+        });
+
+    return erroredRules;
+  }
+
+  private List<SemanticsRule> getRulesToEvaluate(
+      EntityInterface facts,
+      List<SemanticsRule> rules,
+      boolean enforcePlatform,
+      boolean enforceContract) {
     ArrayList<SemanticsRule> rulesToEvaluate = new ArrayList<>();
-    if (!incomingOnly) {
+    if (enforcePlatform) {
       rulesToEvaluate.addAll(getEnabledEntitySemantics());
-      DataContract entityContract = getEntityDataContractSafely(facts);
-      if (entityContract != null && entityContract.getStatus() == ContractStatus.Active) {
+    }
+    if (enforceContract) {
+      DataContract entityContract = dataContractRepository.getEntityDataContractSafely(facts);
+      if (entityContract != null
+          && entityContract.getStatus() == ContractStatus.Active
+          && !nullOrEmpty(entityContract.getSemantics())) {
         rulesToEvaluate.addAll(entityContract.getSemantics());
       }
     }
@@ -86,25 +126,28 @@ public class RuleEngine {
     if (nullOrEmpty(rulesToEvaluate)) {
       return List.of(); // No rules to evaluate
     }
+    return rulesToEvaluate;
+  }
 
-    List<SemanticsRule> erroredRules = new ArrayList<>();
-    rulesToEvaluate.forEach(
-        rule -> {
-          // Only evaluate the rule if it's a generic rule or the rule's entity type matches the
-          // facts class
-          if (rule.getEntityType() == null
-              || Entity.getEntityRepository(rule.getEntityType())
-                  .getEntityClass()
-                  .isInstance(facts)) {
-            try {
-              validateRule(facts, rule);
-            } catch (RuleValidationException e) {
-              erroredRules.add(rule);
-            }
-          }
-        });
-
-    return erroredRules;
+  public Boolean shouldApplyRule(EntityInterface facts, SemanticsRule rule) {
+    // If the rule is not entity-specific, apply it
+    if (rule.getEntityType() == null && nullOrEmpty(rule.getIgnoredEntities())) {
+      return true;
+    }
+    // Then, apply the rule only if type matches
+    if (rule.getEntityType() != null) {
+      return Entity.getEntityRepository(rule.getEntityType()).getEntityClass().isInstance(facts);
+    }
+    // Finally, check if the rule is not ignored for the entity type
+    if (!nullOrEmpty(rule.getIgnoredEntities())) {
+      List<? extends Class<? extends EntityInterface>> ignoredEntities =
+          rule.getIgnoredEntities().stream()
+              .map(Entity::getEntityRepository)
+              .map(EntityRepository::getEntityClass)
+              .toList();
+      return !ignoredEntities.contains(facts.getClass());
+    }
+    return true; // Default case, apply the rule
   }
 
   private List<SemanticsRule> getEnabledEntitySemantics() {
@@ -117,21 +160,13 @@ public class RuleEngine {
 
   private void validateRule(Object facts, SemanticsRule rule) throws RuleValidationException {
     try {
+      JsonLogic jsonLogic = jsonLogicThreadLocal.get();
       Boolean result = (Boolean) jsonLogic.apply(rule.getRule(), JsonUtils.getMap(facts));
       if (result == null || !result) {
         throw new RuleValidationException(rule, "Entity does not satisfy the rule");
       }
     } catch (JsonLogicException e) {
       throw new RuleValidationException(rule, e.getMessage(), e);
-    }
-  }
-
-  private DataContract getEntityDataContractSafely(EntityInterface entity) {
-    try {
-      return dataContractRepository.loadEntityDataContract(entity.getEntityReference());
-    } catch (Exception e) {
-      LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
-      return null;
     }
   }
 }
