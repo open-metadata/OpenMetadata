@@ -678,7 +678,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException;
 
-  public void toggleMultiDomainSupport(Boolean enable) {
+  public static void toggleMultiDomainSupport(Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =

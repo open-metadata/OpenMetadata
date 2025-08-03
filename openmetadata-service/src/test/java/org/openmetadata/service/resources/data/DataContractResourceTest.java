@@ -18,7 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -63,6 +65,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -106,7 +109,6 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static TestCaseResourceTest testCaseResourceTest;
   private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
   private static DataContractRepository dataContractRepository;
-  private static PipelineServiceClientInterface originalPipelineClient;
   private static PipelineServiceClientInterface mockPipelineClient;
 
   @BeforeAll
@@ -122,11 +124,22 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
             org.openmetadata.service.Entity.getEntityRepository(
                 org.openmetadata.service.Entity.DATA_CONTRACT);
 
-    // Store original client for potential restoration (if needed)
-    originalPipelineClient = dataContractRepository.getPipelineServiceClient();
-
     // Create and set mock PipelineServiceClient
     mockPipelineClient = mock(PipelineServiceClientInterface.class);
+
+    // Configure mock to return successful response (code = 200) for all method calls
+    PipelineServiceClientResponse successResponse =
+        new PipelineServiceClientResponse()
+            .withCode(200)
+            .withReason("Success")
+            .withPlatform("test");
+
+    when(mockPipelineClient.deployPipeline(any(), any())).thenReturn(successResponse);
+    when(mockPipelineClient.runPipeline(any(), any())).thenReturn(successResponse);
+    when(mockPipelineClient.deletePipeline(any())).thenReturn(successResponse);
+    when(mockPipelineClient.toggleIngestion(any())).thenReturn(successResponse);
+    when(mockPipelineClient.killIngestion(any())).thenReturn(successResponse);
+
     dataContractRepository.setPipelineServiceClient(mockPipelineClient);
   }
 
@@ -1910,6 +1923,9 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(testSuite.getId(), pipeline.getService().getId());
     assertEquals("testSuite", pipeline.getService().getType());
 
+    // Also, the ingestion pipeline should be flagged as deployed
+    assertTrue(pipeline.getDeployed());
+
     // Test deletion with recursive=true - should also delete the test suite
     deleteDataContract(dataContract.getId(), true);
 
@@ -1921,6 +1937,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         HttpResponseException.class,
         () ->
             testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Pipeline is also deleted
+    assertThrows(
+        HttpResponseException.class,
+        () -> ingestionPipelineResourceTest.getEntity(pipeline.getId(), "*", ADMIN_AUTH_HEADERS));
   }
 
   @Test
