@@ -868,6 +868,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
+  @Order(2)
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     // Use existing tags that are already set up in the test environment
     TagLabel containerTagLabel = USER_ADDRESS_TAG_LABEL;

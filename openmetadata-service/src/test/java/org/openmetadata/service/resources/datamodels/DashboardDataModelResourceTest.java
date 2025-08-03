@@ -42,8 +42,11 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -63,6 +66,7 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDataModelResourceTest
     extends EntityResourceTest<DashboardDataModel, CreateDashboardDataModel> {
 
@@ -296,6 +300,7 @@ public class DashboardDataModelResourceTest
   }
 
   @Test
+  @Order(1)
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     TagLabel dataModelTagLabel = USER_ADDRESS_TAG_LABEL;
     TagLabel columnTagLabel = PERSONAL_DATA_TAG_LABEL;

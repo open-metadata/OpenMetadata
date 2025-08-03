@@ -54,8 +54,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -79,6 +82,7 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePipeline> {
   public static List<Task> TASKS;
 
@@ -841,6 +845,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     assertEquals(actualStatus, expectedStatus);
   }
 
+  @Order(1)
   @Test
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     // Use existing tags that are already set up in the test environment

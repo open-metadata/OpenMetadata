@@ -386,6 +386,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
   }
 
   @Test
+  @Order(2)
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     TagLabel endpointTagLabel = USER_ADDRESS_TAG_LABEL;
     TagLabel fieldTagLabel = PERSONAL_DATA_TAG_LABEL;
@@ -416,7 +417,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     }
 
     WebTarget target =
-        getResource("apiEndpoints").queryParam("fields", "tags").queryParam("limit", "10");
+        getResource("apiEndpoints").queryParam("fields", "tags").queryParam("limit", "50");
 
     APIEndpointResource.APIEndpointList endpointList =
         TestUtils.get(target, APIEndpointResource.APIEndpointList.class, ADMIN_AUTH_HEADERS);
