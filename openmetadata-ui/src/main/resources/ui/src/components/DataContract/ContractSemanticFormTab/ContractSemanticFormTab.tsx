@@ -86,24 +86,23 @@ export const ContractSemanticFormTab: React.FC<{
   }, [queryBuilderAddRule]);
 
   useEffect(() => {
-    form.setFieldsValue({
-      semantics: [
-        {
-          name: '',
-          description: '',
-          enabled: true,
-          rule: '',
-        },
-      ],
-    });
-  }, []);
-
-  useEffect(() => {
     if (initialValues?.semantics) {
       form.setFieldsValue({
         semantics: initialValues.semantics,
       });
+    } else {
+      form.setFieldsValue({
+        semantics: [
+          {
+            name: '',
+            description: '',
+            enabled: true,
+            rule: '',
+          },
+        ],
+      });
     }
+    setEditingKey(0);
   }, [initialValues]);
 
   return (
