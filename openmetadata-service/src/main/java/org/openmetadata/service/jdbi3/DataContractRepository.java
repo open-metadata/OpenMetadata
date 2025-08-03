@@ -587,31 +587,19 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!nullOrEmpty(result.getSchemaValidation())) {
       if (result.getSchemaValidation().getFailed() > 0) {
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult("Schema validation failed");
+        result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getSemanticsValidation())) {
       if (result.getSemanticsValidation().getFailed() > 0) {
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult(
-                result.getResult() != null
-                    ? result.getResult() + "; Semantics validation failed"
-                    : "Semantics validation failed");
+        result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getQualityValidation())) {
       if (result.getQualityValidation().getFailed() > 0) {
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult(
-                result.getResult() != null
-                    ? result.getResult() + "; Quality validation failed"
-                    : "Quality validation failed");
+        result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
   }
