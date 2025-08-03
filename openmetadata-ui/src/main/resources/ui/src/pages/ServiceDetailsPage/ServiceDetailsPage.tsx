@@ -121,7 +121,6 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
-import { removeAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -1094,7 +1093,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => {
       if (!isSoftDelete) {
-        removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
         navigate(
           getSettingPath(
             GlobalSettingsMenuCategory.SERVICES,
@@ -1386,7 +1384,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
               ingestionPipelines={ingestionPipelines}
               isCollateAIagentsLoading={isCollateAgentLoading}
               isIngestionPipelineLoading={isIngestionPipelineLoading}
-              isWorkflowStatusLoading={isWorkflowStatusLoading}
               serviceDetails={serviceDetails}
               workflowStatesData={workflowStatesData}
             />
@@ -1482,7 +1479,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     activeTab,
     isMetadataService,
     workflowStatesData,
-    isWorkflowStatusLoading,
     collateAgentsList,
     isSecurityService,
     ingestionPipelines,
@@ -1491,7 +1487,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   const afterAutoPilotAppTrigger = useCallback(() => {
-    removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
     fetchWorkflowInstanceStates();
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 

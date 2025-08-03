@@ -27,7 +27,6 @@ import {
 export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
   workflowStatesData?: WorkflowStatesData;
-  isWorkflowStatusLoading: boolean;
   collateAIagentsList: App[];
   ingestionPipelines?: IngestionPipeline[];
   isIngestionPipelineLoading: boolean;

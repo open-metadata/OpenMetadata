@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Alert, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import {
   LIVE_CHARTS_LIST,
@@ -27,7 +25,6 @@ import {
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
-import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { getAgentRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
@@ -43,13 +40,10 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { updateAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import {
-  checkIfAutoPilotStatusIsDismissed,
   filterDistributionChartItem,
   getChartsDataFromWidgetName,
   getPlatformInsightsChartDataFormattingMethod,
-  getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -64,7 +58,6 @@ import {
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
-  isWorkflowStatusLoading,
   collateAIagentsList,
   ingestionPipelines,
   isIngestionPipelineLoading,
@@ -142,45 +135,6 @@ const ServiceInsightsTab = ({
 
   const { PlatformInsightsWidget, TotalDataAssetsWidget, AgentsStatusWidget } =
     widgets;
-
-  const {
-    Icon: StatusIcon,
-    message,
-    description,
-  } = getStatusIconFromStatusType(
-    workflowStatesData?.mainInstanceState?.status
-  );
-
-  const showAutoPilotStatus = useMemo(() => {
-    const isDataPresent =
-      !isWorkflowStatusLoading && !isUndefined(workflowStatesData);
-    const isStatusDismissed = checkIfAutoPilotStatusIsDismissed(
-      serviceDetails.fullyQualifiedName,
-      workflowStatesData?.mainInstanceState?.status
-    );
-
-    return isDataPresent && !isStatusDismissed;
-  }, [
-    isWorkflowStatusLoading,
-    workflowStatesData,
-    serviceDetails.fullyQualifiedName,
-    workflowStatesData?.mainInstanceState?.status,
-  ]);
-
-  const onStatusBannerClose = useCallback(() => {
-    if (
-      serviceDetails.fullyQualifiedName &&
-      workflowStatesData?.mainInstanceState?.status
-    ) {
-      updateAutoPilotStatus({
-        serviceFQN: serviceDetails.fullyQualifiedName,
-        status: workflowStatesData?.mainInstanceState?.status,
-      });
-    }
-  }, [
-    serviceDetails.fullyQualifiedName,
-    workflowStatesData?.mainInstanceState?.status,
-  ]);
 
   const triggerSocketConnection = useCallback(async () => {
     if (isUndefined(sessionIdRef.current)) {
@@ -295,34 +249,6 @@ const ServiceInsightsTab = ({
 
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
-      {showAutoPilotStatus && (
-        <Alert
-          closable
-          showIcon
-          className={classNames(
-            'status-banner',
-            workflowStatesData?.mainInstanceState?.status ??
-              WorkflowStatus.Running
-          )}
-          closeIcon={
-            <CloseOutlined
-              className="text-md"
-              data-testid="status-banner-close-icon"
-            />
-          }
-          data-testid="auto-pilot-status-banner"
-          description={description}
-          icon={
-            <div
-              className="status-banner-icon"
-              data-testid={`status-banner-icon-${workflowStatesData?.mainInstanceState?.status}`}>
-              <StatusIcon height={20} width={20} />
-            </div>
-          }
-          message={message}
-          onClose={onStatusBannerClose}
-        />
-      )}
       <Col span={18}>
         <Row gutter={[16, 16]}>
           <Col span={24}>
