@@ -14,6 +14,7 @@ export enum EntityTypeEndpoint {
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
   ApiService = 'services/apiServices',
+  Chart = 'charts',
   Container = 'containers',
   DATA_PRODUCT = 'dataProducts',
   Dashboard = 'dashboards',
@@ -72,6 +73,7 @@ export enum ENTITY_PATH {
   'apiEndpoints' = 'apiEndpoint',
   'dataProducts' = 'dataProduct',
   'metrics' = 'metric',
+  charts = 'chart',
 }
 
 export type ResponseDataType = {
