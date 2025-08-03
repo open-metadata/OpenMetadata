@@ -46,6 +46,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -383,6 +384,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .withService(
                 new EntityReference().withId(testSuite.getId()).withType(Entity.TEST_SUITE))
             .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()))
+            .withLoggerLevel(LogLevels.INFO)
             .withAirflowConfig(new AirflowConfig());
 
     IngestionPipeline pipeline =
