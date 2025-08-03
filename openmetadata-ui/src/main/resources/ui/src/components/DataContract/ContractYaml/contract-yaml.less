@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 @import (reference) url('../../../styles/variables.less');
 
-.schema-editor-container {
-  .query-editor-button {
-    position: absolute;
-    z-index: 10;
-    top: 14px;
-    right: 14px;
+.contract-yaml-container {
+  width: 100%;
+
+  .contract-yaml-schema-editor {
+    border-radius: 12px;
+    border: 1px solid @grey-200;
+    overflow: hidden;
   }
 
-  .query-editor-copy-button {
-    background: @white;
-    color: @grey-600;
-
-    svg {
-      font-size: 16px;
-    }
+  .contract-schema-editor > .CodeMirror {
+    height: calc(
+      100vh - @data-asset-header-height - @tab-height - @om-navbar-height -
+        @size-xs - 120px
+    );
   }
 }

@@ -204,7 +204,7 @@ export const ContractQualityFormTab: React.FC<{
         </div>
 
         <Button
-          className="add-test-case-button"
+          className="contract-export-button"
           data-testid="add-test-button"
           icon={<Icon className="anticon" component={PlusIcon} />}
           onClick={handleOpenTestCaseDrawer}>
