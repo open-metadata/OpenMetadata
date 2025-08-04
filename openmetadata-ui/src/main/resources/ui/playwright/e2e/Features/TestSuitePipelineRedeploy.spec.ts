@@ -23,14 +23,17 @@ const table1 = new TableClass();
 const table2 = new TableClass();
 
 test.describe('Bulk Re-Deploy pipelines ', () => {
+  let pipeline1: any;
+  let pipeline2: any;
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
 
     await table1.create(apiContext);
     await table2.create(apiContext);
 
-    await table1.createTestSuiteAndPipelines(apiContext);
-    await table2.createTestSuiteAndPipelines(apiContext);
+    pipeline1 = await table1.createTestSuiteAndPipelines(apiContext);
+    pipeline2 = await table2.createTestSuiteAndPipelines(apiContext);
 
     await afterAction();
   });
@@ -61,8 +64,12 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
     await page.getByRole('button', { name: 'Re Deploy' }).click();
-
-    await page.waitForResponse('api/v1/services/ingestionPipelines/deploy/*');
+    await page.waitForResponse(
+      `api/v1/services/ingestionPipelines/deploy/${pipeline1.pipeline.id}`
+    );
+    await page.waitForResponse(
+      `api/v1/services/ingestionPipelines/deploy/${pipeline2.pipeline.id}`
+    );
 
     await expect(
       page.getByText('Pipelines Re Deploy Successfully')
