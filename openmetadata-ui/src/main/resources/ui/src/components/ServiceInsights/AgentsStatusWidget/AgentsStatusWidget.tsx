@@ -18,8 +18,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { WorkflowStatus } from '../../../generated/governance/workflows/workflowInstanceState';
 import {
+  getAgentRunningStatusMessage,
   getAgentStatusSummary,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
@@ -34,44 +34,11 @@ function AgentsStatusWidget({
 }: Readonly<AgentsStatusWidgetProps>) {
   const { t } = useTranslation();
 
-  const agentsRunningStatusMessage = useMemo(() => {
-    if (isLoading) {
-      return (
-        <Skeleton active paragraph={{ rows: 1, width: '100%' }} title={false} />
-      );
-    }
-
-    let message = '';
-
-    switch (workflowStatesData?.mainInstanceState?.status) {
-      case WorkflowStatus.Running:
-        message = t('message.auto-pilot-agents-running-message');
-
-        break;
-      case WorkflowStatus.Failure:
-        message = t('message.auto-pilot-agents-failed-message');
-
-        break;
-      case WorkflowStatus.Finished:
-        message = t('message.auto-pilot-agents-finished-message');
-
-        break;
-      case WorkflowStatus.Exception:
-        message = t('message.auto-pilot-agents-exception-message');
-
-        break;
-    }
-
-    if (!isLoading && isEmpty(agentsInfo)) {
-      message = t('message.auto-pilot-no-agents-message');
-    }
-
-    return (
-      <Typography.Text className="text-grey-muted text-sm">
-        {message}
-      </Typography.Text>
-    );
-  }, [workflowStatesData, isLoading, agentsInfo]);
+  const agentsRunningStatusMessage = useMemo(
+    () =>
+      getAgentRunningStatusMessage(isLoading, agentsInfo, workflowStatesData),
+    [workflowStatesData, isLoading, agentsInfo]
+  );
 
   const agentStatusSummary = useMemo(() => {
     return getAgentStatusSummary(agentsInfo);

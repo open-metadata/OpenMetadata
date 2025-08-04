@@ -23,11 +23,13 @@ import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 
+import { Skeleton, Typography } from 'antd';
 import { groupBy, isEmpty, isUndefined, reduce } from 'lodash';
 import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import {
   AgentsLiveInfo,
   CollateAgentLiveInfo,
+  WorkflowStatesData,
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import {
   AUTOPILOT_AGENTS_ORDERED_LIST,
@@ -51,6 +53,7 @@ import {
   PipelineType,
   ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
 import { t } from './i18next/LocalUtil';
 
 export const getAgentLabelFromType = (agentType: string) => {
@@ -291,5 +294,48 @@ export const getIconFromStatus = (status?: string) => {
     <div className={`status-summary-icon-container ${status}`}>
       <Icon height={14} width={14} />
     </div>
+  );
+};
+
+export const getAgentRunningStatusMessage = (
+  isLoading: boolean,
+  agentsInfo: AgentsInfo[],
+  workflowStatesData?: WorkflowStatesData
+) => {
+  if (isLoading) {
+    return (
+      <Skeleton active paragraph={{ rows: 1, width: '100%' }} title={false} />
+    );
+  }
+
+  let message = '';
+
+  switch (workflowStatesData?.mainInstanceState?.status) {
+    case WorkflowStatus.Running:
+      message = t('message.auto-pilot-agents-running-message');
+
+      break;
+    case WorkflowStatus.Failure:
+      message = t('message.auto-pilot-agents-failed-message');
+
+      break;
+    case WorkflowStatus.Finished:
+      message = t('message.auto-pilot-agents-finished-message');
+
+      break;
+    case WorkflowStatus.Exception:
+      message = t('message.auto-pilot-agents-exception-message');
+
+      break;
+  }
+
+  if (!isLoading && isEmpty(agentsInfo)) {
+    message = t('message.auto-pilot-no-agents-message');
+  }
+
+  return (
+    <Typography.Text className="text-grey-muted text-sm">
+      {message}
+    </Typography.Text>
   );
 };
