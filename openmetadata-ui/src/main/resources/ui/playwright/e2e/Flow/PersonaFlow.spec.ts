@@ -372,10 +372,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
           state: 'detached',
         });
 
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
         const searchUser = adminPage.waitForResponse(
           `/api/v1/search/query?q=*${encodeURIComponent(
             user.responseData.displayName
