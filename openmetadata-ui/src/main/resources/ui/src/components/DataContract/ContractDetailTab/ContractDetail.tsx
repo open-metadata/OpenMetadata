@@ -260,16 +260,18 @@ const ContractDetail: React.FC<{
     downloadContractYamlFile(contract);
   }, [contract]);
 
-  const handleRunNow = () => {
+  const handleRunNow = async () => {
     if (contract?.id) {
-      setValidateLoading(true);
-      validateContractById(contract.id)
-        .then(() =>
-          showSuccessToast('Contract validation trigger successfully.')
-        )
-        .finally(() => {
-          setValidateLoading(false);
-        });
+      try {
+        setValidateLoading(true);
+        await validateContractById(contract.id);
+        showSuccessToast(t('message.contract-validation-trigger-successfully'));
+        fetchLatestContractResults();
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setValidateLoading(false);
+      }
     }
   };
 
