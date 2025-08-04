@@ -62,8 +62,7 @@
         "Exasol",
         "Cockroach",
         "SSAS",
-        "Epic",
-        "GoogleSheets"
+        "Epic"
       ],
       "javaEnums": [
         {
@@ -209,9 +208,6 @@
         },
         {
           "name": "Epic"
-        },
-        {
-          "name": "GoogleSheets"
         }
       ]
     },
@@ -362,9 +358,6 @@
             },
             {
               "$ref": "./connections/database/epicConnection.json"
-            },
-            {
-              "$ref": "./connections/database/googleSheetsConnection.json"
             }
           ]
         }

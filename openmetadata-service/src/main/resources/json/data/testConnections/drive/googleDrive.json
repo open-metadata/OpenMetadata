@@ -1,0 +1,25 @@
+{
+  "name": "GoogleDrive",
+  "displayName": "Google Drive Test Connection",
+  "description": "This Test Connection validates access to Google Drive and the ability to retrieve file and directory metadata.",
+  "steps": [
+    {
+      "name": "check_access",
+      "description": "Validate that we can connect to Google Drive and authenticate using the provided credentials.",
+      "errorMessage": "Failed to connect to Google Drive. Please verify your credentials and API access.",
+      "mandatory": true
+    },
+    {
+      "name": "get_drive_files",
+      "description": "List files and directories accessible to the authenticated user in Google Drive.",
+      "errorMessage": "Failed to fetch Google Drive files. Please ensure the user has the necessary permissions to access the drive content.",
+      "mandatory": true
+    },
+    {
+      "name": "get_spreadsheets",
+      "description": "List all Google Sheets accessible to the authenticated user (if Google Sheets are included).",
+      "errorMessage": "Failed to fetch Google Sheets. Please ensure the user has the necessary permissions to access the spreadsheets.",
+      "mandatory": false
+    }
+  ]
+}
