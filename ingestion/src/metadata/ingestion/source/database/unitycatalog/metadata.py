@@ -306,6 +306,8 @@ class UnitycatalogSource(
                 if table.table_type:
                     if table.table_type.value.lower() == TableType.View.value.lower():
                         table_type: TableType = TableType.View
+                    if table.table_type.value.lower() == "materialized_view":
+                        table_type: TableType = TableType.MaterializedView
                     elif (
                         table.table_type.value.lower()
                         == TableType.External.value.lower()
