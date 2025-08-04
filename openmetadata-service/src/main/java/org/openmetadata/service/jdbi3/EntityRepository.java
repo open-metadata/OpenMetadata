@@ -5323,7 +5323,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return tags.stream().map(this::createTagKey).collect(Collectors.toSet());
   }
 
-  private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
+  protected Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
     if (entityFQNs == null || entityFQNs.isEmpty()) {
       return Collections.emptyMap();
     }

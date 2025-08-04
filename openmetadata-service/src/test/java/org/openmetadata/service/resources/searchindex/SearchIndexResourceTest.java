@@ -19,6 +19,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -50,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -947,6 +949,120 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         assertEquals(
             expectedAggregations.get(i), actualElasticAggregation.getElasticAggregationBuilder());
       }
+    }
+  }
+
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel searchIndexTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel fieldTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    List<SearchIndex> createdSearchIndexes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<SearchIndexField> fields =
+          Arrays.asList(
+              getField("field1_" + i, SearchIndexDataType.KEYWORD, fieldTagLabel),
+              getField("field2_" + i, SearchIndexDataType.TEXT, null));
+
+      CreateSearchIndex createSearchIndex =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withFields(fields)
+              .withTags(List.of(searchIndexTagLabel));
+
+      SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
+      createdSearchIndexes.add(searchIndex);
+    }
+
+    WebTarget target =
+        getResource("searchIndexes").queryParam("fields", "tags").queryParam("limit", "50");
+
+    SearchIndexResource.SearchIndexList searchIndexList =
+        TestUtils.get(target, SearchIndexResource.SearchIndexList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(searchIndexList.getData());
+
+    List<SearchIndex> ourSearchIndexes =
+        searchIndexList.getData().stream()
+            .filter(
+                si -> createdSearchIndexes.stream().anyMatch(csi -> csi.getId().equals(si.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourSearchIndexes.isEmpty(),
+        "Should find at least one of our created search indexes in pagination");
+
+    for (SearchIndex searchIndex : ourSearchIndexes) {
+      assertNotNull(
+          searchIndex.getTags(),
+          "SearchIndex-level tags should not be null when fields=tags in pagination");
+      assertEquals(
+          1, searchIndex.getTags().size(), "Should have exactly one search index-level tag");
+      assertEquals(searchIndexTagLabel.getTagFQN(), searchIndex.getTags().get(0).getTagFQN());
+
+      // Fields should not have tags when only fields=tags is specified
+      if (searchIndex.getFields() != null) {
+        for (SearchIndexField field : searchIndex.getFields()) {
+          assertTrue(
+              field.getTags() == null || field.getTags().isEmpty(),
+              "Field tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    target =
+        getResource("searchIndexes").queryParam("fields", "fields,tags").queryParam("limit", "50");
+
+    searchIndexList =
+        TestUtils.get(target, SearchIndexResource.SearchIndexList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(searchIndexList.getData());
+
+    // Verify at least one of our created search indexes is in the response
+    ourSearchIndexes =
+        searchIndexList.getData().stream()
+            .filter(
+                si -> createdSearchIndexes.stream().anyMatch(csi -> csi.getId().equals(si.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourSearchIndexes.isEmpty(),
+        "Should find at least one of our created search indexes in pagination");
+
+    // Verify both search index-level and field-level tags are fetched
+    for (SearchIndex searchIndex : ourSearchIndexes) {
+      // Verify search index-level tags
+      assertNotNull(
+          searchIndex.getTags(),
+          "SearchIndex-level tags should not be null in pagination with fields,tags");
+      assertEquals(
+          1, searchIndex.getTags().size(), "Should have exactly one search index-level tag");
+      assertEquals(searchIndexTagLabel.getTagFQN(), searchIndex.getTags().get(0).getTagFQN());
+
+      // Verify field-level tags
+      assertNotNull(
+          searchIndex.getFields(), "Fields should not be null when fields includes fields");
+
+      SearchIndexField field1 =
+          searchIndex.getFields().stream()
+              .filter(f -> f.getName().startsWith("field1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find field1 field"));
+
+      assertNotNull(
+          field1.getTags(), "Field tags should not be null when fields=fields,tags in pagination");
+      assertTrue(field1.getTags().size() >= 1, "Field should have at least one tag");
+      boolean hasExpectedTag =
+          field1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(fieldTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Field should have the expected tag: " + fieldTagLabel.getTagFQN());
+
+      SearchIndexField field2 =
+          searchIndex.getFields().stream()
+              .filter(f -> f.getName().startsWith("field2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find field2 field"));
+
+      assertTrue(
+          field2.getTags() == null || field2.getTags().isEmpty(), "field2 should not have tags");
     }
   }
 }
