@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import Icon, { ArrowLeftOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -36,7 +37,7 @@ import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils'
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import { SelectionCard } from '../../common/SelectionCardGroup/SelectionCardGroup';
+import SelectionCardGroup from '../../common/SelectionCardGroup/SelectionCardGroup';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -203,7 +204,7 @@ export const ContractQualityFormTab: React.FC<{
         </div>
 
         <Button
-          className="add-test-case-button"
+          className="contract-export-button"
           data-testid="add-test-button"
           icon={<Icon className="anticon" component={PlusIcon} />}
           onClick={handleOpenTestCaseDrawer}>
@@ -214,16 +215,11 @@ export const ContractQualityFormTab: React.FC<{
       </div>
 
       <div className="contract-form-content-container ">
-        <div className="w-full selection-card-group">
-          {TEST_LEVEL_OPTIONS.map((option) => (
-            <SelectionCard
-              isSelected={testType === option.value}
-              key={option.value}
-              option={option}
-              onClick={() => setTestType(option.value as TestCaseType)}
-            />
-          ))}
-        </div>
+        <SelectionCardGroup
+          options={TEST_LEVEL_OPTIONS}
+          value={testType}
+          onChange={(value) => setTestType(value as TestCaseType)}
+        />
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
@@ -242,7 +238,11 @@ export const ContractQualityFormTab: React.FC<{
       </div>
 
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined height={22} width={20} />}
+          type="default"
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
       </div>

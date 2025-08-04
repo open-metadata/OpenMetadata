@@ -28,11 +28,54 @@
       overflow: initial;
     }
   }
+  .contract-prev-button,
+  .contract-next-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: @size-xs @size-sm;
+    border: 1px solid @grey-300;
+    border-radius: 8px;
+    gap: 4px;
+    font-weight: @font-semibold;
 
+    box-shadow: 0px 1px 2px 0px @grey-27;
+
+    box-shadow: 0px -2px 0px 0px @grey-27 inset;
+
+    box-shadow: 0px 0px 0px 1px @grey-27 inset;
+  }
+  .contract-prev-button {
+    color: @grey-700;
+    svg {
+      stroke: @grey-400;
+    }
+  }
   .ant-tabs-left-content {
     height: 100%;
   }
+  .ant-checkbox-checked {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        border-color: @primary-color;
+      }
+    }
+  }
 
+  .ant-checkbox-indeterminate {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        width: 7px;
+        height: 2px;
+        border-radius: 8px;
+        border: 1px solid @primary-color;
+      }
+    }
+  }
   .ant-tabs-nav {
     width: 180px;
     height: initial;
@@ -104,6 +147,10 @@
     min-height: 500px;
     border-radius: 0 8px 8px 8px;
   }
+  .schema-table-name {
+    color: @grey-600;
+    font-weight: @font-medium;
+  }
 
   // Contract detail Forms
   .contract-detail-form-tab-title {
@@ -147,23 +194,6 @@
   & > div:first-child {
     background: transparent;
     padding: 0 0 20px 0;
-
-    .ant-typography {
-      margin: 0;
-
-      &.ant-typography-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 4px !important;
-      }
-
-      &.ant-typography-paragraph {
-        font-size: 14px;
-        color: #6b7280;
-        margin: 0 !important;
-      }
-    }
   }
 
   // Form styling within tabs
@@ -173,28 +203,44 @@
 
       .ant-form-item-label {
         padding-bottom: 8px;
-
         label {
           font-size: 14px;
           font-weight: 500;
-          color: #374151;
+          color: @grey-700;
 
           &.ant-form-item-required::before {
             color: #ef4444;
           }
         }
       }
-
+      .ant-form-item-control-input-content {
+        input[type='text'] {
+          padding: 8px 14px;
+          color: @grey-700;
+          border: 1px solid @grey-300;
+          border-radius: 8px;
+          box-shadow: 0 1px 2px 0px @grey-27;
+        }
+      }
       .ant-form-item-control {
-        .ant-input,
         .ant-select-selector,
         .ant-mentions {
-          border-radius: 6px;
-          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          border: 1px solid @grey-300;
+          padding: 4px 12px;
+          color: @grey-700;
+          height: 40px;
+          box-shadow: 0 1px 2px 0px @grey-27;
 
           &:focus,
           &:hover {
-            border-color: #3b82f6;
+            border-color: @primary-color;
+          }
+
+          .ant-select-selection-search {
+            input[type='search'] {
+              height: 40px;
+            }
           }
         }
       }
@@ -225,5 +271,28 @@
   > .ant-card-body {
     padding: 0;
     padding-left: 20px;
+  }
+}
+
+.semantic-rule-editor-view-only {
+  input[type='text'] {
+    padding: 8px 14px;
+    color: @grey-700;
+    box-shadow: 0px 1px 2px 0px @grey-27;
+    border: 1px solid @grey-300;
+  }
+
+  .ant-select-selector,
+  .ant-mentions {
+    border: 1px solid @grey-300;
+    padding: 4px 12px !important;
+    color: @grey-700;
+    height: 40px !important;
+    box-shadow: 0 1px 2px 0px @grey-27;
+
+    &:focus,
+    &:hover {
+      border-color: @primary-color;
+    }
   }
 }

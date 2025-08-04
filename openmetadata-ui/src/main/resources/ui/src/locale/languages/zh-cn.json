@@ -535,6 +535,7 @@
     "embed-link": "插入链接",
     "enable": "启用",
     "enable-debug-log": "启用调试日志",
+    "enable-entity": "启用{{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "启用",
     "enable-partition": "启用分区",

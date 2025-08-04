@@ -535,6 +535,7 @@
     "embed-link": "ฝังลิงก์",
     "enable": "เปิดใช้งาน",
     "enable-debug-log": "เปิดใช้งานบันทึกการดีบัก",
+    "enable-entity": "เปิดใช้งาน {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "เปิดใช้งาน",
     "enable-partition": "เปิดใช้งานการแบ่งส่วน",

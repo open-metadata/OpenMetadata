@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,24 +11,25 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
-import { TagSource } from '../../../generated/type/tagLabel';
+@import (reference) url('../../../styles/variables.less');
 
-export interface TagsViewerProps {
-  tags: EntityTags[];
-  sizeCap?: number;
-  displayType?: DisplayType;
-  showNoDataPlaceholder?: boolean;
-  tagType?: TagSource;
-  newLook?: boolean;
-}
+.contract-mode-radio-group {
+  border-radius: @size-xs;
+  border: 1px solid @border-color-7;
+  padding: 4px;
+  overflow: hidden;
+  .ant-radio-button-wrapper:first-child {
+    border-radius: @size-xs 0 0 @size-xs;
+  }
+  .ant-radio-button-wrapper:last-child {
+    border-radius: 0 @size-xs @size-xs 0;
+  }
 
-export enum DisplayType {
-  READ_MORE = 'read-more',
-  POPOVER = 'popover',
-}
-
-export enum LayoutType {
-  HORIZONTAL = 'horizontal',
-  VERTICAL = 'vertical',
+  .ant-radio-button-wrapper-checked {
+    svg {
+      path {
+        stroke: @primary-7;
+      }
+    }
+  }
 }

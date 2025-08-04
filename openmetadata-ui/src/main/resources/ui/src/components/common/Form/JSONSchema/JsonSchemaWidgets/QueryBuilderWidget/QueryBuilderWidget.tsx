@@ -38,15 +38,14 @@ import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  EntityFields,
-  EntityReferenceFields,
-} from '../../../../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
-import { getEmptyJsonTreeForQueryBuilder } from '../../../../../../utils/AdvancedSearchUtils';
+import {
+  getEmptyJsonTree,
+  getEmptyJsonTreeForQueryBuilder,
+} from '../../../../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
@@ -201,16 +200,12 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         }
       }
     } else {
-      const emptyJsonTree = getEmptyJsonTreeForQueryBuilder(
+      const emptyJsonTree =
         outputType === SearchOutputType.JSONLogic
-          ? EntityReferenceFields.OWNERS
-          : EntityFields.OWNERS
-      );
+          ? getEmptyJsonTreeForQueryBuilder()
+          : getEmptyJsonTree();
 
-      const tree = QbUtils.Validation.sanitizeTree(
-        QbUtils.loadTree(emptyJsonTree),
-        config
-      ).fixedTree;
+      const tree = QbUtils.loadTree(emptyJsonTree);
 
       onTreeUpdate(tree, config);
     }

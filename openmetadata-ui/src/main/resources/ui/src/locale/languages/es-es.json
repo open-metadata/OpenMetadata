@@ -535,6 +535,7 @@
     "embed-link": "Insertar Link",
     "enable": "Habilitar",
     "enable-debug-log": "Activar logs con debug",
+    "enable-entity": "Habilitar {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "habilitar",
     "enable-partition": "Habilitar partición",

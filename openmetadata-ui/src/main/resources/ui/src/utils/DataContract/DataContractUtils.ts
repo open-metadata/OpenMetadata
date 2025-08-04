@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import i18next from 'i18next';
+import yaml from 'js-yaml';
 import { omit } from 'lodash';
 import { ReactComponent as QualityIcon } from '../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../assets/svg/semantics.svg';
@@ -182,4 +183,18 @@ export const getUpdatedContractDetails = (
     'latestResult',
     'incrementalChangeDescription',
   ]);
+};
+
+export const downloadContractYamlFile = (contract: DataContract) => {
+  const data = yaml.dump(getUpdatedContractDetails(contract, contract));
+  const element = document.createElement('a');
+  const file = new Blob([data], { type: 'text/plain' });
+  element.textContent = 'download-file';
+  element.href = URL.createObjectURL(file);
+  element.download = `${contract.name}.yaml`;
+  document.body.appendChild(element);
+  element.click();
+
+  URL.revokeObjectURL(element.href);
+  document.body.removeChild(element);
 };
