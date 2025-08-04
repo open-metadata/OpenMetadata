@@ -82,7 +82,7 @@
       "name": "CheckGlossaryTermHasReviewers",
       "displayName": "Check if Glossary Term has Reviewers",
       "config": {
-        "rules": "{\"and\":[{\"!!\":[{\"var\":\"reviewers\"}]}]}"
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
