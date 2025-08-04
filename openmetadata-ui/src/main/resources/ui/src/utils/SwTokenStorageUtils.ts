@@ -35,8 +35,9 @@ const getAppState = async (): Promise<AppState> => {
 
         return stateStr ? JSON.parse(stateStr) : {};
       } catch {
-        // Service worker not ready - return empty instead of localStorage fallback
-        // This ensures logout works properly and prevents restoring old tokens
+        // Service worker not ready - return empty instead of localStorage fallback.
+        // SECURITY: This prevents restoration of tokens from localStorage after logout,
+        // ensuring that tokens deleted during logout cannot be inadvertently restored.
         return {};
       }
     } else {
@@ -60,7 +61,9 @@ const setAppState = async (state: AppState): Promise<void> => {
       localStorage.setItem(APP_STATE_KEY, stateStr);
     }
   } catch {
-    // No need to handle this error as it will be handled by the controller
+    // Storage failures are intentionally ignored to prevent auth flows from breaking.
+    // Token persistence is treated as "best effort" - if storage fails, the user
+    // may need to re-authenticate, but core functionality continues working.
   }
 };
 
@@ -80,7 +83,9 @@ export const setOidcToken = async (token: string): Promise<void> => {
     state[OIDC_TOKEN_KEY] = token;
     await setAppState(state);
   } catch {
-    // No need to handle this error as it will be handled by the controller
+    // Storage failures are intentionally ignored to prevent auth flows from breaking.
+    // Token persistence is treated as "best effort" - if storage fails, the user
+    // may need to re-authenticate, but core functionality continues working.
   }
 };
 
@@ -100,6 +105,8 @@ export const setRefreshToken = async (token: string): Promise<void> => {
     state[REFRESH_TOKEN_KEY] = token;
     await setAppState(state);
   } catch {
-    // No need to handle this error as it will be handled by the controller
+    // Storage failures are intentionally ignored to prevent auth flows from breaking.
+    // Token persistence is treated as "best effort" - if storage fails, the user
+    // may need to re-authenticate, but core functionality continues working.
   }
 };

@@ -37,7 +37,7 @@ export function waitForServiceWorkerController(): Promise<ServiceWorker> {
           registration = await navigator.serviceWorker.getRegistration();
         }
 
-        // Is still no registration, create a new one
+        // If there is still no registration, create a new one
         if (!registration) {
           registration = await navigator.serviceWorker.register(
             '/app-worker.js',
