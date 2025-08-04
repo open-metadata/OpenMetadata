@@ -14,14 +14,13 @@ import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
+  PAGE_SIZE_BASE,
   ROUTES,
 } from '../../../constants/constants';
 import {
@@ -136,7 +135,7 @@ const MyDataWidgetInternal = ({
         const res = await searchData(
           '',
           INITIAL_PAGING_VALUE,
-          PAGE_SIZE,
+          PAGE_SIZE_BASE,
           queryFilter,
           sortField,
           sortOrder,
@@ -269,7 +268,7 @@ const MyDataWidgetInternal = ({
   }, [data]);
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!isLoading) && data?.length > 10,
+    () => Boolean(!isLoading) && data?.length > PAGE_SIZE_BASE,
     [data, isLoading]
   );
 

@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
-import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
 import {
   applySortToData,
   FOLLOWING_WIDGET_FILTER_OPTIONS,
@@ -79,7 +79,7 @@ function FollowingWidget({
       const sortOrder = getSortOrder(selectedEntityFilter);
 
       const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
+        pageSize: PAGE_SIZE_BASE,
         searchIndex: SearchIndex.ALL,
         query: '*',
         filters: `followers:${currentUser.id}`,
@@ -186,7 +186,7 @@ function FollowingWidget({
   }, [followedData]);
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > PAGE_SIZE_BASE,
     [followedData, isLoadingOwnedData]
   );
 

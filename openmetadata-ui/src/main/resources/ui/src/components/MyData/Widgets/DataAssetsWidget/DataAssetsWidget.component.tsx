@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
@@ -152,7 +152,7 @@ const DataAssetsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && services?.length > 10,
+    () => Boolean(!loading) && services?.length > PAGE_SIZE_BASE,
     [services, loading]
   );
 

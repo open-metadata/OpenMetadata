@@ -20,7 +20,7 @@ import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/sv
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_LARGE,
+  PAGE_SIZE_BASE,
   ROUTES,
 } from '../../../../constants/constants';
 import {
@@ -75,7 +75,7 @@ const DomainsWidget = ({
       const res = await searchData(
         '',
         INITIAL_PAGING_VALUE,
-        PAGE_SIZE_LARGE,
+        PAGE_SIZE_BASE,
         '',
         sortField,
         sortOrder,
@@ -201,7 +201,7 @@ const DomainsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && domains.length > 10,
+    () => Boolean(!loading) && domains.length > PAGE_SIZE_BASE,
     [domains, loading]
   );
 
@@ -210,7 +210,10 @@ const DomainsWidget = ({
       <WidgetFooter
         moreButtonLink="/domain"
         moreButtonText={t('label.view-more-count', {
-          countValue: domains.length > 10 ? domains.length - 10 : undefined,
+          countValue:
+            domains.length > PAGE_SIZE_BASE
+              ? domains.length - PAGE_SIZE_BASE
+              : undefined,
         })}
         showMoreButton={showWidgetFooterMoreButton}
       />

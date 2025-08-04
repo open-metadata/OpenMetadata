@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import {
   applySortToData,
   getSortField,
@@ -202,7 +203,7 @@ describe('DomainsWidget', () => {
       expect(mockSearchData).toHaveBeenCalledWith(
         '',
         1,
-        50,
+        PAGE_SIZE_BASE,
         '',
         'updatedAt',
         'desc',
@@ -310,7 +311,7 @@ describe('DomainsWidget', () => {
   });
 
   it('shows footer with more button when there are more than 10 domains', async () => {
-    const manyDomains = Array.from({ length: 15 }, (_, i) => ({
+    const manyDomains = Array.from({ length: PAGE_SIZE_BASE + 1 }, (_, i) => ({
       ...mockDomains[0],
       id: `domain-${i}`,
       name: `domain-${i}`,

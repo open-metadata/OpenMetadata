@@ -192,6 +192,40 @@ test.describe.serial('Persona operations', () => {
     );
   });
 
+  test('Set and remove default persona should work properly', async ({
+    page,
+  }) => {
+    await page
+      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      .click();
+
+    await page.getByTestId('manage-button').click();
+
+    await page.getByTestId('set-as-default-button').click();
+
+    const setAsDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+
+    const setAsDefaultConfirmationModal = page.getByTestId(
+      'default-persona-confirmation-modal'
+    );
+
+    await setAsDefaultConfirmationModal.getByText('Yes').click();
+    await setAsDefaultResponse;
+
+    await page.getByTestId('manage-button').click();
+
+    await page.getByTestId('remove-default-button').click();
+
+    const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+
+    const removeDefaultConfirmationModal = page.getByTestId(
+      'default-persona-confirmation-modal'
+    );
+
+    await removeDefaultConfirmationModal.getByText('Yes').click();
+    await removeDefaultResponse;
+  });
+
   test('Remove users in persona should work properly', async ({ page }) => {
     await page
       .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)

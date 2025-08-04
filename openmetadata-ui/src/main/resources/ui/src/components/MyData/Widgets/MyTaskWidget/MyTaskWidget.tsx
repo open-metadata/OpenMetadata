@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
@@ -88,7 +89,7 @@ const MyTaskWidget = ({
   };
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > 10,
+    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
     [entityThread, loading]
   );
 

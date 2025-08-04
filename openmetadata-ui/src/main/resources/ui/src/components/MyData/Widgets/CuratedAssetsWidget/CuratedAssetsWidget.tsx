@@ -23,7 +23,7 @@ import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
@@ -114,7 +114,7 @@ const CuratedAssetsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!isLoading) && data?.length > 10,
+    () => Boolean(!isLoading) && data?.length > PAGE_SIZE_BASE,
     [data, isLoading]
   );
 
@@ -148,7 +148,7 @@ const CuratedAssetsWidget = ({
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
-          pageSize: 20,
+          pageSize: PAGE_SIZE_BASE,
           searchIndex,
           includeDeleted: false,
           trackTotalHits: false,
@@ -169,7 +169,9 @@ const CuratedAssetsWidget = ({
         );
 
         const count = String(
-          totalResourceCounts > 10 ? totalResourceCounts - 10 : ''
+          totalResourceCounts > PAGE_SIZE_BASE
+            ? totalResourceCounts - PAGE_SIZE_BASE
+            : ''
         );
 
         setViewMoreCount(count);

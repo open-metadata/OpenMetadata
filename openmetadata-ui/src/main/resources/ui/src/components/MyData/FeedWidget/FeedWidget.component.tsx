@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
-import { ROUTES } from '../../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
@@ -73,7 +73,7 @@ const MyFeedWidgetInternal = ({
       undefined,
       undefined,
       undefined,
-      10
+      PAGE_SIZE_BASE
     );
   }, [getFeedData, selectedFilter]);
 
@@ -87,7 +87,7 @@ const MyFeedWidgetInternal = ({
   }, [currentLayout, widgetKey]);
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > 10,
+    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
     [entityThread, loading]
   );
 
