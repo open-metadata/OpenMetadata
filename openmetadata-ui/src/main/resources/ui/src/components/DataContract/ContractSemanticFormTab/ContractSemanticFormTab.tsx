@@ -25,6 +25,7 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightOutlined } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
+import { EntityReferenceFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
@@ -250,6 +251,9 @@ export const ContractSemanticFormTab: React.FC<{
                                   name={[field.name, 'rule']}>
                                   {/* @ts-expect-error because Form.Item will provide value and onChange */}
                                   <QueryBuilderWidget
+                                    excludeFields={[
+                                      EntityReferenceFields.EXTENSION,
+                                    ]}
                                     formContext={{
                                       entityType: EntityType.TABLE,
                                     }}

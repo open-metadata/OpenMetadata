@@ -38,6 +38,7 @@ import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityReferenceFields } from '../../../../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
@@ -60,7 +61,11 @@ import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/A
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
 
-const QueryBuilderWidget: FC<WidgetProps> = ({
+interface QueryBuilderWidgetProps extends WidgetProps {
+  excludeFields?: EntityReferenceFields[];
+}
+
+const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
   onChange,
   schema,
   value,
@@ -87,6 +92,29 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
   const [queryURL, setQueryURL] = useState<string>('');
   const [queryActions, setQueryActions] = useState<Actions>();
 
+  // Filter config fields based on fieldsToRender prop
+  const filteredConfig = useMemo(() => {
+    if (isEmpty(props.excludeFields)) {
+      return config;
+    }
+
+    const filteredFields: Record<string, any> = {};
+
+    // Filter fields based on fieldsToRender
+    Object.entries(config.fields).forEach(([fieldKey, fieldConfig]) => {
+      if (
+        !(props.excludeFields ?? []).includes(fieldKey as EntityReferenceFields)
+      ) {
+        filteredFields[fieldKey] = fieldConfig;
+      }
+    });
+
+    return {
+      ...config,
+      fields: filteredFields,
+    };
+  }, [config, props.excludeFields]);
+
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
       const qFilter = getEntityTypeAggregationFilter(
@@ -96,7 +124,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
       const tree = QbUtils.sanitizeTree(
         QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
-        config
+        filteredConfig
       ).fixedTree;
 
       const queryFilterString = !isEmpty(tree)
@@ -145,7 +173,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
-      const data = elasticSearchFormat(nTree, config) ?? '';
+      const data = elasticSearchFormat(nTree, filteredConfig) ?? '';
       const qFilter = {
         query: data,
       };
@@ -163,7 +191,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
       onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
       try {
-        const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
+        const jsonLogic = QbUtils.jsonLogicFormat(nTree, filteredConfig);
         onChange(JSON.stringify(jsonLogic.logic ?? ''));
       } catch {
         onChange('');
@@ -177,40 +205,40 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
       if (outputType === SearchOutputType.ElasticSearch) {
         const parsedTree = getJsonTreeFromQueryFilter(
           parsedValue,
-          config.fields
+          filteredConfig.fields
         );
 
         if (Object.keys(parsedTree).length > 0) {
           const tree = QbUtils.Validation.sanitizeTree(
             QbUtils.loadTree(parsedTree),
-            config
+            filteredConfig
           ).fixedTree;
-          onTreeUpdate(tree, config);
+          onTreeUpdate(tree, filteredConfig);
           // Fetch count for default value
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        const tree = QbUtils.loadFromJsonLogic(parsedValue, config);
+        const tree = QbUtils.loadFromJsonLogic(parsedValue, filteredConfig);
         if (tree) {
           const validatedTree = QbUtils.Validation.sanitizeTree(
             tree,
-            config
+            filteredConfig
           ).fixedTree;
-          onTreeUpdate(validatedTree, config);
+          onTreeUpdate(validatedTree, filteredConfig);
         }
       }
     } else {
       const emptyJsonTree =
         outputType === SearchOutputType.JSONLogic
-          ? getEmptyJsonTreeForQueryBuilder()
+          ? getEmptyJsonTreeForQueryBuilder(EntityReferenceFields.GLOSSARY_TERM)
           : getEmptyJsonTree();
 
       const tree = QbUtils.loadTree(emptyJsonTree);
 
-      onTreeUpdate(tree, config);
+      onTreeUpdate(tree, filteredConfig);
     }
     setInitDone(true);
-  }, [config, value, outputType]);
+  }, [filteredConfig, value, outputType]);
 
   useEffect(() => {
     onChangeSearchIndex(searchIndex);
@@ -252,7 +280,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
               </>
             )}
             <Query
-              {...config}
+              {...filteredConfig}
               renderBuilder={(props) => {
                 // Store the actions for external access
                 if (!queryActions) {
@@ -266,7 +294,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
                 );
               }}
               settings={{
-                ...config.settings,
+                ...filteredConfig.settings,
                 ...(props.readonly ? READONLY_SETTINGS : {}),
                 removeEmptyGroupsOnLoad: false,
                 removeEmptyRulesOnLoad: false,

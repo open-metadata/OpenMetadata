@@ -375,6 +375,56 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.GLOSSARY_TERM]: {
+        label: t('label.glossary-term-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'glossaryTermFQN',
+        subfields: {
+          glossaryTermFQN: {
+            label: 'Glossary Term',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.GLOSSARY_TERM,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
+      [EntityReferenceFields.DOMAIN]: {
+        label: t('label.domain'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: this.searchAutocomplete({
+            searchIndex: SearchIndex.DOMAIN,
+            fieldName: 'fullyQualifiedName',
+            fieldLabel: 'name',
+          }),
+          useAsyncSearch: true,
+        },
+      },
+      [EntityReferenceFields.DATA_PRODUCT]: {
+        label: t('label.data-product'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: this.searchAutocomplete({
+            searchIndex: SearchIndex.DATA_PRODUCT,
+            fieldName: 'fullyQualifiedName',
+            fieldLabel: 'name',
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityReferenceFields.EXTENSION]: {
         label: t('label.custom-property-plural'),
         type: '!struct',

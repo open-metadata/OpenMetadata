@@ -483,7 +483,7 @@ export const getEmptyJsonTreeForQueryBuilder = (
             type: 'rule',
             id: uuid3,
             properties: {
-              field: 'owners.fullyQualifiedName',
+              field: 'glossaryTerm.glossaryTermFQN',
               operator: 'select_equals',
               value: [],
               valueSrc: ['value'],
