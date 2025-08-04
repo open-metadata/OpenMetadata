@@ -26,6 +26,7 @@ import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
 import { ContractDetail } from '../ContractDetailTab/ContractDetail';
+import './contract-tab.less';
 
 export const ContractTab = () => {
   const {
@@ -118,5 +119,9 @@ export const ContractTab = () => {
     }
   }, [tabMode, contract]);
 
-  return isLoading ? <Loader /> : content;
+  return isLoading ? (
+    <Loader />
+  ) : (
+    <div className="contract-tab-container">{content}</div>
+  );
 };

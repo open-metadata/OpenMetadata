@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import { CodeOutlined, EditOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Divider,
-  Radio,
-  RadioChangeEvent,
-  Tabs,
-  Typography,
-} from 'antd';
+import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -112,7 +103,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues]);
+  }, [contract, formValues, table.id]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -220,27 +211,13 @@ const AddDataContract: React.FC<{
   const cardTitle = useMemo(() => {
     return (
       <div className="add-contract-card-header d-flex items-center justify-between">
-        <div className="d-flex item-center justify-between flex-1">
-          <div>
-            <Typography.Text className="add-contract-card-title">
-              {t('label.add-contract-detail-plural')}
-            </Typography.Text>
-            <Typography.Paragraph className="add-contract-card-description">
-              {t('message.add-contract-detail-description')}
-            </Typography.Paragraph>
-          </div>
-          <div className="d-flex items-center">
-            <Radio.Group
-              optionType="button"
-              options={[
-                { label: <CodeOutlined />, value: DataContractMode.YAML },
-                { label: <EditOutlined />, value: DataContractMode.UI },
-              ]}
-              value={mode}
-              onChange={handleModeChange}
-            />
-            <Divider type="vertical" />
-          </div>
+        <div>
+          <Typography.Text className="add-contract-card-title">
+            {t('label.add-contract-detail-plural')}
+          </Typography.Text>
+          <Typography.Paragraph className="add-contract-card-description">
+            {t('message.add-contract-detail-description')}
+          </Typography.Paragraph>
         </div>
         <div>
           <Button type="default" onClick={onCancel}>

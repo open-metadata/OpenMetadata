@@ -536,6 +536,7 @@
     "embed-link": "قرار دادن لینک",
     "enable": "فعال کردن",
     "enable-debug-log": "فعال کردن گزارش اشکال‌زدایی",
+    "enable-entity": "فعال کردن {{entity}}",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "فعال کردن",
     "enable-partition": "فعال کردن پارتیشن",
