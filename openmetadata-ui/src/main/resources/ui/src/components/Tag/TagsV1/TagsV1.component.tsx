@@ -120,15 +120,26 @@ const TagsV1 = ({
     [color]
   );
 
+  const tagChipStyleClass = useMemo(() => {
+    if (newLook && !tag.style?.color) {
+      return 'new-chip-style';
+    }
+    if (newLook && tag.style?.color) {
+      return 'new-chip-style-with-color';
+    }
+
+    return '';
+  }, [newLook, tag.style?.color]);
+
   const tagContent = useMemo(
     () => (
       <div className="d-flex w-full h-full">
         {tagColorBar}
         <div
-          className={classNames('d-flex items-center p-x-xs w-full', {
-            'new-chip-style': newLook && !tag.style?.color,
-            'new-chip-style-with-color': newLook && tag.style?.color,
-          })}>
+          className={classNames(
+            'd-flex items-center p-x-xs w-full',
+            tagChipStyleClass
+          )}>
           {tag.style?.iconURL ? (
             <img
               className="m-r-xss"
@@ -160,9 +171,7 @@ const TagsV1 = ({
         className={classNames(
           className,
           'tag-chip tag-chip-content',
-          newLook && !tag.style?.color && 'new-chip-style',
-          newLook && tag.style?.color && 'new-chip-style-with-color',
-
+          tagChipStyleClass,
           {
             'tag-highlight': Boolean(
               (tag as HighlightedTagLabel).isHighlighted

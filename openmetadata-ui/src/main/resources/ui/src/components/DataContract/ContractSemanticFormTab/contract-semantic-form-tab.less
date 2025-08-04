@@ -24,89 +24,91 @@
 }
 
 .contract-semantic-form-container {
-  .expanded {
+  .ant-card.expanded {
     .ant-card-head {
-      border-bottom-left-radius: 0 !important;
-      border-bottom-right-radius: 0 !important;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
     }
   }
 
-  .expandable-card {
+  .ant-card.new-header-border-card.expandable-card {
     margin-top: 16px;
-    border: 1px solid @border-color-7 !important;
+    border: 1px solid @border-color-7;
     box-shadow: 0 1px 2px 0 @grey-27;
 
     .ant-card-head {
-      background: @white !important;
-      border-bottom: 1px solid @grey-200 !important;
-    }
+      background: @white;
+      border-bottom: 1px solid @grey-200;
 
-    .semantic-form-item-title-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      gap: 12px;
+      .semantic-form-item-title-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 12px;
 
-      .enable-form-item {
-        margin-bottom: 0 !important;
+        .enable-form-item {
+          margin-bottom: 0;
+        }
+
+        > div:first-child {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .semantic-form-item-title {
+          font-size: 16px;
+          font-weight: 600;
+          line-height: 32px;
+        }
+
+        .semantic-form-item-description {
+          font-size: 14px;
+          font-weight: 400;
+          color: @grey-600;
+        }
+
+        .ant-btn.edit-expand-button {
+          border-radius: 6px;
+          border: 1px solid @border-light;
+
+          svg {
+            font-size: 20px;
+            color: @grey-600;
+          }
+        }
+
+        .ant-btn.delete-expand-button {
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          border-radius: 6px;
+          background: transparent;
+          border-color: @error-color;
+
+          svg {
+            width: 20px;
+            color: @error-color;
+          }
+        }
       }
 
-      > div:first-child {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-      }
+      .ant-card-extra {
+        .ant-btn.expand-collapse-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 6px;
+          border: 1px solid @border-light;
 
-      .semantic-form-item-title {
-        font-size: 16px;
-        font-weight: 600;
-        line-height: 32px;
-      }
-
-      .semantic-form-item-description {
-        font-size: 14px;
-        font-weight: 400;
-        color: @grey-600;
-      }
-    }
-
-    .ant-btn.edit-expand-button {
-      border-radius: 6px !important;
-      border: 1px solid @border-light !important;
-
-      svg {
-        font-size: 20px;
-        color: @grey-600;
-      }
-    }
-
-    .ant-btn.delete-expand-button {
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      border-radius: 6px !important;
-      background: transparent !important;
-      border-color: @error-color !important;
-
-      svg {
-        width: 20px;
-        color: @error-color;
-      }
-    }
-
-    .ant-btn.expand-collapse-icon {
-      width: 30px !important;
-      height: 30px !important;
-      border-radius: 6px !important;
-      border: 1px solid @border-light !important;
-
-      svg {
-        font-size: 20px;
-        color: @grey-600;
+          svg {
+            font-size: 20px;
+            color: @grey-600;
+          }
+        }
       }
     }
   }
@@ -163,9 +165,14 @@
 }
 
 .semantic-rule-editor-view-only {
-  .ant-divider,
-  .group--conjunctions {
-    display: none !important;
+  .ant-divider {
+    display: none;
+  }
+
+  .query-builder {
+    .group--conjunctions {
+      display: none;
+    }
   }
 
   .ant-card-body {

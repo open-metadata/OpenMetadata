@@ -256,12 +256,6 @@ export const ContractSemanticFormTab: React.FC<{
                                     getQueryActions={handleAddQueryBuilderRule}
                                     id="rule"
                                     name={`${field.name}.rule`}
-                                    options={{
-                                      addButtonText: t('label.add-semantic'),
-                                      removeButtonText: t(
-                                        'label.remove-semantic'
-                                      ),
-                                    }}
                                     registry={{} as FieldErrorProps['registry']}
                                     schema={{
                                       outputType: SearchOutputType.JSONLogic,

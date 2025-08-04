@@ -30,12 +30,6 @@
     padding: 2px 8px;
   }
 
-  .contract-edit-button {
-    font-weight: @font-semibold;
-    span {
-      margin-left: 6px !important;
-    }
-  }
   .contract-action-container {
     display: flex;
     align-items: center;
@@ -67,6 +61,27 @@
 
       &:not(:hover) {
         border-color: @primary-color;
+      }
+    }
+
+    .ant-btn.delete-button {
+      background-color: transparent;
+      border-color: @error-color;
+
+      svg {
+        width: 20px;
+        color: @error-color;
+      }
+
+      &:hover {
+        background-color: @red-9;
+      }
+    }
+
+    .ant-btn.contract-edit-button {
+      font-weight: @font-semibold;
+      span {
+        margin-left: 6px;
       }
     }
   }
@@ -107,10 +122,6 @@
     }
   }
 
-  .schema-description {
-    gap: 8px !important;
-  }
-
   .expandable-card-contract {
     background: @grey-50;
 
@@ -133,20 +144,6 @@
         }
       }
     }
-  }
-}
-
-.delete-button {
-  background: transparent !important;
-  border-color: @error-color !important;
-
-  svg {
-    width: 20px;
-    color: @error-color;
-  }
-
-  &:hover {
-    background-color: @red-9 !important;
   }
 }
 
