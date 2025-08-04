@@ -62,6 +62,8 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
 
     await page.getByRole('button', { name: 'Re Deploy' }).click();
 
+    await page.waitForResponse('api/v1/services/ingestionPipelines/deploy/*');
+
     await expect(
       page.getByText('Pipelines Re Deploy Successfully')
     ).toBeVisible();
