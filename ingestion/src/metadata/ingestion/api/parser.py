@@ -30,6 +30,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.driveService import (
+    DriveConnection,
+    DriveServiceType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -61,10 +65,6 @@ from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageServiceType,
 )
-from metadata.generated.schema.entity.services.driveService import (
-    DriveConnection,
-    DriveServiceType,
-)
 from metadata.generated.schema.metadataIngestion.apiServiceMetadataPipeline import (
     ApiMetadataConfigType,
     ApiServiceMetadataPipeline,
@@ -84,10 +84,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseServiceQueryUsagePipeline,
     DatabaseUsageConfigType,
-)
-from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import (
-    DriveMetadataConfigType,
-    DriveServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
@@ -110,6 +106,10 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
 from metadata.generated.schema.metadataIngestion.dbtPipeline import (
     DbtConfigType,
     DbtPipeline,
+)
+from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import (
+    DriveMetadataConfigType,
+    DriveServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingMetadataConfigType,

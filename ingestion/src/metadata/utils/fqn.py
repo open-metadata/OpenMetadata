@@ -34,13 +34,17 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
@@ -543,6 +547,64 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, query_checksum=`{query_checksum}``"
         )
     return _build(service_name, query_checksum)
+
+
+@fqn_build_registry.add(Directory)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    directory_name: str,
+) -> str:
+    if not service_name or not directory_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, directory=`{directory_name}``"
+        )
+    return _build(service_name, directory_name)
+
+
+@fqn_build_registry.add(File)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    directory_name: str,
+    file_name: str,
+) -> str:
+    if not service_name or not directory_name or not file_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, directory=`{directory_name}`, file=`{file_name}``"
+        )
+    return _build(service_name, directory_name, file_name)
+
+
+@fqn_build_registry.add(Worksheet)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    spreadsheet_name: str,
+    worksheet_name: str,
+) -> str:
+    if not service_name or not spreadsheet_name or not worksheet_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, spreadsheet=`{spreadsheet_name}`, worksheet=`{worksheet_name}``"
+        )
+    return _build(service_name, spreadsheet_name, worksheet_name)
+
+
+@fqn_build_registry.add(Spreadsheet)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    spreadsheet_name: str,
+) -> str:
+    if not service_name or not spreadsheet_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, spreadsheet=`{spreadsheet_name}``"
+        )
+    return _build(service_name, spreadsheet_name)
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
