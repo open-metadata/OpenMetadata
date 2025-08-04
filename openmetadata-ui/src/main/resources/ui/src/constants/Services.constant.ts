@@ -444,7 +444,6 @@ export const BETA_SERVICES = [
   DashboardServiceType.ThoughtSpot,
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
-  DatabaseServiceType.GoogleSheets,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
