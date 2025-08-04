@@ -379,9 +379,9 @@ class JSONLogicSearchClassBase {
         label: t('label.glossary-term-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: 'glossaryTermFQN',
+        defaultField: 'tagFQN',
         subfields: {
-          glossaryTermFQN: {
+          tagFQN: {
             label: 'Glossary Term',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -399,30 +399,46 @@ class JSONLogicSearchClassBase {
       },
       [EntityReferenceFields.DOMAIN]: {
         label: t('label.domain'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: this.searchAutocomplete({
-            searchIndex: SearchIndex.DOMAIN,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Domain',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.DOMAIN,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
         },
       },
       [EntityReferenceFields.DATA_PRODUCT]: {
         label: t('label.data-product'),
-        type: 'select',
-        mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: this.searchAutocomplete({
-            searchIndex: SearchIndex.DATA_PRODUCT,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
+        type: '!group',
+        mode: 'some',
+        defaultField: 'fullyQualifiedName',
+        subfields: {
+          fullyQualifiedName: {
+            label: 'Data Product',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.DATA_PRODUCT,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
         },
       },
       [EntityReferenceFields.EXTENSION]: {
