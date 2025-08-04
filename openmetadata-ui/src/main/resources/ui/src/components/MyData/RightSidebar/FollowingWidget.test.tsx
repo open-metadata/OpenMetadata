@@ -12,7 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PAGE_SIZE_BASE } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { searchQuery } from '../../../rest/searchAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -120,7 +120,7 @@ describe('FollowingWidget component', () => {
     });
 
     expect(searchQuery).toHaveBeenCalledWith({
-      pageSize: PAGE_SIZE_BASE,
+      pageSize: PAGE_SIZE_MEDIUM,
       searchIndex: 'all',
       query: '*',
       filters: 'followers:113',

@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import {
   applySortToData,
   getSortField,
@@ -203,7 +203,7 @@ describe('DomainsWidget', () => {
       expect(mockSearchData).toHaveBeenCalledWith(
         '',
         1,
-        PAGE_SIZE_BASE,
+        PAGE_SIZE_MEDIUM,
         '',
         'updatedAt',
         'desc',
@@ -311,12 +311,15 @@ describe('DomainsWidget', () => {
   });
 
   it('shows footer with more button when there are more than 10 domains', async () => {
-    const manyDomains = Array.from({ length: PAGE_SIZE_BASE + 1 }, (_, i) => ({
-      ...mockDomains[0],
-      id: `domain-${i}`,
-      name: `domain-${i}`,
-      displayName: `Domain ${i}`,
-    }));
+    const manyDomains = Array.from(
+      { length: PAGE_SIZE_MEDIUM + 1 },
+      (_, i) => ({
+        ...mockDomains[0],
+        id: `domain-${i}`,
+        name: `domain-${i}`,
+        displayName: `Domain ${i}`,
+      })
+    );
 
     mockSearchData.mockResolvedValue({
       ...mockSearchResponse,
@@ -340,7 +343,7 @@ describe('DomainsWidget', () => {
     });
 
     // Check for "View more" text
-    expect(screen.getByText(/label.view-more-count/)).toBeInTheDocument();
+    expect(screen.getByText(/label.view-more/)).toBeInTheDocument();
   });
 
   it('does not show footer when there are 10 or fewer domains', async () => {
@@ -351,7 +354,7 @@ describe('DomainsWidget', () => {
     });
 
     // Should not show "View more" for only 2 domains
-    expect(screen.queryByText(/label.view-more-count/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/label.view-more/)).not.toBeInTheDocument();
   });
 
   it('handles loading state correctly', () => {

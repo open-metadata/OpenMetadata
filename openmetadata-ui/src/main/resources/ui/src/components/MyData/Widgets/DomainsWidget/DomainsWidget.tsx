@@ -21,6 +21,7 @@ import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
 import {
@@ -75,7 +76,7 @@ const DomainsWidget = ({
       const res = await searchData(
         '',
         INITIAL_PAGING_VALUE,
-        PAGE_SIZE_BASE,
+        PAGE_SIZE_MEDIUM,
         '',
         sortField,
         sortOrder,
@@ -141,7 +142,7 @@ const DomainsWidget = ({
     () => (
       <div className="entity-list-body">
         <div className="domains-widget-grid">
-          {domains.map((domain) => (
+          {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
             <Button
               className={classNames('domain-card', {
                 'domain-card-full': isFullSize,
@@ -209,16 +210,11 @@ const DomainsWidget = ({
     () => (
       <WidgetFooter
         moreButtonLink="/domain"
-        moreButtonText={t('label.view-more-count', {
-          countValue:
-            domains.length > PAGE_SIZE_BASE
-              ? domains.length - PAGE_SIZE_BASE
-              : undefined,
-        })}
+        moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
     ),
-    [t, domains.length, loading]
+    [t, showWidgetFooterMoreButton]
   );
 
   const widgetHeader = useMemo(
@@ -255,7 +251,6 @@ const DomainsWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={10}
       dataTestId="KnowledgePanel.Domains"
       header={widgetHeader}
       loading={loading}>

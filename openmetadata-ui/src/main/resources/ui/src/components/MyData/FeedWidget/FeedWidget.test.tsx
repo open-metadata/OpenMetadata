@@ -31,7 +31,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { PAGE_SIZE_BASE } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { getAllFeeds } from '../../../rest/feedsAPI';
@@ -226,7 +226,7 @@ describe('MyFeedWidget', () => {
         undefined,
         undefined,
         undefined,
-        PAGE_SIZE_BASE
+        PAGE_SIZE_MEDIUM
       );
     });
 
@@ -246,7 +246,7 @@ describe('MyFeedWidget', () => {
         undefined,
         undefined,
         undefined,
-        PAGE_SIZE_BASE
+        PAGE_SIZE_MEDIUM
       );
     });
   });

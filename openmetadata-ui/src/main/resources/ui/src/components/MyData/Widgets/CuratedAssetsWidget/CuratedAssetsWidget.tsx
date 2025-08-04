@@ -23,7 +23,11 @@ import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
 import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
-import { PAGE_SIZE_BASE, ROUTES } from '../../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
@@ -148,7 +152,7 @@ const CuratedAssetsWidget = ({
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
-          pageSize: PAGE_SIZE_BASE,
+          pageSize: PAGE_SIZE_MEDIUM,
           searchIndex,
           includeDeleted: false,
           trackTotalHits: false,
@@ -466,7 +470,6 @@ const CuratedAssetsWidget = ({
   return (
     <>
       <WidgetWrapper
-        dataLength={data.length !== 0 ? data.length : 10}
         dataTestId="KnowledgePanel.CuratedAssets"
         header={widgetHeader}
         loading={isLoading}>

@@ -21,6 +21,7 @@ import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/n
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../constants/constants';
 import {
@@ -135,7 +136,7 @@ const MyDataWidgetInternal = ({
         const res = await searchData(
           '',
           INITIAL_PAGING_VALUE,
-          PAGE_SIZE_BASE,
+          PAGE_SIZE_MEDIUM,
           queryFilter,
           sortField,
           sortOrder,
@@ -144,7 +145,7 @@ const MyDataWidgetInternal = ({
 
         // Extract useful details from the Response
         const ownedAssets = res?.data?.hits?.hits;
-        const sourceData = ownedAssets.map((hit) => hit._source).slice(0, 8);
+        const sourceData = ownedAssets.map((hit) => hit._source);
 
         // Apply client-side sorting as well to ensure consistent results
         const sortedData = applySortToData(sourceData, selectedFilter);
@@ -201,7 +202,7 @@ const MyDataWidgetInternal = ({
     return (
       <div className="entity-list-body">
         <div className="cards-scroll-container flex-1 overflow-y-auto">
-          {data.map((item) => {
+          {data.slice(0, PAGE_SIZE_BASE).map((item) => {
             const extraInfo = getEntityExtraInfo(item);
 
             return (
@@ -263,10 +264,6 @@ const MyDataWidgetInternal = ({
     );
   }, [data, isExpanded]);
 
-  const showMoreCount = useMemo(() => {
-    return data.length > 0 ? data.length.toString() : '';
-  }, [data]);
-
   const showWidgetFooterMoreButton = useMemo(
     () => Boolean(!isLoading) && data?.length > PAGE_SIZE_BASE,
     [data, isLoading]
@@ -314,9 +311,7 @@ const MyDataWidgetInternal = ({
               currentUser?.name ?? '',
               UserPageTabs.MY_DATA
             )}
-            moreButtonText={t('label.view-more-count', {
-              countValue: showMoreCount,
-            })}
+            moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
@@ -327,14 +322,12 @@ const MyDataWidgetInternal = ({
     emptyState,
     myDataContent,
     currentUser?.name,
-    showMoreCount,
     showWidgetFooterMoreButton,
     t,
   ]);
 
   return (
     <WidgetWrapper
-      dataLength={data.length > 0 ? data.length : 10}
       dataTestId="KnowledgePanel.MyData"
       header={widgetHeader}
       loading={isLoading}>
