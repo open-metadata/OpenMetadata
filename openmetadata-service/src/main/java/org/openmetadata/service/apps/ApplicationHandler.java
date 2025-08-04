@@ -115,8 +115,8 @@ public class ApplicationHandler {
 
         if ((app.getAppType() == AppType.External)) {
           if (secretsManager instanceof ExternalSecretsManager) {
-            String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
-            app.setPrivateConfiguration("secret:" + baseSecretId);
+            app.setPrivateConfiguration(
+                secretsManager.buildExternalAppPrivateConfigReference(app.getName()));
           }
         }
       }
@@ -394,7 +394,8 @@ public class ApplicationHandler {
       String privateConfigJson = JsonUtils.pojoToJson(app.getPrivateConfiguration());
       if (secretsManager instanceof ExternalSecretsManager) {
         ExternalSecretsManager externalSM = (ExternalSecretsManager) secretsManager;
-        String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
+        String reference = secretsManager.buildExternalAppPrivateConfigReference(app.getName());
+        String baseSecretId = reference.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
         externalSM.upsertSecret(baseSecretId, privateConfigJson);
         LOG.info("Stored private config in Secrets Manager for external app {}", app.getName());
       }
@@ -421,8 +422,7 @@ public class ApplicationHandler {
       Object encryptedConfig;
       String privateConfigJson = JsonUtils.pojoToJson(app.getPrivateConfiguration());
       if (secretsManager instanceof ExternalSecretsManager) {
-        String baseSecretId = "external-app-" + app.getName().toLowerCase() + "-private-config";
-        encryptedConfig = "secret:" + baseSecretId;
+        encryptedConfig = secretsManager.buildExternalAppPrivateConfigReference(app.getName());
       } else {
         encryptedConfig = Fernet.getInstance().encrypt(privateConfigJson);
       }

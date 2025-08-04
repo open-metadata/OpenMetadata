@@ -216,9 +216,8 @@ public class AbstractNativeApplication implements NativeApplication {
       String privateConfigJson = JsonUtils.pojoToJson(privateConfig);
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (secretsManager instanceof ExternalSecretsManager) {
-        String baseSecretId =
-            "external-app-" + this.getApp().getName().toLowerCase() + "-private-config";
-        privateConfig = "secret:" + baseSecretId;
+        privateConfig =
+            secretsManager.buildExternalAppPrivateConfigReference(this.getApp().getName());
       } else {
         privateConfig = Fernet.getInstance().encrypt(privateConfigJson);
       }

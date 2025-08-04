@@ -50,6 +50,7 @@ import org.openmetadata.service.util.ReflectionUtil;
 @Slf4j
 public abstract class SecretsManager {
   public static final String SECRET_FIELD_PREFIX = "secret:";
+  public static final String EXTERNAL_APP_PRIVATE_CONFIG_PREFIX = "external-app/private-config/";
 
   public record SecretsConfig(
       String clusterName, String prefix, List<String> tags, Parameters parameters) {}
@@ -547,6 +548,15 @@ public abstract class SecretsManager {
                 }
               });
     }
+  }
+
+  /**
+   * Builds external app private config secret reference
+   */
+  public String buildExternalAppPrivateConfigReference(String appName) {
+    String secretId =
+        buildSecretId(false, EXTERNAL_APP_PRIVATE_CONFIG_PREFIX, appName.toLowerCase());
+    return SECRET_FIELD_PREFIX + secretId;
   }
 
   public static Map<String, String> getTags(SecretsConfig secretsConfig) {
