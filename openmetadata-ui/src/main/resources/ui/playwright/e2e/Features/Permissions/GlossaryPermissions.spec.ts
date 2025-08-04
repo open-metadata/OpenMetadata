@@ -72,22 +72,19 @@ test('Glossary allow operations', async ({ testUserPage, browser }) => {
   test.slow(true);
 
   const page = await browser.newPage();
-  try {
-    await adminUser.login(page);
-    await initializePermissions(page, 'allow', [
-      'EditDescription',
-      'EditOwners',
-      'EditTags',
-      'Delete',
-      'EditDisplayName',
-      'Create',
-      'Delete',
-      'EditReviewers',
-    ]);
-    await assignRoleToUser(page, testUser);
-  } finally {
-    await page.close();
-  }
+  await adminUser.login(page);
+  await initializePermissions(page, 'allow', [
+    'EditDescription',
+    'EditOwners',
+    'EditTags',
+    'Delete',
+    'EditDisplayName',
+    'Create',
+    'Delete',
+    'EditReviewers',
+  ]);
+  await assignRoleToUser(page, testUser);
+  await page.close();
 
   await redirectToHomePage(testUserPage);
   await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
@@ -137,22 +134,19 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
 
   // Setup deny permissions
   const page = await browser.newPage();
-  try {
-    await adminUser.login(page);
-    await initializePermissions(page, 'deny', [
-      'EditDescription',
-      'EditOwners',
-      'EditTags',
-      'Delete',
-      'EditDisplayName',
-      'Create',
-      'Delete',
-      'EditReviewers',
-    ]);
-    await assignRoleToUser(page, testUser);
-  } finally {
-    await page.close();
-  }
+  await adminUser.login(page);
+  await initializePermissions(page, 'deny', [
+    'EditDescription',
+    'EditOwners',
+    'EditTags',
+    'Delete',
+    'EditDisplayName',
+    'Create',
+    'Delete',
+    'EditReviewers',
+  ]);
+  await assignRoleToUser(page, testUser);
+  await page.close();
 
   // Navigate to glossary page
   await redirectToHomePage(testUserPage);

@@ -102,13 +102,10 @@ serviceEntities.forEach((EntityClass) => {
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        try {
-          await adminUser.login(page);
-          await initializePermissions(page, 'allow', ALL_OPERATIONS);
-          await assignRoleToUser(page, testUser);
-        } finally {
-          await page.close();
-        }
+        await adminUser.login(page);
+        await initializePermissions(page, 'allow', ALL_OPERATIONS);
+        await assignRoleToUser(page, testUser);
+        await page.close();
       });
 
       test(`${entityType} allow common operations permissions`, async ({
@@ -131,13 +128,10 @@ serviceEntities.forEach((EntityClass) => {
     test.describe('Deny permissions', () => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        try {
-          await adminUser.login(page);
-          await initializePermissions(page, 'deny', ALL_OPERATIONS);
-          await assignRoleToUser(page, testUser);
-        } finally {
-          await page.close();
-        }
+        await adminUser.login(page);
+        await initializePermissions(page, 'deny', ALL_OPERATIONS);
+        await assignRoleToUser(page, testUser);
+        await page.close();
       });
 
       test(`${entityType} deny common operations permissions`, async ({
