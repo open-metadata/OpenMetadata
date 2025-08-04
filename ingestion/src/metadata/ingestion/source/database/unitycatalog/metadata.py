@@ -92,7 +92,7 @@ logger = ingestion_logger()
 UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
 UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
 
-
+# pylint: disable=protected-access
 class UnitycatalogSource(
     ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource
 ):
@@ -429,7 +429,6 @@ class UnitycatalogSource(
             )
             if referred_table_fqn:
                 for parent_column in column.parent_columns:
-                    # pylint: disable=protected-access
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
                         referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
@@ -565,7 +564,7 @@ class UnitycatalogSource(
                             yield from get_ometa_tag_and_classification(
                                 tag_fqn=FullyQualifiedEntityName(
                                     fqn._build(*tag_fqn_builder(tag))
-                                ),  # pylint: disable=protected-access
+                                ),
                                 tags=[tag.tag_value],
                                 classification_name=tag.tag_name,
                                 tag_description=UNITY_CATALOG_TAG,
@@ -619,7 +618,7 @@ class UnitycatalogSource(
                             yield from get_ometa_tag_and_classification(
                                 tag_fqn=FullyQualifiedEntityName(
                                     fqn._build(*tag_fqn_builder(tag))
-                                ),  # pylint: disable=protected-access
+                                ),
                                 tags=[tag.tag_value],
                                 classification_name=tag.tag_name,
                                 tag_description=UNITY_CATALOG_TAG,

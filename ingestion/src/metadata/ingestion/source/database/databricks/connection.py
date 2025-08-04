@@ -58,11 +58,13 @@ class DatabricksEngineWrapper:
         self.first_schema = None
         self.first_catalog = None
 
-    def get_schemas(self, schema: Optional[str] = None):
+    def get_schemas(self, schema_name: Optional[str] = None):
         """Get schemas and cache them"""
-        if schema is not None:
-            self.first_schema = schema
-            return [schema]
+        if schema_name is not None:
+            with self.engine.connect() as connection:
+                connection.execute(f"USE CATALOG `{self.first_catalog}`")
+            self.first_schema = schema_name
+            return [schema_name]
         if self.schemas is None:
             self.schemas = self.inspector.get_schema_names(database=self.first_catalog)
             if self.schemas:
@@ -104,12 +106,12 @@ class DatabricksEngineWrapper:
             return views
         return []
 
-    def get_catalogs(self, catalog: Optional[str] = None):
+    def get_catalogs(self, catalog_name: Optional[str] = None):
         """Get catalogs"""
         catalogs = []
-        if catalog is not None:
-            self.first_catalog = catalog
-            return [catalog]
+        if catalog_name is not None:
+            self.first_catalog = catalog_name
+            return [catalog_name]
         with self.engine.connect() as connection:
             catalogs = connection.execute(DATABRICKS_GET_CATALOGS).fetchall()
             for catalog in catalogs:
@@ -171,12 +173,12 @@ def test_connection(
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection),
         "GetSchemas": partial(
-            engine_wrapper.get_schemas, schema=service_connection.databaseSchema
+            engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema
         ),
         "GetTables": engine_wrapper.get_tables,
         "GetViews": engine_wrapper.get_views,
         "GetDatabases": partial(
-            engine_wrapper.get_catalogs, catalog=service_connection.catalog
+            engine_wrapper.get_catalogs, catalog_name=service_connection.catalog
         ),
         "GetQueries": partial(
             test_database_query,
