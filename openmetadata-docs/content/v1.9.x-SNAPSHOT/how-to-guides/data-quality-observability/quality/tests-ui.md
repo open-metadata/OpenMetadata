@@ -360,7 +360,7 @@ Ensures each value in a column appears only once.
 /%}
 
 ### Column Values to Be Not Null
-VEnsures there are no NULL entries in the column.
+Ensures there are no NULL entries in the column.
 
 #### Dimension
 `Completeness`
@@ -485,7 +485,7 @@ Ensures values are **not** in a specified blacklist.
 /%}
 
 ### Column Values to Be Between
-Validates string lengths fall within specified character limits.
+Validates numeric values of a column are within a given range.
 
 #### Dimension
 `Accuracy`
@@ -603,7 +603,7 @@ Validates that the **mean (average)** value is in the expected range.
 | Mean < min or Mean > max                              | ❌     |
 
 {% image
-  src="/images/v1.9/how-to-guides/quality/column-test/unique.gif"
+  src="/images/v1.9/how-to-guides/quality/column-test/mean.gif"
 /%}
 
 ### Column Value Median to Be Between
