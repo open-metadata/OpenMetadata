@@ -40,11 +40,15 @@ const TourPage = () => {
   useEffect(() => {
     updateIsTourOpen(true);
 
+    let attempts = 0;
+    const maxAttempts = 10;
+
     const waitForElement = () => {
       const el = document.querySelector('#feedWidgetData');
       if (el) {
         setIsTourReady(true);
-      } else {
+      } else if (attempts < maxAttempts) {
+        attempts++;
         setTimeout(waitForElement, 100);
       }
     };

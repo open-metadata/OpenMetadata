@@ -35,6 +35,8 @@ const test = base.extend<{ page: Page }>({
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
@@ -43,6 +45,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await persona.delete(apiContext);
@@ -50,7 +54,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Curated Assets', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeAll(async ({ page }) => {
     test.slow(true);
 
     await redirectToHomePage(page);
