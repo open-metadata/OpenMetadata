@@ -1517,6 +1517,7 @@ export const getEntityLinkFromType = (
     case EntityType.TABLE:
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
+    case EntityType.CHART:
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.CONTAINER:
@@ -1663,6 +1664,21 @@ export const getBreadcrumbForTable = (
   ];
 };
 
+export const getBreadcrumbForChart = (entity: Chart) => {
+  const { service } = entity;
+
+  return [
+    {
+      name: getEntityName(service),
+      url: getServiceDetailsPath(
+        service?.name ?? '',
+        ServiceCategoryPlural[
+          service?.type as keyof typeof ServiceCategoryPlural
+        ]
+      ),
+    },
+  ];
+};
 export const getBreadCrumbForAPICollection = (entity: APICollection) => {
   const { service } = entity;
 
@@ -1874,6 +1890,8 @@ export const getEntityBreadcrumbs = (
   includeCurrent = false
 ) => {
   switch (entityType) {
+    case EntityType.CHART:
+      return getBreadcrumbForChart(entity as Chart);
     case EntityType.TABLE:
     case EntityType.STORED_PROCEDURE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
