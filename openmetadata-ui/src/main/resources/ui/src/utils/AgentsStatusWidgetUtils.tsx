@@ -334,7 +334,9 @@ export const getAgentRunningStatusMessage = (
   }
 
   return (
-    <Typography.Text className="text-grey-muted text-sm">
+    <Typography.Text
+      className="text-grey-muted text-sm"
+      data-testid="agents-status-message">
       {message}
     </Typography.Text>
   );

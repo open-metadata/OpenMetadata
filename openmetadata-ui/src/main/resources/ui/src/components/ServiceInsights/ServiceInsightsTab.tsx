@@ -231,34 +231,40 @@ const ServiceInsightsTab = ({
     }
   };
 
-  const onSocketDataUpdate = useCallback((newActivity: string) => {
-    if (newActivity) {
-      const data = JSON.parse(newActivity);
+  const onSocketDataUpdate = useCallback(
+    (newActivity: string) => {
+      if (newActivity) {
+        const data = JSON.parse(newActivity);
 
-      const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
-        getPlatformInsightsChartDataFormattingMethod(data.data)
-      );
+        // Only update the data if the service name is the same as the service details
+        if (data.serviceName === serviceDetails.name) {
+          const platformInsightsChart = PLATFORM_INSIGHTS_LIVE_CHARTS.map(
+            getPlatformInsightsChartDataFormattingMethod(data.data)
+          );
 
-      setAgentsInfo(
-        getFormattedAgentsListFromAgentsLiveInfo(
-          data.ingestionPipelineStatus,
-          data.appStatus
-        )
-      );
+          setAgentsInfo(
+            getFormattedAgentsListFromAgentsLiveInfo(
+              data.ingestionPipelineStatus,
+              data.appStatus
+            )
+          );
 
-      setTotalAssetsCount(
-        getFormattedTotalAssetsDataFromSocketData(
-          data?.data?.total_data_assets_live
-        )
-      );
+          setTotalAssetsCount(
+            getFormattedTotalAssetsDataFromSocketData(
+              data?.data?.total_data_assets_live
+            )
+          );
 
-      setChartsResults((prev) => ({
-        platformInsightsChart,
-        piiDistributionChart: prev?.piiDistributionChart ?? [],
-        tierDistributionChart: prev?.tierDistributionChart ?? [],
-      }));
-    }
-  }, []);
+          setChartsResults((prev) => ({
+            platformInsightsChart,
+            piiDistributionChart: prev?.piiDistributionChart ?? [],
+            tierDistributionChart: prev?.tierDistributionChart ?? [],
+          }));
+        }
+      }
+    },
+    [serviceDetails]
+  );
 
   useEffect(() => {
     fetchChartsData();
