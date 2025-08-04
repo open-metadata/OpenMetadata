@@ -14,7 +14,7 @@
 @import (reference) url('../../../styles/variables.less');
 
 .status-badge {
-  border-radius: @border-radius-md;
+  border-radius: @border-rad-md;
   padding: @padding-xss @padding-xs;
   text-align: center;
   max-width: fit-content;
@@ -70,6 +70,12 @@
     border-color: @red-17;
   }
 
+  &.version {
+    color: @purple-5;
+    background-color: @purple-1;
+    border-color: @purple-5;
+  }
+
   svg {
     font-size: 12px;
   }
@@ -79,4 +85,12 @@
   font-weight: 500;
   font-size: 12px;
   line-height: 20px;
+}
+
+.status-badge-v2 {
+  &.success {
+    .anticon {
+      color: transparent;
+    }
+  }
 }

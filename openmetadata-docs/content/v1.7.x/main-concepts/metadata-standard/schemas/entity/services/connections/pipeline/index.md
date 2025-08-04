@@ -1,5 +1,6 @@
 ---
 title: Pipeline Connections | OpenMetadata Pipelines
+description: Pipeline connection schema for defining ingestion tool integrations such as Airflow, Glue, and Domo.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline
 ---
 

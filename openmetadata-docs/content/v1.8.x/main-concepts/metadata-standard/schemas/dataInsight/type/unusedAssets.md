@@ -1,5 +1,6 @@
 ---
 title: Unused Assets | OpenMetadata Asset Tracking
+description: Connect Unusedassets to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/type/unusedassets
 ---
 

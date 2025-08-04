@@ -45,7 +45,6 @@ import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsi
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  AIRFLOW_HYBRID,
   INITIAL_PAGING_VALUE,
   pagingObject,
   ROUTES,
@@ -154,7 +153,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const airflowInformation = useAirflowStatus();
-  const { isAirflowAvailable, platform } = useMemo(
+  const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
@@ -163,8 +162,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     tab: string;
   }>();
   const { fqn: decodedServiceFQN } = useFqn();
-  const isMetadataService = useMemo(
-    () => serviceCategory === ServiceCategory.METADATA_SERVICES,
+  const { isMetadataService, isSecurityService } = useMemo(
+    () => ({
+      isMetadataService: serviceCategory === ServiceCategory.METADATA_SERVICES,
+      isSecurityService: serviceCategory === ServiceCategory.SECURITY_SERVICES,
+    }),
     [serviceCategory]
   );
   const isOpenMetadataService = useMemo(
@@ -294,8 +296,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
       return EntityTabs.AGENTS;
     }
 
+    if (isSecurityService) {
+      return EntityTabs.CONNECTION;
+    }
+
     return EntityTabs.INSIGHTS;
-  }, [tab, serviceCategory, isMetadataService]);
+  }, [tab, serviceCategory, isMetadataService, isSecurityService]);
 
   const handleSearchChange = useCallback(
     (searchValue: string) => {
@@ -758,7 +764,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
             TabSpecificField.FOLLOWERS
           },${isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS},${
-            isMetadataService ? '' : TabSpecificField.DOMAIN
+            isMetadataService ? '' : TabSpecificField.DOMAINS
           }`,
           include: Include.All,
         }
@@ -1369,7 +1375,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
-    if (!isMetadataService) {
+    if (!isMetadataService && !isSecurityService) {
       tabs.push(
         {
           name: t('label.insight-plural'),
@@ -1417,21 +1423,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
     }
 
-    tabs.push(
-      {
+    if (!isSecurityService) {
+      tabs.push({
         name: t('label.agent-plural'),
         key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
         count: ingestionPaging.total + collateAgentPaging.total,
         children: ingestionTab,
-      },
-      {
-        name: t('label.connection'),
-        isHidden: !servicePermission.EditAll,
-        key: EntityTabs.CONNECTION,
-        children: testConnectionTab,
-      }
-    );
+      });
+    }
+
+    tabs.push({
+      name: t('label.connection'),
+      isHidden: !servicePermission.EditAll,
+      key: EntityTabs.CONNECTION,
+      children: testConnectionTab,
+    });
 
     return tabs
       .filter((tab) => !tab.isHidden)
@@ -1472,6 +1479,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     isMetadataService,
     workflowStatesData,
     isWorkflowStatusLoading,
+    isSecurityService,
   ]);
 
   const afterAutoPilotAppTrigger = useCallback(() => {
@@ -1480,9 +1488,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    if (platform === AIRFLOW_HYBRID) {
-      serviceUtilClassBase.getExtraInfo();
-    }
+    serviceUtilClassBase.getExtraInfo();
   }, []);
 
   if (isLoading) {

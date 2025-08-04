@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { uuid } from '../../utils/common';
+import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
@@ -139,8 +139,8 @@ export class TableClass extends EntityClass {
   ];
 
   entity = {
-    name: `pw-table-${uuid()}`,
-    displayName: `pw table ${uuid()}`,
+    name: `pw-table-${fullUuid()}`,
+    displayName: `pw table ${fullUuid()}`,
     description: 'description',
     columns: this.children,
     tableType: 'SecureView',

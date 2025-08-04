@@ -128,7 +128,6 @@ public final class Entity {
   public static final String FIELD_PARENT = "parent";
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_EXPERTS = "experts";
-  public static final String FIELD_DOMAIN = "domain";
   public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
@@ -155,7 +154,7 @@ public final class Entity {
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
   public static final String SEARCH_SERVICE = "searchService";
-
+  public static final String SECURITY_SERVICE = "securityService";
   public static final String API_SERVICE = "apiService";
   public static final String DRIVE_SERVICE = "driveService";
   //
@@ -231,6 +230,7 @@ public final class Entity {
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
+  public static final String DATA_CONTRACT_RESULT = "dataContractResult";
 
   //
   // Other entities
@@ -281,6 +281,7 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SECURITY, SECURITY_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
 
@@ -317,6 +318,7 @@ public final class Entity {
             STORAGE_SERVICE,
             METADATA_SERVICE,
             SEARCH_SERVICE,
+            SECURITY_SERVICE,
             DRIVE_SERVICE,
             DATABASE,
             DATABASE_SCHEMA,

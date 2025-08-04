@@ -1,5 +1,6 @@
 ---
 title: Database Service | OpenMetadata Database Service
+description: Capture metadata for database services including type, connectivity, and schema support.
 slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 ---
 

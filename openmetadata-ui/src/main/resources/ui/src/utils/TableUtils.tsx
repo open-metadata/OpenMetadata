@@ -131,6 +131,7 @@ import TableProfiler from '../components/Database/Profiler/TableProfiler/TablePr
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -421,6 +422,7 @@ export const getEntityIcon = (
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.DATA_CONTRACT]: DataQualityIcon,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
     [EntityType.APPLICATION]: ApplicationIcon,
@@ -961,6 +963,17 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={get(
             labelMap,
@@ -1249,5 +1262,27 @@ export const updateColumnInNestedStructure = (
     } else {
       return column;
     }
+  });
+};
+
+export const pruneEmptyChildren = (columns: Column[]): Column[] => {
+  return columns.map((column) => {
+    // If column has no children or empty children array, remove children property
+    if (!column.children || column.children.length === 0) {
+      return omit(column, 'children');
+    }
+
+    // If column has children, recursively prune them
+    const prunedChildren = pruneEmptyChildren(column.children);
+
+    // If after pruning, children array becomes empty, remove children property
+    if (prunedChildren.length === 0) {
+      return omit(column, 'children');
+    }
+
+    return {
+      ...column,
+      children: prunedChildren,
+    };
   });
 };

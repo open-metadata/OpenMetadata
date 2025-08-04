@@ -1,5 +1,6 @@
 ---
 title: Report Data Schema | OpenMetadata Report Data Models
+description: ReportData schema tracks metrics and charts captured within analytics reports.
 slug: /main-concepts/metadata-standard/schemas/analytics/reportdata
 ---
 

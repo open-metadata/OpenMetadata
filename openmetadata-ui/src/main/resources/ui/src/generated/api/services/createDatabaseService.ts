@@ -28,9 +28,9 @@ export interface CreateDatabaseService {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Database Service belongs to.
+     * Fully qualified names of the domains the Database Service belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
      * at runtime based on the Ingestion Agent of the service.
@@ -150,6 +150,8 @@ export interface DatabaseConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Google Sheets Connection Config
  */
 export interface ConfigClass {
@@ -237,6 +239,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -265,6 +269,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -292,6 +298,9 @@ export interface ConfigClass {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
+     * as the database name.
+     *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use
      * 'default'.
      */
@@ -314,8 +323,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -742,6 +752,8 @@ export interface ConfigClass {
     apiHost?: string;
     /**
      * Client ID for DOMO
+     *
+     * Azure Application (client) ID for service principal authentication.
      */
     clientId?: string;
     /**
@@ -825,6 +837,14 @@ export interface ConfigClass {
     paginationLimit?: number;
     verifySSL?:       VerifySSL;
     /**
+     * Azure Application client secret for service principal authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for service principal authentication.
+     */
+    tenantId?: string;
+    /**
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
@@ -833,13 +853,13 @@ export interface ConfigClass {
      */
     httpConnection?: string;
     /**
-     * Include sheets from shared drives
+     * Base URL of the Epic FHIR server
      */
-    includeSharedDrives?: boolean;
+    fhirServerUrl?: string;
     /**
-     * Google Sheets API scopes
+     * FHIR specification version (R4, STU3, DSTU2)
      */
-    scopes?: string[];
+    fhirVersion?: FHIRVersion;
 }
 
 /**
@@ -1039,6 +1059,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -1569,6 +1590,10 @@ export interface GCPCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  */
 export interface FilterPattern {
     /**
@@ -1579,6 +1604,15 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -1953,6 +1987,7 @@ export enum ConfigType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     GoogleSheets = "GoogleSheets",
@@ -2074,6 +2109,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     GoogleSheets = "GoogleSheets",

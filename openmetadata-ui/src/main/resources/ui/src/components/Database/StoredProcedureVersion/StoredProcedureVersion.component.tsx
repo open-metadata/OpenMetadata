@@ -44,7 +44,7 @@ const StoredProcedureVersion = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedTableName,
@@ -68,9 +68,9 @@ const StoredProcedureVersion = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const { tags, description, displayName } = useMemo(
@@ -132,7 +132,7 @@ const StoredProcedureVersion = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

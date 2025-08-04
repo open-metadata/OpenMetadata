@@ -1,5 +1,6 @@
 ---
 title: Common Connections | OpenMetadata Common Connections
+description: Common connection configurations shared across services including SSL, host, and port metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/common
 ---
 

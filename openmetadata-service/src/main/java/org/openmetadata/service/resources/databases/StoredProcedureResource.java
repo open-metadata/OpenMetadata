@@ -44,7 +44,7 @@ public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   private final StoredProcedureMapper mapper = new StoredProcedureMapper();
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
+  static final String FIELDS = "owners,tags,followers,votes,extension,domains,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {

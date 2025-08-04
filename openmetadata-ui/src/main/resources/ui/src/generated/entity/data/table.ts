@@ -58,10 +58,10 @@ export interface Table {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -605,9 +605,6 @@ export interface CustomMetric {
  *
  * Reference to database schema that contains this table.
  *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this table.
@@ -870,6 +867,7 @@ export enum ModelType {
 export enum FileFormat {
     Avro = "avro",
     CSV = "csv",
+    CSVGz = "csv.gz",
     JSON = "json",
     JSONGz = "json.gz",
     JSONZip = "json.zip",
@@ -1061,6 +1059,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     GoogleSheets = "GoogleSheets",
@@ -1210,6 +1209,11 @@ export interface TableProfilerConfig {
      */
     sampleDataCount?:    number;
     samplingMethodType?: SamplingMethodType;
+    /**
+     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+     * other engines.
+     */
+    sparkTableProfilerConfig?: SparkTableProfilerConfig;
     [property: string]: any;
 }
 
@@ -1274,6 +1278,38 @@ export enum PartitionIntervalUnit {
     Hour = "HOUR",
     Month = "MONTH",
     Year = "YEAR",
+}
+
+/**
+ * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+ * other engines.
+ */
+export interface SparkTableProfilerConfig {
+    /**
+     * When reading big tables from sources, we optimize the reading by partitioning the data.
+     * This configuration is responsible for it.
+     */
+    partitioning?: Partitioning;
+}
+
+/**
+ * When reading big tables from sources, we optimize the reading by partitioning the data.
+ * This configuration is responsible for it.
+ */
+export interface Partitioning {
+    /**
+     * Lower bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    lowerBound?: string;
+    /**
+     * Column to partition on. It should be a date, timestamp or integer column. It is important
+     * for the data to be reasonably equally distributed across the partitions.
+     */
+    partitionColumn: string;
+    /**
+     * Upper bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    upperBound?: string;
 }
 
 /**

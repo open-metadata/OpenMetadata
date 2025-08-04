@@ -16,3 +16,41 @@ export const observerOptions = {
   rootMargin: '0px',
   threshold: 1.0,
 };
+
+export const DEFAULT_HEADER_BG_COLOR =
+  'linear-gradient(221.19deg, #0017E4 -17.4%, #3793FF 112.31%)';
+
+export const headerBackgroundColors = [
+  {
+    label: 'Gray',
+    color: '#535862',
+  },
+  {
+    label: 'Green',
+    color: '#099250',
+  },
+  {
+    label: 'Blue',
+    color: '#1570EF',
+  },
+  {
+    label: 'Indigo',
+    color: '#444CE7',
+  },
+  {
+    label: 'Purple',
+    color: '#6938EF',
+  },
+  {
+    label: 'Fuchsia',
+    color: '#BA24D5',
+  },
+  {
+    label: 'Pink',
+    color: '#DD2590',
+  },
+  {
+    label: 'Orange',
+    color: '#E04F16',
+  },
+];

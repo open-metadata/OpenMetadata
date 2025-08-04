@@ -107,12 +107,15 @@ export const LeftPanelContainer = ({
     return (
       <ReactGridLayout
         autoSize
+        useCSSTransforms
+        verticalCompact
         className="grid-container"
         cols={1}
         containerPadding={[0, 16]}
         isDraggable={isEditView}
         isResizable={isEditView}
         margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
+        preventCollision={false}
         rowHeight={100}
         onLayoutChange={onUpdate}>
         {widgets}

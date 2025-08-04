@@ -38,7 +38,7 @@ export class TopicClass extends EntityClass {
       },
     },
   };
-  private topicName = `pw-topic-${uuid()}`;
+  private topicName = `pw-topic-entity-class-${uuid()}`;
 
   children = [
     {

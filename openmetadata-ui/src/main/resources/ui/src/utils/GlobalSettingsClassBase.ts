@@ -16,8 +16,10 @@ import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-c
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored.svg';
+import { ReactComponent as DataAssetRulesIcon } from '../assets/svg/data-asset-rules.svg';
 import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/data-product-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
@@ -559,6 +561,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
             icon: LinkIcon,
           },
+          {
+            label: t('label.data-asset-rules'),
+            description: t('message.data-asset-rules-message'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
+            icon: DataAssetRulesIcon,
+          },
         ],
       },
       {
@@ -719,6 +728,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAINS}`,
             icon: DomainIcon,
+          },
+          {
+            label: t('label.chart-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.chart-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CHARTS}`,
+            icon: ChartIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

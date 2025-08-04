@@ -249,6 +249,56 @@ describe('Test UserPopOverCard components', () => {
       expect(screen.getByText('testUser')).toBeInTheDocument();
       expect(screen.queryByText('Test User')).not.toBeInTheDocument();
     });
+
+    it('should navigate to team details path when type is TEAM', () => {
+      const mockNavigate = jest.fn();
+      (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
+      (useUserProfile as jest.Mock).mockImplementation(() => [
+        null,
+        null,
+        { name: 'testTeam', displayName: 'Test Team' },
+      ]);
+
+      render(
+        <PopoverTitle
+          profilePicture={<div>ProfilePicture</div>}
+          type={OwnerType.TEAM}
+          userName="testTeam"
+        />
+      );
+
+      const teamNameButton = screen.getByText('Test Team');
+      teamNameButton.click();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/settings/members/teams/testTeam'
+      );
+
+      expect(mockNavigate).not.toHaveBeenCalledWith('/users/testTeam');
+    });
+
+    it('should navigate to user profile path when type is USER', () => {
+      const mockNavigate = jest.fn();
+      (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
+      (useUserProfile as jest.Mock).mockImplementation(() => [
+        null,
+        null,
+        { name: 'testUser', displayName: 'Test User' },
+      ]);
+
+      render(
+        <PopoverTitle
+          profilePicture={<div>ProfilePicture</div>}
+          type={OwnerType.USER}
+          userName="testUser"
+        />
+      );
+
+      const userNameButton = screen.getByText('Test User');
+      userNameButton.click();
+
+      expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
+    });
   });
 
   describe('UserPopOverCard Component', () => {

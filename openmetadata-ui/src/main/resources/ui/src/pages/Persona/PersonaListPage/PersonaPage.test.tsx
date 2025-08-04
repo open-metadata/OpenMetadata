@@ -17,9 +17,11 @@ import { PersonaPage } from './PersonaPage';
 jest.mock('../../../components/PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
 });
+
 jest.mock('../../../hoc/withPageLayout', () => ({
   withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
+
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
@@ -28,9 +30,11 @@ jest.mock(
       .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
   }
 );
+
 jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
+
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => {
@@ -39,11 +43,13 @@ jest.mock(
       .mockImplementation(() => <div>ErrorPlaceHolder.component</div>);
   }
 );
+
 jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>DeleteWidgetModal.component</div>);
 });
+
 jest.mock(
   '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard',
   () => {
@@ -54,6 +60,7 @@ jest.mock(
     };
   }
 );
+
 jest.mock(
   '../../../components/MyData//Persona/AddEditPersona/AddEditPersona.component',
   () => {
@@ -69,6 +76,7 @@ jest.mock(
     };
   }
 );
+
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
@@ -79,6 +87,7 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
     handlePageSizeChange: jest.fn(),
   }),
 }));
+
 jest.mock('../../../rest/PersonaAPI', () => {
   return {
     getAllPersonas: jest
@@ -86,6 +95,10 @@ jest.mock('../../../rest/PersonaAPI', () => {
       .mockImplementation(() => Promise.resolve({ data: [] })),
   };
 });
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
 
 const mockProps = {
   pageTitle: 'personas',

@@ -1,5 +1,6 @@
 ---
 title: entityHierarchy | OpenMetadata Entity Hierarchy
+description: EntityHierarchy schema represents parent-child relationships and dependencies in metadata.
 slug: /main-concepts/metadata-standard/schemas/type/entityhierarchy
 ---
 

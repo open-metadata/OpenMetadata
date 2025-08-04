@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { EntityType } from '../enums/entity.enum';
+import { FieldOperation } from '../generated/entity/feed/thread';
+import { t } from './i18next/LocalUtil';
 
 export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TABLE,
@@ -37,6 +38,7 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.METRIC,
+  EntityType.CHART,
 ];
 
 /* 
@@ -49,4 +51,17 @@ export const isActiveAnnouncement = (startTime: number, endTime: number) => {
   const currentTime = Date.now();
 
   return currentTime > startTime && currentTime < endTime;
+};
+
+export const getFieldOperationText = (operation: FieldOperation) => {
+  switch (operation) {
+    case FieldOperation.Added:
+      return t('label.added-lowercase');
+    case FieldOperation.Deleted:
+      return t('label.deleted-lowercase');
+    case FieldOperation.Updated:
+      return t('label.updated-lowercase');
+    default:
+      return operation;
+  }
 };

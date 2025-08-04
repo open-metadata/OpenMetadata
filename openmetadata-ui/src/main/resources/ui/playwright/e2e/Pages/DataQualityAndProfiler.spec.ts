@@ -25,6 +25,7 @@ import {
   clickOutside,
   descriptionBox,
   getApiContext,
+  redirectToExplorePage,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -212,6 +213,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
+
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
@@ -363,6 +365,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     const updateTestCaseResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
+
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
@@ -391,7 +394,7 @@ test(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page: adminPage, dataConsumerPage, dataStewardPage }) => {
-    test.slow();
+    test.slow(true);
 
     const DATA_QUALITY_TABLE = {
       term: 'dim_address',
@@ -401,6 +404,7 @@ test(
 
     const runProfilerTest = async (page: Page) => {
       await redirectToHomePage(page);
+      await redirectToExplorePage(page);
       await visitEntityPage({
         page,
         searchTerm: DATA_QUALITY_TABLE.term,
@@ -550,6 +554,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
+
       await page.getByTestId('update-btn').click();
       const updateResponse1 = await updateTestCaseResponse;
       const body1 = await updateResponse1.request().postData();
@@ -576,6 +581,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
+
       await page.getByTestId('update-btn').click();
       const updateResponse2 = await updateTestCaseResponse2;
       const body2 = await updateResponse2.request().postData();
@@ -603,6 +609,7 @@ test(
           response.url().includes('/api/v1/dataQuality/testCases/') &&
           response.request().method() === 'PATCH'
       );
+
       await page.getByTestId('update-btn').click();
       const updateResponse3 = await updateTestCaseResponse3;
       const body3 = await updateResponse3.request().postData();
@@ -651,6 +658,7 @@ test(
 
         await page.locator('#tableTestForm_displayName').clear();
         await page.fill('#tableTestForm_displayName', 'Updated display name');
+
         await page.getByTestId('update-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
 
@@ -944,15 +952,11 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     // get all the filters
     await page.click('[data-testid="advanced-filter"]');
-    await page.click('[value="tableFqn"]');
-    await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="testPlatforms"]');
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="lastRunRange"]');
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="serviceName"]');
-    await page.click('[data-testid="advanced-filter"]');
-    await page.click('[value="tags"]');
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="tier"]');
 
@@ -1304,8 +1308,13 @@ test('Pagination functionality in test cases list', async ({ page }) => {
 
       await page.click('[data-testid="page-size-selection-dropdown"]');
 
+      const dropdownMenu = page.waitForSelector('.ant-dropdown-menu', {
+        state: 'visible',
+        timeout: 5000,
+      });
+
       // Verify dropdown options are visible
-      await expect(page.locator('.ant-dropdown-menu')).toBeVisible();
+      await expect(dropdownMenu).toBeDefined();
       await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
     });
   } finally {

@@ -1,0 +1,298 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../styles/variables.less');
+
+.ant-tabs.ant-tabs-left.contract-tabs {
+  .ant-tabs-content-holder {
+    flex: 1;
+    padding: @size-lg;
+    border-radius: 0 8px 8px 8px;
+
+    .ant-tabs-tabpane {
+      margin-top: 0;
+      border: none;
+      padding: 0;
+      background: @white;
+      height: initial;
+      overflow: initial;
+    }
+  }
+  .contract-prev-button,
+  .contract-next-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: @size-xs @size-sm;
+    border: 1px solid @grey-300;
+    border-radius: 8px;
+    gap: 4px;
+    font-weight: @font-semibold;
+
+    box-shadow: 0px 1px 2px 0px @grey-27;
+
+    box-shadow: 0px -2px 0px 0px @grey-27 inset;
+
+    box-shadow: 0px 0px 0px 1px @grey-27 inset;
+  }
+  .contract-prev-button {
+    color: @grey-700;
+    svg {
+      stroke: @grey-400;
+    }
+  }
+  .ant-tabs-left-content {
+    height: 100%;
+  }
+  .ant-checkbox-checked {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        border-color: @primary-color;
+      }
+    }
+  }
+
+  .ant-checkbox-indeterminate {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        width: 7px;
+        height: 2px;
+        border-radius: 8px;
+        border: 1px solid @primary-color;
+      }
+    }
+  }
+  .ant-tabs-nav {
+    width: 180px;
+    height: initial;
+    border: none;
+    padding: 0;
+    padding-top: 20px;
+    background: transparent;
+
+    .ant-tabs-nav-list {
+      width: 100%;
+
+      .ant-tabs-tab {
+        width: 100%;
+        padding: 16px 20px;
+        margin: 0;
+        border: none;
+        border-radius: 8px 0 0 8px;
+        background: transparent;
+        color: #6b7280;
+        font-weight: 500;
+        transition: all 0.2s ease;
+
+        & + .ant-tabs-tab {
+          margin-top: 8px;
+        }
+
+        &:hover {
+          background: #f3f4f6;
+          color: #374151;
+        }
+
+        &.ant-tabs-tab-active {
+          background: #ebf5ff;
+          color: #1d4ed8;
+          border-right: 3px solid #1d4ed8;
+
+          .ant-tabs-tab-btn {
+            color: #1d4ed8;
+            font-weight: 600;
+          }
+        }
+
+        .ant-tabs-tab-btn {
+          width: 100%;
+          text-align: left;
+          font-size: 14px;
+          line-height: 20px;
+
+          &:focus {
+            color: inherit;
+          }
+        }
+      }
+    }
+
+    .ant-tabs-ink-bar {
+      display: none;
+    }
+  }
+
+  .ant-tabs-tabpane {
+    padding: 24px;
+    background: @white;
+  }
+
+  // Content area styling
+  .ant-tabs-content {
+    background: @white;
+    min-height: 500px;
+    border-radius: 0 8px 8px 8px;
+  }
+  .schema-table-name {
+    color: @grey-600;
+    font-weight: @font-medium;
+  }
+
+  // Contract detail Forms
+  .contract-detail-form-tab-title {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    color: @grey-900;
+  }
+
+  .contract-detail-form-tab-description {
+    font-size: 14px;
+    color: @grey-600;
+    font-weight: 400;
+  }
+
+  .contract-form-content-container {
+    margin-top: 20px;
+    background: @white;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid @border-color-7;
+    box-shadow: @button-box-shadow-default;
+    display: flex;
+    flex-direction: column;
+    gap: @size-lg;
+  }
+
+  // Table styling
+
+  .ant-table-tbody > tr.ant-table-row-selected > td {
+    background: transparent;
+  }
+}
+
+// Additional styling for the contract form container
+.container.bg-grey {
+  background: @grey-50;
+  border: none;
+  height: 100%;
+
+  & > div:first-child {
+    background: transparent;
+    padding: 0 0 20px 0;
+  }
+
+  // Form styling within tabs
+  .ant-form {
+    .ant-form-item {
+      margin-bottom: 20px;
+
+      .ant-form-item-label {
+        padding-bottom: 8px;
+        label {
+          font-size: 14px;
+          font-weight: 500;
+          color: @grey-700;
+
+          &.ant-form-item-required::before {
+            color: #ef4444;
+          }
+        }
+      }
+      .ant-form-item-control-input-content {
+        input[type='text'] {
+          padding: 8px 14px;
+          color: @grey-700;
+          border: 1px solid @grey-300;
+          border-radius: 8px;
+          box-shadow: 0 1px 2px 0px @grey-27;
+        }
+      }
+      .ant-form-item-control {
+        .ant-select-selector,
+        .ant-mentions {
+          border-radius: 8px;
+          border: 1px solid @grey-300;
+          padding: 4px 12px;
+          color: @grey-700;
+          height: 40px;
+          box-shadow: 0 1px 2px 0px @grey-27;
+
+          &:focus,
+          &:hover {
+            border-color: @primary-color;
+          }
+
+          .ant-select-selection-search {
+            input[type='search'] {
+              height: 40px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.contract-tab-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+}
+
+.add-contract-card {
+  .add-contract-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: @grey-900;
+  }
+
+  .add-contract-card-description {
+    font-size: 14px;
+    color: @grey-600;
+    font-weight: 400;
+    margin-bottom: 0;
+  }
+
+  > .ant-card-body {
+    padding: 0;
+    padding-left: 20px;
+  }
+}
+
+.semantic-rule-editor-view-only {
+  input[type='text'] {
+    padding: 8px 14px;
+    color: @grey-700;
+    box-shadow: 0px 1px 2px 0px @grey-27;
+    border: 1px solid @grey-300;
+  }
+
+  .ant-select-selector,
+  .ant-mentions {
+    border: 1px solid @grey-300;
+    padding: 4px 12px !important;
+    color: @grey-700;
+    height: 40px !important;
+    box-shadow: 0 1px 2px 0px @grey-27;
+
+    &:focus,
+    &:hover {
+      border-color: @primary-color;
+    }
+  }
+}

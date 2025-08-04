@@ -23,6 +23,8 @@ test.slow(true);
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await container.create(apiContext, CONTAINER_CHILDREN);
 
@@ -30,6 +32,8 @@ test.describe('Container entity specific tests ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
+    test.slow(true);
+
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await container.delete(apiContext);

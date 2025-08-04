@@ -1,5 +1,6 @@
 ---
 title: Custom Properties | OpenMetadata Custom Properties Overview
+description: CustomProperties schema groups user-defined fields for customized metadata attributes.
 slug: /main-concepts/metadata-standard/schemas/type/customproperties
 ---
 

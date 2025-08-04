@@ -1,5 +1,6 @@
 ---
 title: GCP Values Credentials | OpenMetadata GCP Values Information
+description: Provide GCP credential values for service account or OAuth-based access to Google Cloud services and APIs.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpvalues
 ---
 
