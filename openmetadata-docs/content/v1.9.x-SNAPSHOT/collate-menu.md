@@ -962,9 +962,9 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/spark-engine/partitioning
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration
     url: /how-to-guides/data-quality-observability/profiler/spark-engine/configuration
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / UI Configuration
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration / UI Configuration
     url: /how-to-guides/data-quality-observability/profiler/spark-engine/ui-configuration
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / External Configuration
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration / External Configuration
     url: /how-to-guides/data-quality-observability/profiler/spark-engine/external-configuration
 
   - category: How-to Guides / Data Quality and Observability / Anomaly Detection
