@@ -225,6 +225,7 @@ const AddDataContract: React.FC<{
           </Button>
           <Button
             className="m-l-sm"
+            data-testid="save-contract-btn"
             loading={isSubmitting}
             type="primary"
             onClick={handleSave}>

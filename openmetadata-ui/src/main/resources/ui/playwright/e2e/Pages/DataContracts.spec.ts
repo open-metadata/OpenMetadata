@@ -11,16 +11,37 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import {
+  DATA_CONTRACT_DETAILS,
+  DATA_CONTRACT_SEMANTICS1,
+  DATA_CONTRACT_SEMANTICS2,
+  NEW_TABLE_TEST_CASE,
+} from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { selectOption } from '../../utils/advancedSearch';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
   const user = new UserClass();
+  const testClassification = new ClassificationClass();
+  const testTag = new TagClass({
+    classification: testClassification.data.name,
+  });
+  const testGlossary = new Glossary();
+  const testGlossaryTerm = new GlossaryTerm(testGlossary);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
@@ -28,6 +49,10 @@ test.describe('Data Contracts', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
     await user.create(apiContext);
+    await testClassification.create(apiContext);
+    await testTag.create(apiContext);
+    await testGlossary.create(apiContext);
+    await testGlossaryTerm.create(apiContext);
     await afterAction();
   });
 
@@ -37,6 +62,10 @@ test.describe('Data Contracts', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.delete(apiContext);
     await user.delete(apiContext);
+    await testClassification.delete(apiContext);
+    await testTag.delete(apiContext);
+    await testGlossary.delete(apiContext);
+    await testGlossaryTerm.delete(apiContext);
     await afterAction();
   });
 
@@ -56,14 +85,13 @@ test.describe('Data Contracts', () => {
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
     // Fill Contract Details form
-    await page.getByTestId('contract-name').fill('Test Contract');
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
     const descriptionInputBox = '.om-block-editor[contenteditable="true"]';
-    await page.fill(descriptionInputBox, 'test description');
+    await page.fill(descriptionInputBox, DATA_CONTRACT_DETAILS.description);
 
     await page.getByTestId('add-owner').click();
     await page.getByRole('tab', { name: 'Users' }).click();
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
     await page
       .getByTestId(`owner-select-users-search-bar`)
       .fill(user.responseData.displayName);
@@ -95,8 +123,11 @@ test.describe('Data Contracts', () => {
     // Fill Contract Semantics form
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
 
-    await page.fill('#semantics_0_name', 'Test Semantic 1');
-    await page.fill('#semantics_0_description', 'Test Description 1');
+    await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_SEMANTICS1.description
+    );
 
     await expect(page.locator('#semantics_0_enabled')).toHaveAttribute(
       'aria-checked',
@@ -107,13 +138,13 @@ test.describe('Data Contracts', () => {
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
-      'Owners'
+      DATA_CONTRACT_SEMANTICS1.rules[0].field
     );
 
     await selectOption(
       page,
       ruleLocator.locator('.rule--operator .ant-select'),
-      'Not in'
+      DATA_CONTRACT_SEMANTICS1.rules[0].operator
     );
 
     await selectOption(
@@ -130,13 +161,13 @@ test.describe('Data Contracts', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description'
+      DATA_CONTRACT_SEMANTICS1.rules[1].field
     );
 
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      'Is Set'
+      DATA_CONTRACT_SEMANTICS1.rules[1].operator
     );
 
     await page.getByTestId('save-semantic-button').click();
@@ -145,13 +176,13 @@ test.describe('Data Contracts', () => {
       page
         .getByTestId('contract-semantics-card-0')
         .locator('.semantic-form-item-title')
-    ).toContainText('Test Semantic 1');
+    ).toContainText(DATA_CONTRACT_SEMANTICS1.name);
 
     await expect(
       page
         .getByTestId('contract-semantics-card-0')
         .locator('.semantic-form-item-description')
-    ).toContainText('Test Description 1');
+    ).toContainText(DATA_CONTRACT_SEMANTICS1.description);
 
     await page.locator('.expand-collapse-icon').click();
 
@@ -159,20 +190,23 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('add-semantic-button').click();
 
-    await page.fill('#semantics_1_name', 'Test Semantic 2');
-    await page.fill('#semantics_1_description', 'Test Description 2');
+    await page.fill('#semantics_1_name', DATA_CONTRACT_SEMANTICS2.name);
+    await page.fill(
+      '#semantics_1_description',
+      DATA_CONTRACT_SEMANTICS2.description
+    );
 
     const ruleLocator3 = page.locator('.group').nth(2);
     await selectOption(
       page,
       ruleLocator3.locator('.group--field .ant-select'),
-      'Name'
+      DATA_CONTRACT_SEMANTICS2.rules[0].field
     );
 
     await selectOption(
       page,
       ruleLocator3.locator('.rule--operator .ant-select'),
-      'Is Set'
+      DATA_CONTRACT_SEMANTICS2.rules[0].operator
     );
 
     await page.getByTestId('save-semantic-button').click();
@@ -181,13 +215,13 @@ test.describe('Data Contracts', () => {
       page
         .getByTestId('contract-semantics-card-1')
         .locator('.semantic-form-item-title')
-    ).toContainText('Test Semantic 2');
+    ).toContainText(DATA_CONTRACT_SEMANTICS2.name);
 
     await expect(
       page
         .getByTestId('contract-semantics-card-1')
         .locator('.semantic-form-item-description')
-    ).toContainText('Test Description 2');
+    ).toContainText(DATA_CONTRACT_SEMANTICS2.description);
 
     await page.getByTestId('delete-semantic-1').click();
 
@@ -196,6 +230,60 @@ test.describe('Data Contracts', () => {
     ).not.toBeVisible();
 
     await page.getByRole('button', { name: 'Quality' }).click();
+
+    // Fill Contract Quality form
+
+    await page.getByTestId('add-test-button').click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
+
+    await page.click('#testCaseFormV1_testTypeId');
+    await page.waitForSelector(`text=${NEW_TABLE_TEST_CASE.label}`);
+    await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
+    await page.fill(
+      '#testCaseFormV1_params_columnName',
+      NEW_TABLE_TEST_CASE.field
+    );
+
+    await page.click('[data-testid="tags-selector"] input');
+    await page.fill('[data-testid="tags-selector"] input', testTag.data.name);
+    await page
+      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
+    await page.click('[data-testid="glossary-terms-selector"] input');
+    await page.fill(
+      '[data-testid="glossary-terms-selector"] input',
+      testGlossaryTerm.data.name
+    );
+
+    await page
+      .getByTestId(`tag-${testGlossaryTerm.responseData.fullyQualifiedName}`)
+      .click();
+
+    await clickOutside(page);
+
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases'
+    );
+    await page.click('[data-testid="create-btn"]');
+    await testCaseResponse;
+
+    await expect(
+      page
+        .locator('.ant-table-cell')
+        .filter({ hasText: NEW_TABLE_TEST_CASE.name })
+    ).toBeVisible();
+
+    const saveContractResponse = page.waitForResponse('/api/v1/dataContracts');
+    await page.getByTestId('save-contract-btn').click();
+    await saveContractResponse;
+
+    await toastNotification(page, 'Data contract saved successfully');
 
     await page.waitForTimeout(2000);
   });
