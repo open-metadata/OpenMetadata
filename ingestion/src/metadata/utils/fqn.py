@@ -15,6 +15,7 @@ ES indexes definitions
 """
 import hashlib
 import re
+import traceback
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
@@ -53,6 +54,9 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -144,12 +148,32 @@ def build(
     :param kwargs: required to build the FQN
     :return: FQN as a string
     """
-    func = fqn_build_registry.registry.get(entity_type.__name__)
-    if not func:
-        raise FQNBuildingException(
-            f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
+    # Transform table_name and column_name if they exist and contain special characters
+    if kwargs.get("table_name") or kwargs.get("column_name"):
+        from metadata.ingestion.models.custom_basemodel_validation import (
+            replace_separators,
         )
-    return func(metadata, **kwargs)
+
+        table_name = kwargs.get("table_name")
+        if table_name and isinstance(table_name, str):
+            kwargs["table_name"] = replace_separators(table_name)
+
+        column_name = kwargs.get("column_name")
+        if column_name and isinstance(column_name, str):
+            kwargs["column_name"] = replace_separators(column_name)
+
+    func = fqn_build_registry.registry.get(entity_type.__name__)
+    try:
+        if not func:
+            raise FQNBuildingException(
+                f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
+            )
+        return func(metadata, **kwargs)
+    except Exception as e:
+        logger.debug(traceback.format_exc())
+        raise FQNBuildingException(
+            f"Error building FQN for {entity_type.__name__}: {e}"
+        )
 
 
 @fqn_build_registry.add(Table)
