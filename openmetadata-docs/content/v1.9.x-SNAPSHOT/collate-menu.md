@@ -926,6 +926,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/configure
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - UI Config
+    url: /how-to-guides/data-quality-observability/quality/tests-ui
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
     url: /how-to-guides/data-quality-observability/quality/custom-tests
   - category: How-to Guides / Data Quality and Observability / Data Profiler
