@@ -388,6 +388,26 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
+    // Create Fields Objects by excluding certain fields
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, Set<String> excludeFields) {
+      Set<String> resultFields = new HashSet<>(allowedFields);
+      if (excludeFields != null) {
+        resultFields.removeAll(excludeFields);
+      }
+      return new Fields(allowedFields, resultFields);
+    }
+
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, String excludeFieldsParam) {
+      Set<String> excludeFields = new HashSet<>();
+      if (!nullOrEmpty(excludeFieldsParam)) {
+        excludeFields =
+            new HashSet<>(Arrays.asList(excludeFieldsParam.replace(" ", "").split(",")));
+      }
+      return createWithExcludedFields(allowedFields, excludeFields);
+    }
+
     @Override
     public String toString() {
       return String.join(",", fieldList);
