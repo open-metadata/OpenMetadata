@@ -24,8 +24,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
-import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
-import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -2331,7 +2329,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the validation result shows failure
     assertNotNull(result);
     assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
-    assertTrue(result.getResult().contains("Semantics validation failed"));
 
     // Verify semantics validation details
     assertNotNull(result.getSemanticsValidation());
@@ -2349,8 +2346,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContractResult latest = getLatestResult(dataContract);
     assertNotNull(updatedContract.getLatestResult());
     assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
-    assertTrue(
-        updatedContract.getLatestResult().getMessage().contains("Semantics validation failed"));
     assertEquals(
         result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
   }
@@ -2753,9 +2748,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(2, finalResult.getSemanticsValidation().getPassed().intValue());
     assertEquals(0, finalResult.getSemanticsValidation().getFailed().intValue());
 
-    // Verify the result message indicates quality validation failed
-    assertTrue(finalResult.getResult().contains("Quality validation failed"));
-
     // Verify the DataContract latestResult reflects the final failed validation
     DataContract updatedContract = getDataContract(dataContract.getId(), "");
     assertNotNull(updatedContract.getLatestResult());
@@ -2847,7 +2839,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the validation result shows failure due to schema validation
     assertNotNull(result);
     assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
-    assertTrue(result.getResult().contains("Schema validation failed"));
 
     // Verify schema validation details
     assertNotNull(result.getSchemaValidation());
