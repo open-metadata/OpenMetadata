@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "Предоставляет общий статус для существующих проверок",
+    "contract-validation-trigger-successfully": "Проверка контракта успешно запущена.",
     "copied-to-clipboard": "Скопировано в буфер обмена",
     "copy-to-clipboard": "Ссылка скопирована в буфер обмена",
     "create-contract-description": "Создайте контракт на основе всех метаданных, которые вы получили для этой сущности.",

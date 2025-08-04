@@ -86,11 +86,11 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
         name: item.timestamp,
         failed:
           item.contractExecutionStatus === ContractExecutionStatus.Failed
-            ? 2
+            ? 1
             : 0,
         success:
           item.contractExecutionStatus === ContractExecutionStatus.Success
-            ? 3
+            ? 1
             : 0,
         aborted:
           item.contractExecutionStatus === ContractExecutionStatus.Aborted
@@ -139,7 +139,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
             <ResponsiveContainer height="100%" width="100%">
               <BarChart
                 data={processedChartData}
-                height={320}
+                height={200}
                 margin={{
                   top: 5,
                   right: 30,

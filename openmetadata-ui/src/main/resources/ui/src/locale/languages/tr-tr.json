@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "Mevcut kontroller için genel durumu sağlar",
+    "contract-validation-trigger-successfully": "Sözleşme doğrulama başarıyla tetiklendi.",
     "copied-to-clipboard": "Panoya kopyalandı",
     "copy-to-clipboard": "Panoya kopyala",
     "create-contract-description": "Bu varlık için elde ettiğiniz tüm metadatalara dayalı bir sözleşme oluşturun.",

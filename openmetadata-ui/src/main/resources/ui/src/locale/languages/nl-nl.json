@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "Biedt de algehele status voor bestaande controles",
+    "contract-validation-trigger-successfully": "Contractvalidatie succesvol geactiveerd.",
     "copied-to-clipboard": "Gekopieerd naar het klembord",
     "copy-to-clipboard": "Koppeling gekopieerd naar klembord",
     "create-contract-description": "Maak een contract op basis van alle metadata die u voor deze entiteit hebt verkregen.",

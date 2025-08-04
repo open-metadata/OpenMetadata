@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "وضعیت کلی برای بررسی‌های موجود فراهم می‌کند",
+    "contract-validation-trigger-successfully": "بررسی قرارداد با موفقیت انجام شد.",
     "copied-to-clipboard": "به حافظه موقت کپی شد",
     "copy-to-clipboard": "کپی به حافظه موقت",
     "create-contract-description": "قراردادی بر اساس تمام متادیتایی که برای این موجودیت به دست آورده‌اید ایجاد کنید.",

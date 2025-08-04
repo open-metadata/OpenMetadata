@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "Provides the over all status for existing checks",
+    "contract-validation-trigger-successfully": "Validation du contrat déclenchée avec succès.",
     "copied-to-clipboard": "Copié dans le presse-papiers",
     "copy-to-clipboard": "Lien copié dans le presse-papiers",
     "create-contract-description": "Créer un contrat basé sur toutes les métadonnées que vous avez obtenues pour cette entité.",

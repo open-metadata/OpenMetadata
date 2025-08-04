@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "提供现有检查的总体状态",
+    "contract-validation-trigger-successfully": "合同验证触发成功。",
     "copied-to-clipboard": "已复制到剪贴板",
     "copy-to-clipboard": "链接已复制到剪贴板",
     "create-contract-description": "基于您为此实体获得的所有元数据创建合同。",

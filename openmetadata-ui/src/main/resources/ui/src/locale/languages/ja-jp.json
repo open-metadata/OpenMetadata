@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "データアセットに対する期待値を定めた契約。",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "Provides the over all status for existing checks",
+    "contract-validation-trigger-successfully": "契約の検証が正常にトリガーされました。",
     "copied-to-clipboard": "クリップボードにコピーしました",
     "copy-to-clipboard": "リンクをクリップボードにコピーしました",
     "create-contract-description": "Create a contract based on all the metadata which you got for this entity.",

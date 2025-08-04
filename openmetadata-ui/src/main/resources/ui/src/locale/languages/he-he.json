@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "מספק את הסטטוס הכללי עבור בדיקות קיימות",
+    "contract-validation-trigger-successfully": "חוזה נתונים נבדק בהצלחה.",
     "copied-to-clipboard": "הועתק ללוח",
     "copy-to-clipboard": "קישור הועתק ללוח",
     "create-contract-description": "צור חוזה המבוסס על כל המטא-דאטה שקיבלת עבור ישות זו.",

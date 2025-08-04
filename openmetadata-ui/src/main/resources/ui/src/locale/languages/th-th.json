@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "ให้สถานะโดยรวมสำหรับการตรวจสอบที่มีอยู่",
+    "contract-validation-trigger-successfully": "การตรวจสอบสัญญาทำงานสำเร็จ",
     "copied-to-clipboard": "คัดลอกไปที่คลิปบอร์ด",
     "copy-to-clipboard": "คัดลอกไปที่คลิปบอร์ด",
     "create-contract-description": "สร้างสัญญาตามเมทาดาต้าทั้งหมดที่คุณได้รับสำหรับเอนทิตีนี้",

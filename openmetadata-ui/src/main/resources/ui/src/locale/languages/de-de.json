@@ -1848,6 +1848,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-status-description": "Gibt den Gesamtstatus für bestehende Prüfungen an",
+    "contract-validation-trigger-successfully": "Vertragsvalidierung erfolgreich ausgelöst.",
     "copied-to-clipboard": "In die Zwischenablage kopiert",
     "copy-to-clipboard": "Link in die Zwischenablage kopiert",
     "create-contract-description": "Erstellen Sie einen Vertrag basierend auf allen Metadaten, die Sie für diese Entität erhalten haben.",
