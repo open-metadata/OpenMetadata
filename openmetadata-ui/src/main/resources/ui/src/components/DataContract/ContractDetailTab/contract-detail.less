@@ -214,6 +214,16 @@
 }
 
 .data-quality-card-container {
+  .data-quality-chart-pie-chart {
+    cursor: pointer !important;
+  }
+
+  .data-quality-chart-container-link {
+    text-decoration: none;
+    color: @grey-900;
+    cursor: pointer;
+  }
+
   .chart-label {
     font-size: 16px;
     font-weight: 600;
@@ -252,12 +262,21 @@
   .data-quality-item-content {
     display: flex;
     flex-direction: column;
-  }
 
-  .data-quality-item-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: @grey-900;
+    .data-quality-item-name-link {
+      text-decoration: none;
+      cursor: pointer;
+
+      .data-quality-item-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: @grey-900;
+
+        &:hover {
+          color: @primary-color;
+        }
+      }
+    }
   }
 
   .data-quality-item-description {
