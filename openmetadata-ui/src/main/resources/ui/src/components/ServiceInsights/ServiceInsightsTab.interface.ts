@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
+import { NO_RUNS_STATUS } from '../../constants/ServiceInsightsTab.constants';
 import { App } from '../../generated/entity/applications/app';
+import {
+  AppRunRecord,
+  Status,
+} from '../../generated/entity/applications/appRunRecord';
 import {
   IngestionPipeline,
   PipelineState,
@@ -57,6 +62,12 @@ export interface AgentsLiveInfo
     | 'displayName'
   > {
   status: PipelineState;
+}
+
+export interface CollateAgentLiveInfo
+  extends Pick<AppRunRecord, 'appName' | 'appId' | 'timestamp'> {
+  displayName: string;
+  status: Status | typeof NO_RUNS_STATUS;
 }
 
 export interface TotalAssetsCount {

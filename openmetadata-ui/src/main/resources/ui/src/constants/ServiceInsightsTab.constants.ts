@@ -35,3 +35,4 @@ export const LIVE_CHARTS_LIST = [
 ];
 
 export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
+export const NO_RUNS_STATUS = 'NO_RUNS';

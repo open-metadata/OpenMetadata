@@ -25,7 +25,10 @@ import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.sv
 
 import { groupBy, isEmpty, isUndefined, reduce } from 'lodash';
 import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
-import { AgentsLiveInfo } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import {
+  AgentsLiveInfo,
+  CollateAgentLiveInfo,
+} from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import {
   AUTOPILOT_AGENTS_ORDERED_LIST,
   AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
@@ -35,6 +38,7 @@ import {
   COLLATE_DATA_QUALITY_APP_NAME,
   COLLATE_DOCUMENTATION_APP_NAME,
 } from '../constants/Applications.constant';
+import { NO_RUNS_STATUS } from '../constants/ServiceInsightsTab.constants';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
 import { App } from '../generated/entity/applications/app';
 import {
@@ -122,7 +126,7 @@ export const getAgentIconFromType = (agentType: string) => {
 };
 
 export const getAgentStatusLabelFromStatus = (
-  status?: PipelineState | Status
+  status?: PipelineState | Status | typeof NO_RUNS_STATUS
 ) => {
   switch (status) {
     case PipelineState.Success:
@@ -141,6 +145,7 @@ export const getAgentStatusLabelFromStatus = (
       return AgentStatus.Running;
     case PipelineState.Queued:
     case Status.Pending:
+    case NO_RUNS_STATUS:
     default:
       return AgentStatus.Pending;
   }
@@ -196,19 +201,47 @@ export const getFormattedAgentsList = (
 };
 
 export const getFormattedAgentsListFromAgentsLiveInfo = (
-  agentsLiveInfo: AgentsLiveInfo[]
+  agentsLiveInfo: AgentsLiveInfo[],
+  collateAIagentsLiveInfo: CollateAgentLiveInfo[]
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
   );
 
-  return filteredAgentsList.map((agent) => ({
+  const formattedAgentsList = filteredAgentsList.map((agent) => ({
     agentIcon: getAgentIconFromType(agent.pipelineType),
     agentType: agent.pipelineType,
     isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
     status: getAgentStatusLabelFromStatus(agent.status),
   }));
+
+  const collateAIagents = collateAIagentsLiveInfo.map((agent) => ({
+    agentIcon: getAgentIconFromType(agent.appName ?? ''),
+    agentType: agent.appName ?? '',
+    isCollateAgent: true,
+    label: getAgentLabelFromType(agent.appName ?? ''),
+    status: getAgentStatusLabelFromStatus(agent.status),
+  }));
+
+  const allAgentsList: AgentsInfo[] = [
+    ...formattedAgentsList,
+    ...collateAIagents,
+  ];
+
+  const orderedAgentsList = reduce(
+    AUTOPILOT_AGENTS_ORDERED_LIST,
+    (acc, agentType) => {
+      const agent = allAgentsList.find(
+        (agent) => agent.agentType === agentType
+      );
+
+      return [...acc, ...(isUndefined(agent) ? [] : [agent])];
+    },
+    [] as AgentsInfo[]
+  );
+
+  return orderedAgentsList;
 };
 
 export const getAgentStatusSummary = (agentsList: AgentsInfo[]) => {

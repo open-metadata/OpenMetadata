@@ -240,7 +240,10 @@ const ServiceInsightsTab = ({
       );
 
       setAgentsInfo(
-        getFormattedAgentsListFromAgentsLiveInfo(data.ingestionPipelineStatus)
+        getFormattedAgentsListFromAgentsLiveInfo(
+          data.ingestionPipelineStatus,
+          data.appStatus
+        )
       );
 
       setTotalAssetsCount(
