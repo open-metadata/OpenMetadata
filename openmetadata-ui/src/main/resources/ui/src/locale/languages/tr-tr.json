@@ -536,6 +536,7 @@
     "embed-link": "Bağlantı göm",
     "enable": "Etkinleştir",
     "enable-debug-log": "Hata Ayıklama Günlüğünü Etkinleştir",
+    "enable-entity": "{{entity}} Etkinleştir",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "etkinleştir",
     "enable-partition": "Bölümü Etkinleştir",

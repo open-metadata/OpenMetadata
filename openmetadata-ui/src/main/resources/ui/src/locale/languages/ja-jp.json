@@ -536,6 +536,7 @@
     "embed-link": "リンクを埋め込む",
     "enable": "有効化",
     "enable-debug-log": "デバッグログを有効化",
+    "enable-entity": "{{entity}} を有効化",
     "enable-incident-management": "インシデント管理を有効化",
     "enable-lowercase": "有効化",
     "enable-partition": "パーティションを有効化",
