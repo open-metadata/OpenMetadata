@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Button, Card, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
+import { isEmpty, pick } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { ReactComponent as RightOutlined } from '../../../assets/svg/right-arrow.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   NO_DATA_PLACEHOLDER,
@@ -213,6 +214,7 @@ export const ContractSchemaFormTab: React.FC<{
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             isReadOnly
+            newLook
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={() => Promise.resolve()}
@@ -228,19 +230,37 @@ export const ContractSchemaFormTab: React.FC<{
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags<Column>
-            isReadOnly
-            entityFqn={tableFqn}
-            entityType={EntityType.TABLE}
-            handleTagSelection={() => Promise.resolve()}
-            hasTagEditAccess={false}
-            index={index}
-            record={record}
-            tags={tags}
-            type={TagSource.Glossary}
-          />
-        ),
+        render: (tags: TagLabel[], record: Column, index: number) => {
+          // To remove Source from the tag so that we can have consistant tag icon
+          const newTags = tags.map((tag) => {
+            return {
+              tagFQN: tag.tagFQN,
+              ...pick(
+                tag,
+                'description',
+                'displayName',
+                'labelType',
+                'name',
+                'style'
+              ),
+            } as TagLabel;
+          });
+
+          return (
+            <TableTags<Column>
+              isReadOnly
+              newLook
+              entityFqn={tableFqn}
+              entityType={EntityType.TABLE}
+              handleTagSelection={() => Promise.resolve()}
+              hasTagEditAccess={false}
+              index={index}
+              record={record}
+              tags={newTags}
+              type={TagSource.Glossary}
+            />
+          );
+        },
       },
       {
         title: t('label.constraint-plural'),
@@ -249,7 +269,7 @@ export const ContractSchemaFormTab: React.FC<{
         render: renderConstraint,
       },
     ],
-    []
+    [tableFqn]
   );
 
   useEffect(() => {
@@ -281,12 +301,19 @@ export const ContractSchemaFormTab: React.FC<{
         />
       </Card>
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined height={22} width={20} />}
+          type="default"
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button type="primary" onClick={onNext}>
+        <Button
+          className="contract-next-button"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <RightOutlined height={15} width={8} />
         </Button>
       </div>
     </>

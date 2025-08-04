@@ -63,6 +63,43 @@
         border-color: @primary-color;
       }
     }
+
+    .ant-btn.delete-button {
+      background-color: transparent;
+      border-color: @error-color;
+
+      svg {
+        width: 20px;
+        color: @error-color;
+      }
+
+      &:hover {
+        background-color: @red-9;
+      }
+    }
+
+    .ant-btn.contract-edit-button {
+      font-weight: @font-semibold;
+      span {
+        margin-left: 6px;
+      }
+    }
+  }
+
+  .contract-status-badge-container {
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .status-badge {
+      padding: 2px 12px;
+
+      .status-badge-label {
+        font-size: 14px;
+        font-weight: 500;
+      }
+    }
   }
 }
 
@@ -83,10 +120,6 @@
       font-weight: 400;
       color: @grey-600;
     }
-  }
-
-  .schema-description {
-    gap: 8px !important;
   }
 
   .expandable-card-contract {
@@ -114,22 +147,13 @@
   }
 }
 
-.delete-button {
-  background: transparent !important;
-  border-color: @error-color !important;
-
-  svg {
-    width: 20px;
-    color: @error-color;
-  }
-}
-
 .contract-status-card-item {
   width: 100%;
   padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid @border-color;
   margin-bottom: 12px;
+  background: @white;
 
   .contract-status-card-icon {
     font-size: 20px;
@@ -167,8 +191,13 @@
     gap: 4px;
 
     .rule-icon {
-      font-size: 20px;
+      font-size: 32px;
       margin-right: 4px;
+      color: transparent;
+
+      &.rule-icon-default {
+        font-size: 22px;
+      }
     }
 
     .rule-name {
@@ -199,6 +228,7 @@
     border: 1px solid @border-color-8;
     border-radius: @card-radius;
     padding: @padding-md;
+    background: @white;
     box-shadow: @button-box-shadow-default;
 
     .data-quality-chart-item {
@@ -251,4 +281,12 @@
   max-width: 100%;
   text-wrap: auto;
   border: none;
+}
+.ant-tag.custom-tag.ant-tag-purple {
+  background-color: @purple-6;
+  color: @purple-5;
+}
+.ant-tag.custom-tag.ant-tag-blue {
+  background-color: @blue-33;
+  color: @blue-34;
 }

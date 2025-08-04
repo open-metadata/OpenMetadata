@@ -1657,7 +1657,7 @@ export interface PropagationStopConfig {
  */
 export enum MetadataAttribute {
     Description = "description",
-    Domain = "domain",
+    Domains = "domains",
     GlossaryTerms = "glossaryTerms",
     Owner = "owner",
     Tags = "tags",
