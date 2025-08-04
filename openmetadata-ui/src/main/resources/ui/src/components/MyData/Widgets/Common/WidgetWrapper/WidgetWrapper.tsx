@@ -28,7 +28,7 @@ export interface WidgetWrapperProps {
 const WidgetWrapper = ({
   children,
   className = '',
-  dataLength = 5,
+  dataLength = 10,
   dataTestId,
   header,
   loading = false,

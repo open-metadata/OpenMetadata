@@ -17,6 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/ic-my-task.svg';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
@@ -68,7 +72,8 @@ const MyTaskWidget = ({
       ThreadType.Task,
       undefined,
       undefined,
-      undefined
+      undefined,
+      PAGE_SIZE_MEDIUM
     );
   }, [getFeedData, selectedFilter]);
 
@@ -79,7 +84,8 @@ const MyTaskWidget = ({
       ThreadType.Task,
       undefined,
       undefined,
-      ThreadTaskStatus.Open
+      ThreadTaskStatus.Open,
+      PAGE_SIZE_MEDIUM
     );
   }, [getFeedData, selectedFilter]);
 
@@ -88,7 +94,7 @@ const MyTaskWidget = ({
   };
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > 10,
+    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
     [entityThread, loading]
   );
 
@@ -147,7 +153,7 @@ const MyTaskWidget = ({
         ) : (
           <>
             <div className="entity-list-body">
-              {entityThread.map((feed) => (
+              {entityThread.slice(0, PAGE_SIZE_BASE).map((feed) => (
                 <FeedPanelBodyV1New
                   isForFeedTab
                   isFullWidth
@@ -176,7 +182,6 @@ const MyTaskWidget = ({
 
   return (
     <WidgetWrapper
-      dataLength={entityThread.length > 0 ? entityThread.length : 10}
       dataTestId="KnowledgePanel.MyTask"
       header={widgetHeader}
       loading={loading}>

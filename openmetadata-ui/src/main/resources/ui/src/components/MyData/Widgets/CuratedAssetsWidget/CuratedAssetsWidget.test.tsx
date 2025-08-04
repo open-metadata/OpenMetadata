@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import CuratedAssetsWidget from './CuratedAssetsWidget';
@@ -367,7 +368,7 @@ describe('CuratedAssetsWidget', () => {
       expect(searchQuery).toHaveBeenCalledWith({
         query: '',
         pageNumber: 1,
-        pageSize: 20,
+        pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: 'table',
         sortField: 'updatedAt',
         sortOrder: 'desc',

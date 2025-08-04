@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import {
   TaskType,
   Thread,
@@ -151,7 +152,8 @@ describe('MyTaskWidget', () => {
       'Task',
       undefined,
       undefined,
-      undefined
+      undefined,
+      PAGE_SIZE_MEDIUM
     );
   });
 });
