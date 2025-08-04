@@ -214,6 +214,9 @@
         }
       }
       .ant-form-item-control-input-content {
+        .group--field {
+          align-self: baseline;
+        }
         input[type='text'] {
           padding: 8px 14px;
           color: @grey-700;
@@ -275,24 +278,32 @@
 }
 
 .semantic-rule-editor-view-only {
-  input[type='text'] {
-    padding: 8px 14px;
-    color: @grey-700;
-    box-shadow: 0px 1px 2px 0px @grey-27;
-    border: 1px solid @grey-300;
-  }
+  .query-builder {
+    .rule_group {
+      .group--field {
+        align-self: baseline;
+      }
+    }
 
-  .ant-select-selector,
-  .ant-mentions {
-    border: 1px solid @grey-300;
-    padding: 4px 12px !important;
-    color: @grey-700;
-    min-height: 40px !important;
-    box-shadow: 0 1px 2px 0px @grey-27;
+    input[type='text'] {
+      padding: 8px 14px;
+      color: @grey-700;
+      box-shadow: 0px 1px 2px 0px @grey-27;
+      border: 1px solid @grey-300;
+    }
 
-    &:focus,
-    &:hover {
-      border-color: @primary-color;
+    .ant-select-selector,
+    .ant-mentions {
+      border: 1px solid @grey-300;
+      padding: 4px 12px !important;
+      color: @grey-700;
+      min-height: 40px !important;
+      box-shadow: 0 1px 2px 0px @grey-27;
+
+      &:focus,
+      &:hover {
+        border-color: @primary-color;
+      }
     }
   }
 }
