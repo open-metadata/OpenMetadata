@@ -128,6 +128,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_owners",
                 nullable=True,
             ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_domain",
+                nullable=True,
+            ),
         ],
     )
     process_dbt_tests: Annotated[
@@ -358,6 +363,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def add_dbt_test_result(self, dbt_test: dict):
         """
         After test cases has been processed, add the tests results info
+        """
+
+    @abstractmethod
+    def process_dbt_domain(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT domain using patch APIs
         """
 
     def is_filtered(
