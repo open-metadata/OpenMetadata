@@ -1,0 +1,108 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../styles/variables.less');
+
+.add-semantic-button {
+  span {
+    font-weight: 600;
+  }
+  .anticon {
+    font-size: 14px;
+    rotate: 45deg;
+  }
+}
+
+.contract-semantic-form-container {
+  .expanded {
+    .ant-card-head {
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+    }
+  }
+
+  .expandable-card {
+    margin-top: 16px;
+    border: 1px solid @border-color-7 !important;
+    box-shadow: 0 1px 2px 0 @grey-27;
+
+    .ant-card-head {
+      background: @white !important;
+      border-bottom: 1px solid @grey-200 !important;
+    }
+  }
+
+  .expanded-active-card {
+    .ant-card-head {
+      display: none;
+    }
+
+    .ant-card-body {
+      padding: 0;
+
+      .semantic-form-item-content {
+        padding: 20px;
+      }
+    }
+  }
+
+  .semantic-form-item-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-top: 1px solid @grey-200;
+  }
+
+  .query-builder-form-field {
+    .ant-card {
+      border: none;
+    }
+    .ant-card-body {
+      padding: 0;
+
+      .ant-divider {
+        display: none;
+      }
+
+      .ant-btn-group {
+        .action--DELETE {
+          border: 1px solid @grey-34;
+
+          .anticon {
+            color: @grey-400;
+          }
+        }
+
+        .action--ADD-RULE {
+          display: none !important;
+        }
+      }
+    }
+  }
+}
+
+.semantic-rule-editor-view-only {
+  .ant-divider,
+  .group--conjunctions {
+    display: none !important;
+  }
+
+  .ant-card-body {
+    padding: 0;
+  }
+
+  .query-builder-card {
+    border: none;
+    box-shadow: none;
+  }
+}

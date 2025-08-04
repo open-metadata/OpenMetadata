@@ -1,5 +1,6 @@
 ---
 title: Nifi Connection | OpenMetadata Apache Nifi Connection
+description: Define NiFi connection schema for metadata ingestion from visual data flow orchestration environments.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/nificonnection
 ---
 

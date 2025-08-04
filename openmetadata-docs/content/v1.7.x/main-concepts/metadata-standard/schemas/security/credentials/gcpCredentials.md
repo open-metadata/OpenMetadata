@@ -1,5 +1,6 @@
 ---
 title: gcpCredentials | OpenMetadata GCP Credentials
+description: Configure GCP credentials using service account keys or application default credentials for cloud integration.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentials
 ---
 

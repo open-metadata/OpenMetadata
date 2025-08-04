@@ -52,7 +52,7 @@ const DataAssetsWidget = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_ASSETS_SORT_BY_KEYS.LATEST
+    DATA_ASSETS_SORT_BY_KEYS.A_TO_Z
   );
 
   const widgetData = useMemo(
@@ -96,21 +96,35 @@ const DataAssetsWidget = ({
     [setSelectedSortBy]
   );
 
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.EXPLORE);
+  }, [navigate]);
+
+  const sortedServices = useMemo(() => {
+    switch (selectedSortBy) {
+      case DATA_ASSETS_SORT_BY_KEYS.A_TO_Z:
+        return [...services].sort((a, b) => a.key.localeCompare(b.key));
+      case DATA_ASSETS_SORT_BY_KEYS.Z_TO_A:
+        return [...services].sort((a, b) => b.key.localeCompare(a.key));
+      case DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW:
+        return [...services].sort((a, b) => b.doc_count - a.doc_count);
+      case DATA_ASSETS_SORT_BY_KEYS.LOW_TO_HIGH:
+        return [...services].sort((a, b) => a.doc_count - b.doc_count);
+      default:
+        return services;
+    }
+  }, [services, selectedSortBy]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonText={t('label.add-entity', {
-          entity: t('label.data-asset-plural'),
-        })}
-        description={t('message.no-data-assets-message')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
         title={t('message.no-data-assets-yet')}
-        onActionClick={() => navigate(ROUTES.EXPLORE)}
       />
     ),
-    [t, navigate]
+    [t]
   );
 
   const dataAssetsContent = useMemo(
@@ -121,7 +135,7 @@ const DataAssetsWidget = ({
             'cards-scroll-container flex-1 overflow-y-auto',
             isFullSize ? 'justify-start' : 'justify-center'
           )}>
-          {services.map((service) => (
+          {sortedServices.map((service) => (
             <div
               className="card-wrapper"
               key={service.key}
@@ -134,7 +148,7 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
-    [services]
+    [sortedServices, isFullSize]
   );
 
   const showWidgetFooterMoreButton = useMemo(
@@ -142,31 +156,22 @@ const DataAssetsWidget = ({
     [services, loading]
   );
 
-  const widgetContent = useMemo(
+  const widgetHeader = useMemo(
     () => (
-      <div className="data-assets-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<DataAssetIcon height={24} width={24} />}
-          isEditView={isEditView}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
-          title={t('label.data-asset-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={handleSortByClick}
-        />
-        <div className="widget-content flex-1">
-          {isEmpty(services) ? emptyState : dataAssetsContent}
-          <WidgetFooter
-            moreButtonLink={ROUTES.EXPLORE}
-            moreButtonText={t('label.view-more')}
-            showMoreButton={showWidgetFooterMoreButton}
-          />
-        </div>
-      </div>
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<DataAssetIcon height={24} width={24} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        title={t('label.data-asset-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={handleSortByClick}
+        onTitleClick={handleTitleClick}
+      />
     ),
     [
       currentLayout,
@@ -177,15 +182,32 @@ const DataAssetsWidget = ({
       widgetKey,
       widgetData?.w,
       selectedSortBy,
-      emptyState,
-      dataAssetsContent,
-      services,
+      handleSortByClick,
+      handleTitleClick,
     ]
+  );
+
+  const widgetContent = useMemo(
+    () => (
+      <div className="data-assets-widget-container">
+        <div className="widget-content flex-1">
+          {isEmpty(services) ? emptyState : dataAssetsContent}
+          <WidgetFooter
+            moreButtonLink={ROUTES.EXPLORE}
+            moreButtonText={t('label.view-more')}
+            showMoreButton={showWidgetFooterMoreButton}
+          />
+        </div>
+      </div>
+    ),
+    [emptyState, dataAssetsContent, services, showWidgetFooterMoreButton, t]
   );
 
   return (
     <WidgetWrapper
       dataLength={services.length !== 0 ? services.length : 10}
+      dataTestId="KnowledgePanel.DataAssets"
+      header={widgetHeader}
       loading={loading}>
       {widgetContent}
     </WidgetWrapper>

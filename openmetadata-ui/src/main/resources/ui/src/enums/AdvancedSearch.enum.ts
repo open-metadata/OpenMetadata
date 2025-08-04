@@ -87,16 +87,18 @@ export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
 // This enum contains list of fields that are there in the object of the entity
 // For example, in Glossary object, there are fields like name, description, parent, etc.
 export enum EntityReferenceFields {
-  REVIEWERS = 'reviewers.fullyQualifiedName',
-  OWNERS = 'owners.fullyQualifiedName',
+  REVIEWERS = 'reviewers',
+  OWNERS = 'owners',
   DATABASE = 'database.name',
   DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
-  TAG = 'tags.tagFQN',
+  TAG = 'tags',
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
   SERVICE = 'service.name',
+  UPDATED_BY = 'updatedBy',
+  CHANGE_DESCRIPTION = 'changeDescription',
 }

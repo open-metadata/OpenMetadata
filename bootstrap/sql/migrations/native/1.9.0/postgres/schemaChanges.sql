@@ -170,3 +170,65 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
 -- Use btree index for entityFqn prefix matching
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_fqn ON entity_deletion_lock(entityFqn);
 CREATE INDEX IF NOT EXISTS idx_deletion_lock_time ON entity_deletion_lock(lockedAt);
+
+-- Update columnValuesToBeInSet test definition to include BOOLEAN in supportedDataTypes and update parameterDefinition
+UPDATE test_definition
+  SET json = jsonb_set(json, '{supportedDataTypes}', '["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN"]'::jsonb)
+WHERE name in ('columnValuesToBeInSet', 'columnValuesToBeNotInSet');
+
+-- 1. Add classificationHash column to support fast lookup and grouping by classification fqnHash
+ALTER TABLE tag
+  ADD COLUMN classificationHash TEXT
+  GENERATED ALWAYS AS (SPLIT_PART(fqnhash, '.', 1)) STORED;
+
+-- 2. Create index on classificationHash + deleted
+CREATE INDEX idx_tag_classification_hash_deleted
+  ON tag (classificationHash, deleted);
+
+
+-- 1. Migrate root-level domain to domains
+UPDATE thread_entity SET json = jsonb_set(json::jsonb #- '{domain}', '{domains}', jsonb_build_array(json#>'{domain}')) WHERE json #> '{domain}' IS NOT NULL;
+
+-- 2. Migrate nested feedInfo.entitySpecificInfo.entity.domain to domains
+UPDATE thread_entity
+SET json = jsonb_set(
+              json #- '{feedInfo,entitySpecificInfo,entity,domain}',
+              '{feedInfo,entitySpecificInfo,entity,domains}',
+              to_jsonb(CASE
+                          WHEN json#>'{feedInfo,entitySpecificInfo,entity,domain}' IS NULL THEN ARRAY[]::jsonb[]
+                          ELSE ARRAY[json#>'{feedInfo,entitySpecificInfo,entity,domain}']
+                       END)
+          )
+WHERE jsonb_path_exists(json, '$.feedInfo.entitySpecificInfo.entity.domain')
+  AND json#>'{feedInfo,entitySpecificInfo,entity,domain}' IS NOT NULL;
+
+-- 3. Drop old single-domain column
+ALTER TABLE thread_entity
+DROP COLUMN IF EXISTS domain;
+
+-- 4. Add corrected generated column for multi-domains
+ALTER TABLE thread_entity
+ADD COLUMN domains TEXT GENERATED ALWAYS AS (
+  CASE
+    WHEN json -> 'domains' IS NULL OR jsonb_array_length(json -> 'domains') = 0 THEN NULL
+    ELSE json ->> 'domains'
+  END
+) STORED;
+
+-- Update activity feed alert after domain changes
+DELETE FROM  event_subscription_entity where name = 'ActivityFeedAlert';
+
+-- Add timestamp indexes for improved performance of event ordering queries
+-- These indexes significantly improve performance of ORDER BY timestamp DESC queries
+-- used in listAllEventsWithStatuses method for alert event retrieval
+
+-- Add descending timestamp index for consumers_dlq table
+-- This table stores failed event subscription events
+CREATE INDEX IF NOT EXISTS idx_consumers_dlq_timestamp_desc ON consumers_dlq (timestamp DESC);
+
+-- Add descending timestamp index for successful_sent_change_events table
+-- This table stores successfully sent event subscription events
+CREATE INDEX IF NOT EXISTS idx_successful_events_timestamp_desc ON successful_sent_change_events (timestamp DESC);
+
+-- Add composite index for better performance when filtering by subscription ID and ordering by timestamp
+CREATE INDEX IF NOT EXISTS idx_successful_events_subscription_timestamp ON successful_sent_change_events (event_subscription_id, timestamp DESC);

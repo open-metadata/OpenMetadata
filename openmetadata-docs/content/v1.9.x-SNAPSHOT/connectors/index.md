@@ -101,6 +101,10 @@ Set up auto-classification to detect and tag sensitive data automatically.
 
 {% partial file="/v1.9/connectors/metadata/connectors-list.md" /%}
 
+## Security Services
+
+{% partial file="/v1.9/connectors/security/connectors-list.md" /%}
+
 ## Search Services
 
 {% partial file="/v1.9/connectors/search/connectors-list.md" /%}

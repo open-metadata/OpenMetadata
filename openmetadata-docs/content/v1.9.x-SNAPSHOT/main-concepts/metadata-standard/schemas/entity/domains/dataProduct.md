@@ -1,5 +1,6 @@
 ---
 title: Data Product Schema | OpenMetadata Data Product
+description: Define data product entities including inputs, owners, and outcomes for productized data delivery.
 slug: /main-concepts/metadata-standard/schemas/entity/domains/dataproduct
 ---
 

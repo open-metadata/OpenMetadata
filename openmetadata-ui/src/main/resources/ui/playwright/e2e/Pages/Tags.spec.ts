@@ -289,6 +289,35 @@ test.fixme('Classification Page', async ({ page }) => {
     );
   });
 
+  await test.step('Verify classification term count', async () => {
+    // Navigate back to classifications list
+    await sidebarClick(page, SidebarItem.TAGS);
+
+    // Wait for classifications to load with termCount field
+    const classificationsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/classifications') &&
+        response.url().includes('fields=termCount')
+    );
+    await classificationsResponse;
+
+    // Find the classification in the left panel and verify term count
+    const classificationElement = page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: NEW_CLASSIFICATION.displayName });
+
+    // Check if term count is displayed as (1) since we created one tag
+    await expect(classificationElement).toContainText('(1)');
+
+    // Click on the classification to verify
+    await classificationElement.click();
+
+    // Verify the tag is listed
+    await expect(page.locator('[data-testid="table"]')).toContainText(
+      NEW_TAG.name
+    );
+  });
+
   await test.step(`Assign tag to table`, async () => {
     await table.visitEntityPage(page);
     const { name, displayName } = NEW_TAG;
@@ -423,6 +452,25 @@ test.fixme('Classification Page', async ({ page }) => {
     await expect(page.locator('[data-testid="table"]')).not.toContainText(
       NEW_TAG.name
     );
+
+    // Verify term count is now 0 after deleting the tag
+    await sidebarClick(page, SidebarItem.TAGS);
+
+    // Wait for classifications to reload with updated termCount
+    const classificationsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/classifications') &&
+        response.url().includes('fields=termCount')
+    );
+    await classificationsResponse;
+
+    // Find the classification and verify term count is 0
+    const classificationElement = page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: NEW_CLASSIFICATION.displayName });
+
+    // Check if term count is displayed as (0) since we deleted the tag
+    await expect(classificationElement).toContainText('(0)');
   });
 
   await test.step('Remove classification', async () => {
@@ -461,7 +509,7 @@ test('Search tag using classification display name should work', async ({
 }) => {
   const displayNameToSearch = tag.responseData.classification.displayName;
 
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
 
   await page.waitForLoadState('networkidle');
 
@@ -505,6 +553,61 @@ test('Search tag using classification display name should work', async ({
   ).toBeVisible();
 });
 
+test('Verify system classification term counts', async ({ page }) => {
+  const classificationsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/classifications') &&
+      response.url().includes('fields=termCount')
+  );
+
+  await sidebarClick(page, SidebarItem.TAGS);
+
+  await classificationsResponse;
+
+  await page.waitForSelector('[data-testid="side-panel-classification"]', {
+    state: 'visible',
+  });
+
+  // Get all classification elements
+  const classificationElements = await page
+    .locator('[data-testid="side-panel-classification"]')
+    .all();
+
+  // Find and verify Tier classification
+  let tierFound = false;
+  let piiFound = false;
+
+  for (const element of classificationElements) {
+    const text = await element.textContent();
+    const filterCountText = await element
+      .getByTestId('filter-count')
+      .textContent();
+    const filterCount = parseInt(filterCountText?.trim() || '0', 10);
+    if (text?.includes('Tier') && filterCount > 0) {
+      tierFound = true;
+    }
+    if (text?.includes('PII') && filterCount > 0) {
+      piiFound = true;
+    }
+  }
+
+  expect(tierFound).toBeTruthy();
+  expect(piiFound).toBeTruthy();
+
+  // Alternative: verify specific classifications have the expected count
+  const tierElement = page
+    .locator('[data-testid="side-panel-classification"]')
+    .filter({ hasText: 'Tier' });
+
+  await expect(tierElement).toContainText('5');
+
+  const piiElement = page
+    .locator('[data-testid="side-panel-classification"]')
+    .filter({ hasText: 'PII' });
+
+  await expect(piiElement).toContainText('3');
+});
+
 test('Verify Owner Add Delete', async ({ page }) => {
   await classification1.visitPage(page);
   const OWNER1 = user1.getUserName();
@@ -527,6 +630,7 @@ test('Verify Owner Add Delete', async ({ page }) => {
   ).toBeVisible();
 
   await classification1.visitPage(page);
+
   await page.waitForLoadState('networkidle');
 
   await removeOwner({
