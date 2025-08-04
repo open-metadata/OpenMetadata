@@ -567,6 +567,7 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
             icon: DataAssetRulesIcon,
+            isBeta: true,
           },
         ],
       },
