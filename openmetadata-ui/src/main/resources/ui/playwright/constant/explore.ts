@@ -111,3 +111,22 @@ export const DATA_ASSETS = [
     indexType: 'api_endpoint_search_index',
   },
 ];
+
+export const DATA_ASSETS_SORT = [
+  { name: 'Table', filter: 'table' },
+  { name: 'Database', filter: 'database' },
+  { name: 'Database Schema', filter: 'databaseSchema' },
+  { name: 'Dashboard', filter: 'dashboard' },
+  { name: 'Dashboard Data Model', filter: 'dashboardDataModel' },
+  { name: 'Pipeline', filter: 'pipeline' },
+  { name: 'Topic', filter: 'topic' },
+  { name: 'ML Model', filter: 'mlmodel' },
+  { name: 'Container', filter: 'container' },
+  { name: 'Search Index', filter: 'searchIndex' },
+  { name: 'API Endpoint', filter: 'apiEndpoint' },
+  { name: 'API Collection', filter: 'apiCollection' },
+  { name: 'Stored Procedure', filter: 'storedProcedure' },
+  { name: 'Glossary Term', filter: 'glossaryTerm' },
+  { name: 'Tags', filter: 'tag' },
+  { name: 'Metrics', filter: 'metric' },
+];

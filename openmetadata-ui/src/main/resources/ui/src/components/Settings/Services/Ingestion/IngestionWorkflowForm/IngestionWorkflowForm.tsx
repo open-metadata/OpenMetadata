@@ -32,7 +32,10 @@ import {
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
 import { transformErrors } from '../../../../../utils/formUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  transformProfilerProcessingEngine,
+} from '../../../../../utils/IngestionWorkflowUtils';
 import BooleanFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
@@ -74,7 +77,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
   const isIncrementalExtractionSupported =
-    serviceData?.connection.config.supportsIncrementalMetadataExtraction;
+    serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -122,6 +125,9 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
           },
         };
       }
+      if (pipeLineType === PipelineType.Profiler) {
+        formData = transformProfilerProcessingEngine(formData);
+      }
       onChange?.(formData);
     }
   };
@@ -155,6 +161,9 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
               ?.dbtConfigType as DbtConfigType,
           },
         };
+      }
+      if (pipeLineType === PipelineType.Profiler) {
+        formData = transformProfilerProcessingEngine(formData);
       }
 
       onSubmit(formData);

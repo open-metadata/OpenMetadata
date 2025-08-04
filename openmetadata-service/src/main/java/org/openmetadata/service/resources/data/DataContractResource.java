@@ -142,23 +142,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("10")
           int limitParam,
       @Parameter(
-              description = "Sort the records based on a field",
-              schema = @Schema(type = "string", example = "name"))
-          @QueryParam("sort")
-          @DefaultValue("updatedAt")
-          String sortParam,
-      @Parameter(
-              description = "Starting record number for pagination",
-              schema = @Schema(type = "integer", minimum = "0", example = "0"))
-          @Min(0)
+              description = "Returns list of contracts before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
-          Integer beforeParam,
+          String before,
       @Parameter(
-              description = "Starting record number for pagination",
-              schema = @Schema(type = "integer", minimum = "0", example = "0"))
-          @Min(0)
+              description = "Returns list of contracts after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
-          Integer afterParam,
+          String after,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities",
               schema = @Schema(implementation = Include.class))
@@ -179,8 +171,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
-    String before = beforeParam != null ? beforeParam.toString() : null;
-    String after = afterParam != null ? afterParam.toString() : null;
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

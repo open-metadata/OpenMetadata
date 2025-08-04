@@ -12,6 +12,7 @@
  */
 import { useMemo } from 'react';
 import DataGrid from 'react-data-grid';
+import 'react-data-grid/lib/styles.css';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
 const TableTypePropertyEditTable = ({

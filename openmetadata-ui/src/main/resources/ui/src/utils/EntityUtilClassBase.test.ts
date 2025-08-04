@@ -78,6 +78,9 @@ jest.mock('../pages/DatabaseDetailsPage/DatabaseDetailsPage', () => jest.fn());
 jest.mock('../pages/DatabaseSchemaPage/DatabaseSchemaPage.component', () =>
   jest.fn()
 );
+jest.mock('../pages/ChartDetailsPage/ChartDetailsPage.component', () =>
+  jest.fn()
+);
 jest.mock('../pages/DataModelPage/DataModelPage.component', () => jest.fn());
 jest.mock('../pages/EntityVersionPage/EntityVersionPage.component', () => ({
   VersionData: jest.fn(),
