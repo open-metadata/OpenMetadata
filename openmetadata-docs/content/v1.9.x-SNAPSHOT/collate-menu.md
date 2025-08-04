@@ -142,6 +142,12 @@ site_menu:
     url: /connectors/database/exasol/yaml
   - category: Connectors / Database / Exasol / Troubleshooting
     url: /connectors/database/exasol/troubleshooting
+  - category: Connectors / Database / Epic
+    url: /connectors/database/epic
+  - category: Connectors / Database / Epic / Run Externally
+    url: /connectors/database/epic/yaml
+  - category: Connectors / Database / Epic / Troubleshooting
+    url: /connectors/database/epic/troubleshooting
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
@@ -920,6 +926,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/configure
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - UI Config
+    url: /how-to-guides/data-quality-observability/quality/tests-ui
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
     url: /how-to-guides/data-quality-observability/quality/custom-tests
   - category: How-to Guides / Data Quality and Observability / Data Profiler

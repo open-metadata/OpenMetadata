@@ -495,7 +495,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!pipeline.getDeployed()) {
       prepareAndDeployIngestionPipeline(pipeline, testSuite);
     }
-    pipelineServiceClient.runPipeline(pipeline, testSuite);
+    prepareAndRunIngestionPipeline(pipeline, testSuite);
   }
 
   private void prepareAndDeployIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
@@ -513,6 +513,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
     }
+  }
+
+  private void prepareAndRunIngestionPipeline(IngestionPipeline pipeline, TestSuite testSuite) {
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, pipeline).build();
+    pipeline.setOpenMetadataServerConnection(
+        SecretsManagerFactory.getSecretsManager()
+            .encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    pipelineServiceClient.runPipeline(pipeline, testSuite);
   }
 
   private SemanticsValidation validateSemantics(DataContract dataContract) {
@@ -577,31 +587,19 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!nullOrEmpty(result.getSchemaValidation())) {
       if (result.getSchemaValidation().getFailed() > 0) {
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult("Schema validation failed");
+        result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getSemanticsValidation())) {
       if (result.getSemanticsValidation().getFailed() > 0) {
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult(
-                result.getResult() != null
-                    ? result.getResult() + "; Semantics validation failed"
-                    : "Semantics validation failed");
+        result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
 
     if (!nullOrEmpty(result.getQualityValidation())) {
       if (result.getQualityValidation().getFailed() > 0) {
-        result
-            .withContractExecutionStatus(ContractExecutionStatus.Failed)
-            .withResult(
-                result.getResult() != null
-                    ? result.getResult() + "; Quality validation failed"
-                    : "Quality validation failed");
+        result.withContractExecutionStatus(ContractExecutionStatus.Failed);
       }
     }
   }
