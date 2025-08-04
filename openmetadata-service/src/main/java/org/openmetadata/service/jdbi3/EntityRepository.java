@@ -787,6 +787,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities;
   }
 
+  // Get Entity By Name excluding certain fields
+  public final T getByNameWithExcludedFields(
+      UriInfo uriInfo, String fqn, String excludeFields, Include include) {
+    return getByNameWithExcludedFields(uriInfo, fqn, excludeFields, include, false);
+  }
+
+  // Form the Field Object by excluding certain fields and get entity by name
+  public final T getByNameWithExcludedFields(
+      UriInfo uriInfo, String fqn, String excludeFields, Include include, boolean fromCache) {
+    Fields fields = EntityUtil.Fields.createWithExcludedFields(allowedFields, excludeFields);
+    return getByName(uriInfo, fqn, fields, include, fromCache);
+  }
+
   public final T findByNameOrNull(String fqn, Include include) {
     try {
       return findByName(fqn, include);
