@@ -147,7 +147,24 @@ export const OIDC_UI_SCHEMA = {
 export const STANDARD_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  oidcConfiguration: {
+    'ui:title': 'OIDC Configuration',
+    secret: { 'ui:title': 'Client Secret', 'ui:widget': 'password' },
+    scope: { 'ui:title': 'Scope' },
+    useNonce: { 'ui:title': 'Use Nonce' },
+    preferredJwsAlgorithm: { 'ui:title': 'Preferred JWS Algorithm' },
+    responseType: { 'ui:title': 'Response Type' },
+    disablePkce: { 'ui:title': 'Disable PKCE' },
+    maxClockSkew: { 'ui:title': 'Max Clock Skew' },
+    clientAuthenticationMethod: { 'ui:title': 'Client Authentication Method' },
+    tokenValidity: { 'ui:title': 'Token Validity' },
+    tenant: { 'ui:title': 'Tenant' },
+    serverUrl: { 'ui:title': 'Server URL' },
+    callbackUrl: { 'ui:title': 'Callback URL' },
+    maxAge: { 'ui:title': 'Max Age' },
+    prompt: { 'ui:title': 'Prompt' },
+    sessionExpiry: { 'ui:title': 'Session Expiry' },
+  },
 };
 
 // Common field titles
@@ -161,11 +178,14 @@ export const COMMON_FIELD_TITLES = {
   tokenValidationAlgorithm: { 'ui:title': 'Token Validation Algorithm' },
   jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  clientType: { 'ui:title': 'Client Type' },
+  secret: { 'ui:title': 'Client Secret', 'ui:widget': 'password' },
 };
 
 // Authorizer field titles
 export const AUTHORIZER_FIELD_TITLES = {
-  className: { 'ui:title': 'Class Name' },
+  className: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  containerRequestFilter: { 'ui:widget': 'hidden', 'ui:hideError': true },
   adminPrincipals: { 'ui:title': 'Admin Principals' },
   botPrincipals: { 'ui:title': 'Bot Principals' },
   principalDomain: { 'ui:title': 'Principal Domain' },
@@ -238,6 +258,12 @@ export const COMMON_AUTH_FIELDS_TO_REMOVE = [
   'responseType',
   'jwtPrincipalClaimsMapping',
 ];
+
+// Hardcoded authorizer values
+export const DEFAULT_AUTHORIZER_CLASS_NAME =
+  'org.openmetadata.service.security.DefaultAuthorizer';
+export const DEFAULT_CONTAINER_REQUEST_FILTER =
+  'org.openmetadata.service.security.JwtFilter';
 
 // Common fields to always remove from authorizer configuration
 export const COMMON_AUTHORIZER_FIELDS_TO_REMOVE = [

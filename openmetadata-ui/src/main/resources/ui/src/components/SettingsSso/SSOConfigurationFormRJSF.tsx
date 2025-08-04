@@ -42,6 +42,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
   COMMON_AUTH_FIELDS_TO_REMOVE,
+  DEFAULT_AUTHORIZER_CLASS_NAME,
+  DEFAULT_CONTAINER_REQUEST_FILTER,
   getSSOUISchema,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
@@ -61,6 +63,8 @@ interface AuthenticationConfiguration {
   tokenValidationAlgorithm: string;
   jwtPrincipalClaims: string[];
   enableSelfSignup: boolean;
+  clientType?: string;
+  secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;
   oidcConfiguration?: Record<string, unknown>;
@@ -120,9 +124,26 @@ const SSOConfigurationFormRJSF = () => {
         'samlConfiguration',
         'oidcConfiguration',
       ];
-      fieldsToRemove.forEach(
-        (field) => delete authConfig[field as keyof AuthenticationConfiguration]
-      );
+
+      // Handle oidcConfiguration based on client type
+      if (authConfig.clientType === 'public') {
+        // For public clients, remove oidcConfiguration entirely
+        fieldsToRemove.forEach(
+          (field) =>
+            delete authConfig[field as keyof AuthenticationConfiguration]
+        );
+        // Also remove secret from root level for public clients
+        delete authConfig.secret;
+      } else {
+        // For confidential clients, keep oidcConfiguration but remove other provider configs
+        const fieldsToActuallyRemove = fieldsToRemove.filter(
+          (field) => field !== 'oidcConfiguration'
+        );
+        fieldsToActuallyRemove.forEach(
+          (field) =>
+            delete authConfig[field as keyof AuthenticationConfiguration]
+        );
+      }
 
       // Ensure boolean fields are always included (only for relevant providers)
       if (authConfig.enableSelfSignup === undefined) {
@@ -151,6 +172,11 @@ const SSOConfigurationFormRJSF = () => {
       if (authorizerConfig.enableSecureSocketConnection === undefined) {
         authorizerConfig.enableSecureSocketConnection = false;
       }
+
+      // Automatically set className and containerRequestFilter for all providers
+      authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
+      authorizerConfig.containerRequestFilter =
+        DEFAULT_CONTAINER_REQUEST_FILTER;
     }
 
     // Provider-specific boolean field handling
@@ -263,8 +289,22 @@ const SSOConfigurationFormRJSF = () => {
 
   // Dynamic UI schema using the optimized constants
   const uiSchema = useMemo(() => {
-    return getSSOUISchema(currentProvider);
-  }, [currentProvider]);
+    const baseSchema = getSSOUISchema(currentProvider);
+
+    // Get current client type from form data
+    const currentClientType =
+      internalData?.authenticationConfiguration?.clientType;
+
+    // Hide oidcConfiguration for public clients
+    if (currentClientType === 'public') {
+      (baseSchema.authenticationConfiguration as any).oidcConfiguration = {
+        'ui:widget': 'hidden',
+        'ui:hideError': true,
+      };
+    }
+
+    return baseSchema;
+  }, [currentProvider, internalData?.authenticationConfiguration?.clientType]);
 
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
