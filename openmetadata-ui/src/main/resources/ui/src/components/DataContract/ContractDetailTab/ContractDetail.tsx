@@ -401,6 +401,7 @@ const ContractDetail: React.FC<{
 
         <Button
           className="m-t-md"
+          data-testid="add-contract-button"
           icon={<PlusOutlined />}
           type="primary"
           onClick={onEdit}>
