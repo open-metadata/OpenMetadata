@@ -68,6 +68,12 @@ import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.security.auth.validator.Auth0Validator;
+import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
+import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
+import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
+import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
+import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.LdapUtil;
@@ -787,6 +793,59 @@ public class SystemRepository {
         }
       }
 
+      // Provider-specific enhanced validation
+      String provider = String.valueOf(authConfig.getProvider());
+      ValidationResult providerValidation = null;
+
+      switch (provider.toLowerCase()) {
+        case "azure":
+          AzureAuthValidator azureValidator = new AzureAuthValidator();
+          providerValidation =
+              azureValidator.validateAzureConfiguration(
+                  authConfig, authConfig.getOidcConfiguration());
+          break;
+
+        case "google":
+          GoogleAuthValidator googleValidator = new GoogleAuthValidator();
+          providerValidation =
+              googleValidator.validateGoogleConfiguration(
+                  authConfig, authConfig.getOidcConfiguration());
+          break;
+
+        case "okta":
+          OktaAuthValidator oktaValidator = new OktaAuthValidator();
+          providerValidation =
+              oktaValidator.validateOktaConfiguration(
+                  authConfig, authConfig.getOidcConfiguration());
+          break;
+
+        case "auth0":
+          Auth0Validator auth0Validator = new Auth0Validator();
+          providerValidation =
+              auth0Validator.validateAuth0Configuration(
+                  authConfig, authConfig.getOidcConfiguration());
+          break;
+
+        case "aws-cognito":
+          CognitoAuthValidator cognitoValidator = new CognitoAuthValidator();
+          providerValidation =
+              cognitoValidator.validateCognitoConfiguration(
+                  authConfig, authConfig.getOidcConfiguration());
+          break;
+
+        case "custom-oidc":
+          // For custom OIDC providers, we rely on the generic validation
+          LOG.info("Custom OIDC provider - using generic validation");
+          break;
+
+        default:
+          LOG.warn("Unknown provider type for enhanced validation: {}", provider);
+      }
+
+      if (providerValidation != null && "failed".equals(providerValidation.getStatus())) {
+        return providerValidation;
+      }
+
       // Use existing validation method to test actual connectivity
       AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
 
@@ -896,66 +955,30 @@ public class SystemRepository {
   private ValidationResult validateSamlConfiguration(
       SamlSSOClientConfig samlConfig, OpenMetadataApplicationConfig applicationConfig) {
     try {
-      // Validate required SP fields from JSON schema
-      if (samlConfig.getSp() == null) {
-        throw new IllegalArgumentException("SAML SP configuration is required");
-      }
-      if (nullOrEmpty(samlConfig.getSp().getEntityId())) {
-        throw new IllegalArgumentException("SAML SP entity ID is required");
-      }
-      if (nullOrEmpty(samlConfig.getSp().getAcs())) {
-        throw new IllegalArgumentException("SAML SP ACS URL is required");
-      }
-      if (nullOrEmpty(samlConfig.getSp().getCallback())) {
-        throw new IllegalArgumentException("SAML SP callback URL is required");
+      // Use enhanced SAML validator
+      SamlValidator samlValidator = new SamlValidator();
+      ValidationResult enhancedValidation =
+          samlValidator.validateSamlConfiguration(null, samlConfig);
+
+      if ("failed".equals(enhancedValidation.getStatus())) {
+        return enhancedValidation;
       }
 
-      // Validate required IdP fields from JSON schema
-      if (samlConfig.getIdp() == null) {
-        throw new IllegalArgumentException("SAML IdP configuration is required");
-      }
-      if (nullOrEmpty(samlConfig.getIdp().getEntityId())) {
-        throw new IllegalArgumentException("SAML IdP entity ID is required");
-      }
-      if (nullOrEmpty(samlConfig.getIdp().getSsoLoginUrl())) {
-        throw new IllegalArgumentException("SAML IdP SSO login URL is required");
-      }
-
-      // Validate certificates if security settings require them
-      if (samlConfig.getSecurity() != null) {
-        if (Boolean.TRUE.equals(samlConfig.getSecurity().getWantMessagesSigned())
-            || Boolean.TRUE.equals(samlConfig.getSecurity().getWantAssertionsSigned())) {
-          if (nullOrEmpty(samlConfig.getIdp().getIdpX509Certificate())) {
-            throw new IllegalArgumentException(
-                "SAML IdP X509 certificate is required when signature validation is enabled");
-          }
-        }
-
-        if (Boolean.TRUE.equals(samlConfig.getSecurity().getSendSignedAuthRequest())
-            || Boolean.TRUE.equals(samlConfig.getSecurity().getSignSpMetadata())) {
-          if (nullOrEmpty(samlConfig.getSp().getSpX509Certificate())) {
-            throw new IllegalArgumentException(
-                "SAML SP X509 certificate is required when signing is enabled");
-          }
-          if (nullOrEmpty(samlConfig.getSp().getSpPrivateKey())) {
-            throw new IllegalArgumentException(
-                "SAML SP private key is required when signing is enabled");
-          }
-        }
-      }
-
-      // Test SAML settings can be initialized
+      // Test SAML settings can be initialized (existing OpenMetadata-specific validation)
       try {
         SamlSettingsHolder holder = SamlSettingsHolder.getInstance();
         holder.initDefaultSettings(applicationConfig);
       } catch (Exception e) {
-        throw new IllegalArgumentException("Failed to initialize SAML settings: " + e.getMessage());
+        return new ValidationResult()
+            .withComponent("saml-settings")
+            .withStatus("failed")
+            .withMessage("Failed to initialize SAML settings: " + e.getMessage());
       }
 
       return new ValidationResult()
           .withComponent("saml")
           .withStatus("success")
-          .withMessage("SAML configuration is valid");
+          .withMessage("SAML configuration is valid and settings initialized successfully");
     } catch (Exception e) {
       return new ValidationResult()
           .withComponent("saml")
