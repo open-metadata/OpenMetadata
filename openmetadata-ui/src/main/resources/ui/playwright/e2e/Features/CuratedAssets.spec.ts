@@ -97,7 +97,7 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--operator .ant-select'),
-      '!='
+      'Not in'
     );
 
     await selectOption(
