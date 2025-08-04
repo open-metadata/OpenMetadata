@@ -954,6 +954,18 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Prerequisites
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/prerequisites
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Partitioning
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/partitioning
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/configuration
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / UI Configuration
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/ui-configuration
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / External Configuration
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/external-configuration
 
   - category: How-to Guides / Data Quality and Observability / Anomaly Detection
     url: /how-to-guides/data-quality-observability/anomaly-detection
