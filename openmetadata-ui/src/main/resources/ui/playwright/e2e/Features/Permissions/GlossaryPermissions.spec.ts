@@ -52,28 +52,20 @@ const test = base.extend<{
 });
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-    await testUser.create(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Don't fail the test suite if setup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await testUser.create(apiContext);
+  await afterAction();
 });
 
 const glossary = new Glossary();
 
 test.beforeAll('Setup glossary', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext);
-    await glossary.create(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Continue with test even if setup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await EntityDataClass.preRequisitesForTests(apiContext);
+  await glossary.create(apiContext);
+  await afterAction();
 });
 
 test('Glossary allow operations', async ({ testUserPage, browser }) => {
@@ -208,23 +200,15 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
 });
 
 test.afterAll('Cleanup glossary', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await glossary.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Don't fail the test suite if cleanup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await glossary.delete(apiContext);
+  await EntityDataClass.postRequisitesForTests(apiContext);
+  await afterAction();
 });
 
 test.afterAll('Cleanup', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-    await testUser.delete(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Don't fail the test suite if cleanup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await testUser.delete(apiContext);
+  await afterAction();
 });

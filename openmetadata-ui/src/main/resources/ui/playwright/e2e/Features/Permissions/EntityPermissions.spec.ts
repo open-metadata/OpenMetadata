@@ -58,26 +58,18 @@ const test = base.extend<{
 });
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-    await testUser.create(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Don't fail the test suite if setup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await testUser.create(apiContext);
+  await afterAction();
 });
 
 test.afterAll('Cleanup pre-requests', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-    await testUser.delete(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Don't fail the test suite if cleanup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.delete(apiContext);
+  await testUser.delete(apiContext);
+  await afterAction();
 });
 
 Object.entries(entityConfig).forEach(([, config]) => {
@@ -88,33 +80,25 @@ Object.entries(entityConfig).forEach(([, config]) => {
     const customPropertyName = `pw${entityType}CustomProperty${uuid()}`;
 
     test.beforeAll('Setup entity', async ({ browser }) => {
-      try {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        await EntityDataClass.preRequisitesForTests(apiContext);
-        await entity.create(apiContext);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await EntityDataClass.preRequisitesForTests(apiContext);
+      await entity.create(apiContext);
 
-        // Create custom property for this entity type
-        await createCustomPropertyForEntity(
-          browser,
-          entityType,
-          customPropertyName,
-          adminUser
-        );
+      // Create custom property for this entity type
+      await createCustomPropertyForEntity(
+        browser,
+        entityType,
+        customPropertyName,
+        adminUser
+      );
 
-        await afterAction();
-      } catch (error) {
-        // Continue with test even if entity setup fails
-      }
+      await afterAction();
     });
 
     test.afterAll('Cleanup entity', async ({ browser }) => {
-      try {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        await entity.delete(apiContext);
-        await afterAction();
-      } catch (error) {
-        // Don't fail the test suite if cleanup fails
-      }
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
+      await afterAction();
     });
 
     // Allow permissions tests
@@ -135,11 +119,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       }) => {
         test.slow(true);
 
-        try {
-          await runCommonPermissionTests(testUserPage, entity, 'allow');
-        } catch (error) {
-          // Log error but don't fail the test suite
-        }
+        await runCommonPermissionTests(testUserPage, entity, 'allow');
       });
 
       // Entity-specific tests
@@ -149,32 +129,25 @@ Object.entries(entityConfig).forEach(([, config]) => {
         }) => {
           test.slow(true);
 
-          try {
-            await runEntitySpecificPermissionTests(
-              testUserPage,
-              entity,
-              'allow',
-              config.specificTest as (
-                page: Page,
-                entity: EntityClass,
-                effect: 'allow' | 'deny'
-              ) => Promise<void>
-            );
-          } catch (error) {
-            // Log error but don't fail the test suite
-          }
+          await runEntitySpecificPermissionTests(
+            testUserPage,
+            entity,
+            'allow',
+            config.specificTest as (
+              page: Page,
+              entity: EntityClass,
+              effect: 'allow' | 'deny'
+            ) => Promise<void>
+          );
         });
       }
 
       test.afterAll('Cleanup allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        try {
-          await adminUser.login(page);
-          const { apiContext } = await getApiContext(page);
-          await cleanupPermissions(apiContext);
-        } finally {
-          await page.close();
-        }
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
       });
     });
 
@@ -196,11 +169,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       }) => {
         test.slow(true);
 
-        try {
-          await runCommonPermissionTests(testUserPage, entity, 'deny');
-        } catch (error) {
-          // Log error but don't fail the test suite
-        }
+        await runCommonPermissionTests(testUserPage, entity, 'deny');
       });
 
       // Entity-specific tests
@@ -210,32 +179,25 @@ Object.entries(entityConfig).forEach(([, config]) => {
         }) => {
           test.slow(true);
 
-          try {
-            await runEntitySpecificPermissionTests(
-              testUserPage,
-              entity,
-              'deny',
-              config.specificTest as (
-                page: Page,
-                entity: EntityClass,
-                effect: 'allow' | 'deny'
-              ) => Promise<void>
-            );
-          } catch (error) {
-            // Log error but don't fail the test suite
-          }
+          await runEntitySpecificPermissionTests(
+            testUserPage,
+            entity,
+            'deny',
+            config.specificTest as (
+              page: Page,
+              entity: EntityClass,
+              effect: 'allow' | 'deny'
+            ) => Promise<void>
+          );
         });
       }
 
       test.afterAll('Cleanup deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        try {
-          await adminUser.login(page);
-          const { apiContext } = await getApiContext(page);
-          await cleanupPermissions(apiContext);
-        } finally {
-          await page.close();
-        }
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
       });
     });
   });

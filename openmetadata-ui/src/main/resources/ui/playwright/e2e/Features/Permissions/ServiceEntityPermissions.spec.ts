@@ -74,15 +74,11 @@ const test = base.extend<{
 });
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  try {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
-    await testUser.create(apiContext);
-    await afterAction();
-  } catch (error) {
-    // Don't fail the test suite if setup fails
-  }
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await testUser.create(apiContext);
+  await afterAction();
 });
 
 serviceEntities.forEach((EntityClass) => {
@@ -91,24 +87,16 @@ serviceEntities.forEach((EntityClass) => {
 
   test.describe(`${entityType} Permissions`, () => {
     test.beforeAll('Setup entity', async ({ browser }) => {
-      try {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        await EntityDataClass.preRequisitesForTests(apiContext);
-        await entity.create(apiContext);
-        await afterAction();
-      } catch (error) {
-        // Continue with test even if entity setup fails
-      }
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await EntityDataClass.preRequisitesForTests(apiContext);
+      await entity.create(apiContext);
+      await afterAction();
     });
 
     test.afterAll('Cleanup entity', async ({ browser }) => {
-      try {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        await entity.delete(apiContext);
-        await afterAction();
-      } catch (error) {
-        // Don't fail the test suite if cleanup fails
-      }
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
+      await afterAction();
     });
 
     test.describe('Allow permissions', () => {
@@ -128,22 +116,15 @@ serviceEntities.forEach((EntityClass) => {
       }) => {
         test.slow(true);
 
-        try {
-          await runCommonPermissionTests(testUserPage, entity, 'allow');
-        } catch (error) {
-          // Log error but don't fail the test suite
-        }
+        await runCommonPermissionTests(testUserPage, entity, 'allow');
       });
 
       test.afterAll('Cleanup allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        try {
-          await adminUser.login(page);
-          const { apiContext } = await getApiContext(page);
-          await cleanupPermissions(apiContext);
-        } finally {
-          await page.close();
-        }
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
       });
     });
 
@@ -164,22 +145,15 @@ serviceEntities.forEach((EntityClass) => {
       }) => {
         test.slow(true);
 
-        try {
-          await runCommonPermissionTests(testUserPage, entity, 'deny');
-        } catch (error) {
-          // Log error but don't fail the test suite
-        }
+        await runCommonPermissionTests(testUserPage, entity, 'deny');
       });
 
       test.afterAll('Cleanup deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        try {
-          await adminUser.login(page);
-          const { apiContext } = await getApiContext(page);
-          await cleanupPermissions(apiContext);
-        } finally {
-          await page.close();
-        }
+        await adminUser.login(page);
+        const { apiContext } = await getApiContext(page);
+        await cleanupPermissions(apiContext);
+        await page.close();
       });
     });
   });
