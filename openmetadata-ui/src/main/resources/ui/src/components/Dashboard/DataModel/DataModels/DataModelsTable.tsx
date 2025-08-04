@@ -51,11 +51,16 @@ import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.int
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 
-const DataModelTable = () => {
+const DataModelTable = ({
+  showDeleted,
+  handleShowDeleted,
+}: {
+  showDeleted: boolean;
+  handleShowDeleted: (checked: boolean) => void;
+}) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
-  const [showDeleted, setShowDeleted] = useState(false);
   const {
     currentPage,
     pageSize,
@@ -157,7 +162,7 @@ const DataModelTable = () => {
   };
 
   const handleShowDeletedChange = (checked: boolean) => {
-    setShowDeleted(checked);
+    handleShowDeleted(checked);
     handlePageChange(INITIAL_PAGING_VALUE);
     handlePageSizeChange(PAGE_SIZE_BASE);
   };
