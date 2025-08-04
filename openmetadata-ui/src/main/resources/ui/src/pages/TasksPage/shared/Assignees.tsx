@@ -13,6 +13,7 @@
 
 import { Select, SelectProps, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
 import { FC, useMemo } from 'react';
@@ -114,6 +115,23 @@ const Assignees: FC<Props> = ({
     return groupOptions;
   }, [options]);
 
+  const customTagRender = (props: CustomTagProps) => {
+    const { value, closable, onClose } = props;
+
+    const selectedAssignee = options?.find((option) => option.value === value);
+
+    const tagProps = {
+      id: selectedAssignee?.name ?? value,
+      name: selectedAssignee?.name ?? value,
+      closable: closable,
+      onRemove: onClose,
+      size: UserTagSize.small,
+      className: 'assignee-tag',
+    };
+
+    return <UserTag {...tagProps} />;
+  };
+
   return (
     <Select
       showSearch
@@ -127,6 +145,7 @@ const Assignees: FC<Props> = ({
       options={updatedOption}
       placeholder={t('label.select-to-search')}
       suffixIcon={null}
+      tagRender={customTagRender}
       value={assignees.length ? assignees : undefined}
       onChange={handleOnChange}
       onSearch={debounce(onSearch, 300)}
