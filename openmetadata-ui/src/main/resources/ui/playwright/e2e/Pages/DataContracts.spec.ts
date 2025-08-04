@@ -17,6 +17,7 @@ import {
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
 } from '../../constant/dataContracts';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -30,6 +31,7 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { addOwner } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -273,6 +275,8 @@ test.describe('Data Contracts', () => {
     await page.click('[data-testid="create-btn"]');
     await testCaseResponse;
 
+    await page.waitForTimeout(100);
+
     await expect(
       page
         .locator('.ant-table-cell')
@@ -284,6 +288,53 @@ test.describe('Data Contracts', () => {
     await saveContractResponse;
 
     await toastNotification(page, 'Data contract saved successfully');
+
+    await expect(
+      page
+        .getByTestId('contract-card-title-container')
+        .filter({ hasText: 'Contract Status' })
+    ).not.toBeVisible();
+
+    const runNowResponse = page.waitForResponse(
+      '/api/v1/dataContracts/*/validate'
+    );
+    await page.getByTestId('contract-run-now-button').click();
+    await runNowResponse;
+
+    await toastNotification(page, 'Contract validation trigger successfully.');
+
+    await page.reload();
+
+    await expect(
+      page.getByTestId('contract-card-title-container').filter({
+        hasText: 'Contract Status',
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('contract-status-card-item-Semantics-status')
+    ).toContainText('Failed');
+    await expect(
+      page.getByTestId('data-contract-latest-result-btn')
+    ).toContainText('Contract Failed');
+
+    await addOwner({
+      page,
+      owner: 'admin',
+      type: 'Users',
+      endpoint: EntityTypeEndpoint.Table,
+      dataTestId: 'data-assets-header',
+    });
+
+    await page.getByTestId('contract-run-now-button').click();
+    await runNowResponse;
+
+    await toastNotification(page, 'Contract validation trigger successfully.');
+
+    await page.reload();
+
+    await expect(
+      page.getByTestId('contract-status-card-item-Semantics-status')
+    ).toContainText('Passed');
 
     await page.waitForTimeout(2000);
   });

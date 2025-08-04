@@ -23,7 +23,7 @@ export const DATA_CONTRACT_SEMANTICS1 = {
   rules: [
     {
       field: 'Owners',
-      operator: 'Not in',
+      operator: 'Is',
     },
     {
       field: 'Description',
