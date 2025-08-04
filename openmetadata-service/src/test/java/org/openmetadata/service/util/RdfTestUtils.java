@@ -407,11 +407,11 @@ public class RdfTestUtils {
     String sparql =
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "
-                + "SELECT ?entity WHERE { "
+                + "ASK { "
                 + "  GRAPH ?g { "
                 + "    ?entity om:fullyQualifiedName %s . "
                 + "  } "
-                + "} LIMIT 1",
+                + "}",
             escapeSparqlString(entityFQN));
 
     boolean exists = executeSparqlAsk(repository, sparql);

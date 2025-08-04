@@ -121,12 +121,12 @@ public class RdfRepository {
               + "/"
               + entityReference.getId();
 
-      // Remove entity and all its relationships
+      // Remove entity and all its relationships from all graphs
       String sparqlUpdate =
           String.format(
               "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                  + "DELETE WHERE { ?s ?p <%s> }; "
-                  + "DELETE WHERE { <%s> ?p ?o }",
+                  + "DELETE WHERE { GRAPH ?g { ?s ?p <%s> } }; "
+                  + "DELETE WHERE { GRAPH ?g { <%s> ?p ?o } }",
               graphUri, entityUri, entityUri, entityUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
