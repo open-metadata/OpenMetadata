@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -61,6 +61,7 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
+        owner: initialValues?.owners,
         hasPermission: true,
         children: (
           <Button
@@ -115,9 +116,13 @@ export const ContractDetailFormTab: React.FC<{
         </div>
       </Card>
       <div className="d-flex justify-end m-t-md">
-        <Button htmlType="submit" type="primary" onClick={onNext}>
+        <Button
+          className="contract-next-button"
+          htmlType="submit"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <RightOutlined height={15} width={8} />
         </Button>
       </div>
     </>

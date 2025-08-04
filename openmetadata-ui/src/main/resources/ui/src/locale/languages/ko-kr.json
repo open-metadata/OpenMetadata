@@ -536,6 +536,7 @@
     "embed-link": "링크 삽입",
     "enable": "활성화",
     "enable-debug-log": "디버그 로그 활성화",
+    "enable-entity": "{{entity}} 활성화",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "활성화",
     "enable-partition": "파티션 활성화",
