@@ -61,9 +61,12 @@ TRANSFORMABLE_ENTITIES: Dict[str, Dict[str, Any]] = {
         "fields": {"name", "columns", "children"},
         "direction": TransformDirection.DECODE,
     },
-    "CustomColumnName": {"fields": {"name"}, "direction": TransformDirection.DECODE},
+    "CustomColumnName": {"fields": {"root"}, "direction": TransformDirection.DECODE},
     # Create/Store models - encode special characters to reserved keywords
-    "ProfilerResponse": {"fields": {"name"}, "direction": TransformDirection.ENCODE},
+    "ProfilerResponse": {
+        "fields": {"name", "profile"},
+        "direction": TransformDirection.ENCODE,
+    },
     "TableData": {"fields": {"columns"}, "direction": TransformDirection.ENCODE},
     "ColumnName": {"fields": {"root"}, "direction": TransformDirection.ENCODE},
     "CreateTableRequest": {
@@ -72,6 +75,10 @@ TRANSFORMABLE_ENTITIES: Dict[str, Dict[str, Any]] = {
     },
     "CreateDashboardDataModelRequest": {
         "fields": {"name", "columns", "children"},
+        "direction": TransformDirection.ENCODE,
+    },
+    "ColumnProfile": {
+        "fields": {"name"},
         "direction": TransformDirection.ENCODE,
     },
 }
@@ -141,6 +148,9 @@ def transform_all_names(obj, transformer):
                     constraint.columns = [
                         transformer(col) for col in constraint.columns
                     ]
+
+    if transformer == replace_separators and type(name) == str:
+        obj.name = transformer(name)
 
 
 def transform_entity_names(entity: Any, model_name: str) -> Any:
