@@ -50,14 +50,12 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
+import { DataModelTableProps } from './DataModelDetails.interface';
 
 const DataModelTable = ({
   showDeleted,
   handleShowDeleted,
-}: {
-  showDeleted: boolean;
-  handleShowDeleted: (checked: boolean) => void;
-}) => {
+}: DataModelTableProps) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [dataModels, setDataModels] = useState<Array<ServicePageData>>();
