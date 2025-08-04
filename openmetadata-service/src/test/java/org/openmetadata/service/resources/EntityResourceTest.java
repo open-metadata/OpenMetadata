@@ -678,7 +678,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException;
 
-  public void toggleMultiDomainSupport(Boolean enable) {
+  public static void toggleMultiDomainSupport(Boolean enable) {
     SystemRepository systemRepository = Entity.getSystemRepository();
 
     Settings currentSettings =
@@ -1238,11 +1238,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void get_entityListWithPagination_200(TestInfo test) throws IOException {
-    //    if (test.getTestClass().isPresent()) {
-    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
-    //        WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
-    //      }
-    //    }
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
@@ -1357,12 +1352,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         }
       }
     }
-
-    //    if (test.getTestClass().isPresent()) {
-    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
-    //        WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
-    //      }
-    //    }
   }
 
   protected void validateEntityListFromSearchWithPagination(

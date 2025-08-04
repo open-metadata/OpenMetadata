@@ -13,16 +13,24 @@
 
 package org.openmetadata.service.resources.data;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -63,6 +71,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -78,8 +87,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -90,7 +99,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 @Execution(ExecutionMode.CONCURRENT)
-public class DataContractResourceTest extends OpenMetadataApplicationTest {
+public class DataContractResourceTest extends EntityResourceTest<DataContract, CreateDataContract> {
   private static final String C1 = "id";
   private static final String C2 = "name";
   private static final String C3 = "description";
@@ -106,11 +115,22 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
   private static TestCaseResourceTest testCaseResourceTest;
   private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
   private static DataContractRepository dataContractRepository;
-  private static PipelineServiceClientInterface originalPipelineClient;
   private static PipelineServiceClientInterface mockPipelineClient;
 
+  public DataContractResourceTest() {
+    super(
+        DATA_CONTRACT,
+        DataContract.class,
+        DataContractResource.DataContractList.class,
+        "dataContracts",
+        DataContractResource.FIELDS);
+    supportedNameCharacters = "_'+#- ()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsSearchIndex = false;
+    supportsOwners = false;
+  }
+
   @BeforeAll
-  public static void setup(TestInfo test) throws URISyntaxException, IOException {
+  public void setup(TestInfo test) throws URISyntaxException, IOException {
     testCaseResourceTest = new TestCaseResourceTest();
     // testCaseResourceTest.setup(test);
     ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
@@ -122,12 +142,245 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
             org.openmetadata.service.Entity.getEntityRepository(
                 org.openmetadata.service.Entity.DATA_CONTRACT);
 
-    // Store original client for potential restoration (if needed)
-    originalPipelineClient = dataContractRepository.getPipelineServiceClient();
-
     // Create and set mock PipelineServiceClient
     mockPipelineClient = mock(PipelineServiceClientInterface.class);
+
+    // Configure mock to return successful response (code = 200) for all method calls
+    PipelineServiceClientResponse successResponse =
+        new PipelineServiceClientResponse()
+            .withCode(200)
+            .withReason("Success")
+            .withPlatform("test");
+
+    when(mockPipelineClient.deployPipeline(any(), any())).thenReturn(successResponse);
+    when(mockPipelineClient.runPipeline(any(), any())).thenReturn(successResponse);
+    when(mockPipelineClient.deletePipeline(any())).thenReturn(successResponse);
+    when(mockPipelineClient.toggleIngestion(any())).thenReturn(successResponse);
+    when(mockPipelineClient.killIngestion(any())).thenReturn(successResponse);
+
     dataContractRepository.setPipelineServiceClient(mockPipelineClient);
+  }
+
+  @Override
+  public CreateDataContract createRequest(String name) {
+    try {
+      Table table = createUniqueTable(name);
+      return createDataContractRequest(name, table);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to create unique table for data contract test", e);
+    }
+  }
+
+  @Override
+  public void validateCreatedEntity(
+      DataContract createdEntity, CreateDataContract request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    assertEquals(request.getName(), createdEntity.getName());
+    assertEquals(request.getStatus(), createdEntity.getStatus());
+    assertSemantics(request.getSemantics(), createdEntity.getSemantics());
+    assertQualityExpectations(
+        request.getQualityExpectations(), createdEntity.getQualityExpectations());
+    TableResourceTest.assertColumns(request.getSchema(), createdEntity.getSchema());
+  }
+
+  public void assertSemantics(List<SemanticsRule> expected, List<SemanticsRule> actual) {
+    if (expected == null || expected.isEmpty()) {
+      assertNull(actual);
+    } else {
+      assertNotNull(actual);
+      assertEquals(expected.size(), actual.size());
+      for (int i = 0; i < expected.size(); i++) {
+        SemanticsRule expectedRule = expected.get(i);
+        SemanticsRule actualRule = actual.get(i);
+        assertEquals(expectedRule.getName(), actualRule.getName());
+        assertEquals(expectedRule.getDescription(), actualRule.getDescription());
+        assertEquals(expectedRule.getRule(), actualRule.getRule());
+      }
+    }
+  }
+
+  public void assertQualityExpectations(
+      List<EntityReference> created, List<EntityReference> request) {
+    if (nullOrEmpty(created) || nullOrEmpty(request)) {
+      return;
+    }
+    for (int i = 0; i < created.size(); i++) {
+      EntityReference expectedRef = created.get(i);
+      EntityReference actualRef = request.get(i);
+      assertReference(expectedRef, actualRef);
+    }
+  }
+
+  @Override
+  public void compareEntities(
+      DataContract expected, DataContract patched, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    // Compare basic fields
+    assertEquals(expected.getName(), patched.getName());
+    assertEquals(expected.getDescription(), patched.getDescription());
+    assertEquals(expected.getStatus(), patched.getStatus());
+
+    // Compare entity reference
+    TestUtils.validateEntityReference(patched.getEntity());
+    assertEquals(expected.getEntity().getId(), patched.getEntity().getId());
+    assertEquals(expected.getEntity().getType(), patched.getEntity().getType());
+
+    // Compare schema if present
+    if (expected.getSchema() != null && patched.getSchema() != null) {
+      assertEquals(expected.getSchema().size(), patched.getSchema().size());
+      for (int i = 0; i < expected.getSchema().size(); i++) {
+        Column expectedCol = expected.getSchema().get(i);
+        Column patchedCol = patched.getSchema().get(i);
+        assertEquals(expectedCol.getName(), patchedCol.getName());
+        assertEquals(expectedCol.getDataType(), patchedCol.getDataType());
+        assertEquals(expectedCol.getDescription(), patchedCol.getDescription());
+      }
+    }
+
+    // Compare semantics if present
+    if (expected.getSemantics() != null && patched.getSemantics() != null) {
+      assertEquals(expected.getSemantics().size(), patched.getSemantics().size());
+      for (int i = 0; i < expected.getSemantics().size(); i++) {
+        SemanticsRule expectedRule = expected.getSemantics().get(i);
+        SemanticsRule patchedRule = patched.getSemantics().get(i);
+        assertEquals(expectedRule.getName(), patchedRule.getName());
+        assertEquals(expectedRule.getRule(), patchedRule.getRule());
+        assertEquals(expectedRule.getDescription(), patchedRule.getDescription());
+      }
+    }
+
+    // Compare quality expectations if present
+    if (expected.getQualityExpectations() != null && patched.getQualityExpectations() != null) {
+      assertEquals(
+          expected.getQualityExpectations().size(), patched.getQualityExpectations().size());
+    }
+
+    // Compare owners and reviewers
+    TestUtils.validateEntityReferences(expected.getOwners());
+    TestUtils.validateEntityReferences(expected.getReviewers());
+
+    // Validate fully qualified name
+    assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
+  }
+
+  @Override
+  public DataContract validateGetWithDifferentFields(DataContract dataContract, boolean byName)
+      throws HttpResponseException {
+    // Get without optional fields
+    dataContract =
+        byName
+            ? getEntityByName(dataContract.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
+            : getEntity(dataContract.getId(), null, ADMIN_AUTH_HEADERS);
+
+    // Required fields should always be present
+    assertListNotNull(
+        dataContract.getId(),
+        dataContract.getName(),
+        dataContract.getEntity(),
+        dataContract.getFullyQualifiedName());
+
+    // Optional fields should be null when not requested
+    assertListNull(
+        dataContract.getOwners(),
+        dataContract.getReviewers(),
+        dataContract.getQualityExpectations());
+
+    // Get with all optional fields
+    String fields = "owners,reviewers,qualityExpectations";
+    dataContract =
+        byName
+            ? getEntityByName(dataContract.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(dataContract.getId(), fields, ADMIN_AUTH_HEADERS);
+
+    // Required fields should still be present
+    assertListNotNull(
+        dataContract.getId(),
+        dataContract.getName(),
+        dataContract.getEntity(),
+        dataContract.getFullyQualifiedName());
+
+    // Optional fields may now be present based on whether they were set
+    // Note: We don't assert they are not null because they may legitimately be empty
+
+    return dataContract;
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual)
+      throws IOException {
+    if (expected == actual) {
+      return;
+    }
+
+    if (fieldName.equals("status")) {
+      // Handle ContractStatus enum
+      ContractStatus expectedStatus =
+          expected instanceof ContractStatus
+              ? (ContractStatus) expected
+              : ContractStatus.fromValue(expected.toString());
+      ContractStatus actualStatus =
+          actual instanceof ContractStatus
+              ? (ContractStatus) actual
+              : ContractStatus.fromValue(actual.toString());
+      assertEquals(expectedStatus, actualStatus);
+    } else if (fieldName.equals("schema") || fieldName.endsWith(".schema")) {
+      // Handle schema changes
+      @SuppressWarnings("unchecked")
+      List<Column> expectedSchema =
+          expected instanceof List
+              ? (List<Column>) expected
+              : JsonUtils.readObjects(expected.toString(), Column.class);
+      List<Column> actualSchema = JsonUtils.readObjects(actual.toString(), Column.class);
+      assertEquals(expectedSchema.size(), actualSchema.size());
+      for (int i = 0; i < expectedSchema.size(); i++) {
+        Column expectedCol = expectedSchema.get(i);
+        Column actualCol = actualSchema.get(i);
+        assertEquals(expectedCol.getName(), actualCol.getName());
+        assertEquals(expectedCol.getDataType(), actualCol.getDataType());
+        assertEquals(expectedCol.getDescription(), actualCol.getDescription());
+      }
+    } else if (fieldName.equals("semantics") || fieldName.endsWith(".semantics")) {
+      // Handle semantics changes
+      @SuppressWarnings("unchecked")
+      List<SemanticsRule> expectedSemantics =
+          expected instanceof List
+              ? (List<SemanticsRule>) expected
+              : JsonUtils.readObjects(expected.toString(), SemanticsRule.class);
+      List<SemanticsRule> actualSemantics =
+          JsonUtils.readObjects(actual.toString(), SemanticsRule.class);
+      assertEquals(expectedSemantics.size(), actualSemantics.size());
+      for (int i = 0; i < expectedSemantics.size(); i++) {
+        SemanticsRule expectedRule = expectedSemantics.get(i);
+        SemanticsRule actualRule = actualSemantics.get(i);
+        assertEquals(expectedRule.getName(), actualRule.getName());
+        assertEquals(expectedRule.getRule(), actualRule.getRule());
+        assertEquals(expectedRule.getDescription(), actualRule.getDescription());
+      }
+    } else if (fieldName.equals("qualityExpectations")
+        || fieldName.endsWith(".qualityExpectations")) {
+      // Handle quality expectations changes
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedRefs =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualRefs =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertReferenceList(expectedRefs, actualRefs);
+    } else if (fieldName.equals("owners") || fieldName.equals("reviewers")) {
+      // Handle entity reference lists
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedRefs =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualRefs =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertReferenceList(expectedRefs, actualRefs);
+    } else {
+      // For all other fields, use common field change assertion
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 
   @AfterEach
@@ -396,16 +649,8 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     return dataContract;
   }
 
-  private WebTarget getCollection() {
+  protected WebTarget getCollection() {
     return APP.client().target(getDataContractUri());
-  }
-
-  private WebTarget getResource(UUID id) {
-    return getCollection().path("/" + id);
-  }
-
-  private WebTarget getResourceByName(String name) {
-    return getCollection().path("/name/" + name);
   }
 
   private String getDataContractUri() {
@@ -705,6 +950,57 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertNotNull(finalRetrieved.getQualityExpectations());
     assertEquals(2, finalRetrieved.getQualityExpectations().size());
     assertNotNull(finalRetrieved.getTestSuite());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  @Override
+  protected void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
+    // We can only have 1 contract for 1 table, we'll return a BAD_REQUEST not a 409
+    CreateDataContract create = createRequest(getEntityName(test), "", "", null);
+    // Create first time using POST
+    createEntity(create, ADMIN_AUTH_HEADERS);
+    // Second time creating the same entity using POST should fail
+    String message =
+        String.format(
+            "A data contract already exists for entity '%s' with ID %s",
+            create.getEntity().getType(), create.getEntity().getId());
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, message);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  @Override
+  protected void post_entityCreateWithInvalidName_400() {
+    // Overriding to handle the name since we use a slightly different pattern for data contracts
+    // creation in tests
+    final CreateDataContract request =
+        createRequest(null, "description", "displayName", null).withName(null);
+    assertResponseContains(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[query param name must not be null]");
+
+    final CreateDataContract request1 =
+        createRequest("", "description", "displayName", null).withName("");
+    assertResponseContains(
+        () -> createEntity(request1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        TestUtils.getEntityNameLengthError(entityClass));
+
+    final CreateDataContract request2 =
+        createRequest(UUID.randomUUID().toString(), "description", "displayName", null)
+            .withName(LONG_ENTITY_NAME);
+    assertResponse(
+        () -> createEntity(request2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        TestUtils.getEntityNameLengthError(entityClass));
+
+    final CreateDataContract request3 =
+        createRequest(UUID.randomUUID().toString(), "description", "displayName", null)
+            .withName("invalid::Name");
+    assertResponseContains(
+        () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   @Test
@@ -1075,7 +1371,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Should throw error for non-existent field
     assertResponseContains(
         () -> createDataContract(create),
-        Status.BAD_REQUEST,
+        BAD_REQUEST,
         "Schema validation failed. The following fields specified in the data contract do not exist in the table: non_existent_field");
   }
 
@@ -1095,7 +1391,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Should enforce uniqueness - one contract per entity
     assertResponse(
         () -> createDataContract(create2),
-        Status.BAD_REQUEST,
+        BAD_REQUEST,
         String.format(
             "A data contract already exists for entity 'table' with ID %s", table.getId()));
   }
@@ -1213,8 +1509,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
                 + "    definition: Value must be a number",
             "contract_" + test.getDisplayName(), table.getId(), C1);
 
-    assertResponseContains(
-        () -> postYaml(invalidYamlContent), Status.BAD_REQUEST, "Invalid YAML content");
+    assertResponseContains(() -> postYaml(invalidYamlContent), BAD_REQUEST, "Invalid YAML content");
   }
 
   @Test
@@ -1238,7 +1533,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Bean validation will catch this as "entity must not be null"
     assertResponseContains(
-        () -> createDataContract(create), Status.BAD_REQUEST, "entity must not be null");
+        () -> createDataContract(create), BAD_REQUEST, "entity must not be null");
   }
 
   @Test
@@ -1270,7 +1565,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     // Should fail with both invalid fields listed
     assertResponseContains(
         () -> createDataContract(create),
-        Status.BAD_REQUEST,
+        BAD_REQUEST,
         "Schema validation failed. The following fields specified in the data contract do not exist in the table: invalid_field_1, invalid_field_2");
   }
 
@@ -1910,6 +2205,9 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
     assertEquals(testSuite.getId(), pipeline.getService().getId());
     assertEquals("testSuite", pipeline.getService().getType());
 
+    // Also, the ingestion pipeline should be flagged as deployed
+    assertTrue(pipeline.getDeployed());
+
     // Test deletion with recursive=true - should also delete the test suite
     deleteDataContract(dataContract.getId(), true);
 
@@ -1921,6 +2219,11 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
         HttpResponseException.class,
         () ->
             testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // Pipeline is also deleted
+    assertThrows(
+        HttpResponseException.class,
+        () -> ingestionPipelineResourceTest.getEntity(pipeline.getId(), "*", ADMIN_AUTH_HEADERS));
   }
 
   @Test
@@ -2206,7 +2509,7 @@ public class DataContractResourceTest extends OpenMetadataApplicationTest {
 
     // Expecting BadRequestException (400) when trying to get result from contract with no results
     assertEquals(
-        Status.BAD_REQUEST.getStatusCode(),
+        BAD_REQUEST.getStatusCode(),
         response.getStatus(),
         "Expected 400 Bad Request when getting result from contract with no results");
   }
