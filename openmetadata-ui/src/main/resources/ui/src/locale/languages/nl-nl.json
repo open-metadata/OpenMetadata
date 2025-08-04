@@ -535,6 +535,7 @@
     "embed-link": "Koppeling insluiten",
     "enable": "Inschakelen",
     "enable-debug-log": "Debuglog inschakelen",
+    "enable-entity": "{{entity}} inschakelen",
     "enable-incident-management": "Enable Incident Management",
     "enable-lowercase": "inschakelen",
     "enable-partition": "Partitie inschakelen",
