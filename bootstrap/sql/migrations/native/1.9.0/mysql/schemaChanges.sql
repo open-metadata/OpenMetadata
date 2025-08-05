@@ -137,6 +137,11 @@ CREATE TABLE IF NOT EXISTS entity_deletion_lock (
     INDEX idx_deletion_lock_time (lockedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Update columnValuesToBeInSet test definition to include BOOLEAN in supportedDataTypes and update parameterDefinition
+UPDATE test_definition
+  SET json = JSON_SET(json, '$.supportedDataTypes', JSON_ARRAY('NUMBER', 'INT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'TINYINT', 'SMALLINT', 'BIGINT', 'BYTEINT', 'BYTES', 'STRING', 'MEDIUMTEXT', 'TEXT', 'CHAR', 'VARCHAR', 'BOOLEAN'))
+WHERE name in ('columnValuesToBeInSet', 'columnValuesToBeNotInSet');
+
 
 -- 1. Add generated classificationHash column to support fast lookup and grouping by classification fqnHash
 ALTER TABLE tag
@@ -146,3 +151,55 @@ ALTER TABLE tag
 -- 2. Create index on classificationHash + deleted
 CREATE INDEX idx_tag_classification_hash_deleted
   ON tag (classificationHash, deleted);
+
+-- 1. Migrate root-level domain to domains
+UPDATE thread_entity SET json = JSON_SET(JSON_REMOVE(json, '$.domain'), '$.domains', JSON_ARRAY(JSON_EXTRACT(json, '$.domain'))) WHERE JSON_EXTRACT(json, '$.domain') IS NOT NULL;
+
+ -- 2. Migrate nested feedInfo.entitySpecificInfo.entity.domain to domains
+ UPDATE thread_entity
+ SET json = JSON_SET(
+     JSON_REMOVE(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
+     '$.feedInfo.entitySpecificInfo.entity.domains',
+     JSON_ARRAY(
+         IF(
+             JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL,
+             JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain'),
+             NULL
+         )
+     )
+ )
+ WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.entity.domain')
+   AND JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.entity.domain') IS NOT NULL;
+
+ -- 3. Drop old single-domain column
+ALTER TABLE thread_entity DROP COLUMN domain;
+
+ -- 4. Add corrected generated column for multi-domains
+ ALTER TABLE thread_entity
+ ADD COLUMN domains TEXT
+   GENERATED ALWAYS AS (
+     CASE
+       WHEN JSON_EXTRACT(json, '$.domains') IS NULL
+         OR JSON_LENGTH(JSON_EXTRACT(json, '$.domains')) = 0
+       THEN NULL
+       ELSE JSON_UNQUOTE(JSON_EXTRACT(json, '$.domains'))
+     END
+   ) STORED;
+
+-- Update activity feed alert after domain changes
+DELETE FROM  event_subscription_entity where name = 'ActivityFeedAlert';
+
+-- Add timestamp indexes for improved performance of event ordering queries
+-- These indexes significantly improve performance of ORDER BY timestamp DESC queries
+-- used in listAllEventsWithStatuses method for alert event retrieval
+
+-- Add descending timestamp index for consumers_dlq table
+-- This table stores failed event subscription events
+ALTER TABLE consumers_dlq ADD INDEX idx_consumers_dlq_timestamp_desc (timestamp DESC);
+
+-- Add descending timestamp index for successful_sent_change_events table
+-- This table stores successfully sent event subscription events
+ALTER TABLE successful_sent_change_events ADD INDEX idx_successful_events_timestamp_desc (timestamp DESC);
+
+-- Add composite index for better performance when filtering by subscription ID and ordering by timestamp
+ALTER TABLE successful_sent_change_events ADD INDEX idx_successful_events_subscription_timestamp (event_subscription_id, timestamp DESC);

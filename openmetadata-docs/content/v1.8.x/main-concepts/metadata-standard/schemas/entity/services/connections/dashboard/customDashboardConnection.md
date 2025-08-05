@@ -1,5 +1,6 @@
 ---
-title: customDashboardConnection
+title: CustomDashboardConnection | Official Documentation
+description: Define custom dashboard connection schema for unsupported BI tools or internal visualization apps.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/customdashboardconnection
 ---
 

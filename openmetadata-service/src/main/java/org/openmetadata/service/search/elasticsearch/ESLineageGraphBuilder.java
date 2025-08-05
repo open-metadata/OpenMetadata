@@ -5,12 +5,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchUtils.LINEAGE_AGGREGATION;
+import static org.openmetadata.service.search.SearchUtils.GRAPH_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.buildDirectionToFqnSet;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getUpstreamLineageListIfExist;
-import static org.openmetadata.service.search.SearchUtils.paginateUpstreamEntities;
+import static org.openmetadata.service.search.SearchUtils.paginateList;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 import static org.openmetadata.service.search.elasticsearch.EsUtils.getSearchRequest;
 
@@ -113,7 +113,7 @@ public class ESLineageGraphBuilder {
             lineageRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
-            LINEAGE_AGGREGATION,
+            GRAPH_AGGREGATION,
             directionKeyAndValues,
             0,
             10000,
@@ -137,7 +137,7 @@ public class ESLineageGraphBuilder {
                     .withPaging(
                         new LayerPaging().withEntityUpstreamCount(upStreamEntities.size())));
         List<EsLineageData> paginatedUpstreamEntities =
-            paginateUpstreamEntities(
+            paginateList(
                 upStreamEntities, lineageRequest.getLayerFrom(), lineageRequest.getLayerSize());
         for (EsLineageData data : paginatedUpstreamEntities) {
           result.getUpstreamEdges().putIfAbsent(data.getDocId(), data.withToEntity(toEntity));
@@ -223,7 +223,7 @@ public class ESLineageGraphBuilder {
             lineageRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
-            LINEAGE_AGGREGATION,
+            GRAPH_AGGREGATION,
             directionKeyAndValues,
             lineageRequest.getLayerFrom(),
             lineageRequest.getLayerSize(),
@@ -240,7 +240,7 @@ public class ESLineageGraphBuilder {
         // Add Paging Details per entity
         ParsedStringTerms valueCountAgg =
             searchResponse.getAggregations() != null
-                ? searchResponse.getAggregations().get(LINEAGE_AGGREGATION)
+                ? searchResponse.getAggregations().get(GRAPH_AGGREGATION)
                 : new ParsedStringTerms();
         for (Terms.Bucket bucket : valueCountAgg.getBuckets()) {
           String fqnFromHash = hasToFqnMap.get(bucket.getKeyAsString());

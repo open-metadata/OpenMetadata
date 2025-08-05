@@ -331,7 +331,7 @@ export const QualityTab = () => {
   }
 
   return (
-    <Row gutter={[0, 16]}>
+    <Row className="quality-tab-container" gutter={[0, 16]}>
       <Col span={24}>
         <Row>
           <Col span={10}>

@@ -75,7 +75,7 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPageWithCustomSearchBox(page);
+      await entity.visitEntityPage(page);
     });
 
     // Running following 2 tests serially since they are dependent on each other
@@ -140,7 +140,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName edit for child entities should not be allowed', async ({
           page,
         }) => {

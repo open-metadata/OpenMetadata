@@ -1,5 +1,6 @@
 ---
 title: Create User API | OpenMetadata API for User Management
+description: Connect Createuser to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/teams/createuser
 ---
 

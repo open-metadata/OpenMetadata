@@ -29,9 +29,9 @@ export interface LineagePropagationAction {
      */
     propagateDescription?: boolean;
     /**
-     * Propagate domain from the parent through lineage
+     * Propagate domains from the parent through lineage
      */
-    propagateDomain?: boolean;
+    propagateDomains?: boolean;
     /**
      * Propagate glossary terms through lineage
      */
@@ -85,7 +85,7 @@ export interface PropagationStopConfig {
  */
 export enum MetadataAttribute {
     Description = "description",
-    Domain = "domain",
+    Domains = "domains",
     GlossaryTerms = "glossaryTerms",
     Owner = "owner",
     Tags = "tags",

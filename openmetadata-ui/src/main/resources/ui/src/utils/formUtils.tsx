@@ -178,7 +178,7 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
-        <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+        <TagSuggestion {...(props as unknown as TagSuggestionProps)} newLook />
       );
 
       break;
@@ -424,3 +424,6 @@ export const handleEntityCreationError = ({
     setInlineAlertDetails
   );
 };
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;

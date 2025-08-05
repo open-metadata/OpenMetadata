@@ -1,7 +1,7 @@
-# 1.8.7 Release 🎉
+# 1.8.9 Release 🎉
 
 {% note noteType="Tip" %}
-**23rd July 2025**
+**1st August 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,28 +10,24 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.8.7!
+Learn how to upgrade your OpenMetadata instance to 1.8.9!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.8.7-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.8.9-release).
 
 # What's New
 
 ## Improvements
 
-- SAdd Permission Debugger to understand roles & permissions for a user
-- Smart Reindex functionality for improved performance
-- Pass GX description on test case creation
-- Add Actual Case on the displayName to aggregate with right bucket
+- Remove unnecessary braces in additional_config for cleaner code.
+- Implemented comprehensive Security Service with schema changes, UI integration, and OSS visibility controls.
+- Added backward-compatible support for documented owner configuration in dbt.
+- Implemented configurable sink and reverse metadata support for Ranger, along with cleanup, bug fixes, and UI enhancements. (Collate)
+- Added lineage propagation enhancements in Automator with stop conditions and propagation depth, along with related UI fixes, configuration support, and test improvements. (Collate)
 
 ## Fixes
 
-- Add support for editing "Compute row count" from parameter screen
-- Explore page count mismatch
-- Fix lineage search issue in UI
-- Fix domain custom property persistence improvements
-- Fix table query pagination showing incorrect pageSize
-- Fix stored procedure temp table processing and lineage filtering with db & schema
+- Fixed Incorrect or missing security labels.
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.8.6-release...1.8.7-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.8.8-release...1.8.9-release)

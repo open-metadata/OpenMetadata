@@ -38,6 +38,7 @@ import {
   CustomNextArrow,
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -50,12 +51,14 @@ import CustomiseSearchBar from './CustomiseSearchBar';
 
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
+  backgroundColor,
+  dataTestId,
   handleAddWidget,
   hideCustomiseButton = false,
-  overlappedContainer = false,
-  onHomePage = false,
-  backgroundColor,
+  isPreviewHeader = false,
   onBackgroundColorUpdate,
+  onHomePage = false,
+  overlappedContainer = false,
   placeholderWidgetKey,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
@@ -67,7 +70,7 @@ const CustomiseLandingPageHeader = ({
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
-  const [showAnnouncements, setShowAnnouncements] = useState(true);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
   const bgColor = backgroundColor ?? DEFAULT_HEADER_BG_COLOR;
 
   const landingPageStyle = useMemo(() => {
@@ -98,6 +101,7 @@ const CustomiseLandingPageHeader = ({
         ),
         name: entity.displayName,
         entityType: entity.entityType,
+        fullyQualifiedName: entity.fqn,
       };
     });
   }, []);
@@ -108,8 +112,10 @@ const CustomiseLandingPageHeader = ({
       const response = await getActiveAnnouncement();
 
       setAnnouncements(response.data);
+      setShowAnnouncements(response.data.length > 0);
     } catch (error) {
       showErrorToast(error as AxiosError);
+      setShowAnnouncements(false);
     } finally {
       setIsAnnouncementLoading(false);
     }
@@ -132,12 +138,26 @@ const CustomiseLandingPageHeader = ({
     [updateActiveDomain, navigate]
   );
 
+  const navigateToEntity = (data: {
+    entityType: string;
+    fullyQualifiedName: string;
+  }) => {
+    const path = entityUtilClassBase.getEntityLink(
+      data.entityType || '',
+      data.fullyQualifiedName
+    );
+    navigate(path);
+  };
+
   useEffect(() => {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
   return (
-    <div className="customise-landing-page" style={landingPageStyle}>
+    <div
+      className="customise-landing-page-header"
+      data-testid={dataTestId}
+      style={landingPageStyle}>
       <div className="header-container">
         <div className="dashboard-header">
           <div
@@ -146,7 +166,7 @@ const CustomiseLandingPageHeader = ({
             })}>
             <Typography.Text className="welcome-user">
               {t('label.welcome', {
-                name: currentUser?.displayName ?? currentUser?.name,
+                name: currentUser?.displayName || currentUser?.name,
               })}
             </Typography.Text>
             {!hideCustomiseButton && (
@@ -214,7 +234,7 @@ const CustomiseLandingPageHeader = ({
                 </div>
               </DomainSelectableList>
             </div>
-            {recentlyViewData.length > 0 && (
+            {!isPreviewHeader && recentlyViewData.length > 0 && (
               <Carousel
                 arrows
                 className={classNames('recently-viewed-data-carousel', {
@@ -230,12 +250,11 @@ const CustomiseLandingPageHeader = ({
                     className={classNames('customise-recently-viewed-data', {
                       disabled: !onHomePage,
                     })}
+                    data-testid="recently-viewed-asset"
                     key={index}
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      navigate(`/${data.entityType}/${data.name}`);
-                    }}>
+                    onClick={() => navigateToEntity(data)}>
                     <div
                       className="recent-item d-flex flex-col items-center gap-3"
                       key={data.name}>
@@ -255,7 +274,8 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
-        {showAnnouncements &&
+        {!isPreviewHeader &&
+          showAnnouncements &&
           !isAnnouncementLoading &&
           announcements.length > 0 && (
             <div className="announcements-container">

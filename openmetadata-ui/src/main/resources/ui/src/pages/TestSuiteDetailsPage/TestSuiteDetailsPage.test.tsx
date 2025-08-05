@@ -112,6 +112,11 @@ jest.mock('../../rest/testAPI', () => {
     ListTestCaseParamsBySearch: jest
       .fn()
       .mockImplementation(() => Promise.resolve({ data: [] })),
+    TestCaseType: {
+      all: 'all',
+      table: 'table',
+      column: 'column',
+    },
   };
 });
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({

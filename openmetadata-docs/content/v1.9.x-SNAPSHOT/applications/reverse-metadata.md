@@ -18,14 +18,15 @@ The **Reverse Metadata Application** ensures real-time synchronization of metada
 | Athena         | ✅ (Table)        | ❌          | ❌            | ✅                | [Link](/connectors/database/athena#reverse-metadata) |
 | BigQuery       | ✅ (Schema, Table)| ✅ (Schema, Table) | ❌            | ✅                | [Link](/connectors/database/bigquery#reverse-metadata) |
 | Clickhouse     | ✅ (Table, Column)| ❌          | ❌            | ✅                | [Link](/connectors/database/clickhouse#reverse-metadata) |
-| Databricks     | ✅ (support all) | ✅ (support all)  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/databricks#reverse-metadata) |
+| Databricks     | ✅ (Support all) | ✅ (Support all)  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/databricks#reverse-metadata) |
 | MSSQL          | ✅ (Schema, Table, Column) | ❌          | ✅ (Database, Schema) | ✅                | [Link](/connectors/database/mssql#reverse-metadata) |
 | MySQL          | ✅ (Table)        | ❌          | ❌            | ✅                | [Link](/connectors/database/mysql#reverse-metadata) |
 | Oracle         | ✅ (Table, Column)| ❌          | ❌            | ✅                | [Link](/connectors/database/oracle#reverse-metadata) |
-| PostgreSQL     | ✅ (support all) | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/postgres#reverse-metadata) |
-| Redshift       | ✅ (support all) | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/redshift#reverse-metadata) |
-| Snowflake      | ✅ (support all) | ✅ (Schema, Table, Column) | ❌            | ✅                | [Link](/connectors/database/snowflake#reverse-metadata) |
-| Unity Catalog  | ✅ (support all) | ✅ (support all)  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/unity-catalog#reverse-metadata) |
+| PostgreSQL     | ✅ (Support all) | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/postgres#reverse-metadata) |
+| Redshift       | ✅ (Support all) | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/redshift#reverse-metadata) |
+| Snowflake      | ✅ (Support all) | ✅ (Schema, Table, Column) | ❌            | ✅                | [Link](/connectors/database/snowflake#reverse-metadata) |
+| Unity Catalog  | ✅ (Support all) | ✅ (Support all)  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/unity-catalog#reverse-metadata) |
+| Trino  | ✅ (Table) | ❌ | ❌ | ✅                | [Link](/connectors/database/trino#reverse-metadata) |
 
 ## Overview
 
@@ -187,7 +188,40 @@ You can define multiple channels for different services or metadata types.
 | **Update Descriptions** | Enable to sync updated entity descriptions from Collate to the source. |
 | **Update Owners**    | Enable to sync owner assignments from Collate. |
 | **Update Tags**      | Enable to sync tag assignments (e.g., PII) to the source system. |
+| **Sink Service**     | Optional. Specify a target service where metadata changes should be synced. Currently supports security services only. The service name must match exactly with the service name configured in OpenMetadata. |
 | **SQL Template**     | Optional. Specify a custom SQL template for updates. |
+
+## Sink Service Configuration
+
+The **Sink Service** parameter allows you to redirect metadata changes from one service to a different target service. This is particularly useful when you want to maintain metadata consistency across different systems.
+
+### Use Case Example
+
+**Scenario:** You have a Trino service configured in OpenMetadata, but you want to sync all metadata changes to your Apache Ranger security service for centralized governance.
+
+**Example Channel Setup:**
+
+| Field | Value |
+|-------|-------|
+| Channel Name | "Trino to Ranger Sync" |
+| Filter | Service: trino_prod
+| Update Tags | ✅ Enabled |
+| Sink Service | ranger_service |
+
+**How it works:**
+1. You update a table tags in the Trino service within Collate
+2. The reverse metadata application detects this change
+3. Instead of syncing back to Trino, it syncs to the specified Ranger service
+4. The Ranger service receives the updated metadata and applies governance policies
+
+{% note %}
+
+**Important Requirements:**
+- The sink service name must exactly match the service name configured in OpenMetadata
+- Currently, only security services are supported as sink services
+- Ensure the sink service has the necessary permissions and configurations to receive metadata updates
+
+{% /note %}
 
 ## Run Now to Clean Workflows
 

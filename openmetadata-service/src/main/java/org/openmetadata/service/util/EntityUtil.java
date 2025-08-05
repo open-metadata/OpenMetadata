@@ -388,6 +388,26 @@ public final class EntityUtil {
       fieldList.add(field);
     }
 
+    // Create Fields Objects by excluding certain fields
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, Set<String> excludeFields) {
+      Set<String> resultFields = new HashSet<>(allowedFields);
+      if (excludeFields != null) {
+        resultFields.removeAll(excludeFields);
+      }
+      return new Fields(allowedFields, resultFields);
+    }
+
+    public static Fields createWithExcludedFields(
+        Set<String> allowedFields, String excludeFieldsParam) {
+      Set<String> excludeFields = new HashSet<>();
+      if (!nullOrEmpty(excludeFieldsParam)) {
+        excludeFields =
+            new HashSet<>(Arrays.asList(excludeFieldsParam.replace(" ", "").split(",")));
+      }
+      return createWithExcludedFields(allowedFields, excludeFields);
+    }
+
     @Override
     public String toString() {
       return String.join(",", fieldList);
@@ -793,6 +813,40 @@ public final class EntityUtil {
 
   public static String encodeEntityFqn(String fqn) {
     return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  /**
+   * Improved FQN encoding that is more resilient to double-encoding scenarios
+   * such as when URLs pass through email security systems like Outlook SafeLinks.
+   * Only encodes characters that are absolutely necessary for URL safety.
+   */
+  public static String encodeEntityFqnSafe(String fqn) {
+    if (fqn == null || fqn.trim().isEmpty()) {
+      return "";
+    }
+
+    // Only encode characters that are truly problematic in URLs
+    // This reduces double-encoding issues with email security systems
+    // Note: % must be encoded first to avoid double-encoding
+    return fqn.trim()
+        .replace("%", "%25") // percent (must be first to avoid double-encoding)
+        .replace(" ", "%20") // spaces
+        .replace("#", "%23") // hash
+        .replace("?", "%3F") // question mark
+        .replace("&", "%26") // ampersand
+        .replace("+", "%2B") // plus sign
+        .replace("=", "%3D") // equals sign
+        .replace("/", "%2F") // forward slash (if needed in FQN context)
+        .replace("\\", "%5C") // backslash
+        .replace("|", "%7C") // pipe
+        .replace("\"", "%22") // double quote
+        .replace("'", "%27") // single quote
+        .replace("<", "%3C") // less than
+        .replace(">", "%3E") // greater than
+        .replace("[", "%5B") // left bracket
+        .replace("]", "%5D") // right bracket
+        .replace("{", "%7B") // left brace
+        .replace("}", "%7D"); // right brace
   }
 
   /**

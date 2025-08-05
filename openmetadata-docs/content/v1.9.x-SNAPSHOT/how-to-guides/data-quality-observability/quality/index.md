@@ -60,6 +60,12 @@ Here's the latest on OpenMetadata's data quality.
     href="/how-to-guides/data-quality-observability/quality/tests-yaml"%}
     Learn how to configure data quality tests in the YAML config file.
  {%/inlineCallout%}
+  {%inlineCallout
+    icon="MdOutlineDashboardCustomize"
+    bold="UI Config"
+    href="/how-to-guides/data-quality-observability/quality/tests-UI"%}
+    Learn how to configure data quality tests in the UI.
+ {%/inlineCallout%}
  {%inlineCallout
     icon="MdOutlineDashboardCustomize"
     bold="Custom Tests"

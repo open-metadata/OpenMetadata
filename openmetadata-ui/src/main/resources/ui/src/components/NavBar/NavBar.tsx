@@ -119,14 +119,17 @@ const NavBar = () => {
     setPreference,
   } = useCurrentUserPreferences();
 
-  // Check if current route should hide global search
-  const shouldHideGlobalSearchAndDomainDropdown = useMemo(() => {
+  // Check if current route is home page
+  const isHomePage = useMemo(() => {
     const pathname = location.pathname;
 
-    return (
-      pathname === ROUTES.MY_DATA ||
-      pathname.startsWith(ROUTES.CUSTOMIZE_PAGE.replace('/:fqn/:pageFqn', ''))
-    );
+    return pathname === ROUTES.MY_DATA;
+  }, [location.pathname]);
+
+  const isTourPage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname.includes(ROUTES.TOUR);
   }, [location.pathname]);
 
   const fetchOMVersion = async () => {
@@ -436,6 +439,18 @@ const NavBar = () => {
     navigate(0);
   }, []);
 
+  const homePageTitle = useMemo(() => {
+    if (isHomePage && isSidebarCollapsed) {
+      return (
+        <Typography.Text className="font-semibold navbar-title">
+          {t('label.home')}
+        </Typography.Text>
+      );
+    }
+
+    return <></>;
+  }, [isHomePage, isSidebarCollapsed]);
+
   return (
     <>
       <Header>
@@ -463,46 +478,49 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {!shouldHideGlobalSearchAndDomainDropdown && <GlobalSearchBar />}
-            {!shouldHideGlobalSearchAndDomainDropdown && (
-              <DomainSelectableList
-                hasPermission
-                showAllDomains
-                popoverProps={{
-                  open: isDomainDropdownOpen,
-                  onOpenChange: (open) => {
-                    setIsDomainDropdownOpen(open);
-                  },
-                }}
-                selectedDomain={activeDomainEntityRef}
-                wrapInButton={false}
-                onCancel={() => setIsDomainDropdownOpen(false)}
-                onUpdate={handleDomainChange}>
-                <Button
-                  className={classNames(
-                    'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
-                    {
-                      'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                    }
-                  )}
-                  data-testid="domain-dropdown"
-                  onClick={() =>
-                    setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                  }>
-                  <DomainIcon
-                    className="d-flex"
-                    height={20}
-                    name="domain"
-                    width={20}
-                  />
-                  <Typography.Text ellipsis className="domain-text">
-                    {activeDomainEntityRef
-                      ? getEntityName(activeDomainEntityRef)
-                      : activeDomain}
-                  </Typography.Text>
-                  <DropDownIcon width={12} />
-                </Button>
-              </DomainSelectableList>
+            {homePageTitle}
+            {!isHomePage && !isTourPage && (
+              <>
+                <GlobalSearchBar />
+                <DomainSelectableList
+                  hasPermission
+                  showAllDomains
+                  popoverProps={{
+                    open: isDomainDropdownOpen,
+                    onOpenChange: (open) => {
+                      setIsDomainDropdownOpen(open);
+                    },
+                  }}
+                  selectedDomain={activeDomainEntityRef}
+                  wrapInButton={false}
+                  onCancel={() => setIsDomainDropdownOpen(false)}
+                  onUpdate={handleDomainChange}>
+                  <Button
+                    className={classNames(
+                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                      {
+                        'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                      }
+                    )}
+                    data-testid="domain-dropdown"
+                    onClick={() =>
+                      setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                    }>
+                    <DomainIcon
+                      className="d-flex"
+                      height={20}
+                      name="domain"
+                      width={20}
+                    />
+                    <Typography.Text ellipsis className="domain-text">
+                      {activeDomainEntityRef
+                        ? getEntityName(activeDomainEntityRef)
+                        : activeDomain}
+                    </Typography.Text>
+                    <DropDownIcon width={12} />
+                  </Button>
+                </DomainSelectableList>
+              </>
             )}
           </div>
 
