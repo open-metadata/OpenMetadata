@@ -758,6 +758,39 @@
         }
       }
     },
+    "sparkTableProfilerConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SparkTableProfilerConfig",
+      "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
+      "properties": {
+        "partitioning": {
+          "type": "object",
+          "description": "When reading big tables from sources, we optimize the reading by partitioning the data. This configuration is responsible for it.",
+          "properties": {
+            "partitionColumn": {
+              "type": "string",
+              "description": "Column to partition on. It should be a date, timestamp or integer column. It is important for the data to be reasonably equally distributed across the partitions.",
+              "default": null
+            },
+            "lowerBound": {
+              "type": "string",
+              "description": "Lower bound of the partition range. If not provided, it will be fetched from the source.",
+              "default": null
+            },
+            "upperBound": {
+              "type": "string",
+              "description": "Upper bound of the partition range. If not provided, it will be fetched from the source.",
+              "default": null
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "partitionColumn"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "tableProfilerConfig": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
@@ -821,6 +854,11 @@
           "type": "boolean",
           "default": true,
           "title": "Compute Column Metrics"
+        },
+        "sparkTableProfilerConfig": {
+          "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
+          "$ref": "#/definitions/sparkTableProfilerConfig",
+          "default": null
         }
       }
     },
@@ -958,7 +996,7 @@
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "pq", "pqt", "parq", "parquet.snappy", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
+      "enum": ["csv", "csv.gz", "tsv", "avro", "parquet", "pq", "pqt", "parq", "parquet.snappy", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {

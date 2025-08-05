@@ -81,4 +81,24 @@ class OpenSearchBulkSinkSimpleTest {
     recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     assertEquals(false, recreateIndex);
   }
+
+  @Test
+  void testIsVectorEmbeddingEnabledForEntity() {
+    // Test default implementation returns false
+    boolean result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("table");
+    assertEquals(false, result);
+
+    result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("user");
+    assertEquals(false, result);
+
+    result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard");
+    assertEquals(false, result);
+  }
+
+  @Test
+  void testAddEntityToVectorIndex() {
+    // Test default implementation does nothing (no exception thrown)
+    // This should not throw any exception as the default implementation is empty
+    openSearchBulkSink.addEntityToVectorIndex(null, null, true);
+  }
 }

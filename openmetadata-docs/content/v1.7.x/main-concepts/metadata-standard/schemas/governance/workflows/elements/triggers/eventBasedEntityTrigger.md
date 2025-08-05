@@ -1,5 +1,6 @@
 ---
-title: eventBasedEntityTrigger
+title: eventBasedEntityTrigger | Official Documentation
+description: Define event-based entity trigger used to execute workflows based on metadata change events.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/triggers/eventbasedentitytrigger
 ---
 

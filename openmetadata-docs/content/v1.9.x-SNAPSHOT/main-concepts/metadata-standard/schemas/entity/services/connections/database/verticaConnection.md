@@ -1,5 +1,6 @@
 ---
 title: Vertica Connection | OpenMetadata Vertica
+description: Configure Vertica database integration using this schema to ingest metadata and monitor data warehouse usage.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/verticaconnection
 ---
 

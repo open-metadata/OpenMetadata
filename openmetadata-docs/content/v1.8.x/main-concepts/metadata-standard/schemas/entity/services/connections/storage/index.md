@@ -1,5 +1,6 @@
 ---
 title: Storage Connections | OpenMetadata Storage
+description: Specify cloud and local storage connection schemas detailing access, buckets, authentication, and endpoints.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/storage
 ---
 

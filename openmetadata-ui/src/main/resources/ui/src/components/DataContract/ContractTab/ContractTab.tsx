@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,53 +10,118 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
-import { useFqn } from '../../../hooks/useFqn';
 
+import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreateDataContract } from '../../../generated/api/data/createDataContract';
-import { EntityType } from '../../../generated/api/tests/createTestDefinition';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import { DataContractTabMode } from '../../../constants/DataContract.constants';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  deleteContractById,
+  getContractByEntityId,
+} from '../../../rest/contractAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
+import { ContractDetail } from '../ContractDetailTab/ContractDetail';
+import './contract-tab.less';
 
 export const ContractTab = () => {
-  const { fqn } = useFqn();
+  const {
+    data: { id },
+  } = useGenericContext();
   const { t } = useTranslation();
-  const [tabMode, setTabMode] = useState<'add' | 'edit' | 'view'>('add');
+  const [tabMode, setTabMode] = useState<DataContractTabMode>(
+    DataContractTabMode.VIEW
+  );
+  const [contract, setContract] = useState<DataContract>();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const contract: CreateDataContract = {
-    name: 'test',
-    description: 'test',
-    entity: {
-      type: EntityType.Table,
-      fullyQualifiedName: fqn,
-      id: '1',
-    },
+  const fetchContract = async () => {
+    try {
+      setIsLoading(true);
+      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+        TabSpecificField.OWNERS,
+      ]);
+      setContract(contract);
+    } catch {
+      setContract(undefined);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (contract?.id) {
+      try {
+        await deleteContractById(contract.id);
+        showSuccessToast(
+          t('server.entity-deleted-successfully', {
+            entity: t('label.contract'),
+          })
+        );
+        fetchContract();
+        setTabMode(DataContractTabMode.VIEW);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    }
   };
 
   useEffect(() => {
-    if (fqn) {
-      setTabMode('view');
-    }
-  }, [fqn]);
+    fetchContract();
+  }, [id]);
 
   const content = useMemo(() => {
     switch (tabMode) {
-      case 'add':
-        return <AddDataContract />;
+      case DataContractTabMode.ADD:
+        return (
+          <AddDataContract
+            contract={contract}
+            onCancel={() => {
+              setTabMode(DataContractTabMode.VIEW);
+            }}
+            onSave={() => {
+              fetchContract();
+              setTabMode(DataContractTabMode.VIEW);
+            }}
+          />
+        );
 
-      case 'edit':
-        return <div>Edit</div>;
+      case DataContractTabMode.EDIT:
+        return (
+          <AddDataContract
+            contract={contract}
+            onCancel={() => {
+              setTabMode(DataContractTabMode.VIEW);
+            }}
+            onSave={() => {
+              fetchContract();
+              setTabMode(DataContractTabMode.VIEW);
+            }}
+          />
+        );
 
-      case 'view':
-        return <div>{fqn}</div>;
+      case DataContractTabMode.VIEW:
+        return (
+          <ContractDetail
+            contract={contract}
+            onDelete={handleDelete}
+            onEdit={() => {
+              setTabMode(
+                contract ? DataContractTabMode.EDIT : DataContractTabMode.ADD
+              );
+            }}
+          />
+        );
     }
-  }, [tabMode, fqn]);
+  }, [tabMode, contract]);
 
-  if (isEmpty(contract)) {
-    return <ErrorPlaceHolderNew heading={t('label.no-contracts')} />;
-  }
-
-  return content;
+  return isLoading ? (
+    <Loader />
+  ) : (
+    <div className="contract-tab-container">{content}</div>
+  );
 };

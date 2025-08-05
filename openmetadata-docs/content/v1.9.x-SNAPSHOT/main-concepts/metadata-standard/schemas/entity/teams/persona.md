@@ -1,5 +1,6 @@
 ---
 title: Persona | OpenMetadata Persona API Details
+description: Define personas to model user roles, goals, and permissions within the platform ecosystem.
 slug: /main-concepts/metadata-standard/schemas/entity/teams/persona
 ---
 

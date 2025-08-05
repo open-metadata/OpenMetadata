@@ -96,7 +96,7 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPageWithCustomSearchBox(page);
+      await entity.visitEntityPage(page);
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
@@ -173,7 +173,7 @@ entities.forEach((EntityClass) => {
         });
       });
 
-      if (['Table', 'Dashboard Data Model'].includes(entity.type)) {
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName Add, Update and Remove for child entities', async ({
           page,
         }) => {

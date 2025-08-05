@@ -85,7 +85,7 @@ entities.forEach((EntityClass) => {
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await entity.visitEntityPageWithCustomSearchBox(page);
+      await entity.visitEntityPage(page);
     });
 
     test('Domain Add, Update and Remove', async ({ page }) => {
@@ -223,7 +223,7 @@ entities.forEach((EntityClass) => {
     const apiContext = await getAuthContext(token);
     await deleteEntity.create(apiContext);
     await redirectToHomePage(page);
-    await deleteEntity.visitEntityPageWithCustomSearchBox(page);
+    await deleteEntity.visitEntityPage(page);
 
     await test.step('Soft delete', async () => {
       await deleteEntity.softDeleteEntity(

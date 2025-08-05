@@ -1,5 +1,6 @@
 ---
 title: dbtHttpConfig | OpenMetadata dbt HTTP Config
+description: Capture DBT HTTP configuration for ingesting DBT files from public or private HTTP sources.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbthttpconfig
 ---
 

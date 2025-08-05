@@ -1,5 +1,6 @@
 ---
 title: samlSSOClientConfig | OpenMetadata SAML SSO Client
+description: Configure SAML-based SSO client for secure authentication using identity provider settings including metadata URLs and entity IDs.
 slug: /main-concepts/metadata-standard/schemas/security/client/samlssoclientconfig
 ---
 

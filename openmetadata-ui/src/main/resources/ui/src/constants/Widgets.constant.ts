@@ -96,19 +96,19 @@ export const FEED_WIDGET_FILTER_OPTIONS = [
 
 export const MY_TASK_WIDGET_FILTER_OPTIONS = [
   {
-    label: t('label.all-activity'),
-    value: MyTaskFilter.ALL,
-    key: MyTaskFilter.ALL,
+    label: t('label.all'),
+    value: MyTaskFilter.OWNER_OR_FOLLOWS,
+    key: MyTaskFilter.OWNER_OR_FOLLOWS,
   },
   {
-    label: t('label.my-data'),
-    value: MyTaskFilter.OWNER,
-    key: MyTaskFilter.OWNER,
+    label: t('label.assigned'),
+    value: MyTaskFilter.ASSIGNED_TO,
+    key: MyTaskFilter.ASSIGNED_TO,
   },
   {
-    label: t('label.following'),
-    value: MyTaskFilter.FOLLOWS,
-    key: MyTaskFilter.FOLLOWS,
+    label: t('label.mention-plural'),
+    value: MyTaskFilter.MENTIONS,
+    key: MyTaskFilter.MENTIONS,
   },
 ];
 
@@ -209,6 +209,15 @@ export const applySortToData = (
 export const KPI_WIDGET_GRAPH_COLORS = [
   '#7262F6',
   '#6AD2FF',
-  '#E7B85D',
-  '#416BB3',
+  '#2ED3B7',
+  '#E478FA',
+  //   TODO: Add more colors for more KPIs
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
 ];

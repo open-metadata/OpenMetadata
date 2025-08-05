@@ -1,5 +1,6 @@
 ---
-title: createDataInsightChart
+title: createDataInsightChart | Official Documentation
+description: Create a new chart to visualize data insights and track metadata activity or KPIs over time.
 slug: /main-concepts/metadata-standard/schemas/api/datainsight/createdatainsightchart
 ---
 

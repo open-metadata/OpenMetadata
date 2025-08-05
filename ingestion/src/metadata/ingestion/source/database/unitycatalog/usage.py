@@ -11,12 +11,10 @@
 """
 unity catalog usage module
 """
-import traceback
-from datetime import datetime
-from typing import Iterable
 
-from metadata.generated.schema.type.basic import DateTime
-from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_SQL_STATEMENT,
+)
 from metadata.ingestion.source.database.unitycatalog.query_parser import (
     UnityCatalogQueryParserSource,
 )
@@ -35,36 +33,24 @@ class UnitycatalogUsageSource(UnityCatalogQueryParserSource, UsageSource):
     the same API for fetching Usage Queries
     """
 
-    def yield_table_queries(self) -> Iterable[TableQuery]:
-        """
-        Method to yield TableQueries
-        """
-        queries = []
-        data = self.client.list_query_history(
-            start_date=self.start,
-            end_date=self.end,
-        )
-        for row in data or []:
-            try:
-                if self.client.is_query_valid(row):
-                    queries.append(
-                        TableQuery(
-                            dialect=self.dialect.value,
-                            query=row.get("query_text"),
-                            userName=row.get("user_name"),
-                            startTime=str(row.get("query_start_time_ms")),
-                            endTime=str(row.get("execution_end_time_ms")),
-                            analysisDate=DateTime(datetime.now()),
-                            serviceName=self.config.serviceName,
-                            duration=row.get("duration")
-                            if row.get("duration")
-                            else None,
-                        )
-                    )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to process query {row.get('query_text')} due to: {err}"
-                )
+    sql_stmt = UNITY_CATALOG_SQL_STATEMENT
 
-        yield TableQueries(queries=queries)
+    filters = """
+        AND statement_type NOT IN ('SHOW', 'DESCRIBE', 'USE')
+    """
+
+    def get_engine(self):
+        yield self.sql_client
+
+    def get_sql_statement(self, start_time, end_time):
+        """
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,
+        )
