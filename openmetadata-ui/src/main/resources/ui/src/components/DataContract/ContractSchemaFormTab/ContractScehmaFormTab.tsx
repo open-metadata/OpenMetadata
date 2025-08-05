@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Button, Card, Tag, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, pick } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightOutlined } from '../../../assets/svg/right-arrow.svg';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   NO_DATA_PLACEHOLDER,
@@ -313,7 +314,7 @@ export const ContractSchemaFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined height={15} width={8} />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>
