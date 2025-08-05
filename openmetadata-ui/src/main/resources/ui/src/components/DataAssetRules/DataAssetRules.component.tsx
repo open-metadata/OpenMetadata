@@ -167,7 +167,6 @@ export const SemanticsRuleForm: React.FC<{
         <Input.TextArea placeholder={t('label.description')} rows={2} />
       </Form.Item>
       <Form.Item
-        label={t('label.rule')}
         name="rule"
         rules={[
           {
@@ -176,6 +175,7 @@ export const SemanticsRuleForm: React.FC<{
         ]}>
         {/* @ts-expect-error because Form.Item will provide value and onChange */}
         <QueryBuilderWidget
+          label={t('label.rule')}
           schema={{
             outputType: SearchOutputType.JSONLogic,
           }}

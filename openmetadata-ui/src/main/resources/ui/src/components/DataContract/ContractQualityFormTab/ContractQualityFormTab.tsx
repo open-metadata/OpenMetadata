@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import Icon, { DownOutlined } from '@ant-design/icons';
+import { Button, Card, Dropdown, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
@@ -34,6 +34,7 @@ import {
   TestCaseType,
 } from '../../../rest/testAPI';
 import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -45,6 +46,12 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import TestCaseFormV1 from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
+
+export const TestTypeLabelMap = {
+  [TestCaseType.all]: i18n.t('label.all'),
+  [TestCaseType.table]: i18n.t('label.table'),
+  [TestCaseType.column]: i18n.t('label.column'),
+};
 
 export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];
@@ -224,6 +231,22 @@ export const ContractQualityFormTab: React.FC<{
           columns={columns}
           customPaginationProps={paginationProps}
           dataSource={allTestCases}
+          extraTableFilters={
+            <Dropdown
+              menu={{
+                items: Object.entries(TestTypeLabelMap).map(([key]) => ({
+                  key,
+                  label: TestTypeLabelMap[key as TestCaseType],
+                })),
+              }}>
+              <Button
+                icon={<DownOutlined />}
+                type="default"
+                onClick={() => setTestType(TestCaseType.table)}>
+                {t('label.filter-plural')}
+              </Button>
+            </Dropdown>
+          }
           loading={isTestsLoading}
           pagination={false}
           rowKey="id"
@@ -232,6 +255,16 @@ export const ContractQualityFormTab: React.FC<{
             onChange: (selectedRowKeys) => {
               setSelectedKeys(selectedRowKeys as string[]);
               handleSelection(selectedRowKeys as string[]);
+            },
+          }}
+          searchProps={{
+            placeholder: t('label.search-by-name'),
+            onSearch: (value) => {
+              fetchAllTests({
+                offset: 0,
+                limit: pageSize,
+                q: value,
+              });
             },
           }}
         />
