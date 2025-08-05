@@ -12,6 +12,7 @@ A **Test Definition** is a generic definition of a test. This Test Definition th
 In this section, you will learn what tests we currently support and how to configure them in the OpenMetadata UI.
 
 - [Table Tests](#table-tests)
+- [Column Tests](#column-tests)
 
 ## Table Tests
 Tests applied on top of a Table. Here is the list of all table tests:
@@ -316,4 +317,372 @@ Ensure that table data is being updated frequently enough to be considered fresh
 
 {% image
   src="/images/v1.9/how-to-guides/quality/table-test/fresh.gif"
+/%}
+
+## Column Tests
+Tests applied on top of Column metrics. Here is the list of all column tests:
+- [Column Values to Be Unique](#column-values-to-be-unique)
+- [Column Values to Be Not Null](#column-values-to-be-not-null)
+- [Column Values to Match Regex](#column-values-to-match-regex)
+- [Column Values to not Match Regex](#column-values-to-not-match-regex)
+- [Column Values to Be in Set](#column-values-to-be-in-set)
+- [Column Values to Be Not In Set](#column-values-to-be-not-in-set)
+- [Column Values to Be Between](#column-values-to-be-between)
+- [Column Values Missing Count to Be Equal](#column-values-missing-count-to-be-equal)
+- [Column Values Lengths to Be Between](#column-values-lengths-to-be-between)
+- [Column Value Max to Be Between](#column-value-max-to-be-between)
+- [Column Value Min to Be Between](#column-value-min-to-be-between)
+- [Column Value Mean to Be Between](#column-value-mean-to-be-between)
+- [Column Value Median to Be Between](#column-value-median-to-be-between)
+- [Column Values Sum to Be Between](#column-values-sum-to-be-between)
+- [Column Values Standard Deviation to Be Between](#column-values-standard-deviation-to-be-between)
+- [Column Values To Be At Expected Location](#column-values-to-be-at-expected-location)
+
+### Column Values to Be Unique
+Ensures each value in a column appears only once.
+
+#### Dimension
+`Uniqueness`
+
+#### When to Use
+- Primary keys or natural identifiers
+- Fields like email, username, or ID
+
+#### Behavior
+
+| Condition                    | Status |
+|------------------------------|--------|
+| All values are unique        | ✅     |
+| Any duplicate value found    | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/unique.gif"
+/%}
+
+### Column Values to Be Not Null
+Ensures there are no NULL entries in the column.
+
+#### Dimension
+`Completeness`
+
+#### When to Use
+- Mandatory fields such as `email`, `amount`, `created_at`
+- Required keys or business-critical columns
+
+#### Behavior
+
+| Condition                    | Status |
+|------------------------------|--------|
+| No NULLs present             | ✅     |
+| Any NULL value present       | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/not-null.gif"
+/%}
+
+### Column Values to Match Regex
+This test allows us to specify how many values in a column we expect that will match a certain regex expression. Please note that for certain databases we will fall back to SQL `LIKE` expression. The databases supporting regex pattern as of 0.13.2 are:
+- redshift
+- postgres
+- oracle
+- mysql
+- mariaDB
+- sqlite
+- clickhouse
+- snowflake
+
+Ensures all values match a specified regular expression pattern.
+
+#### Dimension
+`Validity`
+
+#### When to Use
+- Emails, zip codes, IDs, structured formats
+
+#### Behavior
+
+| Condition                    | Status |
+|------------------------------|--------|
+| All values match regex       | ✅     |
+| Any value does not match     | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/match-regex.gif"
+/%}
+
+### Column Values to not Match Regex
+This test allows us to specify values in a column we expect that will not match a certain regex expression. If the test find values matching the `forbiddenRegex` the test will fail. Please note that for certain databases we will fall back to SQL `LIKE` expression. The databases supporting regex pattern as of 0.13.2 are:
+- redshift
+- postgres
+- oracle
+- mysql
+- mariaDB
+- sqlite
+- clickhouse
+- snowflake
+
+The other databases will fall back to the `LIKE` expression
+
+Ensures values do **not** match a restricted regex pattern.
+
+#### Dimension
+`Validity`
+
+#### When to Use
+- Prevent forbidden values, test strings, or patterns
+
+#### Behavior
+
+| Condition                           | Status |
+|-------------------------------------|--------|
+| No value matches forbidden pattern  | ✅     |
+| Any value matches the pattern       | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/not-match-regex.gif"
+/%}
+
+### Column Values to Be in Set
+Ensures values are within a predefined whitelist.
+
+#### Dimension
+`Validity`
+
+#### When to Use
+- Enum values: `status`, `currency`, `country_code`
+
+#### Behavior
+
+| Condition                                               | Status |
+|---------------------------------------------------------|--------|
+| All values in set (if `matchEnum = true`)               | ✅     |
+| Any value not in set (if `matchEnum = true`)            | ❌     |
+| Any value from set exists (if `matchEnum = false`)      | ✅     |
+| No values from set found (if `matchEnum = false`)       | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/column-values-in-set.gif"
+/%}
+
+### Column Values to Be Not In Set
+Ensures values are **not** in a specified blacklist.
+
+#### Dimension
+`Validity`
+
+#### When to Use
+- Block invalid values like `"NA"`, `"Unknown"`, `-1`
+
+#### Behavior
+
+| Condition                                 | Status |
+|-------------------------------------------|--------|
+| No values from forbidden set              | ✅     |
+| Any value from forbidden set found        | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/column-values-not-in-set.gif"
+/%}
+
+### Column Values to Be Between
+Validates numeric values of a column are within a given range.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Username length, field input length validation
+
+#### Behavior
+
+| Condition                                   | Status |
+|---------------------------------------------|--------|
+| Length within `[min, max]`                  | ✅     |
+| Length < min or > max                       | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/to-be-between.gif"
+/%}
+
+### Column Values Missing Count to Be Equal
+Ensures total missing values (NULL + defined "missing" strings) match a target count.
+
+#### Dimension
+`Completeness`
+
+#### When to Use
+- Auditing known missing values
+- Accounting for `"NA"`, `"N/A"`, `"null"`
+
+#### Behavior
+
+| Condition                                      | Status |
+|------------------------------------------------|--------|
+| Missing count = expected value                 | ✅     |
+| Missing count ≠ expected value                 | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/missing-count.gif"
+/%}
+
+### Column Values Lengths to Be Between
+Ensures that the length of each string value in the column is within a defined character range.
+
+#### Dimension  
+`Accuracy`
+
+#### When to Use  
+- To validate field length constraints like `name`, `address`, or `description`  
+- To catch too-short or too-long values that may break UI or downstream logic
+
+#### Behavior  
+
+| Condition                                     | Status |
+|-----------------------------------------------|--------|
+| All values have length within `[min, max]`    | ✅     |
+| Any value length < min or > max               | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/lengths-to-be-between.gif"
+/%}
+
+### Column Value Max to Be Between
+Validates the **maximum** value of a column lies within a range.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Cap validation for `score`, `amount`, `age`
+
+#### Behavior
+
+| Condition                                            | Status |
+|------------------------------------------------------|--------|
+| Max value in range `[min, max]`                      | ✅     |
+| Max < min or Max > max                               | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/max.gif"
+/%}
+
+### Column Value Min to Be Between
+Validates the **minimum** value of a column lies within a range.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Threshold validation for `discount`, `price`, etc.
+
+#### Behavior
+
+| Condition                                            | Status |
+|------------------------------------------------------|--------|
+| Min value in range `[min, max]`                      | ✅     |
+| Min < min or Min > max                               | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/min.gif"
+/%}
+
+### Column Value Mean to Be Between
+Validates that the **mean (average)** value is in the expected range.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Check dataset drift or pipeline behavior
+
+#### Behavior
+
+| Condition                                             | Status |
+|-------------------------------------------------------|--------|
+| Mean value in `[min, max]`                            | ✅     |
+| Mean < min or Mean > max                              | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/mean.gif"
+/%}
+
+### Column Value Median to Be Between
+Validates the **median** value is in the expected range.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Median income, score, latency checks
+
+#### Behavior
+
+| Condition                                              | Status |
+|--------------------------------------------------------|--------|
+| Median in range `[min, max]`                           | ✅     |
+| Median < min or Median > max                           | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/median.gif"
+/%}
+
+### Column Values Sum to Be Between
+Validates the total **sum** of values in a column is within a defined range.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Revenue, units sold, total scores, etc.
+
+#### Behavior
+
+| Condition                                     | Status |
+|-----------------------------------------------|--------|
+| Sum in range `[min, max]`                     | ✅     |
+| Sum < min or Sum > max                        | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/sum.gif"
+/%}
+
+### Column Values Standard Deviation to Be Between
+Validates the **standard deviation** (spread) of values is acceptable.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Monitoring variance in numeric datasets
+
+#### Behavior
+
+| Condition                                        | Status |
+|--------------------------------------------------|--------|
+| Std Dev in `[min, max]`                          | ✅     |
+| Std Dev < min or > max                           | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/standard-deviation.gif"
+/%}
+
+### Column Values To Be At Expected Location
+Validates latitude/longitude values are within a defined area.
+
+#### Dimension
+`Accuracy`
+
+#### When to Use
+- Verifying address coordinates
+- Mapping regional data
+
+#### Behavior
+
+| Condition                                            | Status |
+|------------------------------------------------------|--------|
+| Coordinates within buffer of expected location       | ✅     |
+| Any record outside allowed radius                    | ❌     |
+
+{% image
+  src="/images/v1.9/how-to-guides/quality/column-test/expected-location.gif"
 /%}
