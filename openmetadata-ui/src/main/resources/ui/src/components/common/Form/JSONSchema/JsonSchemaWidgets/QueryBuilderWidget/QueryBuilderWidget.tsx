@@ -61,16 +61,11 @@ import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/A
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
 
-interface QueryBuilderWidgetProps extends WidgetProps {
-  excludeFields?: EntityReferenceFields[];
-}
-
-const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
-  onChange,
-  schema,
-  value,
-  ...props
-}) => {
+const QueryBuilderWidget: FC<
+  WidgetProps & {
+    fields?: Config['fields'];
+  }
+> = ({ onChange, schema, value, fields, ...props }) => {
   const {
     config,
     treeInternal,
@@ -92,29 +87,6 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
   const [queryURL, setQueryURL] = useState<string>('');
   const [queryActions, setQueryActions] = useState<Actions>();
 
-  // Filter config fields based on fieldsToRender prop
-  const filteredConfig = useMemo(() => {
-    if (isEmpty(props.excludeFields)) {
-      return config;
-    }
-
-    const filteredFields: Record<string, any> = {};
-
-    // Filter fields based on fieldsToRender
-    Object.entries(config.fields).forEach(([fieldKey, fieldConfig]) => {
-      if (
-        !(props.excludeFields ?? []).includes(fieldKey as EntityReferenceFields)
-      ) {
-        filteredFields[fieldKey] = fieldConfig;
-      }
-    });
-
-    return {
-      ...config,
-      fields: filteredFields,
-    };
-  }, [config, props.excludeFields]);
-
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
       const qFilter = getEntityTypeAggregationFilter(
@@ -124,7 +96,7 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
 
       const tree = QbUtils.sanitizeTree(
         QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
-        filteredConfig
+        config
       ).fixedTree;
 
       const queryFilterString = !isEmpty(tree)
@@ -173,7 +145,7 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
-      const data = elasticSearchFormat(nTree, filteredConfig) ?? '';
+      const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,
       };
@@ -191,7 +163,7 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
       onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
       try {
-        const jsonLogic = QbUtils.jsonLogicFormat(nTree, filteredConfig);
+        const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
         onChange(JSON.stringify(jsonLogic.logic ?? ''));
       } catch {
         onChange('');
@@ -205,26 +177,26 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
       if (outputType === SearchOutputType.ElasticSearch) {
         const parsedTree = getJsonTreeFromQueryFilter(
           parsedValue,
-          filteredConfig.fields
+          config.fields
         );
 
         if (Object.keys(parsedTree).length > 0) {
           const tree = QbUtils.Validation.sanitizeTree(
             QbUtils.loadTree(parsedTree),
-            filteredConfig
+            config
           ).fixedTree;
-          onTreeUpdate(tree, filteredConfig);
+          onTreeUpdate(tree, config);
           // Fetch count for default value
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        const tree = QbUtils.loadFromJsonLogic(parsedValue, filteredConfig);
+        const tree = QbUtils.loadFromJsonLogic(parsedValue, config);
         if (tree) {
           const validatedTree = QbUtils.Validation.sanitizeTree(
             tree,
-            filteredConfig
+            config
           ).fixedTree;
-          onTreeUpdate(validatedTree, filteredConfig);
+          onTreeUpdate(validatedTree, config);
         }
       }
     } else {
@@ -235,10 +207,10 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
 
       const tree = QbUtils.loadTree(emptyJsonTree);
 
-      onTreeUpdate(tree, filteredConfig);
+      onTreeUpdate(tree, config);
     }
     setInitDone(true);
-  }, [filteredConfig, value, outputType]);
+  }, [config, value, outputType]);
 
   useEffect(() => {
     onChangeSearchIndex(searchIndex);
@@ -280,7 +252,8 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
               </>
             )}
             <Query
-              {...filteredConfig}
+              {...config}
+              fields={fields ?? config.fields}
               renderBuilder={(props) => {
                 // Store the actions for external access
                 if (!queryActions) {
@@ -294,7 +267,7 @@ const QueryBuilderWidget: FC<QueryBuilderWidgetProps> = ({
                 );
               }}
               settings={{
-                ...filteredConfig.settings,
+                ...config.settings,
                 ...(props.readonly ? READONLY_SETTINGS : {}),
                 removeEmptyGroupsOnLoad: false,
                 removeEmptyRulesOnLoad: false,

@@ -31,7 +31,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER } from '../../constants/DataContract.constants';
 import { SIZE } from '../../enums/common.enum';
 import {
   ProviderType,
@@ -43,6 +42,7 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import { CONTRACT_SEMANTIC_FIELDS } from '../../utils/DataContract/DataContractUtils';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
@@ -177,7 +177,7 @@ export const SemanticsRuleForm: React.FC<{
         ]}>
         {/* @ts-expect-error because Form.Item will provide value and onChange */}
         <QueryBuilderWidget
-          excludeFields={DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER}
+          fields={CONTRACT_SEMANTIC_FIELDS}
           schema={{
             outputType: SearchOutputType.JSONLogic,
           }}

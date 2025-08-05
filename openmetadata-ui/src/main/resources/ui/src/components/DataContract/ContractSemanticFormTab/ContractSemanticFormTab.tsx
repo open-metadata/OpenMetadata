@@ -25,9 +25,9 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
-import { EntityReferenceFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { CONTRACT_SEMANTIC_FIELDS } from '../../../utils/DataContract/DataContractUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -251,9 +251,7 @@ export const ContractSemanticFormTab: React.FC<{
                                   name={[field.name, 'rule']}>
                                   {/* @ts-expect-error because Form.Item will provide value and onChange */}
                                   <QueryBuilderWidget
-                                    excludeFields={[
-                                      EntityReferenceFields.EXTENSION,
-                                    ]}
+                                    fields={CONTRACT_SEMANTIC_FIELDS}
                                     formContext={{
                                       entityType: EntityType.TABLE,
                                     }}
@@ -299,6 +297,7 @@ export const ContractSemanticFormTab: React.FC<{
                             {/* @ts-expect-error because Form.Item will provide value and onChange */}
                             <QueryBuilderWidget
                               readonly
+                              fields={CONTRACT_SEMANTIC_FIELDS}
                               formContext={{
                                 entityType: EntityType.TABLE,
                               }}
