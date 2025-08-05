@@ -12,7 +12,7 @@
 """
 Test databricks using the topology
 """
-
+# pylint: disable=invalid-name,import-outside-toplevel
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -36,7 +36,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.databricks.metadata import DatabricksSource
 
-# pylint: disable=line-too-long
 mock_databricks_config = {
     "source": {
         "type": "databricks",
@@ -717,6 +716,7 @@ class DatabricksConnectionTest(TestCase):
             # get_schema_names should only be called once due to caching
             mock_inspector.get_schema_names.assert_called_once()
 
+    # pylint: disable=too-many-locals
     @patch(
         "metadata.ingestion.source.database.databricks.connection.test_connection_steps"
     )
