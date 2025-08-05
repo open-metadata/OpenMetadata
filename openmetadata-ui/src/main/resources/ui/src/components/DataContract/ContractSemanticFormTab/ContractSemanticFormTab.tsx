@@ -23,7 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightOutlined } from '../../../assets/svg/right-arrow.svg';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { EntityReferenceFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -223,7 +223,7 @@ export const ContractSemanticFormTab: React.FC<{
                                   {...field}
                                   label={t('label.description')}
                                   name={[field.name, 'description']}>
-                                  <TextArea />
+                                  <TextArea rows={4} />
                                 </Form.Item>
                               </Col>
                               <Col span={24}>
@@ -332,7 +332,7 @@ export const ContractSemanticFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined height={15} width={8} />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>
