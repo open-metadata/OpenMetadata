@@ -1,5 +1,6 @@
 ---
 title: Run the ingestion from AWS MWAA
+description: Set up Collate ingestion workflows on AWS MWAA using Python, ECS, or Virtualenv operators. Compare approaches and configure DAGs for secure metadata ingestion.
 slug: /getting-started/day-1/hybrid-saas/mwaa
 collate: true
 ---
@@ -35,7 +36,7 @@ To install the package, we need to update the `requirements.txt` file from the M
 openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.3.1, then the ingestion package needs to also be 1.3.1.
+Where `x.y.z` is the version of the Collate ingestion package. Note that the version needs to match the server version. If we are using the server at 1.3.1, then the ingestion package needs to also be 1.3.1.
 
 The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.3.1`.
 
@@ -78,7 +79,7 @@ def metadata_ingestion_workflow():
 with DAG(
     "redshift_ingestion",
     default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    description="An example DAG which runs a Collate ingestion workflow",
     start_date=days_ago(1),
     is_paused_upon_creation=False,
     catchup=False,
@@ -293,7 +294,7 @@ with DAG(
 ```
 
 Note that depending on the kind of workflow you will be deploying, the YAML configuration will need to updated following 
-the official OpenMetadata docs, and the value of the `pipelineType` configuration will need to hold one of the following values:
+the official Collate docs, and the value of the `pipelineType` configuration will need to hold one of the following values:
 
 - `metadata`
 - `usage`
@@ -301,7 +302,7 @@ the official OpenMetadata docs, and the value of the `pipelineType` configuratio
 - `profiler`
 - `TestSuite`
 
-Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
+Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/Collate/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
 
 Moreover, one of the imports will depend on the MWAA Airflow version you are using:
 - If using Airflow < 2.5: `from airflow.providers.amazon.aws.operators.ecs import ECSOperator`
@@ -410,7 +411,7 @@ YAML config
 with DAG(
     "redshift_ingestion",
     default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    description="An example DAG which runs a Collate ingestion workflow",
     start_date=days_ago(1),
     is_paused_upon_creation=False,
     catchup=False,
@@ -419,7 +420,7 @@ with DAG(
         task_id="ingest_redshift",
         python_callable=metadata_ingestion_workflow,
         requirements=['openmetadata-ingestion==1.0.5.0',
-            'apache-airflow==2.4.3',  # note, v2.4.3 is the first version that does not conflict with OpenMetadata's 'tabulate' requirements
+            'apache-airflow==2.4.3',  # note, v2.4.3 is the first version that does not conflict with Collate's 'tabulate' requirements
             'apache-airflow-providers-amazon==6.0.0',  # Amazon Airflow provider is necessary for MWAA 
             'watchtower',],
         system_site_packages=False,
@@ -430,7 +431,7 @@ with DAG(
 Where you can update the YAML configuration and workflow classes accordingly. accordingly. Further examples on how to
 run the ingestion can be found on the documentation (e.g., [Snowflake](/connectors/database/snowflake)).
 
-You will also need to determine the OpenMetadata ingestion extras and Airflow providers you need. Note that the Openmetadata version needs to match the server version. If we are using the server at 0.12.2, then the ingestion package needs to also be 0.12.2.  An example of the extras would look like this `openmetadata-ingestion[mysql,snowflake,s3]==0.12.2.2`.
+You will also need to determine the Collate ingestion extras and Airflow providers you need. Note that the Openmetadata version needs to match the server version. If we are using the server at 0.12.2, then the ingestion package needs to also be 0.12.2.  An example of the extras would look like this `openmetadata-ingestion[mysql,snowflake,s3]==0.12.2.2`.
 For Airflow providers, you will want to pull the provider versions from [the matching constraints file](https://raw.githubusercontent.com/apache/airflow/constraints-2.4.3/constraints-3.7.txt). Since this example installs Airflow Providers v2.4.3 on Python 3.7, we use that constraints file.
 
 Also note that the ingestion workflow function must be entirely self-contained as it will run by itself in the virtualenv. Any imports it needs, including the configuration, must exist within the function itself.
