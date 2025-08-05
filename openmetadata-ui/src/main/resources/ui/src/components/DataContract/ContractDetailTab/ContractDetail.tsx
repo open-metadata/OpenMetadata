@@ -28,6 +28,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart } from 'recharts';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
 import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
@@ -67,6 +68,10 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getTestCaseDetailPagePath,
+  getTestSuitePath,
+} from '../../../utils/RouterUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -78,6 +83,7 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../common/Table/Table';
+import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
 import './contract-detail.less';
@@ -254,16 +260,18 @@ const ContractDetail: React.FC<{
     downloadContractYamlFile(contract);
   }, [contract]);
 
-  const handleRunNow = () => {
+  const handleRunNow = async () => {
     if (contract?.id) {
-      setValidateLoading(true);
-      validateContractById(contract.id)
-        .then(() =>
-          showSuccessToast('Contract validation trigger successfully.')
-        )
-        .finally(() => {
-          setValidateLoading(false);
-        });
+      try {
+        setValidateLoading(true);
+        await validateContractById(contract.id);
+        showSuccessToast(t('message.contract-validation-trigger-successfully'));
+        fetchLatestContractResults();
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setValidateLoading(false);
+      }
     }
   };
 
@@ -624,42 +632,51 @@ const ContractDetail: React.FC<{
                       ) : (
                         <div className="data-quality-card-container">
                           {showTestCaseSummaryChart && (
-                            <div className="data-quality-chart-container">
-                              {testCaseSummaryChartItems.map((item) => (
-                                <div
-                                  className="data-quality-chart-item"
-                                  key={item.label}>
-                                  <Typography.Text className="chart-label">
-                                    {item.label}
-                                  </Typography.Text>
+                            <Link
+                              className="data-quality-chart-container-link"
+                              to={getTestSuitePath(
+                                contract?.testSuite?.fullyQualifiedName ?? ''
+                              )}>
+                              <div className="data-quality-chart-container">
+                                {testCaseSummaryChartItems.map((item) => (
+                                  <div
+                                    className="data-quality-chart-item"
+                                    key={item.label}>
+                                    <Typography.Text className="chart-label">
+                                      {item.label}
+                                    </Typography.Text>
 
-                                  <PieChart height={120} width={120}>
-                                    <Pie
-                                      cx="50%"
-                                      cy="50%"
-                                      data={item.chartData}
-                                      dataKey="value"
-                                      innerRadius={40}
-                                      outerRadius={50}>
-                                      {item.chartData.map((entry, index) => (
-                                        <Cell
-                                          fill={entry.color}
-                                          key={`cell-${index}`}
-                                        />
-                                      ))}
-                                    </Pie>
-                                    <text
-                                      className="chart-center-text"
-                                      dominantBaseline="middle"
-                                      textAnchor="middle"
-                                      x="50%"
-                                      y="50%">
-                                      {item.value}
-                                    </text>
-                                  </PieChart>
-                                </div>
-                              ))}
-                            </div>
+                                    <PieChart
+                                      className="data-quality-chart-pie-chart"
+                                      height={120}
+                                      width={120}>
+                                      <Pie
+                                        cx="50%"
+                                        cy="50%"
+                                        data={item.chartData}
+                                        dataKey="value"
+                                        innerRadius={40}
+                                        outerRadius={50}>
+                                        {item.chartData.map((entry, index) => (
+                                          <Cell
+                                            fill={entry.color}
+                                            key={`cell-${index}`}
+                                          />
+                                        ))}
+                                      </Pie>
+                                      <text
+                                        className="chart-center-text"
+                                        dominantBaseline="middle"
+                                        textAnchor="middle"
+                                        x="50%"
+                                        y="50%">
+                                        {item.value}
+                                      </text>
+                                    </PieChart>
+                                  </div>
+                                ))}
+                              </div>{' '}
+                            </Link>
                           )}
 
                           <Space direction="vertical">
@@ -670,9 +687,16 @@ const ContractDetail: React.FC<{
                                   key={item.id}>
                                   {getTestCaseStatusIcon(item)}
                                   <div className="data-quality-item-content">
-                                    <Typography.Text className="data-quality-item-name">
-                                      {item.name}
-                                    </Typography.Text>
+                                    <Link
+                                      className="data-quality-item-name-link"
+                                      to={getTestCaseDetailPagePath(
+                                        item.fullyQualifiedName ?? ''
+                                      )}>
+                                      <Typography.Text className="data-quality-item-name">
+                                        {item.name}
+                                      </Typography.Text>
+                                    </Link>
+
                                     <Typography.Text className="data-quality-item-description">
                                       <RichTextEditorPreviewerNew
                                         markdown={item.description ?? ''}
@@ -687,6 +711,13 @@ const ContractDetail: React.FC<{
                       )}
                     </div>
                   </ExpandableCard>
+                </Col>
+              )}
+
+              {/* Contract Execution Chart */}
+              {contract.id && contract.latestResult?.resultId && (
+                <Col span={24}>
+                  <ContractExecutionChart contract={contract} />
                 </Col>
               )}
             </Row>

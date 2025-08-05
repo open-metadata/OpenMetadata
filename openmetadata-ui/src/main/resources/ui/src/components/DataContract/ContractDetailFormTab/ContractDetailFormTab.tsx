@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined, RightOutlined } from '@ant-design/icons';
+import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/type/entityReference';
 import {
@@ -118,14 +119,18 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-end m-t-md">
+      <div className="d-flex justify-between m-t-md">
+        <Button className="contract-prev-button" type="default">
+          {t('label.contract-detail-plural')}
+        </Button>
+
         <Button
           className="contract-next-button"
           htmlType="submit"
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined height={15} width={8} />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>
