@@ -27,7 +27,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 
@@ -42,20 +41,12 @@ import org.openmetadata.service.jdbi3.UserRepository;
  */
 @Slf4j
 public class UserActivityTracker {
-
-  // Local cache of user activity (per server instance)
   private final Map<String, UserActivity> localActivityCache = new ConcurrentHashMap<>();
-
-  // Lock for cache operations
   private final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
-
-  // Semaphore to limit concurrent virtual threads for DB operations
   private final Semaphore dbOperationPermits;
 
-  // Configuration
   private final long minUpdateIntervalMs;
   private final long batchUpdateIntervalSeconds;
-  private final int maxConcurrentDbOperations;
 
   private final ScheduledExecutorService scheduler =
       Executors.newSingleThreadScheduledExecutor(
@@ -67,14 +58,12 @@ public class UserActivityTracker {
 
   private volatile UserRepository userRepository;
 
-  // Singleton instance
   private static volatile UserActivityTracker INSTANCE;
 
-  // Private constructor for singleton
   private UserActivityTracker() {
     this.minUpdateIntervalMs = 60000;
     this.batchUpdateIntervalSeconds = 30;
-    this.maxConcurrentDbOperations = 10;
+    int maxConcurrentDbOperations = 10;
     this.dbOperationPermits = new Semaphore(maxConcurrentDbOperations);
   }
 
@@ -96,7 +85,7 @@ public class UserActivityTracker {
         batchUpdateIntervalSeconds,
         batchUpdateIntervalSeconds,
         TimeUnit.SECONDS);
-    LOG.info(
+    LOG.debug(
         "UserActivityTracker initialized with batch interval: {}s", batchUpdateIntervalSeconds);
   }
 
@@ -157,30 +146,15 @@ public class UserActivityTracker {
     }
   }
 
-  /**
-   * Track activity for a user entity.
-   */
-  public void trackActivity(User user) {
-    if (user != null && user.getName() != null) {
-      trackActivity(user.getName());
-    }
-  }
-
-  /**
-   * Perform batch update of activities to database.
-   * Uses a single bulk update query for all users - much more efficient.
-   */
   private void performBatchUpdate() {
     Map<String, Long> userActivityMap;
 
-    // Take a snapshot and clear the cache
     cacheLock.writeLock().lock();
     try {
       if (localActivityCache.isEmpty()) {
         return;
       }
 
-      // Convert to a simple map of userName -> lastActivityTime
       userActivityMap = new HashMap<>();
       localActivityCache.forEach(
           (userName, activity) -> userActivityMap.put(userName, activity.lastActivityTime));
@@ -188,28 +162,20 @@ public class UserActivityTracker {
     } finally {
       cacheLock.writeLock().unlock();
     }
-
-    // Execute bulk update in a single virtual thread
     virtualThreadExecutor.execute(() -> performBulkDatabaseUpdate(userActivityMap));
   }
 
-  /**
-   * Perform bulk database update for all users in a single query.
-   * This is much more efficient than individual updates.
-   */
   private void performBulkDatabaseUpdate(Map<String, Long> userActivityMap) {
+    LOG.debug("performBulkDatabaseUpdate called with {} users", userActivityMap.size());
     try {
-      // Acquire permit to ensure we don't overload the database
       if (!dbOperationPermits.tryAcquire(5, TimeUnit.SECONDS)) {
         LOG.warn("Timeout waiting for DB operation permit for bulk update");
-        // Re-add all to cache for next batch
         reAddAllToCache(userActivityMap);
         return;
       }
 
       try {
         getUserRepository().updateUsersLastActivityTimeBatch(userActivityMap);
-        LOG.debug("Successfully updated activity for {} users", userActivityMap.size());
       } finally {
         dbOperationPermits.release();
       }
@@ -224,9 +190,6 @@ public class UserActivityTracker {
     }
   }
 
-  /**
-   * Re-add all activities to cache for retry in next batch.
-   */
   private void reAddAllToCache(Map<String, Long> userActivityMap) {
     cacheLock.writeLock().lock();
     try {
@@ -240,9 +203,6 @@ public class UserActivityTracker {
     }
   }
 
-  /**
-   * Get user repository (lazy initialization to avoid circular dependencies).
-   */
   private UserRepository getUserRepository() {
     if (userRepository == null) {
       synchronized (this) {
@@ -254,9 +214,6 @@ public class UserActivityTracker {
     return userRepository;
   }
 
-  /**
-   * Internal class to track user activity with metadata.
-   */
   private static class UserActivity {
     String userName;
     long lastActivityTime;
@@ -269,9 +226,6 @@ public class UserActivityTracker {
     }
   }
 
-  /**
-   * Get current size of local activity cache (for monitoring).
-   */
   public int getLocalCacheSize() {
     cacheLock.readLock().lock();
     try {
@@ -281,23 +235,14 @@ public class UserActivityTracker {
     }
   }
 
-  /**
-   * Force immediate flush of activity cache to database.
-   * This is a synchronous operation that waits for completion.
-   * FOR TESTING PURPOSES ONLY - do not use in production code.
-   * @throws InterruptedException if the operation is interrupted
-   */
   public void forceFlushSync() throws InterruptedException {
     Map<String, Long> userActivityMap;
 
-    // Take a snapshot and clear the cache
     cacheLock.writeLock().lock();
     try {
       if (localActivityCache.isEmpty()) {
         return;
       }
-
-      // Convert to a simple map of userName -> lastActivityTime
       userActivityMap = new HashMap<>();
       localActivityCache.forEach(
           (userName, activity) -> userActivityMap.put(userName, activity.lastActivityTime));
@@ -305,13 +250,10 @@ public class UserActivityTracker {
     } finally {
       cacheLock.writeLock().unlock();
     }
-
-    // Process bulk update synchronously
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(
             () -> performBulkDatabaseUpdate(userActivityMap), virtualThreadExecutor);
 
-    // Wait for update to complete
     try {
       future.get(10, TimeUnit.SECONDS);
     } catch (ExecutionException | TimeoutException e) {

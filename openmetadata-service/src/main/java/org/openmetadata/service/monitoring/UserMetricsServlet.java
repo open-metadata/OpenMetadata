@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -194,15 +196,20 @@ public class UserMetricsServlet extends HttpServlet {
   private String getLastUserActivity() {
     try {
       ListFilter nonBotFilter = createNonBotFilter();
+      LOG.trace("Getting last user activity with filter: {}", nonBotFilter);
+
       Long lastActivityTime = findMostRecentActivity(nonBotFilter, 1);
+      LOG.trace("First attempt (limit 1) returned: {}", lastActivityTime);
       if (lastActivityTime != null) {
         return Instant.ofEpochMilli(lastActivityTime).toString();
       }
 
       lastActivityTime = findMostRecentActivity(nonBotFilter, 100);
+      LOG.trace("Second attempt (limit 100) returned: {}", lastActivityTime);
       if (lastActivityTime != null) {
         return Instant.ofEpochMilli(lastActivityTime).toString();
       }
+      LOG.warn("No last activity time found for any user");
       return null;
     } catch (Exception e) {
       LOG.error("Error getting last user activity", e);
@@ -217,12 +224,27 @@ public class UserMetricsServlet extends HttpServlet {
   }
 
   private Long findMostRecentActivity(ListFilter filter, int limit) {
-    List<User> users =
-        userRepository
-            .listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, limit, null)
-            .getData();
-    long maxActivityTime = 0;
+    // Use the efficient DAO method that queries directly for the max lastActivityTime
+    try {
+      Long maxActivityTime =
+          ((CollectionDAO.UserDAO) userRepository.getDao()).getMaxLastActivityTime();
 
+      if (maxActivityTime != null) {
+        LOG.trace("Max activity time from database: {}", maxActivityTime);
+        return maxActivityTime;
+      }
+
+      // If no lastActivityTime is found, fall back to checking updatedAt
+      LOG.debug("No lastActivityTime found, checking updatedAt");
+    } catch (Exception e) {
+      LOG.error("Error getting max activity time from database", e);
+    }
+
+    // Fallback: Get users and check their updatedAt times
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("lastActivityTime", "updatedAt"));
+    List<User> users = userRepository.listAfter(null, fields, filter, limit, null).getData();
+
+    long maxActivityTime = 0;
     for (User user : users) {
       Long activityTime = getUserActivityTime(user);
       if (activityTime != null && activityTime > maxActivityTime) {
@@ -230,6 +252,7 @@ public class UserMetricsServlet extends HttpServlet {
       }
     }
 
+    LOG.trace("Max activity time from fallback: {}", maxActivityTime);
     return maxActivityTime > 0 ? maxActivityTime : null;
   }
 

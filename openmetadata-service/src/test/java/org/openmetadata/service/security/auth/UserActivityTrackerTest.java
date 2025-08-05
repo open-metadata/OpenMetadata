@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -164,6 +165,71 @@ class UserActivityTrackerTest {
       tracker.forceFlushSync();
       verify(mockUserRepository, times(1)).updateUsersLastActivityTimeBatch(anyMap());
       assertTrue(tracker.getLocalCacheSize() > 0, "Cache should contain failed updates for retry");
+    }
+  }
+
+  @Test
+  void testMultipleUsersWithDifferentActivityTimes() throws Exception {
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mockUserRepository);
+      tracker.trackActivity("user1");
+      simulateWork(1);
+
+      tracker.trackActivity("user2");
+      simulateWork(1);
+
+      tracker.trackActivity("user3");
+      simulateWork(1);
+
+      tracker.trackActivity("user1");
+      assertEquals(3, tracker.getLocalCacheSize());
+      tracker.forceFlushSync();
+      verify(mockUserRepository, times(1)).updateUsersLastActivityTimeBatch(anyMap());
+      assertEquals(0, tracker.getLocalCacheSize());
+    }
+  }
+
+  @Test
+  void testVerifyCorrectTimestampsAreTracked() throws Exception {
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mockUserRepository);
+
+      long time1 = System.currentTimeMillis();
+      tracker.trackActivity("alice");
+      simulateWork(2);
+      long time2 = System.currentTimeMillis();
+      tracker.trackActivity("bob");
+      simulateWork(2);
+      long time3 = System.currentTimeMillis();
+      tracker.trackActivity("charlie");
+      Field cacheField = UserActivityTracker.class.getDeclaredField("localActivityCache");
+      cacheField.setAccessible(true);
+      Map<String, ?> cache = (Map<String, ?>) cacheField.get(tracker);
+
+      for (Map.Entry<String, ?> entry : cache.entrySet()) {
+        Object activity = entry.getValue();
+        Field lastActivityTimeField = activity.getClass().getDeclaredField("lastActivityTime");
+        lastActivityTimeField.setAccessible(true);
+        long activityTime = (long) lastActivityTimeField.get(activity);
+
+        switch (entry.getKey()) {
+          case "alice" -> assertTrue(
+              Math.abs(activityTime - time1) < 500,
+              "Alice's activity time should be close to time1");
+          case "bob" -> assertTrue(
+              Math.abs(activityTime - time2) < 500, "Bob's activity time should be close to time2");
+          case "charlie" -> assertTrue(
+              Math.abs(activityTime - time3) < 500,
+              "Charlie's activity time should be close to time3");
+        }
+      }
+
+      tracker.forceFlushSync();
+      verify(mockUserRepository, times(1)).updateUsersLastActivityTimeBatch(anyMap());
     }
   }
 }
