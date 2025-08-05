@@ -142,8 +142,6 @@ export const SemanticsRuleForm: React.FC<{
     return {
       [EntityReferenceFields.TAG]: fields[EntityReferenceFields.TAG],
       [EntityReferenceFields.TIER]: fields[EntityReferenceFields.TIER],
-      [EntityReferenceFields.GLOSSARY_TERM]:
-        fields[EntityReferenceFields.GLOSSARY_TERM],
       [EntityReferenceFields.DOMAIN]: fields[EntityReferenceFields.DOMAIN],
       [EntityReferenceFields.DATA_PRODUCT]:
         fields[EntityReferenceFields.DATA_PRODUCT],
@@ -183,7 +181,6 @@ export const SemanticsRuleForm: React.FC<{
         <Input.TextArea placeholder={t('label.description')} rows={2} />
       </Form.Item>
       <Form.Item
-        // label={t('label.rule')}
         name="rule"
         rules={[
           {

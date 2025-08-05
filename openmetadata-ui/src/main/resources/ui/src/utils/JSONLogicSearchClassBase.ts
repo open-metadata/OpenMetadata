@@ -259,28 +259,6 @@ class JSONLogicSearchClassBase {
           },
         },
       },
-      [EntityReferenceFields.GLOSSARY_TERM]: {
-        label: t('label.glossary-term-plural'),
-        type: '!group',
-        mode: 'some',
-        defaultField: 'tagFQN',
-        subfields: {
-          tagFQN: {
-            label: 'Glossary Term',
-            type: 'select',
-            mainWidgetProps: this.mainWidgetProps,
-            operators: this.defaultSelectOperators,
-            fieldSettings: {
-              asyncFetch: this.searchAutocomplete({
-                searchIndex: SearchIndex.GLOSSARY_TERM,
-                fieldName: 'fullyQualifiedName',
-                fieldLabel: 'name',
-              }),
-              useAsyncSearch: true,
-            },
-          },
-        },
-      },
       [EntityReferenceFields.DOMAIN]: {
         label: t('label.domain'),
         type: '!group',
