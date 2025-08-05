@@ -1147,26 +1147,39 @@ export const editAnnouncement = async (
   page: Page,
   data: { title: string; description: string }
 ) => {
+  // Open announcement drawer via manage button
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
-  await expect(page.getByTestId('announcement-card')).toBeVisible();
+  // Wait for drawer to open and announcement cards to be visible
+  await expect(page.getByTestId('announcement-drawer')).toBeVisible();
 
-  await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
+  // Target the announcement card specifically inside the drawer
+  const drawerAnnouncementCard = page.locator(
+    '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
   );
 
+  await expect(drawerAnnouncementCard).toBeVisible();
+
+  // Hover over the announcement card inside the drawer to show the edit options popover
+  await drawerAnnouncementCard.hover();
+
+  // Wait for the popover to become visible
   await page.waitForSelector('.ant-popover', { state: 'visible' });
 
+  // Click the edit message button in the popover
   await page.click('[data-testid="edit-message"]');
 
+  // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
-    'Edit an announcement'
+    'Edit an Announcement'
   );
 
+  // Clear and fill the title field
   await page.fill('[data-testid="edit-announcement"] #title', '');
   await page.fill('[data-testid="edit-announcement"] #title', data.title);
 
+  // Clear and fill the description field
   await page
     .locator('[data-testid="edit-announcement"]')
     .locator(descriptionBox)
@@ -1176,6 +1189,7 @@ export const editAnnouncement = async (
     .locator(descriptionBox)
     .fill(data.description);
 
+  // Save the changes and wait for the API response
   const updateResponse = page.waitForResponse('/api/v1/feed/*');
   await page
     .locator(
@@ -1184,23 +1198,19 @@ export const editAnnouncement = async (
     .click();
   await updateResponse;
 
+  // Wait for modal to close
   await expect(
     page.locator('[data-testid="edit-announcement"]')
   ).not.toBeVisible();
 
-  await page.reload();
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  // Verify the changes were applied within the drawer
+  await expect(drawerAnnouncementCard).toContainText(data.title);
+  await expect(drawerAnnouncementCard).toContainText(data.description);
 
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
+  // Close the announcement drawer
+  await page.locator('[data-testid="announcement-close"]').click();
 
-  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
-  await expect(page.getByTestId('announcement-card')).toContainText(
-    data.description
-  );
+  await expect(page.getByTestId('announcement-drawer')).not.toBeVisible();
 };
 
 export const createInactiveAnnouncement = async (
