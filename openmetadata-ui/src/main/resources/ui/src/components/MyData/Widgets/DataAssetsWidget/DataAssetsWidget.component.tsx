@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
@@ -135,7 +135,7 @@ const DataAssetsWidget = ({
             'cards-scroll-container flex-1 overflow-y-auto',
             isFullSize ? 'justify-start' : 'justify-center'
           )}>
-          {sortedServices.map((service) => (
+          {sortedServices.slice(0, PAGE_SIZE_MEDIUM).map((service) => (
             <div
               className="card-wrapper"
               key={service.key}
@@ -152,7 +152,7 @@ const DataAssetsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && services?.length > 10,
+    () => Boolean(!loading) && services?.length > PAGE_SIZE_MEDIUM,
     [services, loading]
   );
 
@@ -200,12 +200,11 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
-    [emptyState, dataAssetsContent, services, showWidgetFooterMoreButton, t]
+    [emptyState, dataAssetsContent, showWidgetFooterMoreButton, t]
   );
 
   return (
     <WidgetWrapper
-      dataLength={services.length !== 0 ? services.length : 10}
       dataTestId="KnowledgePanel.DataAssets"
       header={widgetHeader}
       loading={loading}>

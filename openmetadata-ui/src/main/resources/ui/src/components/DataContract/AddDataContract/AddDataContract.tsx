@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
-import { ReactComponent as TableIcon } from '../../../assets/svg/table-grey.svg';
+import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
 import {
   DataContractMode,
   EDataContractTab,
@@ -220,11 +220,14 @@ const AddDataContract: React.FC<{
           </Typography.Paragraph>
         </div>
         <div>
-          <Button type="default" onClick={onCancel}>
+          <Button
+            className="add-contract-cancel-button"
+            type="default"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
-            className="m-l-sm"
+            className="add-contract-save-button"
             data-testid="save-contract-btn"
             loading={isSubmitting}
             type="primary"
