@@ -1,0 +1,211 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/fonts.less');
+
+.domains-widget-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .ant-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .widget-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .entity-list-body {
+    flex: 1;
+    padding: @size-mlg @size-mlg 0 @size-mlg;
+    margin: 0;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .widget-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+    width: 100%;
+    background-color: @white;
+    border-bottom-right-radius: @size-sm;
+    border-bottom-left-radius: @size-sm;
+  }
+}
+
+.domains-widget-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  color: @grey-15;
+}
+
+.domains-widget-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: @size-md;
+}
+
+.domain-card {
+  display: flex;
+  align-items: center;
+  background: @white;
+  box-shadow: @button-box-shadow-default;
+  position: relative;
+  overflow: hidden;
+  height: 32px;
+  border: 1px solid #dbe0e7;
+  border-radius: @size-xs;
+}
+
+.domain-card-bar {
+  height: 100%;
+  border-left: 6px solid @primary-color;
+}
+
+.domain-card-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 @size-xs;
+  min-width: 0;
+}
+
+.domain-card-title {
+  display: flex;
+  align-items: center;
+  gap: @size-xs;
+  font-size: @font-size-base;
+  font-weight: @font-medium;
+  color: @grey-700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.domain-card-name {
+  color: @grey-700 !important;
+  display: inline-block;
+  margin-bottom: 0 !important;
+  max-width: 150px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.domain-card-count {
+  background: @grey-15;
+  color: @grey-700;
+  font-size: @size-sm;
+  font-weight: @font-semibold;
+  border-radius: @size-md;
+  padding: 2px @size-xs;
+  margin-left: @size-xs;
+  text-align: center;
+  display: inline-block;
+}
+
+.domain-card-full {
+  display: flex;
+  align-items: center;
+  background: @white;
+  border: 1px solid #dbe0e7;
+  border-radius: @size-sm;
+  box-shadow: @button-box-shadow-default;
+  height: 70px !important;
+  padding: 0 @size-sm;
+  gap: @size-sm;
+}
+
+.domain-card-full-icon {
+  width: @size-2xl;
+  height: @size-2xl;
+  border-radius: @size-xs;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: @white;
+  padding: @size-xs;
+  background: @primary-color;
+
+  svg {
+    color: @white;
+  }
+}
+
+.domain-card-full-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.domain-card-full-title-row {
+  display: flex;
+  align-items: center;
+  gap: @size-xs;
+  margin-bottom: 2px;
+  color: @grey-700;
+
+  .ant-typography {
+    color: @grey-700;
+    max-width: 240px;
+  }
+}
+
+.domain-card-full-count {
+  background: @grey-15;
+  color: @grey-700;
+  font-size: @size-sm;
+  font-weight: @font-semibold;
+  border-radius: @size-md;
+  padding: 2px @size-xs;
+  text-align: center;
+  display: inline-block;
+}
+
+.domain-card-icon {
+  width: @size-md;
+  height: @size-md;
+  border-radius: @size-xxs;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.domain-icon {
+  font-size: @size-md;
+  margin-right: 2px;
+}
+
+.domain-icon-url {
+  max-width: @size-2xl;
+  max-height: @size-2xl;
+}
+
+.domain-default-icon {
+  color: @grey-600;
+}

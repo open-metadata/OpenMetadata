@@ -17,7 +17,6 @@ import os
 import time
 import traceback
 from abc import ABC
-from functools import partial
 from multiprocessing import Process, Queue
 from threading import Thread
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
@@ -38,19 +37,20 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_graph
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.lineage.sql_lineage import (
+    get_column_fqn,
+    get_lineage_by_graph,
+    get_lineage_by_procedure_graph,
+)
 from metadata.ingestion.models.topology import Queue as TopologyQueue
 from metadata.ingestion.source.database.lineage_processors import (
-    _process_chunk_in_subprocess,
-    query_lineage_generator,
-    view_lineage_generator,
+    process_chunk_in_subprocess,
+    query_lineage_processor,
+    view_lineage_processor,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
-from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.filters import filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import can_spawn_child_process
 from metadata.utils.logger import ingestion_logger
 
@@ -79,52 +79,6 @@ class LineageSource(QueryParserSource, ABC):
     """
 
     dialect: Dialect
-
-    def yield_table_queries_from_logs(self) -> Iterator[TableQuery]:
-        """
-        Method to handle the usage from query logs
-        """
-        try:
-            query_log_path = self.source_config.queryLogFilePath
-            if os.path.isfile(query_log_path):
-                file_paths = [query_log_path]
-            elif os.path.isdir(query_log_path):
-                file_paths = [
-                    os.path.join(query_log_path, f)
-                    for f in os.listdir(query_log_path)
-                    if f.endswith(".csv")
-                ]
-            else:
-                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
-
-            for file_path in file_paths:
-                with open(file_path, "r", encoding="utf-8") as file:
-                    for row in csv.DictReader(file):
-                        query_dict = dict(row)
-                        yield TableQuery(
-                            query=query_dict["query_text"],
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
-                        )
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to read queries form log file due to: {err}")
-
-    def get_table_query(self) -> Iterator[TableQuery]:
-        """
-        If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data.
-
-        This is a simplified version of the UsageSource query parsing.
-        """
-        if self.config.sourceConfig.config.queryLogFilePath:
-            yield from self.yield_table_queries_from_logs()
-        else:
-            logger.info(
-                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
-            )
-            yield from self.yield_table_query()
 
     @staticmethod
     def generate_lineage_with_processes(
@@ -210,12 +164,12 @@ class LineageSource(QueryParserSource, ABC):
             total_started_processes += 1
             if multiprocessing_supported:
                 process = Process(
-                    target=_process_chunk_in_subprocess,
+                    target=process_chunk_in_subprocess,
                     args=(chunk, processor_fn, queue, *args),
                 )
             else:
                 process = Thread(
-                    target=_process_chunk_in_subprocess,
+                    target=process_chunk_in_subprocess,
                     args=(chunk, processor_fn, queue, *args),
                     daemon=True,
                 )
@@ -323,6 +277,37 @@ class LineageSource(QueryParserSource, ABC):
             f"Lineage processing completed with {completed_chunks}/{completed_chunks+remaining_chunks} chunks processed"
         )
 
+    def yield_table_queries_from_logs(self) -> Iterator[TableQuery]:
+        """
+        Method to handle the usage from query logs
+        """
+        try:
+            query_log_path = self.source_config.queryLogFilePath
+            if os.path.isfile(query_log_path):
+                file_paths = [query_log_path]
+            elif os.path.isdir(query_log_path):
+                file_paths = [
+                    os.path.join(query_log_path, f)
+                    for f in os.listdir(query_log_path)
+                    if f.endswith(".csv")
+                ]
+            else:
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
+
+            for file_path in file_paths:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    for row in csv.DictReader(file):
+                        query_dict = dict(row)
+                        yield TableQuery(
+                            query=query_dict["query_text"],
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(query_dict),
+                        )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to read queries form log file due to: {err}")
+
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
         Given an engine, iterate over the query results to
@@ -353,6 +338,21 @@ class LineageSource(QueryParserSource, ABC):
                             f"Error processing query_dict {query_dict}: {exc}"
                         )
 
+    def query_lineage_producer(self) -> Iterator[TableQuery]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data.
+
+        This is a simplified version of the UsageSource query parsing.
+        """
+        if self.config.sourceConfig.config.queryLogFilePath:
+            yield from self.yield_table_queries_from_logs()
+        else:
+            logger.info(
+                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
+            )
+            yield from self.yield_table_query()
+
     def yield_query_lineage(
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
@@ -363,8 +363,8 @@ class LineageSource(QueryParserSource, ABC):
         logger.info("Processing Query Lineage")
         connection_type = str(self.service_connection.type.value)
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-        producer_fn = self.get_table_query
-        processor_fn = query_lineage_generator
+        producer_fn = self.query_lineage_producer
+        processor_fn = query_lineage_processor
         args = (
             self.metadata,
             self.dialect,
@@ -378,61 +378,39 @@ class LineageSource(QueryParserSource, ABC):
             args,
         )
 
-    def view_lineage_generator(
-        self, views: List[TableView], queue: Queue
-    ) -> Iterable[Either[AddLineageRequest]]:
-        try:
-            for view in views:
-                if filter_by_table(
+    def view_lineage_producer(self) -> Iterable[TableView]:
+        """
+        Get the view definition from ES
+        """
+        for view in self.metadata.yield_es_view_def(
+            service_name=self.config.serviceName,
+            incremental=self.source_config.incrementalLineageProcessing,
+        ):
+            if (
+                filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    view.db_name,
+                )
+                or filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    view.schema_name,
+                )
+                or filter_by_table(
                     self.source_config.tableFilterPattern,
                     view.table_name,
-                ):
-                    self.status.filter(
-                        view.table_name,
-                        "View Filtered Out",
-                    )
-                    continue
-                for lineage in get_view_lineage(
-                    view=view,
-                    metadata=self.metadata,
-                    service_name=self.config.serviceName,
-                    connection_type=self.service_connection.type.value,
-                    timeout_seconds=self.source_config.parsingTimeoutLimit,
-                ):
-                    if lineage.right is not None:
-                        view_fqn = fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            service_name=self.service_name,
-                            database_name=view.db_name,
-                            schema_name=view.schema_name,
-                            table_name=view.table_name,
-                            skip_es_search=True,
-                        )
-                        queue.put(
-                            Either(
-                                right=OMetaLineageRequest(
-                                    lineage_request=lineage.right,
-                                    override_lineage=self.source_config.overrideViewLineage,
-                                    entity_fqn=view_fqn,
-                                    entity=Table,
-                                )
-                            )
-                        )
-                    else:
-                        queue.put(lineage)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing view {view}: {exc}")
+                )
+            ):
+                self.status.filter(
+                    view.table_name,
+                    "View Filtered Out",
+                )
+                continue
+            yield view
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
-        producer_fn = partial(
-            self.metadata.yield_es_view_def,
-            self.config.serviceName,
-            self.source_config.incrementalLineageProcessing,
-        )
-        processor_fn = view_lineage_generator
+        producer_fn = self.view_lineage_producer
+        processor_fn = view_lineage_processor
         args = (
             self.metadata,
             self.config.serviceName,
@@ -522,10 +500,21 @@ class LineageSource(QueryParserSource, ABC):
         if self.graph is None and self.source_config.enableTempTableLineage:
             # Create a directed graph
             self.graph = nx.DiGraph()
+        if (
+            self.procedure_graph_map is None
+            and self.source_config.enableTempTableLineage
+        ):
+            # Create a dictionary to store the directed graph for each procedure
+            self.procedure_graph_map = {}
+
         if self.source_config.processViewLineage:
             yield from self.yield_view_lineage() or []
         if self.source_config.processStoredProcedureLineage:
             yield from self.yield_procedure_lineage() or []
+            yield from get_lineage_by_procedure_graph(
+                procedure_graph_map=self.procedure_graph_map,
+                metadata=self.metadata,
+            )
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []

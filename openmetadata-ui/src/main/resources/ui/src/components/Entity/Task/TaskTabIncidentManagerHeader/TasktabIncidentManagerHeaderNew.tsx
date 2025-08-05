@@ -27,6 +27,7 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
+import { OwnerType } from '../../../../enums/user.enum';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -146,7 +147,9 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
         <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <UserPopOverCard userName={thread?.task?.assignees[0].name ?? ''}>
+              <UserPopOverCard
+                type={thread?.task?.assignees[0]?.type as OwnerType}
+                userName={thread?.task?.assignees[0].name ?? ''}>
                 <div className="d-flex items-center">
                   <ProfilePicture
                     name={thread?.task?.assignees[0].name ?? ''}

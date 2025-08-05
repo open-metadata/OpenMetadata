@@ -16,7 +16,7 @@ import time
 import traceback
 from datetime import datetime
 from multiprocessing import Queue
-from typing import Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 import networkx as nx
 from pydantic import BaseModel, ConfigDict, Field
@@ -76,6 +76,17 @@ class ProcedureAndQuery(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class ProcedureAndProcedureGraph(BaseModel):
+    """
+    Model to hold the procedure and its graph
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    procedure: StoredProcedure
+    graph: nx.DiGraph
+
+
 def is_lineage_query(query_type: str, query_text: str) -> bool:
     """Check if it's worth it to parse the query for lineage"""
 
@@ -101,8 +112,20 @@ def _yield_procedure_lineage(
     parsingTimeoutLimit: int,
     query_by_procedure: QueryByProcedure,
     procedure: StoredProcedure,
+    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
+    enableTempTableLineage: bool,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Add procedure lineage from its query"""
+    graph = None
+    if enableTempTableLineage:
+        if not procedure_graph_map.get(procedure.fullyQualifiedName.root):
+            # Map to store the directed graph for each procedure with its FQN as key
+            procedure_graph_map[procedure.fullyQualifiedName.root] = (
+                ProcedureAndProcedureGraph(procedure=procedure, graph=nx.DiGraph())
+            )
+
+        graph = procedure_graph_map.get(procedure.fullyQualifiedName.root).graph
+
     if is_lineage_query(
         query_type=query_by_procedure.query_type,
         query_text=query_by_procedure.query_text,
@@ -116,6 +139,7 @@ def _yield_procedure_lineage(
             dialect=dialect,
             timeout_seconds=parsingTimeoutLimit,
             lineage_source=LineageSource.QueryLineage,
+            graph=graph,
         ):
             if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
                 either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
@@ -133,6 +157,8 @@ def procedure_lineage_processor(
     service_name: str,
     dialect: Dialect,
     parsingTimeoutLimit: int,
+    procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
+    enableTempTableLineage: bool,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
     """
     Process the procedure and its queries to add lineage
@@ -146,6 +172,8 @@ def procedure_lineage_processor(
                 service_name=service_name,
                 dialect=dialect,
                 parsingTimeoutLimit=parsingTimeoutLimit,
+                procedure_graph_map=procedure_graph_map,
+                enableTempTableLineage=enableTempTableLineage,
             ):
                 if lineage and lineage.right is not None:
                     queue.put(
@@ -209,7 +237,7 @@ def yield_procedure_query(
 
 
 # Function that will run in separate processes - defined at module level for pickling
-def _process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
+def process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
     """
     Process a chunk of data in a subprocess.
 
@@ -241,7 +269,7 @@ def _query_already_processed(metadata: OpenMetadata, table_query: TableQuery) ->
     return fqn.get_query_checksum(table_query.query) in checksums or {}
 
 
-def query_lineage_generator(
+def query_lineage_processor(
     table_queries: List[TableQuery],
     queue: Queue,
     metadata: OpenMetadata,
@@ -285,7 +313,7 @@ def query_lineage_generator(
                     )
 
 
-def view_lineage_generator(
+def view_lineage_processor(
     views: List[TableView],
     queue: Queue,
     metadata: OpenMetadata,

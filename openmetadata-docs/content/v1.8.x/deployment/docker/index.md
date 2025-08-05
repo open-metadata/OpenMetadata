@@ -1,5 +1,6 @@
 ---
 title: Docker Deployment | OpenMetadata Container Setup
+description: Deploy the platform using Docker containers to simplify setup, scaling, and local testing without needing external dependencies.
 slug: /deployment/docker
 collate: false
 ---
@@ -101,7 +102,7 @@ This docker compose file contains only the docker compose services for OpenMetad
 You can also run the below command to fetch the docker compose file directly from the terminal -
 
 ```bash
-wget https://github.com/open-metadata/OpenMetadata/releases/download/1.8.3-release/docker-compose-openmetadata.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.8.9-release/docker-compose-openmetadata.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
@@ -195,7 +196,7 @@ You can validate that all containers are up by running with command `docker ps`.
 ```commandline
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
-470cc8149826   openmetadata/server:1.8.3                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
+470cc8149826   openmetadata/server:1.8.9                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
@@ -247,7 +248,7 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 We support
 
 - Amazon RDS (MySQL) engine version 8 or higher
-- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.7
+- Amazon OpenSearch (ElasticSearch) engine version up to 8.11.4 or Amazon OpenSearch engine version up to 2.19
 - Amazon RDS (PostgreSQL) engine version 12 or higher
 
 Note:-

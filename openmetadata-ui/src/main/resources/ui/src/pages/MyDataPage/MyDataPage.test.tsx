@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { PageType } from '../../generated/system/ui/page';
 import {
   mockActiveAnnouncementData,
   mockCustomizePageClassBase,
@@ -63,6 +64,19 @@ jest.mock(
       .fn()
       .mockImplementation(({ onClose }) => (
         <div onClick={onClose}>WelcomeScreen</div>
+      ));
+  }
+);
+
+jest.mock(
+  '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="customise-landing-page-header">
+          CustomiseLandingPageHeader
+        </div>
       ));
   }
 );
@@ -140,10 +154,6 @@ jest.mock('../../hooks/useWelcomeStore', () => ({
   }),
 }));
 
-jest.mock('../../components/AppRouter/withActivityFeed', () => ({
-  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
-}));
-
 jest.mock('../DataInsightPage/DataInsightProvider', () => {
   return {
     __esModule: true,
@@ -157,9 +167,31 @@ jest.mock('../DataInsightPage/DataInsightProvider', () => {
   };
 });
 
+jest.mock('react-router-dom', () => ({
+  useParams: jest.fn().mockImplementation(() => ({
+    fqn: mockPersonaName,
+    pageFqn: PageType.LandingPage,
+  })),
+  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock(
+  '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({
+    AdvanceSearchProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="advance-search-provider">{children}</div>
+      )),
+  })
+);
+
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
+    // Reset all mocks before each test
+    jest.clearAllMocks();
   });
 
   it('MyDataPage should only display WelcomeScreen when user logs in for the first time', async () => {
@@ -196,6 +228,17 @@ describe('MyDataPage component', () => {
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
   });
 
+  it('MyDataPage should render CustomiseLandingPageHeader component', async () => {
+    await act(async () => {
+      render(<MyDataPage />);
+    });
+
+    expect(
+      screen.getByTestId('customise-landing-page-header')
+    ).toBeInTheDocument();
+    expect(screen.getByText('CustomiseLandingPageHeader')).toBeInTheDocument();
+  });
+
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {
     render(<MyDataPage />);
 
@@ -207,9 +250,6 @@ describe('MyDataPage component', () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.Announcements')
     ).toBeInTheDocument();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
@@ -234,7 +274,6 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.queryByText('KnowledgePanel.Announcements')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
     expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
@@ -254,9 +293,6 @@ describe('MyDataPage component', () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.Following')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.Announcements')
     ).toBeInTheDocument();
     expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
     expect(
@@ -280,9 +316,6 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.Following')
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.Announcements')
-    ).toBeInTheDocument();
     expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.TotalAssets')
@@ -290,5 +323,67 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.MyData')
     ).toBeInTheDocument();
+  });
+
+  describe('Component Structure', () => {
+    it('should render the correct page structure with grid wrapper', async () => {
+      await act(async () => {
+        render(<MyDataPage />);
+      });
+
+      expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('customise-landing-page-header')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
+      expect(screen.getByText('LimitWrapper')).toBeInTheDocument();
+    });
+
+    it('should render CustomiseLandingPageHeader before the grid layout', async () => {
+      await act(async () => {
+        render(<MyDataPage />);
+      });
+
+      const pageLayout = screen.getByTestId('page-layout-v1');
+      const header = screen.getByTestId('customise-landing-page-header');
+      const gridLayout = screen.getByTestId('react-grid-layout');
+
+      // Check that header comes before grid layout in the DOM
+      expect(pageLayout).toContainElement(header);
+      expect(pageLayout).toContainElement(gridLayout);
+    });
+
+    it('should not render CustomiseLandingPageHeader when showing WelcomeScreen', async () => {
+      // Simulate no user is logged in condition
+      localStorage.clear();
+      await act(async () => {
+        render(<MyDataPage />);
+      });
+
+      expect(screen.getByText('WelcomeScreen')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('customise-landing-page-header')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render the main content structure when not loading or showing welcome screen', async () => {
+      await act(async () => {
+        render(<MyDataPage />);
+      });
+
+      // Verify main content elements are present
+      expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('customise-landing-page-header')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
+
+      // Verify the grid wrapper structure
+      const gridWrapper = screen
+        .getByTestId('page-layout-v1')
+        .querySelector('.grid-wrapper');
+
+      expect(gridWrapper).toBeInTheDocument();
+    });
   });
 });

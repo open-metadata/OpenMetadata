@@ -27,8 +27,10 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
@@ -37,10 +39,8 @@ import {
 } from '../../../../../rest/tableAPI';
 import { Transi18next } from '../../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
-import {
-  getAddCustomMetricPath,
-  getAddDataQualityTableTestPath,
-} from '../../../../../utils/RouterUtils';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
 import {
   calculateCustomMetrics,
   calculateRowCountMetrics,
@@ -48,8 +48,10 @@ import {
 } from '../../../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
+import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
+import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import OperationDateBarChart from '../../../../Visualisations/Chart/OperationDateBarChart';
@@ -76,6 +78,7 @@ const TableProfilerChart = ({
     customMetric: tableCustomMetric,
     dateRangeObject = DEFAULT_RANGE_DATA,
     onDateRangeChange,
+    onTestCaseDrawerOpen,
   } = useTableProfiler();
 
   const { fqn: datasetFQN } = useFqn();
@@ -86,7 +89,9 @@ const TableProfilerChart = ({
     [tableCustomMetric, tableDetails]
   );
 
-  const editDataProfile = permissions?.EditAll || permissions?.EditDataProfile;
+  const editDataProfile =
+    permissions &&
+    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
   );
@@ -97,6 +102,7 @@ const TableProfilerChart = ({
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isTableProfilerLoading, setIsTableProfilerLoading] = useState(true);
   const [isSystemProfilerLoading, setIsSystemProfilerLoading] = useState(true);
+  const [showSystemMetrics, setshowSystemMetrics] = useState(false);
   const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
@@ -107,12 +113,7 @@ const TableProfilerChart = ({
       label: <TabsLabel id="test-case" name={t('label.test-case')} />,
       key: 'test-case',
       onClick: () => {
-        navigate(
-          getAddDataQualityTableTestPath(
-            ProfilerDashboardType.TABLE,
-            datasetFQN
-          )
-        );
+        onTestCaseDrawerOpen(TestLevel.TABLE);
       },
     },
     {
@@ -176,11 +177,14 @@ const TableProfilerChart = ({
       setIsSystemProfilerLoading(true);
       try {
         const { data } = await getSystemProfileList(fqn, dateRangeObj);
-        const { operationMetrics: metricsData, operationDateMetrics } =
-          calculateSystemMetrics(data, operationMetrics);
+        if (data.length > 0) {
+          setshowSystemMetrics(true);
+          const { operationMetrics: metricsData, operationDateMetrics } =
+            calculateSystemMetrics(data, operationMetrics);
 
-        setOperationDateMetrics(operationDateMetrics);
-        setOperationMetrics(metricsData);
+          setOperationDateMetrics(operationDateMetrics);
+          setOperationMetrics(metricsData);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -244,6 +248,17 @@ const TableProfilerChart = ({
       </ProfilerStateWrapper>
     );
   }, [isSystemProfilerLoading, operationMetrics, noProfilerMessage]);
+
+  if (permissions && !permissions?.ViewDataProfile) {
+    return (
+      <ErrorPlaceHolder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.data-observability'),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   return (
     <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
@@ -330,8 +345,12 @@ const TableProfilerChart = ({
           title={t('label.data-volume')}
         />
       </Col>
-      <Col span={24}>{operationDateMetricsCard}</Col>
-      <Col span={24}>{operationMetricsCard}</Col>
+      {showSystemMetrics && (
+        <>
+          <Col span={24}>{operationDateMetricsCard}</Col>
+          <Col span={24}>{operationMetricsCard}</Col>
+        </>
+      )}
       <Col span={24}>
         <CustomMetricGraphs
           customMetrics={customMetrics}

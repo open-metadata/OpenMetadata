@@ -41,6 +41,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +57,11 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
@@ -71,6 +75,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -601,6 +606,133 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     assertNull(
         getTagWithOwners.getOwners().getFirst().getInherited(),
         "Owner should not be marked as inherited");
+  }
+
+  @Test
+  void test_domainInheritance(TestInfo test) throws IOException {
+    // Create a domain for testing
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_domain_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Test domain for inheritance");
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create a classification with domain
+    CreateClassification create = classificationResourceTest.createRequest(getEntityName(test));
+    Classification classification =
+        classificationResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNull(classification.getDomains(), "Classification should have no domain initially");
+
+    // Update classification domain as admin using PATCH
+    String json = JsonUtils.pojoToJson(classification);
+    List<EntityReference> domainRefs = Collections.singletonList(domain.getEntityReference());
+    classification.setDomains(domainRefs);
+    ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldAdded(change, "domains", domainRefs);
+    Classification createdClassification =
+        classificationResourceTest.patchEntityAndCheck(
+            classification, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    assertNotNull(createdClassification.getDomains(), "Classification should have domain");
+    assertEquals(
+        domain.getId(),
+        createdClassification.getDomains().getFirst().getId(),
+        "Domain should match the created domain");
+
+    // Create a tag under the classification
+    String tagName = "TestTagForDomainInheritance";
+    CreateTag createTag =
+        createRequest(tagName).withClassification(createdClassification.getName());
+    Tag tag = createEntity(createTag, ADMIN_AUTH_HEADERS);
+
+    // Verify that the tag inherited domain from classification
+    Tag getTag = getEntity(tag.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(getTag.getDomains(), "Tag should have inherited domain");
+    assertEquals(
+        classification.getDomains().getFirst().getId(),
+        getTag.getDomains().getFirst().getId(),
+        "Tag should have inherited the correct domain");
+    assertTrue(
+        getTag.getDomains().getFirst().getInherited(), "Domain should be marked as inherited");
+
+    // Update classification domain - replace with a new domain
+    DomainResourceTest newDomainResourceTest = new DomainResourceTest();
+    CreateDomain createNewDomain =
+        new CreateDomain()
+            .withName("test_new_domain_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("New test domain for inheritance");
+    Domain newDomain = newDomainResourceTest.createEntity(createNewDomain, ADMIN_AUTH_HEADERS);
+
+    EntityReference previousDomain = classification.getDomains().getFirst();
+    String classificationJson = JsonUtils.pojoToJson(classification);
+    List<EntityReference> newDomainRefs = Collections.singletonList(newDomain.getEntityReference());
+    classification.setDomains(newDomainRefs);
+    change = getChangeDescription(classification, MINOR_UPDATE);
+    fieldUpdated(change, "domains", Collections.singletonList(previousDomain), newDomainRefs);
+    classification =
+        classificationResourceTest.patchEntity(
+            classification.getId(), classificationJson, classification, ADMIN_AUTH_HEADERS);
+
+    // Verify that the tag's domain was updated
+    getTag = getEntity(tag.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(getTag.getDomains(), "Tag should have updated domain");
+    assertEquals(
+        classification.getDomains().getFirst().getId(),
+        getTag.getDomains().getFirst().getId(),
+        "Tag should have inherited the correct domain after update");
+    assertTrue(
+        getTag.getDomains().getFirst().getInherited(), "Domain should be marked as inherited");
+
+    // Test that tags with explicit domain don't get updated
+    String tagWithDomainName = "TagWithDomain";
+    CreateTag createTagWithDomain =
+        createRequest(tagWithDomainName)
+            .withClassification(classification.getName())
+            .withDomains(Collections.singletonList(domain.getFullyQualifiedName()));
+    Tag tagWithDomain = createEntity(createTagWithDomain, ADMIN_AUTH_HEADERS);
+
+    // Verify that the tag keeps its explicit domain
+    Tag getTagWithDomain = getEntity(tagWithDomain.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertNotNull(getTagWithDomain.getDomains(), "Tag should have domain");
+    assertEquals(
+        domain.getId(),
+        getTagWithDomain.getDomains().getFirst().getId(),
+        "Tag should have kept its original domain");
+    assertNull(
+        getTagWithDomain.getDomains().getFirst().getInherited(),
+        "Domain should not be marked as inherited");
+
+    // Test bulk inheritance by creating multiple tags
+    String tagName1 = "TestTag1ForBulkInheritance";
+    String tagName2 = "TestTag2ForBulkInheritance";
+    CreateTag createTag1 = createRequest(tagName1).withClassification(classification.getName());
+    CreateTag createTag2 = createRequest(tagName2).withClassification(classification.getName());
+
+    Tag tag1 = createEntity(createTag1, ADMIN_AUTH_HEADERS);
+    Tag tag2 = createEntity(createTag2, ADMIN_AUTH_HEADERS);
+
+    // Verify both tags inherited domain
+    Tag getTag1 = getEntity(tag1.getId(), "domains", ADMIN_AUTH_HEADERS);
+    Tag getTag2 = getEntity(tag2.getId(), "domains", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(getTag1.getDomains(), "Tag1 should have inherited domain");
+    assertNotNull(getTag2.getDomains(), "Tag2 should have inherited domain");
+    assertEquals(
+        classification.getDomains().getFirst().getId(),
+        getTag1.getDomains().getFirst().getId(),
+        "Tag1 should have inherited the correct domain");
+    assertEquals(
+        classification.getDomains().getFirst().getId(),
+        getTag2.getDomains().getFirst().getId(),
+        "Tag2 should have inherited the correct domain");
+    assertTrue(
+        getTag1.getDomains().getFirst().getInherited(),
+        "Tag1 domain should be marked as inherited");
+    assertTrue(
+        getTag2.getDomains().getFirst().getInherited(),
+        "Tag2 domain should be marked as inherited");
   }
 
   public Tag createTag(

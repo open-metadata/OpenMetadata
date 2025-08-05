@@ -1,5 +1,6 @@
 ---
 title: changeEventType | OpenMetadata Change Event Type
+description: ChangeEventType schema captures types of change events like entity updates, deletions, or policy changes.
 slug: /main-concepts/metadata-standard/schemas/type/changeeventtype
 noindex: true
 nofollow: true

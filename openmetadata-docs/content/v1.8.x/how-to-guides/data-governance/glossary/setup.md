@@ -1,5 +1,6 @@
 ---
-title: How to Setup a Glossary
+title: How to Setup a Glossary | Official Documentation
+description: Set up the glossary module with term hierarchies, reviewers, definitions, and asset links to support governance.
 slug: /how-to-guides/data-governance/glossary/setup
 ---
 

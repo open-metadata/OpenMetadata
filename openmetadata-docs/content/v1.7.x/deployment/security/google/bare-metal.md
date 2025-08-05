@@ -1,5 +1,6 @@
 ---
-title: Google SSO for Bare Metal
+title: Google SSO for Bare Metal | Official Documentation
+description: Enable secure Google OAuth authentication for bare-metal servers using token-based validation in non-cloud or hybrid infrastructures.
 slug: /deployment/security/google/bare-metal
 collate: false
 ---

@@ -1,5 +1,6 @@
 ---
 title: Host Name Config | OpenMetadata Hostname Config
+description: Connect Hostnameconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/hostnameconfig
 ---
 

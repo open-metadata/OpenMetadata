@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
+import {
+  CloseOutlined,
+  PlusOutlined,
+  RedoOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import { Button, Card, Modal, Space, Typography } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -21,14 +26,19 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import './customizable-page-header.less';
 
 export const CustomizablePageHeader = ({
+  disableSave,
+  onAddWidget,
   onReset,
   onSave,
   personaName,
 }: {
-  onSave: () => Promise<void>;
+  disableSave?: boolean;
+  onAddWidget?: () => void;
   onReset: () => void;
+  onSave: () => Promise<void>;
   personaName: string;
 }) => {
   const { t } = useTranslation();
@@ -41,6 +51,8 @@ export const CustomizablePageHeader = ({
   const [confirmationModalType, setConfirmationModalType] = useState<
     'reset' | 'close'
   >('close');
+
+  const isLandingPage = currentPageType === PageType.LandingPage;
 
   const handleCancel = () => {
     // Go back in history
@@ -86,12 +98,11 @@ export const CustomizablePageHeader = ({
   const i18Values = useMemo(
     () => ({
       persona: personaName,
-      entity:
-        currentPageType === PageType.LandingPage
-          ? t('label.landing-page')
-          : t(`label.${kebabCase(currentPageType as string)}`),
+      entity: isLandingPage
+        ? t('label.home-page')
+        : t(`label.${kebabCase(currentPageType as string)}`),
     }),
-    [personaName]
+    [personaName, isLandingPage]
   );
 
   const handleClose = useCallback(() => {
@@ -101,7 +112,7 @@ export const CustomizablePageHeader = ({
 
   return (
     <Card
-      className="customize-page-header"
+      className="customize-page-header m-b-lg"
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">
         <div>
@@ -110,25 +121,41 @@ export const CustomizablePageHeader = ({
             data-testid="customize-page-title"
             level={5}>
             {t('label.customize-entity', {
-              entity: t(`label.${kebabCase(currentPageType as string)}`),
+              entity: isLandingPage
+                ? t('label.home-page')
+                : t(`label.${kebabCase(currentPageType as string)}`),
             })}
           </Typography.Title>
           <Typography.Paragraph className="m-0">
             <Transi18next
-              i18nKey="message.customize-entity-landing-page-header-for-persona"
+              i18nKey={
+                isLandingPage
+                  ? 'message.customize-home-page-page-header-for-persona'
+                  : 'message.customize-entity-landing-page-header-for-persona'
+              }
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />
           </Typography.Paragraph>
         </div>
         <Space>
-          <Button
-            data-testid="cancel-button"
-            disabled={saving}
-            icon={<CloseOutlined />}
-            onClick={handleClose}>
-            {t('label.close')}
-          </Button>
+          {isLandingPage ? (
+            <Button
+              data-testid="add-widget-button"
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={onAddWidget}>
+              {t('label.add-widget-plural')}
+            </Button>
+          ) : (
+            <Button
+              data-testid="cancel-button"
+              disabled={saving}
+              icon={<CloseOutlined />}
+              onClick={handleClose}>
+              {t('label.close')}
+            </Button>
+          )}
           <Button
             data-testid="reset-button"
             disabled={saving}
@@ -138,12 +165,22 @@ export const CustomizablePageHeader = ({
           </Button>
           <Button
             data-testid="save-button"
+            disabled={disableSave}
             icon={<SaveOutlined />}
             loading={saving}
             type="primary"
             onClick={handleSave}>
             {t('label.save')}
           </Button>
+          {isLandingPage && (
+            <Button
+              className="landing-page-cancel-button"
+              data-testid="cancel-button"
+              disabled={saving}
+              icon={<CloseOutlined />}
+              onClick={handleClose}
+            />
+          )}
         </Space>
       </div>
 

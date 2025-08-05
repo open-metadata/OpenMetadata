@@ -1,5 +1,6 @@
 ---
 title: Custom OIDC SSO | OpenMetadata Security Integration
+description: Set up a custom OIDC provider for authentication, allowing flexible federation and secure access across deployments.
 slug: /deployment/security/custom-oidc
 collate: false
 ---

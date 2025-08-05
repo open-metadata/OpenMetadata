@@ -117,13 +117,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    fieldFetchers.put("summary", this::fetchAndSetTestCaseResultSummary);
+    fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
   }
 
   @Override
   public void setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.setTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+    entity.setTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
     entity.setTestCaseResultSummary(
         fields.contains("summary")
             ? getResultSummary(entity.getId())
@@ -144,9 +146,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
           Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
+              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
       inheritOwners(testSuite, fields, table);
-      inheritDomain(testSuite, fields, table);
+      inheritDomains(testSuite, fields, table);
     }
   }
 
@@ -169,7 +171,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     var testSuiteIds = testSuites.stream().map(ts -> ts.getId().toString()).toList();
     var records =
-        daoCollection.relationshipDAO().findFromBatch(testSuiteIds, Relationship.HAS.ordinal());
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(testSuiteIds, Relationship.CONTAINS.ordinal(), TEST_SUITE, TEST_CASE);
     if (records.isEmpty()) {
       return Map.of();
     }
@@ -411,6 +415,40 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
+  private void fetchAndSetTestCaseResultSummary(
+      List<TestSuite> testSuites, EntityUtil.Fields fields) {
+    if (!fields.contains("summary") || testSuites == null || testSuites.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<ResultSummary>> testCaseResultSummaryMap =
+        testSuites.stream()
+            .collect(
+                Collectors.toMap(
+                    TestSuite::getId, testSuite -> getResultSummary(testSuite.getId())));
+
+    Map<UUID, TestSummary> testSummaryMap =
+        testCaseResultSummaryMap.entrySet().stream()
+            .collect(
+                Collectors.toMap(Map.Entry::getKey, entry -> getTestSummary(entry.getValue())));
+
+    setFieldFromMap(
+        true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
+
+    setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
+  }
+
+  protected void fetchAndSetIngestionPipelines(List<TestSuite> entities, EntityUtil.Fields fields) {
+    if (!fields.contains("pipelines") || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> ingestionPipelineMap =
+        entities.stream()
+            .collect(Collectors.toMap(EntityInterface::getId, this::getIngestionPipelines));
+    setFieldFromMap(true, entities, ingestionPipelineMap, TestSuite::setPipelines);
+  }
+
   @SneakyThrows
   private List<ResultSummary> getResultSummary(UUID testSuiteId) {
     List<ResultSummary> resultSummaries = new ArrayList<>();
@@ -632,6 +670,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       recordChange(UPDATE_FIELDS, origTests, updatedTests);
       recordChange(
           "testCaseResultSummary", origTestCaseResultSummary, updatedTestCaseResultSummary);
+      recordChange("dataContract", original.getDataContract(), updated.getDataContract());
     }
   }
 }

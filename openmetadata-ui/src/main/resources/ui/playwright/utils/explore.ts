@@ -91,16 +91,15 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  const queryResponseData = await queryRes;
-  const request = await queryResponseData.request();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await queryRes;
 
-  const queryParams = request.url().split('?')[1];
+  const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
 
-  const queryParamValue = queryParamsObj.get('query_filter');
-  const isQueryFilterPresent = queryParamValue === queryFilter;
+  const queryParamValue = queryParamsObj.get('quickFilter');
 
-  expect(isQueryFilterPresent).toBeTruthy();
+  expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
     await page.click(`[data-testid="clear-filters"]`);
@@ -153,4 +152,129 @@ export const validateBucketsForIndex = async (page: Page, index: string) => {
       `Bucket "${expectedKey}" has doc_count <= 0`
     ).toBeGreaterThan(0);
   });
+};
+
+export const expandServiceInExploreTree = async (
+  page: Page,
+  serviceName: string,
+  serviceExpanded = false
+) => {
+  if (!serviceExpanded) {
+    // Check that the service exists in the explore tree
+    const serviceNameRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+    );
+    await page
+      .locator('div')
+      .filter({ hasText: /^mysql$/ })
+      .locator('svg')
+      .first()
+      .click();
+    await serviceNameRes;
+  }
+
+  // Expand the service to see databases
+  const databaseRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=dataAsset*serviceType*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: serviceName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await databaseRes;
+};
+
+export const expandDatabaseInExploreTree = async (
+  page: Page,
+  dbName: string
+) => {
+  // Expand the database to see schemas
+  const databaseSchemaRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
+  );
+  await page
+    .locator('.ant-tree-treenode')
+    .filter({ hasText: dbName })
+    .locator('.ant-tree-switcher svg')
+    .click();
+  await databaseSchemaRes;
+};
+
+export const verifyDatabaseAndSchemaInExploreTree = async (
+  page: Page,
+  serviceName: string,
+  dbName: string,
+  schemaName: string,
+  serviceExpanded = false
+) => {
+  await expandServiceInExploreTree(page, serviceName, serviceExpanded);
+
+  // Verify the database name is visible
+  await expect(page.getByTestId(`explore-tree-title-${dbName}`)).toBeVisible();
+
+  await expandDatabaseInExploreTree(page, dbName);
+
+  // Verify the schema name is visible
+  await expect(
+    page.getByTestId(`explore-tree-title-${schemaName}`)
+  ).toBeVisible();
+};
+
+export const validateBucketsForIndexAndSort = async (
+  page: Page,
+  asset: {
+    key: string;
+    label: string;
+    indexType: string;
+  },
+  docCount: number
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=pw&index=${asset.indexType}&from=0&size=15&deleted=false&sort_field=_score&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const totalCount = response.hits.total.value ?? 0;
+
+  expect(totalCount).toEqual(docCount);
+};
+
+export const selectSortOrder = async (page: Page, sortOrder: string) => {
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.getByTestId('sorting-dropdown-label').click();
+  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+    state: 'visible',
+  });
+  await page.getByRole('menuitem', { name: sortOrder }).click();
+
+  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
+    sortOrder
+  );
+
+  await page.getByTestId('sort-order-button').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyEntitiesAreSorted = async (page: Page) => {
+  const entityNames = await page.$$eval(
+    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
+    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
+  );
+
+  // Normalize for case insensitivity, but retain punctuation
+  const normalize = (str: string) => str.toLowerCase().trim();
+
+  // Sort using ASCII-based string comparison (ES behavior)
+  const sortedEntityNames = [...entityNames].sort((a, b) => {
+    const normA = normalize(a);
+    const normB = normalize(b);
+
+    return normA < normB ? -1 : normA > normB ? 1 : 0;
+  });
+
+  expect(entityNames).toEqual(sortedEntityNames);
 };

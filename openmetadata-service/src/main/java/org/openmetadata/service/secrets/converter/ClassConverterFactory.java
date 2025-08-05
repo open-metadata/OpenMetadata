@@ -24,6 +24,7 @@ import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
+import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.services.connections.pipeline.MatillionConnection
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.security.RangerConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
@@ -85,6 +87,7 @@ public final class ClassConverterFactory {
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
+            Map.entry(ThoughtSpotConnection.class, new ThoughtSpotConnectionClassConverter()),
             Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,
@@ -94,7 +97,8 @@ public final class ClassConverterFactory {
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
-            Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()));
+            Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
+            Map.entry(RangerConnection.class, new RangerConnectionClassConverter()));
     Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
     Map.entry(SSISConnection.class, new SsisConnectionClassConverter());

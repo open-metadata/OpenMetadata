@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /* eslint-disable i18next/no-literal-string */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
@@ -40,6 +40,11 @@ jest.mock('../../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest
     .fn()
     .mockResolvedValue({ data: [], paging: {} }),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -58,12 +63,32 @@ jest.mock('../../../../constants/profiler.constant', () => ({
     startTs: 1710825218156,
     endTs: 1711084418157,
   },
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
+}));
+
+jest.mock('../../../../constants/DataInsight.constants', () => ({
+  INITIAL_CHART_FILTER: {
+    startTs: 1710825218156,
+    endTs: 1711084418157,
+  },
 }));
 jest.mock('./ProfilerSettingsModal/ProfilerSettingsModal', () =>
   jest.fn().mockReturnValue(<div>ProfilerSettingsModal.component</div>)
 );
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE: 10,
+  ROUTES: {
+    OBSERVABILITY_ALERTS: '/observability-alerts',
+  },
+}));
+
+jest.mock('../../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
 }));
 const mockPermissions = {
   ViewAll: true,
@@ -72,53 +97,72 @@ const mockPermissions = {
 } as OperationPermission;
 
 describe('TableProfilerProvider', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('renders children without crashing', async () => {
-    render(
-      <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
-        <div>Test Children</div>
-      </TableProfilerProvider>
-    );
+    await act(async () => {
+      render(
+        <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
+          <div>Test Children</div>
+        </TableProfilerProvider>
+      );
+    });
 
     expect(await screen.findByText('Test Children')).toBeInTheDocument();
+
+    // Wait for async operations to complete
+    await waitFor(() => {
+      expect(screen.getByText('Test Children')).toBeInTheDocument();
+    });
   });
 
   it('test cases should be fetch on data quality tab', async () => {
-    render(
-      <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
-        <div>Test Children</div>
-      </TableProfilerProvider>
-    );
+    await act(async () => {
+      render(
+        <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
+          <div>Test Children</div>
+        </TableProfilerProvider>
+      );
+    });
 
     const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
-    expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
-    expect(mockGetListTestCase).toHaveBeenCalledWith({
-      entityLink: 'entityLink',
-      fields: ['testCaseResult', 'incidentId'],
-      includeAllTests: true,
-      limit: 10,
-      include: 'non-deleted',
+    await waitFor(() => {
+      expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
+      expect(mockGetListTestCase).toHaveBeenCalledWith({
+        entityLink: 'entityLink',
+        fields: ['testCaseResult', 'incidentId'],
+        includeAllTests: true,
+        limit: 10,
+        include: 'non-deleted',
+      });
     });
   });
 
   it('test cases should be fetch on data quality tab with deleted', async () => {
-    render(
-      <TableProfilerProvider
-        permissions={mockPermissions}
-        table={{ ...MOCK_TABLE, deleted: true }}>
-        <div>Test Children</div>
-      </TableProfilerProvider>
-    );
+    await act(async () => {
+      render(
+        <TableProfilerProvider
+          permissions={mockPermissions}
+          table={{ ...MOCK_TABLE, deleted: true }}>
+          <div>Test Children</div>
+        </TableProfilerProvider>
+      );
+    });
 
     const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
-    expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
-    expect(mockGetListTestCase).toHaveBeenCalledWith({
-      entityLink: 'entityLink',
-      fields: ['testCaseResult', 'incidentId'],
-      includeAllTests: true,
-      limit: 10,
-      include: 'deleted',
+    await waitFor(() => {
+      expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
+      expect(mockGetListTestCase).toHaveBeenCalledWith({
+        entityLink: 'entityLink',
+        fields: ['testCaseResult', 'incidentId'],
+        includeAllTests: true,
+        limit: 10,
+        include: 'deleted',
+      });
     });
   });
 });

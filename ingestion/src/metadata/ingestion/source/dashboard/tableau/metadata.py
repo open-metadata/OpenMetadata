@@ -697,7 +697,7 @@ class TableauSource(DashboardServiceSource):
                                         "No table entities found for custom SQL lineage."
                                         f"fqn_search_string={fqn_search_string}, table_name={table_name}, query={query}"
                                     )
-                                for table_entity in from_entities:
+                                for table_entity in from_entities or []:
                                     yield self._get_add_lineage_request(
                                         to_entity=upstream_data_model_entity,
                                         from_entity=table_entity,

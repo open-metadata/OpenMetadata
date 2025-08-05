@@ -20,6 +20,10 @@ export interface CreateTestSuite {
      */
     basicEntityReference?: string;
     /**
+     * Reference to the data contract that this test suite is associated with.
+     */
+    dataContract?: EntityReference;
+    /**
      * Description of the test suite.
      */
     description?: string;
@@ -28,9 +32,9 @@ export interface CreateTestSuite {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Test Suite belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * DEPRECATED in 1.6.2: use 'basicEntityReference'
      */
@@ -50,14 +54,16 @@ export interface CreateTestSuite {
 }
 
 /**
- * Owners of this test suite
+ * Reference to the data contract that this test suite is associated with.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this test suite
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.

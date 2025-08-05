@@ -14,8 +14,8 @@ site_menu:
     url: /getting-started/day-1/hybrid-saas/airflow
   - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
     url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
-    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCP Composer 
+    url: /getting-started/day-1/hybrid-saas/gcp-composer
   - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
     url: /getting-started/day-1/hybrid-saas/github-actions
   - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
@@ -142,6 +142,12 @@ site_menu:
     url: /connectors/database/exasol/yaml
   - category: Connectors / Database / Exasol / Troubleshooting
     url: /connectors/database/exasol/troubleshooting
+  - category: Connectors / Database / Epic
+    url: /connectors/database/epic
+  - category: Connectors / Database / Epic / Run Externally
+    url: /connectors/database/epic/yaml
+  - category: Connectors / Database / Epic / Troubleshooting
+    url: /connectors/database/epic/troubleshooting
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
@@ -282,6 +288,8 @@ site_menu:
     url: /connectors/database/ssas
   - category: Connectors / Database / SSAS / Run Externally
     url: /connectors/database/ssas/yaml
+  - category: Connectors / Database / SSAS / Troubleshooting
+    url: /connectors/database/ssas/troubleshooting
   - category: Connectors / Database / Synapse
     url: /connectors/database/synapse
   - category: Connectors / Database / Synapse / Run Externally
@@ -411,6 +419,12 @@ site_menu:
     url: /connectors/dashboard/tableau/yaml
   - category: Connectors / Dashboard / Tableau / Troubleshooting
     url: /connectors/dashboard/tableau/troubleshooting
+  - category: Connectors / Dashboard / ThoughtSpot
+    url: /connectors/dashboard/thoughtspot
+  - category: Connectors / Dashboard / ThoughtSpot / Run Externally
+    url: /connectors/dashboard/thoughtspot/yaml
+  - category: Connectors / Dashboard / ThoughtSpot / Troubleshooting
+    url: /connectors/dashboard/thoughtspot/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -455,8 +469,8 @@ site_menu:
     url: /connectors/pipeline/airflow/configuring-lineage
   - category: Connectors / Pipeline / Airflow / MWAA
     url: /connectors/pipeline/airflow/mwaa
-  - category: Connectors / Pipeline / Airflow / GCS Composer
-    url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Airflow / GCP Composer 
+    url: /connectors/pipeline/airflow/gcp-composer
   - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
   - category: Connectors / Pipeline / Azure Data Factory / Run Externally
@@ -572,6 +586,11 @@ site_menu:
     url: /connectors/ml-model/vertexai/yaml
   - category: Connectors / ML Model / VertexAI / Troubleshooting
     url: /connectors/ml-model/vertexai/troubleshooting
+
+  - category: Connectors / Security
+    url: /connectors/security
+  - category: Connectors / Security / Ranger
+    url: /connectors/security/ranger
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -909,6 +928,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/configure
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - UI Config
+    url: /how-to-guides/data-quality-observability/quality/tests-ui
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
     url: /how-to-guides/data-quality-observability/quality/custom-tests
   - category: How-to Guides / Data Quality and Observability / Data Profiler
@@ -935,6 +956,18 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Prerequisites
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/prerequisites
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Partitioning
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/partitioning
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/configuration
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration / UI Configuration
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/ui-configuration
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Spark Engine / Configuration / External Configuration
+    url: /how-to-guides/data-quality-observability/profiler/spark-engine/external-configuration
 
   - category: How-to Guides / Data Quality and Observability / Anomaly Detection
     url: /how-to-guides/data-quality-observability/anomaly-detection
@@ -1249,6 +1282,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/api/services/createpipelineservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateSearchService
     url: /main-concepts/metadata-standard/schemas/api/services/createsearchservice
+  - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateSecurityService
+    url: /main-concepts/metadata-standard/schemas/api/services/createsecurityservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services / CreateStorageService
     url: /main-concepts/metadata-standard/schemas/api/services/createstorageservice
   - category: Main Concepts / Metadata Standard / Schemas / Api / Services
@@ -1763,6 +1798,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / SearchService
     url: /main-concepts/metadata-standard/schemas/entity/services/searchservice
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / SecurityService
+    url: /main-concepts/metadata-standard/schemas/entity/services/securityservice
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / ServiceType
     url: /main-concepts/metadata-standard/schemas/entity/services/servicetype
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / StorageService

@@ -23,9 +23,9 @@ export interface CreateTestDefinition {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Test Definition belongs to.
      */
-    domain?:    string;
+    domains?:   string[];
     entityType: EntityType;
     /**
      * Name that identifies this test case.

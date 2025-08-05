@@ -37,7 +37,11 @@ from metadata.ingestion.source.database.lineage_processors import (
     QueryByProcedure,
     procedure_lineage_processor,
 )
-from metadata.utils.filters import filter_by_stored_procedure
+from metadata.utils.filters import (
+    filter_by_database,
+    filter_by_schema,
+    filter_by_stored_procedure,
+)
 from metadata.utils.helpers import pprint_format_object
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.stored_procedures import get_procedure_name_from_call
@@ -115,7 +119,7 @@ class StoredProcedureLineageMixin(ABC):
 
         return queries_dict
 
-    def procedure_lineage_generator(self) -> Iterable[ProcedureAndQuery]:
+    def procedure_lineage_producer(self) -> Iterable[ProcedureAndQuery]:
         """
         Generate lineage for a list of stored procedures
         """
@@ -155,9 +159,19 @@ class StoredProcedureLineageMixin(ABC):
             or []
         ):
             if procedure:
-                if filter_by_stored_procedure(
-                    self.source_config.storedProcedureFilterPattern,
-                    procedure.name.root,
+                if (
+                    filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        procedure.database.name,
+                    )
+                    or filter_by_schema(
+                        self.source_config.schemaFilterPattern,
+                        procedure.databaseSchema.name,
+                    )
+                    or filter_by_stored_procedure(
+                        self.source_config.storedProcedureFilterPattern,
+                        procedure.name.root,
+                    )
                 ):
                     self.status.filter(
                         procedure.name.root,
@@ -177,7 +191,7 @@ class StoredProcedureLineageMixin(ABC):
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Get all the queries and procedures list and yield them"""
         logger.info("Processing Lineage for Stored Procedures")
-        producer_fn = self.procedure_lineage_generator
+        producer_fn = self.procedure_lineage_producer
         processor_fn = procedure_lineage_processor
         dialect = ConnectionTypeDialectMapper.dialect_of(
             self.service_connection.type.value
@@ -187,5 +201,7 @@ class StoredProcedureLineageMixin(ABC):
             self.service_name,
             dialect,
             self.source_config.parsingTimeoutLimit,
+            self.procedure_graph_map,
+            self.source_config.enableTempTableLineage,
         )
         yield from self.generate_lineage_with_processes(producer_fn, processor_fn, args)

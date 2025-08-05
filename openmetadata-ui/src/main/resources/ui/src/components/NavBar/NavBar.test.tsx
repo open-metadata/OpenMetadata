@@ -15,7 +15,6 @@ import {
   LAST_VERSION_FETCH_TIME_KEY,
   ONE_HOUR_MS,
 } from '../../constants/constants';
-import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBarComponent from './NavBar';
@@ -38,10 +37,15 @@ jest.mock('cookie-storage', () => ({
   },
 }));
 
+jest.mock('../../utils/NavbarUtils', () => ({
+  getHelpDropdownItems: jest.fn().mockReturnValue([]),
+}));
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
+    subscribe: jest.fn(),
   })),
 }));
 
@@ -84,14 +88,6 @@ jest.mock('../../hooks/useDomainStore', () => ({
   })),
 }));
 
-jest.mock('../Modals/WhatsNewModal/WhatsNewModal', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <p data-testid="whats-new-modal-close">WhatsNewModal</p>
-    ));
-});
-
 jest.mock('../NotificationBox/NotificationBox.component', () => {
   return jest.fn().mockImplementation(({ onTabChange }) => (
     <div data-testid="tab-change" onClick={onTabChange}>
@@ -110,10 +106,14 @@ jest.mock(
       ),
   })
 );
+
+const mockUseCustomLocation = {
+  search: 'search',
+  pathname: '/my-data',
+};
+
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
+  return jest.fn().mockImplementation(() => mockUseCustomLocation);
 });
 jest.mock('../AppBar/SearchOptions', () => {
   return jest.fn().mockReturnValue(<div data-testid="cmd">SearchOptions</div>);
@@ -123,6 +123,12 @@ jest.mock('../AppBar/Suggestions', () => {
 });
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
+jest.mock('../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: jest.fn().mockImplementation(() => ({
+    deleteEntity: jest.fn(),
+  })),
 }));
 
 jest.mock('antd', () => ({
@@ -137,38 +143,83 @@ jest.mock('antd', () => ({
   }),
 }));
 
-jest.mock('../../utils/NavbarUtils', () => ({
-  getHelpDropdownItems: jest.fn().mockReturnValue([
-    {
-      label: <p data-testid="whats-new">Whats New</p>,
-      key: HELP_ITEMS_ENUM.WHATS_NEW,
-    },
-  ]),
-}));
-
 jest.mock('../../rest/miscAPI', () => ({
   getVersion: jest.fn().mockResolvedValue({
     version: '0.5.0-SNAPSHOT',
   }),
 }));
 
+jest.mock('../../utils/ApplicationRoutesClassBase', () => ({
+  __esModule: true,
+  default: {
+    isProtectedRoute: jest.fn().mockReturnValue(false),
+  },
+}));
+
+jest.mock('../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getBrandName: jest.fn().mockReturnValue('OpenMetadata'),
+    getMonogram: jest.fn().mockReturnValue({ src: 'monogram.svg' }),
+  },
+}));
+
+jest.mock('../../utils/EntityUtilClassBase', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    getEntityName: jest.fn().mockReturnValue('EntityName'),
+  })),
+}));
+
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('MockedEntityName'),
+}));
+
+jest.mock(
+  '../common/DomainSelectableList/DomainSelectableList.component',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="domain-selectable-list">DomainSelectableList</div>
+      )),
+  })
+);
+
+jest.mock(
+  '../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: jest.fn().mockImplementation(() => ({
+      onUpdateCSVExportJob: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('./PopupAlertClassBase', () => ({
+  __esModule: true,
+  default: {
+    alertsCards: jest.fn().mockReturnValue([
+      {
+        key: '1',
+        component: jest
+          .fn()
+          .mockReturnValue(
+            <div data-testid="whats-new-alert-card">Alert 1</div>
+          ),
+      },
+    ]),
+  },
+}));
+
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
 
-    expect(await screen.findByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('whats-new-alert-header')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('close-whats-new-alert')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('label.whats-new-version')
     ).toBeInTheDocument();
   });
 
@@ -182,6 +233,48 @@ describe('Test NavBar Component', () => {
     render(<NavBarComponent />);
 
     expect(getHelpDropdownItems).toHaveBeenCalled();
+  });
+
+  it('should hide global search bar and domain dropdown on my-data route', () => {
+    mockUseCustomLocation.pathname = '/my-data';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide global search bar and domain dropdown on customize-page route', () => {
+    mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+  });
+
+  it('should show global search bar and domain dropdown on other routes', () => {
+    mockUseCustomLocation.pathname = '/explore';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+  });
+
+  it('should show global search bar and domain dropdown on settings route', () => {
+    mockUseCustomLocation.pathname = '/settings';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
   });
 });
 

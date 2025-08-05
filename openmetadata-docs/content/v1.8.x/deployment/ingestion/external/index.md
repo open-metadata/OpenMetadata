@@ -1,5 +1,6 @@
 ---
 title: Run the Ingestion Framework Externally
+description: Configure external ingestion endpoints to trigger metadata pipelines from orchestrators or custom scripts.
 slug: /deployment/ingestion/external
 collate: false
 ---
@@ -283,9 +284,9 @@ don't hesitate to reach to us in [Slack](https://slack.open-metadata.org/) or di
   {% inlineCallout
     color="violet-70"
     icon="10k"
-    bold="GCS Composer"
-    href="/deployment/ingestion/external/gcs-composer" %}
-    Run the ingestion process externally from GCS Composer
+    bold="GCP Composer "
+    href="/deployment/ingestion/external/gcp-composer" %}
+    Run the ingestion process externally from GCP Composer 
   {% /inlineCallout %}
   {% inlineCallout
     color="violet-70"

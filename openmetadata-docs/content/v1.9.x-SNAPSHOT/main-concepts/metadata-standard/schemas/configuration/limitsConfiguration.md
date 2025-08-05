@@ -1,5 +1,6 @@
 ---
 title: Limits Configuration | OpenMetadata Limits Config
+description: Connect Limitsconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/limitsconfiguration
 ---
 

@@ -18,6 +18,9 @@ import { redirectToHomePage } from '../../utils/common';
 const user = new UserClass();
 
 const validateTourSteps = async (page: Page) => {
+  await page.waitForTimeout(1000);
+  await page.waitForSelector(`[data-tour-elem="badge"]`);
+
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
 
   // step 1
@@ -130,21 +133,31 @@ test.describe('Tour should work properly', () => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
+
     await validateTourSteps(page);
   });
 
   test('Tour should work from welcome screen', async ({ page }) => {
+    await page
+      .getByTestId('whats-new-alert-card')
+      .locator('.whats-new-alert-close')
+      .click();
     await page.getByText('Take a product tour to get started!').click();
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
 
     await validateTourSteps(page);
   });
 
   test('Tour should work from URL directly', async ({ page }) => {
-    await expect(page.getByTestId('global-search-selector')).toBeVisible();
-
     await page.goto('/tour');
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
+
     await validateTourSteps(page);
   });
 });

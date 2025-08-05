@@ -1,5 +1,6 @@
 ---
 title: Data Quality | OpenMetadata Quality Management Guide
+description: Ensure observability through alerts, test results, and profiler signals for better data quality.
 slug: /how-to-guides/data-quality-observability/quality
 ---
 
@@ -58,6 +59,12 @@ Here's the latest on OpenMetadata's data quality.
     bold="Tests - YAML Config"
     href="/how-to-guides/data-quality-observability/quality/tests-yaml"%}
     Learn how to configure data quality tests in the YAML config file.
+ {%/inlineCallout%}
+  {%inlineCallout
+    icon="MdOutlineDashboardCustomize"
+    bold="UI Config"
+    href="/how-to-guides/data-quality-observability/quality/tests-UI"%}
+    Learn how to configure data quality tests in the UI.
  {%/inlineCallout%}
  {%inlineCallout
     icon="MdOutlineDashboardCustomize"

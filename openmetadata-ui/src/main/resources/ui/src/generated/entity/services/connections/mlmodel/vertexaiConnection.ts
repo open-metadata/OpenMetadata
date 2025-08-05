@@ -25,7 +25,8 @@ export interface VertexaiConnection {
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
-    mlModelFilterPattern?: FilterPattern;
+    mlModelFilterPattern?:       FilterPattern;
+    supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */

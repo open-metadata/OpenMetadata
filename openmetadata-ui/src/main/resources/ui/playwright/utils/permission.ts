@@ -14,7 +14,64 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   ORGANIZATION_POLICY_RULES,
+  VIEW_ALL_RULE,
 } from '../constant/permission';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
+import { UserClass } from '../support/user/UserClass';
+import { getApiContext, redirectToHomePage } from './common';
+
+let policy: PolicyClass;
+let role: RolesClass;
+
+export const initializePermissions = async (
+  page: Page,
+  effect: 'allow' | 'deny',
+  operations: string[]
+) => {
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  policy = new PolicyClass();
+
+  const policyRules = [
+    ...VIEW_ALL_RULE,
+    {
+      name: `Global${effect}AllOperationsPolicy`,
+      resources: ['All'],
+      operations,
+      effect,
+    },
+  ];
+
+  await policy.create(apiContext, policyRules);
+
+  role = new RolesClass();
+  await role.create(apiContext, [policy.responseData.name]);
+
+  return { apiContext, policy, role };
+};
+
+export const assignRoleToUser = async (page: Page, testUser: UserClass) => {
+  const { apiContext } = await getApiContext(page);
+
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'replace',
+        path: '/roles',
+        value: [
+          {
+            id: role.responseData.id,
+            type: 'role',
+            name: role.responseData.name,
+          },
+        ],
+      },
+    ],
+  });
+};
 
 export const checkNoPermissionPlaceholder = async (
   page: Page,
@@ -52,7 +109,7 @@ export const validateViewPermissions = async (
 
   await expect(
     page.locator('[data-testid="edit-displayName-button"]')
-  ).toHaveCount(permission?.editDisplayName ? 6 : 0);
+  ).toHaveCount(permission?.editDisplayName ? 8 : 0);
 
   // check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
@@ -109,6 +166,9 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
   await page.click('[data-testid="profiler"]');
+  await page.getByTestId('loader').waitFor({ state: 'detached' });
+  await page.waitForLoadState('domcontentloaded');
+  await page.getByText('Data Quality').click();
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(
     page,
@@ -165,4 +225,13 @@ export const updateDefaultOrganizationPolicy = async (
       'Content-Type': 'application/json-patch+json',
     },
   });
+};
+
+export const cleanupPermissions = async (apiContext: APIRequestContext) => {
+  if (role && role.responseData?.id) {
+    await role.delete(apiContext);
+  }
+  if (policy && policy.responseData?.id) {
+    await policy.delete(apiContext);
+  }
 };

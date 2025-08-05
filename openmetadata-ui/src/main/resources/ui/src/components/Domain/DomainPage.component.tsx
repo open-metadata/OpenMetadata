@@ -151,6 +151,7 @@ const DomainPage = () => {
           TabSpecificField.EXPERTS,
           TabSpecificField.TAGS,
           TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
         ],
       });
       setActiveDomain(data);
@@ -288,7 +289,7 @@ const DomainPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           buttonId="add-domain"
-          className="mt-0-important border-none"
+          className="mt-0-important border-none w-full"
           heading={t('label.domain')}
           permission={createDomainPermission}
           permissionValue={
