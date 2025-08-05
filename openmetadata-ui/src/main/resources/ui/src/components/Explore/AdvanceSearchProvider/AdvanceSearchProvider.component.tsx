@@ -204,9 +204,12 @@ export const AdvanceSearchProvider = ({
   };
 
   const handleReset = useCallback(() => {
-    setTreeInternal(
-      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
-    );
+    const tree = QbUtils.Validation.sanitizeTree(
+      QbUtils.loadTree(getEmptyJsonTree()),
+      config
+    ).fixedTree;
+
+    setTreeInternal(tree);
     setQueryFilter(undefined);
     setSQLQuery('');
   }, [config]);
