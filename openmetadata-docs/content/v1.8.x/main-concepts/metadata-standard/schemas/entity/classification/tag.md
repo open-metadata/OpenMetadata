@@ -1,5 +1,6 @@
 ---
 title: Tag Schema | OpenMetadata Tag Schema and Management API
+description: Model tags for classifying and labeling metadata with semantic meaning and governance controls.
 slug: /main-concepts/metadata-standard/schemas/entity/classification/tag
 ---
 

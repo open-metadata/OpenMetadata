@@ -45,10 +45,10 @@ export interface DatabaseSchema {
      */
     displayName?: string;
     /**
-     * Domain the Database Schema belongs to. When not set, the Schema inherits the domain from
+     * Domains the Database Schema belongs to. When not set, the Schema inherits the domain from
      * the database it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -322,9 +322,6 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the Database Schema belongs to. When not set, the Schema inherits the domain from
- * the database it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Link to the database cluster/service where this schema is hosted in.
@@ -556,6 +553,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",

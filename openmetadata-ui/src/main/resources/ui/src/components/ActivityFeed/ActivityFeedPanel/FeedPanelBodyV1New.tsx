@@ -29,6 +29,10 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   onAfterClose,
   onUpdateEntityDetails,
   isForFeedTab = false,
+  isOpenInDrawer = false,
+  hideCardBorder = false,
+  isFeedWidget = false,
+  isFullSizeWidget = false,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -56,8 +60,10 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       {feed.type === ThreadType.Task ? (
         <TaskFeedCardNew
           feed={feed}
+          hideCardBorder={hideCardBorder}
           isActive={isActive}
           isForFeedTab={isForFeedTab}
+          isOpenInDrawer={isOpenInDrawer}
           key={feed.id}
           onAfterClose={onAfterClose}
           onUpdateEntityDetails={onUpdateEntityDetails}
@@ -66,7 +72,9 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         <ActivityFeedCardNew
           feed={feed}
           isActive={isActive}
+          isFeedWidget={isFeedWidget}
           isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
           isPost={false}
           post={mainFeed}
           showActivityFeedEditor={showActivityFeedEditor}

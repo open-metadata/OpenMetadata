@@ -21,7 +21,7 @@
   width: 100%;
   overflow-x: hidden;
   border: 1px solid @grey-15;
-  border-radius: @border-radius-sm;
+  border-radius: @border-rad-sm;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
@@ -279,6 +279,15 @@
   .ql-toolbar button {
     color: #292929;
   }
+}
+
+.activity-feed-card-container:not(:last-child) .horizontal-line {
+  position: absolute;
+  top: @size-sm;
+  left: @size-sm;
+  bottom: -17px;
+  width: 1px;
+  background-color: @blue-23;
 }
 
 .activity-feed-editor-send-btn {

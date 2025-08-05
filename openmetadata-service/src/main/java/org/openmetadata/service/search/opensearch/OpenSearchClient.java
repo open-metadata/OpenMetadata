@@ -23,15 +23,15 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
+import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
+import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import es.org.elasticsearch.common.ParsingException;
-import es.org.elasticsearch.xcontent.XContentLocation;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -43,8 +43,10 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -63,6 +65,9 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -84,6 +89,7 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -163,12 +169,14 @@ import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
+import os.org.opensearch.common.ParsingException;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
+import os.org.opensearch.common.xcontent.XContentLocation;
 import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.index.IndexNotFoundException;
@@ -216,12 +224,13 @@ import os.org.opensearch.search.sort.SortOrder;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
-public class OpenSearchClient implements SearchClient {
+public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Getter protected final RestHighLevelClient client;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   private final OSLineageGraphBuilder lineageGraphBuilder;
+  private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
 
@@ -261,6 +270,7 @@ public class OpenSearchClient implements SearchClient {
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
+    entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
   }
 
   @Override
@@ -1401,10 +1411,140 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
+    try {
+      // Use the EXACT same search building logic as the regular search method
+      // to ensure consistency across all endpoints
+      SearchSettings searchSettings =
+          SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+      OpenSearchSourceBuilderFactory searchBuilderFactory =
+          new OpenSearchSourceBuilderFactory(searchSettings);
+
+      // Build the search exactly as doSearch does
+      SearchSourceBuilder searchSourceBuilder =
+          searchBuilderFactory.getSearchSourceBuilder(
+              index,
+              request.getQuery() != null ? request.getQuery() : "*",
+              0, // from
+              0, // size - we only need aggregations
+              false); // explain
+
+      // No RBAC for now as per user's comment about it being disabled
+
+      // Apply query filter - use the same method as regular search
+      buildSearchSourceFilter(request.getQueryFilter(), searchSourceBuilder);
+
+      // Apply post filter if specified
+      if (!nullOrEmpty(request.getPostFilter())) {
+        try {
+          XContentParser filterParser =
+              XContentType.JSON
+                  .xContent()
+                  .createParser(
+                      OsUtils.osXContentRegistry,
+                      LoggingDeprecationHandler.INSTANCE,
+                      request.getPostFilter());
+          QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+          searchSourceBuilder.postFilter(filter);
+        } catch (Exception ex) {
+          LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
+        }
+      }
+
+      // Apply deleted filter - use the same logic as regular search
+      if (!nullOrEmpty(request.getDeleted())) {
+        String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+        if (indexName.equals(GLOBAL_SEARCH_ALIAS) || indexName.equals(DATA_ASSET_SEARCH_ALIAS)) {
+          BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+
+          boolQueryBuilder.should(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.existsQuery("deleted"))
+                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+          boolQueryBuilder.should(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .mustNot(QueryBuilders.existsQuery("deleted")));
+          searchSourceBuilder.query(boolQueryBuilder);
+        } else {
+          searchSourceBuilder.query(
+              QueryBuilders.boolQuery()
+                  .must(searchSourceBuilder.query())
+                  .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
+        }
+      }
+
+      // We only want aggregations, not search results
+      searchSourceBuilder.size(0);
+      searchSourceBuilder.from(0);
+      searchSourceBuilder.trackTotalHits(true);
+
+      // The entityType aggregation is already added by the search builder factory
+      // from the global aggregations configuration, so we don't need to add it again
+
+      // Resolve the index alias properly to ensure we're searching across all appropriate indexes
+      String resolvedIndex =
+          Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      // Execute the search
+      os.org.opensearch.action.search.SearchRequest osSearchRequest =
+          new os.org.opensearch.action.search.SearchRequest(resolvedIndex);
+      osSearchRequest.source(searchSourceBuilder);
+
+      LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
+      LOG.info(
+          "Query string: '{}', Query builder: {}",
+          request.getQuery(),
+          searchSourceBuilder.toString());
+      SearchResponse searchResponse = client.search(osSearchRequest, RequestOptions.DEFAULT);
+
+      // Convert to API response
+      String jsonResponse = searchResponse.toString();
+      return Response.status(OK).entity(jsonResponse).build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error executing entity type counts search for index: {}, query: {}",
+          index,
+          request.getQuery(),
+          e);
+      throw new SearchException(
+          String.format("Failed to get entity type counts: %s", e.getMessage()));
+    }
+  }
+
+  @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+    // Check if query is JSON format or simple search query
+    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
+      // Try to parse as JSON first (for backward compatibility with filters)
+      if (request.getQuery().trim().startsWith("{")) {
+        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+      } else {
+        // Handle as a search query (including field:value syntax)
+        OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+        // Use getSearchSourceBuilder which properly handles field:value syntax
+        SearchSourceBuilder tempBuilder =
+            searchBuilderFactory.getSearchSourceBuilder(
+                request.getIndex(), request.getQuery(), 0, 10);
+        searchSourceBuilder.query(tempBuilder.query());
+      }
+    }
+
+    // Apply deleted filter if specified
+    if (request.getDeleted() != null) {
+      QueryBuilder currentQuery = searchSourceBuilder.query();
+      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+
+      if (currentQuery != null) {
+        boolQuery.must(currentQuery);
+      }
+      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
+
+      searchSourceBuilder.query(boolQuery);
+    }
 
     String aggregationField = request.getFieldName();
     if (aggregationField == null || aggregationField.isBlank()) {
@@ -2453,6 +2593,11 @@ public class OpenSearchClient implements SearchClient {
     return client.getLowLevelClient();
   }
 
+  @Override
+  public RestHighLevelClient getHighLevelClient() {
+    return client;
+  }
+
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
@@ -2776,7 +2921,6 @@ public class OpenSearchClient implements SearchClient {
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
 
     Map<String, Object> params = new HashMap<>();
-
     params.put("columnUpdates", originalUpdatedColumnFqnMap);
 
     if (isClientAvailable) {
@@ -2815,5 +2959,171 @@ public class OpenSearchClient implements SearchClient {
         LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
       }
     }
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationship(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    int upstreamDepth = entityRelationshipRequest.getUpstreamDepth();
+    int downstreamDepth = entityRelationshipRequest.getDownstreamDepth();
+    SearchEntityRelationshipResult result =
+        entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .DOWNSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .DOWNSTREAM)));
+    SearchEntityRelationshipResult upstreamResult =
+        entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+            entityRelationshipRequest
+                .withUpstreamDepth(upstreamDepth + 1)
+                .withDownstreamDepth(downstreamDepth + 1)
+                .withDirection(
+                    org.openmetadata
+                        .schema
+                        .api
+                        .entityRelationship
+                        .EntityRelationshipDirection
+                        .UPSTREAM)
+                .withDirectionValue(
+                    getEntityRelationshipDirection(
+                        org.openmetadata
+                            .schema
+                            .api
+                            .entityRelationship
+                            .EntityRelationshipDirection
+                            .UPSTREAM)));
+
+    for (var nodeFromDownstream : result.getNodes().entrySet()) {
+      if (upstreamResult.getNodes().containsKey(nodeFromDownstream.getKey())) {
+        org.openmetadata.schema.type.entityRelationship.NodeInformation existingNode =
+            upstreamResult.getNodes().get(nodeFromDownstream.getKey());
+        LayerPaging existingPaging = existingNode.getPaging();
+        existingPaging.setEntityDownstreamCount(
+            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
+      }
+    }
+
+    // since paging from downstream is merged into upstream, we can just put the upstream result
+    result.getNodes().putAll(upstreamResult.getNodes());
+    result.getUpstreamEdges().putAll(upstreamResult.getUpstreamEdges());
+    result.getDownstreamEdges().putAll(upstreamResult.getDownstreamEdges());
+    return result;
+  }
+
+  @Override
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException {
+    Set<String> directionValue =
+        getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+    entityRelationshipRequest.setDirectionValue(directionValue);
+
+    entityRelationshipRequest =
+        entityRelationshipRequest
+            .withUpstreamDepth(entityRelationshipRequest.getUpstreamDepth() + 1)
+            .withDownstreamDepth(entityRelationshipRequest.getDownstreamDepth() + 1);
+
+    if (entityRelationshipRequest.getDirection()
+        == org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection.DOWNSTREAM) {
+      return entityRelationshipGraphBuilder.getDownstreamEntityRelationship(
+          entityRelationshipRequest);
+    } else {
+      directionValue = getEntityRelationshipDirection(entityRelationshipRequest.getDirection());
+      entityRelationshipRequest.setDirectionValue(directionValue);
+      return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
+          entityRelationshipRequest);
+    }
+  }
+
+  @Override
+  public SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException {
+    SearchSchemaEntityRelationshipResult result = new SearchSchemaEntityRelationshipResult();
+    result.setData(
+        new SearchEntityRelationshipResult()
+            .withNodes(new TreeMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>()));
+    SearchEntityRelationshipRequest request =
+        new SearchEntityRelationshipRequest()
+            .withUpstreamDepth(0) // Node + Immediate Upstream
+            .withDownstreamDepth(1) // Node + Immediate Downstream
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withLayerFrom(from)
+            .withLayerSize(size)
+            .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields));
+    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
+    String tableIndex = Entity.getSearchRepository().getIndexOrAliasName(TABLE_SEARCH_INDEX);
+    os.org.opensearch.action.search.SearchResponse searchResponse =
+        OsUtils.searchEntitiesWithLimitOffset(tableIndex, finalQueryFilter, offset, limit, deleted);
+    int total = 0;
+    if (searchResponse == null
+        || searchResponse.getHits() == null
+        || searchResponse.getHits().getTotalHits() == null) {
+      result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
+      return result;
+    }
+    for (os.org.opensearch.search.SearchHit hit : searchResponse.getHits().getHits()) {
+      Map<String, Object> source = hit.getSourceAsMap();
+      Object fqn = source.get(FQN_FIELD);
+      if (fqn != null) {
+        String fqnString = fqn.toString();
+        request.withFqn(fqnString);
+        SearchEntityRelationshipResult tableER = this.searchEntityRelationship(request);
+        // Find the table Node
+        Map.Entry<String, org.openmetadata.schema.type.entityRelationship.NodeInformation>
+            tableNode =
+                tableER.getNodes().entrySet().stream()
+                    .filter(e -> fqn.toString().equals(e.getKey()))
+                    .findFirst()
+                    .orElse(null);
+        result
+            .getData()
+            .getNodes()
+            .putIfAbsent(fqnString, Objects.requireNonNull(tableNode).getValue());
+        result.getData().getUpstreamEdges().putAll(tableER.getUpstreamEdges());
+        result.getData().getDownstreamEdges().putAll(tableER.getDownstreamEdges());
+      }
+    }
+    total = (int) searchResponse.getHits().getTotalHits().value;
+    result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
+    return result;
+  }
+
+  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
+    String schemaFqnWildcardClause =
+        String.format(
+            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
+            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
+    String innerBoolFilter;
+    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(queryFilter)
+        && !"{}".equals(queryFilter)) {
+      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
+    } else {
+      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
+    }
+    return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
   }
 }

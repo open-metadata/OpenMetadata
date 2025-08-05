@@ -121,6 +121,8 @@ export interface Source {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface ServiceConnection {
     config?: ConfigClass;
@@ -255,6 +257,8 @@ export interface ServiceConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -341,6 +345,8 @@ export interface ServiceConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -396,7 +402,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -409,6 +415,8 @@ export interface ConfigClass {
      * Client ID for DOMO
      *
      * client_id for Sigma.
+     *
+     * Azure Application (client) ID for service principal authentication.
      */
     clientId?: string;
     /**
@@ -417,6 +425,8 @@ export interface ConfigClass {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Azure Application client secret for service principal authentication.
      */
     clientSecret?: string;
     /**
@@ -539,6 +549,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?: string;
     /**
@@ -739,6 +751,8 @@ export interface ConfigClass {
     scope?: string[];
     /**
      * Tenant ID for PowerBI.
+     *
+     * Azure Directory (tenant) ID for service principal authentication.
      */
     tenantId?: string;
     /**
@@ -795,6 +809,8 @@ export interface ConfigClass {
      * Choose Auth Config Type.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -958,6 +974,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -985,6 +1003,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1003,6 +1023,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -1024,8 +1047,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -1354,6 +1378,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1779,6 +1811,10 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex exclude pipelines.
@@ -1886,6 +1922,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -1894,12 +1934,16 @@ export interface AuthenticationTypeForTableau {
      * Password to connect to source.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?: string;
     /**
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -2149,6 +2193,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -3204,6 +3249,15 @@ export interface ConfigElasticsSearch {
 }
 
 /**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
+}
+
+/**
  * Credentials to extract the .lkml files from a repository. This is required to get all the
  * lineage and definitions.
  *
@@ -3647,6 +3701,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -3856,8 +3911,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum PurpleType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -3895,6 +3952,7 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
@@ -3934,6 +3992,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -4119,7 +4178,7 @@ export interface Pipeline {
     /**
      * Pipeline type
      */
-    type?: ConfigType;
+    type?: FluffyType;
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
@@ -4632,11 +4691,15 @@ export interface CollateAIAppConfig {
  *
  * Remove Tags Action Type
  *
- * Add an owner to the selected assets.
+ * Add domains to the selected assets.
+ *
+ * Remove domains from the selected assets.
+ *
+ * Add a Custom Property to the selected assets.
  *
  * Remove Owner Action Type
  *
- * Add a Custom Property to the selected assets.
+ * Add an owner to the selected assets.
  *
  * Add Test Cases to the selected assets.
  *
@@ -4677,8 +4740,8 @@ export interface Action {
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
      *
-     * Update the domain even if it is defined in the asset. By default, we will only apply the
-     * domain to assets without domain.
+     * Update the domains even if they are defined in the asset. By default, we will only apply
+     * the domains to assets without domains.
      *
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
@@ -4709,7 +4772,7 @@ export interface Action {
      *
      * Tags to remove
      */
-    tags?: TagLabel[];
+    tags?: TierElement[];
     /**
      * Application Type
      */
@@ -4725,9 +4788,9 @@ export interface Action {
      */
     labels?: LabelElement[];
     /**
-     * Domain to apply
+     * Domains to apply
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Description to apply
      */
@@ -4741,7 +4804,7 @@ export interface Action {
     /**
      * tier to apply
      */
-    tier?: TagLabel;
+    tier?: TierElement;
     /**
      * Test Cases to apply
      */
@@ -4773,9 +4836,9 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
-     * Propagate domain from the parent through lineage
+     * Propagate domains from the parent through lineage
      */
-    propagateDomain?: boolean;
+    propagateDomains?: boolean;
     /**
      * Propagate glossary terms through lineage
      */
@@ -4796,19 +4859,25 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
+    /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
+    /**
+     * List of configurations to stop propagation based on conditions
+     */
+    propagationStopConfigs?: PropagationStopConfig[];
 }
 
 /**
- * Domain to apply
+ * Domains to apply
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners to apply
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -4868,21 +4937,67 @@ export enum LabelElement {
 }
 
 /**
+ * Configuration to stop lineage propagation based on conditions
+ */
+export interface PropagationStopConfig {
+    /**
+     * The metadata attribute to check for stopping propagation
+     */
+    metadataAttribute: MetadataAttribute;
+    /**
+     * List of attribute values that will stop propagation when any of them is matched
+     */
+    value: Array<TagLabel | string>;
+}
+
+/**
+ * The metadata attribute to check for stopping propagation
+ */
+export enum MetadataAttribute {
+    Description = "description",
+    Domains = "domains",
+    GlossaryTerms = "glossaryTerms",
+    Owner = "owner",
+    Tags = "tags",
+    Tier = "tier",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
+ *
+ * Domains to apply
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Service to be modified
  */
 export interface TagLabel {
     /**
      * Description for the tag label.
+     *
+     * Optional description of entity.
      */
     description?: string;
     /**
      * Display Name that identifies this tag.
+     *
+     * Display Name that identifies this entity.
      */
     displayName?: string;
     /**
      * Link to the tag resource.
+     *
+     * Link to the entity resource.
      */
     href?: string;
     /**
@@ -4892,22 +5007,48 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelTypeEnum;
+    labelType?: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
+     *
+     * Name of the entity instance.
      */
     name?: string;
     /**
      * Label is from Tags or Glossary.
      */
-    source: TagSource;
+    source?: TagSource;
     /**
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
+    state?:  State;
+    style?:  Style;
+    tagFQN?: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id?: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type?: string;
 }
 
 /**
@@ -4958,6 +5099,49 @@ export interface Style {
 }
 
 /**
+ * This schema defines the type for labeling an entity with a Tag.
+ *
+ * tier to apply
+ */
+export interface TierElement {
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelTypeEnum;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
+}
+
+/**
  * Minimum set of requirements to get a Test Case request ready
  */
 export interface TestCaseDefinitions {
@@ -4969,7 +5153,7 @@ export interface TestCaseDefinitions {
     /**
      * Tags to apply
      */
-    tags?: TagLabel[];
+    tags?: TierElement[];
     /**
      * Fully qualified name of the test definition.
      */
@@ -5004,7 +5188,7 @@ export interface TestCaseParameterValue {
  *
  * Remove Tags Action Type.
  *
- * Add Owner Action Type.
+ * Add Domain Action Type.
  *
  * Remove Domain Action Type
  *
@@ -5021,6 +5205,8 @@ export interface TestCaseParameterValue {
  * Add Test Case Action Type.
  *
  * Remove Test Case Action Type
+ *
+ * Add Owner Action Type.
  *
  * Remove Owner Action Type
  *
@@ -5438,11 +5624,11 @@ export interface ReverseIngestionConfig {
     /**
      * Added tags to be applied
      */
-    addedTags?: TagLabel[];
+    addedTags?: TierElement[];
     /**
      * Removed tags of the entity
      */
-    removedTags?: TagLabel[];
+    removedTags?: TierElement[];
 }
 
 /**
@@ -5466,15 +5652,24 @@ export interface ProcessingEngine {
     /**
      * The type of the engine configuration
      */
-    type: ProcessingEngineType;
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    config?: { [key: string]: any };
+    type:    ProcessingEngineType;
+    config?: Config;
     /**
      * Spark Connect Remote URL.
      */
     remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
 }
 
 /**
@@ -5582,7 +5777,7 @@ export interface StorageMetadataBucketDetails {
  *
  * Reverse Ingestion Config Pipeline type
  */
-export enum ConfigType {
+export enum FluffyType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
     AutoClassification = "AutoClassification",

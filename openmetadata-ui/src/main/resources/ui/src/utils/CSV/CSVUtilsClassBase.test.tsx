@@ -123,8 +123,8 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return the editor component for the "domain" column', () => {
-      const column = 'domain';
+    it('should return the editor component for the "domains" column', () => {
+      const column = 'domains';
       const editor = csvUtilsClassBase.getEditor(column, EntityType.GLOSSARY);
 
       expect(editor).toBeDefined();

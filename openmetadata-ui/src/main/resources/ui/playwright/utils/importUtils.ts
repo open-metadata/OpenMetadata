@@ -89,12 +89,20 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  await expect(
+    page.locator('.ant-tabs-tab-active').getByText('Teams')
+  ).toBeVisible();
+
   const userListResponse = page.waitForResponse(
     '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page.waitForSelector('[data-testid="owner-select-users-search-bar"]', {
+    state: 'visible',
+  });
 
   await page.click('[data-testid="owner-select-users-search-bar"]');
 
@@ -183,6 +191,9 @@ export const fillDomainDetails = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
   await page.waitForTimeout(100);
 };
 
@@ -921,4 +932,31 @@ export const fillRecursiveColumnDetails = async (
     .press('ArrowRight', { delay: 100 });
 
   await fillTextInputDetails(page, row.dataLength);
+};
+
+export const firstTimeGridAddRowAction = async (page: Page) => {
+  const firstRow = page.locator('.rdg-row').first();
+  if ((await firstRow.count()) > 0) {
+    const firstCell = page
+      .locator('.rdg-row')
+      .first()
+      .locator('.rdg-cell')
+      .first();
+
+    await expect(firstCell).toBeFocused();
+
+    await page.click('[data-testid="add-row-btn"]');
+
+    await expect(firstCell).not.toBeFocused(); // focus should get removed from first cell
+  } else {
+    await page.click('[data-testid="add-row-btn"]');
+  }
+
+  const lastRowFirstCell = page
+    .locator('.rdg-row')
+    .last()
+    .locator('.rdg-cell')
+    .first();
+
+  await expect(lastRowFirstCell).toBeFocused();
 };

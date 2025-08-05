@@ -702,15 +702,15 @@ class AdvancedSearchClassBase {
         },
       },
 
-      [EntityFields.DOMAIN]: {
-        label: t('label.domain'),
+      [EntityFields.DOMAINS]: {
+        label: t('label.domain-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
 
         fieldSettings: {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
-            entityField: EntityFields.DOMAIN,
+            entityField: EntityFields.DOMAINS,
           }),
           useAsyncSearch: true,
         },

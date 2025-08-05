@@ -39,13 +39,18 @@ export interface ChartFilter {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
+  cardStyles?: React.CSSProperties;
+  customValueKey?: string;
+  dateTimeFormatter?: (date?: number, format?: string) => string;
   isPercentage?: boolean;
   isTier?: boolean;
-  dateTimeFormatter?: (date?: number, format?: string) => string;
-  valueFormatter?: (value: number | string, key?: string) => string | number;
+  listContainerStyles?: React.CSSProperties;
   timeStampKey?: string;
+  titleStyles?: React.CSSProperties;
+  labelStyles?: React.CSSProperties;
+  valueStyles?: React.CSSProperties;
   transformLabel?: boolean;
-  customValueKey?: string;
+  valueFormatter?: (value: number | string, key?: string) => string | number;
 }
 
 export interface UIKpiResult extends KpiResult {

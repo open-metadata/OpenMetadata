@@ -222,6 +222,28 @@
           "type": "object",
           "additionalProperties": true,
           "description": "Catch-all for any advanced or asset-specific search settings."
+        },
+        "matchTypeBoostMultipliers": {
+          "type": "object",
+          "description": "Multipliers applied to different match types to control their relative importance.",
+          "properties": {
+            "exactMatchMultiplier": {
+              "type": "number",
+              "description": "Multiplier for exact match queries (term queries on .keyword fields)",
+              "default": 2.0
+            },
+            "phraseMatchMultiplier": {
+              "type": "number",
+              "description": "Multiplier for phrase match queries",
+              "default": 1.5
+            },
+            "fuzzyMatchMultiplier": {
+              "type": "number",
+              "description": "Multiplier for fuzzy match queries",
+              "default": 1.0
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": ["assetType"],
@@ -238,6 +260,12 @@
           "type": "number",
           "description": "Relative boost factor for the above field.",
           "default": 1.0
+        },
+        "matchType": {
+          "type": "string",
+          "enum": ["exact", "phrase", "fuzzy", "standard"],
+          "description": "Type of matching to use for this field. 'exact' uses term query for .keyword fields, 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default behavior.",
+          "default": "standard"
         }
       },
       "required": ["field"],

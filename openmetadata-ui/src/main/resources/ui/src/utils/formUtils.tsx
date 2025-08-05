@@ -13,6 +13,7 @@
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
+  Checkbox,
   Divider,
   Form,
   FormItemProps,
@@ -146,6 +147,14 @@ export const getField = (field: FieldProp) => {
       };
 
       break;
+    case FieldTypes.CHECK_BOX:
+      fieldElement = <Checkbox {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+
+      break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} id={id} />;
 
@@ -169,7 +178,7 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
-        <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+        <TagSuggestion {...(props as unknown as TagSuggestionProps)} newLook />
       );
 
       break;
@@ -415,3 +424,6 @@ export const handleEntityCreationError = ({
     setInlineAlertDetails
   );
 };
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;

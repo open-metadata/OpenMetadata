@@ -1,5 +1,6 @@
 ---
-title: domoDashboardConnection
+title: domoDashboardConnection | Official Documentation
+description: Domo dashboard connection schema with access tokens, API host, and collection-level configs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/domodashboardconnection
 ---
 

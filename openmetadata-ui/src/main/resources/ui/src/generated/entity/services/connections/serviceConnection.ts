@@ -41,6 +41,8 @@ export interface ServiceConnection {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface ServiceConnectionClass {
     config?: ConfigClass;
@@ -175,6 +177,8 @@ export interface ServiceConnectionClass {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -261,6 +265,8 @@ export interface ServiceConnectionClass {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -316,7 +322,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: ConfigType;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -329,6 +335,8 @@ export interface ConfigClass {
      * Client ID for DOMO
      *
      * client_id for Sigma.
+     *
+     * Azure Application (client) ID for service principal authentication.
      */
     clientId?: string;
     /**
@@ -337,6 +345,8 @@ export interface ConfigClass {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Azure Application client secret for service principal authentication.
      */
     clientSecret?: string;
     /**
@@ -459,6 +469,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?: string;
     /**
@@ -659,6 +671,8 @@ export interface ConfigClass {
     scope?: string[];
     /**
      * Tenant ID for PowerBI.
+     *
+     * Azure Directory (tenant) ID for service principal authentication.
      */
     tenantId?: string;
     /**
@@ -715,6 +729,8 @@ export interface ConfigClass {
      * Choose Auth Config Type.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -878,6 +894,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -905,6 +923,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -923,6 +943,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -944,8 +967,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -1274,6 +1298,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1699,6 +1731,10 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex exclude pipelines.
@@ -1793,6 +1829,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -1801,12 +1841,16 @@ export interface AuthenticationTypeForTableau {
      * Password to connect to source.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?: string;
     /**
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -2056,6 +2100,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -3111,6 +3156,15 @@ export interface ElasticsSearch {
 }
 
 /**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
+}
+
+/**
  * Credentials to extract the .lkml files from a repository. This is required to get all the
  * lineage and definitions.
  *
@@ -3554,6 +3608,7 @@ export enum SecretsManagerProvider {
     DB = "db",
     Gcp = "gcp",
     InMemory = "in-memory",
+    Kubernetes = "kubernetes",
     ManagedAws = "managed-aws",
     ManagedAwsSsm = "managed-aws-ssm",
     ManagedAzureKv = "managed-azure-kv",
@@ -3763,8 +3818,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum ConfigType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -3802,6 +3859,7 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
@@ -3841,6 +3899,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",

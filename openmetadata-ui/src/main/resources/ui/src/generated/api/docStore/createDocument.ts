@@ -24,9 +24,9 @@ export interface CreateDocument {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Document belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Type of the Entity stored in DocStore.
      */

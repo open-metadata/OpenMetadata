@@ -1,5 +1,6 @@
 ---
 title: Dagster Connection | OpenMetadata Dagster
+description: Use this schema to define Dagster pipeline connections, extracting metadata from job execution and scheduling.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/dagsterconnection
 ---
 

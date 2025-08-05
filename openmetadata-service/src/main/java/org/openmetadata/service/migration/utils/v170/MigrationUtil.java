@@ -482,6 +482,7 @@ public class MigrationUtil {
     Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
     serviceTypes.remove(ServiceType.METADATA);
     serviceTypes.remove(ServiceType.DRIVE); // Exclude DRIVE as it doesn't exist in v1.7.0
+    serviceTypes.remove(ServiceType.SECURITY); // Exclude SECURITY as it doesn't exist in v1.7.0
 
     for (ServiceType serviceType : serviceTypes) {
       EntityRepository<? extends EntityInterface> repository =

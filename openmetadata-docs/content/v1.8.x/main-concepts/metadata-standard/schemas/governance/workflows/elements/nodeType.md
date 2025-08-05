@@ -1,5 +1,6 @@
 ---
 title: Node Type | OpenMetadata Node Type Details
+description: Specify node types used in workflow automation such as tasks, events, and gateways, along with their unique behavior.
 slug: /main-concepts/metadata-standard/schemas/governance/workflows/elements/nodetype
 noindex: true
 nofollow: true

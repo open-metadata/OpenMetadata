@@ -1,5 +1,6 @@
 ---
 title: Marketplace | OpenMetadata Marketplace API and Resources
+description: Connect Marketplace to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/marketplace
 ---
 

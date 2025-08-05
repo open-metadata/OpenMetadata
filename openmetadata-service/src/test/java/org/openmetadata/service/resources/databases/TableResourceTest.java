@@ -21,6 +21,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -28,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -115,6 +117,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -125,6 +128,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
@@ -177,6 +181,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -242,7 +247,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     };
 
     for (ColumnDataType dataType : columnDataTypes) {
-      create.getColumns().get(0).withDataType(dataType);
+      create.getColumns().getFirst().withDataType(dataType);
       assertResponse(
           () -> createEntity(create, ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -261,7 +266,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         "Scale is set but precision is not set for the column " + C1);
 
     // Scale (decimal digits) larger than precision (total number of digits)
-    columns.get(0).withScale(2).withPrecision(1);
+    columns.getFirst().withScale(2).withPrecision(1);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -315,14 +320,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     TableConstraint constraint =
         new TableConstraint()
             .withConstraintType(ConstraintType.UNIQUE)
-            .withColumns(List.of(columns.get(0).getName()));
+            .withColumns(List.of(columns.getFirst().getName()));
     create.setColumns(columns);
     create.setTableConstraints(List.of(constraint));
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    Column column = created.getColumns().get(0);
+    Column column = created.getColumns().getFirst();
     assertEquals("col.umn", column.getName());
     assertTrue(column.getFullyQualifiedName().contains("col.umn"));
-    assertEquals("col.umn", created.getTableConstraints().get(0).getColumns().get(0));
+    assertEquals("col.umn", created.getTableConstraints().getFirst().getColumns().getFirst());
   }
 
   @Test
@@ -538,8 +543,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Column c2_c_e = getColumn("e", INT, USER_ADDRESS_TAG_LABEL);
     c2_c.getChildren().add(c2_c_e); // Add c2.c.e
     fieldAdded(change, build("columns", C2, "c"), List.of(c2_c_e));
-    fieldDeleted(change, build("columns", C2), List.of(c2.getChildren().get(0)));
-    c2.getChildren().remove(0); // Remove c2.a from struct
+    fieldDeleted(change, build("columns", C2), List.of(c2.getChildren().getFirst()));
+    c2.getChildren().removeFirst(); // Remove c2.a from struct
 
     Column c2_f = getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL);
     c2.getChildren().add(c2_f); // Add c2.f
@@ -605,14 +610,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update Request
-    request.getColumns().get(0).withDataType(CHAR).withDataLength(200).withDescription(null);
+    request.getColumns().getFirst().withDataType(CHAR).withDataLength(200).withDescription(null);
 
     Table updatedTable = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     assertEquals(
-        table.getColumns().get(0).getDescription(),
-        updatedTable.getColumns().get(0).getDescription());
-    assertEquals(CHAR, updatedTable.getColumns().get(0).getDataType());
-    assertEquals(200, updatedTable.getColumns().get(0).getDataLength());
+        table.getColumns().getFirst().getDescription(),
+        updatedTable.getColumns().getFirst().getDescription());
+    assertEquals(CHAR, updatedTable.getColumns().getFirst().getDataType());
+    assertEquals(200, updatedTable.getColumns().getFirst().getDataLength());
   }
 
   @Test
@@ -1444,7 +1449,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         TABLE,
         TestUtils.dateToTimestamp("2021-10-11"),
         authHeaders);
-    table1ProfileList.remove(0);
+    table1ProfileList.removeFirst();
     tableProfiles =
         getTableProfiles(
             table1.getFullyQualifiedName(),
@@ -1818,7 +1823,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertOwners(Lists.newArrayList(USER1_REF), table.getOwners());
+      assertReferenceList(Lists.newArrayList(USER1_REF), table.getOwners());
       assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
@@ -2497,24 +2502,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
-        dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        dbServiceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
 
     // Ensure database domain is inherited from database service
     CreateDatabase createDb =
         dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
-    Database db = dbTest.assertDomainInheritance(createDb, DOMAIN.getEntityReference());
+    Database db = dbTest.assertSingleDomainInheritance(createDb, DOMAIN.getEntityReference());
 
     // Ensure databaseSchema domain is inherited from database
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
     DatabaseSchema schema =
-        schemaTest.assertDomainInheritance(createSchema, DOMAIN.getEntityReference());
+        schemaTest.assertSingleDomainInheritance(createSchema, DOMAIN.getEntityReference());
 
     // Ensure table domain is inherited from databaseSchema
     CreateTable createTable =
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
+    Table table = assertSingleDomainInheritance(createTable, DOMAIN.getEntityReference());
 
     // Ensure test case domain is inherited from table
     CreateTestSuite createTestSuite =
@@ -2528,39 +2533,86 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
             .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
     TestCase testCase =
-        testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
+        testCaseResourceTest.assertSingleDomainInheritance(
+            createTestCase, DOMAIN.getEntityReference());
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN.getEntityReference()));
 
     // Update domain of service within same session
     ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
-    fieldUpdated(change, "domain", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
+    fieldAdded(change, "domains", List.of(DOMAIN1.getEntityReference()));
+    fieldDeleted(change, "domains", List.of(DOMAIN.getEntityReference()));
     dbService =
         dbServiceTest.updateAndCheckEntity(
-            createDbService.withDomain(DOMAIN1.getFullyQualifiedName()),
+            createDbService.withDomains(List.of(DOMAIN1.getFullyQualifiedName())),
             OK,
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
 
     // Check domain properly updated in search
-    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
-    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainsInSearch(db.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(schema.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(table.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(testCase.getEntityReference(), List.of(DOMAIN1.getEntityReference()));
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
-    assertDomainInheritanceOverride(
-        table, createTable.withDomain(null), SUB_DOMAIN.getEntityReference());
+    assertSingleDomainInheritanceOverride(
+        table, createTable.withDomains(null), SUB_DOMAIN.getEntityReference());
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the
     // ownership
-    schemaTest.assertDomainInheritanceOverride(
-        schema, createSchema.withDomain(null), SUB_DOMAIN.getEntityReference());
+    schemaTest.assertSingleDomainInheritanceOverride(
+        schema, createSchema.withDomains(null), SUB_DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
+    // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
+    CreateDatabaseService createDbService =
+        dbServiceTest
+            .createRequest(test)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName(), DOMAIN1.getFullyQualifiedName()));
+    DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+
+    // Ensure database domains are inherited from database service
+    CreateDatabase createDb =
+        dbTest.createRequest(test).withService(dbService.getFullyQualifiedName());
+    Database db =
+        dbTest.assertMultipleDomainInheritance(
+            createDb, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure databaseSchema domains are inherited from database
+    CreateDatabaseSchema createSchema =
+        schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema =
+        schemaTest.assertMultipleDomainInheritance(
+            createSchema, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Ensure table domains are inherited from databaseSchema
+    CreateTable createTable =
+        createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table =
+        assertMultipleDomainInheritance(
+            createTable, List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    // Verify multiple domains are properly updated in search
+    verifyDomainsInSearch(
+        db.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        schema.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+    verifyDomainsInSearch(
+        table.getEntityReference(),
+        List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    toggleMultiDomainSupport(true);
   }
 
   @Test
@@ -2576,26 +2628,30 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable createTable =
         createRequest(test)
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withDomain(DOMAIN.getFullyQualifiedName());
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
 
-    Table createdTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN.getFullyQualifiedName(), createdTable.getDomain().getFullyQualifiedName());
+    Table createdTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(), createdTable.getDomains().get(0).getFullyQualifiedName());
 
     // update table entity domain w/ PUT request w/ bot auth and check update is ignored
-    CreateTable updateTablePayload = createTable.withDomain(DOMAIN1.getFullyQualifiedName());
+    CreateTable updateTablePayload =
+        createTable.withDomains(List.of(DOMAIN1.getFullyQualifiedName()));
     updateEntity(updateTablePayload, OK, INGESTION_BOT_AUTH_HEADERS);
-    Table updatedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN.getFullyQualifiedName(), updatedTable.getDomain().getFullyQualifiedName());
+    Table updatedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(), updatedTable.getDomains().get(0).getFullyQualifiedName());
 
     // patch domain w/ bot auth and check update is applied
     patchEntity(
         table.getId(),
-        JsonUtils.pojoToJson(createTable),
-        createdTable.withDomain(DOMAIN1.getEntityReference()),
+        JsonUtils.pojoToJson(updatedTable),
+        updatedTable.withDomains(List.of(DOMAIN1.getEntityReference())),
         INGESTION_BOT_AUTH_HEADERS);
-    Table patchedTable = getEntity(table.getId(), "domain", ADMIN_AUTH_HEADERS);
-    assertEquals(DOMAIN1.getFullyQualifiedName(), patchedTable.getDomain().getFullyQualifiedName());
+    Table patchedTable = getEntity(table.getId(), "domains", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        DOMAIN1.getFullyQualifiedName(), patchedTable.getDomains().get(0).getFullyQualifiedName());
   }
 
   @Test
@@ -3717,7 +3773,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -4704,7 +4760,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withService(DATABASE.getService().getFullyQualifiedName())
             .withOwners(
                 List.of(databaseOwner1.getEntityReference(), databaseOwner2.getEntityReference()))
-            .withDomain(domain.getFullyQualifiedName());
+            .withDomains(List.of(domain.getFullyQualifiedName()));
     Database database = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Create schemas with different inheritance scenarios
@@ -4750,7 +4806,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             schemaTest
                 .createRequest(test.getDisplayName() + "_schema2")
                 .withDatabase(database.getFullyQualifiedName())
-                .withDomain(schemaDomain.getFullyQualifiedName()),
+                .withDomains(List.of(schemaDomain.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
     schemas.add(schema2);
 
@@ -4799,7 +4855,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Test 1: Fetch all tables with pagination including inherited fields
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("database", database.getFullyQualifiedName());
-    queryParams.put("fields", "owners,domain");
+    queryParams.put("fields", "owners,domains");
 
     ResultList<Table> tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
 
@@ -4811,11 +4867,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         // Tables in schema0
         if (tableName.endsWith("0")) {
           // Inherits from database
-          assertNotNull(fetchedTable.getDomain());
+          assertListNotNull(fetchedTable.getDomains());
           assertEquals(
-              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+              domain.getFullyQualifiedName(),
+              fetchedTable.getDomains().get(0).getFullyQualifiedName());
           assertTrue(
-              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+              fetchedTable.getDomains().get(0).getInherited(),
+              "Domain should be inherited from database");
 
           assertListNotNull(fetchedTable.getOwners());
           assertEquals(
@@ -4827,11 +4885,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                       assertTrue(owner.getInherited(), "Owners should be inherited from database"));
         } else {
           // Has its own owner but inherits domain
-          assertNotNull(fetchedTable.getDomain());
+          assertListNotNull(fetchedTable.getDomains());
           assertEquals(
-              domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+              domain.getFullyQualifiedName(),
+              fetchedTable.getDomains().get(0).getFullyQualifiedName());
           assertTrue(
-              fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+              fetchedTable.getDomains().get(0).getInherited(),
+              "Domain should be inherited from database");
 
           assertListNotNull(fetchedTable.getOwners());
           assertEquals(1, fetchedTable.getOwners().size(), "Should have its own owner");
@@ -4842,11 +4902,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         }
       } else if (tableName.contains("_s1_table")) {
         // Tables in schema1 - inherit domain from database, owners from schema
-        assertNotNull(fetchedTable.getDomain());
+        assertListNotNull(fetchedTable.getDomains());
         assertEquals(
-            domain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+            domain.getFullyQualifiedName(),
+            fetchedTable.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedTable.getDomain().getInherited(), "Domain should be inherited from database");
+            fetchedTable.getDomains().get(0).getInherited(),
+            "Domain should be inherited from database");
 
         assertListNotNull(fetchedTable.getOwners());
         assertEquals(1, fetchedTable.getOwners().size(), "Should inherit owner from schema");
@@ -4856,11 +4918,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             "Owners should be inherited from schema");
       } else if (tableName.contains("_s2_table")) {
         // Tables in schema2 - inherit owners from database, domain from schema
-        assertNotNull(fetchedTable.getDomain());
+        assertListNotNull(fetchedTable.getDomains());
         assertEquals(
-            schemaDomain.getFullyQualifiedName(), fetchedTable.getDomain().getFullyQualifiedName());
+            schemaDomain.getFullyQualifiedName(),
+            fetchedTable.getDomains().get(0).getFullyQualifiedName());
         assertTrue(
-            fetchedTable.getDomain().getInherited(), "Domain should be inherited from schema");
+            fetchedTable.getDomains().get(0).getInherited(),
+            "Domain should be inherited from schema");
 
         assertListNotNull(fetchedTable.getOwners());
         assertEquals(
@@ -4876,12 +4940,1056 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Test 2: Verify individual table fetch also shows correct inheritance
     Table individualTable =
         getEntityByName(
-            tables.getFirst().getFullyQualifiedName(), "owners,domain", ADMIN_AUTH_HEADERS);
+            tables.getFirst().getFullyQualifiedName(), "owners,domains", ADMIN_AUTH_HEADERS);
 
-    assertNotNull(individualTable.getDomain());
-    assertTrue(individualTable.getDomain().getInherited());
+    assertListNotNull(individualTable.getDomains());
+    assertTrue(individualTable.getDomains().get(0).getInherited());
     assertListNotNull(individualTable.getOwners());
     assertEquals(2, individualTable.getOwners().size());
     individualTable.getOwners().forEach(owner -> assertTrue(owner.getInherited()));
+  }
+
+  @Test
+  void test_tableEntityRelationshipWithDirection() throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_test_schema_direction");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("c1").withDataType(ColumnDataType.INT);
+    Column c2 = new Column().withName("c2").withDataType(ColumnDataType.INT);
+
+    Table upstreamTable =
+        createEntity(
+            createRequest("er_upstream_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c1)),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table2 (no constraints) so its column FQN is available
+    Table tableInSchema2 =
+        createEntity(
+            createRequest("er_table2_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c2))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table upstreamRef = getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table table2Ref = getEntityByName(tableInSchema2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Central table – created WITH FK to upstream
+    Column c1Local = new Column().withName("c1_local").withDataType(ColumnDataType.INT);
+    Column c1FkCol = new Column().withName("c1_fk").withDataType(ColumnDataType.INT);
+    Table tableInSchema1 =
+        createEntity(
+            createRequest("er_table1_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c1Local, c1FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c1FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Down-stream table – created WITH FK to table2
+    Column c2Local = new Column().withName("c2_local").withDataType(ColumnDataType.INT);
+    Column c2FkCol = new Column().withName("c2_fk").withDataType(ColumnDataType.INT);
+    Table downstreamTable =
+        createEntity(
+            createRequest("er_downstream_fk")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c2Local, c2FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c2FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Test UPSTREAM direction for the table (not schema)
+    Map<String, String> queryParamsUpstream = new HashMap<>();
+    queryParamsUpstream.put("fqn", tableInSchema1.getFullyQualifiedName());
+    queryParamsUpstream.put("upstreamDepth", "1");
+    queryParamsUpstream.put("downstreamDepth", "0"); // We only want upstream
+
+    WebTarget upstreamTarget = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParamsUpstream.entrySet()) {
+      upstreamTarget = upstreamTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult upstreamResult =
+        org.openmetadata.service.util.TestUtils.get(
+            upstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Assertions for upstream: should find upstreamTable -> tableInSchema1
+    assertNotNull(upstreamResult);
+    // --- verify nodes ---
+    assertEquals(
+        Set.of(tableInSchema1.getFullyQualifiedName(), upstreamTable.getFullyQualifiedName()),
+        upstreamResult.getNodes().keySet());
+
+    // --- verify single upstream edge ---
+    assertEquals(1, upstreamResult.getUpstreamEdges().size());
+    var upstreamEdge = upstreamResult.getUpstreamEdges().values().iterator().next();
+    assertEquals(upstreamTable.getId(), upstreamEdge.getEntity().getId());
+    assertEquals(tableInSchema1.getId(), upstreamEdge.getRelatedEntity().getId());
+    assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
+
+    // Test UPSTREAM direction with depth=2 (should return up to 2 upstream edges if the chain
+    // exists)
+    Map<String, String> queryParamsUpstreamTwo = new HashMap<>();
+    queryParamsUpstreamTwo.put("fqn", tableInSchema1.getFullyQualifiedName());
+    queryParamsUpstreamTwo.put("upstreamDepth", "2");
+    queryParamsUpstreamTwo.put("downstreamDepth", "0");
+    WebTarget upstreamTwoTarget = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParamsUpstreamTwo.entrySet()) {
+      upstreamTwoTarget = upstreamTwoTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult
+        upstreamTwoResult =
+            org.openmetadata.service.util.TestUtils.get(
+                upstreamTwoTarget,
+                org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+                ADMIN_AUTH_HEADERS);
+    assertNotNull(upstreamTwoResult);
+    // If there is a 2-level upstream chain, expect 3 nodes and 2 edges; otherwise, expect <=2 nodes
+    // and <=1 edge
+    assertTrue(upstreamTwoResult.getNodes().size() >= 2);
+    assertTrue(upstreamTwoResult.getUpstreamEdges().size() <= 2);
+    // Ensure the original edge is still present
+    assertTrue(
+        upstreamTwoResult.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(upstreamTable.getId())
+                        && e.getRelatedEntity().getId().equals(tableInSchema1.getId())));
+
+    // Test UPSTREAM direction with depth=0 (should return starting node + immediate upstreams)
+    Map<String, String> queryParamsUpstreamZero = new HashMap<>();
+    queryParamsUpstreamZero.put("fqn", tableInSchema1.getFullyQualifiedName());
+    queryParamsUpstreamZero.put("upstreamDepth", "0");
+    queryParamsUpstreamZero.put("downstreamDepth", "0");
+    WebTarget upstreamZeroTarget = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParamsUpstreamZero.entrySet()) {
+      upstreamZeroTarget = upstreamZeroTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult
+        upstreamZeroResult =
+            org.openmetadata.service.util.TestUtils.get(
+                upstreamZeroTarget,
+                org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+                ADMIN_AUTH_HEADERS);
+    assertNotNull(upstreamZeroResult);
+    // Expect starting node + immediate upstreams
+    assertEquals(2, upstreamZeroResult.getNodes().size());
+    assertTrue(upstreamZeroResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertTrue(upstreamZeroResult.getNodes().containsKey(upstreamTable.getFullyQualifiedName()));
+    // Should have 1 upstream edge (upstreamTable -> tableInSchema1)
+    assertEquals(1, upstreamZeroResult.getUpstreamEdges().size());
+    assertTrue(
+        upstreamZeroResult.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(upstreamTable.getId())
+                        && e.getRelatedEntity().getId().equals(tableInSchema1.getId())));
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
+
+    // Test DOWNSTREAM direction for the table (not schema)
+    Map<String, String> queryParamsDownstream = new HashMap<>();
+    queryParamsDownstream.put("fqn", tableInSchema1.getFullyQualifiedName());
+    queryParamsDownstream.put("upstreamDepth", "0");
+    queryParamsDownstream.put("downstreamDepth", "1"); // We only want downstream
+
+    WebTarget downstreamTarget = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParamsDownstream.entrySet()) {
+      downstreamTarget = downstreamTarget.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult downstreamResult =
+        org.openmetadata.service.util.TestUtils.get(
+            downstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Assertions for downstream: should find tableInSchema1 -> (none, since no downstream for this
+    // table)
+    assertNotNull(downstreamResult);
+
+    // For this test setup, tableInSchema1 has no downstream relationships
+    // Again for upstreamDepth = 0, we get the node + upstreamNeighbours = 2
+    assertEquals(2, downstreamResult.getNodes().size());
+    assertTrue(downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertEquals(0, downstreamResult.getDownstreamEdges().size());
+  }
+
+  @Test
+  void test_tableEntityRelationshipBothDirections() throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_both_dir_schema_fk");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create tables and columns for FK relationships
+    Column cUp = new Column().withName("c_up").withDataType(ColumnDataType.INT);
+    Column cMain = new Column().withName("c_main").withDataType(ColumnDataType.INT);
+    Column cMainFk = new Column().withName("c_main_fk").withDataType(ColumnDataType.INT);
+    Column cDownFk = new Column().withName("c_down_fk").withDataType(ColumnDataType.INT);
+
+    String testSchemaFqn = schema.getFullyQualifiedName();
+
+    // 1. Upstream table (parent)
+    Table upstreamTable =
+        createEntity(
+            createRequest("er_both_upstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(cUp)),
+            ADMIN_AUTH_HEADERS);
+
+    // Refresh to obtain column FQN
+    Table upstreamRef = getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // 2. Main table that references the upstream table (FK defined upfront)
+    Table tableInSchema =
+        createEntity(
+            createRequest("er_both_table_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withColumns(List.of(cMain, cMainFk))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(cMainFk.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Refresh to obtain column FQN that downstream will reference
+    Table tableInSchemaRef =
+        getEntityByName(tableInSchema.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // 3. Downstream table that references the main table (FK defined upfront)
+    Table downstreamTable =
+        createEntity(
+            createRequest("er_both_downstream_fk")
+                .withDatabaseSchema(testSchemaFqn)
+                .withColumns(List.of(cDownFk))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(cDownFk.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    tableInSchemaRef
+                                        .getColumns()
+                                        .getFirst()
+                                        .getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Use final refs for assertions
+    final Table upstreamTableFinal = upstreamRef;
+    final Table tableInSchemaFinal = tableInSchemaRef;
+    final Table downstreamTableFinal = downstreamTable;
+
+    // Test both directions using the main table's FQN
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fqn", tableInSchemaFinal.getFullyQualifiedName());
+    queryParams.put("upstreamDepth", "1");
+    queryParams.put("downstreamDepth", "1");
+
+    WebTarget target = getResource("tables/entityRelationship");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult result =
+        org.openmetadata.service.util.TestUtils.get(
+            target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Assertions
+    assertNotNull(result);
+    // Nodes should be tableInSchema, upstreamTable, downstreamTable
+    assertEquals(3, result.getNodes().size());
+    assertTrue(result.getNodes().containsKey(tableInSchemaFinal.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(upstreamTableFinal.getFullyQualifiedName()));
+    assertTrue(result.getNodes().containsKey(downstreamTableFinal.getFullyQualifiedName()));
+
+    // There should be 1 upstream and 1 downstream edge for the table
+    assertEquals(1, result.getUpstreamEdges().size());
+    assertEquals(1, result.getDownstreamEdges().size());
+
+    // Check upstream edge: upstreamTable -> tableInSchema
+    assertTrue(
+        result.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(upstreamTableFinal.getId())
+                        && e.getRelatedEntity().getId().equals(tableInSchemaFinal.getId())),
+        "Edge from upstreamTable to tableInSchema not found in upstream edges");
+
+    // Check downstream edge: tableInSchema -> downstreamTable
+    assertTrue(
+        result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(tableInSchemaFinal.getId())
+                        && e.getRelatedEntity().getId().equals(downstreamTableFinal.getId())),
+        "Edge from tableInSchema to downstreamTable not found in downstream edges");
+  }
+
+  @Test
+  void test_tableEntityRelationshipFanOutUpstream(TestInfo test) throws IOException {
+    // Schema isolation for this test
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_fanout_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    String schemaFqn = schema.getFullyQualifiedName();
+
+    // Three parent tables (P1, P2, P3)
+    Table p1 =
+        createEntity(
+            createRequest("fanout_p1")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table p2 =
+        createEntity(
+            createRequest("fanout_p2")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table p3 =
+        createEntity(
+            createRequest("fanout_p3")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+
+    // Refresh parent tables to get the full column FQNs
+    Table p1Ref = getEntityByName(p1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table p2Ref = getEntityByName(p2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table p3Ref = getEntityByName(p3.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Child table referencing all three parents
+    List<Column> childCols =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.INT),
+            new Column().withName("p1_fk").withDataType(ColumnDataType.INT),
+            new Column().withName("p2_fk").withDataType(ColumnDataType.INT),
+            new Column().withName("p3_fk").withDataType(ColumnDataType.INT));
+
+    // Build FK constraints ahead of creation
+    TableConstraint fk1 =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("p1_fk"))
+            .withReferredColumns(List.of(p1Ref.getColumns().getFirst().getFullyQualifiedName()));
+    TableConstraint fk2 =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("p2_fk"))
+            .withReferredColumns(List.of(p2Ref.getColumns().getFirst().getFullyQualifiedName()));
+    TableConstraint fk3 =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("p3_fk"))
+            .withReferredColumns(List.of(p3Ref.getColumns().getFirst().getFullyQualifiedName()));
+
+    Table child =
+        createEntity(
+            createRequest("fanout_child")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(childCols)
+                .withTableConstraints(List.of(fk1, fk2, fk3)),
+            ADMIN_AUTH_HEADERS);
+
+    // Call ER API: upstream depth = 1
+    WebTarget target =
+        getResource("tables/entityRelationship")
+            .queryParam("fqn", child.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "0");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult result =
+        TestUtils.get(
+            target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Expectations: 4 nodes (child + 3 parents) and 3 upstream edges
+    assertEquals(4, result.getNodes().size());
+    assertEquals(3, result.getUpstreamEdges().size());
+    assertTrue(result.getDownstreamEdges().isEmpty());
+
+    // Expected nodes
+    assertEquals(
+        Set.of(
+            child.getFullyQualifiedName(),
+            p1.getFullyQualifiedName(),
+            p2.getFullyQualifiedName(),
+            p3.getFullyQualifiedName()),
+        result.getNodes().keySet());
+
+    // Verify upstream edges: each parent -> child
+    assertEquals(3, result.getUpstreamEdges().size());
+    Set<UUID> parentIds = Set.of(p1.getId(), p2.getId(), p3.getId());
+    for (var edge : result.getUpstreamEdges().values()) {
+      assertTrue(parentIds.contains(edge.getEntity().getId()));
+      assertEquals(child.getId(), edge.getRelatedEntity().getId());
+    }
+    assertTrue(result.getDownstreamEdges().isEmpty());
+  }
+
+  @Test
+  void test_tableEntityRelationshipMultiHopDownstream(TestInfo test) throws IOException {
+    // Schema isolation
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_multihop_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+    String schemaFqn = schema.getFullyQualifiedName();
+
+    // Central table C
+    Table cTable =
+        createEntity(
+            createRequest("mh_c")
+                .withDatabaseSchema(schemaFqn)
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table cRef = getEntityByName(cTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Direct children D1 & D2 referencing C (constraints defined during creation)
+    TableConstraint childFkTemplate =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("c_fk"))
+            .withReferredColumns(List.of(cRef.getColumns().getFirst().getFullyQualifiedName()));
+
+    Table d1 =
+        createEntity(
+            createRequest("mh_d1")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(List.of(childFkTemplate)),
+            ADMIN_AUTH_HEADERS);
+    Table d2 =
+        createEntity(
+            createRequest("mh_d2")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("c_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(List.of(childFkTemplate)),
+            ADMIN_AUTH_HEADERS);
+
+    // Grand-child G1 referencing D1
+    Table d1Ref = getEntityByName(d1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    TableConstraint g1fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("d1_fk"))
+            .withReferredColumns(List.of(d1Ref.getColumns().getFirst().getFullyQualifiedName()));
+
+    Table g1 =
+        createEntity(
+            createRequest("mh_g1")
+                .withDatabaseSchema(schemaFqn)
+                .withColumns(
+                    List.of(new Column().withName("d1_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(List.of(g1fk)),
+            ADMIN_AUTH_HEADERS);
+
+    // Downstream depth = 1 (expect C, D1, D2)
+    WebTarget depth1Target =
+        getResource("tables/entityRelationship")
+            .queryParam("fqn", cTable.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "1");
+    var depth1Result =
+        TestUtils.get(
+            depth1Target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(3, depth1Result.getNodes().size());
+    assertEquals(2, depth1Result.getDownstreamEdges().size());
+    assertEquals(
+        Set.of(
+            cTable.getFullyQualifiedName(), d1.getFullyQualifiedName(), d2.getFullyQualifiedName()),
+        depth1Result.getNodes().keySet());
+    assertEquals(2, depth1Result.getDownstreamEdges().size());
+    for (var edge : depth1Result.getDownstreamEdges().values()) {
+      assertEquals(cTable.getId(), edge.getEntity().getId());
+      assertTrue(Set.of(d1.getId(), d2.getId()).contains(edge.getRelatedEntity().getId()));
+    }
+
+    // Downstream depth = 2 (expect C, D1, D2, G1)
+    WebTarget depth2Target =
+        getResource("tables/entityRelationship")
+            .queryParam("fqn", cTable.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "2");
+    var depth2Result =
+        TestUtils.get(
+            depth2Target,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(4, depth2Result.getNodes().size());
+    assertEquals(3, depth2Result.getDownstreamEdges().size());
+    assertEquals(
+        Set.of(
+            cTable.getFullyQualifiedName(),
+            d1.getFullyQualifiedName(),
+            d2.getFullyQualifiedName(),
+            g1.getFullyQualifiedName()),
+        depth2Result.getNodes().keySet());
+    assertEquals(3, depth2Result.getDownstreamEdges().size());
+    // Expected edges: C->D1, C->D2, D1->G1
+    assertTrue(
+        depth2Result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(cTable.getId())
+                        && e.getRelatedEntity().getId().equals(d1.getId())));
+    assertTrue(
+        depth2Result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(cTable.getId())
+                        && e.getRelatedEntity().getId().equals(d2.getId())));
+    assertTrue(
+        depth2Result.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(d1.getId())
+                        && e.getRelatedEntity().getId().equals(g1.getId())));
+  }
+
+  @Test
+  void test_tableEntityRelationshipDirectionEndpoint() throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_direction_endpoint_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("c1").withDataType(ColumnDataType.INT);
+    Column c2 = new Column().withName("c2").withDataType(ColumnDataType.INT);
+
+    Table upstreamTable =
+        createEntity(
+            createRequest("er_upstream_direction")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c1)),
+            ADMIN_AUTH_HEADERS);
+
+    // Create table2 (no constraints) so its column FQN is available
+    Table tableInSchema2 =
+        createEntity(
+            createRequest("er_table2_direction")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c2))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table upstreamRef = getEntityByName(upstreamTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table table2Ref = getEntityByName(tableInSchema2.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Central table – created WITH FK to upstream
+    Column c1Local = new Column().withName("c1_local").withDataType(ColumnDataType.INT);
+    Column c1FkCol = new Column().withName("c1_fk").withDataType(ColumnDataType.INT);
+    Table tableInSchema1 =
+        createEntity(
+            createRequest("er_table1_direction")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c1Local, c1FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c1FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    upstreamRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Down-stream table – created WITH FK to table2
+    Column c2Local = new Column().withName("c2_local").withDataType(ColumnDataType.INT);
+    Column c2FkCol = new Column().withName("c2_fk").withDataType(ColumnDataType.INT);
+    Table downstreamTable =
+        createEntity(
+            createRequest("er_downstream_direction")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c2Local, c2FkCol))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of(c2FkCol.getName()))
+                            .withReferredColumns(
+                                List.of(
+                                    table2Ref.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Test UPSTREAM direction endpoint
+    WebTarget upstreamTarget =
+        getResource("tables/entityRelationship/UPSTREAM")
+            .queryParam("fqn", tableInSchema1.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "1")
+            .queryParam("downstreamDepth", "0");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult upstreamResult =
+        org.openmetadata.service.util.TestUtils.get(
+            upstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Assertions for UPSTREAM direction endpoint: should find upstreamTable -> tableInSchema1
+    assertNotNull(upstreamResult);
+    // --- verify nodes ---
+    assertEquals(
+        Set.of(tableInSchema1.getFullyQualifiedName(), upstreamTable.getFullyQualifiedName()),
+        upstreamResult.getNodes().keySet());
+
+    // --- verify single upstream edge ---
+    assertEquals(1, upstreamResult.getUpstreamEdges().size());
+    var upstreamEdge = upstreamResult.getUpstreamEdges().values().iterator().next();
+    assertEquals(upstreamTable.getId(), upstreamEdge.getEntity().getId());
+    assertEquals(tableInSchema1.getId(), upstreamEdge.getRelatedEntity().getId());
+    assertTrue(upstreamResult.getDownstreamEdges().isEmpty());
+
+    // Test DOWNSTREAM direction endpoint
+    WebTarget downstreamTarget =
+        getResource("tables/entityRelationship/DOWNSTREAM")
+            .queryParam("fqn", tableInSchema1.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "1");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult downstreamResult =
+        org.openmetadata.service.util.TestUtils.get(
+            downstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Assertions for DOWNSTREAM direction endpoint: should find no downstream relationships for
+    // tableInSchema1
+    assertNotNull(downstreamResult);
+    // For this test setup, tableInSchema1 has no downstream relationships
+    // The direction endpoint should return only the starting node when no downstream relationships
+    // exist
+    assertEquals(1, downstreamResult.getNodes().size());
+    assertTrue(downstreamResult.getNodes().containsKey(tableInSchema1.getFullyQualifiedName()));
+    assertEquals(0, downstreamResult.getDownstreamEdges().size());
+    assertEquals(0, downstreamResult.getUpstreamEdges().size());
+
+    // Test DOWNSTREAM direction endpoint with a table that has downstream relationships
+    WebTarget downstreamTarget2 =
+        getResource("tables/entityRelationship/DOWNSTREAM")
+            .queryParam("fqn", table2Ref.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "1");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult
+        downstreamResult2 =
+            org.openmetadata.service.util.TestUtils.get(
+                downstreamTarget2,
+                org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+                ADMIN_AUTH_HEADERS);
+
+    // Assertions for DOWNSTREAM direction endpoint: should find table2Ref -> downstreamTable
+    assertNotNull(downstreamResult2);
+    assertEquals(2, downstreamResult2.getNodes().size());
+    assertTrue(downstreamResult2.getNodes().containsKey(table2Ref.getFullyQualifiedName()));
+    assertTrue(downstreamResult2.getNodes().containsKey(downstreamTable.getFullyQualifiedName()));
+    assertEquals(1, downstreamResult2.getDownstreamEdges().size());
+    assertEquals(0, downstreamResult2.getUpstreamEdges().size());
+
+    var downstreamEdge = downstreamResult2.getDownstreamEdges().values().iterator().next();
+    assertEquals(table2Ref.getId(), downstreamEdge.getEntity().getId());
+    assertEquals(downstreamTable.getId(), downstreamEdge.getRelatedEntity().getId());
+  }
+
+  @Test
+  void test_tableEntityRelationshipDirectionEndpointWithDepth() throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("er_direction_depth_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create a chain: A -> B -> C
+    Table tableA =
+        createEntity(
+            createRequest("er_chain_a")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT))),
+            ADMIN_AUTH_HEADERS);
+    Table tableARef = getEntityByName(tableA.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Table B references A
+    Table tableB =
+        createEntity(
+            createRequest("er_chain_b")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("a_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of("a_fk"))
+                            .withReferredColumns(
+                                List.of(
+                                    tableARef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+    Table tableBRef = getEntityByName(tableB.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Table C references B
+    Table tableC =
+        createEntity(
+            createRequest("er_chain_c")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("b_fk").withDataType(ColumnDataType.INT)))
+                .withTableConstraints(
+                    List.of(
+                        new TableConstraint()
+                            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                            .withColumns(List.of("b_fk"))
+                            .withReferredColumns(
+                                List.of(
+                                    tableBRef.getColumns().getFirst().getFullyQualifiedName())))),
+            ADMIN_AUTH_HEADERS);
+
+    // Test UPSTREAM direction with depth=2 from table C
+    WebTarget upstreamTarget =
+        getResource("tables/entityRelationship/UPSTREAM")
+            .queryParam("fqn", tableC.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "2")
+            .queryParam("downstreamDepth", "0");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult upstreamResult =
+        org.openmetadata.service.util.TestUtils.get(
+            upstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Should find A -> B -> C chain
+    assertNotNull(upstreamResult);
+    assertEquals(3, upstreamResult.getNodes().size());
+    assertEquals(
+        Set.of(
+            tableA.getFullyQualifiedName(),
+            tableB.getFullyQualifiedName(),
+            tableC.getFullyQualifiedName()),
+        upstreamResult.getNodes().keySet());
+    assertEquals(2, upstreamResult.getUpstreamEdges().size());
+    assertEquals(0, upstreamResult.getDownstreamEdges().size());
+
+    // Verify edges: A -> B and B -> C
+    assertTrue(
+        upstreamResult.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(tableA.getId())
+                        && e.getRelatedEntity().getId().equals(tableB.getId())));
+    assertTrue(
+        upstreamResult.getUpstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(tableB.getId())
+                        && e.getRelatedEntity().getId().equals(tableC.getId())));
+
+    // Test DOWNSTREAM direction with depth=2 from table A
+    WebTarget downstreamTarget =
+        getResource("tables/entityRelationship/DOWNSTREAM")
+            .queryParam("fqn", tableA.getFullyQualifiedName())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "2");
+
+    org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult downstreamResult =
+        org.openmetadata.service.util.TestUtils.get(
+            downstreamTarget,
+            org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult.class,
+            ADMIN_AUTH_HEADERS);
+
+    // Should find A -> B -> C chain
+    assertNotNull(downstreamResult);
+    assertEquals(3, downstreamResult.getNodes().size());
+    assertEquals(
+        Set.of(
+            tableA.getFullyQualifiedName(),
+            tableB.getFullyQualifiedName(),
+            tableC.getFullyQualifiedName()),
+        downstreamResult.getNodes().keySet());
+    assertEquals(2, downstreamResult.getDownstreamEdges().size());
+    assertEquals(0, downstreamResult.getUpstreamEdges().size());
+
+    // Verify edges: A -> B and B -> C
+    assertTrue(
+        downstreamResult.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(tableA.getId())
+                        && e.getRelatedEntity().getId().equals(tableB.getId())));
+    assertTrue(
+        downstreamResult.getDownstreamEdges().values().stream()
+            .anyMatch(
+                e ->
+                    e.getEntity().getId().equals(tableB.getId())
+                        && e.getRelatedEntity().getId().equals(tableC.getId())));
+  }
+
+  @Test
+  @Order(2)
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel tableTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    List<Table> createdTables = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("col1_" + i, BIGINT, null).withTags(List.of(columnTagLabel)),
+              getColumn("col2_" + i, VARCHAR, null).withDataLength(50));
+
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withColumns(columns)
+              .withTags(List.of(tableTagLabel))
+              .withTableConstraints(null);
+
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      createdTables.add(table);
+    }
+
+    // Test pagination with fields=tags (should fetch table-level tags only)
+    WebTarget target =
+        getResource("tables")
+            .queryParam("fields", "tags")
+            .queryParam("limit", "50")
+            .queryParam(
+                "databaseSchema",
+                DATABASE_SCHEMA.getFullyQualifiedName()); // Filter by schema to get our tables
+
+    TableList tableList = TestUtils.get(target, TableList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(tableList.getData());
+
+    List<Table> ourTables =
+        tableList.getData().stream()
+            .filter(t -> createdTables.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTables.isEmpty(), "Should find at least one of our created tables in pagination");
+
+    for (Table table : ourTables) {
+      assertNotNull(
+          table.getTags(), "Table-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, table.getTags().size(), "Should have exactly one table-level tag");
+      assertEquals(tableTagLabel.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+      if (table.getColumns() != null) {
+        for (Column col : table.getColumns()) {
+          assertTrue(
+              col.getTags() == null || col.getTags().isEmpty(),
+              "Column tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    target =
+        getResource("tables")
+            .queryParam("fields", "columns,tags")
+            .queryParam("limit", "50")
+            .queryParam(
+                "databaseSchema",
+                DATABASE_SCHEMA.getFullyQualifiedName()); // Filter by schema to get our tables
+
+    tableList = TestUtils.get(target, TableList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(tableList.getData());
+
+    ourTables =
+        tableList.getData().stream()
+            .filter(t -> createdTables.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTables.isEmpty(), "Should find at least one of our created tables in pagination");
+
+    for (Table table : ourTables) {
+      assertNotNull(
+          table.getTags(), "Table-level tags should not be null in pagination with columns,tags");
+      assertEquals(1, table.getTags().size(), "Should have exactly one table-level tag");
+      assertEquals(tableTagLabel.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+      assertNotNull(table.getColumns(), "Columns should not be null when fields includes columns");
+      Column col1 =
+          table.getColumns().stream()
+              .filter(c -> c.getName().startsWith("col1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col1 column"));
+
+      assertNotNull(
+          col1.getTags(), "Column tags should not be null when fields=columns,tags in pagination");
+      assertTrue(!col1.getTags().isEmpty(), "Column should have at least one tag");
+      // Check that our expected tag is present
+      boolean hasExpectedTag =
+          col1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(columnTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Column should have the expected tag: " + columnTagLabel.getTagFQN());
+
+      Column col2 =
+          table.getColumns().stream()
+              .filter(c -> c.getName().startsWith("col2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col2 column"));
+
+      assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
+    }
+  }
+
+  @Test
+  void test_compositeKeyConstraintIndexOutOfBounds_fixed(TestInfo test) throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = schemaTest.createRequest("composite_key_test_schema");
+    DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("user_ref").withDataType(ColumnDataType.STRING);
+    Column c2 = new Column().withName("tenant_id").withDataType(ColumnDataType.STRING);
+    Column c3 = new Column().withName("user_id").withDataType(ColumnDataType.STRING);
+
+    // Create target table (referenced table with 2 columns)
+    Table targetTable =
+        createEntity(
+            createRequest("target_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c2, c3)),
+            ADMIN_AUTH_HEADERS);
+
+    // Create source table (no constraints initially)
+    Table sourceTable =
+        createEntity(
+            createRequest("source_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c1))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table targetRef = getEntityByName(targetTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Step 2: Create the problematic constraint using deep copy method (1 local column -> 2
+    // referred columns)
+    String targetCol1FQN = targetRef.getColumns().get(0).getFullyQualifiedName();
+    String targetCol2FQN = targetRef.getColumns().get(1).getFullyQualifiedName();
+
+    String originalJson = JsonUtils.pojoToJson(sourceTable);
+    Table sourceTableV2 = JsonUtils.deepCopy(sourceTable, Table.class);
+
+    // Create the problematic constraint: 1 local column referencing 2 referred columns
+    TableConstraint problematicConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(Arrays.asList("user_ref")) // 1 local column
+            .withReferredColumns(Arrays.asList(targetCol1FQN, targetCol2FQN)); // 2 referred columns
+
+    sourceTableV2.setTableConstraints(Arrays.asList(problematicConstraint));
+
+    Table updatedTable =
+        patchEntity(sourceTable.getId(), originalJson, sourceTableV2, ADMIN_AUTH_HEADERS);
+
+    // Step 3: Verify constraint structure (the problematic case: 1 column -> 2 referred columns)
+    assertNotNull(updatedTable.getTableConstraints());
+    assertEquals(1, updatedTable.getTableConstraints().size());
+    TableConstraint constraint = updatedTable.getTableConstraints().get(0);
+    assertEquals(TableConstraint.ConstraintType.FOREIGN_KEY, constraint.getConstraintType());
+    assertEquals(1, constraint.getColumns().size()); // 1 local column
+    assertEquals(
+        2,
+        constraint
+            .getReferredColumns()
+            .size()); // 2 referred columns - this causes IndexOutOfBounds!
+
+    // Step 4: Build search index doc - this should NOT crash with our fix
+    assertDoesNotThrow(
+        () -> {
+          Entity.buildSearchIndex(Entity.TABLE, updatedTable);
+        },
+        "Search index building should not crash with composite key constraints");
+
+    // Step 5: Verify the constraint was properly stored
+    Table fetchedTable = getEntity(updatedTable.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedTable.getTableConstraints());
+    assertEquals(1, fetchedTable.getTableConstraints().size());
+  }
+
+  @Test
+  void testTableDomainAndDataProductOperations(TestInfo test) throws IOException {
+    Table table = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertTrue(nullOrEmpty(table.getDomains()));
+
+    DomainResourceTest domainTest = new DomainResourceTest();
+    CreateDomain createDomain = domainTest.createRequest("test-domain-" + test.getDisplayName());
+    Domain domain = domainTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(domain.getEntityReference()));
+
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    fieldAdded(change, "domains", List.of(domain.getEntityReference()));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertNotNull(table.getDomains());
+    assertEquals(1, table.getDomains().size());
+    assertEquals(domain.getId(), table.getDomains().get(0).getId());
+
+    // Adding another domain should fail with the default entity rules settings
+    CreateDomain createDomain2 = domainTest.createRequest("test-domain-2-" + test.getDisplayName());
+    Domain domain2 = domainTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
+
+    String currentJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(domain.getEntityReference(), domain2.getEntityReference()));
+
+    Table finalTable = table;
+    assertResponse(
+        () -> patchEntity(finalTable.getId(), currentJson, finalTable, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        MULTIDOMAIN_RULE_ERROR);
+
+    Table refreshedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductTest
+            .createRequest("test-data-product-" + test.getDisplayName())
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withAssets(List.of(refreshedTable.getEntityReference()));
+
+    DataProduct dataProduct = dataProductTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Verify data product was created successfully
+    assertNotNull(dataProduct);
+    assertNotNull(dataProduct.getAssets());
+    assertEquals(1, dataProduct.getAssets().size());
+    assertEquals(refreshedTable.getId(), dataProduct.getAssets().get(0).getId());
+    assertNotNull(dataProduct.getDomains());
+    assertEquals(1, dataProduct.getDomains().size());
+    assertEquals(domain.getId(), dataProduct.getDomains().get(0).getId());
   }
 }

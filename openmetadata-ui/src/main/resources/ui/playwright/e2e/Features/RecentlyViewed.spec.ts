@@ -63,30 +63,38 @@ test.describe('Recently viewed data assets', () => {
     await afterAction();
   });
 
-  test('Recently viewed widget should be visible on the home page', async ({
-    page,
-  }) => {
-    test.slow(true);
+  for (const entity of entities) {
+    test(`Check ${entity.getType()} in recently viewed`, async ({ page }) => {
+      test.slow(true);
 
-    for await (const entity of entities) {
-      await test.step(
-        `Check ${entity.getType()} in recently viewed widget `,
-        async () => {
-          await entity.visitEntityPage(page);
+      await entity.visitEntityPage(page);
 
-          await page.waitForSelector(`[data-testid="breadcrumb"]`);
+      await page.waitForSelector('[data-testid="breadcrumb"]');
 
-          await redirectToHomePage(page);
+      await redirectToHomePage(page);
 
-          await page.waitForSelector(`[data-testid="recently-viewed-widget"]`);
+      const entityName = getEntityDisplayName(entity.entity);
 
-          const selector = `[data-testid="recently-viewed-widget"] [title="${getEntityDisplayName(
-            entity.entity
-          )}"]`;
+      await expect(
+        page.getByTestId('recently-viewed-asset').getByText(entityName)
+      ).toBeVisible();
 
-          await expect(page.locator(selector)).toBeVisible();
-        }
-      );
-    }
-  });
+      await page
+        .getByTestId('recently-viewed-asset')
+        .getByText(entityName)
+        .click();
+
+      await page.waitForSelector('[data-testid="breadcrumb"]');
+
+      if ((await page.getByTestId('entity-header-display-name').count()) > 0) {
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).toContainText(entityName);
+      } else {
+        await expect(page.getByTestId('entity-header-name')).toContainText(
+          entityName
+        );
+      }
+    });
+  }
 });
