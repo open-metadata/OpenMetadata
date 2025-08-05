@@ -118,7 +118,7 @@ export const SAML_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
   enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Show required fields for SAML
   authority: { 'ui:title': 'Authority' },
@@ -237,7 +237,6 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
     'oidcConfiguration',
     'clientType',
     'tokenValidationAlgorithm',
-    'jwtPrincipalClaims',
     'enableSelfSignup',
   ],
   customoidc: ['ldapConfiguration', 'samlConfiguration'],
