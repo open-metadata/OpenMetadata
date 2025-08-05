@@ -12,16 +12,17 @@
 Lineage Source Module
 """
 import csv
+import multiprocessing
 import os
 import time
 import traceback
 from abc import ABC
 from functools import partial
+from multiprocessing import Process, Queue
+from threading import Thread
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
-import billiard
 import networkx as nx
-from billiard import Process, Queue
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,6 +40,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_graph
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.topology import Queue as TopologyQueue
 from metadata.ingestion.source.database.lineage_processors import (
     _process_chunk_in_subprocess,
     query_lineage_generator,
@@ -49,6 +51,7 @@ from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import can_spawn_child_process
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -59,7 +62,8 @@ CHUNK_SIZE = 200
 THREAD_TIMEOUT = 10 * 60
 PROCESS_TIMEOUT = 10 * 60
 # Maximum number of processes to use for parallel processing
-MAX_PROCESSES = min(billiard.cpu_count(), 8)  # Limit to 8 or available CPUs
+MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
+MAX_ACTIVE_TIMED_OUT_THREADS = 10
 
 
 class LineageSource(QueryParserSource, ABC):
@@ -139,6 +143,14 @@ class LineageSource(QueryParserSource, ABC):
             chunk_size: Size of chunks to process
             processor_timeout: Maximum time in seconds to wait for a processor process
         """
+        multiprocessing_supported = can_spawn_child_process()
+
+        if not multiprocessing_supported:
+            logger.debug(
+                "Current process cannot spawn child processes. "
+                "Lineage processing will be performed in the same process with "
+                " multithreading."
+            )
 
         def chunk_generator():
             """Group items from producer into chunks of specified size."""
@@ -147,20 +159,23 @@ class LineageSource(QueryParserSource, ABC):
             for item in producer_fn():
                 temp_chunk.append(item)
                 if len(temp_chunk) >= chunk_size:
-                    logger.info(
+                    logger.debug(
                         f"Processing chunk {chunk_index}: size={len(temp_chunk)}"
                     )
                     yield temp_chunk
                     temp_chunk = []
                     chunk_index += 1
             if temp_chunk:
-                logger.info(
+                logger.debug(
                     f"Processing final chunk {chunk_index}: size={len(temp_chunk)}"
                 )
                 yield temp_chunk
 
-        # Use multiprocessing Queue for lineage requests
-        queue = Queue()
+        # Use appropriate queue type based on processing mode
+        if multiprocessing_supported:
+            queue = Queue()  # multiprocessing.Queue for processes
+        else:
+            queue = TopologyQueue()  # TopologyQueue wrapper for threads
 
         # Create chunk iterator and tracking
         chunk_iter = iter(chunk_generator())
@@ -169,13 +184,15 @@ class LineageSource(QueryParserSource, ABC):
         active_processes = []
         process_start_times = {}
         completed_chunks = 0
-        total_started = 0
+        remaining_chunks = 0
+        total_started_processes = 0
+        active_timed_out_threads = []
 
         logger.info(f"Starting lineage processing with MAX_PROCESSES={MAX_PROCESSES}")
 
         def start_next_process():
             """Start the next pending process if available."""
-            nonlocal total_started
+            nonlocal total_started_processes
 
             # Try to get the next chunk for next time
             try:
@@ -190,28 +207,48 @@ class LineageSource(QueryParserSource, ABC):
             # Billiard is a fork of multiprocessing that is compatible with Airflow
             # and recommended by the Airflow team.
             # ref: https://github.com/apache/airflow/issues/14896
-            total_started += 1
-            process = Process(
-                target=_process_chunk_in_subprocess,
-                args=(chunk, processor_fn, queue, *args),
-            )
-            process.daemon = True
+            total_started_processes += 1
+            if multiprocessing_supported:
+                process = Process(
+                    target=_process_chunk_in_subprocess,
+                    args=(chunk, processor_fn, queue, *args),
+                )
+            else:
+                process = Thread(
+                    target=_process_chunk_in_subprocess,
+                    args=(chunk, processor_fn, queue, *args),
+                    daemon=True,
+                )
             process_start_times[process.name] = time.time()
-            logger.info(
-                f"Started lineage process {process.name} for chunk {total_started} "
+            process.start()
+            logger.debug(
+                f"Started lineage process {process.name} for chunk {total_started_processes} "
                 f"(active: {len(active_processes) + 1}/{MAX_PROCESSES}, chunk_size: {len(chunk)})"
             )
             active_processes.append(process)
-            process.start()
 
             return True
 
         # Process requests from the queue and check for completed or timed-out processes
-        while active_processes or not chunks_exhausted or not queue.empty():
+        def queue_has_items():
+            """Check if queue has items based on queue type."""
+            if multiprocessing_supported:
+                return not queue.empty()
+            else:
+                return queue.has_tasks()
+
+        def process_queue_items():
+            """Process items from queue based on queue type."""
+            while queue_has_items():
+                if multiprocessing_supported:
+                    yield queue.get_nowait()
+                else:
+                    yield from queue.process()
+
+        while active_processes or not chunks_exhausted or queue_has_items():
             # Process any available requests from the queue
             try:
-                while not queue.empty():
-                    yield queue.get_nowait()
+                yield from process_queue_items()
             except Exception as exc:
                 logger.warning(f"Error processing queue: {exc}")
                 logger.debug(traceback.format_exc())
@@ -225,10 +262,16 @@ class LineageSource(QueryParserSource, ABC):
                         time.time() - process_start_times[process.name]
                         > processor_timeout
                     ):
-                        logger.warning(
-                            f"Process {process.name} timed out after {processor_timeout}s"
-                        )
-                        process.terminate()  # Force terminate the timed out process
+                        if multiprocessing_supported:
+                            logger.warning(
+                                f"Process {process.name} timed out after {processor_timeout}s"
+                            )
+                            process.terminate()  # Force terminate the timed out process
+                        else:
+                            logger.warning(
+                                f"Thread {process.name} timed out after {processor_timeout}s"
+                            )
+                            active_timed_out_threads.append(process)
                         completed_chunks += 1
                     else:
                         still_active.append(process)
@@ -237,10 +280,24 @@ class LineageSource(QueryParserSource, ABC):
                     process.join()
                     completed_chunks += 1
                     runtime = time.time() - process_start_times[process.name]
-                    logger.info(
+                    logger.debug(
                         f"Lineage process {process.name} completed successfully "
-                        f"(runtime: {runtime:.1f}s, progress: {completed_chunks}/{total_started})"
+                        f"(runtime: {runtime:.1f}s, progress: {completed_chunks}/{total_started_processes})"
                     )
+
+            # check if any of the active_timed_out_threads are completed
+            active_timed_out_threads = [
+                thread for thread in active_timed_out_threads if thread.is_alive()
+            ]
+
+            # check if there are more than MAX_ACTIVE_TIMED_OUT_THREADS
+            if len(active_timed_out_threads) > MAX_ACTIVE_TIMED_OUT_THREADS:
+                remaining_chunks = sum(1 for _ in chunk_iter)
+                logger.warning(
+                    f"There are more than {MAX_ACTIVE_TIMED_OUT_THREADS} active timed out threads, "
+                    f"skipping remaining {remaining_chunks}/{completed_chunks+remaining_chunks} chunks. "
+                )
+                break
 
             active_processes = still_active
 
@@ -257,14 +314,13 @@ class LineageSource(QueryParserSource, ABC):
 
         # Final check for any remaining queue requests
         try:
-            while not queue.empty():
-                yield queue.get_nowait()
+            yield from process_queue_items()
         except Exception as exc:
             logger.warning(f"Error processing queue: {exc}")
             logger.debug(traceback.format_exc())
 
         logger.info(
-            f"Lineage processing completed with {completed_chunks}/{total_started} chunks processed"
+            f"Lineage processing completed with {completed_chunks}/{completed_chunks+remaining_chunks} chunks processed"
         )
 
     def yield_table_query(self) -> Iterator[TableQuery]:

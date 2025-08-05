@@ -15,10 +15,10 @@ import re
 import time
 import traceback
 from datetime import datetime
+from multiprocessing import Queue
 from typing import Iterable, List, Optional, Union
 
 import networkx as nx
-from billiard import Queue
 from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
