@@ -445,7 +445,8 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
         new SemanticsRule()
             .withName("Table has non-PII.Sensitive tags")
             .withDescription("Table is not allowed to have PII.Sensitive tags")
-            .withRule("{\"!\":{\"some\":[{\"var\":\"tags\"},{\"==\":[{\"var\":\"tagFQN\"},\"PII.Sensitive\"]}]}}");
+            .withRule(
+                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"==\":[{\"var\":\"tagFQN\"},\"PII.Sensitive\"]}]}}");
 
     RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false);
 
