@@ -1,0 +1,143 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.agents-status-widget {
+  .ant-card.agent-status-card {
+    height: 100%;
+
+    .ant-card-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+
+      &::before,
+      &::after {
+        display: none;
+      }
+
+      .agent-icon-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        padding: 10px;
+        background-color: @grey-50;
+        color: @grey-600;
+      }
+    }
+  }
+
+  .collate-agent.ant-card.ant-card-bordered {
+    border-color: @blue-39;
+    background-color: @blue-33;
+
+    .agent-icon-container {
+      background-color: @white;
+      color: @blue-32;
+    }
+  }
+
+  .status-summary-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 50%;
+    padding: 4px;
+
+    &.Running {
+      border-color: @blue-39;
+      background-color: @blue-22;
+      color: @blue-31;
+    }
+
+    &.Successful {
+      border-color: @green-16;
+      background-color: @green-9;
+      color: @green-10;
+    }
+
+    &.Pending {
+      border-color: @yellow-12;
+      background-color: @yellow-10;
+      color: @yellow-11;
+    }
+
+    &.Failed {
+      border-color: @red-13;
+      background-color: @red-9;
+      color: @red-10;
+    }
+  }
+
+  .ant-collapse-arrow.expand-icon-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .agent-status-summary-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .agent-status-summary-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-width: 1px;
+        border-style: solid;
+        border-radius: 50vh;
+        padding: 2px 12px;
+        font-size: 14px;
+        font-weight: 500;
+
+        &.Running {
+          background-color: @blue-22;
+          border-color: @blue-31;
+          .ant-typography {
+            color: @blue-31;
+          }
+        }
+
+        &.Successful {
+          background-color: @green-9;
+          border-color: @green-10;
+          .ant-typography {
+            color: @green-10;
+          }
+        }
+
+        &.Pending {
+          background-color: @yellow-10;
+          border-color: @yellow-11;
+          .ant-typography {
+            color: @yellow-11;
+          }
+        }
+
+        &.Failed {
+          background-color: @red-9;
+          border-color: @red-10;
+          .ant-typography {
+            color: @red-10;
+          }
+        }
+      }
+    }
+  }
+}

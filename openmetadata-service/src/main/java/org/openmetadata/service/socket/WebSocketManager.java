@@ -36,6 +36,7 @@ public class WebSocketManager {
 
   public static final String DELETE_ENTITY_CHANNEL = "deleteEntityChannel";
   public static final String MOVE_GLOSSARY_TERM_CHANNEL = "moveGlossaryTermChannel";
+  public static final String CHART_DATA_STREAM_CHANNEL = "chartDataStream";
 
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
