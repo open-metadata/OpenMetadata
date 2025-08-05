@@ -10,6 +10,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
@@ -48,10 +49,13 @@ public class EventBasedEntityTrigger implements TriggerInterface {
 
   public static String PASSES_FILTER_VARIABLE = "passesFilter";
 
+  private final EventBasedEntityTriggerDefinition triggerDefinition;
+
   public EventBasedEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
       EventBasedEntityTriggerDefinition triggerDefinition) {
+    this.triggerDefinition = triggerDefinition;
     Process process = new Process();
     process.setId(triggerWorkflowId);
     process.setName(triggerWorkflowId);
@@ -62,7 +66,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     ServiceTask filterTask = getFilterTask(triggerWorkflowId, triggerDefinition);
     process.addFlowElement(filterTask);
 
-    CallActivity workflowTrigger = getWorkflowTrigger(triggerWorkflowId, mainWorkflowName);
+    CallActivity workflowTrigger =
+        getWorkflowTrigger(triggerWorkflowId, mainWorkflowName, triggerDefinition.getOutput());
     process.addFlowElement(workflowTrigger);
 
     ErrorEventDefinition runtimeExceptionDefinition = new ErrorEventDefinition();
@@ -144,7 +149,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     }
   }
 
-  private CallActivity getWorkflowTrigger(String triggerWorkflowId, String mainWorkflowName) {
+  private CallActivity getWorkflowTrigger(
+      String triggerWorkflowId, String mainWorkflowName, Set<String> triggerOutputs) {
     CallActivity workflowTrigger =
         new CallActivityBuilder()
             .id(getFlowableElementId(triggerWorkflowId, "workflowTrigger"))
@@ -152,15 +158,33 @@ public class EventBasedEntityTrigger implements TriggerInterface {
             .inheritBusinessKey(true)
             .build();
 
-    IOParameter inputParameter = new IOParameter();
-    inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
-    inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    List<IOParameter> inputParameters = new ArrayList<>();
+
+    // ALWAYS pass relatedEntity for backward compatibility
+    IOParameter relatedEntityParam = new IOParameter();
+    relatedEntityParam.setSource(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    relatedEntityParam.setTarget(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    inputParameters.add(relatedEntityParam);
+
+    // Dynamically add any additional outputs declared in trigger - Eg updatedBy in
+    // GlossaryTermApprovalWorkflow
+    for (String triggerOutput : triggerOutputs) {
+      if (!RELATED_ENTITY_VARIABLE.equals(
+          triggerOutput)) { // Skip relatedEntity (already added above)
+        IOParameter inputParameter = new IOParameter();
+        inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+        inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, triggerOutput));
+        inputParameters.add(inputParameter);
+      }
+    }
 
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
     outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
 
-    workflowTrigger.setInParameters(List.of(inputParameter));
+    workflowTrigger.setInParameters(inputParameters);
     workflowTrigger.setOutParameters(List.of(outputParameter));
 
     return workflowTrigger;

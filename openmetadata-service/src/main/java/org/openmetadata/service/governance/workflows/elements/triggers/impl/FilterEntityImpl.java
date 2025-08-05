@@ -15,6 +15,8 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowUtils;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
@@ -38,6 +40,17 @@ public class FilterEntityImpl implements JavaDelegate {
     String entityLinkStr =
         (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
     boolean passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+
+    // If this workflow should run for this entity, terminate any previous running instances
+    // of THIS SPECIFIC workflow to prevent conflicts (but NOT the current instance)
+    if (passesFilter) {
+      String triggerWorkflowDefinitionKey =
+          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+      String currentProcessInstanceId = execution.getProcessInstanceId();
+      WorkflowUtils.terminateConflictingInstances(
+          triggerWorkflowDefinitionKey, entityLinkStr, currentProcessInstanceId);
+    }
+
     log.debug("Trigger Glossary Term Approval Workflow: {}", passesFilter);
     execution.setVariable(PASSES_FILTER_VARIABLE, passesFilter);
   }

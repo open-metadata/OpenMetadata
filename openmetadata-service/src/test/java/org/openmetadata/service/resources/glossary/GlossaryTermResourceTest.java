@@ -2103,6 +2103,12 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         updatedTerm.getStatus(),
         "Term should be auto-approved when creator is a reviewer");
 
+    // CRITICAL: Verify that updatedBy is the reviewer (USER1), not governance-bot
+    assertEquals(
+        USER1.getName(),
+        updatedTerm.getUpdatedBy(),
+        "Term should be updated by the reviewer (USER1), not governance-bot");
+
     // Verify: No workflow task should be created since term was auto-approved
     assertFalse(
         wasWorkflowTaskCreated(createdTerm.getFullyQualifiedName(), 2000),
@@ -2136,7 +2142,13 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Update the term as USER1 (who is a reviewer)
     String json = JsonUtils.pojoToJson(term);
     term.setDescription("Updated by reviewer USER1");
-    patchEntity(term.getId(), json, term, authHeaders(USER1.getName()));
+    GlossaryTerm updatedTerm = patchEntity(term.getId(), json, term, authHeaders(USER1.getName()));
+
+    // CRITICAL: Verify that updatedBy is the reviewer (USER1), not governance-bot
+    assertEquals(
+        USER1.getName(),
+        updatedTerm.getUpdatedBy(),
+        "Term should be updated by the reviewer (USER1), not governance-bot");
 
     // Verify no workflow task was created
     boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 5000L);
@@ -2232,6 +2244,18 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
           newApprovalTask.getTask().getId(),
           new ResolveTask().withNewValue("Approved"),
           authHeaders(USER1.getName()));
+
+      // Wait for task resolution workflow to complete
+      java.lang.Thread.sleep(5000);
+
+      // CRITICAL: Verify final term has been approved by USER1, not governance-bot
+      GlossaryTerm finalTerm = getEntity(term.getId(), "", ADMIN_AUTH_HEADERS);
+      assertEquals(
+          Status.APPROVED, finalTerm.getStatus(), "Term should be approved after task resolution");
+      assertEquals(
+          USER1.getName(),
+          finalTerm.getUpdatedBy(),
+          "Term should be updated by the approver (USER1), not governance-bot");
     } catch (Exception ignore) {
       // Ignore failure - should be flowable lock exception, because the tests are happening fast
     }
@@ -2250,16 +2274,20 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Team reviewerTeam =
         Entity.getEntityByName(Entity.TEAM, "Organization", "users", Include.NON_DELETED);
 
-    // Add USER1 to the Organization team for this test
+    // Add ADMIN to the Organization team for this test (so ADMIN can create terms as a team member)
     String jsonTeam = JsonUtils.pojoToJson(reviewerTeam);
     List<EntityReference> currentUsers =
         reviewerTeam.getUsers() != null
             ? new ArrayList<>(reviewerTeam.getUsers())
             : new ArrayList<>();
-    currentUsers.add(USER1.getEntityReference());
+    currentUsers.add(
+        Entity.getEntityReferenceByName(
+            Entity.USER,
+            "admin",
+            Include.NON_DELETED)); // Add ADMIN to team so they can create terms as team member
     reviewerTeam.setUsers(currentUsers);
 
-    // Update the team to include USER1
+    // Update the team to include ADMIN
     Entity.getEntityRepository(Entity.TEAM)
         .patch(
             null,
@@ -2271,31 +2299,31 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Create glossary with team as reviewer
     Glossary glossary = createGlossary(test, listOf(reviewerTeam.getEntityReference()), null);
 
-    // Create term as USER1 (who is member of reviewer team)
+    // Create term directly as ADMIN (who is now a member of the reviewer team)
     CreateGlossaryTerm createRequest =
         new CreateGlossaryTerm()
             .withName("termByTeamMember")
-            .withDescription("Term created by team member")
+            .withDescription("Term created by team member ADMIN")
             .withGlossary(glossary.getFullyQualifiedName());
 
-    // Create with ADMIN first to avoid permission issues, then patch with USER1 to simulate
-    // creation by team member
+    // Create directly with ADMIN (who is now a team member and reviewer)
     GlossaryTerm createdTerm = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-
-    // Update the term with USER1 to trigger the workflow as if USER1 was the updatedBy
-    String json = JsonUtils.pojoToJson(createdTerm);
-    createdTerm.setDescription("Updated by team member USER1");
-    patchEntity(createdTerm.getId(), json, createdTerm, authHeaders(USER1.getName()));
 
     // Wait for workflow to process and check final status
     java.lang.Thread.sleep(10000); // Wait for workflow to complete
-    GlossaryTerm updatedTerm = getEntity(createdTerm.getId(), "", authHeaders(USER1.getName()));
+    GlossaryTerm updatedTerm = getEntity(createdTerm.getId(), "", ADMIN_AUTH_HEADERS);
 
-    // Term should be auto-approved since USER1 is a member of the reviewer team
+    // Term should be auto-approved since ADMIN is a member of the reviewer team
     assertEquals(
         Status.APPROVED,
         updatedTerm.getStatus(),
-        "Term should be auto-approved when updated by team member");
+        "Term should be auto-approved when created by team member");
+
+    // CRITICAL: Verify that updatedBy is the team member (admin), not governance-bot
+    assertEquals(
+        "admin",
+        updatedTerm.getUpdatedBy(),
+        "Term should be updated by the team member (admin), not governance-bot");
 
     // Verify: No workflow task should be created since term was auto-approved
     assertFalse(

@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.utils.v190;
 
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.migration.utils.v170.MigrationUtil.createChart;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -7,8 +9,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -21,6 +25,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -311,7 +316,8 @@ public class MigrationUtil {
                           "glossaryTermStatus": "Approved"
                         },
                         "inputNamespaceMap": {
-                          "relatedEntity": "global"
+                          "relatedEntity": "global",
+                          "updatedBy": "global"
                         }
                       }
                       """,
@@ -351,6 +357,9 @@ public class MigrationUtil {
 
         // Add filter field to trigger config if it doesn't exist
         addFilterToTriggerConfig(workflowDefinition);
+        // Add updatedBy to trigger output if it doesn't exist
+        addUpdatedByToTriggerOutput(workflowDefinition);
+
         workflowDefinition.setNodes(nodes);
         workflowDefinition.setEdges(edges);
 
@@ -585,6 +594,33 @@ public class MigrationUtil {
     } catch (Exception ex) {
       LOG.error("Error running the automator domain to domains migration", ex);
       throw new RuntimeException("Migration v190 failed", ex);
+    }
+  }
+
+  private static void addUpdatedByToTriggerOutput(WorkflowDefinition workflowDefinition) {
+    try {
+      WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
+      if (trigger != null) {
+        Set<String> currentOutput = trigger.getOutput();
+        if (currentOutput == null || !currentOutput.contains(UPDATED_BY_VARIABLE)) {
+          Set<String> newOutput = new HashSet<>();
+          if (currentOutput != null) {
+            newOutput.addAll(currentOutput);
+          } else {
+            newOutput.add(RELATED_ENTITY_VARIABLE);
+          }
+          newOutput.add(UPDATED_BY_VARIABLE);
+
+          if (trigger instanceof EventBasedEntityTriggerDefinition) {
+            EventBasedEntityTriggerDefinition eventTrigger =
+                (EventBasedEntityTriggerDefinition) trigger;
+            eventTrigger.setOutput(newOutput);
+            LOG.info("Updated trigger output to include updatedBy: {}", newOutput);
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to update trigger output: {}", e.getMessage());
     }
   }
 }

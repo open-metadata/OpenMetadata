@@ -13,7 +13,8 @@
       "events": ["Created", "Updated"],
       "exclude": ["reviewers"],
       "filter": ""
-    }
+    },
+    "output": ["relatedEntity", "updatedBy"]
   },
   "nodes": [
     {
@@ -73,7 +74,8 @@
         "glossaryTermStatus": "Approved"
       },
       "inputNamespaceMap": {
-        "relatedEntity": "global"
+        "relatedEntity": "global",
+        "updatedBy": "global"
       }
     },
     {
