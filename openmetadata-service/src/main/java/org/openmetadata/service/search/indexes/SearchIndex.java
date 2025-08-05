@@ -97,7 +97,9 @@ public interface SearchIndex {
     Map<String, Object> map = new HashMap<>();
     map.put(
         "displayName",
-        entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
+        entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
+            ? entity.getDisplayName()
+            : entity.getName());
     map.put("entityType", entityType);
     map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
     map.put("domains", getEntitiesWithDisplayName(entity.getDomains()));

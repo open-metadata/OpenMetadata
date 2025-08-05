@@ -62,6 +62,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -141,23 +142,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("10")
           int limitParam,
       @Parameter(
-              description = "Sort the records based on a field",
-              schema = @Schema(type = "string", example = "name"))
-          @QueryParam("sort")
-          @DefaultValue("updatedAt")
-          String sortParam,
-      @Parameter(
-              description = "Starting record number for pagination",
-              schema = @Schema(type = "integer", minimum = "0", example = "0"))
-          @Min(0)
+              description = "Returns list of contracts before this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("before")
-          Integer beforeParam,
+          String before,
       @Parameter(
-              description = "Starting record number for pagination",
-              schema = @Schema(type = "integer", minimum = "0", example = "0"))
-          @Min(0)
+              description = "Returns list of contracts after this cursor",
+              schema = @Schema(type = "string"))
           @QueryParam("after")
-          Integer afterParam,
+          String after,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities",
               schema = @Schema(implementation = Include.class))
@@ -178,8 +171,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
-    String before = beforeParam != null ? beforeParam.toString() : null;
-    String after = afterParam != null ? afterParam.toString() : null;
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -302,6 +293,10 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract dataContract =
         repository.loadEntityDataContract(
             new EntityReference().withId(entityId).withType(entityType));
+    if (dataContract == null) {
+      throw EntityNotFoundException.byMessage(
+          String.format("Data contract for entity %s is not found", entityId));
+    }
     return addHref(uriInfo, repository.setFieldsInternal(dataContract, getFields(fieldsParam)));
   }
 
@@ -514,9 +509,14 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Data contract Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -539,11 +539,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(
               description = "Fully qualified name of the data contract",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return super.deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return super.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @DELETE
@@ -768,8 +773,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     DataContractResult result = getContractResult(dataContract, newResult);
-    result = repository.addContractResult(dataContract, result);
-    return Response.ok(result).build();
+    return repository.addContractResult(dataContract, result).toResponse();
   }
 
   @DELETE

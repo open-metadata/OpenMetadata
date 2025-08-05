@@ -13,9 +13,14 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
-import { ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
@@ -42,6 +47,7 @@ const MyFeedWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const { loading, entityThread, getFeedData } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
@@ -71,7 +77,7 @@ const MyFeedWidgetInternal = ({
       undefined,
       undefined,
       undefined,
-      10
+      PAGE_SIZE_MEDIUM
     );
   }, [getFeedData, selectedFilter]);
 
@@ -85,7 +91,7 @@ const MyFeedWidgetInternal = ({
   }, [currentLayout, widgetKey]);
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > 10,
+    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
     [entityThread, loading]
   );
 
@@ -103,10 +109,6 @@ const MyFeedWidgetInternal = ({
     );
   }, []);
 
-  const showMoreCount = useMemo(() => {
-    return entityThread.length > 0 ? entityThread.length.toString() : '';
-  }, [entityThread]);
-
   const widgetBody = useMemo(() => {
     return (
       <>
@@ -118,7 +120,7 @@ const MyFeedWidgetInternal = ({
               <ActivityFeedListV1New
                 isFeedWidget
                 emptyPlaceholderText={t('label.no-recent-activity')}
-                feedList={entityThread}
+                feedList={entityThread.slice(0, PAGE_SIZE_BASE)}
                 hidePopover={false}
                 isFullSizeWidget={isFullSizeWidget}
                 isLoading={loading}
@@ -140,26 +142,42 @@ const MyFeedWidgetInternal = ({
     isFullSizeWidget,
   ]);
 
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<ActivityFeedIcon height={22} width={22} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedFilter}
+        sortOptions={FEED_WIDGET_FILTER_OPTIONS}
+        title={t('label.activity-feed')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleFilterChange(key)}
+        onTitleClick={() => navigate(ROUTES.EXPLORE)}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleFilterChange,
+    ]
+  );
+
   return (
     <WidgetWrapper
-      data-testid="feed-widget"
-      dataLength={entityThread.length > 0 ? entityThread.length : 10}
+      dataTestId="KnowledgePanel.ActivityFeed"
+      header={widgetHeader}
       loading={loading}>
-      <div className="feed-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<ActivityFeedIcon height={22} width={22} />}
-          isEditView={isEditView}
-          redirectUrlOnTitleClick={ROUTES.EXPLORE}
-          selectedSortBy={selectedFilter}
-          sortOptions={FEED_WIDGET_FILTER_OPTIONS}
-          title={t('label.activity-feed')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange(key)}
-        />
+      <div className="feed-widget-container" id="feedWidgetData">
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter
@@ -167,9 +185,7 @@ const MyFeedWidgetInternal = ({
               currentUser?.name ?? '',
               EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={t('label.view-more-count', {
-              countValue: showMoreCount,
-            })}
+            moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />
         </div>

@@ -141,13 +141,18 @@ export const getEntryFormattedValue = (
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   const {
     active,
-    payload = [],
-    valueFormatter,
+    cardStyles,
+    customValueKey,
     dateTimeFormatter = formatDate,
     isPercentage,
+    labelStyles,
+    listContainerStyles,
+    payload = [],
     timeStampKey = 'timestampValue',
+    titleStyles,
     transformLabel = true,
-    customValueKey,
+    valueFormatter,
+    valueStyles,
   } = props;
 
   if (active && payload && payload.length) {
@@ -161,8 +166,15 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     return (
       <Card
         className="custom-data-insight-tooltip"
-        title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
-        <ul className="custom-data-insight-tooltip-container">
+        style={cardStyles}
+        title={
+          <Typography.Title level={5} style={titleStyles}>
+            {timestamp}
+          </Typography.Title>
+        }>
+        <ul
+          className="custom-data-insight-tooltip-container"
+          style={listContainerStyles}>
           {payloadValue.map((entry, index) => {
             const value = customValueKey
               ? entry.payload[customValueKey]
@@ -180,11 +192,13 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
                     width={12}>
                     <rect fill={entry.color} height="14" rx="2" width="14" />
                   </Surface>
-                  {transformLabel
-                    ? startCase(entry.name ?? (entry.dataKey as string))
-                    : entry.name ?? (entry.dataKey as string)}
+                  <span style={labelStyles}>
+                    {transformLabel
+                      ? startCase(entry.name ?? (entry.dataKey as string))
+                      : entry.name ?? (entry.dataKey as string)}
+                  </span>
                 </span>
-                <span className="font-medium">
+                <span className="font-medium" style={valueStyles}>
                   {valueFormatter
                     ? valueFormatter(value, entry.name ?? entry.dataKey)
                     : getEntryFormattedValue(value, isPercentage)}

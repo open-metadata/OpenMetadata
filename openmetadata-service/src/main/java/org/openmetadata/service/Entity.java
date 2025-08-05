@@ -230,6 +230,7 @@ public final class Entity {
   public static final String DOMAIN = "domain";
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
+  public static final String DATA_CONTRACT_RESULT = "dataContractResult";
 
   //
   // Other entities
@@ -530,6 +531,24 @@ public final class Entity {
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
+  }
+
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include) {
+    return getEntityByNameWithExcludedFields(entityType, fqn, excludeFields, include, false);
+  }
+
+  // Retrieve the entity by name excluding specific fields. Useful for import using CSV where
+  // certain fields are already sent in the csv
+  public static <T> T getEntityByNameWithExcludedFields(
+      String entityType, String fqn, String excludeFields, Include include, boolean fromCache) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    T entity =
+        (T)
+            entityRepository.getByNameWithExcludedFields(
+                null, fqn, excludeFields, include, fromCache);
+    return entity;
   }
 
   public static <T> List<T> getEntityByNames(

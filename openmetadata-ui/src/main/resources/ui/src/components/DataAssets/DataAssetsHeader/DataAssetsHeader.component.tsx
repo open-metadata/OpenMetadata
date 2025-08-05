@@ -46,6 +46,7 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
+import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -62,6 +63,7 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
+  getDataContractStatusIcon,
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
@@ -100,6 +102,7 @@ export const DataAssetsHeader = ({
   showDomain = true,
   afterDeleteAction,
   dataAsset,
+  dataContract,
   onUpdateVote,
   onOwnerUpdate,
   onTierUpdate,
@@ -421,6 +424,34 @@ export const DataAssetsHeader = ({
     selectedUserSuggestions,
   ]);
 
+  const dataContractLatestResultButton = useMemo(() => {
+    if (dataContract?.latestResult?.status === ContractExecutionStatus.Failed) {
+      return (
+        <Button
+          className={classNames(
+            `data-contract-latest-result-button
+                    ${dataContract?.latestResult?.status}`
+          )}
+          icon={getDataContractStatusIcon(dataContract?.latestResult?.status)}
+          onClick={() => {
+            navigate(
+              getEntityDetailsPath(
+                entityType,
+                dataAsset?.fullyQualifiedName ?? '',
+                EntityTabs.CONTRACT
+              )
+            );
+          }}>
+          {t('label.entity-failed', {
+            entity: t('label.contract'),
+          })}
+        </Button>
+      );
+    }
+
+    return null;
+  }, [dataContract]);
+
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
       setIsAutoPilotTriggering(true);
@@ -517,6 +548,8 @@ export const DataAssetsHeader = ({
                   data-testid="asset-header-btn-group"
                   size="small">
                   {triggerAutoPilotApplicationButton}
+                  {dataContractLatestResultButton}
+
                   {onUpdateVote && (
                     <Voting
                       disabled={deleted}
