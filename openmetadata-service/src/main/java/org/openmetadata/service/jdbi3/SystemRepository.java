@@ -74,7 +74,6 @@ import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
-import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -671,11 +670,10 @@ public class SystemRepository {
             case GOOGLE:
             case AWS_COGNITO:
             case AUTH_0:
-              if (authConfig.getOidcConfiguration() != null) {
-                results.add(
-                    validateOidcConfiguration(
-                        authConfig, securityConfig.getAuthorizerConfiguration()));
-              }
+              // Always validate OIDC providers - validators handle public/confidential clients
+              results.add(
+                  validateOidcConfiguration(
+                      authConfig, securityConfig.getAuthorizerConfiguration()));
               break;
             case LDAP:
               if (authConfig.getLdapConfiguration() != null) {
@@ -773,13 +771,14 @@ public class SystemRepository {
   private ValidationResult validateOidcConfiguration(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
     try {
-      // Base authentication fields are validated separately, now validate OIDC-specific fields
-
-      // Validate OidcClientConfig if present (for confidential clients)
-      if (authConfig.getOidcConfiguration() != null) {
+      String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
+      if ("confidential".equals(clientType)) {
+        if (authConfig.getOidcConfiguration() == null) {
+          throw new IllegalArgumentException(
+              "OIDC configuration is required for confidential clients");
+        }
         OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
 
-        // Validate key OIDC client config fields
         if (nullOrEmpty(oidcConfig.getId())) {
           throw new IllegalArgumentException("OIDC client ID in oidcConfiguration is required");
         }
@@ -791,6 +790,8 @@ public class SystemRepository {
           throw new IllegalArgumentException(
               "Either OIDC discovery URI or server URL must be provided");
         }
+      } else if ("public".equals(clientType)) {
+        LOG.debug("Public client detected - oidcConfiguration is optional");
       }
 
       // Provider-specific enhanced validation
@@ -846,8 +847,28 @@ public class SystemRepository {
         return providerValidation;
       }
 
-      // Use existing validation method to test actual connectivity
-      AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
+      // Use existing validation method to test actual connectivity only for confidential clients
+      // or when oidcConfiguration is present (some custom OIDC setups)
+      if ("confidential".equals(clientType) || authConfig.getOidcConfiguration() != null) {
+        try {
+          AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
+        } catch (Exception e) {
+          // If AuthenticationCodeFlowHandler validation fails but provider validation succeeded,
+          // return the provider validation result with a note
+          if (providerValidation != null && "success".equals(providerValidation.getStatus())) {
+            return new ValidationResult()
+                .withComponent("oidc")
+                .withStatus("warning")
+                .withMessage(
+                    "Provider-specific validation passed, but OIDC flow validation failed: "
+                        + e.getMessage());
+          }
+          throw e; // Re-throw if no provider validation or it failed
+        }
+      } else {
+        LOG.debug(
+            "Skipping AuthenticationCodeFlowHandler validation for public client without oidcConfiguration");
+      }
 
       return new ValidationResult()
           .withComponent("oidc")
@@ -955,30 +976,10 @@ public class SystemRepository {
   private ValidationResult validateSamlConfiguration(
       SamlSSOClientConfig samlConfig, OpenMetadataApplicationConfig applicationConfig) {
     try {
-      // Use enhanced SAML validator
+      // Use enhanced SAML validator - this performs comprehensive validation
+      // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();
-      ValidationResult enhancedValidation =
-          samlValidator.validateSamlConfiguration(null, samlConfig);
-
-      if ("failed".equals(enhancedValidation.getStatus())) {
-        return enhancedValidation;
-      }
-
-      // Test SAML settings can be initialized (existing OpenMetadata-specific validation)
-      try {
-        SamlSettingsHolder holder = SamlSettingsHolder.getInstance();
-        holder.initDefaultSettings(applicationConfig);
-      } catch (Exception e) {
-        return new ValidationResult()
-            .withComponent("saml-settings")
-            .withStatus("failed")
-            .withMessage("Failed to initialize SAML settings: " + e.getMessage());
-      }
-
-      return new ValidationResult()
-          .withComponent("saml")
-          .withStatus("success")
-          .withMessage("SAML configuration is valid and settings initialized successfully");
+      return samlValidator.validateSamlConfiguration(null, samlConfig);
     } catch (Exception e) {
       return new ValidationResult()
           .withComponent("saml")

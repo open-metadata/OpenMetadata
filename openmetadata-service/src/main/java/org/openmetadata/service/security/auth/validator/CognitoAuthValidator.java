@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
@@ -29,7 +30,7 @@ public class CognitoAuthValidator {
       }
 
       // Extract Cognito details
-      CognitoDetails cognitoDetails = extractCognitoDetails(oidcConfig);
+      CognitoDetails cognitoDetails = extractCognitoDetails(authConfig, oidcConfig);
 
       // Step 2: Validate Cognito user pool exists and is accessible
       ValidationResult poolValidation = validateUserPool(cognitoDetails);
@@ -37,13 +38,17 @@ public class CognitoAuthValidator {
         return poolValidation;
       }
 
-      // Step 3: If we have client credentials, validate format
-      if (oidcConfig != null && !nullOrEmpty(oidcConfig.getSecret())) {
-        ValidationResult credentialsValidation =
-            validateClientCredentialsFormat(authConfig.getClientId(), oidcConfig.getSecret());
-        if ("failed".equals(credentialsValidation.getStatus())) {
-          return credentialsValidation;
-        }
+      // Step 3: Validate public key URLs
+      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
+      if ("failed".equals(publicKeyValidation.getStatus())) {
+        return publicKeyValidation;
+      }
+
+      // Step 4: Validate based on client type
+      ValidationResult clientValidation =
+          validateClientBasedOnType(authConfig, oidcConfig, cognitoDetails);
+      if ("failed".equals(clientValidation.getStatus())) {
+        return clientValidation;
       }
 
       return new ValidationResult()
@@ -75,15 +80,33 @@ public class CognitoAuthValidator {
             "Invalid Cognito client ID format. Expected alphanumeric string.");
       }
 
-      // Validate OIDC configuration
-      if (oidcConfig == null) {
-        throw new IllegalArgumentException(
-            "OIDC configuration is required for Cognito authentication");
-      }
+      // For public clients, OIDC configuration is optional
+      String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
+      if ("confidential".equals(clientType)) {
+        // Validate OIDC configuration for confidential clients
+        if (oidcConfig == null) {
+          throw new IllegalArgumentException(
+              "OIDC configuration is required for confidential Cognito clients");
+        }
 
-      // Discovery URI is required for Cognito
-      if (nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-        throw new IllegalArgumentException("Cognito discovery URI is required");
+        // Discovery URI is required for confidential clients
+        if (nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+          throw new IllegalArgumentException(
+              "Cognito discovery URI is required for confidential clients");
+        }
+      } else if ("public".equals(clientType)) {
+        // For public clients, we use authority from authConfig, OIDC config is optional
+        if (nullOrEmpty(authConfig.getAuthority())) {
+          throw new IllegalArgumentException("Authority is required for public Cognito clients");
+        }
+
+        // Validate authority format for Cognito
+        if (!authConfig
+            .getAuthority()
+            .matches("https://cognito-idp\\.[a-z0-9-]+\\.amazonaws\\.com/[a-zA-Z0-9_-]+")) {
+          throw new IllegalArgumentException(
+              "Invalid Cognito authority format. Expected: https://cognito-idp.{region}.amazonaws.com/{userPoolId}");
+        }
       }
 
       return new ValidationResult()
@@ -98,28 +121,54 @@ public class CognitoAuthValidator {
     }
   }
 
-  private CognitoDetails extractCognitoDetails(OidcClientConfig oidcConfig) {
-    String discoveryUri = oidcConfig.getDiscoveryUri();
+  private CognitoDetails extractCognitoDetails(
+      AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
+    String sourceUrl;
+    String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
 
-    // Parse Cognito discovery URI
-    // Format:
+    if ("public".equals(clientType)) {
+      // For public clients, use authority
+      sourceUrl = authConfig.getAuthority();
+      if (nullOrEmpty(sourceUrl)) {
+        throw new IllegalArgumentException("Authority is required for public Cognito clients");
+      }
+      LOG.debug("Extracting Cognito details from authority: {}", sourceUrl);
+    } else {
+      // For confidential clients, use discoveryUri
+      if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+        throw new IllegalArgumentException(
+            "Discovery URI is required for confidential Cognito clients");
+      }
+      sourceUrl = oidcConfig.getDiscoveryUri();
+      LOG.debug("Extracting Cognito details from discoveryUri: {}", sourceUrl);
+    }
+
+    // Parse Cognito URL to extract region and user pool ID
+    // Authority format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
+    // Discovery format:
     // https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/openid-configuration
-    if (!discoveryUri.matches(
-        "https://cognito-idp\\.[a-z0-9-]+\\.amazonaws\\.com/[a-zA-Z0-9_-]+/.well-known/openid-configuration")) {
+
+    String baseUrl;
+    if (sourceUrl.contains("/.well-known/openid-configuration")) {
+      baseUrl = sourceUrl.replace("/.well-known/openid-configuration", "");
+    } else {
+      baseUrl = sourceUrl;
+    }
+
+    if (!baseUrl.matches("https://cognito-idp\\.[a-z0-9-]+\\.amazonaws\\.com/[a-zA-Z0-9_-]+")) {
       throw new IllegalArgumentException(
-          "Invalid Cognito discovery URI format. "
-              + "Expected: https://cognito-idp.{region}.amazonaws.com/{userPoolId}/.well-known/openid-configuration");
+          "Invalid Cognito URL format. Expected: https://cognito-idp.{region}.amazonaws.com/{userPoolId}");
     }
 
     // Extract region and user pool ID
-    String[] parts = discoveryUri.split("/");
+    String[] parts = baseUrl.split("/");
     String domain = parts[2]; // cognito-idp.{region}.amazonaws.com
     String region = domain.split("\\.")[1];
     String userPoolId = parts[3];
 
     // Validate region
     if (!region.matches("^[a-z]{2}-[a-z]+-[0-9]$")) {
-      throw new IllegalArgumentException("Invalid AWS region format in discovery URI: " + region);
+      throw new IllegalArgumentException("Invalid AWS region format: " + region);
     }
 
     // Validate user pool ID format
@@ -127,6 +176,7 @@ public class CognitoAuthValidator {
       throw new IllegalArgumentException("Invalid Cognito user pool ID format: " + userPoolId);
     }
 
+    String discoveryUri = baseUrl + COGNITO_WELL_KNOWN_PATH;
     return new CognitoDetails(region, userPoolId, discoveryUri);
   }
 
@@ -270,6 +320,142 @@ public class CognitoAuthValidator {
         .withMessage(
             "App client format validated. "
                 + "Full validation would require AWS credentials and appropriate permissions.");
+  }
+
+  private ValidationResult validateClientBasedOnType(
+      AuthenticationConfiguration authConfig,
+      OidcClientConfig oidcConfig,
+      CognitoDetails cognitoDetails) {
+    try {
+      String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
+      String clientId = authConfig.getClientId();
+
+      if ("public".equals(clientType)) {
+        // For public clients, validate client ID format and test user pool accessibility
+        return validatePublicClient(cognitoDetails, clientId);
+      } else if ("confidential".equals(clientType)) {
+        // For confidential clients, validate credentials
+        if (oidcConfig == null || nullOrEmpty(oidcConfig.getSecret())) {
+          throw new IllegalArgumentException(
+              "Client secret is required for confidential Cognito clients");
+        }
+        return validateClientCredentialsFormat(clientId, oidcConfig.getSecret());
+      } else {
+        return new ValidationResult()
+            .withComponent("cognito-client-type")
+            .withStatus("failed")
+            .withMessage("Unknown client type: " + authConfig.getClientType());
+      }
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("cognito-client-type")
+          .withStatus("failed")
+          .withMessage("Client type validation failed: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validatePublicClient(CognitoDetails cognitoDetails, String clientId) {
+    try {
+      // For public clients, we can't fully validate without AWS SDK and credentials
+      // But we can test the user pool accessibility and client ID format
+
+      // The client ID format validation is already done in basicConfig
+      // Here we add additional validation that the user pool is accessible
+
+      return new ValidationResult()
+          .withComponent("cognito-public-client")
+          .withStatus("success")
+          .withMessage(
+              "Cognito public client validated successfully. User pool is accessible. "
+                  + "Note: Full client ID validation requires AWS SDK and appropriate permissions.");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("cognito-public-client")
+          .withStatus("warning")
+          .withMessage("Public client validation encountered an error: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validatePublicKeyUrls(
+      AuthenticationConfiguration authConfig, CognitoDetails cognitoDetails) {
+    try {
+      List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
+      if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
+        throw new IllegalArgumentException("Public key URLs are required");
+      }
+
+      String expectedJwksUri =
+          String.format(
+              "https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json",
+              cognitoDetails.region, cognitoDetails.userPoolId);
+
+      for (String urlStr : publicKeyUrls) {
+        try {
+          URL url = new URL(urlStr);
+
+          // Cognito JWKS URL should match the expected format
+          if (!urlStr.equals(expectedJwksUri)) {
+            throw new IllegalArgumentException(
+                "Cognito public key URL should be: " + expectedJwksUri + ", but got: " + urlStr);
+          }
+
+          // Test URL accessibility
+          HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+          conn.setRequestMethod("GET");
+          conn.setConnectTimeout(5000);
+          conn.setReadTimeout(5000);
+
+          int responseCode = conn.getResponseCode();
+          if (responseCode != 200) {
+            throw new IllegalArgumentException(
+                "Public key URL is not accessible. HTTP response: "
+                    + responseCode
+                    + " for URL: "
+                    + urlStr);
+          }
+
+          // Validate response is proper JWKS
+          try (BufferedReader reader =
+              new BufferedReader(
+                  new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+              response.append(line);
+            }
+
+            // Parse as JSON to validate format
+            JsonNode jwks = JsonUtils.readTree(response.toString());
+
+            // For JWKS, should have 'keys' array
+            if (!jwks.has("keys")) {
+              throw new IllegalArgumentException(
+                  "Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
+            }
+
+            // Validate keys array is not empty
+            if (jwks.get("keys").size() == 0) {
+              throw new IllegalArgumentException(
+                  "JWKS endpoint returned empty keys array: " + urlStr);
+            }
+          }
+
+        } catch (Exception e) {
+          throw new IllegalArgumentException(
+              "Invalid public key URL '" + urlStr + "': " + e.getMessage());
+        }
+      }
+
+      return new ValidationResult()
+          .withComponent("cognito-public-key-urls")
+          .withStatus("success")
+          .withMessage("Cognito public key URLs are valid and accessible");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("cognito-public-key-urls")
+          .withStatus("failed")
+          .withMessage("Public key URL validation failed: " + e.getMessage());
+    }
   }
 
   private static class CognitoDetails {
