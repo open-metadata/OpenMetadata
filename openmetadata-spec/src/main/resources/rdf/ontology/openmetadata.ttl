@@ -20,6 +20,7 @@
 @prefix time: <http://www.w3.org/2006/time#> .
 @prefix odrl: <http://www.w3.org/ns/odrl/2/> .
 @prefix qb: <http://purl.org/linked-data/cube#> .
+@prefix csvw: <http://www.w3.org/ns/csvw#> .
 
 # OpenMetadata Complete Ontology
 om: a owl:Ontology ;
@@ -1009,6 +1010,256 @@ om:modified a owl:DatatypeProperty ;
     rdfs:subPropertyOf dct:modified ;
     rdfs:domain om:Entity ;
     rdfs:range xsd:dateTime .
+
+#################################################################
+# CSVW Tabular Data Metadata (for Tables)
+#################################################################
+
+om:rowCount a owl:DatatypeProperty ;
+    rdfs:label "row count" ;
+    rdfs:comment "Number of rows in the table" ;
+    rdfs:domain om:Table ;
+    rdfs:range xsd:integer .
+
+om:columnCount a owl:DatatypeProperty ;
+    rdfs:label "column count" ;
+    rdfs:comment "Number of columns in the table" ;
+    rdfs:domain om:Table ;
+    rdfs:range xsd:integer .
+
+om:columnDataType a owl:DatatypeProperty ;
+    rdfs:label "column data type" ;
+    rdfs:subPropertyOf csvw:datatype ;
+    rdfs:comment "Data type of the column" ;
+    rdfs:domain om:Column ;
+    rdfs:range xsd:string .
+
+om:columnDescription a owl:DatatypeProperty ;
+    rdfs:label "column description" ;
+    rdfs:comment "Description of what the column contains" ;
+    rdfs:domain om:Column ;
+    rdfs:range xsd:string .
+
+om:isPrimaryKey a owl:DatatypeProperty ;
+    rdfs:label "is primary key" ;
+    rdfs:comment "Whether this column is a primary key" ;
+    rdfs:domain om:Column ;
+    rdfs:range xsd:boolean .
+
+om:isNullable a owl:DatatypeProperty ;
+    rdfs:label "is nullable" ;
+    rdfs:subPropertyOf csvw:null ;
+    rdfs:comment "Whether this column can contain null values" ;
+    rdfs:domain om:Column ;
+    rdfs:range xsd:boolean .
+
+om:sampleData a owl:ObjectProperty ;
+    rdfs:label "sample data" ;
+    rdfs:comment "Sample data from the table" ;
+    rdfs:domain om:Table ;
+    rdfs:range csvw:TableGroup .
+
+#################################################################
+# Enhanced Lineage Properties (PROV-O aligned)
+#################################################################
+
+om:lineageSource a owl:DatatypeProperty ;
+    rdfs:label "lineage source" ;
+    rdfs:comment "How the lineage was created (Manual, Pipeline, Query, etc.)" ;
+    rdfs:domain om:DataAsset ;
+    rdfs:range xsd:string .
+
+om:sqlQuery a owl:DatatypeProperty ;
+    rdfs:label "SQL query" ;
+    rdfs:comment "SQL query used in transformation" ;
+    rdfs:domain om:DataAsset ;
+    rdfs:range xsd:string .
+
+om:transformationFunction a owl:DatatypeProperty ;
+    rdfs:label "transformation function" ;
+    rdfs:comment "Function applied to transform data" ;
+    rdfs:domain om:DataAsset ;
+    rdfs:range xsd:string .
+
+om:fromColumn a owl:ObjectProperty ;
+    rdfs:label "from column" ;
+    rdfs:subPropertyOf prov:used ;
+    rdfs:comment "Source column used in transformation" ;
+    rdfs:domain om:Column ;
+    rdfs:range om:Column .
+
+om:toColumn a owl:ObjectProperty ;
+    rdfs:label "to column" ;
+    rdfs:subPropertyOf prov:wasGeneratedBy ;
+    rdfs:comment "Target column created by transformation" ;
+    rdfs:domain om:Column ;
+    rdfs:range om:Column .
+
+om:lineageCreatedBy a owl:ObjectProperty ;
+    rdfs:label "lineage created by" ;
+    rdfs:subPropertyOf prov:wasAttributedTo ;
+    rdfs:comment "User who created the lineage" ;
+    rdfs:domain om:DataAsset ;
+    rdfs:range prov:Agent .
+
+om:lineageCreatedAt a owl:DatatypeProperty ;
+    rdfs:label "lineage created at" ;
+    rdfs:subPropertyOf prov:generatedAtTime ;
+    rdfs:comment "When the lineage was created" ;
+    rdfs:domain om:DataAsset ;
+    rdfs:range xsd:dateTime .
+
+om:pipeline a owl:ObjectProperty ;
+    rdfs:label "pipeline" ;
+    rdfs:subPropertyOf prov:wasGeneratedBy ;
+    rdfs:comment "Pipeline that processes the data" ;
+    rdfs:domain om:DataAsset ;
+    rdfs:range om:Pipeline .
+
+#################################################################
+# Data Product Properties (DPROD aligned)
+#################################################################
+
+om:InputPort a owl:Class ;
+    rdfs:label "Input Port" ;
+    rdfs:comment "Input port of a data product for consuming data" ;
+    rdfs:subClassOf dprod:InputPort, dcat:DataService .
+
+om:OutputPort a owl:Class ;
+    rdfs:label "Output Port" ;
+    rdfs:comment "Output port of a data product for exposing data" ;
+    rdfs:subClassOf dprod:OutputPort, dcat:DataService .
+
+om:DataProductSLA a owl:Class ;
+    rdfs:label "Data Product SLA" ;
+    rdfs:comment "Service Level Agreement for a data product" ;
+    rdfs:subClassOf dprod:ServiceLevelAgreement .
+
+om:dataProductAssets a owl:ObjectProperty ;
+    rdfs:label "data product assets" ;
+    rdfs:comment "Assets that are part of this data product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:DataAsset .
+
+om:dataProductDomain a owl:ObjectProperty ;
+    rdfs:label "data product domain" ;
+    rdfs:comment "Domain this data product belongs to" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:Domain .
+
+om:dataProductOwner a owl:ObjectProperty ;
+    rdfs:label "data product owner" ;
+    rdfs:subPropertyOf dcat:contactPoint ;
+    rdfs:comment "Owner of the data product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range prov:Agent .
+
+om:dataProductExpert a owl:ObjectProperty ;
+    rdfs:label "data product expert" ;
+    rdfs:comment "Expert for this data product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range prov:Agent .
+
+om:hasInputPort a owl:ObjectProperty ;
+    rdfs:label "has input port" ;
+    rdfs:subPropertyOf dprod:hasInputPort ;
+    rdfs:comment "Input port of the data product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:InputPort .
+
+om:hasOutputPort a owl:ObjectProperty ;
+    rdfs:label "has output port" ;
+    rdfs:subPropertyOf dprod:hasOutputPort ;
+    rdfs:comment "Output port of the data product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:OutputPort .
+
+om:portName a owl:DatatypeProperty ;
+    rdfs:label "port name" ;
+    rdfs:comment "Name of the port" ;
+    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:range xsd:string .
+
+om:portProtocol a owl:DatatypeProperty ;
+    rdfs:label "port protocol" ;
+    rdfs:comment "Protocol used by the port (REST, GRPC, KAFKA, etc.)" ;
+    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:range xsd:string .
+
+om:portFormat a owl:DatatypeProperty ;
+    rdfs:label "port format" ;
+    rdfs:comment "Data format supported by the port (JSON, CSV, PARQUET, etc.)" ;
+    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:range xsd:string .
+
+om:portEndpoint a owl:DatatypeProperty ;
+    rdfs:label "port endpoint" ;
+    rdfs:subPropertyOf dcat:endpointURL ;
+    rdfs:comment "Endpoint URL or connection string for the port" ;
+    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:range xsd:anyURI .
+
+om:portDataAsset a owl:ObjectProperty ;
+    rdfs:label "port data asset" ;
+    rdfs:comment "Data asset exposed through this port" ;
+    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:range om:DataAsset .
+
+om:lifecycleStage a owl:DatatypeProperty ;
+    rdfs:label "lifecycle stage" ;
+    rdfs:comment "Current lifecycle stage (IDEATION, DESIGN, DEVELOPMENT, TESTING, PRODUCTION, DEPRECATED, RETIRED)" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range xsd:string .
+
+om:hasSLA a owl:ObjectProperty ;
+    rdfs:label "has SLA" ;
+    rdfs:comment "Service Level Agreement for the data product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:DataProductSLA .
+
+om:slaTier a owl:DatatypeProperty ;
+    rdfs:label "SLA tier" ;
+    rdfs:comment "SLA tier level (GOLD, SILVER, BRONZE)" ;
+    rdfs:domain om:DataProductSLA ;
+    rdfs:range xsd:string .
+
+om:slaAvailability a owl:DatatypeProperty ;
+    rdfs:label "SLA availability" ;
+    rdfs:comment "Expected availability percentage" ;
+    rdfs:domain om:DataProductSLA ;
+    rdfs:range xsd:decimal .
+
+om:slaResponseTime a owl:DatatypeProperty ;
+    rdfs:label "SLA response time" ;
+    rdfs:comment "Expected response time in milliseconds" ;
+    rdfs:domain om:DataProductSLA ;
+    rdfs:range xsd:integer .
+
+om:slaDataFreshness a owl:DatatypeProperty ;
+    rdfs:label "SLA data freshness" ;
+    rdfs:comment "Maximum data staleness in minutes" ;
+    rdfs:domain om:DataProductSLA ;
+    rdfs:range xsd:integer .
+
+om:slaDataQuality a owl:DatatypeProperty ;
+    rdfs:label "SLA data quality" ;
+    rdfs:comment "Minimum data quality score" ;
+    rdfs:domain om:DataProductSLA ;
+    rdfs:range xsd:decimal .
+
+om:consumesFrom a owl:ObjectProperty ;
+    rdfs:label "consumes from" ;
+    rdfs:subPropertyOf dprod:consumesFrom ;
+    rdfs:comment "Data products that this product consumes data from" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:DataProduct .
+
+om:providesTo a owl:ObjectProperty ;
+    rdfs:label "provides to" ;
+    rdfs:subPropertyOf dprod:providesTo ;
+    rdfs:comment "Data products that consume data from this product" ;
+    rdfs:domain om:DataProduct ;
+    rdfs:range om:DataProduct .
 
 #################################################################
 # Additional DCAT Dataset Properties
