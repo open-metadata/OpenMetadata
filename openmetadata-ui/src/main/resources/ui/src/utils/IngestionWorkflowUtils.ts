@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { RJSFSchema } from '@rjsf/utils';
-import { cloneDeep, isEmpty, isString } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
   PipelineType as WorkflowType,
-  ProcessingEngineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionWorkflowData } from '../interface/service.interface';
 import apiServiceMetadataPipeline from '../jsons/ingestionSchemas/apiServiceMetadataPipeline.json';
@@ -196,61 +195,33 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
 };
 
 /**
- * Transforms profiler processing engine data to handle different formats
+ * Transforms profiler processing engine data to handle EntityReference format
  * @param formData - The form data containing processingEngine
  * @returns Transformed form data with properly formatted processingEngine
  */
 export const transformProfilerProcessingEngine = (
   formData: IngestionWorkflowData
 ): IngestionWorkflowData => {
-  if (!formData.processingEngine) {
-    return formData;
-  }
-
-  // Check if processingEngine is a JSON string (from our custom component)
-  if (isString(formData.processingEngine)) {
-    try {
-      // Parse the JSON string back to object
-      const engineConfig = JSON.parse(formData.processingEngine);
-      formData.processingEngine = engineConfig;
-    } catch (error) {
-      // If parsing fails, it might be the old format
-      if (formData.processingEngine?.type === 'Spark') {
-        formData.processingEngine = {
-          type: ProcessingEngineType.Spark,
-          remote: '', // This will be required for Spark
-          config: {
-            tempPath: '/tmp/openmetadata',
-            extraConfig: {},
-          },
-        };
-      } else {
-        // For Native engine, set the type
-        formData.processingEngine = {
-          type: ProcessingEngineType.Native,
-        };
-      }
-    }
-  } else if (formData.processingEngine.type === ProcessingEngineType.Spark) {
-    // Ensure Spark engine has required fields with defaults
-    formData.processingEngine = {
-      type: ProcessingEngineType.Spark,
-      remote: formData.processingEngine.remote || '', // This will be required for Spark
-      config: formData.processingEngine.config || {
-        tempPath: '/tmp/openmetadata',
-        extraConfig: {},
-      },
-    };
-  }
-
-  // Force override processingEngine based on our hidden input
+  // Force override processingEngine based on our hidden input (EntityReference format)
   const hiddenInput = document.querySelector(
     'input[name="processingEngine"]'
   ) as HTMLInputElement;
   if (hiddenInput && hiddenInput.value) {
     try {
       const engineConfig = JSON.parse(hiddenInput.value);
+      // Set the EntityReference to root level processingEngine
       formData.processingEngine = engineConfig;
+
+      // Remove processingEngine from any nested locations to ensure it only exists at root level
+      // This follows the same pattern as the 'name' field
+      if ((formData as any).sourceConfig?.config?.processingEngine) {
+        delete (formData as any).sourceConfig.config.processingEngine;
+      }
+
+      // Also remove from any other potential nested locations
+      if ((formData as any).config?.processingEngine) {
+        delete (formData as any).config.processingEngine;
+      }
     } catch (_error) {
       // Do nothing
     }

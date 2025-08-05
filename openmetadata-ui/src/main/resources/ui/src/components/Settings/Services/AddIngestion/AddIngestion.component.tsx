@@ -111,6 +111,7 @@ const AddIngestion = ({
       name: data?.name ?? generateUUID(),
       displayName:
         data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
+      processingEngine: data?.processingEngine,
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       raiseOnError: data?.raiseOnError ?? true,
     })
@@ -173,6 +174,7 @@ const AddIngestion = ({
       enableDebugLog,
       displayName,
       raiseOnError,
+      processingEngine,
       ...rest
     } = workflowData ?? {};
     const ingestionName = trim(name);
@@ -193,6 +195,7 @@ const AddIngestion = ({
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
+      processingEngine,
       owners: [
         {
           id: currentUser?.id ?? '',
@@ -243,6 +246,7 @@ const AddIngestion = ({
         },
         raiseOnError: extraData.raiseOnError ?? true,
         displayName: workflowData?.displayName,
+        processingEngine: workflowData?.processingEngine,
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
           : LogLevels.Info,
@@ -255,6 +259,7 @@ const AddIngestion = ({
                 'enableDebugLog',
                 'displayName',
                 'raiseOnError',
+                'processingEngine',
               ]) ?? {}
             ),
           },
