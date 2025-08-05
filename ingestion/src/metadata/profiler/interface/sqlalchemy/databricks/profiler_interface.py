@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
     SystemProfile,
+    TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -51,6 +52,11 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         *args,
         **kwargs,
     ) -> List[SystemProfile]:
+        if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
+            logger.debug(
+                f"Skipping {metrics.name()} metric for view {runner.table_name}"
+            )
+            return []
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
         self.system_metrics_class = cast(
             Type[DatabricksSystemMetricsComputer], self.system_metrics_class
