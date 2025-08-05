@@ -356,12 +356,14 @@ const ContractDetail: React.FC<{
             <Button
               danger
               className="delete-button"
+              data-testid="delete-contract-button"
               icon={<DeleteIcon />}
               size="small"
               onClick={onDelete}
             />
             <Button
               className="contract-edit-button"
+              data-testid="contract-edit-button"
               icon={
                 <EditIcon
                   className="anticon"

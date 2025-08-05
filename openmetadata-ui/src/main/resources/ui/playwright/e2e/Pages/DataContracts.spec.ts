@@ -71,7 +71,7 @@ test.describe('Data Contracts', () => {
     await afterAction();
   });
 
-  test('Create Data Contract', async ({ page }) => {
+  test('Create Data Contract and validate', async ({ page }) => {
     test.slow(true);
 
     await redirectToHomePage(page);
@@ -335,6 +335,58 @@ test.describe('Data Contracts', () => {
     await expect(
       page.getByTestId('contract-status-card-item-Semantics-status')
     ).toContainText('Passed');
+
+    await page.getByTestId('contract-edit-button').click();
+
+    await page.getByRole('tab', { name: 'Quality' }).click();
+
+    await page
+      .locator('input[type="checkbox"][aria-label="Select all"]')
+      .check();
+
+    await expect(
+      page.getByRole('checkbox', { name: 'Select all' })
+    ).toBeChecked();
+
+    await page.getByTestId('save-contract-btn').click();
+
+    await toastNotification(page, 'Data contract saved successfully');
+
+    await page.getByTestId('contract-run-now-button').click();
+    await runNowResponse;
+
+    await toastNotification(page, 'Contract validation trigger successfully.');
+
+    await page.reload();
+
+    // Verify YAML view
+    await page.getByTestId('contract-view-switch-tab-yaml').click();
+
+    await expect(page.getByTestId('code-mirror-container')).toBeVisible();
+    await expect(
+      page.getByTestId('code-mirror-container').getByTestId('query-copy-button')
+    ).toBeVisible();
+
+    // Export YAML
+    const downloadPromise = page.waitForEvent('download');
+
+    await page.getByTestId('export-contract-button').click();
+    const download = await downloadPromise;
+    // Wait for the download process to complete and save the downloaded file somewhere.
+    await download.saveAs('downloads/' + download.suggestedFilename());
+
+    // Delete contract
+    const deleteContractResponse = page.waitForResponse(
+      'api/v1/dataContracts/*?hardDelete=true'
+    );
+
+    await page.getByTestId('delete-contract-button').click();
+    await deleteContractResponse;
+
+    await toastNotification(page, '"Contract" deleted successfully!');
+
+    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+    await expect(page.getByTestId('add-contract-button')).toBeVisible();
 
     await page.waitForTimeout(2000);
   });
