@@ -77,14 +77,6 @@ public class WorkflowUtils {
               .createProcessInstanceQuery()
               .processDefinitionKey(mainWorkflowDefinitionName)
               .list();
-      // If there's only 1 or fewer running process instances, no conflicts to resolve
-      if (runningProcessInstances.size() <= 1) {
-        LOG.debug(
-            "No conflicts found for {}: {} running instances",
-            mainWorkflowDefinitionName,
-            runningProcessInstances.size());
-        return;
-      }
       // Find instances to terminate (exclude the current one by process instance ID)
       List<WorkflowInstance> conflictingInstances =
           candidateInstances.stream()
