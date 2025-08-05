@@ -742,7 +742,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+        repository.deleteLogicalTestSuite(
+            securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
     repository.deleteFromSearch(response.entity(), hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
@@ -810,7 +811,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
-        repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+        repository.deleteLogicalTestSuite(
+            securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
