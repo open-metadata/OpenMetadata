@@ -835,6 +835,197 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void test_fieldFetchers(TestInfo test) throws HttpResponseException, IOException {
+    if (!supportsFieldsQueryParam) {
+      return;
+    }
+
+    // Create all test resources first - these will be effectively final
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User testUser =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    Tag testTag =
+        tagResourceTest.createEntity(tagResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    TagLabel testTagLabel = new TagLabel().withTagFQN(testTag.getFullyQualifiedName());
+
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+    Domain testDomain1 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS);
+    Domain testDomain2 =
+        domainResourceTest.createEntity(
+            domainResourceTest.createRequest(test, 4), ADMIN_AUTH_HEADERS);
+    final String testName = "000_" + getEntityName(test);
+    final K createRequest =
+        createRequest(testName, "Test entity for field fetching", testName, null);
+    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    final UUID entityId = entity.getId(); // Store ID separately as it won't change
+
+    try {
+      String originalJson = JsonUtils.pojoToJson(entity);
+
+      if (supportsOwners) {
+        EntityReference owner =
+            new EntityReference()
+                .withId(testUser.getId())
+                .withType("user")
+                .withName(testUser.getName());
+        entity.setOwners(List.of(owner));
+        entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+      }
+
+      if (supportsTags) {
+        List<TagLabel> tags = Collections.singletonList(testTagLabel);
+        entity.setTags(tags);
+        entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+      }
+
+      if (supportsFollowers) {
+        addAndCheckFollower(entityId, testUser.getId(), Status.OK, 1, ADMIN_AUTH_HEADERS);
+        entity = getEntity(entityId, getAllowedFields(), ADMIN_AUTH_HEADERS);
+        originalJson = JsonUtils.pojoToJson(entity);
+      }
+
+      if (supportsDomains) {
+        List<EntityReference> domains =
+            Arrays.asList(
+                new EntityReference()
+                    .withId(testDomain1.getId())
+                    .withType("domain")
+                    .withName(testDomain1.getName()));
+        entity.setDomains(domains);
+        entity = patchEntity(entityId, originalJson, entity, ADMIN_AUTH_HEADERS);
+      }
+
+      Map<String, String> params = new HashMap<>();
+      params.put("limit", "10");
+      params.put("sort", "name,asc");
+      ResultList<T> initialBatch = listEntities(params, ADMIN_AUTH_HEADERS);
+
+      Optional<T> ourEntity =
+          initialBatch.getData().stream().filter(e -> e.getId().equals(entityId)).findFirst();
+
+      assertTrue(
+          ourEntity.isPresent(),
+          "Our test entity should appear in first batch due to name sorting");
+
+      List<String> fieldCombinationsList = new ArrayList<>();
+      if (supportsOwners) fieldCombinationsList.add("owners");
+      if (supportsTags) fieldCombinationsList.add("tags");
+      if (supportsFollowers) fieldCombinationsList.add("followers");
+      if (supportsDomains) fieldCombinationsList.add("domains");
+      if (supportsOwners && supportsTags) fieldCombinationsList.add("owners,tags");
+      if (supportsFollowers && supportsOwners) fieldCombinationsList.add("followers,owners");
+      if (supportsDomains && supportsTags) fieldCombinationsList.add("domains,tags");
+      fieldCombinationsList.add(getAllowedFields());
+
+      for (String fields : fieldCombinationsList) {
+        if (fields == null || fields.isEmpty()) continue;
+
+        T individualEntity = getEntity(entityId, fields, ADMIN_AUTH_HEADERS);
+
+        params.clear();
+        params.put("fields", fields);
+        params.put("limit", "10");
+        params.put("sort", "name,asc");
+        ResultList<T> bulkResult = listEntities(params, ADMIN_AUTH_HEADERS);
+
+        Optional<T> batchEntity =
+            bulkResult.getData().stream().filter(e -> e.getId().equals(entityId)).findFirst();
+
+        assertTrue(
+            batchEntity.isPresent(),
+            "Test entity must be present in batch results due to name sorting");
+
+        final T batchEntityFound = batchEntity.get();
+
+        if (fields.contains("owners") && supportsOwners) {
+          List<EntityReference> batchOwners = listOrEmpty(batchEntityFound.getOwners());
+          List<EntityReference> indivOwners = listOrEmpty(individualEntity.getOwners());
+
+          assertFalse(batchOwners.isEmpty(), "Batch owners should not be empty");
+          assertFalse(indivOwners.isEmpty(), "Individual owners should not be empty");
+
+          final UUID testUserId = testUser.getId();
+          assertTrue(
+              batchOwners.stream().anyMatch(o -> o.getId().equals(testUserId)),
+              "Should find our test user in batch owners");
+          assertTrue(
+              indivOwners.stream().anyMatch(o -> o.getId().equals(testUserId)),
+              "Should find our test user in individual owners");
+        }
+
+        if (fields.contains("tags") && supportsTags) {
+          List<TagLabel> batchTags = listOrEmpty(batchEntityFound.getTags());
+          List<TagLabel> indivTags = listOrEmpty(individualEntity.getTags());
+
+          assertFalse(batchTags.isEmpty(), "Batch tags should not be empty");
+          assertFalse(indivTags.isEmpty(), "Individual tags should not be empty");
+
+          final String testTagFQN = testTagLabel.getTagFQN();
+          assertTrue(
+              batchTags.stream().anyMatch(t -> t.getTagFQN().equals(testTagFQN)),
+              "Should find our test tag in batch tags");
+          assertTrue(
+              indivTags.stream().anyMatch(t -> t.getTagFQN().equals(testTagFQN)),
+              "Should find our test tag in individual tags");
+        }
+
+        if (fields.contains("followers") && supportsFollowers) {
+          List<?> batchFollowers = listOrEmpty((List<?>) getField(batchEntityFound, "followers"));
+          List<?> indivFollowers = listOrEmpty((List<?>) getField(individualEntity, "followers"));
+
+          assertFalse(batchFollowers.isEmpty(), "Batch followers should not be empty");
+          assertFalse(indivFollowers.isEmpty(), "Individual followers should not be empty");
+
+          final UUID testUserId = testUser.getId();
+          assertTrue(
+              batchFollowers.stream()
+                  .anyMatch(f -> ((EntityReference) f).getId().equals(testUserId)),
+              "Should find our test user in batch followers");
+          assertTrue(
+              indivFollowers.stream()
+                  .anyMatch(f -> ((EntityReference) f).getId().equals(testUserId)),
+              "Should find our test user in individual followers");
+        }
+
+        if (fields.contains("domains") && supportsDomains) {
+          List<EntityReference> batchDomains = listOrEmpty(batchEntityFound.getDomains());
+          List<EntityReference> indivDomains = listOrEmpty(individualEntity.getDomains());
+
+          assertFalse(batchDomains.isEmpty(), "Batch domains should not be empty");
+          assertFalse(indivDomains.isEmpty(), "Individual domains should not be empty");
+
+          final UUID domain1Id = testDomain1.getId();
+          final UUID domain2Id = testDomain2.getId();
+
+          assertTrue(
+              batchDomains.stream().anyMatch(d -> d.getId().equals(domain1Id)),
+              "Should find test domain 1 in batch domains");
+          assertTrue(
+              indivDomains.stream().anyMatch(d -> d.getId().equals(domain1Id)),
+              "Should find test domain 1 in individual domains");
+        }
+
+        LOG.info("Successfully verified field combination: {}", fields);
+      }
+
+    } finally {
+      if (supportsOwners) userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+      if (supportsTags) tagResourceTest.deleteEntity(testTag.getId(), ADMIN_AUTH_HEADERS);
+      if (supportsDomains) {
+        domainResourceTest.deleteEntity(testDomain1.getId(), ADMIN_AUTH_HEADERS);
+        domainResourceTest.deleteEntity(testDomain2.getId(), ADMIN_AUTH_HEADERS);
+      }
+    }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void test_fieldFetchersEfficiency(TestInfo test) throws HttpResponseException {
     if (!supportsFieldsQueryParam) {
       return;
