@@ -112,19 +112,13 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description'
+      'Deleted'
     );
 
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      '=='
-    );
-
-    await selectOption(
-      page,
-      ruleLocator2.locator('.rule--value .ant-select'),
-      'Complete'
+      'Is not null'
     );
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();

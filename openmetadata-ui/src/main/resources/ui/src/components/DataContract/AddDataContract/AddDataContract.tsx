@@ -228,6 +228,7 @@ const AddDataContract: React.FC<{
           </Button>
           <Button
             className="add-contract-save-button"
+            data-testid="save-contract-btn"
             loading={isSubmitting}
             type="primary"
             onClick={handleSave}>
@@ -263,7 +264,10 @@ const AddDataContract: React.FC<{
   }, [mode, items, handleTabChange, activeTab, yaml]);
 
   return (
-    <Card className="add-contract-card" title={cardTitle}>
+    <Card
+      className="add-contract-card"
+      data-testid="add-contract-card"
+      title={cardTitle}>
       {cardContent}
     </Card>
   );

@@ -157,9 +157,7 @@ test.describe('Description Suggestions Table Entity', () => {
         state: 'detached',
       });
 
-      await expect(page.locator('.ant-badge .ant-badge-count')).toContainText(
-        '6'
-      );
+      await expect(page.locator('.ant-badge [title="6"]')).toBeVisible();
 
       await expect(
         page.locator(
