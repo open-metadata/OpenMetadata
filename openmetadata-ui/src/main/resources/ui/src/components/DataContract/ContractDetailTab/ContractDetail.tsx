@@ -330,6 +330,7 @@ const ContractDetail: React.FC<{
 
             <Button
               className="contract-run-now-button"
+              data-testid="contract-run-now-button"
               icon={<PlayCircleOutlined />}
               loading={validateLoading}
               size="middle"
@@ -347,12 +348,14 @@ const ContractDetail: React.FC<{
             <Button
               danger
               className="delete-button"
+              data-testid="delete-contract-button"
               icon={<DeleteIcon />}
               size="small"
               onClick={onDelete}
             />
             <Button
               className="contract-edit-button"
+              data-testid="contract-edit-button"
               icon={
                 <EditIcon
                   className="anticon"
@@ -401,6 +404,7 @@ const ContractDetail: React.FC<{
 
         <Button
           className="m-t-md"
+          data-testid="add-contract-button"
           icon={<PlusOutlined />}
           type="primary"
           onClick={onEdit}>
@@ -488,7 +492,9 @@ const ContractDetail: React.FC<{
                     cardProps={{
                       className: 'expandable-card-contract',
                       title: (
-                        <div className="contract-card-title-container">
+                        <div
+                          className="contract-card-title-container"
+                          data-testid="contract-card-title-container">
                           <Typography.Text className="contract-card-title">
                             {t('label.contract-status')}
                           </Typography.Text>
@@ -514,6 +520,7 @@ const ContractDetail: React.FC<{
                         {constraintStatus.map((item) => (
                           <div
                             className="contract-status-card-item d-flex justify-between items-center"
+                            data-testid={`contract-status-card-item-${item.label}`}
                             key={item.label}>
                             <div className="d-flex items-center">
                               <Icon
@@ -538,6 +545,7 @@ const ContractDetail: React.FC<{
                             </div>
 
                             <StatusBadgeV2
+                              dataTestId={`contract-status-card-item-${item.label}-status`}
                               label={item.status}
                               status={getContractStatusType(item.status)}
                             />

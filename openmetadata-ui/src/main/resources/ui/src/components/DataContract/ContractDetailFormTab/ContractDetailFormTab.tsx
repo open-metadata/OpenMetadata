@@ -42,6 +42,9 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      props: {
+        'data-testid': 'contract-name',
+      },
     },
     {
       label: t('label.description'),
@@ -50,7 +53,7 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.DESCRIPTION,
       required: false,
       props: {
-        'data-testid': 'description',
+        'data-testid': 'contract-description',
         initialValue: initialValues?.description ?? '',
       },
     },
