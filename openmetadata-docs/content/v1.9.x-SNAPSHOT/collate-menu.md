@@ -288,6 +288,8 @@ site_menu:
     url: /connectors/database/ssas
   - category: Connectors / Database / SSAS / Run Externally
     url: /connectors/database/ssas/yaml
+  - category: Connectors / Database / SSAS / Troubleshooting
+    url: /connectors/database/ssas/troubleshooting
   - category: Connectors / Database / Synapse
     url: /connectors/database/synapse
   - category: Connectors / Database / Synapse / Run Externally
