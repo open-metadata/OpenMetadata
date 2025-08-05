@@ -1052,30 +1052,13 @@ export const createAnnouncement = async (
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
-  await page.getByTestId('announcement-card').isVisible();
 
+  await expect(page.getByTestId('announcement-card')).toBeVisible();
   await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
 
-  // TODO: Review redirection flow for announcement @Ashish8689
-  // await redirectToHomePage(page);
-
-  // await page
-  //   .getByTestId('announcement-container')
-  //   .getByTestId(`announcement-${entityFqn}`)
-  //   .locator(`[data-testid="entity-link"] span`)
-  //   .first()
-  //   .scrollIntoViewIfNeeded();
-
-  // await page
-  //   .getByTestId('announcement-container')
-  //   .getByTestId(`announcement-${entityFqn}`)
-  //   .locator(`[data-testid="entity-link"] span`)
-  //   .first()
-  //   .click();
-
-  // await page.getByTestId('announcement-card').isVisible();
-
-  // await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  await expect(page.getByTestId('announcement-card')).toContainText(
+    data.description
+  );
 };
 
 export const replyAnnouncement = async (page: Page) => {
@@ -1109,7 +1092,6 @@ export const replyAnnouncement = async (page: Page) => {
     '1 replies'
   );
 
-  // Edit the reply message
   await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
   await page.waitForSelector('.ant-popover', { state: 'visible' });
   await page.click('[data-testid="edit-message"]');
@@ -1132,6 +1114,8 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
+  await expect(page.getByTestId('announcement-card')).toBeVisible();
+
   await page.hover(
     '[data-testid="announcement-card"] [data-testid="main-message"]'
   );
@@ -1148,6 +1132,75 @@ export const deleteAnnouncement = async (page: Page) => {
   const getFeed = page.waitForResponse('/api/v1/feed/*');
   await page.click('[data-testid="save-button"]');
   await getFeed;
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  await expect(page.getByTestId('announcement-error')).toContainText(
+    'No Announcements, Click on add announcement to add one.'
+  );
+};
+
+export const editAnnouncement = async (
+  page: Page,
+  data: { title: string; description: string }
+) => {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  await expect(page.getByTestId('announcement-card')).toBeVisible();
+
+  await page.hover(
+    '[data-testid="announcement-card"] [data-testid="main-message"]'
+  );
+
+  await page.waitForSelector('.ant-popover', { state: 'visible' });
+
+  await page.click('[data-testid="edit-message"]');
+
+  await expect(page.locator('.ant-modal-header')).toContainText(
+    'Edit an announcement'
+  );
+
+  await page.fill('[data-testid="edit-announcement"] #title', '');
+  await page.fill('[data-testid="edit-announcement"] #title', data.title);
+
+  await page
+    .locator('[data-testid="edit-announcement"]')
+    .locator(descriptionBox)
+    .fill('');
+  await page
+    .locator('[data-testid="edit-announcement"]')
+    .locator(descriptionBox)
+    .fill(data.description);
+
+  const updateResponse = page.waitForResponse('/api/v1/feed/*');
+  await page
+    .locator(
+      '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
+    )
+    .click();
+  await updateResponse;
+
+  await expect(
+    page.locator('[data-testid="edit-announcement"]')
+  ).not.toBeVisible();
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
+  await expect(page.getByTestId('announcement-card')).toContainText(
+    data.description
+  );
 };
 
 export const createInactiveAnnouncement = async (
