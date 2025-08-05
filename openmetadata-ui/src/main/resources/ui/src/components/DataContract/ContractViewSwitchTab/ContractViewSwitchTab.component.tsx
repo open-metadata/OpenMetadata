@@ -34,6 +34,7 @@ const ContractViewSwitchTab = ({
             <CodeOutline
               className="align-middle"
               color={DE_ACTIVE_COLOR}
+              data-testid="contract-view-switch-tab-yaml"
               height={20}
               width={20}
             />
@@ -45,6 +46,7 @@ const ContractViewSwitchTab = ({
             <BookOutline
               className="align-middle"
               color={DE_ACTIVE_COLOR}
+              data-testid="contract-view-switch-tab-ui"
               height={20}
               width={20}
             />
