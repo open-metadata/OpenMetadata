@@ -1160,7 +1160,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
-  }, []);
+  }, [showDeleted]);
 
   useEffect(() => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
@@ -1420,7 +1420,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.data-model'),
         key: EntityTabs.DATA_Model,
         count: dataModelPaging.total,
-        children: <DataModelTable />,
+        children: (
+          <DataModelTable
+            handleShowDeleted={handleShowDeleted}
+            showDeleted={showDeleted}
+          />
+        ),
       });
     }
 
