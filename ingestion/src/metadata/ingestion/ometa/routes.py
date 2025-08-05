@@ -77,6 +77,9 @@ from metadata.generated.schema.api.services.createDashboardService import (
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.services.createDriveService import (
+    CreateDriveServiceRequest,
+)
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
@@ -160,6 +163,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionDefinit
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -302,4 +306,7 @@ ROUTES = {
     # Data Contracts
     DataContract.__name__: "/dataContracts",
     CreateDataContractRequest.__name__: "/dataContracts",
+    # Drives
+    DriveService.__name__: "/services/driveServices",
+    CreateDriveServiceRequest.__name__: "/services/driveServices",
 }
