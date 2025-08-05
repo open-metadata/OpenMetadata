@@ -871,7 +871,14 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 15; i++) {
       String minimalUUIDToBreakTies = UUID.randomUUID().toString().substring(0, 8);
-      String tableName = "pagination_test_" + i + "_" + UUID.randomUUID() + minimalUUIDToBreakTies;
+      String minimalUUIDsToBreakTies2 = UUID.randomUUID().toString().substring(0, 8);
+      String tableName =
+          "pagination_test_"
+              + i
+              + "_"
+              + UUID.randomUUID()
+              + minimalUUIDToBreakTies
+              + minimalUUIDsToBreakTies2;
       CreateTable createTable =
           tableResourceTest
               .createRequest(tableName)
@@ -882,7 +889,7 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       tables.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
     // Wait for indexing
-    TestUtils.simulateWork(15);
+    TestUtils.simulateWork(20);
     // Test pagination consistency
     assertDoesNotThrow(
         () -> {
