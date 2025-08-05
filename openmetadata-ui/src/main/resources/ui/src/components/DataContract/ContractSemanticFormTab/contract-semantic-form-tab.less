@@ -49,6 +49,29 @@
 
         .enable-form-item {
           margin-bottom: 0;
+
+          .ant-switch {
+            margin-left: 2px;
+            width: 44px;
+            height: 24px;
+
+            .ant-switch-handle {
+              width: 16px;
+              height: 16px;
+              top: 4px;
+              left: 4px;
+
+              &::before {
+                border-radius: 20px;
+              }
+            }
+          }
+
+          .ant-switch-checked {
+            .ant-switch-handle {
+              left: calc(100% - 16px - 4px);
+            }
+          }
         }
 
         > div:first-child {
@@ -123,6 +146,29 @@
 
       .semantic-form-item-content {
         padding: 20px;
+
+        .ant-switch {
+          margin-left: 2px;
+          width: 36px;
+          height: 20px;
+
+          .ant-switch-handle {
+            width: 14px;
+            height: 14px;
+            top: 3px;
+            left: 3px;
+
+            &::before {
+              border-radius: 20px;
+            }
+          }
+        }
+
+        .ant-switch-checked {
+          .ant-switch-handle {
+            left: calc(100% - 14px - 4px);
+          }
+        }
       }
     }
   }
