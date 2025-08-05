@@ -111,16 +111,15 @@ def test_connection(
 
     def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable):
         for catalog in connection.catalogs.list():
-            table_obj.catalog_name = catalog.name
-            break
+            if catalog.name != "__databricks_internal":
+                table_obj.catalog_name = catalog.name
+                return
 
     def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable):
-        for catalog in connection.catalogs.list():
-            for schema in connection.schemas.list(catalog_name=catalog.name):
-                if schema.name:
-                    table_obj.schema_name = schema.name
-                    table_obj.catalog_name = catalog.name
-                    return
+        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
+            if schema.name:
+                table_obj.schema_name = schema.name
+                return
 
     def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable):
         if table_obj.catalog_name and table_obj.schema_name:
