@@ -38,7 +38,6 @@ import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityReferenceFields } from '../../../../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
@@ -64,8 +63,10 @@ import './query-builder-widget.less';
 const QueryBuilderWidget: FC<
   WidgetProps & {
     fields?: Config['fields'];
+    defaultField?: string;
+    subField?: string;
   }
-> = ({ onChange, schema, value, fields, ...props }) => {
+> = ({ onChange, schema, value, fields, defaultField, subField, ...props }) => {
   const {
     config,
     treeInternal,
@@ -202,7 +203,7 @@ const QueryBuilderWidget: FC<
     } else {
       const emptyJsonTree =
         outputType === SearchOutputType.JSONLogic
-          ? getEmptyJsonTreeForQueryBuilder(EntityReferenceFields.GLOSSARY_TERM)
+          ? getEmptyJsonTreeForQueryBuilder(defaultField, subField)
           : getEmptyJsonTree();
 
       const tree = QbUtils.loadTree(emptyJsonTree);

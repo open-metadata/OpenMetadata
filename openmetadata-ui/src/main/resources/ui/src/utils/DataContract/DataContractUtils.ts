@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import i18next, { t } from 'i18next';
+import i18next from 'i18next';
 import yaml from 'js-yaml';
 import { omit } from 'lodash';
 import { ReactComponent as QualityIcon } from '../../assets/svg/policies.svg';
@@ -23,13 +23,10 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
-import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { DataContract } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { TestSummary } from '../../generated/tests/testCase';
 import { getRelativeTime } from '../date-time/DateTimeUtils';
-import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 
 export const getConstraintStatus = (
   latestContractResults: DataContractResult
@@ -200,117 +197,4 @@ export const downloadContractYamlFile = (contract: DataContract) => {
 
   URL.revokeObjectURL(element.href);
   document.body.removeChild(element);
-};
-
-export const CONTRACT_SEMANTIC_FIELDS = {
-  [EntityReferenceFields.TAG]: {
-    label: t('label.tag-plural'),
-    type: '!group',
-    mode: 'some',
-    defaultField: 'tagFQN',
-    subfields: {
-      tagFQN: {
-        label: 'Tags',
-        type: 'select',
-        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
-            searchIndex: SearchIndex.TAG,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
-        },
-      },
-    },
-  },
-  [EntityReferenceFields.TIER]: {
-    label: t('label.tier'),
-    type: '!group',
-    mode: 'some',
-    defaultField: 'tagFQN',
-    subfields: {
-      tagFQN: {
-        label: 'Tags',
-        type: 'select',
-        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
-            searchIndex: SearchIndex.TAG,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
-        },
-      },
-    },
-  },
-  [EntityReferenceFields.GLOSSARY_TERM]: {
-    label: t('label.glossary-term-plural'),
-    type: '!group',
-    mode: 'some',
-    defaultField: 'tagFQN',
-    subfields: {
-      tagFQN: {
-        label: 'Glossary Term',
-        type: 'select',
-        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
-            searchIndex: SearchIndex.GLOSSARY_TERM,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
-        },
-      },
-    },
-  },
-  [EntityReferenceFields.DOMAIN]: {
-    label: t('label.domain'),
-    type: '!group',
-    mode: 'some',
-    defaultField: 'fullyQualifiedName',
-    subfields: {
-      fullyQualifiedName: {
-        label: 'Domain',
-        type: 'select',
-        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
-            searchIndex: SearchIndex.DOMAIN,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
-        },
-      },
-    },
-  },
-  [EntityReferenceFields.DATA_PRODUCT]: {
-    label: t('label.data-product'),
-    type: '!group',
-    mode: 'some',
-    defaultField: 'fullyQualifiedName',
-    subfields: {
-      fullyQualifiedName: {
-        label: 'Data Product',
-        type: 'select',
-        mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: jsonLogicSearchClassBase.defaultSelectOperators,
-        fieldSettings: {
-          asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
-            searchIndex: SearchIndex.DATA_PRODUCT,
-            fieldName: 'fullyQualifiedName',
-            fieldLabel: 'name',
-          }),
-          useAsyncSearch: true,
-        },
-      },
-    },
-  },
 };
