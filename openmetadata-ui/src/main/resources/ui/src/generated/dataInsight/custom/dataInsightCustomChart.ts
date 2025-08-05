@@ -179,6 +179,10 @@ export interface LineChart {
      */
     metrics?: Metrics[];
     /**
+     * Search index for the data insight chart.
+     */
+    searchIndex?: string;
+    /**
      * Type of the data insight chart.
      */
     type?: Type;
