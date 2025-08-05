@@ -397,7 +397,7 @@ class DriveServiceSource(
             self.metadata,
             entity_type=Directory,
             service_name=self.context.get().drive_service,
-            directory_name=directory_name,
+            directory_path=[directory_name],
         )
         return self.get_tag_by_fqn(entity_fqn=directory_fqn)
 
@@ -411,7 +411,7 @@ class DriveServiceSource(
             self.metadata,
             entity_type=File,
             service_name=self.context.get().drive_service,
-            directory_name=self.context.get().directory,
+            directory_path=[self.context.get().directory],
             file_name=file_name,
         )
         return self.get_tag_by_fqn(entity_fqn=file_fqn)
@@ -460,7 +460,7 @@ class DriveServiceSource(
             self.metadata,
             entity_type=Directory,
             service_name=self.context.get().drive_service,
-            directory_name=directory_request.name.root,
+            directory_path=[directory_request.name.root],
         )
         self.directory_source_state.add(directory_fqn)
 
@@ -473,7 +473,7 @@ class DriveServiceSource(
             self.metadata,
             entity_type=File,
             service_name=self.context.get().drive_service,
-            directory_name=self.context.get().directory,
+            directory_path=[self.context.get().directory],
             file_name=file_request.name.root,
         )
         self.file_source_state.add(file_fqn)
@@ -525,7 +525,7 @@ class DriveServiceSource(
                 self.metadata,
                 entity_type=Directory,
                 service_name=self.context.get().drive_service,
-                directory_name=directory_name,
+                directory_path=[directory_name],
             )
             if filter_by_directory(
                 self.source_config.directoryFilterPattern,

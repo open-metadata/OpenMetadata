@@ -45,6 +45,7 @@ from metadata.generated.schema.entity.data.storedProcedure import StoredProcedur
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.data.worksheet import Worksheet
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
@@ -549,33 +550,52 @@ def _(
     return _build(service_name, query_checksum)
 
 
-@fqn_build_registry.add(Directory)
+@fqn_build_registry.add(DriveService)
 def _(
     _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
     *,
     service_name: str,
-    directory_name: str,
 ) -> str:
-    if not service_name or not directory_name:
+    return _build(service_name)
+
+
+@fqn_build_registry.add(Directory)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for directory FQN building
+    *,
+    service_name: str,
+    directory_path: List[str],
+) -> str:
+    if not service_name:
         raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, directory=`{directory_name}``"
+            f"Service name should be informed, but got service=`{service_name}`"
         )
-    return _build(service_name, directory_name)
+    
+    if not directory_path:
+        raise FQNBuildingException(
+            f"Directory path should not be empty"
+        )
+    
+    return _build(service_name, *directory_path)
 
 
 @fqn_build_registry.add(File)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for file FQN building
     *,
     service_name: str,
-    directory_name: str,
+    directory_path: List[str],
     file_name: str,
 ) -> str:
-    if not service_name or not directory_name or not file_name:
+    if not service_name or not file_name:
         raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, directory=`{directory_name}`, file=`{file_name}``"
+            f"Args should be informed, but got service=`{service_name}`, file=`{file_name}`"
         )
-    return _build(service_name, directory_name, file_name)
+    if not directory_path:
+        raise FQNBuildingException(
+            f"Directory path should not be empty"
+        )
+    return _build(service_name, *directory_path, file_name)
 
 
 @fqn_build_registry.add(Worksheet)
@@ -605,7 +625,6 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, spreadsheet=`{spreadsheet_name}``"
         )
     return _build(service_name, spreadsheet_name)
-
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     """
