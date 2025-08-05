@@ -19,7 +19,7 @@ Configure and schedule SSAS metadata and profiler workflows from the Collate UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Connection Details](#connection-details)
-- [Troubleshooting](/connectors/pipeline/ssas/troubleshooting)
+- [Troubleshooting](/connectors/database/ssas/troubleshooting)
 
 
 {% partial file="/v1.9/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/ssas/yaml"} /%}
