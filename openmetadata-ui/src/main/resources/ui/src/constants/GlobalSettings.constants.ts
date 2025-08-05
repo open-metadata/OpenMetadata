@@ -36,6 +36,7 @@ export enum GlobalSettingOptions {
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
+  DATA_ASSET_RULES = 'dataAssetRules',
   MESSAGING = 'messaging',
   METADATA = 'metadata',
   DASHBOARDS = 'dashboards',
@@ -87,4 +88,6 @@ export enum GlobalSettingOptions {
   TEST_CASES = 'testCases',
   TAGS = 'tags',
   DOMAINS = 'domains',
+  CHARTS = 'charts',
+  SECURITY = 'security',
 }

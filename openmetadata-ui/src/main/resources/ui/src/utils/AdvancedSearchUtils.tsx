@@ -33,7 +33,10 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import { EntityFields } from '../enums/AdvancedSearch.enum';
+import {
+  EntityFields,
+  EntityReferenceFields,
+} from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -438,6 +441,53 @@ export const getEmptyJsonTree = (
               operator: null,
               value: [],
               valueSrc: ['value'],
+            },
+          },
+        },
+      },
+    },
+  };
+};
+
+/**
+ * Creates an empty JSON tree structure specifically optimized for QueryBuilderWidget
+ * This structure allows easy addition of groups and rules
+ */
+export const getEmptyJsonTreeForQueryBuilder = (
+  defaultField: string = EntityReferenceFields.OWNERS
+): OldJsonTree => {
+  const uuid1 = QbUtils.uuid();
+  const uuid2 = QbUtils.uuid();
+  const uuid3 = QbUtils.uuid();
+
+  return {
+    id: uuid1,
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [uuid2]: {
+        type: 'rule_group',
+        id: uuid2,
+        properties: {
+          conjunction: 'AND',
+          not: false,
+          mode: 'some',
+          field: defaultField,
+          fieldSrc: 'field',
+        },
+        children1: {
+          [uuid3]: {
+            type: 'rule',
+            id: uuid3,
+            properties: {
+              field: 'owners.fullyQualifiedName',
+              operator: 'select_equals',
+              value: [],
+              valueSrc: ['value'],
+              fieldSrc: 'field',
             },
           },
         },

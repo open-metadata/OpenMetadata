@@ -431,6 +431,10 @@ export interface PipelineServiceClientConfiguration {
      * Used to set up the History CleanUp Settings.
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
+    /**
+     * Semantics rules defined in the data contract.
+     */
+    entitySemantics?: SemanticsRule[];
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -870,6 +874,49 @@ export enum AuthProvider {
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
+}
+
+/**
+ * Semantics rule defined in the data contract.
+ */
+export interface SemanticsRule {
+    /**
+     * Description of the semantics rule.
+     */
+    description: string;
+    /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * Name of the semantics rule.
+     */
+    name:      string;
+    provider?: ProviderType;
+    /**
+     * Definition of the semantics rule.
+     */
+    rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**

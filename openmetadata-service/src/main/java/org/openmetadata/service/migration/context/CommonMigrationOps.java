@@ -29,6 +29,7 @@ public class CommonMigrationOps {
           new MigrationOps("pipelineServiceCount", "SELECT COUNT(*) FROM pipeline_service_entity"),
           new MigrationOps("mlModelServiceCount", "SELECT COUNT(*) FROM mlmodel_service_entity"),
           new MigrationOps("searchServiceCount", "SELECT COUNT(*) FROM search_service_entity"),
+          new MigrationOps("securityServiceCount", "SELECT COUNT(*) FROM security_service_entity"),
           new MigrationOps("storageServiceCount", "SELECT COUNT(*) FROM storage_service_entity"),
           // Org
           new MigrationOps("userCount", "SELECT COUNT(*) FROM user_entity"),

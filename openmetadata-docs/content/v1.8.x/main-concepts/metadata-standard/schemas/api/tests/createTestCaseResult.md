@@ -1,5 +1,6 @@
 ---
 title: Create Test Case Result | OpenMetadata Test Result API
+description: Capture the result of a test case including status, execution time, and any relevant assertion failures.
 slug: /main-concepts/metadata-standard/schemas/api/tests/createtestcaseresult
 ---
 

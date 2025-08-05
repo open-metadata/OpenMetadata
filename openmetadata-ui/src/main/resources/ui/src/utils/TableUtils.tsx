@@ -131,6 +131,7 @@ import TableProfiler from '../components/Database/Profiler/TableProfiler/TablePr
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -421,6 +422,7 @@ export const getEntityIcon = (
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestCase,
     [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.DATA_CONTRACT]: DataQualityIcon,
     [EntityType.BOT]: BotIcon,
     [EntityType.TEAM]: TeamIcon,
     [EntityType.APPLICATION]: ApplicationIcon,
@@ -958,17 +960,18 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
     },
-    // {
-    //   label: (
-    //     <TabsLabel
-    //       id={EntityTabs.CONTRACT}
-    //       isActive={activeTab === EntityTabs.CONTRACT}
-    //       name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
-    //     />
-    //   ),
-    //   key: EntityTabs.CONTRACT,
-    //   children: <ContractTab />,
-    // },
+    {
+      label: (
+        <TabsLabel
+          isBeta
+          id={EntityTabs.CONTRACT}
+          isActive={activeTab === EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
     {
       label: (
         <TabsLabel

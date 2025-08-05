@@ -31,6 +31,7 @@ const TableTags = <T extends TableUnion>({
   showInlineEditTagButton,
   handleTagSelection,
   entityType,
+  newLook = false,
 }: TableTagsComponentProps<T>) => {
   const { onThreadLinkSelect, updateActiveTagDropdownKey } =
     useGenericContext();
@@ -54,6 +55,7 @@ const TableTags = <T extends TableUnion>({
           selectedTags={tags}
           showInlineEditButton={showInlineEditTagButton}
           sizeCap={TAG_LIST_SIZE}
+          tagNewLook={newLook}
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);

@@ -1,5 +1,6 @@
 ---
 title: Create Workflow API | OpenMetadata Workflow API Guide
+description: Define a new automation workflow entity that links tasks, triggers, and actions for metadata lifecycle automation.
 slug: /main-concepts/metadata-standard/schemas/api/automations/createworkflow
 ---
 

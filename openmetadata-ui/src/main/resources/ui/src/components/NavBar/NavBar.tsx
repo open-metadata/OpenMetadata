@@ -126,6 +126,12 @@ const NavBar = () => {
     return pathname === ROUTES.MY_DATA;
   }, [location.pathname]);
 
+  const isTourPage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname.includes(ROUTES.TOUR);
+  }, [location.pathname]);
+
   const fetchOMVersion = async () => {
     try {
       const res = await getVersion();
@@ -433,6 +439,18 @@ const NavBar = () => {
     navigate(0);
   }, []);
 
+  const homePageTitle = useMemo(() => {
+    if (isHomePage && isSidebarCollapsed) {
+      return (
+        <Typography.Text className="font-semibold navbar-title">
+          {t('label.home')}
+        </Typography.Text>
+      );
+    }
+
+    return <></>;
+  }, [isHomePage, isSidebarCollapsed]);
+
   return (
     <>
       <Header>
@@ -460,11 +478,8 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {isHomePage ? (
-              <Typography.Text className="font-semibold navbar-title">
-                {t('label.home')}
-              </Typography.Text>
-            ) : (
+            {homePageTitle}
+            {!isHomePage && !isTourPage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList

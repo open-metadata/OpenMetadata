@@ -38,6 +38,7 @@ import {
   CustomNextArrow,
   CustomPrevArrow,
 } from '../../../../utils/CustomizableLandingPageUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -51,6 +52,7 @@ import CustomiseSearchBar from './CustomiseSearchBar';
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
   backgroundColor,
+  dataTestId,
   handleAddWidget,
   hideCustomiseButton = false,
   isPreviewHeader = false,
@@ -99,6 +101,7 @@ const CustomiseLandingPageHeader = ({
         ),
         name: entity.displayName,
         entityType: entity.entityType,
+        fullyQualifiedName: entity.fqn,
       };
     });
   }, []);
@@ -135,12 +138,26 @@ const CustomiseLandingPageHeader = ({
     [updateActiveDomain, navigate]
   );
 
+  const navigateToEntity = (data: {
+    entityType: string;
+    fullyQualifiedName: string;
+  }) => {
+    const path = entityUtilClassBase.getEntityLink(
+      data.entityType || '',
+      data.fullyQualifiedName
+    );
+    navigate(path);
+  };
+
   useEffect(() => {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
   return (
-    <div className="customise-landing-page" style={landingPageStyle}>
+    <div
+      className="customise-landing-page-header"
+      data-testid={dataTestId}
+      style={landingPageStyle}>
       <div className="header-container">
         <div className="dashboard-header">
           <div
@@ -233,12 +250,11 @@ const CustomiseLandingPageHeader = ({
                     className={classNames('customise-recently-viewed-data', {
                       disabled: !onHomePage,
                     })}
+                    data-testid="recently-viewed-asset"
                     key={index}
                     role="button"
                     tabIndex={0}
-                    onClick={() => {
-                      navigate(`/${data.entityType}/${data.name}`);
-                    }}>
+                    onClick={() => navigateToEntity(data)}>
                     <div
                       className="recent-item d-flex flex-col items-center gap-3"
                       key={data.name}>

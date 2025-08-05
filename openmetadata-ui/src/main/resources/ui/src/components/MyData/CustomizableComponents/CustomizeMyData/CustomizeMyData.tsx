@@ -40,7 +40,6 @@ import {
 } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
@@ -73,6 +72,18 @@ function CustomizeMyData({
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
+
+  const emptyWidgetPlaceholder = useMemo(
+    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
+    [layout]
+  );
+
+  const maxRows = useMemo(() => {
+    return (
+      (emptyWidgetPlaceholder?.y ?? 0) +
+      customizeMyDataPageClassBase.defaultWidgetHeight
+    );
+  }, [emptyWidgetPlaceholder]);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
@@ -133,11 +144,6 @@ function CustomizeMyData({
     [layout]
   );
 
-  const emptyWidgetPlaceholder = useMemo(
-    () => layout.find((widget) => widget.i.endsWith('.EmptyWidgetPlaceholder')),
-    [layout]
-  );
-
   const disableSave = useMemo(() => {
     const filteredLayout = layout.filter((widget) =>
       widget.i.startsWith('KnowledgePanel')
@@ -153,20 +159,25 @@ function CustomizeMyData({
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
-          {getWidgetFromKey({
-            currentLayout: layout,
-            handleLayoutUpdate: handleLayoutUpdate,
-            handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
-            handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
-            handleRemoveWidget: handleRemoveWidget,
-            isEditView: true,
-            personaName: getEntityName(personaDetails),
-            widgetConfig: widget,
-          })}
-        </div>
-      )),
+      layout
+        .filter(
+          (widget) =>
+            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+        )
+        .map((widget) => (
+          <div data-grid={widget} id={widget.i} key={widget.i}>
+            {getWidgetFromKey({
+              currentLayout: layout,
+              handleLayoutUpdate: handleLayoutUpdate,
+              handleOpenAddWidgetModal: handleOpenCustomiseHomeModal,
+              handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
+              handleRemoveWidget: handleRemoveWidget,
+              isEditView: true,
+              personaName: getEntityName(personaDetails),
+              widgetConfig: widget,
+            })}
+          </div>
+        )),
     [
       layout,
       handleOpenCustomiseHomeModal,
@@ -222,6 +233,7 @@ function CustomizeMyData({
             overlappedContainer
             addedWidgetsList={addedWidgetsList}
             backgroundColor={backgroundColor}
+            dataTestId="customise-landing-page-header"
             handleAddWidget={handleMainPanelAddWidget}
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
@@ -243,7 +255,7 @@ function CustomizeMyData({
               customizeMyDataPageClassBase.landingPageWidgetMargin,
               customizeMyDataPageClassBase.landingPageWidgetMargin,
             ]}
-            maxRows={emptyWidgetPlaceholder?.y}
+            maxRows={maxRows}
             preventCollision={false}
             rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
             onLayoutChange={handleLayoutUpdate}>
@@ -269,4 +281,4 @@ function CustomizeMyData({
   );
 }
 
-export default withActivityFeed(CustomizeMyData);
+export default CustomizeMyData;
