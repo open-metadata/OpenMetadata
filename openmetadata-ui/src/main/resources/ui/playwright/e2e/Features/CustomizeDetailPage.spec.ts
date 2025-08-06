@@ -388,6 +388,9 @@ test.describe('Persona customization', () => {
           .getByTestId('remove-widget-button')
           .click();
 
+        await adminPage.getByTestId('tab-Custom Properties').click();
+        await adminPage.getByText('Hide').click();
+
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
 
         await adminPage
