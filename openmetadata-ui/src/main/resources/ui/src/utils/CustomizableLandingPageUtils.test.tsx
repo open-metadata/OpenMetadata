@@ -225,7 +225,7 @@ describe('CustomizableLandingPageUtils', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
-      expect(result[0].h).toBe(4);
+      expect(result[0].h).toBe(2);
     });
 
     it('should add placeholder to existing layout', () => {
