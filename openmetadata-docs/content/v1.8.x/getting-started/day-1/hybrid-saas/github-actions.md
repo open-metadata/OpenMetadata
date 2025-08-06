@@ -1,5 +1,6 @@
 ---
 title: Run the ingestion from GitHub Actions
+description: Automate Collate ingestion with GitHub Actions. Set up YAML configs, secure credentials, schedule workflows, and send Slack alerts on failure.
 slug: /getting-started/day-1/hybrid-saas/github-actions
 collate: true
 ---
