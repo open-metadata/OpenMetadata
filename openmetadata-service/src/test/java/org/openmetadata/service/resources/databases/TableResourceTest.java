@@ -3973,7 +3973,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<Column> columns = new ArrayList<>();
 
     columns.add(
-        getColumn("user_id", INT, null)
+        getColumn("user_id", INT, USER_ADDRESS_TAG_LABEL)
             .withOrdinalPosition(1)
             .withDescription("Primary key for user identification"));
     columns.add(
@@ -4069,13 +4069,75 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(0, response.getData().size());
     assertEquals(0, response.getPaging().getTotal());
 
+    // Create a custom metric for testing
+    CreateCustomMetric customMetric = new CreateCustomMetric();
+    customMetric
+        .withName("TestMetric")
+        .withDescription("Test custom metric")
+        .withColumnName("user_id")
+        .withExpression("SELECT COUNT(*) FROM test");
+    putCustomMetric(table.getId(), customMetric, ADMIN_AUTH_HEADERS);
+
+    // Test search with tags field
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "tags");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    Column column = response.getData().getFirst();
+    assertEquals("user_id", column.getName());
+    assertNotNull(column.getTags(), "Column tags should not be null");
+    assertFalse(column.getTags().isEmpty(), "Column tags should not be empty");
+    assertEquals(1, column.getTags().size(), "Column should have exactly 1 tag");
+    TagLabel expectedTag = USER_ADDRESS_TAG_LABEL;
+    TagLabel actualTag = column.getTags().getFirst();
+    assertEquals(expectedTag.getTagFQN(), actualTag.getTagFQN(), "Tag FQN should match");
+
+    // Test search with customMetrics field
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "customMetrics");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    column = response.getData().getFirst();
+    assertEquals("user_id", column.getName());
+    assertNotNull(column.getCustomMetrics(), "Column custom metrics should not be null");
+    assertFalse(column.getCustomMetrics().isEmpty(), "Column custom metrics should not be empty");
+    assertEquals(1, column.getCustomMetrics().size(), "Column should have exactly 1 custom metric");
+    CustomMetric actualMetric = column.getCustomMetrics().getFirst();
+    assertEquals(customMetric.getName(), actualMetric.getName(), "Custom metric name should match");
+
+    // Test search with both fields together
     target =
         getResource("tables/" + table.getId() + "/columns/search")
             .queryParam("q", "user_id")
             .queryParam("fields", "tags,customMetrics");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(1, response.getData().size());
-    assertNotNull(response.getData().get(0)); // Should include requested fields
+    column = response.getData().getFirst();
+    assertEquals("user_id", column.getName());
+    // Verify tags
+    assertNotNull(column.getTags(), "Column tags should not be null");
+    assertFalse(column.getTags().isEmpty(), "Column tags should not be empty");
+    assertEquals(1, column.getTags().size(), "Column should have exactly 1 tag");
+    actualTag = column.getTags().getFirst();
+    assertEquals(expectedTag.getTagFQN(), actualTag.getTagFQN(), "Tag FQN should match");
+    // Verify custom metrics
+    assertNotNull(column.getCustomMetrics(), "Column custom metrics should not be null");
+    assertFalse(column.getCustomMetrics().isEmpty(), "Column custom metrics should not be empty");
+    assertEquals(1, column.getCustomMetrics().size(), "Column should have exactly 1 custom metric");
+    actualMetric = column.getCustomMetrics().getFirst();
+    assertEquals(customMetric.getName(), actualMetric.getName(), "Custom metric name should match");
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "tags,customMetrics");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertNotNull(response.getData().getFirst()); // Should include requested fields
 
     final WebTarget invalidTarget =
         getResource("tables/" + table.getId() + "/columns/search")

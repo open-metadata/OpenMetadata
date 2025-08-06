@@ -2028,6 +2028,10 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
+    if (fields.contains("tags") || fields.contains("*")) {
+      populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
+    }
+
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(matchingColumns);
       populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
