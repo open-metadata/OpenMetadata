@@ -12,14 +12,16 @@
  */
 import {
   AntdConfig,
+  AsyncFetchListValuesResult,
   Config,
   FieldOrGroup,
   Fields,
+  ListItem,
   ListValues,
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
-import { get, sortBy } from 'lodash';
+import { get, sortBy, toLower } from 'lodash';
 import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
@@ -33,6 +35,7 @@ import {
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
+import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
 import {
@@ -308,6 +311,10 @@ class JSONLogicSearchClassBase {
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: this.autoCompleteTier,
+          useAsyncSearch: true,
+        },
       },
       [EntityReferenceFields.EXTENSION]: {
         label: t('label.custom-property-plural'),
@@ -438,6 +445,41 @@ class JSONLogicSearchClassBase {
   mainWidgetProps = {
     fullWidth: true,
     valueLabel: t('label.criteria') + ':',
+  };
+
+  public autoCompleteTier: SelectFieldSettings['asyncFetch'] = async (
+    searchOrValues: string | (string | number)[] | null
+  ) => {
+    let resolvedTierOptions: ListItem[] = [];
+
+    try {
+      const { data: tiers } = await getTags({
+        parent: 'Tier',
+        limit: 50,
+      });
+
+      const tierFields = tiers.map((tier) => ({
+        title: tier.fullyQualifiedName, // tier.name,
+        value: tier.fullyQualifiedName,
+      }));
+
+      resolvedTierOptions = tierFields as ListItem[];
+    } catch (error) {
+      resolvedTierOptions = [];
+    }
+
+    const search = Array.isArray(searchOrValues)
+      ? searchOrValues.join(',')
+      : searchOrValues;
+
+    return {
+      values: !search
+        ? resolvedTierOptions
+        : resolvedTierOptions.filter((tier: ListItem) =>
+            tier.title?.toLowerCase()?.includes(toLower(search))
+          ),
+      hasMore: false,
+    } as AsyncFetchListValuesResult;
   };
 
   public getCommonConfig = () => {
