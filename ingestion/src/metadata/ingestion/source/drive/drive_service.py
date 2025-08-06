@@ -504,7 +504,7 @@ class DriveServiceSource(
             self.metadata,
             entity_type=Worksheet,
             service_name=self.context.get().drive_service,
-            spreadsheet_name=self.context.get().spreadsheet,
+            spreadsheet_name=worksheet_request.spreadsheet.root,
             worksheet_name=worksheet_request.name.root,
         )
         self.worksheet_source_state.add(worksheet_fqn)

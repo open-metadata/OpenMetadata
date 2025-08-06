@@ -570,12 +570,10 @@ def _(
         raise FQNBuildingException(
             f"Service name should be informed, but got service=`{service_name}`"
         )
-    
+
     if not directory_path:
-        raise FQNBuildingException(
-            f"Directory path should not be empty"
-        )
-    
+        raise FQNBuildingException("Directory path should not be empty")
+
     return _build(service_name, *directory_path)
 
 
@@ -592,9 +590,7 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, file=`{file_name}`"
         )
     if not directory_path:
-        raise FQNBuildingException(
-            f"Directory path should not be empty"
-        )
+        raise FQNBuildingException("Directory path should not be empty")
     return _build(service_name, *directory_path, file_name)
 
 
@@ -608,7 +604,8 @@ def _(
 ) -> str:
     if not service_name or not spreadsheet_name or not worksheet_name:
         raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, spreadsheet=`{spreadsheet_name}`, worksheet=`{worksheet_name}``"
+            f"Args should be informed, but got service=`{service_name}`, "
+            f"spreadsheet=`{spreadsheet_name}`, worksheet=`{worksheet_name}``"
         )
     return _build(service_name, spreadsheet_name, worksheet_name)
 
@@ -625,6 +622,7 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, spreadsheet=`{spreadsheet_name}``"
         )
     return _build(service_name, spreadsheet_name)
+
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     """
