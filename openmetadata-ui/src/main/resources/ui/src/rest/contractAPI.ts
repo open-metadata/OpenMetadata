@@ -98,7 +98,7 @@ export const validateContractById = async (contractId: string) => {
 
 export const deleteContractById = async (contractId: string) => {
   const response = await APIClient.delete<void>(
-    `/dataContracts/${contractId}?hardDelete=true`
+    `/dataContracts/${contractId}?hardDelete=true&recursive=true`
   );
 
   return response.data;
