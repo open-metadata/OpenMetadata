@@ -21,7 +21,6 @@ export interface ChartData {
 
 export interface ChartSeriesData {
   chartType: SystemChartType;
-  data: ChartData[];
   percentageChange?: number;
   currentPercentage: number;
   isIncreased?: boolean;

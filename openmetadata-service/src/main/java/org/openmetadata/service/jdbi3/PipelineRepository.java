@@ -86,7 +86,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     fieldFetchers.put("pipelineStatus", this::fetchAndSetPipelineStatuses);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTaskFieldsInBulk);
-    fieldFetchers.put(FIELD_OWNERS, this::fetchAndSetTaskFieldsInBulk);
   }
 
   @Override

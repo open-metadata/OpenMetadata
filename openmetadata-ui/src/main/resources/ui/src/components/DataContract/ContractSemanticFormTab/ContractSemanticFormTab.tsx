@@ -23,7 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightOutlined } from '../../../assets/svg/right-arrow.svg';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -120,6 +120,7 @@ export const ContractSemanticFormTab: React.FC<{
 
           <Button
             className="add-semantic-button"
+            data-testid="add-semantic-button"
             disabled={!isNull(editingKey) || !addFunctionRef.current}
             icon={<Icon className="anticon" component={PlusIcon} />}
             type="link"
@@ -192,6 +193,7 @@ export const ContractSemanticFormTab: React.FC<{
                                     <Button
                                       danger
                                       className="delete-expand-button"
+                                      data-testid={`delete-semantic-${field.key}`}
                                       icon={<DeleteIcon />}
                                       size="middle"
                                       onClick={() => {
@@ -204,6 +206,7 @@ export const ContractSemanticFormTab: React.FC<{
                             </div>
                           ),
                         }}
+                        dataTestId={`contract-semantics-card-${field.key}`}
                         defaultExpanded={editingKey === field.key}
                         key={field.key}>
                         {editingKey === field.key ? (
@@ -222,7 +225,7 @@ export const ContractSemanticFormTab: React.FC<{
                                   {...field}
                                   label={t('label.description')}
                                   name={[field.name, 'description']}>
-                                  <TextArea />
+                                  <TextArea rows={4} />
                                 </Form.Item>
                               </Col>
                               <Col span={24}>
@@ -283,6 +286,7 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Button>
                                 <Button
                                   className="m-l-md"
+                                  data-testid="save-semantic-button"
                                   type="primary"
                                   onClick={() => setEditingKey(null)}>
                                   {t('label.save')}
@@ -328,7 +332,7 @@ export const ContractSemanticFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined height={15} width={8} />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>

@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -35,6 +36,9 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      props: {
+        'data-testid': 'contract-name',
+      },
     },
     {
       label: t('label.owner-plural'),
@@ -60,7 +64,7 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.DESCRIPTION,
       required: false,
       props: {
-        'data-testid': 'description',
+        'data-testid': 'contract-description',
         initialValue: initialValues?.description ?? '',
       },
     },
@@ -98,14 +102,18 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-end m-t-md">
+      <div className="d-flex justify-between m-t-md">
+        <Button className="contract-prev-button" type="default">
+          {t('label.contract-detail-plural')}
+        </Button>
+
         <Button
           className="contract-next-button"
           htmlType="submit"
           type="primary"
           onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <RightOutlined height={15} width={8} />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>
