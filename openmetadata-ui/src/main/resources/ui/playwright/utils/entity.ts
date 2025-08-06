@@ -1065,7 +1065,7 @@ export const replyAnnouncement = async (page: Page) => {
   await page.click('[data-testid="announcement-card"]');
 
   await page.hover(
-    '[data-testid="data-assets-header"] [data-testid="announcement-card"] [data-testid="main-message"]'
+    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
   await page.waitForSelector('.ant-popover', { state: 'visible' });
@@ -1160,7 +1160,7 @@ export const editAnnouncement = async (
 
   // Target the announcement card specifically inside the drawer
   const drawerAnnouncementCard = page.locator(
-    '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
+    '[data-testid="announcement-drawer"] [data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
   await expect(drawerAnnouncementCard).toBeVisible();
