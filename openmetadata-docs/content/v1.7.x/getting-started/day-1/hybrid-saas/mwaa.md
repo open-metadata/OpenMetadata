@@ -302,7 +302,7 @@ the official Collate docs, and the value of the `pipelineType` configuration wil
 - `profiler`
 - `TestSuite`
 
-Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/Collate/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
+Which are based on the `PipelineType` [JSON Schema definitions](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json#L14)
 
 Moreover, one of the imports will depend on the MWAA Airflow version you are using:
 - If using Airflow < 2.5: `from airflow.providers.amazon.aws.operators.ecs import ECSOperator`
