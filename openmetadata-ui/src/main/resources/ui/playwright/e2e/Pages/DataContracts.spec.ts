@@ -414,7 +414,7 @@ test.describe('Data Contracts', () => {
         await saveAndTriggerDataContractValidation(page);
 
         await expect(
-          page.getByTestId('data-contract-latest-result-btn')
+          page.getByTestId('contract-status-card-item-Quality Status')
         ).not.toBeVisible();
       }
     );
