@@ -916,7 +916,7 @@ export const migrateJsonLogic = (
   };
 
   return migrateNode(jsonLogic) as Record<string, unknown>;
-}
+};
 
 export const getFieldsByKeys = (
   keys: EntityReferenceFields[],

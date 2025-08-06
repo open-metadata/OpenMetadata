@@ -246,7 +246,9 @@ export const ContractQualityFormTab: React.FC<{
             },
           }}
           searchProps={{
-            placeholder: t('label.search-by-name'),
+            placeholder: t('label.search-by-type', {
+              type: t('label.name'),
+            }),
             onSearch: (value) => {
               fetchAllTests({
                 offset: 0,
