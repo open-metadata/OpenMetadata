@@ -2,10 +2,12 @@ package org.openmetadata.service.rules;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.JsonLogicException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -37,6 +39,16 @@ public class RuleEngine {
             });
     dataContractRepository =
         (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+  }
+
+  public Object apply(String rule, Map<String, Object> context) {
+    try {
+      rule = unescapeFilter(rule);
+      return jsonLogicThreadLocal.get().apply(rule, context);
+    } catch (Exception e) {
+      // Return false, falls back to triggering workflow
+      return false;
+    }
   }
 
   /**
@@ -168,5 +180,22 @@ public class RuleEngine {
     } catch (JsonLogicException e) {
       throw new RuleValidationException(rule, e.getMessage(), e);
     }
+  }
+
+  private DataContract getEntityDataContractSafely(EntityInterface entity) {
+    try {
+      return dataContractRepository.loadEntityDataContract(entity.getEntityReference());
+    } catch (Exception e) {
+      LOG.debug("Failed to load data contracts for entity {}: {}", entity.getId(), e.getMessage());
+      return null;
+    }
+  }
+
+  private static String unescapeFilter(String filterLogic) throws JsonProcessingException {
+    Object ruleObj = JsonUtils.getObjectMapper().readValue(filterLogic, Object.class);
+    if (ruleObj instanceof String) {
+      ruleObj = JsonUtils.getObjectMapper().readValue((String) ruleObj, Object.class);
+    }
+    return JsonUtils.getObjectMapper().writeValueAsString(ruleObj);
   }
 }

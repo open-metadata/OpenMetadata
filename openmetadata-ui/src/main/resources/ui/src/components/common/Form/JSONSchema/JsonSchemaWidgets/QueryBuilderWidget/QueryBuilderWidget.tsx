@@ -51,6 +51,7 @@ import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
+  migrateJsonLogic,
   READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
@@ -191,7 +192,10 @@ const QueryBuilderWidget: FC<
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        const tree = QbUtils.loadFromJsonLogic(parsedValue, config);
+        // migrate existing json logic to new format
+        const migratedValue = migrateJsonLogic(parsedValue);
+
+        const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
         if (tree) {
           const validatedTree = QbUtils.Validation.sanitizeTree(
             tree,
