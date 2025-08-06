@@ -9,7 +9,7 @@ name="Apache Ranger"
 stage="Beta"
 platform="OpenMetadata"
 availableFeatures=["Reverse Metadata (Collate Only)"]
-unavailableFeatures=["Metadata", "Usage", "Data Profiler", "Data Quality", "Lineage"]
+unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the Apache Ranger connector for reverse metadata ingestion.
