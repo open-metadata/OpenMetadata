@@ -1,5 +1,6 @@
 ---
-title: Day 1
+title: Day 1 Setup Guide | Connect, Ingest & Collaborate in Collate
+description: Start your Collate journey by connecting data sources, ingesting metadata, inviting users, and exploring key features. Everything you need for Day 1.
 slug: /getting-started/day-1
 collate: true
 ---

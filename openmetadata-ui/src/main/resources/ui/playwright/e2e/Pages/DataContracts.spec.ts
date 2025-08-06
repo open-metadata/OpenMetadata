@@ -414,6 +414,19 @@ test.describe('Data Contracts', () => {
       );
 
       await page.getByTestId('delete-contract-button').click();
+
+      await expect(
+        page
+          .locator('.ant-modal-title')
+          .getByText(`Delete dataContract "${DATA_CONTRACT_DETAILS.name}"`)
+      ).toBeVisible();
+
+      await page.getByTestId('confirmation-text-input').click();
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+      await expect(page.getByTestId('confirm-button')).toBeEnabled();
+
+      await page.getByTestId('confirm-button').click();
       await deleteContractResponse;
 
       await toastNotification(page, '"Contract" deleted successfully!');
