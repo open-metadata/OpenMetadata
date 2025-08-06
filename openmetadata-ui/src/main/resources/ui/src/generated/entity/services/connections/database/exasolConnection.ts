@@ -36,6 +36,7 @@ export interface ExasolConnection {
      * SQLAlchemy driver scheme options.
      */
     scheme?:                     ExasolScheme;
+    supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
