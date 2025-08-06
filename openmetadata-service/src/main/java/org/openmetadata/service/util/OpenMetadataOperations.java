@@ -890,8 +890,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
-      Set<String> entities =
-          new HashSet<>(Arrays.asList(entityStr.substring(1, entityStr.length() - 1).split(",")));
+      // Handle entityStr with or without quotes
+      String cleanEntityStr = entityStr;
+      if (entityStr.startsWith("'") && entityStr.endsWith("'")) {
+        cleanEntityStr = entityStr.substring(1, entityStr.length() - 1);
+      }
+      Set<String> entities = new HashSet<>(Arrays.asList(cleanEntityStr.split(",")));
       return executeSearchReindexApp(
           appName,
           entities,

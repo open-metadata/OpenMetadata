@@ -10,33 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { first, isEmpty, last, round, sortBy, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { FunctionComponent } from 'react';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
-import { ReactComponent as LoadingIcon } from '../assets/svg/ic-loader.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
-import { ReactComponent as WarningIcon } from '../assets/svg/incident-icon.svg';
 import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
+import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
+import { totalDataAssetsWidgetColors } from '../constants/TotalDataAssetsWidget.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
-import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
+import {
+  IngestionPipeline,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
+import { getEntityNameLabel } from './EntityUtils';
 import Fqn from './Fqn';
-import { getAutoPilotStatuses } from './LocalStorageUtils';
+import { getEntityIcon } from './TableUtils';
 
 const { t } = i18n;
 
@@ -48,6 +50,7 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
         EntityType.DATABASE_SCHEMA,
         EntityType.STORED_PROCEDURE,
         EntityType.TABLE,
+        EntityType.QUERY,
       ];
     case 'messagingServices':
       return [EntityType.TOPIC];
@@ -75,23 +78,44 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
 export const getTitleByChartType = (chartType: SystemChartType) => {
   switch (chartType) {
     case SystemChartType.DescriptionCoverage:
+    case SystemChartType.AssetsWithDescriptionLive:
       return t('label.entity-coverage', {
         entity: t('label.description'),
       });
     case SystemChartType.OwnersCoverage:
+    case SystemChartType.AssetsWithOwnerLive:
       return t('label.entity-coverage', {
         entity: t('label.ownership'),
       });
     case SystemChartType.PIICoverage:
+    case SystemChartType.AssetsWithPIILive:
       return t('label.entity-coverage', {
         entity: t('label.pii-uppercase'),
       });
     case SystemChartType.TierCoverage:
+    case SystemChartType.AssetsWithTierLive:
       return t('label.entity-coverage', {
         entity: t('label.tier'),
       });
+    case SystemChartType.HealthyDataAssets:
+      return t('label.healthy-data-asset-plural');
     default:
       return '';
+  }
+};
+
+export const getChartTypeForWidget = (chartType: SystemChartType) => {
+  switch (chartType) {
+    case SystemChartType.AssetsWithDescriptionLive:
+      return SystemChartType.DescriptionCoverage;
+    case SystemChartType.AssetsWithOwnerLive:
+      return SystemChartType.OwnersCoverage;
+    case SystemChartType.AssetsWithPIILive:
+      return SystemChartType.PIICoverage;
+    case SystemChartType.AssetsWithTierLive:
+      return SystemChartType.TierCoverage;
+    default:
+      return chartType;
   }
 };
 
@@ -99,13 +123,13 @@ export const getPlatformInsightsChartDataFormattingMethod =
   (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
   (chartType: SystemChartType) => {
     const summaryChartData = chartsData[chartType];
-    const lastDay = last(summaryChartData.results)?.day ?? 1;
+    const lastDay = last(summaryChartData?.results)?.day ?? 1;
 
-    const sortedResults = sortBy(summaryChartData.results, 'day');
+    const sortedResults = sortBy(summaryChartData?.results, 'day');
 
     let data = sortedResults.length >= 2 ? sortedResults : [];
 
-    if (summaryChartData.results.length === 1) {
+    if (summaryChartData?.results.length === 1) {
       const previousDay = sortedResults[0].day - 86400000; // 1 day in milliseconds
 
       data = [
@@ -132,61 +156,33 @@ export const getPlatformInsightsChartDataFormattingMethod =
     // Percentage change for the last 7 days
     const percentageChangeOverall = round(
       Math.abs(lastDayData - earliestDayData),
-      2
+      1
     );
 
     // This is true if the current data is greater than or equal to the earliest day data
     const isIncreased = (lastDayData ?? 0) >= (earliestDayData ?? 0);
 
     return {
-      chartType,
-      data,
+      chartType: getChartTypeForWidget(chartType),
       isIncreased,
       percentageChange: percentageChangeOverall,
-      currentPercentage: round(lastDayData ?? 0, 2),
-      noRecords: summaryChartData.results.every((item) => isEmpty(item)),
-      numberOfDays: data.length - 1,
+      currentPercentage: round(lastDayData ?? 0, 1),
+      noRecords: summaryChartData?.results.every((item) => isEmpty(item)),
+      numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };
   };
 
-export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
-  let Icon: FunctionComponent<any>;
-  let message;
-  let description;
+export const getFormattedTotalAssetsDataFromSocketData = (
+  socketData: DataInsightCustomChartResult
+) => {
+  const entityCountsArray = socketData.results.map((result, index) => ({
+    name: getEntityNameLabel(result.group),
+    value: result.count ?? 0,
+    fill: totalDataAssetsWidgetColors[index],
+    icon: getEntityIcon(result.group, '', { height: 16, width: 16 }) ?? <></>,
+  }));
 
-  switch (status) {
-    case WorkflowStatus.Exception:
-      Icon = WarningIcon;
-      message = t('message.workflow-status-exception');
-      description = t('message.workflow-status-failure-description');
-
-      break;
-    case WorkflowStatus.Failure:
-      Icon = ExclamationCircleOutlined;
-      message = t('message.workflow-status-failure');
-      description = t('message.workflow-status-failure-description');
-
-      break;
-    case WorkflowStatus.Finished:
-      Icon = SuccessIcon;
-      message = t('message.workflow-status-finished');
-      description = t('message.workflow-status-finished-description');
-
-      break;
-    case WorkflowStatus.Running:
-    default:
-      Icon = LoadingIcon;
-      message = t('message.workflow-status-running');
-      description = t('message.workflow-status-running-description');
-
-      break;
-  }
-
-  return {
-    Icon,
-    message,
-    description,
-  };
+  return entityCountsArray;
 };
 
 export const getServiceInsightsWidgetPlaceholder = ({
@@ -210,6 +206,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
   switch (chartType) {
     case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
+    case SystemChartType.TotalDataAssetsLive:
       Icon = NoDataPlaceholderIcon;
       localizationKey = 'message.total-data-assets-widget-description';
       docsLink =
@@ -217,6 +214,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
       break;
     case SystemChartType.DescriptionCoverage:
+    case SystemChartType.AssetsWithDescriptionLive:
       Icon = DescriptionPlaceholderIcon;
       localizationKey = 'message.description-coverage-widget-description';
       docsLink =
@@ -225,6 +223,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
       break;
     case SystemChartType.OwnersCoverage:
+    case SystemChartType.AssetsWithOwnerLive:
       Icon = OwnersPlaceholderIcon;
       localizationKey = 'message.owners-coverage-widget-description';
       docsLink =
@@ -233,6 +232,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
       break;
     case SystemChartType.PIICoverage:
+    case SystemChartType.AssetsWithPIILive:
       Icon = PiiPlaceholderIcon;
       localizationKey = 'message.pii-coverage-widget-description';
       docsLink =
@@ -335,18 +335,32 @@ export const filterDistributionChartItem = (item: {
   return toLower(tag_name) === toLower(item.group);
 };
 
-export const checkIfAutoPilotStatusIsDismissed = (
-  serviceFQN?: string,
-  workflowStatus?: WorkflowStatus
+export const getChartsDataFromWidgetName = (
+  widgetName: string,
+  chartsResults?: ChartsResults
 ) => {
-  if (!serviceFQN || !workflowStatus) {
-    return false;
+  switch (widgetName) {
+    case 'PlatformInsightsWidget':
+      return chartsResults?.platformInsightsChart ?? [];
+    case 'PIIDistributionWidget':
+      return chartsResults?.piiDistributionChart ?? [];
+    case 'TierDistributionWidget':
+      return chartsResults?.tierDistributionChart ?? [];
+    default:
+      return [];
+  }
+};
+
+export const getAutoPilotIngestionPipelines = (
+  ingestionPipelines?: IngestionPipeline[]
+) => {
+  if (isEmpty(ingestionPipelines)) {
+    return undefined;
   }
 
-  const autoPilotStatuses = getAutoPilotStatuses();
-
-  return autoPilotStatuses.some(
-    (status) =>
-      status.serviceFQN === serviceFQN && status.status === workflowStatus
+  return ingestionPipelines?.filter(
+    (pipeline) =>
+      SERVICE_AUTOPILOT_AGENT_TYPES.includes(pipeline.pipelineType) &&
+      pipeline.provider === ProviderType.Automation
   );
 };
