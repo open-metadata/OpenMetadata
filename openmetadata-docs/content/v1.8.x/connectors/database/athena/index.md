@@ -1,5 +1,5 @@
 ---
-title: Athena | OpenMetadata Database Connector Configuration
+title: Athena | `brandName` Database Connector Configuration
 description: Connect Amazon Athena to OpenMetadata effortlessly. Complete setup guide, configuration steps, and best practices for database metadata ingestion.
 slug: /connectors/database/athena
 ---

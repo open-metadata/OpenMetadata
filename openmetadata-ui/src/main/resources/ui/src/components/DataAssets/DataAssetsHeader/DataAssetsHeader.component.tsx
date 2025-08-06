@@ -432,6 +432,7 @@ export const DataAssetsHeader = ({
             `data-contract-latest-result-button
                     ${dataContract?.latestResult?.status}`
           )}
+          data-testid="data-contract-latest-result-btn"
           icon={getDataContractStatusIcon(dataContract?.latestResult?.status)}
           onClick={() => {
             navigate(
