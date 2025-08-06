@@ -60,12 +60,13 @@ import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/A
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
 
-const QueryBuilderWidget: FC<WidgetProps> = ({
-  onChange,
-  schema,
-  value,
-  ...props
-}) => {
+const QueryBuilderWidget: FC<
+  WidgetProps & {
+    fields?: Config['fields'];
+    defaultField?: string;
+    subField?: string;
+  }
+> = ({ onChange, schema, value, fields, defaultField, subField, ...props }) => {
   const {
     config,
     treeInternal,
@@ -202,7 +203,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     } else {
       const emptyJsonTree =
         outputType === SearchOutputType.JSONLogic
-          ? getEmptyJsonTreeForQueryBuilder()
+          ? getEmptyJsonTreeForQueryBuilder(defaultField, subField)
           : getEmptyJsonTree();
 
       const tree = QbUtils.loadTree(emptyJsonTree);
@@ -253,6 +254,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
             )}
             <Query
               {...config}
+              fields={fields ?? config.fields}
               renderBuilder={(props) => {
                 // Store the actions for external access
                 if (!queryActions) {
