@@ -331,3 +331,51 @@ export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
 
   return data;
 };
+
+export const getFirstLevelGlossaryTermsPaginated = async (
+  parentFQN: string,
+  pageSize = 50,
+  after?: string
+) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit: pageSize,
+      after: after,
+    },
+  });
+
+  return data;
+};
+
+export const getGlossaryTermChildrenLazy = async (
+  parentFQN: string,
+  limit = 50
+) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      parent: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit,
+    },
+  });
+
+  return data;
+};
