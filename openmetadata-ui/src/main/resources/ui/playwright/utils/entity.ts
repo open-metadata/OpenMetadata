@@ -1232,11 +1232,19 @@ export const updateDisplayNameForEntityChildren = async (
   await page.click('[data-testid="save-button"]');
   await updateRequest;
 
-  await expect(
-    page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('column-display-name')
-  ).toHaveText(displayName.newDisplayName);
+  if (displayName.newDisplayName === '') {
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('column-display-name')
+    ).not.toBeAttached();
+  } else {
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('column-display-name')
+    ).toHaveText(displayName.newDisplayName);
+  }
 };
 
 export const removeDisplayNameForEntityChildren = async (
