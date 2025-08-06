@@ -22,13 +22,21 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: '/my-data' }));
 });
 
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <a {...rest} onClick={mockLinkButton}>
-      {children}
-    </a>
-  )),
-}));
+jest.mock('antd', () => {
+  const actualAntd = jest.requireActual('antd');
+
+  return {
+    ...actualAntd,
+    Typography: {
+      ...actualAntd.Typography,
+      Link: jest.fn().mockImplementation(({ children, ...rest }) => (
+        <a {...rest} onClick={mockLinkButton}>
+          {children}
+        </a>
+      )),
+    },
+  };
+});
 
 jest.mock('../../../utils/WhatsNewModal.util', () => ({
   getReleaseVersionExpiry: jest.fn().mockImplementation(() => new Date()),
