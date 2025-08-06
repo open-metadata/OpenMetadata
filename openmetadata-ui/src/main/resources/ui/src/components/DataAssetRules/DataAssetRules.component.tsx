@@ -321,13 +321,13 @@ export const useSemanticsRuleList = ({
     });
   };
 
-  const handleEditSemanticsRule = (semanticsRule: SemanticsRule) => {
-    setAddEditSemanticsRule(semanticsRule);
-  };
+  // const handleEditSemanticsRule = (semanticsRule: SemanticsRule) => {
+  //   setAddEditSemanticsRule(semanticsRule);
+  // };
 
-  const handleDelete = (semanticsRule: SemanticsRule) => {
-    setDeleteSemanticsRule(semanticsRule);
-  };
+  // const handleDelete = (semanticsRule: SemanticsRule) => {
+  //   setDeleteSemanticsRule(semanticsRule);
+  // };
 
   const onConfirmDelete = async (semanticsRule: SemanticsRule) => {
     const updatedSemanticsRules = semanticsRules.filter(
