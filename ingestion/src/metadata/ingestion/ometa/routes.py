@@ -327,4 +327,7 @@ ROUTES = {
     # Data Contracts
     DataContract.__name__: "/dataContracts",
     CreateDataContractRequest.__name__: "/dataContracts",
+    # Drives
+    DriveService.__name__: "/services/driveServices",
+    CreateDriveServiceRequest.__name__: "/services/driveServices",
 }

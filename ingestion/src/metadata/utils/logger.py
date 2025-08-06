@@ -36,6 +36,7 @@ from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.user import OMetaUserProfile
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
@@ -308,6 +309,15 @@ def _(record: QueryParserData) -> str:
 def _(record: DataContractResult) -> str:
     """Get the log of the DataContractResult"""
     return f"DataContractResult for [{record.dataContractFQN.root}]; status: {record.contractExecutionStatus.value}]"
+
+
+@get_log_name.register
+def _(record: OMetaUserProfile) -> str:
+    """Get the log of the new entity"""
+    return (
+        f"User Profile: {get_log_name(record.user)},"
+        f"Teams: {record.teams if record.teams else 'None'}, \nRoles: {record.roles if record.roles else 'None'}"
+    )
 
 
 def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:

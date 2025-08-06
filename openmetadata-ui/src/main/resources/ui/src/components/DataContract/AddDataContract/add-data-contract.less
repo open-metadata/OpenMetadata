@@ -36,19 +36,28 @@
     padding: @size-xs @size-sm;
     border: 1px solid @grey-300;
     border-radius: 8px;
+    font-weight: 600;
     gap: 4px;
-    font-weight: @font-semibold;
+    box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
+      0px 0px 0px 1px @grey-27 inset;
 
-    box-shadow: 0px 1px 2px 0px @grey-27;
-
-    box-shadow: 0px -2px 0px 0px @grey-27 inset;
-
-    box-shadow: 0px 0px 0px 1px @grey-27 inset;
+    .anticon {
+      margin-top: 2px;
+      margin-left: 6px;
+    }
   }
   .contract-prev-button {
     color: @grey-700;
     svg {
-      stroke: @grey-400;
+      color: @grey-400;
+    }
+
+    &:hover {
+      background: @grey-100;
+
+      svg {
+        color: @grey-700;
+      }
     }
   }
   .ant-tabs-left-content {
@@ -214,9 +223,13 @@
         }
       }
       .ant-form-item-control-input-content {
+        .group--field {
+          align-self: baseline;
+        }
         input[type='text'] {
           padding: 8px 14px;
           color: @grey-700;
+          font-weight: 500;
           border: 1px solid @grey-300;
           border-radius: 8px;
           box-shadow: 0 1px 2px 0px @grey-27;
@@ -229,7 +242,7 @@
           border: 1px solid @grey-300;
           padding: 4px 12px;
           color: @grey-700;
-          height: 40px;
+          min-height: 40px;
           box-shadow: 0 1px 2px 0px @grey-27;
 
           &:focus,
@@ -240,6 +253,7 @@
           .ant-select-selection-search {
             input[type='search'] {
               height: 40px;
+              font-weight: 500;
             }
           }
         }
@@ -255,6 +269,21 @@
 }
 
 .add-contract-card {
+  .add-contract-card-header {
+    .ant-btn.add-contract-cancel-button {
+      margin-right: 8px;
+      border: 1px solid @grey-300;
+      color: @grey-700;
+      font-weight: 600;
+      box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
+        0px 0px 0px 1px @grey-27 inset;
+    }
+
+    .ant-btn.add-contract-save-button {
+      font-weight: 600;
+    }
+  }
+
   .add-contract-card-title {
     font-size: 18px;
     font-weight: 600;
@@ -280,6 +309,7 @@
     color: @grey-700;
     box-shadow: 0px 1px 2px 0px @grey-27;
     border: 1px solid @grey-300;
+    font-weight: 500;
   }
 
   .ant-select-selector,
@@ -287,12 +317,22 @@
     border: 1px solid @grey-300;
     padding: 4px 12px !important;
     color: @grey-700;
+    font-weight: 500;
     height: 40px !important;
     box-shadow: 0 1px 2px 0px @grey-27;
 
-    &:focus,
-    &:hover {
-      border-color: @primary-color;
+    .ant-select-selector,
+    .ant-mentions {
+      border: 1px solid @grey-300;
+      padding: 4px 12px !important;
+      color: @grey-700;
+      min-height: 40px !important;
+      box-shadow: 0 1px 2px 0px @grey-27;
+
+      &:focus,
+      &:hover {
+        border-color: @primary-color;
+      }
     }
   }
 }

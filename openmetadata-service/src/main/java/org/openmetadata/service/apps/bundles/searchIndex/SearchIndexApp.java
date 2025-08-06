@@ -657,6 +657,37 @@ public class SearchIndexApp extends AbstractNativeApplication {
       finalConfigDetails.put(PAYLOAD_SIZE, (jobData.getPayLoadSize() / (1024 * 1024)) + " MB");
       finalConfigDetails.put(
           CONCURRENT_REQUESTS, String.valueOf(jobData.getMaxConcurrentRequests()));
+
+      if (Boolean.TRUE.equals(jobData.getAutoTune())) {
+        finalConfigDetails.put("Cluster Nodes", String.valueOf(clusterMetrics.getTotalNodes()));
+        finalConfigDetails.put("Cluster Shards", String.valueOf(clusterMetrics.getTotalShards()));
+        finalConfigDetails.put(
+            "CPU Usage", String.format("%.1f%%", clusterMetrics.getCpuUsagePercent()));
+        finalConfigDetails.put(
+            "Memory Usage", String.format("%.1f%%", clusterMetrics.getMemoryUsagePercent()));
+        finalConfigDetails.put(
+            "Max Payload", (clusterMetrics.getMaxPayloadSizeBytes() / (1024 * 1024)) + " MB");
+        finalConfigDetails.put(
+            "Max Content Length", (clusterMetrics.getMaxContentLength() / (1024 * 1024)) + " MB");
+
+        boolean isUsingDefaults = clusterMetrics.getTotalShards() == 0;
+        String configSource = isUsingDefaults ? " (using defaults)" : " (from cluster)";
+
+        String clusterStatus =
+            String.format(
+                "Cluster: %d nodes, %.0f%% CPU, %.0f%% memory, %dMB limit%s",
+                clusterMetrics.getTotalNodes(),
+                clusterMetrics.getCpuUsagePercent(),
+                clusterMetrics.getMemoryUsagePercent(),
+                (int) (clusterMetrics.getMaxContentLength() / (1024 * 1024)),
+                configSource);
+        finalConfigDetails.put("Cluster Status", clusterStatus);
+        finalConfigDetails.put(
+            "Config Source", isUsingDefaults ? "Conservative Defaults" : "Cluster Metrics");
+      }
+    } else if (Boolean.TRUE.equals(jobData.getAutoTune())) {
+      finalConfigDetails.put(
+          "Cluster Status", "Unable to fetch cluster metrics (using conservative defaults)");
     }
 
     return finalConfigDetails;
