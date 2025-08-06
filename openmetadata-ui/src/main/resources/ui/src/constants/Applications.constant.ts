@@ -24,3 +24,6 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
 ];
 
 export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
+export const COLLATE_DOCUMENTATION_APP_NAME = 'CollateAIApplication';
+export const COLLATE_DATA_QUALITY_APP_NAME = 'CollateAIQualityAgentApplication';
+export const COLLATE_AUTO_TIER_APP_NAME = 'CollateAITierAgentApplication';
