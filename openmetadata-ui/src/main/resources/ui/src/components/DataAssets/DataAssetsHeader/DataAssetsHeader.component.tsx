@@ -425,10 +425,6 @@ export const DataAssetsHeader = ({
   ]);
 
   const dataContractLatestResultButton = useMemo(() => {
-    if (dataContract?.latestResult?.status) {
-      dataContract.latestResult.status = ContractExecutionStatus.Running;
-    }
-
     if (
       dataContract?.latestResult?.status &&
       [
