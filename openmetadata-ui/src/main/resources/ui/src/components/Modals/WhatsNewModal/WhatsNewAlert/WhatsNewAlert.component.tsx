@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
 import { ROUTES, VERSION } from '../../../../constants/constants';
-import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
@@ -31,7 +30,6 @@ const cookieStorage = new CookieStorage();
 const WhatsNewAlert = () => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const { isFirstTimeUser } = useAuth();
   const { appVersion } = useApplicationStore();
   const [showWhatsNew, setShowWhatsNew] = useState({
     alert: false,
@@ -70,11 +68,13 @@ const WhatsNewAlert = () => {
   }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
 
   useEffect(() => {
-    setShowWhatsNew({
-      alert: cookieStorage.getItem(cookieKey) !== 'true',
-      modal: false,
-    });
-  }, [isFirstTimeUser, cookieKey]);
+    if (cookieKey && appVersion) {
+      setShowWhatsNew((prev) => ({
+        ...prev,
+        alert: cookieStorage.getItem(cookieKey) !== 'true',
+      }));
+    }
+  }, [cookieKey, appVersion]);
 
   return (
     <>
