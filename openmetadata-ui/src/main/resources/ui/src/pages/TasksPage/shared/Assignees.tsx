@@ -16,7 +16,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
@@ -48,6 +48,7 @@ const Assignees: FC<Props> = ({
   ...rest
 }) => {
   const { t } = useTranslation();
+  const [selectedOptions, setSelectedOptions] = useState<Option[]>([]);
   const handleOnChange = (
     _values: Option[],
     newOptions?: DefaultOptionType | DefaultOptionType[]
@@ -118,7 +119,9 @@ const Assignees: FC<Props> = ({
   const customTagRender = (props: CustomTagProps) => {
     const { value, closable, onClose } = props;
 
-    const selectedAssignee = options?.find((option) => option.value === value);
+    const selectedAssignee = selectedOptions?.find(
+      (option) => option.value === value
+    );
 
     const tagProps = {
       id: selectedAssignee?.name ?? value,
@@ -131,6 +134,10 @@ const Assignees: FC<Props> = ({
 
     return <UserTag {...tagProps} />;
   };
+
+  useEffect(() => {
+    setSelectedOptions((prev) => [...prev, ...options]);
+  }, [options]);
 
   return (
     <Select
