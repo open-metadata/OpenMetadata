@@ -51,7 +51,11 @@ import {
 import { AuthProvider } from '../../generated/settings/settings';
 import authenticationConfigSchema from '../../jsons/configuration/authenticationConfiguration.json';
 import authorizerConfigSchema from '../../jsons/configuration/authorizerConfiguration.json';
+import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 
+const widgets = {
+  SelectWidget: SelectWidget,
+};
 // Type definitions for form data
 interface AuthenticationConfiguration {
   provider: string;
@@ -245,6 +249,43 @@ const SSOConfigurationFormRJSF = () => {
       // SAML-specific boolean fields
       if (samlConfig.debugMode === undefined) {
         samlConfig.debugMode = false;
+      }
+
+      // Process certificates to fix escaping issues
+      if (samlConfig.idp && typeof samlConfig.idp === 'object') {
+        const idpConfig = samlConfig.idp as Record<string, unknown>;
+        if (
+          idpConfig.idpX509Certificate &&
+          typeof idpConfig.idpX509Certificate === 'string'
+        ) {
+          // Fix certificate escaping by replacing \\n with \n
+          idpConfig.idpX509Certificate = (
+            idpConfig.idpX509Certificate as string
+          ).replace(/\\n/g, '\n');
+        }
+      }
+
+      if (samlConfig.sp && typeof samlConfig.sp === 'object') {
+        const spConfig = samlConfig.sp as Record<string, unknown>;
+        if (
+          spConfig.spX509Certificate &&
+          typeof spConfig.spX509Certificate === 'string'
+        ) {
+          // Fix certificate escaping by replacing \\n with \n
+          spConfig.spX509Certificate = (
+            spConfig.spX509Certificate as string
+          ).replace(/\\n/g, '\n');
+        }
+        if (
+          spConfig.spPrivateKey &&
+          typeof spConfig.spPrivateKey === 'string'
+        ) {
+          // Fix private key escaping by replacing \\n with \n
+          spConfig.spPrivateKey = (spConfig.spPrivateKey as string).replace(
+            /\\n/g,
+            '\n'
+          );
+        }
       }
 
       if (samlConfig.security) {
@@ -469,6 +510,7 @@ const SSOConfigurationFormRJSF = () => {
             },
           }}
           validator={validator}
+          widgets={widgets}
           onChange={handleOnChange}
         />
       )}
