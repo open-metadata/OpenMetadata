@@ -22,6 +22,7 @@ import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.s
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table as TableType } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
@@ -31,9 +32,8 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
-  TestCaseType,
 } from '../../../rest/testAPI';
-import i18n from '../../../utils/i18next/LocalUtil';
+import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContractUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -44,12 +44,6 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import TestCaseFormV1 from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
-
-export const TestTypeLabelMap = {
-  [TestCaseType.all]: i18n.t('label.all'),
-  [TestCaseType.table]: i18n.t('label.table'),
-  [TestCaseType.column]: i18n.t('label.column'),
-};
 
 export const ContractQualityFormTab: React.FC<{
   selectedQuality: string[];
@@ -198,9 +192,9 @@ export const ContractQualityFormTab: React.FC<{
 
   const filterMenu = useMemo(() => {
     return {
-      items: Object.entries(TestTypeLabelMap).map(([key]) => ({
+      items: Object.entries(ContractTestTypeLabelMap).map(([key]) => ({
         key,
-        label: TestTypeLabelMap[key as TestCaseType],
+        label: ContractTestTypeLabelMap[key as TestCaseType],
         onClick: () => setTestType(key as TestCaseType),
       })),
     };

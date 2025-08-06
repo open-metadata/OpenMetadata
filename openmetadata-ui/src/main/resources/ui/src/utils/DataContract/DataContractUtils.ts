@@ -26,6 +26,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
+import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
   ContractExecutionStatus,
   DataContract,
@@ -33,6 +34,7 @@ import {
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { TestSummary } from '../../generated/tests/testCase';
 import { getRelativeTime } from '../date-time/DateTimeUtils';
+import i18n from '../i18next/LocalUtil';
 
 export const getConstraintStatus = (
   latestContractResults: DataContractResult
@@ -213,4 +215,10 @@ export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
     : status === ContractExecutionStatus.Running
     ? ContractRunningIcon
     : null;
+};
+
+export const ContractTestTypeLabelMap = {
+  [TestCaseType.all]: i18n.t('label.all'),
+  [TestCaseType.table]: i18n.t('label.table'),
+  [TestCaseType.column]: i18n.t('label.column'),
 };
