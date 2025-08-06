@@ -32,6 +32,7 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -280,15 +281,21 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
-    if (!fields.contains(FIELD_TAGS)
-        || !fields.contains(COLUMN_FIELD)
-        || tables == null
-        || tables.isEmpty()) {
+    if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
-    // Use bulk tag fetching to avoid N+1 queries
-    bulkPopulateEntityFieldTags(
-        tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
+    List<String> entityFQNs = tables.stream().map(Table::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (Table table : tables) {
+      table.setTags(
+          addDerivedTags(
+              tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    if (fields.contains(COLUMN_FIELD)) {
+      bulkPopulateEntityFieldTags(
+          tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
+    }
   }
 
   @Override
@@ -2019,6 +2026,10 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column column : paginatedResults) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
+    }
+
+    if (fields.contains("tags") || fields.contains("*")) {
+      populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
     }
 
     if (fieldsParam != null && fieldsParam.contains("profile")) {

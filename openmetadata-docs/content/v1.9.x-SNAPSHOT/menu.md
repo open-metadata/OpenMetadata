@@ -1023,6 +1023,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/visualize
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - UI Config
+    url: /how-to-guides/data-quality-observability/quality/tests-ui
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
     url: /how-to-guides/data-quality-observability/quality/custom-tests
   - category: How-to Guides / Data Quality and Observability / Data Profiler
@@ -1143,6 +1145,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.8.8 Release
+    url: /releases/all-releases/#1.8.8-releases
+  - category: Releases / All Releases / 1.8.9 Release
+    url: /releases/all-releases/#1.8.9-releases
   - category: Releases / All Releases / 1.8.7 Release
     url: /releases/all-releases/#1.8.7-releases
   - category: Releases / All Releases / 1.8.6 Release

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.data;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,8 +25,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
-import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
-import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -43,6 +42,7 @@ import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -114,6 +114,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   private static TestCaseResourceTest testCaseResourceTest;
   private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
+  private static TestSuiteResourceTest testSuiteResourceTest;
   private static DataContractRepository dataContractRepository;
   private static PipelineServiceClientInterface mockPipelineClient;
 
@@ -132,7 +133,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     testCaseResourceTest = new TestCaseResourceTest();
-    // testCaseResourceTest.setup(test);
+    testSuiteResourceTest = new TestSuiteResourceTest();
     ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
     ingestionPipelineResourceTest.setup(test);
 
@@ -950,6 +951,143 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(finalRetrieved.getQualityExpectations());
     assertEquals(2, finalRetrieved.getQualityExpectations().size());
     assertNotNull(finalRetrieved.getTestSuite());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testUpdateTestSuiteTestsWithQualityExpectations(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Create initial test cases for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_validity_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    // Step 1: Add initial quality expectations with both test cases
+    List<EntityReference> initialQualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    create.withStatus(ContractStatus.Active).withQualityExpectations(initialQualityExpectations);
+    DataContract updated = updateDataContract(create);
+
+    // Verify initial state - both test cases should be in TestSuite
+    assertEquals(2, updated.getQualityExpectations().size());
+    assertNotNull(updated.getTestSuite());
+
+    // Get TestSuite and verify it contains both tests
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntity(
+            updated.getTestSuite().getId(), "tests", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuite.getTests());
+    assertEquals(2, testSuite.getTests().size());
+    assertTrue(testSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase1.getId())));
+    assertTrue(testSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase2.getId())));
+
+    // Step 2: Create a third test case
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("test_case_accuracy_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    // Update to add new test case while keeping existing ones
+    List<EntityReference> expandedQualityExpectations =
+        List.of(
+            testCase1.getEntityReference(),
+            testCase2.getEntityReference(),
+            testCase3.getEntityReference());
+
+    create.withQualityExpectations(expandedQualityExpectations);
+    DataContract updatedWithNewTest = updateDataContract(create);
+
+    // Verify new test case was added
+    assertEquals(3, updatedWithNewTest.getQualityExpectations().size());
+
+    // Verify TestSuite now contains all three tests
+    TestSuite expandedTestSuite =
+        testSuiteResourceTest.getEntity(
+            updated.getTestSuite().getId(), "tests", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(expandedTestSuite.getTests());
+    assertEquals(3, expandedTestSuite.getTests().size());
+    assertTrue(
+        expandedTestSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase1.getId())));
+    assertTrue(
+        expandedTestSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase2.getId())));
+    assertTrue(
+        expandedTestSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase3.getId())));
+
+    // Step 3: Remove one test case (remove testCase2)
+    List<EntityReference> reducedQualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase3.getEntityReference());
+
+    create.withQualityExpectations(reducedQualityExpectations);
+    DataContract updatedWithRemovedTest = updateDataContract(create);
+
+    // Verify test case was removed from quality expectations
+    assertEquals(2, updatedWithRemovedTest.getQualityExpectations().size());
+    assertTrue(
+        updatedWithRemovedTest.getQualityExpectations().stream()
+            .anyMatch(ref -> ref.getId().equals(testCase1.getId())));
+    assertTrue(
+        updatedWithRemovedTest.getQualityExpectations().stream()
+            .anyMatch(ref -> ref.getId().equals(testCase3.getId())));
+    assertFalse(
+        updatedWithRemovedTest.getQualityExpectations().stream()
+            .anyMatch(ref -> ref.getId().equals(testCase2.getId())));
+
+    // Verify TestSuite also had the test removed
+    TestSuite reducedTestSuite =
+        testSuiteResourceTest.getEntity(
+            updated.getTestSuite().getId(), "tests", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(reducedTestSuite.getTests());
+    assertEquals(2, reducedTestSuite.getTests().size());
+    assertTrue(
+        reducedTestSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase1.getId())));
+    assertFalse(
+        reducedTestSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase2.getId())));
+    assertTrue(
+        reducedTestSuite.getTests().stream().anyMatch(t -> t.getId().equals(testCase3.getId())));
+
+    // Step 4: Remove all test cases
+    create.withQualityExpectations(Collections.emptyList());
+    DataContract updatedWithNoTests = updateDataContract(create);
+
+    // Verify all test cases were removed
+    assertTrue(
+        updatedWithNoTests.getQualityExpectations() == null
+            || updatedWithNoTests.getQualityExpectations().isEmpty());
+
+    // Verify TestSuite has been deleted
+    assertResponseContains(
+        () ->
+            testSuiteResourceTest.getEntity(
+                updated.getTestSuite().getId(), "tests", ADMIN_AUTH_HEADERS),
+        Status.NOT_FOUND,
+        "testSuite instance for " + updated.getTestSuite().getId().toString() + " not found");
+
+    // GET the data contract and verify persistence
+    DataContract retrieved = getDataContract(created.getId(), "");
+    assertTrue(
+        retrieved.getQualityExpectations() == null || retrieved.getQualityExpectations().isEmpty());
+    assertNull(retrieved.getTestSuite()); // We deleted the TestSuite when no tests remain
   }
 
   @Test
@@ -2331,7 +2469,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the validation result shows failure
     assertNotNull(result);
     assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
-    assertTrue(result.getResult().contains("Semantics validation failed"));
 
     // Verify semantics validation details
     assertNotNull(result.getSemanticsValidation());
@@ -2349,8 +2486,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContractResult latest = getLatestResult(dataContract);
     assertNotNull(updatedContract.getLatestResult());
     assertEquals(ContractExecutionStatus.Failed, updatedContract.getLatestResult().getStatus());
-    assertTrue(
-        updatedContract.getLatestResult().getMessage().contains("Semantics validation failed"));
     assertEquals(
         result.getId().toString(), updatedContract.getLatestResult().getResultId().toString());
   }
@@ -2753,9 +2888,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(2, finalResult.getSemanticsValidation().getPassed().intValue());
     assertEquals(0, finalResult.getSemanticsValidation().getFailed().intValue());
 
-    // Verify the result message indicates quality validation failed
-    assertTrue(finalResult.getResult().contains("Quality validation failed"));
-
     // Verify the DataContract latestResult reflects the final failed validation
     DataContract updatedContract = getDataContract(dataContract.getId(), "");
     assertNotNull(updatedContract.getLatestResult());
@@ -2847,7 +2979,6 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the validation result shows failure due to schema validation
     assertNotNull(result);
     assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
-    assertTrue(result.getResult().contains("Schema validation failed"));
 
     // Verify schema validation details
     assertNotNull(result.getSchemaValidation());

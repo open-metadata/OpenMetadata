@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Actions } from '@react-awesome-query-builder/antd';
 import { FieldErrorProps } from '@rjsf/utils';
 import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
@@ -19,11 +19,16 @@ import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import { isNull } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
+import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
+import { EntityReferenceFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import QueryBuilderWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
@@ -40,7 +45,10 @@ export const ContractSemanticFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const semanticsData = Form.useWatch('semantics', form);
+  const semanticsFormData: DataContract['semantics'] = Form.useWatch(
+    'semantics',
+    form
+  );
   const [editingKey, setEditingKey] = useState<number | null>(null);
   const [queryBuilderAddRule, setQueryBuilderAddRule] = useState<Actions>();
   const addFunctionRef = useRef<((defaultValue?: any) => void) | null>(null);
@@ -56,33 +64,57 @@ export const ContractSemanticFormTab: React.FC<{
       rule: '',
       enabled: true,
     });
-    setEditingKey(semanticsData.length);
+    setEditingKey(semanticsFormData?.length ?? 0);
   };
+
+  const handleDeleteSemantic = useCallback(
+    (key: number) => {
+      const filteredValue = semanticsFormData?.filter(
+        (_, index) => index !== key
+      );
+
+      form.setFieldsValue({
+        semantics: filteredValue,
+      });
+      onChange({
+        semantics: filteredValue,
+      });
+    },
+    [semanticsFormData]
+  );
 
   const handleAddNewRule = useCallback(() => {
     queryBuilderAddRule?.addRule([]);
   }, [queryBuilderAddRule]);
 
   useEffect(() => {
-    form.setFieldsValue({
-      semantics: [
-        {
-          name: '',
-          description: '',
-          enabled: true,
-          rule: '',
-        },
-      ],
-    });
-  }, []);
-
-  useEffect(() => {
     if (initialValues?.semantics) {
       form.setFieldsValue({
         semantics: initialValues.semantics,
       });
+    } else {
+      form.setFieldsValue({
+        semantics: [
+          {
+            name: '',
+            description: '',
+            enabled: true,
+            rule: '',
+          },
+        ],
+      });
     }
+    setEditingKey(0);
   }, [initialValues]);
+
+  // Remove extension field from common config
+  const queryBuilderFields = useMemo(() => {
+    const fields = jsonLogicSearchClassBase.getCommonConfig();
+
+    delete fields[EntityReferenceFields.EXTENSION];
+
+    return fields;
+  }, []);
 
   return (
     <>
@@ -99,6 +131,7 @@ export const ContractSemanticFormTab: React.FC<{
 
           <Button
             className="add-semantic-button"
+            data-testid="add-semantic-button"
             disabled={!isNull(editingKey) || !addFunctionRef.current}
             icon={<Icon className="anticon" component={PlusIcon} />}
             type="link"
@@ -110,6 +143,7 @@ export const ContractSemanticFormTab: React.FC<{
         </div>
 
         <Form
+          className="new-form-style"
           form={form}
           layout="vertical"
           onValuesChange={(_, allValues) => {
@@ -134,38 +168,56 @@ export const ContractSemanticFormTab: React.FC<{
                           title: (
                             <div className="w-full d-flex justify-between items-center">
                               {editingKey === field.key ? null : (
-                                <>
+                                <div className="semantic-form-item-title-container">
                                   <div className="d-flex items-center gap-6">
                                     <Form.Item
                                       {...field}
+                                      className="enable-form-item"
                                       name={[field.name, 'enabled']}
                                       valuePropName="checked">
                                       <Switch />
                                     </Form.Item>
 
                                     <div className="d-flex flex-column">
-                                      <Typography.Text>
-                                        {semanticsData[field.key]?.name ||
+                                      <Typography.Text className="semantic-form-item-title">
+                                        {semanticsFormData?.[field.key]?.name ||
                                           t('label.untitled')}
                                       </Typography.Text>
-                                      <Typography.Text type="secondary">
-                                        {semanticsData[field.key]
+                                      <Typography.Text
+                                        ellipsis
+                                        className="semantic-form-item-description">
+                                        {semanticsFormData?.[field.key]
                                           ?.description ||
                                           t('label.no-description')}
                                       </Typography.Text>
                                     </div>
                                   </div>
-                                  <EditIconButton
-                                    newLook
-                                    data-testid={`edit-semantic=${field.key}`}
-                                    size="small"
-                                    onClick={() => setEditingKey(field.key)}
-                                  />
-                                </>
+                                  <div className="d-flex items-center gap-2">
+                                    <EditIconButton
+                                      newLook
+                                      className="edit-expand-button"
+                                      data-testid={`edit-semantic-${field.key}`}
+                                      size="middle"
+                                      onClick={() => setEditingKey(field.key)}
+                                    />
+
+                                    <Button
+                                      danger
+                                      className="delete-expand-button"
+                                      data-testid={`delete-semantic-${field.key}`}
+                                      icon={<DeleteIcon />}
+                                      size="middle"
+                                      onClick={() => {
+                                        handleDeleteSemantic(field.key);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
                               )}
                             </div>
                           ),
                         }}
+                        dataTestId={`contract-semantics-card-${field.key}`}
                         defaultExpanded={editingKey === field.key}
                         key={field.key}>
                         {editingKey === field.key ? (
@@ -184,17 +236,24 @@ export const ContractSemanticFormTab: React.FC<{
                                   {...field}
                                   label={t('label.description')}
                                   name={[field.name, 'description']}>
-                                  <TextArea />
+                                  <TextArea rows={4} />
                                 </Form.Item>
                               </Col>
                               <Col span={24}>
-                                <Form.Item
-                                  {...field}
-                                  label={t('label.enabled')}
-                                  name={[field.name, 'enabled']}
-                                  valuePropName="checked">
-                                  <Switch />
-                                </Form.Item>
+                                <div className="d-flex gap-2 items-center m-b-md">
+                                  <Form.Item
+                                    {...field}
+                                    className="m-b-0"
+                                    name={[field.name, 'enabled']}
+                                    valuePropName="checked">
+                                    <Switch />
+                                  </Form.Item>
+                                  <Typography.Paragraph className="font-medium m-0">
+                                    {t('label.enable-entity', {
+                                      entity: t('label.semantic-plural'),
+                                    })}
+                                  </Typography.Paragraph>
+                                </div>
                               </Col>
                               <Col span={24}>
                                 <Form.Item
@@ -205,18 +264,13 @@ export const ContractSemanticFormTab: React.FC<{
                                   name={[field.name, 'rule']}>
                                   {/* @ts-expect-error because Form.Item will provide value and onChange */}
                                   <QueryBuilderWidget
+                                    fields={queryBuilderFields}
                                     formContext={{
                                       entityType: EntityType.TABLE,
                                     }}
                                     getQueryActions={handleAddQueryBuilderRule}
                                     id="rule"
                                     name={`${field.name}.rule`}
-                                    options={{
-                                      addButtonText: t('label.add-semantic'),
-                                      removeButtonText: t(
-                                        'label.remove-semantic'
-                                      ),
-                                    }}
                                     registry={{} as FieldErrorProps['registry']}
                                     schema={{
                                       outputType: SearchOutputType.JSONLogic,
@@ -244,6 +298,7 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Button>
                                 <Button
                                   className="m-l-md"
+                                  data-testid="save-semantic-button"
                                   type="primary"
                                   onClick={() => setEditingKey(null)}>
                                   {t('label.save')}
@@ -256,6 +311,7 @@ export const ContractSemanticFormTab: React.FC<{
                             {/* @ts-expect-error because Form.Item will provide value and onChange */}
                             <QueryBuilderWidget
                               readonly
+                              fields={queryBuilderFields}
                               formContext={{
                                 entityType: EntityType.TABLE,
                               }}
@@ -263,7 +319,7 @@ export const ContractSemanticFormTab: React.FC<{
                               schema={{
                                 outputType: SearchOutputType.JSONLogic,
                               }}
-                              value={semanticsData[field.key]?.rule ?? {}}
+                              value={semanticsFormData?.[field.key]?.rule ?? {}}
                             />
                           </div>
                         )}
@@ -278,12 +334,18 @@ export const ContractSemanticFormTab: React.FC<{
       </Card>
 
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined height={22} width={20} />}
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
-        <Button type="primary" onClick={onNext}>
+        <Button
+          className="contract-next-button"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>

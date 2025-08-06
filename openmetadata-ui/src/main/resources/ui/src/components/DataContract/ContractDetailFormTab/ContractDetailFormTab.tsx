@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import Icon, { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/type/entityReference';
 import {
@@ -42,6 +43,9 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      props: {
+        'data-testid': 'contract-name',
+      },
     },
     {
       label: t('label.description'),
@@ -50,7 +54,7 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.DESCRIPTION,
       required: false,
       props: {
-        'data-testid': 'description',
+        'data-testid': 'contract-description',
         initialValue: initialValues?.description ?? '',
       },
     },
@@ -61,6 +65,7 @@ export const ContractDetailFormTab: React.FC<{
       type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
+        owner: initialValues?.owners,
         hasPermission: true,
         children: (
           <Button
@@ -114,10 +119,18 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-end m-t-md">
-        <Button htmlType="submit" type="primary" onClick={onNext}>
+      <div className="d-flex justify-between m-t-md">
+        <Button className="contract-prev-button" type="default">
+          {t('label.contract-detail-plural')}
+        </Button>
+
+        <Button
+          className="contract-next-button"
+          htmlType="submit"
+          type="primary"
+          onClick={onNext}>
           {nextLabel ?? t('label.next')}
-          <ArrowRightOutlined />
+          <Icon component={RightIcon} />
         </Button>
       </div>
     </>

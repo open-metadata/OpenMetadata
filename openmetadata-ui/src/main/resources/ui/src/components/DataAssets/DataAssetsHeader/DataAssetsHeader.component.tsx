@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -436,16 +427,26 @@ export const DataAssetsHeader = ({
   const dataContractLatestResultButton = useMemo(() => {
     if (dataContract?.latestResult?.status === ContractExecutionStatus.Failed) {
       return (
-        <Tag
+        <Button
           className={classNames(
             `data-contract-latest-result-button
                     ${dataContract?.latestResult?.status}`
-          )}>
-          {getDataContractStatusIcon(dataContract?.latestResult?.status)}
+          )}
+          data-testid="data-contract-latest-result-btn"
+          icon={getDataContractStatusIcon(dataContract?.latestResult?.status)}
+          onClick={() => {
+            navigate(
+              getEntityDetailsPath(
+                entityType,
+                dataAsset?.fullyQualifiedName ?? '',
+                EntityTabs.CONTRACT
+              )
+            );
+          }}>
           {t('label.entity-failed', {
             entity: t('label.contract'),
           })}
-        </Tag>
+        </Button>
       );
     }
 

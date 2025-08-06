@@ -56,11 +56,17 @@ class DatabricksEngineWrapper:
         self.inspector = inspect(engine)
         self.schemas = None
         self.first_schema = None
+        self.first_catalog = None
 
-    def get_schemas(self):
+    def get_schemas(self, schema_name: Optional[str] = None):
         """Get schemas and cache them"""
+        if schema_name is not None:
+            with self.engine.connect() as connection:
+                connection.execute(f"USE CATALOG `{self.first_catalog}`")
+            self.first_schema = schema_name
+            return [schema_name]
         if self.schemas is None:
-            self.schemas = self.inspector.get_schema_names()
+            self.schemas = self.inspector.get_schema_names(database=self.first_catalog)
             if self.schemas:
                 # Find the first schema that's not a system schema
                 for schema in self.schemas:
@@ -81,7 +87,11 @@ class DatabricksEngineWrapper:
         if self.first_schema is None:
             self.get_schemas()  # This will set first_schema
         if self.first_schema:
-            return self.inspector.get_table_names(self.first_schema)
+            with self.engine.connect() as connection:
+                tables = connection.execute(
+                    f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"
+                )
+            return tables
         return []
 
     def get_views(self):
@@ -89,8 +99,26 @@ class DatabricksEngineWrapper:
         if self.first_schema is None:
             self.get_schemas()  # This will set first_schema
         if self.first_schema:
-            return self.inspector.get_view_names(self.first_schema)
+            with self.engine.connect() as connection:
+                views = connection.execute(
+                    f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"
+                )
+            return views
         return []
+
+    def get_catalogs(self, catalog_name: Optional[str] = None):
+        """Get catalogs"""
+        catalogs = []
+        if catalog_name is not None:
+            self.first_catalog = catalog_name
+            return [catalog_name]
+        with self.engine.connect() as connection:
+            catalogs = connection.execute(DATABRICKS_GET_CATALOGS).fetchall()
+            for catalog in catalogs:
+                if catalog[0] != "__databricks_internal":
+                    self.first_catalog = catalog[0]
+                    break
+        return catalogs
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
@@ -144,13 +172,13 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection),
-        "GetSchemas": engine_wrapper.get_schemas,
+        "GetSchemas": partial(
+            engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema
+        ),
         "GetTables": engine_wrapper.get_tables,
         "GetViews": engine_wrapper.get_views,
         "GetDatabases": partial(
-            test_database_query,
-            engine=connection,
-            statement=DATABRICKS_GET_CATALOGS,
+            engine_wrapper.get_catalogs, catalog_name=service_connection.catalog
         ),
         "GetQueries": partial(
             test_database_query,

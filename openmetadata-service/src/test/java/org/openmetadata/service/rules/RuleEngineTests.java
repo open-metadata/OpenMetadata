@@ -3,7 +3,9 @@ package org.openmetadata.service.rules;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.TEAM11_REF;
+import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.USER1_REF;
 import static org.openmetadata.service.resources.EntityResourceTest.USER2_REF;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -432,5 +434,33 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
             .withIgnoredEntities(List.of(Entity.TABLE));
     // Ignored the table, should not pass
     Assertions.assertFalse(RuleEngine.getInstance().shouldApplyRule(table, ruleWithIgnoredTable));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPIISensitiveTagRule(TestInfo test) {
+    Table table = getMockTable(test).withTags(List.of());
+
+    SemanticsRule piiRule =
+        new SemanticsRule()
+            .withName("Table has non-PII.Sensitive tags")
+            .withDescription("Table is not allowed to have PII.Sensitive tags")
+            .withRule(
+                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"==\":[{\"var\":\"tagFQN\"},\"PII.Sensitive\"]}]}}");
+
+    RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false);
+
+    table.withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false));
+
+    table.withTags(List.of(PII_SENSITIVE_TAG_LABEL, TIER1_TAG_LABEL));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false));
+
+    table.withTags(List.of(TIER1_TAG_LABEL));
+    RuleEngine.getInstance().evaluate(table, List.of(piiRule), false, false);
   }
 }
