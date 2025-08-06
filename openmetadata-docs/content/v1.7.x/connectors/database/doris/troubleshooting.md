@@ -1,5 +1,5 @@
 ---
-title: Doris Troubleshooting Guide | OpenMetadata Support
+title: Doris Troubleshooting Guide | `brandName` Support
 description: Troubleshoot Doris connector ingestion problems like schema drift or metadata gaps.
 slug: /connectors/database/doris/troubleshooting
 ---

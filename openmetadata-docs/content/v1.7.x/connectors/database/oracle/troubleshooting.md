@@ -1,5 +1,5 @@
 ---
-title: Oracle Troubleshooting Guide | OpenMetadata Support
+title: Oracle Troubleshooting Guide | `brandName` Support
 slug: /connectors/database/oracle/troubleshooting
 ---
 

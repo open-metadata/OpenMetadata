@@ -1,6 +1,6 @@
 ---
 title: Messaging Services | `brandName` Integration Guide
-description: Discover OpenMetadata's messaging connectors to integrate Kafka, Pulsar, and other streaming platforms. Extract metadata, lineage, and schema.
+description: Discover `brandName`'smessaging connectors to integrate Kafka, Pulsar, and other streaming platforms. Extract metadata, lineage, and schema.
 slug: /connectors/messaging
 ---
 

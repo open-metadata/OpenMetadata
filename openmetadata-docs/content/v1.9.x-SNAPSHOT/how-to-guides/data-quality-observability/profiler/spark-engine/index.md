@@ -1,6 +1,6 @@
 ---
 title: Spark Engine Overview | OpenMetadata Distributed Profiling
-description: Learn about OpenMetadata's Spark Engine for distributed data profiling of large-scale datasets using Apache Spark.
+description: Learn about `brandName`'sSpark Engine for distributed data profiling of large-scale datasets using Apache Spark.
 slug: /how-to-guides/data-quality-observability/profiler/spark-engine
 collate: true
 ---

@@ -1,6 +1,6 @@
 ---
 title: Run the BigQuery Connector Externally
-description: Learn how to configure OpenMetadata's Bigtable database connector using YAML. Complete setup guide with examples, parameters, and best practices.
+description: Learn how to Configure `brandName`'sBigtable database connector using YAML. Complete setup guide with examples, parameters, and best practices.
 slug: /connectors/database/bigtable/yaml
 ---
 

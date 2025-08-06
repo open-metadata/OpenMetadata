@@ -1,5 +1,5 @@
 ---
-title: Alation Sink Connector Troubleshooting Guide | OpenMetadata Support
+title: Alation Sink Connector Troubleshooting Guide | `brandName` Support
 description: Troubleshoot AlationSink connector for pushback failures, API errors, or term mismatch.
 slug: /connectors/metadata/alationsink/troubleshooting
 ---

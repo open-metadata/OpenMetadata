@@ -1,5 +1,5 @@
 ---
-title: REST Connector Troubleshooting Guide | OpenMetadata Support
+title: REST Connector Troubleshooting Guide | `brandName` Support
 description: Solve OpenMetadata REST API connector issues fast with our comprehensive troubleshooting guide. Debug common problems, error codes, and connection failures.
 slug: /connectors/api/rest/troubleshooting
 ---

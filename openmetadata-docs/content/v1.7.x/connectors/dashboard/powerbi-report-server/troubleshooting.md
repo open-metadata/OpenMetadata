@@ -1,5 +1,5 @@
 ---
-title: PowerBI Report Server Troubleshooting Guide | OpenMetadata Support
+title: PowerBI Report Server Troubleshooting Guide | `brandName` Support
 description: Fix Power BI Report Server integration issues like failed authentication, metadata extraction gaps, or visualization syncing.
 slug: /connectors/dashboard/powerbireportserver/troubleshooting
 ---

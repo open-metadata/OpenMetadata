@@ -1,5 +1,5 @@
 ---
-title: KafkaConnect Troubleshooting Guide | OpenMetadata Support
+title: KafkaConnect Troubleshooting Guide | `brandName` Support
 description: Troubleshoot Matillion ingestion failures like access denial, API error, or DAG metadata mismatch.
 slug: /connectors/pipeline/matillion/troubleshooting
 collate: true

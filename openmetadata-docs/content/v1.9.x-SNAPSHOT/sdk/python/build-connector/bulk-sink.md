@@ -1,6 +1,6 @@
 ---
 title: Bulk Sink
-description: Learn to build powerful bulk sink connectors with OpenMetadata's Python SDK. Step-by-step guide with code examples for efficient data ingestion.
+description: Learn to build powerful bulk sink connectors with `brandName`'sPython SDK. Step-by-step guide with code examples for efficient data ingestion.
 slug: /sdk/python/build-connector/bulk-sink
 ---
 
