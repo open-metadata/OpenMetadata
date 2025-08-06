@@ -68,7 +68,12 @@ export const UserTag = ({
       />
       <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
       {closable && (
-        <Icon component={CloseOutlined} size={width[size]} onClick={onRemove} />
+        <Icon
+          component={CloseOutlined}
+          data-testid="close-icon"
+          size={width[size]}
+          onClick={onRemove}
+        />
       )}
     </Space>
   );

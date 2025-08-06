@@ -107,6 +107,32 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
       return <UserTag {...tagProps} />;
     };
 
+    const selectInput = useMemo(() => {
+      return (
+        <Select
+          showSearch
+          className="select-owners"
+          data-testid="select-owners"
+          defaultActiveFirstOption={false}
+          disabled={disabled}
+          filterOption={false}
+          mode="multiple"
+          notFoundContent={null}
+          suffixIcon={null}
+          tagRender={customTagRender}
+          value={selectedValues}
+          onChange={handleOnChangeSelect}
+          onFocus={handleFocus}
+        />
+      );
+    }, [
+      disabled,
+      selectedValues,
+      customTagRender,
+      handleOnChangeSelect,
+      handleFocus,
+    ]);
+
     useEffect(() => {
       setSelectedUsers(owner ?? []);
     }, [owner]);
@@ -131,27 +157,14 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
             tooltipText={tooltipText}
             onClose={handleClose}
             onUpdate={handleUpdate}>
-            {/* Passing the fragment here, to avoid the children render of the component */}
-            <></>
+            {/* Have to pass the selectInput as children, so popover can become targetComponent 
+            and popover don't overflow on it */}
+            {selectInput}
           </UserTeamSelectableList>
         )}
-        {/* Not using Select as children of UserTeamSelectableList, we want to open it conditionally and not to call api
-          with the component unnecessarily as of no use of it  */}
-        <Select
-          showSearch
-          className="ant-select-custom select-owners"
-          data-testid="select-owners"
-          defaultActiveFirstOption={false}
-          disabled={disabled}
-          filterOption={false}
-          mode="multiple"
-          notFoundContent={null}
-          suffixIcon={null}
-          tagRender={customTagRender}
-          value={selectedValues}
-          onChange={handleOnChangeSelect}
-          onFocus={handleFocus}
-        />
+        {/* Conditionally render the select input, to avoid the UserTeamSelectableList component
+         render unnecessarily */}
+        {!popoverVisible && selectInput}
       </>
     );
   };
