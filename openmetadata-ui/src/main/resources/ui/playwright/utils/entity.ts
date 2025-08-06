@@ -38,7 +38,7 @@ import {
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
 
-const waitForAllLoadersToDisappear = async (page: Page) => {
+export const waitForAllLoadersToDisappear = async (page: Page) => {
   for (let attempt = 0; attempt < 3; attempt++) {
     const allLoaders = page.locator('[data-testid="loader"]');
     const count = await allLoaders.count();
