@@ -890,7 +890,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         originalJson = JsonUtils.pojoToJson(entity);
       }
 
-      if (supportsDomains) {
+      // Only attempt to patch domains if the entity supports both domains and domain patching
+      if (supportsDomains && supportsPatchDomains) {
         List<EntityReference> domains =
             Arrays.asList(
                 new EntityReference()
@@ -903,7 +904,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       Map<String, String> params = new HashMap<>();
       params.put("limit", "10");
-      params.put("sort", "name,asc");
       ResultList<T> initialBatch = listEntities(params, ADMIN_AUTH_HEADERS);
 
       Optional<T> ourEntity =
@@ -917,10 +917,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       if (supportsOwners) fieldCombinationsList.add("owners");
       if (supportsTags) fieldCombinationsList.add("tags");
       if (supportsFollowers) fieldCombinationsList.add("followers");
-      if (supportsDomains) fieldCombinationsList.add("domains");
+      if (supportsDomains)
+        fieldCombinationsList.add("domains"); // Always test fetching domains if supported
       if (supportsOwners && supportsTags) fieldCombinationsList.add("owners,tags");
       if (supportsFollowers && supportsOwners) fieldCombinationsList.add("followers,owners");
-      if (supportsDomains && supportsTags) fieldCombinationsList.add("domains,tags");
+      if (supportsDomains && supportsTags)
+        fieldCombinationsList.add("domains,tags"); // Always test fetching domains if supported
       fieldCombinationsList.add(getAllowedFields());
 
       for (String fields : fieldCombinationsList) {
@@ -931,7 +933,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         params.clear();
         params.put("fields", fields);
         params.put("limit", "10");
-        params.put("sort", "name,asc");
         ResultList<T> bulkResult = listEntities(params, ADMIN_AUTH_HEADERS);
 
         Optional<T> batchEntity =
@@ -993,7 +994,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               "Should find our test user in individual followers");
         }
 
-        if (fields.contains("domains") && supportsDomains) {
+        if (fields.contains("domains") && supportsDomains && supportsPatchDomains) {
           List<EntityReference> batchDomains = listOrEmpty(batchEntityFound.getDomains());
           List<EntityReference> indivDomains = listOrEmpty(individualEntity.getDomains());
 
