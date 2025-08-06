@@ -35,7 +35,9 @@ const WhatsNewAlert = () => {
     alert: false,
     modal: false,
   });
-  const cookieKey = getVersionedStorageKey(VERSION, appVersion);
+  const cookieKey = useMemo(() => {
+    return appVersion ? getVersionedStorageKey(VERSION, appVersion) : null;
+  }, [appVersion]);
 
   const { releaseLink, blogLink, isMajorRelease } = useMemo(() => {
     return {
@@ -61,20 +63,22 @@ const WhatsNewAlert = () => {
   );
 
   const handleCancel = useCallback(() => {
-    cookieStorage.setItem(cookieKey, 'true', {
-      expires: getReleaseVersionExpiry(),
-    });
+    if (cookieKey) {
+      cookieStorage.setItem(cookieKey, 'true', {
+        expires: getReleaseVersionExpiry(),
+      });
+    }
     onModalCancel();
   }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
 
   useEffect(() => {
-    if (cookieKey && appVersion) {
+    if (cookieKey) {
       setShowWhatsNew((prev) => ({
         ...prev,
         alert: cookieStorage.getItem(cookieKey) !== 'true',
       }));
     }
-  }, [cookieKey, appVersion]);
+  }, [cookieKey]);
 
   return (
     <>
