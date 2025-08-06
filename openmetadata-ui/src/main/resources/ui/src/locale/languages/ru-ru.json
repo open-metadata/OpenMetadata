@@ -1897,7 +1897,7 @@
     "customize-home-page-page-header-for-persona": "Персонализируйте опыт домашней страницы для <0>{{persona}}</0> персоны",
     "customize-your-navigation-subheader": "Управляйте и организуйте боковое навигационное меню для лучшей доступности.",
     "data-asset-has-been-action-type": "Объект данных был {{actionType}}",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "Правила ресурсов данных помогают вам управлять валидацией метаданных на уровне платформы. Если ресурс не следует правилу, вы не сможете вносить в него изменения, пока не исправите валидацию сначала.",
     "data-contract-saved-successfully": "Контракт данных успешно сохранен",
     "data-contract-schema-description": "Ожидаемая структура схемы этого актива",
     "data-insight-alert-destination-description": "Отправляйте уведомления по электронной почте администраторам или командам.",

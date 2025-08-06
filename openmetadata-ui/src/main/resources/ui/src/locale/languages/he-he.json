@@ -1897,7 +1897,7 @@
     "customize-home-page-page-header-for-persona": "התאמה אישית של חוויית דף הבית עבור <0>{{persona}}</0> פרסונה",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "נכנס של {{actionType}} נתונים",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "כללי נכסי נתונים עוזרים לכם לנהל אימותי מטא-נתונים ברמת הפלטפורמה. אם נכס לא עומד בכלל, לא תוכלו לבצע בו שינויים עד שתתקנו את האימות תחילה.",
     "data-contract-saved-successfully": "חוזה נתונים נשמר בהצלחה",
     "data-contract-schema-description": "מבנה סכמה צפוי של נכס זה",
     "data-insight-alert-destination-description": "שלח התראות בדואר אלקטרוני למנהלים או לצוותים.",

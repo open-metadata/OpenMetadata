@@ -1897,7 +1897,7 @@
     "customize-home-page-page-header-for-persona": "Personalize the Home page experience for the <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "Data Asset has been {{actionType}}",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "Data Asset Rules help you manage metadata validations at the platform level. If an asset does not follow a rule, you won't be able to make any changes to it unless you fix the validation first.",
     "data-contract-saved-successfully": "Data contract saved successfully",
     "data-contract-schema-description": "Expected schema structure of this asset",
     "data-insight-alert-destination-description": "Send email notifications to admins or teams.",
