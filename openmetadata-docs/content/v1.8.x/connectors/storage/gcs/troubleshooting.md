@@ -1,5 +1,5 @@
 ---
-title: GCS Connector Troubleshooting Guide | OpenMetadata Support
+title: GCS Connector Troubleshooting Guide | `brandName` Support
 description: Troubleshoot GCS storage ingestion issues like API failures, object not found, or token issues.
 slug: /connectors/storage/gcs/troubleshooting
 ---

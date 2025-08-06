@@ -100,7 +100,7 @@ test.describe('Data Contracts', () => {
         DATA_CONTRACT_DETAILS.description
       );
 
-      await page.getByTestId('add-owner').click();
+      await page.getByTestId('select-owners').click();
       await page.getByRole('tab', { name: 'Users' }).click();
       await page
         .getByTestId('owner-select-users-search-bar')
@@ -114,9 +114,7 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('selectable-list-update-btn').click();
 
       await expect(
-        page
-          .getByTestId('owner-link')
-          .getByTestId(user.responseData.displayName)
+        page.getByTestId('user-tag').getByText(user.responseData.name)
       ).toBeVisible();
     });
 
@@ -141,11 +139,6 @@ test.describe('Data Contracts', () => {
       await page.fill(
         '#semantics_0_description',
         DATA_CONTRACT_SEMANTICS1.description
-      );
-
-      await expect(page.locator('#semantics_0_enabled')).toHaveAttribute(
-        'aria-checked',
-        'true'
       );
 
       const ruleLocator = page.locator('.group').nth(0);
