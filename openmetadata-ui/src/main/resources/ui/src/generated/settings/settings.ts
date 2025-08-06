@@ -1347,6 +1347,10 @@ export interface Bedrock {
      */
     accessKey?: string;
     /**
+     * Bedrock embedding model identifier to use for vector search
+     */
+    embeddingModelId?: string;
+    /**
      * Bedrock model identifier to use for query transformation
      */
     modelId?: string;

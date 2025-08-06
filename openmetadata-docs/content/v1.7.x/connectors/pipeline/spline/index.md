@@ -1,6 +1,6 @@
 ---
 title: Spline Connector | OpenMetadata Data Lineage Integration
-description: Connect Spline data lineage to OpenMetadata with our pipeline connector. Track data flow, automate metadata ingestion, and enhance governance seamlessly.
+description: Connect Spline data lineage to `brandName` with our pipeline connector. Track data flow, automate metadata ingestion, and enhance governance seamlessly.
 slug: /connectors/pipeline/spline
 ---
 

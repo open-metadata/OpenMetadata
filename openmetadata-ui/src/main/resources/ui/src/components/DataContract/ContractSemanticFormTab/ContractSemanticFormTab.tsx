@@ -240,22 +240,6 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Form.Item>
                               </Col>
                               <Col span={24}>
-                                <div className="d-flex gap-2 items-center m-b-md">
-                                  <Form.Item
-                                    {...field}
-                                    className="m-b-0"
-                                    name={[field.name, 'enabled']}
-                                    valuePropName="checked">
-                                    <Switch />
-                                  </Form.Item>
-                                  <Typography.Paragraph className="font-medium m-0">
-                                    {t('label.enable-entity', {
-                                      entity: t('label.semantic-plural'),
-                                    })}
-                                  </Typography.Paragraph>
-                                </div>
-                              </Col>
-                              <Col span={24}>
                                 <Form.Item
                                   {...field}
                                   label={t('label.add-entity', {

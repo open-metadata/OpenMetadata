@@ -1,6 +1,6 @@
 ---
 title: Superset Connector | `brandName` Dashboard Integration
-description: Learn how to connect Apache Superset dashboards to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration, and metadata integration.
+description: Learn how to connect Apache Superset dashboards to `brandName` with our comprehensive connector guide. Setup instructions, configuration, and metadata integration.
 slug: /connectors/dashboard/superset
 ---
 
