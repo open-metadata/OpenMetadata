@@ -32,7 +32,7 @@ public class OktaAuthValidator {
       }
 
       // Extract Okta domain
-      String oktaDomain = extractOktaDomain(oidcConfig);
+      String oktaDomain = extractOktaDomain(authConfig, oidcConfig);
 
       // Step 2: Validate Okta domain format and accessibility
       ValidationResult domainValidation = validateOktaDomain(oktaDomain);
@@ -75,16 +75,35 @@ public class OktaAuthValidator {
         LOG.warn("Okta client ID format may be invalid: {}", clientId);
       }
 
-      // Validate OIDC configuration
-      if (oidcConfig == null) {
-        throw new IllegalArgumentException(
-            "OIDC configuration is required for Okta authentication");
-      }
+      // Check client type to determine OIDC configuration requirements
+      String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
 
-      // Discovery URI is strongly preferred for Okta validation
-      if (nullOrEmpty(oidcConfig.getDiscoveryUri()) && nullOrEmpty(oidcConfig.getServerUrl())) {
-        throw new IllegalArgumentException(
-            "Okta discovery URI is required for validation. Please provide discoveryUri in OIDC configuration.");
+      if ("confidential".equals(clientType)) {
+        // Validate OIDC configuration for confidential clients
+        if (oidcConfig == null) {
+          throw new IllegalArgumentException(
+              "OIDC configuration is required for confidential Okta clients");
+        }
+
+        // Discovery URI is strongly preferred for Okta validation
+        if (nullOrEmpty(oidcConfig.getDiscoveryUri()) && nullOrEmpty(oidcConfig.getServerUrl())) {
+          throw new IllegalArgumentException(
+              "Okta discovery URI is required for confidential clients. Please provide discoveryUri in OIDC configuration.");
+        }
+      } else if ("public".equals(clientType)) {
+        // For public clients, OIDC configuration is optional
+        // They rely on authority, clientId, and publicKeyUrls from authConfig
+        if (nullOrEmpty(authConfig.getAuthority())) {
+          throw new IllegalArgumentException("Authority is required for public Okta clients");
+        }
+
+        // Validate authority format for Okta
+        if (!authConfig.getAuthority().contains("okta.com")) {
+          throw new IllegalArgumentException(
+              "Authority must be an Okta domain (should contain 'okta.com')");
+        }
+
+        LOG.debug("Public client detected - oidcConfiguration is optional");
       }
 
       return new ValidationResult()
@@ -99,29 +118,53 @@ public class OktaAuthValidator {
     }
   }
 
-  private String extractOktaDomain(OidcClientConfig oidcConfig) {
-    // Priority order: discoveryUri first (contains actual Okta domain), then serverUrl as fallback
-    if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-      // Remove the well-known path to get the domain
-      String domain = oidcConfig.getDiscoveryUri().replace(OKTA_WELL_KNOWN_PATH, "");
-      LOG.debug(
-          "Extracted Okta domain from discoveryUri: {} -> {}",
-          oidcConfig.getDiscoveryUri(),
-          domain);
-      return domain;
-    } else if (!nullOrEmpty(oidcConfig.getServerUrl())
-        && oidcConfig.getServerUrl().contains("okta")) {
-      // Only use serverUrl if it actually contains "okta" (not OpenMetadata server URL)
-      LOG.debug("Using Okta domain from serverUrl: {}", oidcConfig.getServerUrl());
-      return oidcConfig.getServerUrl();
+  private String extractOktaDomain(
+      AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
+    String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
+
+    // For public clients, use authority field
+    if ("public".equals(clientType) && !nullOrEmpty(authConfig.getAuthority())) {
+      String authority = authConfig.getAuthority();
+      LOG.debug("Extracted Okta domain from authority (public client): {}", authority);
+      return authority;
     }
 
-    LOG.error(
-        "Failed to extract Okta domain. discoveryUri: {}, serverUrl: {}",
-        oidcConfig.getDiscoveryUri(),
-        oidcConfig.getServerUrl());
+    // For confidential clients or when oidcConfig is provided
+    if (oidcConfig != null) {
+      // Priority order: discoveryUri first (contains actual Okta domain), then serverUrl as
+      // fallback
+      if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+        // Remove the well-known path to get the domain
+        String domain = oidcConfig.getDiscoveryUri().replace(OKTA_WELL_KNOWN_PATH, "");
+        LOG.debug(
+            "Extracted Okta domain from discoveryUri: {} -> {}",
+            oidcConfig.getDiscoveryUri(),
+            domain);
+        return domain;
+      } else if (!nullOrEmpty(oidcConfig.getServerUrl())
+          && oidcConfig.getServerUrl().contains("okta")) {
+        // Only use serverUrl if it actually contains "okta" (not OpenMetadata server URL)
+        LOG.debug("Using Okta domain from serverUrl: {}", oidcConfig.getServerUrl());
+        return oidcConfig.getServerUrl();
+      }
+    }
+
+    // If we get here, we couldn't extract a domain
+    String errorDetails =
+        String.format(
+            "Client type: %s, Authority: %s, OIDC config present: %s",
+            clientType, authConfig.getAuthority(), oidcConfig != null);
+
+    if (oidcConfig != null) {
+      errorDetails +=
+          String.format(
+              ", discoveryUri: %s, serverUrl: %s",
+              oidcConfig.getDiscoveryUri(), oidcConfig.getServerUrl());
+    }
+
+    LOG.error("Failed to extract Okta domain. {}", errorDetails);
     throw new IllegalArgumentException(
-        "Unable to extract Okta domain from configuration. Please provide a valid discoveryUri or Okta serverUrl.");
+        "Unable to extract Okta domain from configuration. For public clients, provide authority. For confidential clients, provide discoveryUri in OIDC configuration.");
   }
 
   private ValidationResult validateOktaDomain(String oktaDomain) {

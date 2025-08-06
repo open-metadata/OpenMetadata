@@ -154,7 +154,6 @@ public class AzureAuthValidator {
   private ValidationResult validateClientCredentials(
       String tenantId, String clientId, String clientSecret) {
     try {
-      // Attempt to get a token using client credentials grant
       String tokenUrl = AZURE_LOGIN_BASE + "/" + tenantId + TOKEN_ENDPOINT_V2;
       URL url = new URL(tokenUrl);
       HttpURLConnection conn = (HttpURLConnection) url.openConnection();
