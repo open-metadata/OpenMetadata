@@ -13,6 +13,8 @@
 import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { getFirstRowColumnLink } from '../../utils/entity';
@@ -437,5 +439,86 @@ test.describe('Table & Data Model columns table pagination', () => {
     expect(
       page.locator('[data-row-key="shop_id"]').getByTestId('expand-icon')
     ).not.toBeVisible();
+  });
+});
+
+test.describe('Tags should be consistent for search ', () => {
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
+  let apiContext: any;
+  let afterAction: any;
+
+  test.beforeAll(async ({ browser }) => {
+    const { afterAction: afterAdminLogin, apiContext: adminApiContext } =
+      await performAdminLogin(browser);
+    apiContext = adminApiContext;
+    afterAction = afterAdminLogin;
+
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+  });
+
+  test.afterAll(async () => {
+    try {
+      if (glossaryTerm?.responseData?.id) {
+        await glossaryTerm.delete(apiContext);
+      }
+      if (glossary?.responseData?.id) {
+        await glossary.delete(apiContext);
+      }
+    } finally {
+      if (afterAction) {
+        await afterAction();
+      }
+    }
+  });
+
+  test('should show column profile table', async ({
+    dataConsumerPage: page,
+  }) => {
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+
+    await page
+      .locator(
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid="glossary-tags-0"] [data-testid="entity-tags"] svg'
+      )
+      .click();
+    await page.waitForSelector('.ant-select-dropdown', { state: 'visible' });
+    await page.waitForSelector('.ant-select-dropdown [data-testid="loader"]', {
+      state: 'detached',
+    });
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId(`tag-${glossary.responseData.fullyQualifiedName}`)
+      .getByTestId('expand-icon')
+      .click();
+    await page.waitForResponse('api/v1/search/query*');
+    await page
+      .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
+      .click();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await page.waitForResponse('api/v1/columns/name/*');
+
+    await expect(page.getByTestId('tag-redirect-link')).toContainText(
+      glossaryTerm.responseData.displayName
+    );
+
+    await page
+      .getByTestId('search-bar-container')
+      .getByTestId('searchbar')
+      .fill('customer_id');
+
+    await page.waitForResponse(
+      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
+    );
+
+    await expect(page.getByTestId('tag-redirect-link')).toContainText(
+      glossaryTerm.responseData.displayName
+    );
   });
 });
