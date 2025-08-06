@@ -112,23 +112,31 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
     }, [owner]);
 
     return (
-      <UserTeamSelectableList
-        hasPermission={hasPermission}
-        label={label}
-        listHeight={listHeight}
-        multiple={multiple}
-        overlayClassName="user-team-selectable-list-search-input-popover"
-        owner={selectedUsers}
-        popoverProps={{
-          open: popoverVisible,
-          onOpenChange: handlePopoverVisibleChange,
-          trigger: 'click',
-          placement: 'bottomLeft',
-        }}
-        previewSelected={previewSelected}
-        tooltipText={tooltipText}
-        onClose={handleClose}
-        onUpdate={handleUpdate}>
+      <>
+        {popoverVisible && (
+          <UserTeamSelectableList
+            hasPermission={hasPermission}
+            label={label}
+            listHeight={listHeight}
+            multiple={multiple}
+            overlayClassName="user-team-selectable-list-search-input-popover"
+            owner={selectedUsers}
+            popoverProps={{
+              open: popoverVisible,
+              onOpenChange: handlePopoverVisibleChange,
+              trigger: 'click',
+              placement: 'bottomLeft',
+            }}
+            previewSelected={previewSelected}
+            tooltipText={tooltipText}
+            onClose={handleClose}
+            onUpdate={handleUpdate}>
+            {/* Passing the fragment here, to avoid the children render of the component */}
+            <></>
+          </UserTeamSelectableList>
+        )}
+        {/* Not using Select as children of UserTeamSelectableList, we want to open it conditionally and not to call api
+          with the component unnecessarily as of no use of it  */}
         <Select
           showSearch
           className="ant-select-custom select-owners"
@@ -144,7 +152,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
           onChange={handleOnChangeSelect}
           onFocus={handleFocus}
         />
-      </UserTeamSelectableList>
+      </>
     );
   };
 
