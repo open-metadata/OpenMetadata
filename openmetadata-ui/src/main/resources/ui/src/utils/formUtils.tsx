@@ -224,6 +224,7 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
+
     case FieldTypes.USER_MULTI_SELECT:
       {
         const { children, ...rest } = props;
