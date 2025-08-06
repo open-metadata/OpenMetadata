@@ -31,5 +31,5 @@ export interface UserSelectDropdownProps {
   previewSelected?: boolean;
   listHeight?: number;
   tooltipText?: string;
-  newLook?: boolean;
+  overlayClassName?: string;
 }

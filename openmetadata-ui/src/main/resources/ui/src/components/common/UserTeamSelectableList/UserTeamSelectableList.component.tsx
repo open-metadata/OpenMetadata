@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Popover, Space, Tabs, Typography } from 'antd';
+import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,8 +26,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import Assignees from '../../../pages/TasksPage/shared/Assignees';
-import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import {
   formatTeamsResponse,
@@ -37,7 +36,6 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
-import { fetchOptions } from '../../../utils/TasksUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
@@ -67,14 +65,12 @@ export const UserTeamSelectableList = ({
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   tooltipText,
-  newLook = false,
+  overlayClassName,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
-  const [options, setOptions] = useState<Option[]>([]);
-  const [assignees, setAssignees] = useState<Option[]>([]);
 
   const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
 
@@ -160,14 +156,6 @@ export const UserTeamSelectableList = ({
     } catch (error) {
       return { data: [], paging: { total: 0 } };
     }
-  };
-
-  const onSearch = (query: string) => {
-    const data = {
-      query,
-      setOptions,
-    };
-    fetchOptions(data);
   };
 
   const handleUpdate = async (updateItems: EntityReference[]) => {
@@ -257,52 +245,16 @@ export const UserTeamSelectableList = ({
     setSelectedUsers(selectedItems);
   };
 
-  const handleAssigneesChange = async (selectedItems: Option[]) => {
-    setAssignees(selectedItems);
-    await handleUpdate(
-      selectedItems.map((item) => ({
-        id: item.value,
-        type: item.type,
-      }))
-    );
-  };
-
   useEffect(() => {
     const activeOwners = isArray(owner) ? owner : owner ? [owner] : [];
     setSelectedUsers(activeOwners);
-
-    if (newLook) {
-      setAssignees(
-        activeOwners?.map((item) => ({
-          label: getEntityName(item),
-          value: item.id,
-          type: item.type,
-          name: item.name,
-        })) ?? []
-      );
-      setOptions(
-        activeOwners?.map((item) => ({
-          label: getEntityName(item),
-          value: item.id,
-          type: item.type,
-          name: item.name,
-        })) ?? []
-      );
-    }
   }, [owner]);
 
   useEffect(() => {
     init();
   }, [popupVisible]);
 
-  return newLook ? (
-    <Assignees
-      options={options}
-      value={assignees}
-      onChange={handleAssigneesChange}
-      onSearch={onSearch}
-    />
-  ) : (
+  return (
     <Popover
       destroyTooltipOnHide
       content={
@@ -402,7 +354,10 @@ export const UserTeamSelectableList = ({
         </FocusTrapWithContainer>
       }
       open={popupVisible}
-      overlayClassName="user-team-select-popover card-shadow"
+      overlayClassName={classNames(
+        'user-team-select-popover card-shadow',
+        overlayClassName
+      )}
       placement="bottomRight"
       showArrow={false}
       trigger="click"
