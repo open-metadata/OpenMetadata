@@ -16,26 +16,8 @@ import { TWO_MINUTE_IN_MILLISECOND } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import GithubStarCard from './GithubStarCard.component';
 
-const mockLinkButton = jest.fn();
-
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: '/my-data' }));
-});
-
-jest.mock('antd', () => {
-  const actualAntd = jest.requireActual('antd');
-
-  return {
-    ...actualAntd,
-    Typography: {
-      ...actualAntd.Typography,
-      Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-        <a {...rest} onClick={mockLinkButton}>
-          {children}
-        </a>
-      )),
-    },
-  };
 });
 
 jest.mock('../../../utils/WhatsNewModal.util', () => ({
@@ -80,21 +62,26 @@ describe('GithubStarCard', () => {
     expect(screen.getByRole('button', { name: '10' })).toBeInTheDocument();
   });
 
-  it('check redirect buttons', async () => {
+  it('check redirect buttons have correct links', async () => {
     render(<GithubStarCard />);
     jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
-    const starTextButton = await screen.findByRole('button', {
-      name: 'label.star',
-    });
+    await screen.findByTestId('github-star-popup-card');
 
-    fireEvent.click(starTextButton);
+    // Check that both links point to the correct GitHub repository
+    const links = screen.getAllByRole('link');
 
-    const countButton = screen.getByRole('button', { name: '10' });
-
-    fireEvent.click(countButton);
-
-    expect(mockLinkButton).toHaveBeenCalledTimes(2);
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      'https://star-us.open-metadata.org/'
+    );
+    expect(links[0]).toHaveAttribute('target', '_blank');
+    expect(links[1]).toHaveAttribute(
+      'href',
+      'https://star-us.open-metadata.org/'
+    );
+    expect(links[1]).toHaveAttribute('target', '_blank');
   });
 
   it('should close the alert when the close button is clicked', async () => {
