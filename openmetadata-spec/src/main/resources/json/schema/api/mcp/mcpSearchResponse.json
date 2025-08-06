@@ -1,0 +1,145 @@
+{
+  "$id": "https://open-metadata.org/schema/api/mcp/mcpSearchResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Search Response",
+  "description": "Response object for MCP search tool containing search results and metadata",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.mcp.MCPSearchResponse",
+  "properties": {
+    "results": {
+      "description": "Array of search result entities",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/searchResultEntity"
+      }
+    },
+    "totalFound": {
+      "description": "Total number of entities found matching the search criteria",
+      "type": "integer"
+    },
+    "returnedCount": {
+      "description": "Number of entities returned in this response",
+      "type": "integer"
+    },
+    "query": {
+      "description": "The original search query used",
+      "type": "string"
+    },
+    "message": {
+      "description": "Informational message about the search results",
+      "type": "string"
+    },
+    "hasMore": {
+      "description": "Whether there are more results available",
+      "type": "boolean"
+    }
+  },
+  "required": ["results", "totalFound", "returnedCount", "query"],
+  "definitions": {
+    "searchResultEntity": {
+      "description": "Individual search result entity with configurable fields",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.mcp.MCPSearchResultEntity",
+      "properties": {
+        "name": {
+          "description": "Name of the entity",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display name of the entity",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Fully qualified name of the entity",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the entity",
+          "type": "string"
+        },
+        "entityType": {  
+          "description": "Type of the entity (table, topic, dashboard, etc.)",
+          "type": "string"
+        },
+        "service": {
+          "description": "Service reference containing the entity",
+          "$ref": "../../type/entityReference.json"
+        },
+        "database": {
+          "description": "Database reference (for table entities)",
+          "$ref": "../../type/entityReference.json"
+        },
+        "databaseSchema": {
+          "description": "Database schema reference (for table entities)",
+          "$ref": "../../type/entityReference.json"
+        },
+        "serviceType": {
+          "description": "Type of the service",
+          "type": "string"
+        },
+        "href": {
+          "description": "Link to the entity in OpenMetadata UI",
+          "type": "string",
+          "format": "uri"
+        },
+        "tags": {
+          "description": "Tags associated with the entity",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          }
+        },
+        "owners": {
+          "description": "Owners of the entity",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/entityReference.json"
+          }
+        },
+        "tier": {
+          "description": "Tier information for the entity",
+          "$ref": "../../type/tagLabel.json"
+        },
+        "tableType": {
+          "description": "Type of table (for table entities)",
+          "type": "string"
+        },
+        "columnNames": {
+          "description": "List of column names (for table entities)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "columns": {
+          "description": "Detailed column information (when requested)",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/table.json#/definitions/column"
+          }
+        },
+        "schemaDefinition": {
+          "description": "Schema definition (when requested)",
+          "type": "string"
+        },
+        "queries": {
+          "description": "Sample queries (when requested)",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "upstreamLineage": {
+          "description": "Upstream lineage information (when requested)",
+          "type": "object"
+        },
+        "entityRelationship": {
+          "description": "Entity relationships (when requested)",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
