@@ -120,7 +120,7 @@ public class SearchMetadataTool implements McpTool {
     }
 
     String entityType =
-            params.containsKey("entity_type") ? (String) params.get("entity_type") : null;
+        params.containsKey("entity_type") ? (String) params.get("entity_type") : null;
     String index = mapEntityTypesToIndexNames(entityType);
 
     LOG.info(
