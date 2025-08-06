@@ -1064,13 +1064,12 @@ class SampleDataSource(
             if directory_data.get("parent"):
                 parent_name = directory_data["parent"]
                 if parent_name in directory_refs:
-                    directory_request.parent = directory_refs[parent_name]
+                    directory_request.parent = FullyQualifiedEntityName(
+                        root=directory_refs[parent_name]
+                    )
                 else:
-                    # For nested references like "Marketing.Campaigns_2024"
-                    # Build parent FQN manually
-                    parent_path = parent_name.replace(".", "/")
-                    directory_request.parent = (
-                        f"{self.drive_service.fullyQualifiedName.root}.{parent_path}"
+                    directory_request.parent = FullyQualifiedEntityName(
+                        f"{self.drive_service.fullyQualifiedName.root}.{parent_name}"
                     )
 
             # Use direct API call instead of yielding since suffix mapping is missing
