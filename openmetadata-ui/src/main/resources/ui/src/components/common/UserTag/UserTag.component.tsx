@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
+import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './user-tag.less';
 import { UserTags, UserTagSize } from './UserTag.interface';
@@ -66,7 +67,14 @@ export const UserTag = ({
         width={toString(width[size])}
       />
       <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
-      {closable && <CloseOutlined size={width[size]} onClick={onRemove} />}
+      {closable && (
+        <Icon
+          component={CloseOutlined}
+          data-testid="close-icon"
+          size={width[size]}
+          onClick={onRemove}
+        />
+      )}
     </Space>
   );
 };
