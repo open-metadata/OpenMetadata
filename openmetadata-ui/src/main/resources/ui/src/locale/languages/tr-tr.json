@@ -1895,7 +1895,7 @@
     "customize-home-page-page-header-for-persona": "<0>{{persona}}</0> kişiliği için Ana Sayfa deneyimini kişiselleştirin",
     "customize-your-navigation-subheader": "Daha iyi erişilebilirlik için yan gezinme menüsünü yönetin ve düzenleyin.",
     "data-asset-has-been-action-type": "Veri Varlığı {{actionType}} oldu",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "Veri Varlığı Kuralları, platform düzeyinde metadata doğrulamalarını yönetmenize yardımcı olur. Bir varlık bir kuralı takip etmezse, önce doğrulamayı düzeltmediğiniz sürece herhangi bir değişiklik yapamazsınız.",
     "data-contract-saved-successfully": "Veri sözleşmesi başarıyla kaydedildi",
     "data-contract-schema-description": "Bu varlığın beklenen şema yapısı",
     "data-insight-alert-destination-description": "Yöneticilere veya takımlara e-posta bildirimleri gönderin.",

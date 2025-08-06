@@ -1895,7 +1895,7 @@
     "customize-home-page-page-header-for-persona": "Personalize a experiência da página inicial para a <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Gerencie e organize o menu de navegação lateral para melhorar a acessibilidade.",
     "data-asset-has-been-action-type": "O Ativo de Dados foi {{actionType}}",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "As Regras de Ativos de Dados ajudam você a gerenciar validações de metadados no nível da plataforma. Se um ativo não seguir uma regra, você não conseguirá fazer alterações nele a menos que corrija a validação primeiro.",
     "data-contract-saved-successfully": "Contrato de dados salvo com sucesso",
     "data-contract-schema-description": "Estrutura de esquema esperada deste ativo",
     "data-insight-alert-destination-description": "Envie notificações por e-mail para administradores ou equipes.",

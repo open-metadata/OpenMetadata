@@ -1895,7 +1895,7 @@
     "customize-home-page-page-header-for-persona": "Personalize a experiência da página inicial para a <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "دارایی داده‌ای {{actionType}} شده است",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "د ډیټا اثاثو قواعد ستاسو سره د پلیټ فارم په کچه د میټاډیټا اعتبار وړتیا اداره کولو کې مرسته کوي. که چیرې یو اثاثه د قانون پیروي ونکړي، نو تاسو به ونشئ کولی پدې کې کومې بدلونه رامینځته کړئ پرته له دې چې لومړی د اعتبار وړتیا سمه کړئ.",
     "data-contract-saved-successfully": "قرارداد داده با موفقیت ذخیره شد",
     "data-contract-schema-description": "ساختار طرح مورد انتظار این دارایی",
     "data-insight-alert-destination-description": "اعلان‌های ایمیلی را به مدیران یا تیم‌ها ارسال کنید.",

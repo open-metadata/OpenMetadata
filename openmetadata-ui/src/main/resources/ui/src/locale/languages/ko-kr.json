@@ -1895,7 +1895,7 @@
     "customize-home-page-page-header-for-persona": "<0>{{persona}}</0> 페르소나를 위한 홈페이지 경험을 개인화하세요",
     "customize-your-navigation-subheader": "더 나은 접근성을 위해 사이드 내비게이션 메뉴를 관리하고 구성하세요.",
     "data-asset-has-been-action-type": "데이터 자산이 {{actionType}}되었습니다",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "데이터 자산 규칙은 플랫폼 레벨에서 메타데이터 검증을 관리하는 데 도움이 됩니다. 자산이 규칙을 따르지 않으면 먼저 검증을 수정하지 않는 한 변경할 수 없습니다.",
     "data-contract-saved-successfully": "데이터 계약이 성공적으로 저장되었습니다",
     "data-contract-schema-description": "이 자산의 예상 스키마 구조",
     "data-insight-alert-destination-description": "관리자 또는 팀에게 이메일 알림을 보냅니다.",

@@ -1895,7 +1895,7 @@
     "customize-home-page-page-header-for-persona": "ปรับแต่งประสบการณ์หน้าแรกสำหรับ <0>{{persona}}</0> เพอร์โซนา",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "สินทรัพย์ข้อมูลได้ทำการ {{actionType}}",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "กฎของทรัพย์สินข้อมูลช่วยคุณจัดการการตรวจสอบความถูกต้องของเมตาดาต้าในระดับแพลตฟอร์ม หากทรัพย์สินไม่ปฏิบัติตามกฎ คุณจะไม่สามารถทำการเปลี่ยนแปลงใดๆ ได้จนกว่าคุณจะแก้ไขการตรวจสอบก่อน",
     "data-contract-saved-successfully": "สัญญาข้อมูลบันทึกสำเร็จแล้ว",
     "data-contract-schema-description": "โครงสร้างสคีมาที่คาดหวังของสินทรัพย์นี้",
     "data-insight-alert-destination-description": "ส่งการแจ้งเตือนทางอีเมลไปยังผู้ดูแลระบบหรือทีม",

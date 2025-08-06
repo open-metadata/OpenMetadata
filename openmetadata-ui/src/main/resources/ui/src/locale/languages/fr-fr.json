@@ -1895,7 +1895,7 @@
     "customize-home-page-page-header-for-persona": "Personnalisez l'expérience de la page d'accueil pour la <0>{{persona}}</0> persona",
     "customize-your-navigation-subheader": "Manage and organize the side navigation menu for better accessibility.",
     "data-asset-has-been-action-type": "l'actif de données a été {{actionType}}",
-    "data-asset-rules-message": "Configure the Data Asset Rules.",
+    "data-asset-rules-message": "Les Règles d'Actifs de Données vous aident à gérer les validations de métadonnées au niveau de la plateforme. Si un actif ne suit pas une règle, vous ne pourrez pas y apporter de modifications tant que vous n'aurez pas corrigé la validation en premier.",
     "data-contract-saved-successfully": "Contrat de données enregistré avec succès",
     "data-contract-schema-description": "Structure de schéma attendue de cet actif",
     "data-insight-alert-destination-description": "Envoyez des notifications par email aux administrateurs ou aux équipes.",
