@@ -454,7 +454,8 @@ export const getEmptyJsonTree = (
  * This structure allows easy addition of groups and rules
  */
 export const getEmptyJsonTreeForQueryBuilder = (
-  defaultField: string = EntityReferenceFields.OWNERS
+  defaultField: string = EntityReferenceFields.OWNERS,
+  subField = 'fullyQualifiedName'
 ): OldJsonTree => {
   const uuid1 = QbUtils.uuid();
   const uuid2 = QbUtils.uuid();
@@ -483,7 +484,7 @@ export const getEmptyJsonTreeForQueryBuilder = (
             type: 'rule',
             id: uuid3,
             properties: {
-              field: 'owners.fullyQualifiedName',
+              field: `${defaultField}.${subField}`,
               operator: 'select_equals',
               value: [],
               valueSrc: ['value'],
