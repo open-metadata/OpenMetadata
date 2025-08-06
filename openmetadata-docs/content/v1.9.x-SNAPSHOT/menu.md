@@ -1147,6 +1147,8 @@ site_menu:
     url: /releases/all-releases
   - category: Releases / All Releases / 1.8.8 Release
     url: /releases/all-releases/#1.8.8-releases
+  - category: Releases / All Releases / 1.8.9 Release
+    url: /releases/all-releases/#1.8.9-releases
   - category: Releases / All Releases / 1.8.7 Release
     url: /releases/all-releases/#1.8.7-releases
   - category: Releases / All Releases / 1.8.6 Release
