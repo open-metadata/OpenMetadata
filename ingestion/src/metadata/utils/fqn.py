@@ -230,15 +230,31 @@ def _(
 
 @fqn_build_registry.add(Database)
 def _(
-    _: Optional[OpenMetadata],  # ES Search not enabled for Databases
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
     database_name: str,
-) -> str:
+    skip_es_search: bool = True,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    if not skip_es_search:
+        entity = search_database_from_es(
+            metadata,
+            database_name,
+            service_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+        )
+
+        if entity and fetch_multiple_entities:
+            return [str(database.fullyQualifiedName.root) for database in entity]
+        if entity:
+            return str(entity.fullyQualifiedName.root)
+
     if not service_name or not database_name:
         raise FQNBuildingException(
             f"Args should be informed, but got service=`{service_name}`, db=`{database_name}``"
         )
+
     return _build(service_name, database_name)
 
 
