@@ -1,5 +1,5 @@
 ---
-title: Pipeline Schema | OpenMetadata Pipeline Schema and API
+title: Pipeline Schema | `brandName` Pipeline Schema and API
 description: Connect Pipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 ---
