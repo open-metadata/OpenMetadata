@@ -184,7 +184,7 @@ etc. You can gain a better understanding of column data distributions through de
 ## Service Connectors & One-Click Ingestion Pipelines
 Integrate your database, dashboard, messaging, and pipeline services with OpenMetadata. OpenMetadata provides a UI 
 integration with Apache Airflow as a workflow engine to run ingestion, data profiling, data quality and other automation
-jobs. Admins can configure a service to run the OpenMetadata pipelines and add an ingestion schedule to automatically 
+jobs. Admins can configure a service to run the OpenMetadata Pipelines and add an ingestion schedule to automatically 
 kick off the ingestion jobs directly from the OpenMetadata UI.
 
 {% image
