@@ -248,6 +248,8 @@ export interface SourceConfig {
  *
  * StorageService Metadata Pipeline Configuration.
  *
+ * DriveService Metadata Pipeline Configuration.
+ *
  * SearchService Metadata Pipeline Configuration.
  *
  * TestSuite Pipeline Configuration.
@@ -369,6 +371,8 @@ export interface Pipeline {
      * Number of Threads to use in order to parallelize Table ingestion.
      *
      * Number of Threads to use in order to parallelize lineage ingestion.
+     *
+     * Number of Threads to use in order to parallelize Drive ingestion.
      */
     threads?: number;
     /**
@@ -378,6 +382,9 @@ export interface Pipeline {
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
+     *
+     * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
+     * instead of raw name (e.g. file_name)
      */
     useFqnForFiltering?: boolean;
     /**
@@ -613,6 +620,62 @@ export interface Pipeline {
     markDeletedContainers?:       boolean;
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to turn off fetching metadata for directories.
+     */
+    includeDirectories?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for files.
+     */
+    includeFiles?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for spreadsheets.
+     */
+    includeSpreadsheets?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for worksheets.
+     */
+    includeWorksheets?: boolean;
+    /**
+     * Optional configuration to soft delete directories in OpenMetadata if the source
+     * directories are deleted. Also, if the directory is deleted, all the associated entities
+     * like files, spreadsheets, worksheets, lineage, etc., with that directory will be deleted
+     */
+    markDeletedDirectories?: boolean;
+    /**
+     * Optional configuration to soft delete files in OpenMetadata if the source files are
+     * deleted. Also, if the file is deleted, all the associated entities like lineage, etc.,
+     * with that file will be deleted
+     */
+    markDeletedFiles?: boolean;
+    /**
+     * Optional configuration to soft delete spreadsheets in OpenMetadata if the source
+     * spreadsheets are deleted. Also, if the spreadsheet is deleted, all the associated
+     * entities like worksheets, lineage, etc., with that spreadsheet will be deleted
+     */
+    markDeletedSpreadsheets?: boolean;
+    /**
+     * Optional configuration to soft delete worksheets in OpenMetadata if the source worksheets
+     * are deleted. Also, if the worksheet is deleted, all the associated entities like lineage,
+     * etc., with that worksheet will be deleted
+     */
+    markDeletedWorksheets?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+    /**
      * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
      */
     includeIndexTemplate?: boolean;
@@ -778,6 +841,14 @@ export interface Pipeline {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
  *
@@ -1748,6 +1819,8 @@ export interface DBTPrefixConfig {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP Credentials for Google Drive API
  */
 export interface DbtSecurityConfigClass {
     /**
@@ -2130,6 +2203,8 @@ export interface ServiceConnections {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface ServiceConnection {
     config?: ConfigClass;
@@ -2354,6 +2429,12 @@ export interface ServiceConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigClass {
     /**
@@ -2424,6 +2505,8 @@ export interface ConfigClass {
      * client_id for Sigma.
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -2434,6 +2517,8 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
@@ -2760,6 +2845,8 @@ export interface ConfigClass {
      * Tenant ID for PowerBI.
      *
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -2835,6 +2922,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -2972,6 +3061,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -3781,6 +3872,28 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
 }
 
 /**
@@ -4870,6 +4983,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -5661,6 +5776,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum PurpleType {
     Adls = "ADLS",
@@ -5680,6 +5801,7 @@ export enum PurpleType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -5707,6 +5829,7 @@ export enum PurpleType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -5751,6 +5874,7 @@ export enum PurpleType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
@@ -5832,6 +5956,8 @@ export interface StorageMetadataBucketDetails {
  *
  * Object Store Source Config Metadata Pipeline type
  *
+ * Drive Source Config Metadata Pipeline type
+ *
  * Search Source Config Metadata Pipeline type
  *
  * DBT Config Pipeline type
@@ -5852,6 +5978,7 @@ export enum FluffyType {
     DatabaseMetadata = "DatabaseMetadata",
     DatabaseUsage = "DatabaseUsage",
     Dbt = "DBT",
+    DriveMetadata = "DriveMetadata",
     MessagingMetadata = "MessagingMetadata",
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",
