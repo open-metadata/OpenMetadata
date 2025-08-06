@@ -48,7 +48,7 @@ import {
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
 } from '../../constants/SSO.constant';
-import { AuthProvider } from '../../generated/settings/settings';
+import { AuthProvider, ClientType } from '../../generated/settings/settings';
 import authenticationConfigSchema from '../../jsons/configuration/authenticationConfiguration.json';
 import authorizerConfigSchema from '../../jsons/configuration/authorizerConfiguration.json';
 import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
@@ -67,7 +67,7 @@ interface AuthenticationConfiguration {
   tokenValidationAlgorithm: string;
   jwtPrincipalClaims: string[];
   enableSelfSignup: boolean;
-  clientType?: string;
+  clientType?: ClientType;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;
@@ -82,6 +82,18 @@ interface AuthorizerConfiguration {
   enforcePrincipalDomain: boolean;
   enableSecureSocketConnection: boolean;
   botPrincipals?: string[];
+}
+
+// UI Schema type definitions
+interface UISchemaField {
+  'ui:title'?: string;
+  'ui:widget'?: string;
+  'ui:hideError'?: boolean;
+  'ui:options'?: Record<string, unknown>;
+}
+
+interface UISchemaObject {
+  [key: string]: UISchemaField | UISchemaObject;
 }
 
 interface FormData {
@@ -122,6 +134,11 @@ const SSOConfigurationFormRJSF = () => {
         (field) => delete authConfig[field as keyof AuthenticationConfiguration]
       );
 
+      // Set clientType to Public for SAML and LDAP providers
+      if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
+        authConfig.clientType = ClientType.Public;
+      }
+
       // Remove provider-specific configs that shouldn't be sent
       const fieldsToRemove = PROVIDER_FIELD_MAPPINGS[provider] || [
         'ldapConfiguration',
@@ -130,7 +147,7 @@ const SSOConfigurationFormRJSF = () => {
       ];
 
       // Handle oidcConfiguration based on client type
-      if (authConfig.clientType === 'public') {
+      if (authConfig.clientType === ClientType.Public) {
         // For public clients, remove oidcConfiguration entirely
         fieldsToRemove.forEach(
           (field) =>
@@ -337,8 +354,10 @@ const SSOConfigurationFormRJSF = () => {
       internalData?.authenticationConfiguration?.clientType;
 
     // Hide oidcConfiguration for public clients
-    if (currentClientType === 'public') {
-      (baseSchema.authenticationConfiguration as any).oidcConfiguration = {
+    if (currentClientType === ClientType.Public) {
+      (
+        baseSchema.authenticationConfiguration as UISchemaObject
+      ).oidcConfiguration = {
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };

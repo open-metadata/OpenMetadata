@@ -66,6 +66,8 @@ export const LDAP_UI_SCHEMA = {
   // Hide other provider configs for LDAP
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide clientType for LDAP as it defaults to public
+  clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // SAML Configuration UI Schema
@@ -120,6 +122,8 @@ export const SAML_UI_SCHEMA = {
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
   enableSelfSignup: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide clientType for SAML as it defaults to public
+  clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Show required fields for SAML
   authority: { 'ui:title': 'Authority' },
   clientId: { 'ui:title': 'Client ID' },
@@ -235,7 +239,6 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
   saml: [
     'ldapConfiguration',
     'oidcConfiguration',
-    'clientType',
     'tokenValidationAlgorithm',
     'enableSelfSignup',
   ],
