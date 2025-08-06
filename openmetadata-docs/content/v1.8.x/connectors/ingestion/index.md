@@ -1,5 +1,5 @@
 ---
-title: Metadata Ingestion | OpenMetadata Data Pipeline Overview
+title: Metadata Ingestion | `brandName` Data Pipeline Overview
 description: Discover OpenMetadata's powerful ingestion connectors to seamlessly extract metadata from databases, dashboards, pipelines & more. Setup guides included.
 slug: /connectors/ingestion
 ---

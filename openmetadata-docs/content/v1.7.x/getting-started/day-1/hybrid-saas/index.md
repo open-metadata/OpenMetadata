@@ -1,5 +1,6 @@
 ---
 title: Hybrid SaaS | Secure Metadata Ingestion for Collate
+description: Learn how to securely ingest metadata using the Collate Ingestion Agent in your own infrastructure. Ideal for private networks and hybrid SaaS setups.
 slug: /getting-started/day-1/hybrid-saas
 collate: true
 ---
