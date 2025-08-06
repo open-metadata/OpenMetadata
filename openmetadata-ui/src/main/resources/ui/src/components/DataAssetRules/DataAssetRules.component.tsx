@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -29,12 +29,9 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import {
-  ProviderType,
   SemanticsRule,
   Settings,
   SettingType,
@@ -366,28 +363,29 @@ export const useSemanticsRuleList = ({
         />
       ),
     },
-    {
-      title: t('label.action'),
-      dataIndex: 'actions',
-      render: (_: unknown, record: SemanticsRule) => (
-        <Space className="custom-icon-button">
-          <Button
-            className="text-secondary p-0 remove-button-background-hover"
-            disabled={record.provider === ProviderType.System}
-            icon={<Icon component={IconEdit} />}
-            type="text"
-            onClick={() => handleEditSemanticsRule(record)}
-          />
-          <Button
-            className="text-secondary p-0 remove-button-background-hover"
-            disabled={record.provider === ProviderType.System}
-            icon={<Icon component={IconDelete} />}
-            type="text"
-            onClick={() => handleDelete(record)}
-          />
-        </Space>
-      ),
-    },
+    // Hidden for now - Actions column with edit and delete buttons
+    // {
+    //   title: t('label.action'),
+    //   dataIndex: 'actions',
+    //   render: (_: unknown, record: SemanticsRule) => (
+    //     <Space className="custom-icon-button">
+    //       <Button
+    //         className="text-secondary p-0 remove-button-background-hover"
+    //         disabled={record.provider === ProviderType.System}
+    //         icon={<Icon component={IconEdit} />}
+    //         type="text"
+    //         onClick={() => handleEditSemanticsRule(record)}
+    //       />
+    //       <Button
+    //         className="text-secondary p-0 remove-button-background-hover"
+    //         disabled={record.provider === ProviderType.System}
+    //         icon={<Icon component={IconDelete} />}
+    //         type="text"
+    //         onClick={() => handleDelete(record)}
+    //       />
+    //     </Space>
+    //   ),
+    // },
   ];
 
   const dataAssetRuleList = useMemo(() => {
@@ -442,11 +440,12 @@ export const useSemanticsRuleList = ({
   );
 
   return {
-    addSemanticsRuleButton: (
-      <Button type="primary" onClick={handleAddDataAssetRule}>
-        {t('label.add-data-asset-rule')}
-      </Button>
-    ),
+    addSemanticsRuleButton: null, // Hidden for now
+    // addSemanticsRuleButton: (
+    //   <Button type="primary" onClick={handleAddDataAssetRule}>
+    //     {t('label.add-data-asset-rule')}
+    //   </Button>
+    // ),
     semanticsRuleList: (
       <>
         {quickAddSemanticsRule || dataAssetRuleList}
