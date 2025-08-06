@@ -226,7 +226,7 @@ export const getField = (field: FieldProp) => {
 
       break;
 
-    case FieldTypes.USER_TEAM_SELECT_SEARCH_INPUT:
+    case FieldTypes.USER_TEAM_SELECT_INPUT:
       {
         fieldElement = (
           <UserTeamSelectableListSearchInput

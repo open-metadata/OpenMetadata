@@ -39,7 +39,7 @@ export enum FieldTypes {
   DESCRIPTION = 'description',
   TAG_SUGGESTION = 'tag_suggestion',
   USER_TEAM_SELECT = 'user_team_select',
-  USER_TEAM_SELECT_SEARCH_INPUT = 'user_team_select_search_input',
+  USER_TEAM_SELECT_INPUT = 'user_team_select_input',
   USER_MULTI_SELECT = 'user_multi_select',
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',

@@ -44,7 +44,7 @@ export const ContractDetailFormTab: React.FC<{
       label: t('label.owner-plural'),
       name: 'owners',
       id: 'root/owner',
-      type: FieldTypes.USER_TEAM_SELECT_SEARCH_INPUT,
+      type: FieldTypes.USER_TEAM_SELECT_INPUT,
       required: false,
       props: {
         owner: initialValues?.owners,
