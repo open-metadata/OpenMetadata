@@ -121,6 +121,11 @@
               "type": "string",
               "default": "anthropic.claude-v2"
             },
+            "embeddingModelId": {
+              "description": "Bedrock embedding model identifier to use for vector search",
+              "type": "string",
+              "default": "amazon.titan-embed-text-v2:0"
+            },
             "accessKey": {
               "description": "AWS access key for Bedrock service authentication",
               "type": "string"
