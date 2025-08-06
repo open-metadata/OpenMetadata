@@ -120,6 +120,7 @@ export const ContractSemanticFormTab: React.FC<{
 
           <Button
             className="add-semantic-button"
+            data-testid="add-semantic-button"
             disabled={!isNull(editingKey) || !addFunctionRef.current}
             icon={<Icon className="anticon" component={PlusIcon} />}
             type="link"
@@ -192,6 +193,7 @@ export const ContractSemanticFormTab: React.FC<{
                                     <Button
                                       danger
                                       className="delete-expand-button"
+                                      data-testid={`delete-semantic-${field.key}`}
                                       icon={<DeleteIcon />}
                                       size="middle"
                                       onClick={() => {
@@ -204,6 +206,7 @@ export const ContractSemanticFormTab: React.FC<{
                             </div>
                           ),
                         }}
+                        dataTestId={`contract-semantics-card-${field.key}`}
                         defaultExpanded={editingKey === field.key}
                         key={field.key}>
                         {editingKey === field.key ? (
@@ -283,6 +286,7 @@ export const ContractSemanticFormTab: React.FC<{
                                 </Button>
                                 <Button
                                   className="m-l-md"
+                                  data-testid="save-semantic-button"
                                   type="primary"
                                   onClick={() => setEditingKey(null)}>
                                   {t('label.save')}

@@ -444,25 +444,19 @@ export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
  */
 export const getLayoutWithEmptyWidgetPlaceholder = (
   layout: WidgetConfig[],
-  emptyWidgetHeight = 4,
+  emptyWidgetHeight = 2,
   emptyWidgetWidth = 1
-) => {
-  // Handle empty or null layout
-  if (!layout || layout.length === 0) {
-    return [
-      {
-        h: emptyWidgetHeight,
-        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
-        w: emptyWidgetWidth,
-        x: 0,
-        y: 0,
-        isDraggable: false,
-      },
-    ];
-  }
-
-  return ensurePlaceholderAtEnd(layout);
-};
+) => [
+  ...layout,
+  {
+    h: emptyWidgetHeight,
+    i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+    w: emptyWidgetWidth,
+    x: 0,
+    y: 1000,
+    isDraggable: false,
+  },
+];
 
 /**
  * Creates a landing page layout with empty widget placeholder

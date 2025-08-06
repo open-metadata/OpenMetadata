@@ -30,7 +30,7 @@ Configure and schedule Azure Data Factory metadata and profiler workflows from t
 
 The Ingestion framework uses [Azure Data Factory APIs](https://learn.microsoft.com/en-us/rest/api/datafactory/v2) to connect to the Data Factory and fetch metadata.
 
-You can find further information on the Azure Data Factory connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/datafactory).
+You can find further information on the Azure Data Factory connector in the [docs](/connectors/pipeline/datafactory).
 
 ## Permissions
 

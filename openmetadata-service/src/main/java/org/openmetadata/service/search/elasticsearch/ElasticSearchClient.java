@@ -2227,7 +2227,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   public DataInsightCustomChartResultList buildDIChart(
-      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
+      @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
+      throws IOException {
     ElasticSearchDynamicChartAggregatorInterface aggregator =
         ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
     if (aggregator != null) {
@@ -2235,7 +2236,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
           new HashMap<>();
       es.org.elasticsearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder);
+          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
       SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
       return aggregator.processSearchResponse(
           diChart, searchResponse, formulas, metricFormulaHolder);
