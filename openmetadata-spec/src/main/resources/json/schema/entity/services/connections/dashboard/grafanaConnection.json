@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/grafanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GrafanaConnection",
+  "description": "Grafana Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.GrafanaConnection",
+  "definitions": {
+    "grafanaType": {
+      "description": "Grafana service type",
+      "type": "string",
+      "enum": ["Grafana"],
+      "default": "Grafana"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/grafanaType",
+      "default": "Grafana"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "URL to the Grafana instance.",
+      "type": "string",
+      "format": "uri",
+      "expose": true
+    },
+    "apiKey": {
+      "title": "Service Account Token",
+      "description": "Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires Admin role for full metadata extraction.",
+      "type": "string",
+      "format": "password"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Boolean marking if we need to verify the SSL certs for Grafana. Default to True.",
+      "type": "boolean",
+      "default": true
+    },
+    "pageSize": {
+      "title": "Page Size",
+      "description": "Page size for pagination in API requests. Default is 100.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "apiKey"]
+}
