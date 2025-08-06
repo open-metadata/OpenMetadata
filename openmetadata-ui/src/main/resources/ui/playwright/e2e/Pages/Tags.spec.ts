@@ -599,13 +599,13 @@ test('Verify system classification term counts', async ({ page }) => {
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'Tier' });
 
-  await expect(tierElement).toContainText('5');
+  await expect(tierElement.getByTestId('filter-count')).toContainText('5');
 
   const piiElement = page
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'PII' });
 
-  await expect(piiElement).toContainText('3');
+  await expect(piiElement.getByTestId('filter-count')).toContainText('3');
 });
 
 test('Verify Owner Add Delete', async ({ page }) => {
