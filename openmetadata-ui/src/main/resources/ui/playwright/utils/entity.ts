@@ -1065,7 +1065,7 @@ export const replyAnnouncement = async (page: Page) => {
   await page.click('[data-testid="announcement-card"]');
 
   await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
+    '[data-testid="data-assets-header"] [data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
   await page.waitForSelector('.ant-popover', { state: 'visible' });
@@ -1114,10 +1114,14 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
-  await expect(page.getByTestId('announcement-card')).toBeVisible();
+  await page
+    .locator(
+      '[data-testid="announcement-thread-body"] [data-testid="announcement-card"]'
+    )
+    .isVisible();
 
   await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
+    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
   await page.waitForSelector('.ant-popover', { state: 'visible' });
