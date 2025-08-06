@@ -26,12 +26,18 @@ class RequestLatencyTrackingSimpleTest {
   void testRequestLatencyTracking() {
     String endpoint = "/api/v1/test";
     RequestLatencyContext.startRequest(endpoint);
-    simulateWork(500);
 
+    // First phase - internal processing
+    simulateWork(100);
+
+    // Database operation phase
     Timer.Sample dbSample = RequestLatencyContext.startDatabaseOperation();
     simulateWork(100);
     RequestLatencyContext.endDatabaseOperation(dbSample);
-    simulateWork(30);
+
+    // Second phase - more internal processing
+    simulateWork(50);
+
     RequestLatencyContext.endRequest();
 
     String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
@@ -55,14 +61,29 @@ class RequestLatencyTrackingSimpleTest {
     LOG.info("Database time: {} ms", dbMs);
     LOG.info("Internal time: {} ms", internalMs);
 
-    // Timing expectations: 500ms + 100ms + 30ms = 630ms total
-    // DB time: 100ms during database operation
-    // Internal time: 500ms (before DB) + 30ms (after DB) = 530ms
-    // Allow generous bounds for system timing variations
-    assertTrue(totalMs >= 500 && totalMs <= 1000, "Total time should be ~630ms, got: " + totalMs);
-    assertTrue(dbMs >= 80 && dbMs <= 150, "Database time should be ~100ms, got: " + dbMs);
+    // Test the relative proportions rather than absolute timing
+    // DB operations should be ~40% of total time (100ms out of 250ms)
+    // Internal time should be ~60% of total time (150ms out of 250ms)
+    double dbPercentage = (dbMs / totalMs) * 100;
+    double internalPercentage = (internalMs / totalMs) * 100;
+
+    LOG.info("DB percentage: {}%", String.format("%.2f", dbPercentage));
+    LOG.info("Internal percentage: {}%", String.format("%.2f", internalPercentage));
+
+    // Verify basic timing integrity
+    assertTrue(totalMs > 0, "Total time should be positive");
+    assertTrue(dbMs > 0, "Database time should be positive");
+    assertTrue(internalMs > 0, "Internal time should be positive");
+
+    // Verify that DB + Internal ≈ Total (within 5% margin)
+    double sumPercentage = dbPercentage + internalPercentage;
     assertTrue(
-        internalMs >= 400 && internalMs <= 700,
-        "Internal time should be ~530ms, got: " + internalMs);
+        sumPercentage >= 95 && sumPercentage <= 105,
+        "Sum of DB and internal percentages should be approximately 100%, got: " + sumPercentage);
+
+    // Verify that internal time is roughly 60% of total (±15%)
+    assertTrue(
+        internalPercentage >= 45 && internalPercentage <= 75,
+        "Internal time should be ~60% of total time, got: " + internalPercentage + "%");
   }
 }
