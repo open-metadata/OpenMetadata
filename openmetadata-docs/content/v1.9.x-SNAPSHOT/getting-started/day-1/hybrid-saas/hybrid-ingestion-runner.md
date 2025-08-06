@@ -1,5 +1,6 @@
 ---
-title: Hybrid Ingestion Runner
+title: Hybrid Ingestion Runner | Secure Metadata Workflows in Your Cloud
+description: Learn to configure and manage Hybrid Ingestion Runner to securely execute workflows in your cloud using AWS, Azure, or GCP secrets—without exposing credentials.
 slug: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner
 collate: true
 ---

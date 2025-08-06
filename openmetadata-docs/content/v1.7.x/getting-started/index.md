@@ -1,5 +1,6 @@
 ---
-title: Getting Started
+title: Getting Started with Collate | Setup & Onboarding Guide
+description: Quickly set up your Collate environment in 30 minutes. Learn how to connect data sources, explore features, and begin your onboarding journey.
 slug: /getting-started
 collate: true
 ---

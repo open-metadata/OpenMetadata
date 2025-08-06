@@ -1,5 +1,6 @@
 ---
-title: Collate SaaS
+title: Collate SaaS Setup Guide | Connect Database Services for Metadata Extraction
+description: Learn how to configure database services in Collate SaaS, allow IP access, test connections, and begin metadata extraction using built-in connectors like Snowflake.
 slug: /getting-started/day-1/collate-saas
 collate: true
 ---
