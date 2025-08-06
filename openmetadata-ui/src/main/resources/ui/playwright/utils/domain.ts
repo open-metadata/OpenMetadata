@@ -136,7 +136,11 @@ export const selectSubDomain = async (
   });
 
   if (!isSelected) {
+    const subDomainRes = page.waitForResponse(
+      '/api/v1/search/query?q=*&from=0&size=50&index=domain_search_index&deleted=false'
+    );
     await menuItem.click();
+    await subDomainRes;
     await page.waitForLoadState('networkidle');
   }
 
