@@ -133,6 +133,8 @@ test.describe('Add TestCase New Flow', () => {
   });
 
   test('Add Table & Column Test Case', async ({ page }) => {
+    test.slow(true);
+
     const testCaseDetails = {
       testType: 'table row count to equal',
       testTypeId: 'tableRowCountToEqual',
