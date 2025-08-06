@@ -32,6 +32,11 @@ class SnowflakeTableParameter(BaseTableParameter):
             service_url,
         )
         connection_config = cast(SnowflakeConnection, service.connection.config)
-        table_param.privateKey = connection_config.privateKey
-        table_param.passPhrase = connection_config.snowflakePrivatekeyPassphrase
+
+        # Only set privateKey and passPhrase if password is not being used
+        # to avoid "Cannot use password and key at the same time" error
+        if not connection_config.password and connection_config.privateKey:
+            table_param.privateKey = connection_config.privateKey
+            table_param.passPhrase = connection_config.snowflakePrivatekeyPassphrase
+
         return table_param
