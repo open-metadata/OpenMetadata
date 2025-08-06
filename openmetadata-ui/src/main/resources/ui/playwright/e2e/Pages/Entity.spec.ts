@@ -232,8 +232,8 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        COMMON_TIER_TAG[0].name,
-        COMMON_TIER_TAG[0].fullyQualifiedName,
+        COMMON_TIER_TAG[2].name,
+        COMMON_TIER_TAG[2].fullyQualifiedName,
         entity
       );
     });
@@ -267,9 +267,9 @@ entities.forEach((EntityClass) => {
       await entity.tag(
         page,
         'PersonalData.Personal',
-        COMMON_TIER_TAG[0].name,
+        EntityDataClass.tag1.responseData.displayName,
         entity,
-        COMMON_TIER_TAG[0].fullyQualifiedName
+        EntityDataClass.tag1.responseData.fullyQualifiedName
       );
     });
 

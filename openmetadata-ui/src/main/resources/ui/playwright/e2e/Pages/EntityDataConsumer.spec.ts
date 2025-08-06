@@ -101,7 +101,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(page, 'Tier1', COMMON_TIER_TAG[0].name);
+      await entity.tier(page, COMMON_TIER_TAG[0].name, COMMON_TIER_TAG[3].name);
     });
 
     test('Update description', async ({ page }) => {

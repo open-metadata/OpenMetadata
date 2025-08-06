@@ -38,116 +38,25 @@ export const COMMON_TIER_TAG = [
     id: 'd9b52629-0288-4d29-99bf-ecdd1713d285',
     name: 'Tier1',
     fullyQualifiedName: 'Tier.Tier1',
-    description:
-      '**Critical Source of Truth business data assets of an organization**\n\n' +
-      '- Used in critical metrics and dashboards to drive business and product decisions\n\n' +
-      '- Used in critical compliance reporting to regulators, govt entities, and third party\n\n' +
-      '- Used in brand or revenue impacting online user-facing experiences (search results, advertisement, promotions, and experimentation)\n\n' +
-      '- Other high impact use, such as ML models and fraud detection\n\n' +
-      '- Source used to derive other critical Tier-1 datasets',
-    style: {
-      color: '#ec1313',
-    },
-    version: 0.2,
-    updatedAt: 1718953086669,
-    updatedBy: 'dovile.kr',
-    href: 'https://sandbox-beta.open-metadata.org/v1/tags/d9b52629-0288-4d29-99bf-ecdd1713d285',
-    usageCount: 0,
-    deprecated: false,
-    deleted: false,
-    changeDescription: {
-      fieldsAdded: [
-        {
-          name: 'style',
-          newValue: '{"color":"#ec1313"}',
-        },
-      ],
-      fieldsUpdated: [],
-      fieldsDeleted: [],
-      previousVersion: 0.1,
-    },
-    provider: 'system',
-    disabled: false,
-    mutuallyExclusive: false,
   },
   {
     id: 'fafc6234-f036-4e02-9666-20e30ceb593b',
     name: 'Tier2',
     fullyQualifiedName: 'Tier.Tier2',
-    description:
-      '**Important business datasets for your company (not as critical as Tier 1)**\n\n' +
-      '- Used in important business metrics, product metrics, and dashboards to drive internal decisions\n\n' +
-      '- Used in important compliance reporting to major regulators, govt entities, and third party\n\n' +
-      '- Used for less critical online user-facing experiences (user activity, user behavior)\n\n' +
-      '- Source used to derive other critical Tier-2 datasets',
-    version: 0.1,
-    updatedAt: 1697263885126,
-    updatedBy: 'admin',
-    href: 'https://sandbox-beta.open-metadata.org/v1/tags/fafc6234-f036-4e02-9666-20e30ceb593b',
-    usageCount: 0,
-    deprecated: false,
-    deleted: false,
-    provider: 'system',
-    disabled: false,
-    mutuallyExclusive: false,
   },
   {
     id: 'de9dba4b-a92c-4a58-a3d8-93e72f315a29',
     name: 'Tier3',
     fullyQualifiedName: 'Tier.Tier3',
-    description:
-      '**Department/group level datasets that are typically non-business and general internal system**\n\n' +
-      '- Used in product metrics, and dashboards to drive product decisions\n\n' +
-      '- Used to track operational metrics of internal systems\n\n' +
-      '- Source used to derive other critical Tier-3 datasets',
-    version: 0.1,
-    updatedAt: 1697263885149,
-    updatedBy: 'admin',
-    href: 'https://sandbox-beta.open-metadata.org/v1/tags/de9dba4b-a92c-4a58-a3d8-93e72f315a29',
-    usageCount: 0,
-    deprecated: false,
-    deleted: false,
-    provider: 'system',
-    disabled: false,
-    mutuallyExclusive: false,
   },
   {
     id: '9ee864ea-d8e6-4ecc-9017-57d1e72e501e',
     name: 'Tier4',
     fullyQualifiedName: 'Tier.Tier4',
-    description:
-      '**Team level datasets that are typically non-business and general internal system**\n\n' +
-      '- Used in product metrics, and dashboards to drive team decisions\n\n' +
-      '- Used to track operational metrics of internal systems owned by the team\n\n' +
-      '- Source used to derive other critical Tier-4 datasets',
-    version: 0.1,
-    updatedAt: 1697263885174,
-    updatedBy: 'admin',
-    href: 'https://sandbox-beta.open-metadata.org/v1/tags/9ee864ea-d8e6-4ecc-9017-57d1e72e501e',
-    usageCount: 0,
-    deprecated: false,
-    deleted: false,
-    provider: 'system',
-    disabled: false,
-    mutuallyExclusive: false,
   },
   {
     id: '36c08b3b-85b5-460b-86b7-806857314883',
     name: 'Tier5',
     fullyQualifiedName: 'Tier.Tier5',
-    description:
-      '**Private/Unused data assets - No impact beyond individual users**\n\n' +
-      '- Data assets without any ownership with no usage in the last 60 days\n\n' +
-      '- Data assets owned by individuals without team ownership\n\n',
-    version: 0.1,
-    updatedAt: 1697263885196,
-    updatedBy: 'admin',
-    href: 'https://sandbox-beta.open-metadata.org/v1/tags/36c08b3b-85b5-460b-86b7-806857314883',
-    usageCount: 0,
-    deprecated: false,
-    deleted: false,
-    provider: 'system',
-    disabled: false,
-    mutuallyExclusive: false,
   },
 ];
