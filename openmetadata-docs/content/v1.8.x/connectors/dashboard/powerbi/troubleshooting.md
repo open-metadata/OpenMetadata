@@ -1,6 +1,6 @@
 ---
-title: PowerBI Dashboard Troubleshooting Guide | OpenMetadata Support
-description: Resolve PowerBI connector issues with OpenMetadata's comprehensive troubleshooting guide. Fix common errors, debug connections, and optimize your setup.
+title: PowerBI Dashboard Troubleshooting Guide | `brandName` Support
+description: Resolve PowerBI connector issues with `brandName`'scomprehensive troubleshooting guide. Fix common errors, debug connections, and optimize your setup.
 slug: /connectors/dashboard/powerbi/troubleshooting
 ---
 

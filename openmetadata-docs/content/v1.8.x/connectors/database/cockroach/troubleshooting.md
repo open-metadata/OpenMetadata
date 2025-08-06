@@ -1,5 +1,5 @@
 ---
-title: Cockroach Troubleshooting Guide | OpenMetadata Support
+title: Cockroach Troubleshooting Guide | `brandName` Support
 description: Fix CockroachDB ingestion errors like connection timeouts, incorrect credentials, or unsupported SQL dialects.
 slug: /connectors/database/cockroach/troubleshooting
 ---
