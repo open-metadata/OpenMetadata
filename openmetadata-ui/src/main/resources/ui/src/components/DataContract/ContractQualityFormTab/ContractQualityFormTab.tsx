@@ -33,12 +33,10 @@ import {
   ListTestCaseParamsBySearch,
   TestCaseType,
 } from '../../../rest/testAPI';
-import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import SelectionCardGroup from '../../common/SelectionCardGroup/SelectionCardGroup';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -59,7 +57,7 @@ export const ContractQualityFormTab: React.FC<{
   onPrev: () => void;
   prevLabel?: string;
 }> = ({ selectedQuality, onChange, onPrev, prevLabel }) => {
-  const [testType, setTestType] = useState<TestCaseType>(TestCaseType.table);
+  const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
@@ -198,6 +196,16 @@ export const ContractQualityFormTab: React.FC<{
     fetchAllTests();
   }, [testType]);
 
+  const filterMenu = useMemo(() => {
+    return {
+      items: Object.entries(TestTypeLabelMap).map(([key]) => ({
+        key,
+        label: TestTypeLabelMap[key as TestCaseType],
+        onClick: () => setTestType(key as TestCaseType),
+      })),
+    };
+  }, []);
+
   return (
     <Card className="contract-quality-form-tab-container container bg-grey p-box">
       <div className="d-flex justify-between">
@@ -222,27 +230,13 @@ export const ContractQualityFormTab: React.FC<{
       </div>
 
       <div className="contract-form-content-container ">
-        <SelectionCardGroup
-          options={TEST_LEVEL_OPTIONS}
-          value={testType}
-          onChange={(value) => setTestType(value as TestCaseType)}
-        />
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
           dataSource={allTestCases}
           extraTableFilters={
-            <Dropdown
-              menu={{
-                items: Object.entries(TestTypeLabelMap).map(([key]) => ({
-                  key,
-                  label: TestTypeLabelMap[key as TestCaseType],
-                })),
-              }}>
-              <Button
-                icon={<DownOutlined />}
-                type="default"
-                onClick={() => setTestType(TestCaseType.table)}>
+            <Dropdown menu={filterMenu}>
+              <Button icon={<DownOutlined />} type="default">
                 {t('label.filter-plural')}
               </Button>
             </Dropdown>

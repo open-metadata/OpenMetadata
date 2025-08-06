@@ -47,7 +47,6 @@ import SliderWithInput from '../components/common/SliderWithInput/SliderWithInpu
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
-import { UserTeamSelectSimple } from '../components/common/UserTeamSelect/UserTeamSelectSimple.component';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
@@ -129,13 +128,6 @@ export const getField = (field: FieldProp) => {
           size="small"
           {...props}
         />
-      );
-
-      break;
-
-    case FieldTypes.TEXTAREA:
-      fieldElement = (
-        <Input.TextArea id={id} placeholder={placeholder} {...props} />
       );
 
       break;
@@ -233,19 +225,6 @@ export const getField = (field: FieldProp) => {
 
       break;
 
-    case FieldTypes.USER_TEAM_SELECT_SIMPLE:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <UserTeamSelectSimple
-            {...(rest as unknown as UserSelectDropdownProps)}>
-            {children}
-          </UserTeamSelectSimple>
-        );
-      }
-
-      break;
     case FieldTypes.USER_MULTI_SELECT:
       {
         const { children, ...rest } = props;

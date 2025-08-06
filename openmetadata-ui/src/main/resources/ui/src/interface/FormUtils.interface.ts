@@ -29,7 +29,6 @@ export enum FormItemLayout {
 export enum FieldTypes {
   TEXT = 'text',
   PASSWORD = 'password',
-  TEXTAREA = 'textarea',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',
@@ -40,7 +39,6 @@ export enum FieldTypes {
   DESCRIPTION = 'description',
   TAG_SUGGESTION = 'tag_suggestion',
   USER_TEAM_SELECT = 'user_team_select',
-  USER_TEAM_SELECT_SIMPLE = 'user_team_select_simple',
   USER_MULTI_SELECT = 'user_multi_select',
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',

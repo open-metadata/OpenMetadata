@@ -17,7 +17,11 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 
@@ -41,10 +45,21 @@ export const ContractDetailFormTab: React.FC<{
       required: true,
     },
     {
+      label: t('label.description'),
+      id: 'description',
+      name: 'description',
+      type: FieldTypes.DESCRIPTION,
+      required: false,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValues?.description ?? '',
+      },
+    },
+    {
       label: t('label.owner-plural'),
       id: 'owners',
       name: 'owners',
-      type: FieldTypes.USER_TEAM_SELECT_SIMPLE,
+      type: FieldTypes.USER_TEAM_SELECT,
       required: false,
       props: {
         owner: initialValues?.owners,
@@ -59,13 +74,11 @@ export const ContractDetailFormTab: React.FC<{
         ),
         multiple: { user: true, team: false },
       },
-    },
-    {
-      label: t('label.description'),
-      id: 'description',
-      name: 'description',
-      type: FieldTypes.TEXTAREA,
-      required: false,
+      formItemLayout: FormItemLayout.HORIZONTAL,
+      formItemProps: {
+        valuePropName: 'owners',
+        trigger: 'onUpdate',
+      },
     },
   ];
 
