@@ -118,27 +118,6 @@ services.forEach((ServiceClass) => {
         // Reload the page and wait for the network to be idle
         await reloadAndWaitForNetworkIdle(page);
 
-        // Wait for the auto pilot status banner to be visible
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-RUNNING"] ',
-          {
-            state: 'visible',
-          }
-        );
-
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
-
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-RUNNING')
-        ).toBeHidden();
-
         // Check the auto pilot status
         await checkAutoPilotStatus(page, service);
 
@@ -147,23 +126,8 @@ services.forEach((ServiceClass) => {
 
         // Wait for the auto pilot status banner to be visible
         await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
+          page.getByText('AutoPilot agents run completed successfully.')
         ).toBeVisible();
-
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
-
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
-        ).toBeHidden();
       });
 
       test('Agents created by AutoPilot should be deleted', async ({

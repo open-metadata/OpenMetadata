@@ -106,9 +106,13 @@ export const CustomizablePageHeader = ({
   );
 
   const handleClose = useCallback(() => {
-    setConfirmationModalType('close');
-    setConfirmationModalOpen(true);
-  }, []);
+    if (!disableSave) {
+      setConfirmationModalType('close');
+      setConfirmationModalOpen(true);
+    } else {
+      handleCancel();
+    }
+  }, [disableSave]);
 
   return (
     <Card
