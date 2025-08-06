@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -20,10 +21,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
+import { LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -32,6 +36,7 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -45,7 +50,6 @@ import {
 } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
-  fetchOptions,
   getBreadCrumbList,
   getTaskAssignee,
   getTaskEntityFQN,
@@ -53,10 +57,9 @@ import {
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import Assignees from '../shared/Assignees';
 import TagSuggestion from '../shared/TagSuggestion';
 import '../task-page.style.less';
-import { EntityData, Option } from '../TasksPage.interface';
+import { EntityData } from '../TasksPage.interface';
 
 const RequestTag = () => {
   const { currentUser } = useApplicationStore();
@@ -72,10 +75,10 @@ const RequestTag = () => {
   const value = queryParams.get('value');
 
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
-  const [options, setOptions] = useState<Option[]>([]);
-  const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const selectedAssignees =
+    Form.useWatch<EntityReference[]>('assignees', form) ?? [];
 
   const entityFQN = useMemo(
     () => getTaskEntityFQN(entityType, fqn),
@@ -96,14 +99,6 @@ const RequestTag = () => {
 
   const back = () => navigate(-1);
 
-  const onSearch = (query: string) => {
-    const data = {
-      query,
-      setOptions,
-    };
-    fetchOptions(data);
-  };
-
   const getTaskAbout = () => {
     if (field && value) {
       return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}tags`;
@@ -119,8 +114,8 @@ const RequestTag = () => {
       message: value.title || taskMessage,
       about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
-        assignees: assignees.map((assignee) => ({
-          id: assignee.value,
+        assignees: selectedAssignees.map((assignee) => ({
+          id: assignee.id,
           type: assignee.type,
         })),
         suggestion: JSON.stringify(value.suggestTags),
@@ -154,15 +149,9 @@ const RequestTag = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const defaultAssignee = getTaskAssignee(entityData as Glossary);
-
-    if (defaultAssignee) {
-      setAssignees(defaultAssignee);
-      setOptions((prev) => [...defaultAssignee, ...prev]);
-    }
     form.setFieldsValue({
       title: taskMessage.trimEnd(),
-      assignees: defaultAssignee,
+      assignees: getTaskAssignee(entityData as Glossary),
     });
   }, [entityData]);
 
@@ -222,25 +211,43 @@ const RequestTag = () => {
                     })}`}
                   />
                 </Form.Item>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.assignee-plural'),
-                      }),
-                    },
-                  ]}>
-                  <Assignees
-                    options={options}
-                    value={assignees}
-                    onChange={setAssignees}
-                    onSearch={onSearch}
-                  />
-                </Form.Item>
+                <div className="m-b-lg">
+                  <Form.Item
+                    className="form-item-horizontal m-b-sm"
+                    data-testid="assignees"
+                    label={`${t('label.assignee-plural')}:`}
+                    name="assignees"
+                    rules={[{ required: true }]}>
+                    <UserTeamSelectableList
+                      hasPermission
+                      selectBoth
+                      multiple={{ user: true, team: true }}
+                      owner={selectedAssignees}
+                      onUpdate={(values) =>
+                        form.setFieldValue(['assignees'], values)
+                      }>
+                      <Button
+                        data-testid="add-owner"
+                        icon={
+                          <PlusOutlined
+                            style={{ color: 'white', fontSize: '12px' }}
+                          />
+                        }
+                        size="small"
+                        type="primary"
+                      />
+                    </UserTeamSelectableList>
+                  </Form.Item>
+
+                  {Boolean(selectedAssignees.length) && (
+                    <Space wrap data-testid="assignees-container" size={[8, 8]}>
+                      <OwnerLabel
+                        maxVisibleOwners={LIST_SIZE}
+                        owners={selectedAssignees}
+                      />
+                    </Space>
+                  )}
+                </div>
                 <Form.Item
                   data-testid="tags-label"
                   label={`${t('label.suggest-entity', {

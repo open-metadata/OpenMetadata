@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -20,12 +21,15 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
+import { LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
@@ -34,6 +38,7 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -47,7 +52,6 @@ import {
 } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
-  fetchOptions,
   getBreadCrumbList,
   getTaskAssignee,
   getTaskEntityFQN,
@@ -55,9 +59,8 @@ import {
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import Assignees from '../shared/Assignees';
 import '../task-page.style.less';
-import { EntityData, Option } from '../TasksPage.interface';
+import { EntityData } from '../TasksPage.interface';
 
 const RequestDescription = () => {
   const { currentUser } = useApplicationStore();
@@ -76,10 +79,10 @@ const RequestDescription = () => {
   const value = queryParams.get('value');
 
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
-  const [options, setOptions] = useState<Option[]>([]);
-  const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const selectedAssignees =
+    Form.useWatch<EntityReference[]>('assignees', form) ?? [];
 
   const entityFQN = useMemo(
     () => getTaskEntityFQN(entityType, fqn),
@@ -100,14 +103,6 @@ const RequestDescription = () => {
 
   const back = () => navigate(-1);
 
-  const onSearch = (query: string) => {
-    const data = {
-      query,
-      setOptions,
-    };
-    fetchOptions(data);
-  };
-
   const getTaskAbout = () => {
     if (field && value) {
       return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}description`;
@@ -122,47 +117,42 @@ const RequestDescription = () => {
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
-    if (assignees.length) {
-      const suggestion = markdownRef.current?.getEditorContent?.();
-      const data: CreateThread = {
-        from: currentUser?.name as string,
-        message: value.title || taskMessage,
-        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-        taskDetails: {
-          assignees: assignees.map((assignee) => ({
-            id: assignee.value,
-            type: assignee.type,
-          })),
-          suggestion: isDescriptionContentEmpty(suggestion)
-            ? undefined
-            : suggestion,
-          type: TaskType.RequestDescription,
-          oldValue: '',
-        },
-        type: ThreadType.Task,
-      };
+    const data: CreateThread = {
+      from: currentUser?.name as string,
+      message: value.title || taskMessage,
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      taskDetails: {
+        assignees: selectedAssignees.map((assignee) => ({
+          id: assignee.id,
+          type: assignee.type,
+        })),
+        suggestion: isDescriptionContentEmpty(suggestion)
+          ? undefined
+          : suggestion,
+        type: TaskType.RequestDescription,
+        oldValue: '',
+      },
+      type: ThreadType.Task,
+    };
 
-      postThread(data)
-        .then(() => {
-          showSuccessToast(
-            t('server.create-entity-success', {
-              entity: t('label.task'),
-            })
-          );
-          navigate(
-            entityUtilClassBase.getEntityLink(
-              entityType,
-              entityFQN,
-              EntityTabs.ACTIVITY_FEED,
-              ActivityFeedTabs.TASKS
-            )
-          );
-        })
-        .catch((err: AxiosError) => showErrorToast(err))
-        .finally(() => setIsLoading(false));
-    } else {
-      showErrorToast(t('server.no-task-creation-without-assignee'));
-    }
+    postThread(data)
+      .then(() => {
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.task'),
+          })
+        );
+        navigate(
+          entityUtilClassBase.getEntityLink(
+            entityType,
+            entityFQN,
+            EntityTabs.ACTIVITY_FEED,
+            ActivityFeedTabs.TASKS
+          )
+        );
+      })
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -170,15 +160,9 @@ const RequestDescription = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const defaultAssignee = getTaskAssignee(entityData as Glossary);
-
-    if (defaultAssignee) {
-      setAssignees(defaultAssignee);
-      setOptions(defaultAssignee);
-    }
     form.setFieldsValue({
       title: taskMessage.trimEnd(),
-      assignees: defaultAssignee,
+      assignees: getTaskAssignee(entityData as Glossary),
     });
   }, [entityData]);
 
@@ -238,25 +222,43 @@ const RequestDescription = () => {
                     })}
                   />
                 </Form.Item>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.assignee-plural'),
-                      }),
-                    },
-                  ]}>
-                  <Assignees
-                    options={options}
-                    value={assignees}
-                    onChange={setAssignees}
-                    onSearch={onSearch}
-                  />
-                </Form.Item>
+                <div className="m-b-lg">
+                  <Form.Item
+                    className="form-item-horizontal m-b-sm"
+                    data-testid="assignees"
+                    label={`${t('label.assignee-plural')}:`}
+                    name="assignees"
+                    rules={[{ required: true }]}>
+                    <UserTeamSelectableList
+                      hasPermission
+                      selectBoth
+                      multiple={{ user: true, team: true }}
+                      owner={selectedAssignees}
+                      onUpdate={(values) =>
+                        form.setFieldValue(['assignees'], values)
+                      }>
+                      <Button
+                        data-testid="add-owner"
+                        icon={
+                          <PlusOutlined
+                            style={{ color: 'white', fontSize: '12px' }}
+                          />
+                        }
+                        size="small"
+                        type="primary"
+                      />
+                    </UserTeamSelectableList>
+                  </Form.Item>
+
+                  {Boolean(selectedAssignees.length) && (
+                    <Space wrap data-testid="assignees-container" size={[8, 8]}>
+                      <OwnerLabel
+                        maxVisibleOwners={LIST_SIZE}
+                        owners={selectedAssignees}
+                      />
+                    </Space>
+                  )}
+                </div>
                 <Form.Item
                   data-testid="description-label"
                   label={`${t('label.suggest-entity', {
