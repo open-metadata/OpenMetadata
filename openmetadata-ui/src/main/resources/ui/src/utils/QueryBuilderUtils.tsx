@@ -916,4 +916,19 @@ export const migrateJsonLogic = (
   };
 
   return migrateNode(jsonLogic) as Record<string, unknown>;
+}
+
+export const getFieldsByKeys = (
+  keys: EntityReferenceFields[],
+  mapFields: Record<string, FieldOrGroup>
+): Record<string, FieldOrGroup> => {
+  const filteredFields: Record<string, FieldOrGroup> = {};
+
+  keys.forEach((key) => {
+    if (mapFields[key]) {
+      filteredFields[key] = mapFields[key];
+    }
+  });
+
+  return filteredFields;
 };

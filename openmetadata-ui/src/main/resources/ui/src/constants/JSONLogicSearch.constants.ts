@@ -10,34 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 
-export enum DataContractMode {
-  YAML,
-  UI,
-}
+export const GLOSSARY_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.REVIEWERS,
+  EntityReferenceFields.UPDATED_BY,
+];
 
-export enum DataContractTabMode {
-  ADD,
-  EDIT,
-  VIEW,
-}
+export const TABLE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.DATABASE,
+  EntityReferenceFields.DATABASE_SCHEMA,
+  EntityReferenceFields.TABLE_TYPE,
+];
 
-export enum EDataContractTab {
-  CONTRACT_DETAIL,
-  SCHEMA,
-  SEMANTICS,
-  QUALITY,
-}
-
-export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
-  EntityReferenceFields.EXTENSION,
+export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
+  EntityReferenceFields.SERVICE,
   EntityReferenceFields.OWNERS,
+  EntityReferenceFields.DISPLAY_NAME,
   EntityReferenceFields.NAME,
   EntityReferenceFields.DESCRIPTION,
+  EntityReferenceFields.TAG,
+  EntityReferenceFields.DOMAIN,
+  EntityReferenceFields.DATA_PRODUCT,
   EntityReferenceFields.TIER,
-  EntityReferenceFields.SERVICE,
-  EntityReferenceFields.DISPLAY_NAME,
-  EntityReferenceFields.DELETED,
+  EntityReferenceFields.EXTENSION,
 ];

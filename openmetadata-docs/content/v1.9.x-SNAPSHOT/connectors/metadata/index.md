@@ -1,5 +1,5 @@
 ---
-title: Metadata Services | OpenMetadata Integration Overview
+title: Metadata Services | `brandName` Integration Overview
 description: Browse all metadata connectors supported for ingestion, governance, and classification workflows.
 slug: /connectors/metadata
 ---

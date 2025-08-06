@@ -1,5 +1,5 @@
 ---
-title: Tableau Connector | OpenMetadata Integration Guide
+title: Tableau Connector | `brandName` Integration Guide
 description: Connect Tableau dashboards to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/dashboard/tableau
 ---

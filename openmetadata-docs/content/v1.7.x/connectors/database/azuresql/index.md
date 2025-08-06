@@ -1,5 +1,5 @@
 ---
-title: AzureSQL | OpenMetadata Connector Setup & Integration Guide
+title: AzureSQL | `brandName` Connector Setup & Integration Guide
 description: Learn how to connect Azure SQL databases to OpenMetadata with step-by-step setup guides, configuration options, and metadata extraction features.
 slug: /connectors/database/azuresql
 ---
