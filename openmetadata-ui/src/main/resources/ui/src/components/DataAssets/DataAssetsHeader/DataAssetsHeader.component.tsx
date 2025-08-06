@@ -11,20 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -69,10 +60,10 @@ import {
   getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
+import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  getDataContractStatusIcon,
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
@@ -434,18 +425,39 @@ export const DataAssetsHeader = ({
   ]);
 
   const dataContractLatestResultButton = useMemo(() => {
-    if (dataContract?.latestResult?.status === ContractExecutionStatus.Failed) {
+    if (
+      dataContract?.latestResult?.status &&
+      [
+        ContractExecutionStatus.Aborted,
+        ContractExecutionStatus.Failed,
+        ContractExecutionStatus.Running,
+      ].includes(dataContract?.latestResult?.status)
+    ) {
+      const icon = getDataContractStatusIcon(
+        dataContract?.latestResult?.status
+      );
+
       return (
-        <Tag
+        <Button
           className={classNames(
             `data-contract-latest-result-button
-                    ${dataContract?.latestResult?.status}`
-          )}>
-          {getDataContractStatusIcon(dataContract?.latestResult?.status)}
-          {t('label.entity-failed', {
+                     ${toLower(dataContract?.latestResult?.status)}`
+          )}
+          data-testid="data-contract-latest-result-btn"
+          icon={icon ? <Icon component={icon} /> : null}
+          onClick={() => {
+            navigate(
+              getEntityDetailsPath(
+                entityType,
+                dataAsset?.fullyQualifiedName ?? '',
+                EntityTabs.CONTRACT
+              )
+            );
+          }}>
+          {t(`label.entity-${toLower(dataContract?.latestResult?.status)}`, {
             entity: t('label.contract'),
           })}
-        </Tag>
+        </Button>
       );
     }
 

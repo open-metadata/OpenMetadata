@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import Icon, { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import Icon, { DownOutlined } from '@ant-design/icons';
+import { Button, Card, Dropdown, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table as TableType } from '../../../generated/entity/data/table';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
@@ -30,13 +32,11 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
-  TestCaseType,
 } from '../../../rest/testAPI';
-import { TEST_LEVEL_OPTIONS } from '../../../utils/DataQuality/DataQualityUtils';
+import { ContractTestTypeLabelMap } from '../../../utils/DataContract/DataContractUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import { SelectionCard } from '../../common/SelectionCardGroup/SelectionCardGroup';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../common/Table/Table';
@@ -51,7 +51,7 @@ export const ContractQualityFormTab: React.FC<{
   onPrev: () => void;
   prevLabel?: string;
 }> = ({ selectedQuality, onChange, onPrev, prevLabel }) => {
-  const [testType, setTestType] = useState<TestCaseType>(TestCaseType.table);
+  const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
@@ -190,6 +190,16 @@ export const ContractQualityFormTab: React.FC<{
     fetchAllTests();
   }, [testType]);
 
+  const filterMenu = useMemo(() => {
+    return {
+      items: Object.entries(ContractTestTypeLabelMap).map(([key]) => ({
+        key,
+        label: ContractTestTypeLabelMap[key as TestCaseType],
+        onClick: () => setTestType(key as TestCaseType),
+      })),
+    };
+  }, []);
+
   return (
     <Card className="contract-quality-form-tab-container container bg-grey p-box">
       <div className="d-flex justify-between">
@@ -203,7 +213,7 @@ export const ContractQualityFormTab: React.FC<{
         </div>
 
         <Button
-          className="add-test-case-button"
+          className="contract-export-button"
           data-testid="add-test-button"
           icon={<Icon className="anticon" component={PlusIcon} />}
           onClick={handleOpenTestCaseDrawer}>
@@ -214,20 +224,17 @@ export const ContractQualityFormTab: React.FC<{
       </div>
 
       <div className="contract-form-content-container ">
-        <div className="w-full selection-card-group">
-          {TEST_LEVEL_OPTIONS.map((option) => (
-            <SelectionCard
-              isSelected={testType === option.value}
-              key={option.value}
-              option={option}
-              onClick={() => setTestType(option.value as TestCaseType)}
-            />
-          ))}
-        </div>
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
           dataSource={allTestCases}
+          extraTableFilters={
+            <Dropdown menu={filterMenu}>
+              <Button icon={<DownOutlined />} type="default">
+                {t('label.filter-plural')}
+              </Button>
+            </Dropdown>
+          }
           loading={isTestsLoading}
           pagination={false}
           rowKey="id"
@@ -238,11 +245,27 @@ export const ContractQualityFormTab: React.FC<{
               handleSelection(selectedRowKeys as string[]);
             },
           }}
+          searchProps={{
+            placeholder: t('label.search-by-type', {
+              type: t('label.name'),
+            }),
+            onSearch: (value) => {
+              fetchAllTests({
+                offset: 0,
+                limit: pageSize,
+                q: value,
+              });
+            },
+          }}
         />
       </div>
 
       <div className="d-flex justify-between m-t-md">
-        <Button icon={<ArrowLeftOutlined />} type="default" onClick={onPrev}>
+        <Button
+          className="contract-prev-button"
+          icon={<LeftOutlined height={22} width={20} />}
+          type="default"
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
       </div>

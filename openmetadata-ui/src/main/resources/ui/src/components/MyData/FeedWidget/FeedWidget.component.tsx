@@ -16,7 +16,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/ic-activity-feed.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
-import { ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
@@ -73,7 +77,7 @@ const MyFeedWidgetInternal = ({
       undefined,
       undefined,
       undefined,
-      10
+      PAGE_SIZE_MEDIUM
     );
   }, [getFeedData, selectedFilter]);
 
@@ -87,7 +91,7 @@ const MyFeedWidgetInternal = ({
   }, [currentLayout, widgetKey]);
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > 10,
+    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
     [entityThread, loading]
   );
 
@@ -105,10 +109,6 @@ const MyFeedWidgetInternal = ({
     );
   }, []);
 
-  const showMoreCount = useMemo(() => {
-    return entityThread.length > 0 ? entityThread.length.toString() : '';
-  }, [entityThread]);
-
   const widgetBody = useMemo(() => {
     return (
       <>
@@ -120,7 +120,7 @@ const MyFeedWidgetInternal = ({
               <ActivityFeedListV1New
                 isFeedWidget
                 emptyPlaceholderText={t('label.no-recent-activity')}
-                feedList={entityThread}
+                feedList={entityThread.slice(0, PAGE_SIZE_BASE)}
                 hidePopover={false}
                 isFullSizeWidget={isFullSizeWidget}
                 isLoading={loading}
@@ -174,7 +174,6 @@ const MyFeedWidgetInternal = ({
 
   return (
     <WidgetWrapper
-      dataLength={entityThread.length > 0 ? entityThread.length : 10}
       dataTestId="KnowledgePanel.ActivityFeed"
       header={widgetHeader}
       loading={loading}>
@@ -186,9 +185,7 @@ const MyFeedWidgetInternal = ({
               currentUser?.name ?? '',
               EntityTabs.ACTIVITY_FEED
             )}
-            moreButtonText={t('label.view-more-count', {
-              countValue: showMoreCount,
-            })}
+            moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />
         </div>

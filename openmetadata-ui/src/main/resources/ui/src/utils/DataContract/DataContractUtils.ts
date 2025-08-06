@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import i18next from 'i18next';
+import yaml from 'js-yaml';
 import { omit } from 'lodash';
+import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
+import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
+import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
 import { ReactComponent as QualityIcon } from '../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/table-grey.svg';
@@ -22,10 +26,15 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../constants/Color.constants';
-import { DataContract } from '../../generated/entity/data/dataContract';
+import { TestCaseType } from '../../enums/TestSuite.enum';
+import {
+  ContractExecutionStatus,
+  DataContract,
+} from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { TestSummary } from '../../generated/tests/testCase';
 import { getRelativeTime } from '../date-time/DateTimeUtils';
+import i18n from '../i18next/LocalUtil';
 
 export const getConstraintStatus = (
   latestContractResults: DataContractResult
@@ -182,4 +191,34 @@ export const getUpdatedContractDetails = (
     'latestResult',
     'incrementalChangeDescription',
   ]);
+};
+
+export const downloadContractYamlFile = (contract: DataContract) => {
+  const data = yaml.dump(getUpdatedContractDetails(contract, contract));
+  const element = document.createElement('a');
+  const file = new Blob([data], { type: 'text/plain' });
+  element.textContent = 'download-file';
+  element.href = URL.createObjectURL(file);
+  element.download = `${contract.name}.yaml`;
+  document.body.appendChild(element);
+  element.click();
+
+  URL.revokeObjectURL(element.href);
+  document.body.removeChild(element);
+};
+
+export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
+  return status === ContractExecutionStatus.Failed
+    ? ContractFailedIcon
+    : status === ContractExecutionStatus.Aborted
+    ? ContractAbortedIcon
+    : status === ContractExecutionStatus.Running
+    ? ContractRunningIcon
+    : null;
+};
+
+export const ContractTestTypeLabelMap = {
+  [TestCaseType.all]: i18n.t('label.all'),
+  [TestCaseType.table]: i18n.t('label.table'),
+  [TestCaseType.column]: i18n.t('label.column'),
 };
