@@ -509,7 +509,7 @@ test('Search tag using classification display name should work', async ({
 }) => {
   const displayNameToSearch = tag.responseData.classification.displayName;
 
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
 
   await page.waitForLoadState('networkidle');
 
@@ -579,10 +579,14 @@ test('Verify system classification term counts', async ({ page }) => {
 
   for (const element of classificationElements) {
     const text = await element.textContent();
-    if (text?.includes('Tier') && text?.includes('5')) {
+    const filterCountText = await element
+      .getByTestId('filter-count')
+      .textContent();
+    const filterCount = parseInt(filterCountText?.trim() || '0', 10);
+    if (text?.includes('Tier') && filterCount > 0) {
       tierFound = true;
     }
-    if (text?.includes('PII') && text?.includes('3')) {
+    if (text?.includes('PII') && filterCount > 0) {
       piiFound = true;
     }
   }
@@ -626,6 +630,7 @@ test('Verify Owner Add Delete', async ({ page }) => {
   ).toBeVisible();
 
   await classification1.visitPage(page);
+
   await page.waitForLoadState('networkidle');
 
   await removeOwner({

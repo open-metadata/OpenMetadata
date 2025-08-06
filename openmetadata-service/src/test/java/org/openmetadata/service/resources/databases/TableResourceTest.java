@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.recordToString;
 import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
@@ -116,6 +117,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -126,6 +128,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
@@ -178,6 +181,7 @@ import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TableRepository.TableCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
@@ -2568,6 +2572,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_multipleDomainInheritance(TestInfo test) throws IOException {
+    toggleMultiDomainSupport(false); // Disable multi-domain support for this test
     // Test inheritance of multiple domains from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest
@@ -2606,6 +2611,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     verifyDomainsInSearch(
         table.getEntityReference(),
         List.of(DOMAIN.getEntityReference(), DOMAIN1.getEntityReference()));
+
+    toggleMultiDomainSupport(true);
   }
 
   @Test
@@ -3966,7 +3973,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<Column> columns = new ArrayList<>();
 
     columns.add(
-        getColumn("user_id", INT, null)
+        getColumn("user_id", INT, USER_ADDRESS_TAG_LABEL)
             .withOrdinalPosition(1)
             .withDescription("Primary key for user identification"));
     columns.add(
@@ -4062,13 +4069,75 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(0, response.getData().size());
     assertEquals(0, response.getPaging().getTotal());
 
+    // Create a custom metric for testing
+    CreateCustomMetric customMetric = new CreateCustomMetric();
+    customMetric
+        .withName("TestMetric")
+        .withDescription("Test custom metric")
+        .withColumnName("user_id")
+        .withExpression("SELECT COUNT(*) FROM test");
+    putCustomMetric(table.getId(), customMetric, ADMIN_AUTH_HEADERS);
+
+    // Test search with tags field
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "tags");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    Column column = response.getData().getFirst();
+    assertEquals("user_id", column.getName());
+    assertNotNull(column.getTags(), "Column tags should not be null");
+    assertFalse(column.getTags().isEmpty(), "Column tags should not be empty");
+    assertEquals(1, column.getTags().size(), "Column should have exactly 1 tag");
+    TagLabel expectedTag = USER_ADDRESS_TAG_LABEL;
+    TagLabel actualTag = column.getTags().getFirst();
+    assertEquals(expectedTag.getTagFQN(), actualTag.getTagFQN(), "Tag FQN should match");
+
+    // Test search with customMetrics field
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "customMetrics");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    column = response.getData().getFirst();
+    assertEquals("user_id", column.getName());
+    assertNotNull(column.getCustomMetrics(), "Column custom metrics should not be null");
+    assertFalse(column.getCustomMetrics().isEmpty(), "Column custom metrics should not be empty");
+    assertEquals(1, column.getCustomMetrics().size(), "Column should have exactly 1 custom metric");
+    CustomMetric actualMetric = column.getCustomMetrics().getFirst();
+    assertEquals(customMetric.getName(), actualMetric.getName(), "Custom metric name should match");
+
+    // Test search with both fields together
     target =
         getResource("tables/" + table.getId() + "/columns/search")
             .queryParam("q", "user_id")
             .queryParam("fields", "tags,customMetrics");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(1, response.getData().size());
-    assertNotNull(response.getData().get(0)); // Should include requested fields
+    column = response.getData().getFirst();
+    assertEquals("user_id", column.getName());
+    // Verify tags
+    assertNotNull(column.getTags(), "Column tags should not be null");
+    assertFalse(column.getTags().isEmpty(), "Column tags should not be empty");
+    assertEquals(1, column.getTags().size(), "Column should have exactly 1 tag");
+    actualTag = column.getTags().getFirst();
+    assertEquals(expectedTag.getTagFQN(), actualTag.getTagFQN(), "Tag FQN should match");
+    // Verify custom metrics
+    assertNotNull(column.getCustomMetrics(), "Column custom metrics should not be null");
+    assertFalse(column.getCustomMetrics().isEmpty(), "Column custom metrics should not be empty");
+    assertEquals(1, column.getCustomMetrics().size(), "Column should have exactly 1 custom metric");
+    actualMetric = column.getCustomMetrics().getFirst();
+    assertEquals(customMetric.getName(), actualMetric.getName(), "Custom metric name should match");
+
+    target =
+        getResource("tables/" + table.getId() + "/columns/search")
+            .queryParam("q", "user_id")
+            .queryParam("fields", "tags,customMetrics");
+    response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(1, response.getData().size());
+    assertNotNull(response.getData().getFirst()); // Should include requested fields
 
     final WebTarget invalidTarget =
         getResource("tables/" + table.getId() + "/columns/search")
@@ -5746,6 +5815,116 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  @Order(2)
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel tableTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    List<Table> createdTables = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("col1_" + i, BIGINT, null).withTags(List.of(columnTagLabel)),
+              getColumn("col2_" + i, VARCHAR, null).withDataLength(50));
+
+      CreateTable createTable =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withColumns(columns)
+              .withTags(List.of(tableTagLabel))
+              .withTableConstraints(null);
+
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      createdTables.add(table);
+    }
+
+    // Test pagination with fields=tags (should fetch table-level tags only)
+    WebTarget target =
+        getResource("tables")
+            .queryParam("fields", "tags")
+            .queryParam("limit", "50")
+            .queryParam(
+                "databaseSchema",
+                DATABASE_SCHEMA.getFullyQualifiedName()); // Filter by schema to get our tables
+
+    TableList tableList = TestUtils.get(target, TableList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(tableList.getData());
+
+    List<Table> ourTables =
+        tableList.getData().stream()
+            .filter(t -> createdTables.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTables.isEmpty(), "Should find at least one of our created tables in pagination");
+
+    for (Table table : ourTables) {
+      assertNotNull(
+          table.getTags(), "Table-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, table.getTags().size(), "Should have exactly one table-level tag");
+      assertEquals(tableTagLabel.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+      if (table.getColumns() != null) {
+        for (Column col : table.getColumns()) {
+          assertTrue(
+              col.getTags() == null || col.getTags().isEmpty(),
+              "Column tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    target =
+        getResource("tables")
+            .queryParam("fields", "columns,tags")
+            .queryParam("limit", "50")
+            .queryParam(
+                "databaseSchema",
+                DATABASE_SCHEMA.getFullyQualifiedName()); // Filter by schema to get our tables
+
+    tableList = TestUtils.get(target, TableList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(tableList.getData());
+
+    ourTables =
+        tableList.getData().stream()
+            .filter(t -> createdTables.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTables.isEmpty(), "Should find at least one of our created tables in pagination");
+
+    for (Table table : ourTables) {
+      assertNotNull(
+          table.getTags(), "Table-level tags should not be null in pagination with columns,tags");
+      assertEquals(1, table.getTags().size(), "Should have exactly one table-level tag");
+      assertEquals(tableTagLabel.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+      assertNotNull(table.getColumns(), "Columns should not be null when fields includes columns");
+      Column col1 =
+          table.getColumns().stream()
+              .filter(c -> c.getName().startsWith("col1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col1 column"));
+
+      assertNotNull(
+          col1.getTags(), "Column tags should not be null when fields=columns,tags in pagination");
+      assertTrue(!col1.getTags().isEmpty(), "Column should have at least one tag");
+      // Check that our expected tag is present
+      boolean hasExpectedTag =
+          col1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(columnTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Column should have the expected tag: " + columnTagLabel.getTagFQN());
+
+      Column col2 =
+          table.getColumns().stream()
+              .filter(c -> c.getName().startsWith("col2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col2 column"));
+
+      assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
+    }
+  }
+
+  @Test
   void test_compositeKeyConstraintIndexOutOfBounds_fixed(TestInfo test) throws IOException {
     // Create a schema for this test to avoid conflicts
     CreateDatabaseSchema createSchema = schemaTest.createRequest("composite_key_test_schema");
@@ -5820,5 +5999,59 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table fetchedTable = getEntity(updatedTable.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(fetchedTable.getTableConstraints());
     assertEquals(1, fetchedTable.getTableConstraints().size());
+  }
+
+  @Test
+  void testTableDomainAndDataProductOperations(TestInfo test) throws IOException {
+    Table table = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertTrue(nullOrEmpty(table.getDomains()));
+
+    DomainResourceTest domainTest = new DomainResourceTest();
+    CreateDomain createDomain = domainTest.createRequest("test-domain-" + test.getDisplayName());
+    Domain domain = domainTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(domain.getEntityReference()));
+
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    fieldAdded(change, "domains", List.of(domain.getEntityReference()));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertNotNull(table.getDomains());
+    assertEquals(1, table.getDomains().size());
+    assertEquals(domain.getId(), table.getDomains().get(0).getId());
+
+    // Adding another domain should fail with the default entity rules settings
+    CreateDomain createDomain2 = domainTest.createRequest("test-domain-2-" + test.getDisplayName());
+    Domain domain2 = domainTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
+
+    String currentJson = JsonUtils.pojoToJson(table);
+    table.setDomains(List.of(domain.getEntityReference(), domain2.getEntityReference()));
+
+    Table finalTable = table;
+    assertResponse(
+        () -> patchEntity(finalTable.getId(), currentJson, finalTable, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        MULTIDOMAIN_RULE_ERROR);
+
+    Table refreshedTable = getEntity(table.getId(), ADMIN_AUTH_HEADERS);
+
+    DataProductResourceTest dataProductTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        dataProductTest
+            .createRequest("test-data-product-" + test.getDisplayName())
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withAssets(List.of(refreshedTable.getEntityReference()));
+
+    DataProduct dataProduct = dataProductTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Verify data product was created successfully
+    assertNotNull(dataProduct);
+    assertNotNull(dataProduct.getAssets());
+    assertEquals(1, dataProduct.getAssets().size());
+    assertEquals(refreshedTable.getId(), dataProduct.getAssets().get(0).getId());
+    assertNotNull(dataProduct.getDomains());
+    assertEquals(1, dataProduct.getDomains().size());
+    assertEquals(domain.getId(), dataProduct.getDomains().get(0).getId());
   }
 }

@@ -1,5 +1,6 @@
 ---
 title: Create Data Product | OpenMetadata Data Product API
+description: Define a new data product within a domain to encapsulate curated, reusable datasets and their metadata context.
 slug: /main-concepts/metadata-standard/schemas/api/domains/createdataproduct
 ---
 

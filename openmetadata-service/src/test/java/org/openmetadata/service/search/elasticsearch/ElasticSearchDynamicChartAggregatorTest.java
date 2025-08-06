@@ -79,7 +79,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
         new HashMap<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder);
+        aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder, false);
 
     return expectedSearchRequest.equals(searchRequest);
   }

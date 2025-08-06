@@ -374,7 +374,7 @@ export interface Pipeline {
     /**
      * Pipeline type
      */
-    type?: ConfigType;
+    type?: FluffyType;
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
@@ -783,6 +783,10 @@ export interface Pipeline {
  *
  * Regex to only fetch api collections with names matching the pattern.
  *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
+ *
  * Regex to only fetch tags that matches the pattern.
  */
 export interface FilterPattern {
@@ -1146,7 +1150,7 @@ export interface PropagationStopConfig {
  */
 export enum MetadataAttribute {
     Description = "description",
-    Domain = "domain",
+    Domains = "domains",
     GlossaryTerms = "glossaryTerms",
     Owner = "owner",
     Tags = "tags",
@@ -2050,15 +2054,24 @@ export interface ProcessingEngine {
     /**
      * The type of the engine configuration
      */
-    type: ProcessingEngineType;
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    config?: { [key: string]: any };
+    type:    ProcessingEngineType;
+    config?: Config;
     /**
      * Spark Connect Remote URL.
      */
     remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2116,6 +2129,8 @@ export interface ServiceConnections {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
  */
 export interface ServiceConnection {
     config?: ConfigClass;
@@ -2250,6 +2265,8 @@ export interface ServiceConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2336,6 +2353,8 @@ export interface ServiceConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
  */
 export interface ConfigClass {
     /**
@@ -2391,7 +2410,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -2538,6 +2557,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?: string;
     /**
@@ -2796,6 +2817,8 @@ export interface ConfigClass {
      * Choose Auth Config Type.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -2959,6 +2982,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -2986,6 +3011,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -3004,6 +3031,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -3356,6 +3386,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3835,6 +3873,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -3843,12 +3885,16 @@ export interface AuthenticationTypeForTableau {
      * Password to connect to source.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?: string;
     /**
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -4963,6 +5009,15 @@ export interface ElasticsSearch {
 }
 
 /**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
+}
+
+/**
  * Credentials to extract the .lkml files from a repository. This is required to get all the
  * lineage and definitions.
  *
@@ -5605,8 +5660,10 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
  */
-export enum RESTType {
+export enum PurpleType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5644,6 +5701,7 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
@@ -5683,6 +5741,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -5784,7 +5843,7 @@ export interface StorageMetadataBucketDetails {
  *
  * Reverse Ingestion Config Pipeline type
  */
-export enum ConfigType {
+export enum FluffyType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
     AutoClassification = "AutoClassification",

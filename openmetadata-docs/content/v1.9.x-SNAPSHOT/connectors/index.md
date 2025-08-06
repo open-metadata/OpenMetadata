@@ -1,6 +1,6 @@
 ---
-title: Connectors | OpenMetadata Docs for Seamless Data Integration
-description: Explore OpenMetadata's comprehensive connector library to integrate with databases, dashboards, pipelines, and ML platforms. Easy setup guides included.
+title: Connectors | `brandName` Docs for Seamless Data Integration
+description: Explore `brandName`'s comprehensive connector library to integrate with databases, dashboards, pipelines, and ML platforms. Easy setup guides included.
 slug: /connectors
 ---
 
@@ -100,6 +100,10 @@ Set up auto-classification to detect and tag sensitive data automatically.
 ## Metadata Services
 
 {% partial file="/v1.9/connectors/metadata/connectors-list.md" /%}
+
+## Security Services
+
+{% partial file="/v1.9/connectors/security/connectors-list.md" /%}
 
 ## Search Services
 

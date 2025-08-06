@@ -29,6 +29,7 @@ import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { ServicesType } from '../interface/service.interface';
 import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
 import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
+import ChartDetailsPage from '../pages/ChartDetailsPage/ChartDetailsPage.component';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
@@ -132,6 +133,14 @@ class EntityUtilClassBase {
       case EntityType.DASHBOARD:
         return getEntityDetailsPath(
           EntityType.DASHBOARD,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.CHART:
+        return getEntityDetailsPath(
+          EntityType.CHART,
           fullyQualifiedName,
           tab,
           subTab
@@ -349,6 +358,8 @@ class EntityUtilClassBase {
         return TopicDetailsPage;
       case EntityType.DASHBOARD:
         return DashboardDetailsPage;
+      case EntityType.CHART:
+        return ChartDetailsPage;
       case EntityType.STORED_PROCEDURE:
         return StoredProcedurePage;
       case EntityType.DASHBOARD_DATA_MODEL:
@@ -385,6 +396,9 @@ class EntityUtilClassBase {
       }
       case EntityType.DASHBOARD: {
         return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.CHART: {
+        return ResourceEntity.CHART;
       }
       case EntityType.PIPELINE: {
         return ResourceEntity.PIPELINE;
