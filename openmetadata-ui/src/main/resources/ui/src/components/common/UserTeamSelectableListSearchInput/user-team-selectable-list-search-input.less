@@ -10,6 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
 .user-team-selectable-list-search-input-popover {
   width: 600px;
+}
+
+.select-owners {
+  .assignee-tag {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+    background: @white;
+    padding: 2px 12px;
+    height: 28px;
+
+    border-radius: 6px;
+    gap: 4px;
+    border: 1px solid @grey-300;
+
+    .ant-typography {
+      font-size: 14px;
+      font-weight: 500;
+      color: @grey-700;
+    }
+
+    .anticon {
+      color: @grey-400;
+      font-weight: 500;
+      font-size: 10px;
+    }
+
+    .ant-select-selection-item-content {
+      display: flex;
+      align-items: center;
+    }
+
+    .ant-select-selection-item-remove {
+      margin-top: 2px;
+    }
+  }
 }

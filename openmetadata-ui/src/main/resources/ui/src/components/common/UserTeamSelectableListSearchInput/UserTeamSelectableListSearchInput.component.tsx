@@ -131,8 +131,8 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
         onUpdate={handleUpdate}>
         <Select
           showSearch
-          className="ant-select-custom select-assignee"
-          data-testid="select-assignee"
+          className="ant-select-custom select-owners"
+          data-testid="select-owners"
           defaultActiveFirstOption={false}
           disabled={disabled}
           filterOption={false}
