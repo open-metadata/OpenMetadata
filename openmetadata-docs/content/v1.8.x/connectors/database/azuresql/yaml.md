@@ -1,6 +1,6 @@
 ---
 title: Run the AzureSQL Connector Externally
-description: Configure Azure SQL database connections in OpenMetadata with our comprehensive YAML setup guide. Step-by-step instructions for seamless data integration.
+description: Configure Azure SQL database connections in `brandName` with our comprehensive YAML setup guide. Step-by-step instructions for seamless data integration.
 slug: /connectors/database/azuresql/yaml
 ---
 
