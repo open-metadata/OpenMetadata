@@ -27,9 +27,7 @@ from metadata.generated.schema.api.automations.createWorkflow import (
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.automations.workflow import (
-    WorkflowStatus,
-)
+from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
     TestConnectionDefinition,
 )
