@@ -5316,6 +5316,28 @@ public interface CollectionDAO {
     void updateLastActivityTimeBulk(
         @Define("caseStatements") String caseStatements,
         @BindList("nameHashes") List<String> nameHashes);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT CAST(JSON_EXTRACT(json, '$.lastActivityTime') AS UNSIGNED) as lastActivity "
+                + "FROM user_entity "
+                + "WHERE JSON_EXTRACT(json, '$.isBot') = false "
+                + "AND JSON_EXTRACT(json, '$.lastActivityTime') IS NOT NULL "
+                + "AND deleted = false "
+                + "ORDER BY CAST(JSON_EXTRACT(json, '$.lastActivityTime') AS UNSIGNED) DESC "
+                + "LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT CAST(json->>'lastActivityTime' AS BIGINT) as lastActivity "
+                + "FROM user_entity "
+                + "WHERE (json->>'isBot')::boolean = false "
+                + "AND json->>'lastActivityTime' IS NOT NULL "
+                + "AND deleted = false "
+                + "ORDER BY CAST(json->>'lastActivityTime' AS BIGINT) DESC "
+                + "LIMIT 1",
+        connectionType = POSTGRES)
+    Long getMaxLastActivityTime();
   }
 
   interface ChangeEventDAO {

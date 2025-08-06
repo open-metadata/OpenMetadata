@@ -201,7 +201,12 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
-    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public AppRunRecord getLatestAppRuns(App app, UUID service) {
+    return getLatestExtensionById(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRunsAfterStartTime(App app, long startTime) {
@@ -350,11 +355,11 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public <T> T getLatestExtensionById(
-      App app, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
     List<String> result =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString());
+            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString(), service);
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }

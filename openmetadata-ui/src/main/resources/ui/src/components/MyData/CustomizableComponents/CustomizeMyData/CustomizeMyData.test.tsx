@@ -176,6 +176,17 @@ jest.mock('../CustomiseLandingPageHeader/CustomiseLandingPageHeader', () =>
     ))
 );
 
+jest.mock(
+  '../../../../components/common/NavigationBlocker/NavigationBlocker',
+  () => ({
+    NavigationBlocker: jest
+      .fn()
+      .mockImplementation(({ children }) => (
+        <div data-testid="navigation-blocker">{children}</div>
+      )),
+  })
+);
+
 describe('CustomizeMyData component', () => {
   it('CustomizeMyData should render the widgets in the page config', async () => {
     await act(async () => {
