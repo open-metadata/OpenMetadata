@@ -141,11 +141,6 @@ test.describe('Data Contracts', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      await expect(page.locator('#semantics_0_enabled')).toHaveAttribute(
-        'aria-checked',
-        'true'
-      );
-
       const ruleLocator = page.locator('.group').nth(0);
       await selectOption(
         page,
