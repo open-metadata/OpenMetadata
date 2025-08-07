@@ -321,14 +321,6 @@ export const useSemanticsRuleList = ({
     });
   };
 
-  //   const handleEditSemanticsRule = (semanticsRule: SemanticsRule) => {
-  //     setAddEditSemanticsRule(semanticsRule);
-  //   };
-
-  //   const handleDelete = (semanticsRule: SemanticsRule) => {
-  //     setDeleteSemanticsRule(semanticsRule);
-  //   };
-
   const onConfirmDelete = async (semanticsRule: SemanticsRule) => {
     const updatedSemanticsRules = semanticsRules.filter(
       (rule) => rule.name !== semanticsRule.name
@@ -363,29 +355,6 @@ export const useSemanticsRuleList = ({
         />
       ),
     },
-    // Hidden for now - Actions column with edit and delete buttons
-    // {
-    //   title: t('label.action'),
-    //   dataIndex: 'actions',
-    //   render: (_: unknown, record: SemanticsRule) => (
-    //     <Space className="custom-icon-button">
-    //       <Button
-    //         className="text-secondary p-0 remove-button-background-hover"
-    //         disabled={record.provider === ProviderType.System}
-    //         icon={<Icon component={IconEdit} />}
-    //         type="text"
-    //         onClick={() => handleEditSemanticsRule(record)}
-    //       />
-    //       <Button
-    //         className="text-secondary p-0 remove-button-background-hover"
-    //         disabled={record.provider === ProviderType.System}
-    //         icon={<Icon component={IconDelete} />}
-    //         type="text"
-    //         onClick={() => handleDelete(record)}
-    //       />
-    //     </Space>
-    //   ),
-    // },
   ];
 
   const dataAssetRuleList = useMemo(() => {
@@ -440,12 +409,7 @@ export const useSemanticsRuleList = ({
   );
 
   return {
-    addSemanticsRuleButton: null, // Hidden for now
-    // addSemanticsRuleButton: (
-    //   <Button type="primary" onClick={handleAddDataAssetRule}>
-    //     {t('label.add-data-asset-rule')}
-    //   </Button>
-    // ),
+    addSemanticsRuleButton: null,
     semanticsRuleList: (
       <>
         {quickAddSemanticsRule || dataAssetRuleList}
