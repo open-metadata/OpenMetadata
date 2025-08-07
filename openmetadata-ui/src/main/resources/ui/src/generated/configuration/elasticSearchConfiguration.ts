@@ -112,6 +112,10 @@ export interface Bedrock {
      */
     accessKey?: string;
     /**
+     * Dimension of the embedding vector
+     */
+    embeddingDimension?: number;
+    /**
      * Bedrock embedding model identifier to use for vector search
      */
     embeddingModelId?: string;
