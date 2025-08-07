@@ -168,7 +168,7 @@ services.forEach((ServiceClass) => {
             page
               .getByTestId('total-data-assets-widget')
               .getByTestId('Database Schema-count')
-          ).toHaveText('1');
+          ).toHaveText('2');
           await expect(
             page
               .getByTestId('total-data-assets-widget')
