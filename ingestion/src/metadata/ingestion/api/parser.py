@@ -30,6 +30,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.driveService import (
+    DriveConnection,
+    DriveServiceType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -103,6 +107,10 @@ from metadata.generated.schema.metadataIngestion.dbtPipeline import (
     DbtConfigType,
     DbtPipeline,
 )
+from metadata.generated.schema.metadataIngestion.driveServiceMetadataPipeline import (
+    DriveMetadataConfigType,
+    DriveServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipeline import (
     MessagingMetadataConfigType,
     MessagingServiceMetadataPipeline,
@@ -153,6 +161,7 @@ SERVICE_TYPE_MAP = {
     **{service: StorageConnection for service in StorageServiceType.__members__},
     **{service: SearchConnection for service in SearchServiceType.__members__},
     **{service: SecurityConnection for service in SecurityServiceType.__members__},
+    **{service: DriveConnection for service in DriveServiceType.__members__},
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
@@ -167,6 +176,7 @@ SOURCE_CONFIG_CLASS_MAP = {
     StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
     SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
     SecurityMetadataConfigType.SecurityMetadata.value: SecurityServiceMetadataPipeline,
+    DriveMetadataConfigType.DriveMetadata.value: DriveServiceMetadataPipeline,
     DbtConfigType.DBT.value: DbtPipeline,
 }
 
@@ -200,6 +210,7 @@ def get_service_type(
     Type[MetadataConnection],
     Type[PipelineConnection],
     Type[MlModelConnection],
+    Type[DriveConnection],
 ]:
     """
     Return the service type for a source string
@@ -225,6 +236,7 @@ def get_source_config_class(
     Type[PipelineServiceMetadataPipeline],
     Type[MlModelServiceMetadataPipeline],
     Type[DatabaseServiceMetadataPipeline],
+    Type[DriveServiceMetadataPipeline],
     Type[DbtPipeline],
 ]:
     """
@@ -250,6 +262,7 @@ def get_connection_class(
         Type[MetadataConnection],
         Type[PipelineConnection],
         Type[MlModelConnection],
+        Type[DriveConnection],
     ],
 ) -> Type[T]:
     """
