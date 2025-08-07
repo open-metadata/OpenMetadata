@@ -400,7 +400,9 @@ entities.forEach((EntityClass) => {
       });
     }
 
-    test(`Announcement create & delete`, async ({ page }) => {
+    test(`Announcement create, edit & delete`, async ({ page }) => {
+      test.slow();
+
       await entity.announcement(page);
     });
 
