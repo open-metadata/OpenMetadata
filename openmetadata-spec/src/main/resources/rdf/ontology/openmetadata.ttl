@@ -136,7 +136,8 @@ om:Query a owl:Class ;
 
 om:Dashboard a owl:Class ;
     rdfs:label "Dashboard" ;
-    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+    rdfs:comment "Dashboard for data visualization" ;
+    rdfs:subClassOf om:DataAsset .
 
 om:Chart a owl:Class ;
     rdfs:label "Chart" ;
@@ -144,7 +145,8 @@ om:Chart a owl:Class ;
 
 om:Report a owl:Class ;
     rdfs:label "Report" ;
-    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+    rdfs:comment "Report as a specific representation of data" ;
+    rdfs:subClassOf om:DataAsset, dcat:Distribution .
 
 om:Metric a owl:Class ;
     rdfs:label "Metric" ;
@@ -160,15 +162,18 @@ om:Task a owl:Class ;
 
 om:Topic a owl:Class ;
     rdfs:label "Topic" ;
-    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+    rdfs:comment "Message topic providing streaming data access" ;
+    rdfs:subClassOf om:DataAsset, dcat:DataService .
 
 om:MLModel a owl:Class ;
     rdfs:label "ML Model" ;
-    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+    rdfs:comment "Machine learning model providing inference service" ;
+    rdfs:subClassOf om:DataAsset, dcat:DataService .
 
 om:Container a owl:Class ;
     rdfs:label "Container" ;
-    rdfs:subClassOf om:DataAsset, dcat:Dataset .
+    rdfs:comment "Storage container organizing multiple datasets" ;
+    rdfs:subClassOf om:DataAsset, dcat:Catalog .
 
 om:SearchIndex a owl:Class ;
     rdfs:label "Search Index" ;
@@ -177,7 +182,7 @@ om:SearchIndex a owl:Class ;
 om:APICollection a owl:Class ;
     rdfs:label "API Collection" ;
     rdfs:comment "Collection of API endpoints" ;
-    rdfs:subClassOf om:DataAsset, dcat:DataService .
+    rdfs:subClassOf om:DataAsset, dcat:Catalog .
 
 om:APIDocumentation a owl:Class ;
     rdfs:label "API Documentation" ;
@@ -186,8 +191,8 @@ om:APIDocumentation a owl:Class ;
 
 om:APIEndpoint a owl:Class ;
     rdfs:label "API Endpoint" ;
-    rdfs:comment "Individual API endpoint" ;
-    rdfs:subClassOf om:DataAsset, dcat:Distribution .
+    rdfs:comment "API endpoint providing data access service" ;
+    rdfs:subClassOf om:DataAsset, dcat:DataService .
 
 om:Directory a owl:Class ;
     rdfs:label "Directory" ;
@@ -1177,32 +1182,32 @@ om:hasOutputPort a owl:ObjectProperty ;
 om:portName a owl:DatatypeProperty ;
     rdfs:label "port name" ;
     rdfs:comment "Name of the port" ;
-    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:string .
 
 om:portProtocol a owl:DatatypeProperty ;
     rdfs:label "port protocol" ;
     rdfs:comment "Protocol used by the port (REST, GRPC, KAFKA, etc.)" ;
-    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:string .
 
 om:portFormat a owl:DatatypeProperty ;
     rdfs:label "port format" ;
     rdfs:comment "Data format supported by the port (JSON, CSV, PARQUET, etc.)" ;
-    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:string .
 
 om:portEndpoint a owl:DatatypeProperty ;
     rdfs:label "port endpoint" ;
     rdfs:subPropertyOf dcat:endpointURL ;
     rdfs:comment "Endpoint URL or connection string for the port" ;
-    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range xsd:anyURI .
 
 om:portDataAsset a owl:ObjectProperty ;
     rdfs:label "port data asset" ;
     rdfs:comment "Data asset exposed through this port" ;
-    rdfs:domain [ owl:unionOf (om:InputPort om:OutputPort) ] ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( om:InputPort om:OutputPort ) ] ;
     rdfs:range om:DataAsset .
 
 om:lifecycleStage a owl:DatatypeProperty ;
@@ -1485,5 +1490,3 @@ om:apiDocumentation a owl:ObjectProperty ;
     rdfs:comment "Link to API documentation" ;
     rdfs:domain om:DataService ;
     rdfs:range foaf:Document .
-    rdfs:domain om:Entity ;
-    rdfs:range xsd:dateTime .

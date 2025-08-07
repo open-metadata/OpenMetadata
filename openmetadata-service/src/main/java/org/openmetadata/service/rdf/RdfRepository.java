@@ -12,6 +12,9 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
@@ -142,16 +145,88 @@ public class RdfRepository {
     }
 
     try {
-      storageService.storeRelationship(
-          relationship.getFromEntity(),
-          relationship.getFromId(),
-          relationship.getToEntity(),
-          relationship.getToId(),
-          relationship.getRelationshipType().value());
+      // Create a model for the relationship with proper RDF predicates
+      Model relationshipModel = createRelationshipModel(relationship);
+
+      // Store the relationship model
+      String fromUri =
+          config.getBaseUri().toString()
+              + "entity/"
+              + relationship.getFromEntity()
+              + "/"
+              + relationship.getFromId();
+      String toUri =
+          config.getBaseUri().toString()
+              + "entity/"
+              + relationship.getToEntity()
+              + "/"
+              + relationship.getToId();
+
+      // Add to the entity's graph
+      Model fromEntityModel =
+          storageService.getEntity(relationship.getFromEntity(), relationship.getFromId());
+      fromEntityModel.add(relationshipModel);
+      storageService.storeEntity(
+          relationship.getFromEntity(), relationship.getFromId(), fromEntityModel);
+
       LOG.debug("Added relationship {} to RDF store", relationship);
     } catch (Exception e) {
       LOG.error("Failed to add relationship to RDF", e);
     }
+  }
+
+  private Model createRelationshipModel(EntityRelationship relationship) {
+    Model model = ModelFactory.createDefaultModel();
+
+    // Set namespace prefixes
+    model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+    model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
+    model.setNsPrefix("dct", "http://purl.org/dc/terms/");
+
+    String fromUri =
+        config.getBaseUri().toString()
+            + "entity/"
+            + relationship.getFromEntity()
+            + "/"
+            + relationship.getFromId();
+    String toUri =
+        config.getBaseUri().toString()
+            + "entity/"
+            + relationship.getToEntity()
+            + "/"
+            + relationship.getToId();
+
+    Resource fromResource = model.createResource(fromUri);
+    Resource toResource = model.createResource(toUri);
+
+    // Map relationship type to RDF predicate based on entityRelationship context
+    String relationshipType = relationship.getRelationshipType().value();
+    Property predicate = getRelationshipPredicate(relationshipType, model);
+
+    // Add the relationship triple
+    fromResource.addProperty(predicate, toResource);
+
+    return model;
+  }
+
+  private Property getRelationshipPredicate(String relationshipType, Model model) {
+    // Map OpenMetadata relationship types to RDF predicates from context
+    return switch (relationshipType.toLowerCase()) {
+      case "contains" -> model.createProperty("https://open-metadata.org/ontology/", "contains");
+      case "uses" -> model.createProperty("http://www.w3.org/ns/prov#", "used");
+      case "owns" -> model.createProperty("https://open-metadata.org/ontology/", "owns");
+      case "parentof" -> model.createProperty("https://open-metadata.org/ontology/", "parentOf");
+      case "childof" -> model.createProperty("https://open-metadata.org/ontology/", "childOf");
+      case "relatedto" -> model.createProperty("https://open-metadata.org/ontology/", "relatedTo");
+      case "appliedto" -> model.createProperty("https://open-metadata.org/ontology/", "appliedTo");
+      case "testedby" -> model.createProperty("https://open-metadata.org/ontology/", "testedBy");
+      case "upstream" -> model.createProperty("http://www.w3.org/ns/prov#", "wasDerivedFrom");
+      case "downstream" -> model.createProperty("http://www.w3.org/ns/prov#", "wasInfluencedBy");
+      case "joinedwith" -> model.createProperty(
+          "https://open-metadata.org/ontology/", "joinedWith");
+      case "processedby" -> model.createProperty("http://www.w3.org/ns/prov#", "wasGeneratedBy");
+      default -> model.createProperty("https://open-metadata.org/ontology/", relationshipType);
+    };
   }
 
   public void bulkAddRelationships(List<EntityRelationship> relationships) {
@@ -214,8 +289,12 @@ public class RdfRepository {
     }
 
     try {
+      // Get entity to convert to JSON-LD directly
       EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
+
+      // Convert directly to JSON-LD without going through RDF model
       return translator.toJsonLdString(entity, true);
+
     } catch (EntityNotFoundException e) {
       throw e;
     } catch (Exception e) {
@@ -229,17 +308,30 @@ public class RdfRepository {
       throw new IllegalStateException("RDF not enabled");
     }
 
-    Model model = storageService.getEntity(entityType, entityId);
-    if (model.isEmpty()) {
-      throw new EntityNotFoundException(
-          String.format("Entity %s not found in RDF store", entityId));
+    try {
+      // Get the entity and convert to RDF
+      EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
+      Model rdfModel = translator.toRdf(entity);
+
+      // Convert model to requested format
+      java.io.StringWriter writer = new java.io.StringWriter();
+      String rdfFormat =
+          switch (format.toLowerCase()) {
+            case "turtle", "ttl" -> "TURTLE";
+            case "rdfxml", "xml" -> "RDF/XML";
+            case "ntriples", "nt" -> "N-TRIPLES";
+            default -> "TURTLE";
+          };
+
+      rdfModel.write(writer, rdfFormat);
+      return writer.toString();
+
+    } catch (EntityNotFoundException e) {
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to get entity {} as RDF", entityId, e);
+      throw new RuntimeException("Failed to get entity as RDF", e);
     }
-
-    String entityUri = config.getBaseUri().toString() + "entity/" + entityType + "/" + entityId;
-    String sparql =
-        String.format("CONSTRUCT { <%s> ?p ?o } WHERE { <%s> ?p ?o }", entityUri, entityUri);
-
-    return storageService.executeSparqlQuery(sparql, format);
   }
 
   public String executeSparqlQuery(String query, String format) {

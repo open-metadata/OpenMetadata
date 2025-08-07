@@ -1,12 +1,15 @@
 package org.openmetadata.service.rdf.translator;
 
+import com.apicatalog.jsonld.JsonLd;
+import com.apicatalog.jsonld.JsonLdError;
+import com.apicatalog.jsonld.document.JsonDocument;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.jsonldjava.core.JsonLdError;
-import com.github.jsonldjava.utils.JsonUtils;
+import jakarta.json.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,8 +36,14 @@ public class JsonLdTranslator {
   }
 
   private void loadContexts() {
+    try {
+      Object baseContext = loadBaseContext();
+      contextCache.put("base", baseContext);
+    } catch (Exception e) {
+      LOG.error("Failed to load base context", e);
+    }
+
     String[] contexts = {
-      "base",
       "dataAsset-complete",
       "service",
       "team",
@@ -54,30 +63,143 @@ public class JsonLdTranslator {
     }
   }
 
+  private Object loadBaseContext() throws IOException {
+    String path = CONTEXT_BASE_PATH + "base.jsonld";
+    try (InputStream is = getClass().getResourceAsStream(path)) {
+      if (is == null) {
+        throw new IOException("Base context file not found: " + path);
+      }
+      String contextContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+      JsonNode contextJson = objectMapper.readTree(contextContent);
+      return objectMapper.convertValue(contextJson.get("@context"), Object.class);
+    }
+  }
+
   private Object loadContext(String filename) throws IOException {
     String path = CONTEXT_BASE_PATH + filename;
     try (InputStream is = getClass().getResourceAsStream(path)) {
       if (is == null) {
         throw new IOException("Context file not found: " + path);
       }
-      return JsonUtils.fromInputStream(is);
+
+      String contextContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+      JsonNode contextJson = objectMapper.readTree(contextContent);
+      Object contextValue = objectMapper.convertValue(contextJson.get("@context"), Object.class);
+
+      if (contextValue instanceof java.util.List) {
+        java.util.List<Object> contextArray = (java.util.List<Object>) contextValue;
+        java.util.List<Object> resolvedContext = new java.util.ArrayList<>();
+
+        for (Object item : contextArray) {
+          if ("./base.jsonld".equals(item) && contextCache.containsKey("base")) {
+            Object baseContext = contextCache.get("base");
+            if (baseContext instanceof Map) {
+              resolvedContext.add(baseContext);
+            }
+          } else {
+            resolvedContext.add(item);
+          }
+        }
+        return resolvedContext;
+      }
+
+      return contextValue;
     }
   }
 
   public ObjectNode toJsonLd(EntityInterface entity) {
-    JsonNode jsonNode = objectMapper.valueToTree(entity);
-    ObjectNode objectNode = (ObjectNode) jsonNode;
+    try {
+      JsonNode entityJson = objectMapper.valueToTree(entity);
+      Map<String, Object> entityMap = objectMapper.convertValue(entityJson, Map.class);
+      addJsonLdPropertiesToReferences(entityMap);
+
+      String entityType = entity.getEntityReference().getType();
+      String id = baseUri + "entity/" + entityType + "/" + entity.getId();
+      entityMap.put("@id", id);
+      entityMap.put("@type", getEntityRdfType(entityType));
+
+      Object context = selectContext(entityType);
+      String entityJsonString = objectMapper.writeValueAsString(entityMap);
+      JsonDocument document = JsonDocument.of(new StringReader(entityJsonString));
+      String contextJsonString = objectMapper.writeValueAsString(context);
+      JsonDocument contextDoc = JsonDocument.of(new StringReader(contextJsonString));
+
+      JsonObject compacted = JsonLd.compact(document, contextDoc).get();
+
+      String compactedString = compacted.toString();
+      JsonNode compactedNode = objectMapper.readTree(compactedString);
+
+      if (compactedNode.isObject()) {
+        ObjectNode result = (ObjectNode) compactedNode;
+        Map<String, Object> compactedMap = objectMapper.convertValue(result, Map.class);
+        addJsonLdPropertiesToReferences(compactedMap);
+        return objectMapper.valueToTree(compactedMap);
+      }
+
+      return (ObjectNode) compactedNode;
+
+    } catch (Exception e) {
+      LOG.error("Failed to create JSON-LD for entity", e);
+      // Fallback to simple approach
+      return createSimpleJsonLd(entity);
+    }
+  }
+
+  private void addJsonLdPropertiesToReferences(Map<String, Object> map) {
+    for (Map.Entry<String, Object> entry : map.entrySet()) {
+      Object value = entry.getValue();
+
+      if (value instanceof Map) {
+        Map<String, Object> nestedMap = (Map<String, Object>) value;
+
+        if (nestedMap.containsKey("id") && nestedMap.containsKey("type")) {
+          String refType = (String) nestedMap.get("type");
+          Object refId = nestedMap.get("id");
+          nestedMap.put("@id", baseUri + "entity/" + refType + "/" + refId);
+          nestedMap.put("@type", getEntityRdfType(refType));
+        }
+
+        addJsonLdPropertiesToReferences(nestedMap);
+
+      } else if (value instanceof java.util.List) {
+        // Handle lists
+        java.util.List<Object> list = (java.util.List<Object>) value;
+        for (Object item : list) {
+          if (item instanceof Map) {
+            addJsonLdPropertiesToReferences((Map<String, Object>) item);
+          }
+        }
+      }
+    }
+  }
+
+  private ObjectNode createSimpleJsonLd(EntityInterface entity) {
+    ObjectNode result = objectMapper.createObjectNode();
 
     String entityType = entity.getEntityReference().getType();
     Object context = selectContext(entityType);
-    objectNode.set("@context", objectMapper.valueToTree(context));
+    result.set("@context", objectMapper.valueToTree(context));
 
     String id = baseUri + "entity/" + entityType + "/" + entity.getId();
-    objectNode.put("@id", id);
+    result.put("@id", id);
+    result.put("@type", getEntityRdfType(entityType));
 
-    objectNode.put("@type", getEntityRdfType(entityType));
+    JsonNode entityJson = objectMapper.valueToTree(entity);
+    if (entityJson.isObject()) {
+      ObjectNode entityObject = (ObjectNode) entityJson;
+      entityObject
+          .fields()
+          .forEachRemaining(
+              entry -> {
+                if (!entry.getKey().equals("@context")
+                    && !entry.getKey().equals("@id")
+                    && !entry.getKey().equals("@type")) {
+                  result.set(entry.getKey(), entry.getValue());
+                }
+              });
+    }
 
-    return objectNode;
+    return result;
   }
 
   public Model toRdf(EntityInterface entity) throws JsonLdError {
@@ -91,6 +213,9 @@ public class JsonLdTranslator {
     model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
     model.setNsPrefix("dct", "http://purl.org/dc/terms/");
     model.setNsPrefix("dprod", "https://ekgf.github.io/dprod/");
+    model.setNsPrefix("void", "http://rdfs.org/ns/void#");
+    model.setNsPrefix("csvw", "http://www.w3.org/ns/csvw#");
+    model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#");
 
     String entityType = entity.getEntityReference().getType();
     String entityUri = baseUri + "entity/" + entityType + "/" + entity.getId();
@@ -113,54 +238,13 @@ public class JsonLdTranslator {
       entityResource.addProperty(RDF.type, model.createResource(rdfType));
     }
 
-    // Hybrid approach: Always add OpenMetadata-specific type as defined in our ontology
-    // This aligns with our ontology where om:Table is subClassOf dcat:Dataset
+    // Always add OpenMetadata-specific type
     String omNamespace = model.getNsPrefixURI("om");
     String omType = entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
     entityResource.addProperty(RDF.type, model.createResource(omNamespace + omType));
 
-    // Add basic properties
-    entityResource.addProperty(
-        model.createProperty("https://open-metadata.org/ontology/", "fullyQualifiedName"),
-        entity.getFullyQualifiedName());
-    entityResource.addProperty(org.apache.jena.vocabulary.RDFS.label, entity.getName());
-
-    if (entity.getDisplayName() != null) {
-      entityResource.addProperty(
-          model.createProperty("http://www.w3.org/2004/02/skos/core#", "prefLabel"),
-          entity.getDisplayName());
-    }
-
-    if (entity.getDescription() != null) {
-      entityResource.addProperty(
-          model.createProperty("http://purl.org/dc/terms/", "description"),
-          entity.getDescription());
-    }
-
-    if (entity.getOwners() != null && !entity.getOwners().isEmpty()) {
-      for (org.openmetadata.schema.type.EntityReference owner : entity.getOwners()) {
-        String ownerUri = baseUri + "entity/" + owner.getType() + "/" + owner.getId();
-        entityResource.addProperty(
-            model.createProperty("https://open-metadata.org/ontology/", "hasOwner"),
-            model.createResource(ownerUri));
-      }
-    }
-
-    if (entity.getTags() != null && !entity.getTags().isEmpty()) {
-      for (org.openmetadata.schema.type.TagLabel tag : entity.getTags()) {
-        String tagUri =
-            baseUri
-                + "entity/tag/"
-                + java.net.URLEncoder.encode(tag.getTagFQN(), StandardCharsets.UTF_8);
-        String predicate =
-            tag.getSource() == org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY
-                ? "hasGlossaryTerm"
-                : "hasTag";
-        entityResource.addProperty(
-            model.createProperty("https://open-metadata.org/ontology/", predicate),
-            model.createResource(tagUri));
-      }
-    }
+    RdfPropertyMapper propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
+    propertyMapper.mapEntityToRdf(entity, entityResource, model);
 
     LOG.info(
         "RDF model size for entity {}: {} triples", entity.getFullyQualifiedName(), model.size());
