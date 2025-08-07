@@ -612,11 +612,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return validation;
   }
 
-  private QualityValidation validateDQ(List<ResultSummary> testSummary) {
+  private QualityValidation validateDQ(TestSuite testSuite) {
     QualityValidation validation = new QualityValidation();
-    if (nullOrEmpty(testSummary)) {
+    if (nullOrEmpty(testSuite.getTestCaseResultSummary())) {
       return validation; // return the existing result without updates
     }
+
+    List<String> currentTests =
+        testSuite.getTests().stream().map(EntityReference::getFullyQualifiedName).toList();
+    List<ResultSummary> testSummary =
+        testSuite.getTestCaseResultSummary().stream()
+            .filter(
+                test -> {
+                  return currentTests.contains(test.getTestCaseName());
+                })
+            .toList();
 
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
@@ -710,7 +720,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Get the latest result or throw if none exists
     DataContractResult result = getLatestResult(dataContract);
-    QualityValidation validation = validateDQ(testSuite.getTestCaseResultSummary());
+    QualityValidation validation = validateDQ(testSuite);
 
     result.withQualityValidation(validation);
 
