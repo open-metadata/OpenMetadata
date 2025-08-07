@@ -307,8 +307,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public static String getTestSuiteName(DataContract dataContract) {
-    // return String.format("Data Contract - %s %s", dataContract.getName(),
-    // EntityUtil.hash(dataContract.getFullyQualifiedName()));
     return EntityUtil.hash(dataContract.getFullyQualifiedName());
   }
 
