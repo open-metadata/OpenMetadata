@@ -3125,7 +3125,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testDeleteDataContractWithDQExpectationsDoesNotDeleteTestCases(TestInfo test) throws IOException {
+  void testDeleteDataContractWithDQExpectationsDoesNotDeleteTestCases(TestInfo test)
+      throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create test cases for quality expectations
@@ -3173,8 +3174,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(2, testSuite.getTests().size());
 
     // Verify both test cases exist and are accessible before deletion
-    TestCase retrievedTestCase1 = testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
-    TestCase retrievedTestCase2 = testCaseResourceTest.getEntity(testCase2.getId(), "*", ADMIN_AUTH_HEADERS);
+    TestCase retrievedTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
+    TestCase retrievedTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "*", ADMIN_AUTH_HEADERS);
     assertNotNull(retrievedTestCase1);
     assertNotNull(retrievedTestCase2);
 
@@ -3187,11 +3190,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the test suite is deleted
     assertThrows(
         HttpResponseException.class,
-        () -> testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+        () ->
+            testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
 
-    // CRITICAL ASSERTION: Verify the test cases are NOT deleted - they should still exist independently
-    TestCase testCase1AfterDeletion = testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
-    TestCase testCase2AfterDeletion = testCaseResourceTest.getEntity(testCase2.getId(), "*", ADMIN_AUTH_HEADERS);
+    // CRITICAL ASSERTION: Verify the test cases are NOT deleted - they should still exist
+    // independently
+    TestCase testCase1AfterDeletion =
+        testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
+    TestCase testCase2AfterDeletion =
+        testCaseResourceTest.getEntity(testCase2.getId(), "*", ADMIN_AUTH_HEADERS);
 
     assertNotNull(testCase1AfterDeletion);
     assertNotNull(testCase2AfterDeletion);
