@@ -156,6 +156,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return metricDetailsClassBase.getMetricDetailPageTabsIds();
     case PageType.MlModel:
       return mlModelClassBase.getMlModelDetailPageTabsIds();
+    case PageType.Chart:
+      return chartDetailsClassBase.getChartDetailPageTabsIds();
     default:
       return [
         {
@@ -275,6 +277,8 @@ export const getCustomizableWidgetByPage = (
       return dashboardDataModelClassBase.getCommonWidgetList();
     case PageType.StoredProcedure:
       return storedProcedureClassBase.getCommonWidgetList();
+    case PageType.Chart:
+      return chartDetailsClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -313,7 +317,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return metricDetailsClassBase.getDummyData();
     case PageType.MlModel:
       return mlModelClassBase.getDummyData();
-
+    case PageType.Chart:
+      return chartDetailsClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
