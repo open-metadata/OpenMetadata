@@ -1,5 +1,5 @@
 ---
-title: Job Status | OpenMetadata API for Job Status Information
+title: Job Status | `brandName` API for Job Status Information
 description: Connect Jobstatus to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/jobstatus
 ---

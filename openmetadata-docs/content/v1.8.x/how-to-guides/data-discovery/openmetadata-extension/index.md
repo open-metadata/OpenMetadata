@@ -1,5 +1,5 @@
 ---
-title: OpenMetadata Chrome Extension
+title: `brandName` Chrome Extension
 slug: /how-to-guides/data-discovery/openmetadata-extension
 ---
 
