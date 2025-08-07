@@ -1,5 +1,5 @@
 ---
-title: API Service Schema | OpenMetadata API Services
+title: API Service Schema | `brandName` API Services
 description: Describe API service configurations used for monitoring and ingesting RESTful or GraphQL APIs.
 slug: /main-concepts/metadata-standard/schemas/entity/services/apiservice
 ---
