@@ -90,6 +90,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
+     */
+    embeddingProvider?: string;
+    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
