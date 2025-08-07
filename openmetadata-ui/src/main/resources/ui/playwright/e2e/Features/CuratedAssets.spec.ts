@@ -35,6 +35,8 @@ const test = base.extend<{ page: Page }>({
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.slow(true);
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
@@ -43,6 +45,8 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
+  test.slow(true);
+
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await persona.delete(apiContext);
@@ -50,7 +54,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Curated Assets', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeAll(async ({ page }) => {
     test.slow(true);
 
     await redirectToHomePage(page);
@@ -93,7 +97,7 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--operator .ant-select'),
-      '!='
+      'Not in'
     );
 
     await selectOption(
@@ -108,19 +112,19 @@ test.describe('Curated Assets', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Description'
+      'Display Name'
     );
 
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      '=='
+      'Not in'
     );
 
     await selectOption(
       page,
       ruleLocator2.locator('.rule--value .ant-select'),
-      'Complete'
+      'arcs'
     );
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();

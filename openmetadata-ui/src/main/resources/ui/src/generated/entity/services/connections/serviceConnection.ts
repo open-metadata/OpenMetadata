@@ -43,6 +43,8 @@ export interface ServiceConnection {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface ServiceConnectionClass {
     config?: ConfigClass;
@@ -177,6 +179,8 @@ export interface ServiceConnectionClass {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -265,6 +269,12 @@ export interface ServiceConnectionClass {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigClass {
     /**
@@ -335,6 +345,8 @@ export interface ConfigClass {
      * client_id for Sigma.
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -345,6 +357,8 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
@@ -671,6 +685,8 @@ export interface ConfigClass {
      * Tenant ID for PowerBI.
      *
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -746,6 +762,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -883,6 +901,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -892,6 +912,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -919,6 +941,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -937,6 +961,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -1289,6 +1316,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1677,6 +1712,28 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
 }
 
 /**
@@ -1713,6 +1770,10 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  *
  * Regex to only fetch topics that matches the pattern.
  *
@@ -2454,6 +2515,8 @@ export interface ConfigSourceConnection {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * AWS credentials configs.
  */
 export interface SecurityConfigClass {
@@ -2997,6 +3060,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -3132,6 +3197,15 @@ export interface ElasticsSearch {
      * Type of sink component ex: metadata
      */
     type: string;
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -3790,6 +3864,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum ConfigType {
     Adls = "ADLS",
@@ -3809,6 +3889,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -3829,12 +3910,14 @@ export enum ConfigType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -3879,6 +3962,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",

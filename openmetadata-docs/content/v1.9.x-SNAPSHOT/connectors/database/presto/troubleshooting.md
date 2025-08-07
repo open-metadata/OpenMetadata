@@ -1,5 +1,5 @@
 ---
-title: Presto Troubleshooting Guide | OpenMetadata Support
+title: Presto Troubleshooting Guide | `brandName` Support
 description: Troubleshoot Presto connector for query failures, ingestion errors, or unsupported schema configurations.
 slug: /connectors/database/presto/troubleshooting
 ---

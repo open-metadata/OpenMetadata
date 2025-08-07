@@ -275,6 +275,8 @@ export const ROUTES = {
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // Observability
   OBSERVABILITY: '/observability',
@@ -313,6 +315,7 @@ export const SOCKET_EVENTS = {
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
+  CHART_DATA_STREAM: 'chartDataStream',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -345,6 +348,7 @@ export const ENTITY_PATH = {
   query: 'query',
   testCases: 'testCase',
   domains: 'domain',
+  charts: 'chart',
 };
 
 export const VALIDATION_MESSAGES = {

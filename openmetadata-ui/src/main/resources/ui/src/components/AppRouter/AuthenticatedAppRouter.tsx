@@ -721,6 +721,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.ADD_METRIC}
       />
+
       <Route
         element={<EntityRouter />}
         path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}

@@ -311,6 +311,7 @@ export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
     'name',
     'displayName',
@@ -442,6 +443,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DashboardServiceType.ThoughtSpot,
   SecurityServiceType.Ranger,
+  DatabaseServiceType.Epic,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -510,6 +512,14 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+];
+
+export const SERVICE_AUTOPILOT_AGENT_TYPES = [
+  PipelineType.Metadata,
+  PipelineType.Lineage,
+  PipelineType.Usage,
+  PipelineType.AutoClassification,
+  PipelineType.Profiler,
 ];
 
 export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([

@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, toLower } from 'lodash';
+import {
+  ObjectFieldTemplatePropertyType,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
+import { cloneDeep, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
 import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
@@ -31,6 +37,7 @@ import {
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
+  COMMON_UI_SCHEMA,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -137,6 +144,7 @@ import { Type as SecurityServiceType } from '../generated/entity/services/securi
 import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
+import profilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -168,6 +176,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Ssis,
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
+    DatabaseServiceType.Epic,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -739,7 +748,9 @@ class ServiceUtilClassBase {
 
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
+      AgentsStatusWidget,
       PlatformInsightsWidget,
+      TotalDataAssetsWidget,
     };
 
     return widgets;
@@ -802,6 +813,17 @@ class ServiceUtilClassBase {
         value.toLowerCase(),
       ])
     ) as unknown as U;
+  }
+
+  public getProfilerConfig() {
+    const uiSchema = { ...COMMON_UI_SCHEMA };
+
+    const config = cloneDeep({ schema: profilerPipeline, uiSchema }) as {
+      schema: RJSFSchema;
+      uiSchema: UiSchema;
+    };
+
+    return config;
   }
 }
 

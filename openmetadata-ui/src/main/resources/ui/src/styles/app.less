@@ -156,6 +156,10 @@ a[href].link-text-grey,
   text-wrap: wrap;
 }
 
+.text-no-wrap {
+  text-wrap: nowrap;
+}
+
 .text-underline {
   text-decoration: underline;
 }
@@ -574,14 +578,16 @@ a[href].link-text-grey,
 
 // beta tag for service page
 .service-beta-tag {
+  border-radius: 8px;
   sup {
     height: auto;
     padding: 0 4px;
     margin-left: 2px;
     font-size: 10px;
-    background: @primary-1;
-    border: 1px solid @primary-color;
-    color: @primary-color;
+    font-weight: 500;
+    background: @primary-50;
+    border: 1px solid @primary-1;
+    color: @primary-8;
   }
 }
 
@@ -593,9 +599,9 @@ a[href].link-text-grey,
     border-radius: 30px;
     margin-left: 2px;
     font-size: 10px;
-    background: @primary-1;
-    border: 1px solid @primary-color;
-    color: @primary-color;
+    background: @primary-50;
+    border: 1px solid @primary-1;
+    color: @primary-8;
   }
 }
 

@@ -38,20 +38,20 @@ import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  EntityFields,
-  EntityReferenceFields,
-} from '../../../../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
-import { getEmptyJsonTreeForQueryBuilder } from '../../../../../../utils/AdvancedSearchUtils';
+import {
+  getEmptyJsonTree,
+  getEmptyJsonTreeForQueryBuilder,
+} from '../../../../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
+  migrateJsonLogic,
   READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
@@ -61,12 +61,13 @@ import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/A
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
 
-const QueryBuilderWidget: FC<WidgetProps> = ({
-  onChange,
-  schema,
-  value,
-  ...props
-}) => {
+const QueryBuilderWidget: FC<
+  WidgetProps & {
+    fields?: Config['fields'];
+    defaultField?: string;
+    subField?: string;
+  }
+> = ({ onChange, schema, value, fields, defaultField, subField, ...props }) => {
   const {
     config,
     treeInternal,
@@ -191,7 +192,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           debouncedFetchEntityCount(parsedValue);
         }
       } else {
-        const tree = QbUtils.loadFromJsonLogic(parsedValue, config);
+        // migrate existing json logic to new format
+        const migratedValue = migrateJsonLogic(parsedValue);
+
+        const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
         if (tree) {
           const validatedTree = QbUtils.Validation.sanitizeTree(
             tree,
@@ -201,16 +205,12 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         }
       }
     } else {
-      const emptyJsonTree = getEmptyJsonTreeForQueryBuilder(
+      const emptyJsonTree =
         outputType === SearchOutputType.JSONLogic
-          ? EntityReferenceFields.OWNERS
-          : EntityFields.OWNERS
-      );
+          ? getEmptyJsonTreeForQueryBuilder(defaultField, subField)
+          : getEmptyJsonTree();
 
-      const tree = QbUtils.Validation.sanitizeTree(
-        QbUtils.loadTree(emptyJsonTree),
-        config
-      ).fixedTree;
+      const tree = QbUtils.loadTree(emptyJsonTree);
 
       onTreeUpdate(tree, config);
     }
@@ -258,6 +258,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
             )}
             <Query
               {...config}
+              fields={fields ?? config.fields}
               renderBuilder={(props) => {
                 // Store the actions for external access
                 if (!queryActions) {

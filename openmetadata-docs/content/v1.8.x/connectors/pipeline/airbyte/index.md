@@ -1,6 +1,6 @@
 ---
-title: Airbyte Connector | OpenMetadata Pipeline Integration
-description: Connect Airbyte data pipelines to OpenMetadata for comprehensive data lineage tracking, metadata discovery, and pipeline monitoring. Setup guide included.
+title: Airbyte Connector | `brandName` Pipeline Integration
+description: Connect Airbyte data pipelines to `brandName` for comprehensive data lineage tracking, metadata discovery, and pipeline monitoring. Setup guide included.
 slug: /connectors/pipeline/airbyte
 ---
 
