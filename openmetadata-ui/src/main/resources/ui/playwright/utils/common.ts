@@ -16,6 +16,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
+import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
@@ -40,10 +41,7 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name can be a maximum of 128 characters';
 
 export const getToken = async (page: Page) => {
-  return page.evaluate(
-    () =>
-      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.oidcIdToken ?? ''
-  );
+  return await getTokenFromStorage(page);
 };
 
 export const getAuthContext = async (token: string) => {
