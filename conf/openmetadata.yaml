@@ -320,6 +320,7 @@ elasticsearch:
       region: ${AWS_BEDROCK_REGION:-""}
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
+      embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-""}
       accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
