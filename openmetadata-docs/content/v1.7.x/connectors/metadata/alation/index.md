@@ -1,6 +1,6 @@
 ---
 title: Alation Connector | Official Documentation
-description: Connect Alation to OpenMetadata seamlessly with our comprehensive connector guide. Learn setup, configuration, and metadata synchronization steps.
+description: Connect Alation to `brandName` seamlessly with our comprehensive connector guide. Learn setup, configuration, and metadata synchronization steps.
 slug: /connectors/metadata/alation
 collate: true
 ---
@@ -79,6 +79,10 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 #### Connection Options
 
 **hostPort**: Host and port of the Alation instance.
+
+```bash
+host and port (https://xxxx.alationcloud.com:443)
+```
 
 **authType**: Following authentication types are supported:
 1. **Basic Authentication**:

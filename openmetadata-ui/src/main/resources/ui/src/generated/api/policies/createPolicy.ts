@@ -23,9 +23,9 @@ export interface CreatePolicy {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Policy belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Is the policy enabled.
      */

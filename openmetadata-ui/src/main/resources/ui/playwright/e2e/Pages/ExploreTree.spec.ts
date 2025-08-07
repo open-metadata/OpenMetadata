@@ -12,12 +12,18 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
+import { DataProduct } from '../../support/domain/DataProduct';
+import { Domain } from '../../support/domain/Domain';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
@@ -26,10 +32,13 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { TagClass } from '../../support/tag/TagClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
 import {
+  Bucket,
   validateBucketsForIndex,
+  validateBucketsForIndexAndSort,
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
@@ -42,7 +51,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios ', () => {
+test.describe('Explore Tree scenarios', () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
       await page.waitForLoadState('networkidle');
@@ -51,15 +60,30 @@ test.describe('Explore Tree scenarios ', () => {
         state: 'detached',
       });
 
-      await expect(page.getByRole('tree')).toContainText('Databases');
-      await expect(page.getByRole('tree')).toContainText('Dashboards');
-      await expect(page.getByRole('tree')).toContainText('Pipelines');
-      await expect(page.getByRole('tree')).toContainText('Topics');
-      await expect(page.getByRole('tree')).toContainText('ML Models');
-      await expect(page.getByRole('tree')).toContainText('Containers');
-      await expect(page.getByRole('tree')).toContainText('Search Indexes');
-      await expect(page.getByRole('tree')).toContainText('Governance');
-      await expect(page.getByRole('tree')).toContainText('APIs');
+      await expect(
+        page.getByTestId('explore-tree-title-Databases')
+      ).toContainText('Databases');
+      await expect(
+        page.getByTestId('explore-tree-title-Dashboards')
+      ).toContainText('Dashboards');
+      await expect(
+        page.getByTestId('explore-tree-title-Pipelines')
+      ).toContainText('Pipelines');
+      await expect(page.getByTestId('explore-tree-title-Topics')).toContainText(
+        'Topics'
+      );
+      await expect(
+        page.getByTestId('explore-tree-title-ML Models')
+      ).toContainText('ML Models');
+      await expect(
+        page.getByTestId('explore-tree-title-Containers')
+      ).toContainText('Containers');
+      await expect(
+        page.getByTestId('explore-tree-title-Search Indexes')
+      ).toContainText('Search Indexes');
+      await expect(
+        page.getByTestId('explore-tree-title-Governance')
+      ).toContainText('Governance');
 
       await page
         .locator('div')
@@ -68,24 +92,18 @@ test.describe('Explore Tree scenarios ', () => {
         .first()
         .click();
 
-      await expect(page.getByRole('tree')).toContainText('Glossaries');
-      await expect(page.getByRole('tree')).toContainText('Tags');
-
-      // APIs
-      await page
-        .locator('div')
-        .filter({ hasText: /^APIs$/ })
-        .locator('svg')
-        .first()
-        .click();
-
-      await expect(page.getByRole('tree')).toContainText('rest');
+      await expect(
+        page.getByTestId('explore-tree-title-Glossaries')
+      ).toContainText('Glossaries');
+      await expect(page.getByTestId('explore-tree-title-Tags')).toContainText(
+        'Tags'
+      );
     });
 
     await test.step('Check the quick filters', async () => {
       await expect(
-        page.getByTestId('search-dropdown-Domain').locator('span')
-      ).toContainText('Domain');
+        page.getByTestId('search-dropdown-Domains').locator('span')
+      ).toContainText('Domains');
       await expect(page.getByTestId('search-dropdown-Owners')).toContainText(
         'Owners'
       );
@@ -266,8 +284,18 @@ test.describe('Explore page', () => {
   const searchIndex = new SearchIndexClass();
   const dashboardDataModel = new DashboardDataModelClass();
   const mlModel = new MlModelClass();
+  const database = new DatabaseClass();
+  const databaseSchema = new DatabaseSchemaClass();
+  const metric = new MetricClass();
+  const domain = new Domain();
+  const dataProduct = new DataProduct([domain]);
+  const tag = new TagClass({
+    classification: 'Certification',
+  });
 
   test.beforeEach('Setup pre-requisits', async ({ page }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
     await glossary.create(apiContext);
@@ -281,10 +309,18 @@ test.describe('Explore page', () => {
     await searchIndex.create(apiContext);
     await dashboardDataModel.create(apiContext);
     await mlModel.create(apiContext);
+    await database.create(apiContext);
+    await databaseSchema.create(apiContext);
+    await domain.create(apiContext);
+    await metric.create(apiContext);
+    await dataProduct.create(apiContext);
+    await tag.create(apiContext);
     await afterAction();
   });
 
   test.afterEach('Cleanup', async ({ page }) => {
+    test.slow(true);
+
     const { apiContext, afterAction } = await getApiContext(page);
     await table.delete(apiContext);
     await glossary.delete(apiContext);
@@ -298,6 +334,12 @@ test.describe('Explore page', () => {
     await searchIndex.delete(apiContext);
     await dashboardDataModel.delete(apiContext);
     await mlModel.delete(apiContext);
+    await database.delete(apiContext);
+    await databaseSchema.delete(apiContext);
+    await metric.delete(apiContext);
+    await domain.delete(apiContext);
+    await dataProduct.delete(apiContext);
+    await tag.delete(apiContext);
     await afterAction();
   });
 
@@ -332,5 +374,41 @@ test.describe('Explore page', () => {
 
   test('Check listing of entities when index is all', async ({ page }) => {
     await validateBucketsForIndex(page, 'all');
+  });
+
+  DATA_ASSETS.forEach((asset) => {
+    test.fixme(
+      `Check listing of ${asset.key} when sort is descending`,
+      async ({ page }) => {
+        const { apiContext } = await getApiContext(page);
+
+        const searchBox = page.getByTestId('searchBox');
+        await searchBox.fill('pw');
+        await searchBox.press('Enter');
+
+        const response = await apiContext
+          .get(
+            `/api/v1/search/query?q=pw&index=dataAsset&from=0&size=0&deleted=false&track_total_hits=true&fetch_source=false`
+          )
+          .then((res) => res.json());
+
+        const buckets =
+          response.aggregations?.['sterms#entityType']?.buckets ?? [];
+
+        const assetDocCount = buckets.find(
+          (b: Bucket) => b.key === asset.key
+        )?.doc_count;
+
+        if (assetDocCount > 0) {
+          const tab = page.getByTestId(`${asset.label}-tab`);
+          await tab.click();
+          await validateBucketsForIndexAndSort(page, asset, assetDocCount);
+        } else {
+          await expect(
+            page.getByTestId(`${asset.label}-tab`)
+          ).not.toBeVisible();
+        }
+      }
+    );
   });
 });

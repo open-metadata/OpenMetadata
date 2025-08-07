@@ -41,7 +41,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.NAME_KEYWORD,
       'deleted',
       EntityFields.OWNERS,
-      EntityFields.DOMAIN,
+      EntityFields.DOMAINS,
       'serviceType',
       EntityFields.TAG,
       EntityFields.TIER,
@@ -50,6 +50,8 @@ describe('AdvancedSearchClassBase', () => {
       'entityType',
       'descriptionSources.Suggested',
       'tags.labelType',
+      'tier.labelType',
+      'createdBy',
     ]);
   });
 });

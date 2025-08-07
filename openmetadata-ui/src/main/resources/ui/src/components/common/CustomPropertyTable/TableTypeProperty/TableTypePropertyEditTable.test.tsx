@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import { getGridColumns } from './EditTableTypePropertyModal';
 import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
@@ -20,7 +21,6 @@ describe('TableTypePropertyEditTable', () => {
   let handleCopy: jest.Mock;
   let handlePaste: jest.Mock;
   let pushToUndoStack: jest.Mock;
-  let gridContainerRef: React.RefObject<HTMLDivElement>;
 
   const columns = ['pw-import-export-column1', 'pw-import-export-column2'];
 
@@ -43,17 +43,15 @@ describe('TableTypePropertyEditTable', () => {
     handleCopy = jest.fn();
     handlePaste = jest.fn();
     pushToUndoStack = jest.fn();
-    gridContainerRef = { current: null };
   });
 
   const getProps = (): TableTypePropertyEditTableProps => ({
-    columns,
+    columns: getGridColumns(columns),
     dataSource: mockDataSource.value,
-    gridContainerRef,
-    handleEditDataSource,
+    setGridContainer: jest.fn(),
+    handleOnRowsChange: handleEditDataSource,
     handleCopy,
     handlePaste,
-    pushToUndoStack,
   });
 
   it('should render the table with given columns and dataSource', async () => {
@@ -107,7 +105,7 @@ describe('TableTypePropertyEditTable', () => {
   });
 
   it('should render with different columns', () => {
-    const customColumns = ['pw-import-export-column1'];
+    const customColumns = getGridColumns(['pw-import-export-column1']);
     render(
       <TableTypePropertyEditTable {...getProps()} columns={customColumns} />
     );

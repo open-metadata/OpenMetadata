@@ -14,12 +14,16 @@ import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   applySortToData,
   getSortField,
@@ -27,7 +31,6 @@ import {
   MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -45,6 +48,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -60,6 +64,7 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
@@ -87,11 +92,11 @@ const MyDataWidgetInternal = ({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains && item.domains.length > 0) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });
@@ -131,7 +136,7 @@ const MyDataWidgetInternal = ({
         const res = await searchData(
           '',
           INITIAL_PAGING_VALUE,
-          PAGE_SIZE,
+          PAGE_SIZE_MEDIUM,
           queryFilter,
           sortField,
           sortOrder,
@@ -140,7 +145,7 @@ const MyDataWidgetInternal = ({
 
         // Extract useful details from the Response
         const ownedAssets = res?.data?.hits?.hits;
-        const sourceData = ownedAssets.map((hit) => hit._source).slice(0, 8);
+        const sourceData = ownedAssets.map((hit) => hit._source);
 
         // Apply client-side sorting as well to ensure consistent results
         const sortedData = applySortToData(sourceData, selectedFilter);
@@ -182,15 +187,13 @@ const MyDataWidgetInternal = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={`users/${currentUser?.name}/mydata`}
-        actionButtonText={t('label.get-started')}
-        description={`${t('message.nothing-saved-yet')} ${t(
-          'message.no-owned-data'
-        )}`}
+        actionButtonLink={ROUTES.EXPLORE}
+        actionButtonText={t('label.explore-assets')}
+        description={t('message.no-owned-data')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
         }
-        title={t('message.curate-your-data-view')}
+        title={t('label.no-records')}
       />
     ),
     []
@@ -199,13 +202,13 @@ const MyDataWidgetInternal = ({
     return (
       <div className="entity-list-body">
         <div className="cards-scroll-container flex-1 overflow-y-auto">
-          {data.map((item) => {
+          {data.slice(0, PAGE_SIZE_BASE).map((item) => {
             const extraInfo = getEntityExtraInfo(item);
 
             return (
               <div
                 className="my-data-widget-list-item card-wrapper w-full p-xs border-radius-sm"
-                data-testid={`Recently Viewed-${getEntityName(item)}`}
+                data-testid={`My-Data-${getEntityName(item)}`}
                 key={item.id}>
                 <div className="d-flex items-center justify-between ">
                   <Link
@@ -222,16 +225,16 @@ const MyDataWidgetInternal = ({
                         </div>
                       }
                       type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                      <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
-                            className="text-left text-sm font-regular"
+                            className="text-left text-xs font-regular text-grey-600"
                             ellipsis={{ tooltip: true }}>
                             {item.serviceType}
                           </Typography.Text>
                         )}
                         <Typography.Text
-                          className="text-left text-sm font-semibold"
+                          className="text-left text-sm font-regular text-grey-800"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -260,52 +263,73 @@ const MyDataWidgetInternal = ({
       </div>
     );
   }, [data, isExpanded]);
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoading) && data?.length > PAGE_SIZE_BASE,
+    [data, isLoading]
+  );
+
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<MyDataIcon height={24} width={24} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedFilter}
+        sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
+        title={t('label.my-data')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.MY_DATA))
+        }
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleFilterChange,
+    ]
+  );
+
   const widgetContent = useMemo(() => {
     return (
       <div className="my-data-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<MyDataIcon height={24} width={24} />}
-          isEditView={isEditView}
-          selectedSortBy={selectedFilter}
-          sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
-          title={t('label.my-data')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(data) ? emptyState : myDataContent}
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
+              UserPageTabs.MY_DATA
             )}
-            moreButtonText={t('label.view-more-count', {
-              count: String(data.length > 0 ? data.length : ''),
-            })} // if data is empty then show view more
-            showMoreButton={Boolean(!isLoading) && !isEmpty(data)}
+            moreButtonText={t('label.view-more')}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>
     );
   }, [
     data,
-    isLoading,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    emptyState,
+    myDataContent,
+    currentUser?.name,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
-      dataLength={data.length > 0 ? data.length : 10}
+      dataTestId="KnowledgePanel.MyData"
+      header={widgetHeader}
       loading={isLoading}>
       {widgetContent}
     </WidgetWrapper>

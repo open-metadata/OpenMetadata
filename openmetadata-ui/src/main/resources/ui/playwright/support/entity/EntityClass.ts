@@ -40,6 +40,7 @@ import {
   createInactiveAnnouncement,
   deleteAnnouncement,
   downVote,
+  editAnnouncement,
   followEntity,
   hardDeleteEntity,
   removeCertification,
@@ -92,11 +93,6 @@ export class EntityClass {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
-    // Override for entity visit
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async visitEntityPageWithCustomSearchBox(_: Page) {
     // Override for entity visit
   }
 
@@ -485,7 +481,7 @@ export class EntityClass {
   async followUnfollowEntity(page: Page, entity: string) {
     await followEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, true);
-    await this.visitEntityPageWithCustomSearchBox(page);
+    await this.visitEntityPage(page);
     await unFollowEntity(page, this.endpoint);
     await validateFollowedEntityToWidget(page, entity, false);
   }
@@ -494,6 +490,10 @@ export class EntityClass {
     await createAnnouncement(page, {
       title: 'Playwright Test Announcement',
       description: 'Playwright Test Announcement Description',
+    });
+    await editAnnouncement(page, {
+      title: 'Edited Playwright Test Announcement',
+      description: 'Updated Playwright Test Announcement Description',
     });
     await replyAnnouncement(page);
     await deleteAnnouncement(page);

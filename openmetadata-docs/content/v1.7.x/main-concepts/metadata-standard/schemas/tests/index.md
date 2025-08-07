@@ -1,5 +1,6 @@
 ---
 title: Tests Schema | OpenMetadata Tests Schema Overview
+description: Metadata schema to define validation tests, test results, and their configurations to ensure data quality and observability.
 slug: /main-concepts/metadata-standard/schemas/tests
 ---
 

@@ -26,12 +26,14 @@ import { WIDGET_MORE_MENU_ITEMS } from './WidgetHeader.constants';
 export interface WidgetHeaderProps {
   className?: string;
   currentLayout?: Layout[];
+  disableEdit?: boolean;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleRemoveWidget?: (widgetKey: string) => void;
   icon?: ReactNode;
   isEditView?: boolean;
   onEditClick?: () => void;
   onSortChange?: (key: string) => void;
+  onTitleClick?: () => void;
   selectedSortBy?: string;
   sortOptions?: Array<{
     key: string;
@@ -43,19 +45,21 @@ export interface WidgetHeaderProps {
 }
 
 const WidgetHeader = ({
-  title,
-  icon,
-  isEditView = false,
-  widgetWidth = 2,
-  sortOptions,
-  selectedSortBy,
-  onSortChange,
-  onEditClick,
   className = '',
+  currentLayout,
+  disableEdit = false,
   handleLayoutUpdate,
   handleRemoveWidget,
+  icon,
+  isEditView = false,
+  onEditClick,
+  onSortChange,
+  onTitleClick,
+  selectedSortBy,
+  sortOptions,
+  title,
   widgetKey,
-  currentLayout,
+  widgetWidth = 2,
 }: WidgetHeaderProps) => {
   const handleSortByClick = (e: MenuInfo) => {
     onSortChange?.(e.key);
@@ -87,14 +91,16 @@ const WidgetHeader = ({
       data-testid="widget-header"
       justify="space-between">
       <Col className="d-flex items-center h-full min-h-8">
-        {icon && <div className="d-flex h-6 w-6 m-r-xs">{icon}</div>}
-
+        {icon && (
+          <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
+        )}
         <Typography.Paragraph
-          className="widget-title"
+          className="widget-title cursor-pointer"
           ellipsis={{ tooltip: true }}
           style={{
             maxWidth: widgetWidth === 1 ? '200px' : '525px',
-          }}>
+          }}
+          onClick={onTitleClick}>
           {title}
         </Typography.Paragraph>
       </Col>
@@ -112,6 +118,7 @@ const WidgetHeader = ({
                 <Button
                   className="widget-header-options widget-header-edit-button"
                   data-testid="edit-widget-button"
+                  disabled={disableEdit}
                   icon={<EditIcon height={20} width={20} />}
                   onClick={onEditClick}
                 />

@@ -32,6 +32,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -55,6 +56,7 @@ import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
+import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import {
   getBreadcrumbForContainer,
@@ -577,6 +579,17 @@ export const getDataAssetsHeaderInfo = (
       );
 
       break;
+
+    case EntityType.SECURITY_SERVICE:
+      const securityServiceDetails = dataAsset as SecurityService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        securityServiceDetails,
+        EntityType.SECURITY_SERVICE
+      );
+
+      break;
+
     case EntityType.STORED_PROCEDURE:
       const storedProcedureDetails = dataAsset as StoredProcedure;
 
@@ -683,7 +696,13 @@ export const getDataAssetsHeaderInfo = (
 
       break;
     }
+    case EntityType.CHART: {
+      const chart = dataAsset as Chart;
 
+      returnData.breadcrumbs = getEntityBreadcrumbs(chart, EntityType.CHART);
+
+      break;
+    }
     case EntityType.TABLE:
     default:
       const tableDetails = dataAsset as Table;

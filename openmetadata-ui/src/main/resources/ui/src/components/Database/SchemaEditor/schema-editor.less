@@ -11,9 +11,22 @@
  *  limitations under the License.
  */
 
-.query-editor-button {
-  position: absolute;
-  z-index: 10;
-  top: 14px;
-  right: 14px;
+@import (reference) url('../../../styles/variables.less');
+
+.schema-editor-container {
+  .query-editor-button {
+    position: absolute;
+    z-index: 10;
+    top: 14px;
+    right: 14px;
+  }
+
+  .query-editor-copy-button {
+    background: @white;
+    color: @grey-600;
+
+    svg {
+      font-size: 16px;
+    }
+  }
 }

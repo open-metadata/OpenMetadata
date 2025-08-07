@@ -1,5 +1,6 @@
 ---
 title: JVM Default Config | OpenMetadata JVM Config
+description: Connect Jvmdefaultconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/ldaptruststoreconfig/jvmdefaultconfig
 ---
 

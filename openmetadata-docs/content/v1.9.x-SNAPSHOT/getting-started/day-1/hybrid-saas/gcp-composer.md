@@ -1,5 +1,6 @@
 ---
-title: Run the ingestion from GCP Composer 
+title: Run the ingestion from GCP Composer
+description: Learn to run Collate ingestion in GCP Composer using Python or KubernetesPod operators. Install packages or run containers for secure, scalable ingestion.
 slug: /getting-started/day-1/hybrid-saas/gcp-composer
 collate: true
 ---

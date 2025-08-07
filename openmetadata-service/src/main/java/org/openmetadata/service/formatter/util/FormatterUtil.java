@@ -15,6 +15,7 @@ package org.openmetadata.service.formatter.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.service.Entity.DATA_CONTRACT_RESULT;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
@@ -34,11 +35,14 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -295,8 +299,10 @@ public class FormatterUtil {
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
-        .withDomain(
-            nullOrEmpty(entityInterface.getDomain()) ? null : entityInterface.getDomain().getId())
+        .withDomains(
+            entityInterface.getDomains() == null
+                ? null
+                : entityInterface.getDomains().stream().map(EntityReference::getId).toList())
         .withUserName(updateBy)
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
@@ -337,6 +343,24 @@ public class FormatterUtil {
           .withEntity(testCase)
           .withEntityFullyQualifiedName(testCase.getFullyQualifiedName());
     }
+    if (entityTimeSeries instanceof DataContractResult) {
+      DataContractResult result =
+          JsonUtils.readOrConvertValue(entityTimeSeries, DataContractResult.class);
+      DataContract contract =
+          Entity.getEntityByName(
+              Entity.DATA_CONTRACT, result.getDataContractFQN(), "", Include.ALL);
+      ChangeEvent changeEvent =
+          getChangeEvent(updateBy, eventType, contract.getEntityReference().getType(), contract);
+
+      return changeEvent
+          .withChangeDescription(
+              new ChangeDescription()
+                  .withFieldsUpdated(
+                      List.of(
+                          new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
+          .withEntity(contract)
+          .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
+    }
     return null;
   }
 
@@ -346,7 +370,7 @@ public class FormatterUtil {
         .withId(UUID.randomUUID())
         .withEventType(eventType)
         .withEntityId(thread.getId())
-        .withDomain(thread.getDomain())
+        .withDomains(thread.getDomains())
         .withEntityType(entityType)
         .withUserName(updateBy)
         .withTimestamp(thread.getUpdatedAt());

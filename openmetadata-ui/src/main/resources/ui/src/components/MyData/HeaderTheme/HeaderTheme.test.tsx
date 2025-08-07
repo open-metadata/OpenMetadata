@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { headerBackgroundColors } from '../../../constants/Mydata.constants';
+import {
+  DEFAULT_HEADER_BG_COLOR,
+  headerBackgroundColors,
+} from '../../../constants/Mydata.constants';
 import HeaderTheme from './HeaderTheme';
 
 // Mock dependencies
@@ -39,7 +42,7 @@ jest.mock(
 
 describe('HeaderTheme Component', () => {
   const mockSetSelectedColor = jest.fn();
-  const defaultSelectedColor = '#1890ff';
+  const defaultSelectedColor = DEFAULT_HEADER_BG_COLOR;
 
   const defaultProps = {
     selectedColor: defaultSelectedColor,
@@ -56,7 +59,6 @@ describe('HeaderTheme Component', () => {
 
       expect(screen.getByText('label.preview-header')).toBeInTheDocument();
       expect(screen.getByText('label.select-background')).toBeInTheDocument();
-      expect(screen.getByText('label.custom')).toBeInTheDocument();
       expect(
         screen.getByTestId('customise-landing-page-header')
       ).toBeInTheDocument();
@@ -75,41 +77,6 @@ describe('HeaderTheme Component', () => {
         'data-hide-customise-button',
         'true'
       );
-    });
-
-    it('should display selected color in custom preview', () => {
-      render(<HeaderTheme {...defaultProps} />);
-
-      expect(screen.getByText(defaultSelectedColor)).toBeInTheDocument();
-    });
-
-    it('should render custom color preview with correct styling', () => {
-      render(<HeaderTheme {...defaultProps} />);
-
-      const colorPreview = document.querySelector('.color-preview');
-      const colorPreviewInner = document.querySelector('.color-preview-inner');
-
-      expect(colorPreview).toHaveStyle(`border-color: ${defaultSelectedColor}`);
-      expect(colorPreviewInner).toHaveStyle(
-        `background-color: ${defaultSelectedColor}`
-      );
-    });
-
-    it('should render all available color options', () => {
-      render(<HeaderTheme {...defaultProps} />);
-
-      const colorOptions = document.querySelectorAll('.option-color');
-
-      expect(colorOptions).toHaveLength(headerBackgroundColors.length);
-
-      headerBackgroundColors.forEach((colorOption, index) => {
-        const optionElement = colorOptions[index];
-
-        expect(optionElement).toHaveStyle(
-          `background-color: ${colorOption.color}`
-        );
-        expect(optionElement).toHaveStyle(`border-color: ${colorOption.color}`);
-      });
     });
   });
 
@@ -166,20 +133,6 @@ describe('HeaderTheme Component', () => {
   });
 
   describe('Props Handling', () => {
-    it('should update preview when selectedColor prop changes', () => {
-      const customColor = '#ff0000';
-      const { rerender } = render(<HeaderTheme {...defaultProps} />);
-
-      // Initial render
-      expect(screen.getByText(defaultSelectedColor)).toBeInTheDocument();
-
-      // Rerender with new color
-      rerender(<HeaderTheme {...defaultProps} selectedColor={customColor} />);
-
-      expect(screen.getByText(customColor)).toBeInTheDocument();
-      expect(screen.queryByText(defaultSelectedColor)).not.toBeInTheDocument();
-    });
-
     it('should pass updated backgroundColor to preview header', () => {
       const customColor = '#00ff00';
       const { rerender } = render(<HeaderTheme {...defaultProps} />);

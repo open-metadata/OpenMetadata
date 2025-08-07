@@ -1,5 +1,6 @@
 ---
-title: OpenMetadata Server | Developer Guide & Setup
+title: `brandName` Server | Developer Guide & Setup
+description: Build and run metadata server locally with this guide, including environment setup and server configuration tips.
 slug: /developers/contribute/build-code-and-run-tests/openmetadata-server
 ---
 

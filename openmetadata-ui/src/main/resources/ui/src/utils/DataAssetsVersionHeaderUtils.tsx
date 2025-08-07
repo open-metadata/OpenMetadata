@@ -20,6 +20,7 @@ import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAsset
 import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
+import { Chart } from '../generated/entity/data/chart';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Metric } from '../generated/entity/data/metric';
 import { Pipeline } from '../generated/entity/data/pipeline';
@@ -170,6 +171,12 @@ export const getDataAssetsVersionHeaderInfo = (
     case EntityType.DASHBOARD:
       return getExtraInfoSourceUrl(
         currentVersionData as Dashboard,
+        changeDescription
+      );
+
+    case EntityType.CHART:
+      return getExtraInfoSourceUrl(
+        currentVersionData as Chart,
         changeDescription
       );
 

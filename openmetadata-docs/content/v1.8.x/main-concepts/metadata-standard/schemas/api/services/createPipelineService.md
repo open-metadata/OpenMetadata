@@ -1,5 +1,6 @@
 ---
-title: Create Pipeline Service | OpenMetadata Pipeline Service
+title: Create Pipeline Service | `brandName` Pipeline Service
+description: Register a pipeline service to track and manage data pipeline metadata including lineage, tasks, and execution context.
 slug: /main-concepts/metadata-standard/schemas/api/services/createpipelineservice
 ---
 

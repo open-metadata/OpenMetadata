@@ -1,5 +1,6 @@
 ---
 title: Dashboard Data Model | OpenMetadata Dashboard Model
+description: Connect Dashboarddatamodel to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/dashboarddatamodel
 ---
 

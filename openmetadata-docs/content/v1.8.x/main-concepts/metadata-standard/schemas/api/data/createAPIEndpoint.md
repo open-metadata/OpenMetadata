@@ -1,5 +1,6 @@
 ---
-title: Create API Endpoint | OpenMetadata API Endpoint
+title: Create API Endpoint | `brandName` API Endpoint
+description: Connect Createapiendpoint to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createapiendpoint
 ---
 

@@ -289,7 +289,7 @@ const AssetsTabs = forwardRef(
           break;
         case AssetsOfEntity.DATA_PRODUCT:
           data = await getDataProductByName(fqn, {
-            fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+            fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
           });
 
           break;
@@ -434,7 +434,7 @@ const AssetsTabs = forwardRef(
     }, [entityFqn]);
 
     const assetErrorPlaceHolder = useMemo(() => {
-      if (isObject(noDataPlaceholder) || searchValue || !permissions.Create) {
+      if (isObject(noDataPlaceholder) || searchValue) {
         return (
           <ErrorPlaceHolderNew
             className="p-lg "

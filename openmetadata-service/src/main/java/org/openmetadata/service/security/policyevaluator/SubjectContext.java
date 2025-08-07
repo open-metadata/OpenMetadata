@@ -74,9 +74,12 @@ public record SubjectContext(User user) {
     return false;
   }
 
-  public boolean hasDomain(EntityReference domain) {
+  public boolean hasDomains(List<EntityReference> domains) {
     return listOrEmpty(user.getDomains()).stream()
-        .anyMatch(userDomain -> userDomain.getId().equals(domain.getId()));
+        .anyMatch(
+            userDomain ->
+                listOrEmpty(domains).stream()
+                    .anyMatch(domain -> userDomain.getId().equals(domain.getId())));
   }
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */

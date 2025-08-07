@@ -1,5 +1,6 @@
 ---
-title: changeEventConfiguration
+title: changeEventConfiguration | Official Documentation
+description: Connect Changeeventconfiguration to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/configuration/changeeventconfiguration
 ---
 

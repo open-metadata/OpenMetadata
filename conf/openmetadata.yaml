@@ -318,6 +318,7 @@ elasticsearch:
     bedrock:
       region: ${AWS_BEDROCK_REGION:-""}
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
+      embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
       accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
       useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
@@ -374,7 +375,7 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp"
+  secretsManager: ${SECRET_MANAGER:-db} # Possible values are "db", "managed-aws","aws", "managed-aws-ssm", "aws-ssm", "managed-azure-kv", "azure-kv", "in-memory", "gcp", "kubernetes"
   prefix: ${SECRET_MANAGER_PREFIX:-""} # Define the secret key ID as /<prefix>/<clusterName>/<key>
   tags: ${SECRET_MANAGER_TAGS:-[]} # Add tags to the created resource. Format is `[key1:value1,key2:value2,...]`
 # it will use the default auth provider for the secrets' manager service if parameters are not set
@@ -390,6 +391,10 @@ secretsManagerConfiguration:
     vaultName: ${OM_SM_VAULT_NAME:-""}
     ## For GCP
     projectId: ${OM_SM_PROJECT_ID:-""}
+    ## For Kubernetes
+    namespace: ${OM_SM_NAMESPACE:-"default"}
+    kubeconfigPath: ${OM_SM_KUBECONFIG_PATH:-""}
+    inCluster: ${OM_SM_IN_CLUSTER:-"false"}
 
 health:
   delayedShutdownHandlerEnabled: true
