@@ -12,7 +12,7 @@
  */
 import { Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, pick } from 'lodash';
+import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,7 +72,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       const results = await getAllContractResults(contract.id, {
         ...pick(dateRangeObj, ['startTs', 'endTs']),
       });
-      setContractExecutionResultList(results.data);
+      setContractExecutionResultList(sortBy(results.data, 'timestamp'));
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
