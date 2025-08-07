@@ -1,6 +1,6 @@
 ---
 title: Mode Connector | `brandName` Dashboard Integration Guide
-description: Connect Mode Analytics dashboards to OpenMetadata with our comprehensive connector guide. Easy setup, configuration steps, and metadata extraction instructions.
+description: Connect Mode Analytics dashboards to `brandName` with our comprehensive connector guide. Easy setup, configuration steps, and metadata extraction instructions.
 slug: /connectors/dashboard/mode
 ---
 
