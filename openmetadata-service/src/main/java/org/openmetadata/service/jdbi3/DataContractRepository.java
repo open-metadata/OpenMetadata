@@ -131,9 +131,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void prepare(DataContract dataContract, boolean update) {
     EntityReference entityRef = dataContract.getEntity();
-    // make sure the contract has FQN. We need it for the test suite.
-    setFullyQualifiedName(dataContract);
-
     if (!update) {
       validateEntityReference(entityRef);
     }
@@ -175,10 +172,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   protected void postDelete(DataContract dataContract) {
     super.postDelete(dataContract);
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      TestSuite testSuite = getOrCreateTestSuite(dataContract);
-      TestSuiteRepository testSuiteRepository =
-          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-      testSuiteRepository.delete(ADMIN_USER_NAME, testSuite.getId(), true, true);
+      deleteTestSuite(dataContract);
     }
     // Clean status
     daoCollection
@@ -307,12 +301,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public static String getTestSuiteName(DataContract dataContract) {
-    return EntityUtil.hash(dataContract.getFullyQualifiedName());
+    return dataContract.getId().toString();
   }
 
   private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract, boolean update) {
     try {
       if (update) { // If we're running an update, fetch the existing test suite information
+        setFullyQualifiedName(dataContract);
         Optional<DataContract> existing =
             getByNameOrNull(
                 null,
@@ -321,6 +316,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                 Include.NON_DELETED,
                 false);
         dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
+        dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
       }
 
       // If we don't have quality expectations or a test suite, we don't need to create one

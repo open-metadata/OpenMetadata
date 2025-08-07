@@ -3122,4 +3122,86 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         errorMessage.contains("DataContract") || errorMessage.contains("not found"),
         "Error message should indicate that no data contract was found: " + errorMessage);
   }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDeleteDataContractWithDQExpectationsDoesNotDeleteTestCases(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create test cases for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_validity_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    // Create data contract with quality expectations
+    List<EntityReference> qualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withStatus(ContractStatus.Active)
+            .withQualityExpectations(qualityExpectations);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the contract was created with quality expectations and test suite
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getQualityExpectations());
+    assertEquals(2, dataContract.getQualityExpectations().size());
+    assertNotNull(dataContract.getTestSuite());
+
+    // Verify test suite was created and contains the test cases
+    String expectedTestSuiteName = DataContractRepository.getTestSuiteName(dataContract);
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "tests", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuite);
+    assertNotNull(testSuite.getTests());
+    assertEquals(2, testSuite.getTests().size());
+
+    // Verify both test cases exist and are accessible before deletion
+    TestCase retrievedTestCase1 = testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
+    TestCase retrievedTestCase2 = testCaseResourceTest.getEntity(testCase2.getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedTestCase1);
+    assertNotNull(retrievedTestCase2);
+
+    // Delete the data contract (non-recursive)
+    deleteDataContract(dataContract.getId());
+
+    // Verify the data contract is deleted
+    assertThrows(HttpResponseException.class, () -> getDataContract(dataContract.getId(), null));
+
+    // Verify the test suite is deleted
+    assertThrows(
+        HttpResponseException.class,
+        () -> testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS));
+
+    // CRITICAL ASSERTION: Verify the test cases are NOT deleted - they should still exist independently
+    TestCase testCase1AfterDeletion = testCaseResourceTest.getEntity(testCase1.getId(), "*", ADMIN_AUTH_HEADERS);
+    TestCase testCase2AfterDeletion = testCaseResourceTest.getEntity(testCase2.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testCase1AfterDeletion);
+    assertNotNull(testCase2AfterDeletion);
+    assertEquals(testCase1.getId(), testCase1AfterDeletion.getId());
+    assertEquals(testCase2.getId(), testCase2AfterDeletion.getId());
+    assertEquals(testCase1.getName(), testCase1AfterDeletion.getName());
+    assertEquals(testCase2.getName(), testCase2AfterDeletion.getName());
+
+    // Verify test cases maintain their entity links and other properties
+    assertEquals(testCase1.getEntityLink(), testCase1AfterDeletion.getEntityLink());
+    assertEquals(testCase2.getEntityLink(), testCase2AfterDeletion.getEntityLink());
+  }
 }
