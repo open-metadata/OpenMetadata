@@ -131,7 +131,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void prepare(DataContract dataContract, boolean update) {
     EntityReference entityRef = dataContract.getEntity();
-
     if (!update) {
       validateEntityReference(entityRef);
     }
@@ -152,7 +151,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getReviewers())) {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
-    createOrUpdateDataContractTestSuite(dataContract);
+    createOrUpdateDataContractTestSuite(dataContract, update);
   }
 
   // Ensure we have a pipeline after creation if needed
@@ -173,10 +172,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   protected void postDelete(DataContract dataContract) {
     super.postDelete(dataContract);
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      TestSuite testSuite = getOrCreateTestSuite(dataContract);
-      TestSuiteRepository testSuiteRepository =
-          (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-      testSuiteRepository.delete(ADMIN_USER_NAME, testSuite.getId(), true, true);
+      deleteTestSuite(dataContract);
     }
     // Clean status
     daoCollection
@@ -304,12 +300,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return fieldNames;
   }
 
-  private String getTestSuiteName(DataContract dataContract) {
-    return dataContract.getName() + " - Data Contract Expectations";
+  public static String getTestSuiteName(DataContract dataContract) {
+    return dataContract.getId().toString();
   }
 
-  private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract) {
+  private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract, boolean update) {
     try {
+      if (update) { // If we're running an update, fetch the existing test suite information
+        setFullyQualifiedName(dataContract);
+        Optional<DataContract> existing =
+            getByNameOrNull(
+                null,
+                dataContract.getFullyQualifiedName(),
+                Fields.EMPTY_FIELDS,
+                Include.NON_DELETED,
+                false);
+        dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
+        dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
+      }
+
       // If we don't have quality expectations or a test suite, we don't need to create one
       if (nullOrEmpty(dataContract.getQualityExpectations())
           && !contractHasTestSuite(dataContract)) {
@@ -384,15 +393,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
 
     // Check if test suite already exists
-    Optional<TestSuite> maybeTestSuite =
-        testSuiteRepository.getByNameOrNull(
-            null,
-            testSuiteName,
-            testSuiteRepository.getFields("tests,pipelines"),
-            Include.NON_DELETED,
-            false);
-
-    if (maybeTestSuite.isEmpty()) {
+    if (contractHasTestSuite(dataContract)) {
+      return Entity.getEntityOrNull(
+          dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+    } else {
       // Create new test suite
       LOG.debug(
           "Test suite [{}] not found when initializing the Data Contract, creating a new one",
@@ -400,7 +404,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       CreateTestSuite createTestSuite =
           new CreateTestSuite()
               .withName(testSuiteName)
-              .withDisplayName(testSuiteName)
+              .withDisplayName("Data Contract - " + dataContract.getName())
               .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
               .withDataContract(
                   new EntityReference()
@@ -410,22 +414,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
       return testSuiteRepository.create(null, newTestSuite);
     }
-
-    return maybeTestSuite.get();
   }
 
   private Boolean contractHasTestSuite(DataContract dataContract) {
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-
-    String testSuiteName = getTestSuiteName(dataContract);
-
-    // Check if test suite already exists
-    Optional<TestSuite> maybeTestSuite =
-        testSuiteRepository.getByNameOrNull(
-            null, testSuiteName, testSuiteRepository.getFields(""), Include.NON_DELETED, false);
-
-    return maybeTestSuite.isPresent();
+    return dataContract.getTestSuite() != null;
   }
 
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution
@@ -620,11 +612,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return validation;
   }
 
-  private QualityValidation validateDQ(List<ResultSummary> testSummary) {
+  private QualityValidation validateDQ(TestSuite testSuite) {
     QualityValidation validation = new QualityValidation();
-    if (nullOrEmpty(testSummary)) {
+    if (nullOrEmpty(testSuite.getTestCaseResultSummary())) {
       return validation; // return the existing result without updates
     }
+
+    List<String> currentTests =
+        testSuite.getTests().stream().map(EntityReference::getFullyQualifiedName).toList();
+    List<ResultSummary> testSummary =
+        testSuite.getTestCaseResultSummary().stream()
+            .filter(
+                test -> {
+                  return currentTests.contains(test.getTestCaseName());
+                })
+            .toList();
 
     List<ResultSummary> failedTests =
         testSummary.stream().filter(test -> FAILED_DQ_STATUSES.contains(test.getStatus())).toList();
@@ -718,7 +720,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Get the latest result or throw if none exists
     DataContractResult result = getLatestResult(dataContract);
-    QualityValidation validation = validateDQ(testSuite.getTestCaseResultSummary());
+    QualityValidation validation = validateDQ(testSuite);
 
     result.withQualityValidation(validation);
 

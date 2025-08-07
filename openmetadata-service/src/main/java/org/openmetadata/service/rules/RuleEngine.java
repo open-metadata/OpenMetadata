@@ -142,6 +142,9 @@ public class RuleEngine {
   }
 
   public Boolean shouldApplyRule(EntityInterface facts, SemanticsRule rule) {
+    if (!rule.getEnabled()) {
+      return false; // If the rule is not enabled, skip it
+    }
     // If the rule is not entity-specific, apply it
     if (rule.getEntityType() == null && nullOrEmpty(rule.getIgnoredEntities())) {
       return true;
