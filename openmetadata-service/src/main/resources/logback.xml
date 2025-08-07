@@ -1,11 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <variable name="ROOT_LOG_LEVEL" value="${BOOTSTRAP_LOG_LEVEL:-INFO}" />
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%msg%n</pattern>
-        </encoder>
-    </appender>
+    <if condition='p("LOG_FORMAT").equalsIgnoreCase("json")'>
+        <then>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="ch.qos.logback.contrib.json.classic.JsonLayout">
+                    <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter">
+                        <prettyPrint>false</prettyPrint>
+                    </jsonFormatter>
+                    <timestampFormat>yyyy-MM-dd' 'HH:mm:ss.SSS</timestampFormat>
+                </encoder>
+            </appender>
+        </then>
+        <else>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder>
+                    <pattern>%msg%n</pattern>
+                </encoder>
+            </appender>
+        </else>
+    </if>
     <appender name="file" class="ch.qos.logback.core.FileAppender">
         <file>./logs/openmetadata-operation.log</file>
         <append>true</append>
