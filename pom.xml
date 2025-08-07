@@ -563,7 +563,7 @@
       <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
-        <version>2.2.0</version>
+        <version>2.3.0</version>
       </dependency>
       <dependency>
         <groupId>info.picocli</groupId>
@@ -612,7 +612,7 @@
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
-        <version>1.17.2</version>
+        <version>1.22.0</version>
         <exclusions>
           <exclusion>
             <groupId>net.minidev</groupId>
@@ -623,7 +623,7 @@
       <dependency>
         <groupId>com.azure</groupId>
         <artifactId>azure-identity</artifactId>
-        <version>1.14.0</version>
+        <version>1.15.2</version>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
