@@ -144,6 +144,40 @@
         }
       },
       "additionalProperties": false
+    },
+    "aws": {
+      "description": "AWS configuration for OpenSearch IAM (SigV4) authentication.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
+      "properties": {
+        "useIamAuth": {
+          "description": "Enable SigV4 request signing to authenticate to OpenSearch.",
+          "type": "boolean",
+          "default": false
+        },
+        "region": {
+          "description": "AWS region for signing requests (e.g., us-east-1).",
+          "type": "string"
+        },
+        "accessKeyId": {
+          "description": "Optional AWS access key ID. If omitted and useIamAuth is true, the default credential provider chain is used.",
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "description": "Optional AWS secret access key (pair with accessKeyId).",
+          "type": "string"
+        },
+        "sessionToken": {
+          "description": "Optional AWS session token (when using temporary credentials).",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "AWS service name to sign for. Use 'es' for OpenSearch managed service, or 'aoss' for OpenSearch Serverless.",
+          "type": "string",
+          "default": "es"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

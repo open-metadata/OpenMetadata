@@ -312,6 +312,14 @@ elasticsearch:
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
+  # Optional: Enable IAM (SigV4) authentication for AWS OpenSearch
+  aws:
+    useIamAuth: ${SEARCH_AWS_IAM_AUTH:-false}
+    region: ${SEARCH_AWS_REGION:-""}
+    accessKeyId: ${SEARCH_AWS_ACCESS_KEY_ID:-""}
+    secretAccessKey: ${SEARCH_AWS_SECRET_ACCESS_KEY:-""}
+    sessionToken: ${SEARCH_AWS_SESSION_TOKEN:-""}
+    serviceName: ${SEARCH_AWS_SERVICE_NAME:-"es"}
   naturalLanguageSearch:
     enabled: false
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
