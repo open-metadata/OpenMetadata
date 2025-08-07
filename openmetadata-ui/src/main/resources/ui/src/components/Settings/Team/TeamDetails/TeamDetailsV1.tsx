@@ -50,7 +50,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -150,7 +149,6 @@ const TeamDetailsV1 = ({
     state: false,
     leave: false,
   };
-  const { permissions } = usePermissionProvider();
   const currentTab = useMemo(() => {
     if (activeTab) {
       return activeTab;
