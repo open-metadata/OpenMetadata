@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import {
+  AuthenticationConfiguration,
+  AuthorizerConfiguration,
+} from '../constants/SSO.constant';
 import APIClient from './index';
 
 export interface SecurityConfiguration {
-  authenticationConfiguration: any;
-  authorizerConfiguration: any;
+  authenticationConfiguration: AuthenticationConfiguration;
+  authorizerConfiguration: AuthorizerConfiguration;
 }
 
 export interface ValidationResult {

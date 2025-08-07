@@ -43,6 +43,8 @@ import './SSOConfigurationFormRJSF.less';
 import { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
+  AuthenticationConfiguration,
+  AuthorizerConfiguration,
   COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
   COMMON_AUTH_FIELDS_TO_REMOVE,
   DEFAULT_AUTHORIZER_CLASS_NAME,
@@ -60,33 +62,6 @@ import SelectWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidg
 const widgets = {
   SelectWidget: SelectWidget,
 };
-// Type definitions for form data
-interface AuthenticationConfiguration {
-  provider: string;
-  providerName: string;
-  authority: string;
-  clientId: string;
-  callbackUrl: string;
-  publicKeyUrls: string[];
-  tokenValidationAlgorithm: string;
-  jwtPrincipalClaims: string[];
-  enableSelfSignup: boolean;
-  clientType?: ClientType;
-  secret?: string;
-  ldapConfiguration?: Record<string, unknown>;
-  samlConfiguration?: Record<string, unknown>;
-  oidcConfiguration?: Record<string, unknown>;
-}
-
-interface AuthorizerConfiguration {
-  className: string;
-  containerRequestFilter: string;
-  adminPrincipals: string[];
-  principalDomain: string;
-  enforcePrincipalDomain: boolean;
-  enableSecureSocketConnection: boolean;
-  botPrincipals?: string[];
-}
 
 // UI Schema type definitions
 interface UISchemaField {
@@ -416,13 +391,14 @@ const SSOConfigurationFormRJSF = () => {
       // Clean up provider-specific fields before submission
       const cleanedFormData = cleanupProviderSpecificFields(
         currentFormData,
-        currentFormData?.authenticationConfiguration?.provider || 'google'
+        currentFormData?.authenticationConfiguration?.provider as string
       );
 
       const payload: SecurityConfiguration = {
         authenticationConfiguration:
-          cleanedFormData?.authenticationConfiguration,
-        authorizerConfiguration: cleanedFormData?.authorizerConfiguration,
+          cleanedFormData?.authenticationConfiguration as SecurityConfiguration['authenticationConfiguration'],
+        authorizerConfiguration:
+          cleanedFormData?.authorizerConfiguration as SecurityConfiguration['authorizerConfiguration'],
       };
 
       // First validate the configuration
@@ -461,19 +437,13 @@ const SSOConfigurationFormRJSF = () => {
         setAuthConfig(configWithScope);
         setAuthorizerConfig(newAuthorizerConfig);
       } catch (error) {
-        // Show error if authentication config reload failed
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : 'Failed to reload authentication configuration';
-        showErrorToast(errorMessage);
+        showErrorToast(error as AxiosError);
       }
 
       // Clear authentication state properly
       localStorage.removeItem('om-session');
       setIsAuthenticated(false);
 
-      // Navigate to signin page
       navigate('/signin');
       setIsEditMode(false);
     } catch (error) {

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ClientType } from '../generated/configuration/securityConfiguration';
+
 // Common hidden fields for all providers
 export const COMMON_HIDDEN_FIELDS = {
   responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -357,3 +359,30 @@ export const VALIDATION_STATUS = {
   SUCCESS: 'success',
   FAILED: 'failed',
 } as const;
+
+export interface AuthenticationConfiguration {
+  provider: string;
+  providerName: string;
+  authority: string;
+  clientId: string;
+  callbackUrl: string;
+  publicKeyUrls: string[];
+  tokenValidationAlgorithm: string;
+  jwtPrincipalClaims: string[];
+  enableSelfSignup: boolean;
+  clientType?: ClientType;
+  secret?: string;
+  ldapConfiguration?: Record<string, unknown>;
+  samlConfiguration?: Record<string, unknown>;
+  oidcConfiguration?: Record<string, unknown>;
+}
+
+export interface AuthorizerConfiguration {
+  className: string;
+  containerRequestFilter: string;
+  adminPrincipals: string[];
+  principalDomain: string;
+  enforcePrincipalDomain: boolean;
+  enableSecureSocketConnection: boolean;
+  botPrincipals?: string[];
+}
