@@ -372,7 +372,7 @@ const SSOConfigurationFormRJSF = () => {
     const currentClientType =
       internalData?.authenticationConfiguration?.clientType;
 
-    // Hide oidcConfiguration for public clients
+    // Show oidcConfiguration for confidential clients, hide for public clients
     if (currentClientType === ClientType.Public) {
       (
         baseSchema.authenticationConfiguration as UISchemaObject
@@ -380,6 +380,15 @@ const SSOConfigurationFormRJSF = () => {
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
+    } else if (currentClientType === ClientType.Confidential) {
+      // The schema will be shown with OIDC prefixed labels from the constants
+      const authConfig =
+        baseSchema.authenticationConfiguration as UISchemaObject;
+      if (!authConfig['oidcConfiguration']) {
+        authConfig['oidcConfiguration'] = {
+          'ui:title': 'OIDC Configuration',
+        };
+      }
     }
 
     return baseSchema;
