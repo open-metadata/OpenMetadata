@@ -1,5 +1,5 @@
 ---
-title: Create API Collection Schema | OpenMetadata API Data
+title: Create API Collection Schema | `brandName` API Data
 description: Define a new API collection consisting of grouped API endpoints with shared access rules and data classification.
 slug: /main-concepts/metadata-standard/schemas/api/data/createapicollection
 ---
