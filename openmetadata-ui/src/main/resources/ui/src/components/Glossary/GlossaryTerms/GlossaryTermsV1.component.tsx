@@ -13,7 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -323,19 +323,19 @@ const GlossaryTermsV1 = ({
     }
   }, [glossaryFqn, isVersionView]);
 
-  useEffect(() => {
-    if (isUndefined(activeTab) && !isVersionView) {
-      navigate(
-        {
-          pathname: getGlossaryTermDetailsPath(
-            glossaryFqn,
-            EntityTabs.OVERVIEW
-          ),
-        },
-        { replace: true }
-      );
-    }
-  }, [activeTab, glossaryFqn]);
+  //   useEffect(() => {
+  //     if (isUndefined(activeTab) && !isVersionView) {
+  //       navigate(
+  //         {
+  //           pathname: getGlossaryTermDetailsPath(
+  //             glossaryFqn,
+  //             EntityTabs.OVERVIEW
+  //           ),
+  //         },
+  //         { replace: true }
+  //       );
+  //     }
+  //   }, [activeTab, glossaryFqn]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView
