@@ -50,6 +50,8 @@ describe('AdvancedSearchClassBase', () => {
       'entityType',
       'descriptionSources.Suggested',
       'tags.labelType',
+      'tier.labelType',
+      'createdBy',
     ]);
   });
 });

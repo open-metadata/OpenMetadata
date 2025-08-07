@@ -1,5 +1,5 @@
 ---
-title: Amundsen Connector | OpenMetadata Metadata Services
+title: Amundsen Connector | `brandName` Metadata Services
 description: Connect Amundsen to OpenMetadata effortlessly with our comprehensive connector guide. Step-by-step setup, configuration tips, and metadata integration b...
 slug: /connectors/metadata/amundsen
 ---
