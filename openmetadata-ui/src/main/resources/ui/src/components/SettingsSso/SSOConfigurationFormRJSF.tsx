@@ -16,7 +16,7 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Card, Divider, Space, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
@@ -26,7 +26,9 @@ import {
 import {
   applySecurityConfiguration,
   SecurityConfiguration,
+  SecurityValidationResponse,
   validateSecurityConfiguration,
+  ValidationResult,
 } from '../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../utils/AuthProvider.util';
 import { transformErrors } from '../../utils/formUtils';
@@ -38,6 +40,7 @@ import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayF
 import './SSOConfigurationFormRJSF.less';
 
 // Import only the main authentication configuration schema
+import { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
@@ -47,6 +50,7 @@ import {
   getSSOUISchema,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
+  VALIDATION_STATUS,
 } from '../../constants/SSO.constant';
 import { AuthProvider, ClientType } from '../../generated/settings/settings';
 import authenticationConfigSchema from '../../jsons/configuration/authenticationConfiguration.json';
@@ -114,6 +118,30 @@ const SSOConfigurationFormRJSF = () => {
   );
 
   const navigate = useNavigate();
+
+  const handleValidationErrors = useCallback(
+    (validationResult: SecurityValidationResponse) => {
+      const failedResults = validationResult.results.filter(
+        (result: ValidationResult) => result.status === VALIDATION_STATUS.FAILED
+      );
+
+      if (failedResults.length > 0) {
+        const errorDetails = failedResults
+          .map(
+            (result: ValidationResult) =>
+              `${result.component}: ${result.message}`
+          )
+          .join('\n');
+
+        const errorMessage = `${validationResult?.message}\n\n${errorDetails}`;
+
+        showErrorToast(errorMessage);
+      } else {
+        showErrorToast(validationResult.message);
+      }
+    },
+    []
+  );
 
   // Clean up provider-specific fields based on selected provider
   const cleanupProviderSpecificFields = (
@@ -393,27 +421,21 @@ const SSOConfigurationFormRJSF = () => {
         const validationResponse = await validateSecurityConfiguration(payload);
         const validationResult = validationResponse.data;
 
-        if (validationResult.status !== 'success') {
-          showErrorToast(validationResult.message);
+        if (validationResult.status !== VALIDATION_STATUS.SUCCESS) {
+          handleValidationErrors(validationResult);
 
           return;
         }
-      } catch (validationError) {
-        const errorMessage =
-          validationError instanceof Error
-            ? validationError.message
-            : 'Validation failed';
-        showErrorToast(t('message.validation-failed'), errorMessage);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
 
         return;
       }
 
-      // If validation passes, apply the configuration
-      const response = await applySecurityConfiguration(payload);
-
-      // Check if the response is successful
-      if (response.status !== 200) {
-        showErrorToast(t('message.configuration-save-failed'));
+      try {
+        await applySecurityConfiguration(payload);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
 
         return;
       }

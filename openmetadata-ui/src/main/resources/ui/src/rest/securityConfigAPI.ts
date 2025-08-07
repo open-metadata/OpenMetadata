@@ -19,6 +19,7 @@ export interface SecurityConfiguration {
 }
 
 export interface ValidationResult {
+  component: string;
   status?: string;
   message?: string;
   error?: boolean;
