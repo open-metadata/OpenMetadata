@@ -131,6 +131,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void prepare(DataContract dataContract, boolean update) {
     EntityReference entityRef = dataContract.getEntity();
+    // make sure the contract has FQN. We need it for the test suite.
+    setFullyQualifiedName(dataContract);
 
     if (!update) {
       validateEntityReference(entityRef);
@@ -152,7 +154,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getReviewers())) {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
-    createOrUpdateDataContractTestSuite(dataContract);
+    createOrUpdateDataContractTestSuite(dataContract, update);
   }
 
   // Ensure we have a pipeline after creation if needed
@@ -304,12 +306,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return fieldNames;
   }
 
-  private String getTestSuiteName(DataContract dataContract) {
-    return dataContract.getName() + " - Data Contract Expectations";
+  public static String getTestSuiteName(DataContract dataContract) {
+    // return String.format("Data Contract - %s %s", dataContract.getName(),
+    // EntityUtil.hash(dataContract.getFullyQualifiedName()));
+    return EntityUtil.hash(dataContract.getFullyQualifiedName());
   }
 
-  private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract) {
+  private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract, boolean update) {
     try {
+      if (update) { // If we're running an update, fetch the existing test suite information
+        Optional<DataContract> existing =
+            getByNameOrNull(
+                null,
+                dataContract.getFullyQualifiedName(),
+                Fields.EMPTY_FIELDS,
+                Include.NON_DELETED,
+                false);
+        dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
+      }
+
       // If we don't have quality expectations or a test suite, we don't need to create one
       if (nullOrEmpty(dataContract.getQualityExpectations())
           && !contractHasTestSuite(dataContract)) {
@@ -384,15 +399,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
 
     // Check if test suite already exists
-    Optional<TestSuite> maybeTestSuite =
-        testSuiteRepository.getByNameOrNull(
-            null,
-            testSuiteName,
-            testSuiteRepository.getFields("tests,pipelines"),
-            Include.NON_DELETED,
-            false);
-
-    if (maybeTestSuite.isEmpty()) {
+    if (contractHasTestSuite(dataContract)) {
+      return Entity.getEntityOrNull(
+          dataContract.getTestSuite(), "tests,pipelines", Include.NON_DELETED);
+    } else {
       // Create new test suite
       LOG.debug(
           "Test suite [{}] not found when initializing the Data Contract, creating a new one",
@@ -400,7 +410,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       CreateTestSuite createTestSuite =
           new CreateTestSuite()
               .withName(testSuiteName)
-              .withDisplayName(testSuiteName)
+              .withDisplayName("Data Contract - " + dataContract.getName())
               .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
               .withDataContract(
                   new EntityReference()
@@ -410,22 +420,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
       return testSuiteRepository.create(null, newTestSuite);
     }
-
-    return maybeTestSuite.get();
   }
 
   private Boolean contractHasTestSuite(DataContract dataContract) {
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-
-    String testSuiteName = getTestSuiteName(dataContract);
-
-    // Check if test suite already exists
-    Optional<TestSuite> maybeTestSuite =
-        testSuiteRepository.getByNameOrNull(
-            null, testSuiteName, testSuiteRepository.getFields(""), Include.NON_DELETED, false);
-
-    return maybeTestSuite.isPresent();
+    return dataContract.getTestSuite() != null;
   }
 
   // Prepare the Ingestion Pipeline from the test suite that will handle the execution

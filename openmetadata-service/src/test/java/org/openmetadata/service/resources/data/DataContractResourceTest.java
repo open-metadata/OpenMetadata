@@ -2274,7 +2274,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(create.getName(), dataContract.getName());
 
     // Verify no test suite was created for this data contract
-    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    String expectedTestSuiteName = DataContractRepository.getTestSuiteName(dataContract);
 
     // Try to get test suite - it should not exist
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
@@ -2314,7 +2314,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(1, dataContract.getQualityExpectations().size());
 
     // Verify test suite was created using TestSuiteResourceTest
-    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    String expectedTestSuiteName = DataContractRepository.getTestSuiteName(dataContract);
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestSuite testSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
@@ -2389,7 +2389,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract dataContract = createDataContract(create);
 
     // Verify initial test suite was created with 1 test
-    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    String expectedTestSuiteName = DataContractRepository.getTestSuiteName(dataContract);
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestSuite initialTestSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
@@ -2705,7 +2705,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(dataContract.getTestSuite());
 
     // Get the created test suite
-    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    String expectedTestSuiteName = DataContractRepository.getTestSuiteName(dataContract);
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestSuite testSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
@@ -2828,7 +2828,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(dataContract.getTestSuite());
 
     // Get the created test suite
-    String expectedTestSuiteName = dataContract.getName() + " - Data Contract Expectations";
+    String expectedTestSuiteName = DataContractRepository.getTestSuiteName(dataContract);
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     TestSuite testSuite =
         testSuiteResourceTest.getEntityByName(expectedTestSuiteName, "*", ADMIN_AUTH_HEADERS);
