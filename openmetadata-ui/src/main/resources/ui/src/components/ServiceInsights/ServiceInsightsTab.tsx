@@ -353,7 +353,7 @@ const ServiceInsightsTab = ({
               <Widget
                 chartsData={getChartsDataFromWidgetName(name, chartsResults)}
                 isLoading={isLoading}
-                serviceName={serviceName}
+                serviceDetails={serviceDetails}
                 workflowStatesData={workflowStatesData}
               />
             </Col>

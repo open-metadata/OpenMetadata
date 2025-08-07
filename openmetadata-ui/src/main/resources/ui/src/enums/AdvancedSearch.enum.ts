@@ -74,6 +74,8 @@ export enum EntityFields {
   SERVICE_NAME = 'service.name.keyword',
   SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
   TAGS_LABEL_TYPE = 'tags.labelType',
+  TIER_LABEL_TYPE = 'tier.labelType',
+  CREATED_BY = 'createdBy',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {

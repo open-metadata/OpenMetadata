@@ -42,7 +42,7 @@ export interface WorkflowStatesData {
   subInstanceStates: WorkflowInstanceState[];
 }
 export interface ServiceInsightWidgetCommonProps {
-  serviceName: string;
+  serviceDetails: ServicesType;
   workflowStatesData?: WorkflowStatesData;
 }
 export interface ChartsResults {
