@@ -40,6 +40,7 @@ import {
   createInactiveAnnouncement,
   deleteAnnouncement,
   downVote,
+  editAnnouncement,
   followEntity,
   hardDeleteEntity,
   removeCertification,
@@ -489,6 +490,10 @@ export class EntityClass {
     await createAnnouncement(page, {
       title: 'Playwright Test Announcement',
       description: 'Playwright Test Announcement Description',
+    });
+    await editAnnouncement(page, {
+      title: 'Edited Playwright Test Announcement',
+      description: 'Updated Playwright Test Announcement Description',
     });
     await replyAnnouncement(page);
     await deleteAnnouncement(page);
