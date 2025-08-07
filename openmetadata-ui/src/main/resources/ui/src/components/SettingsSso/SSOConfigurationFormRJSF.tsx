@@ -13,7 +13,7 @@
 
 import { EditOutlined } from '@ant-design/icons';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { FieldProps, RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Card, Divider, Space, Typography } from 'antd';
 import { useMemo, useState } from 'react';
@@ -34,7 +34,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../common/Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
-import WorkflowArrayFieldTemplate from '../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
+import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import './SSOConfigurationFormRJSF.less';
 
 // Import only the main authentication configuration schema
@@ -325,17 +325,8 @@ const SSOConfigurationFormRJSF = () => {
     return cleanedData;
   };
 
-  // SSO-specific wrapper for WorkflowArrayFieldTemplate
-  const SSOArrayFieldTemplate = (props: Record<string, unknown>) => (
-    <WorkflowArrayFieldTemplate
-      {...(props as FieldProps)}
-      showFieldTitle
-      showCopyButton={false}
-    />
-  );
-
   const customFields: RegistryFieldsType = {
-    ArrayField: SSOArrayFieldTemplate,
+    ArrayField: SsoConfigurationFormArrayFieldTemplate,
   };
 
   const schema = {

@@ -17,21 +17,56 @@
     padding: @size-lg;
   }
   .card-title {
-    line-height: 24px;
+    line-height: @size-lg;
     color: @grey-700;
-    font-weight: 600;
+    font-weight: @font-semibold;
   }
   .card-description {
-    font-weight: 400;
+    font-weight: @font-regular;
     color: @grey-700;
-    margin-top: 0px;
-    line-height: 20px;
+    margin-top: 0;
+    line-height: @size-mlg;
     margin-right: @size-xs;
   }
   .ant-divider-horizontal {
-    margin: 16px 0 16px 0;
+    margin: @size-md 0 @size-md 0;
   }
   .header-title-wrapper {
     display: none;
+  }
+  .rjsf .form-control {
+    border-radius: @border-rad-xs;
+    border: 1px solid @grey-200;
+
+    &:hover {
+      border-color: @primary-6;
+    }
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+  }
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    border-radius: @border-rad-xs;
+    border: 1px solid @grey-200;
+
+    &:hover {
+      border-color: @primary-6;
+    }
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+  }
+
+  .ant-select-focused .ant-select-selector {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+
+  .ant-select:hover .ant-select-selector {
+    border-color: @primary-6;
   }
 }
