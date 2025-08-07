@@ -69,12 +69,6 @@ function TotalDataAssetsWidget({
                 className="flex items-center justify-between"
                 key={entity.name}>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="bullet"
-                    style={{
-                      backgroundColor: entity.fill,
-                    }}
-                  />
                   <div className="p-0 icon-container">{entity.icon}</div>
 
                   <Typography.Text>{entity.name}</Typography.Text>

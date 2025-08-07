@@ -14,7 +14,7 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import { ServiceTypes } from 'Models';
+import { Bucket, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import {
@@ -22,7 +22,6 @@ import {
   PLATFORM_INSIGHTS_CHARTS,
   PLATFORM_INSIGHTS_LIVE_CHARTS,
 } from '../../constants/ServiceInsightsTab.constants';
-import { totalDataAssetsWidgetColors } from '../../constants/TotalDataAssetsWidget.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -97,14 +96,22 @@ const ServiceInsightsTab = ({
 
       const assets = getAssetsByServiceType(serviceCategory);
 
-      const buckets = response.aggregations['entityType'].buckets.filter(
-        (bucket) => assets.includes(bucket.key)
-      );
+      // Arrange the buckets in the order of the assets
+      const buckets = assets.reduce((acc, curr) => {
+        const bucket = response.aggregations['entityType'].buckets.find(
+          (bucket) => bucket.key === curr
+        );
 
-      const entityCountsArray = buckets.map((bucket, index) => ({
+        if (!isUndefined(bucket)) {
+          return [...acc, bucket];
+        }
+
+        return acc;
+      }, [] as Bucket[]);
+
+      const entityCountsArray = buckets.map((bucket) => ({
         name: getEntityNameLabel(bucket.key),
         value: bucket.doc_count ?? 0,
-        fill: totalDataAssetsWidgetColors[index],
         icon: getEntityIcon(bucket.key, '', { height: 16, width: 16 }) ?? <></>,
       }));
 
@@ -251,7 +258,8 @@ const ServiceInsightsTab = ({
 
           setTotalAssetsCount(
             getFormattedTotalAssetsDataFromSocketData(
-              data?.data?.total_data_assets_live
+              data?.data?.total_data_assets_live,
+              serviceCategory
             )
           );
 
@@ -263,7 +271,7 @@ const ServiceInsightsTab = ({
         }
       }
     },
-    [serviceDetails]
+    [serviceDetails, serviceCategory]
   );
 
   useEffect(() => {

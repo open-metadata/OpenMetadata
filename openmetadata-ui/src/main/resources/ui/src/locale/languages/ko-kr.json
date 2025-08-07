@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "목요일",
     "tier": "계층",
+    "tier-label-type": "계층 라벨 유형",
     "tier-number": "계층{{tier}}",
     "tier-plural": "계층들",
     "tier-plural-lowercase": "계층들",
