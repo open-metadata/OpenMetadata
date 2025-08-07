@@ -102,6 +102,11 @@
           "type": "boolean",
           "default": false
         },
+        "embeddingProvider": {
+          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
+          "type": "string",
+          "default": "bedrock"
+        },
         "providerClass": {
           "description": "Fully qualified class name of the NLQService implementation to use",
           "type": "string",
