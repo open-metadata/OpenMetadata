@@ -40,6 +40,9 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createDataContract import (
+    CreateDataContractRequest,
+)
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
@@ -83,6 +86,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     MlFeature,
@@ -104,6 +108,9 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
@@ -119,6 +126,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
@@ -676,6 +686,27 @@ class SampleDataSource(
             )
         )
 
+        # Load data contracts sample data
+        try:
+            self.data_contracts = json.load(
+                open(
+                    sample_data_folder + "/dataContracts/dataContracts.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.data_contract_results = json.load(
+                open(
+                    sample_data_folder + "/dataContracts/dataContractResults.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+        except FileNotFoundError:
+            logger.warning("Data contracts sample data not found, skipping...")
+            self.data_contracts = {"dataContracts": []}
+            self.data_contract_results = {"dataContractResults": []}
+
         # Load drive sample data
         try:
             logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")
@@ -796,11 +827,146 @@ class SampleDataSource(
         yield from self.ingest_ometa_api_service()
         self.modify_column_descriptions()
         yield from self.process_service_batch()
+        yield from self.ingest_data_contracts()
 
     def ingest_domains(self):
 
         domain_request = CreateDomainRequest(**self.domain)
         yield Either(right=domain_request)
+
+    def ingest_data_contracts(self) -> Iterable[Either[CreateDataContractRequest]]:
+        """
+        Ingest sample data contracts and their results
+        """
+        try:
+            for contract_data in self.data_contracts.get("dataContracts", []):
+                try:
+                    # Create the data contract request
+                    table_fqn = contract_data.pop("tableFQN", None)
+                    contract_data["entity"] = {
+                        "id": self.metadata.get_by_name(
+                            entity=Table, fqn=table_fqn
+                        ).id.root,
+                        "type": "table",
+                    }
+                    quality_expectations = contract_data.pop(
+                        "qualityExpectations", None
+                    )
+                    if quality_expectations:
+                        contract_data["qualityExpectations"] = [
+                            {
+                                "id": self.metadata.get_by_name(
+                                    entity=TestCase, fqn=expectation, fields=["*"]
+                                ).id.root,
+                                "type": "testCase",
+                            }
+                            for expectation in quality_expectations
+                        ]
+                    data_contract_request = CreateDataContractRequest(**contract_data)
+                    yield Either(right=data_contract_request)
+
+                    # Ingest associated results
+                    yield from self._ingest_data_contract_results(table_fqn)
+
+                except ValidationError as err:
+                    logger.warning(
+                        f"Failed to create data contract {contract_data.get('name', 'unknown')}: {err}"
+                    )
+                    yield Either(
+                        left=StackTraceError(
+                            name="DataContract",
+                            error=f"Failed to create data contract: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+                except Exception as err:
+                    logger.warning(
+                        f"Unexpected error creating data contract {contract_data.get('name', 'unknown')}: {err}"
+                    )
+                    yield Either(
+                        left=StackTraceError(
+                            name="DataContract",
+                            error=f"Unexpected error: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+        except Exception as err:
+            logger.warning(f"Failed to ingest data contracts: {err}")
+            yield Either(
+                left=StackTraceError(
+                    name="DataContract",
+                    error=f"Failed to ingest data contracts: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _ingest_data_contract_results(self, table_fqn: str):
+        """
+        Ingest results for a specific data contract following test case results pattern
+        """
+        try:
+            # Find contract results by name
+            contract_results_data = None
+            for contract_result in self.data_contract_results.get(
+                "dataContractResults", []
+            ):
+                if contract_result.get("table_fqn") == table_fqn:
+                    contract_results_data = contract_result
+                    break
+
+            if not contract_results_data:
+                logger.debug(f"No results found for contract {table_fqn}")
+                return
+
+            table_fqn = contract_results_data.pop("table_fqn")
+            contract_fqn = contract_results_data.pop("dataContractFQN")
+            try:
+                contract = self.metadata.get_by_name(
+                    entity=DataContract, fqn=contract_fqn
+                )
+                if not contract:
+                    logger.warning(f"Could not find data contract {contract_fqn}")
+                    return
+            except Exception as e:
+                logger.warning(f"Could not retrieve data contract {contract_fqn}: {e}")
+                return
+
+            # Create results with timestamps going back in time (similar to test case results)
+            for days, result_data in enumerate(
+                contract_results_data.get("results", [])
+            ):
+                try:
+                    # Generate timestamp going back in days
+                    timestamp = Timestamp(
+                        int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+                    )
+
+                    # Create the DataContractResult with generated timestamp and contract FQN
+                    result = DataContractResult(
+                        dataContractFQN=contract_fqn,
+                        timestamp=timestamp,
+                        contractExecutionStatus=result_data["contractExecutionStatus"],
+                        result=result_data["result"],
+                        executionTime=result_data.get("executionTime"),
+                        schemaValidation=result_data.get("schemaValidation"),
+                        semanticsValidation=result_data.get("semanticsValidation"),
+                        qualityValidation=result_data.get("qualityValidation"),
+                    )
+
+                    yield Either(right=result)
+
+                except ValidationError as err:
+                    logger.warning(
+                        f"Failed to create data contract result for {table_fqn}: {err}"
+                    )
+                except Exception as err:
+                    logger.warning(
+                        f"Unexpected error creating data contract result for {table_fqn}: {err}"
+                    )
+
+        except Exception as err:
+            logger.warning(f"Failed to ingest results for contract {table_fqn}: {err}")
 
     def modify_column_descriptions(self):
         """
@@ -898,13 +1064,12 @@ class SampleDataSource(
             if directory_data.get("parent"):
                 parent_name = directory_data["parent"]
                 if parent_name in directory_refs:
-                    directory_request.parent = directory_refs[parent_name]
+                    directory_request.parent = FullyQualifiedEntityName(
+                        root=directory_refs[parent_name]
+                    )
                 else:
-                    # For nested references like "Marketing.Campaigns_2024"
-                    # Build parent FQN manually
-                    parent_path = parent_name.replace(".", "/")
-                    directory_request.parent = (
-                        f"{self.drive_service.fullyQualifiedName.root}.{parent_path}"
+                    directory_request.parent = FullyQualifiedEntityName(
+                        f"{self.drive_service.fullyQualifiedName.root}.{parent_name}"
                     )
 
             # Use direct API call instead of yielding since suffix mapping is missing

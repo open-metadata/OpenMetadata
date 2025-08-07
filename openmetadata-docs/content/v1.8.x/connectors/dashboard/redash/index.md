@@ -1,6 +1,6 @@
 ---
-title: Redash Connector | OpenMetadata Dashboard Integration
-description: Connect Redash dashboards to OpenMetadata easily. Complete setup guide, configuration steps, and integration instructions for seamless data lineage tracking.
+title: Redash Connector | `brandName` Dashboard Integration
+description: Connect Redash dashboards to `brandName` Easily. Complete setup guide, configuration steps, and integration instructions for seamless data lineage tracking.
 slug: /connectors/dashboard/redash
 ---
 

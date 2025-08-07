@@ -104,29 +104,27 @@ const crudColumnDisplayName = async (
   );
 };
 
-// will update this tests separately
-test.fixme(
-  'schema table test',
-  async ({ dataStewardPage, ownerPage, page }) => {
-    const pages = [dataStewardPage, page, ownerPage];
-    const tableUrl =
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table';
-    const columnFqn =
-      'sample_data.ecommerce_db.shopify.performance_test_table.test_col_2000';
-    const columnName = 'test_col_2000';
+test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
+  test.slow();
 
-    for (const currentPage of pages) {
-      await currentPage.goto(tableUrl);
-      await currentPage.waitForLoadState('networkidle');
-      await crudColumnDisplayName(
-        currentPage,
-        columnFqn,
-        columnName,
-        'data-row-key'
-      );
-    }
+  const pages = [dataStewardPage, page, ownerPage];
+  const tableUrl =
+    '/table/sample_data.ecommerce_db.shopify.performance_test_table';
+  const columnFqn =
+    'sample_data.ecommerce_db.shopify.performance_test_table.test_col_2000';
+  const columnName = 'test_col_2000';
+
+  for (const currentPage of pages) {
+    await currentPage.goto(tableUrl);
+    await currentPage.waitForLoadState('networkidle');
+    await crudColumnDisplayName(
+      currentPage,
+      columnFqn,
+      columnName,
+      'data-row-key'
+    );
   }
-);
+});
 
 test('Schema Table Pagination should work Properly', async ({ page }) => {
   const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);

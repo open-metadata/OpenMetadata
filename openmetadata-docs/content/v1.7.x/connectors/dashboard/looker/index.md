@@ -1,6 +1,6 @@
 ---
 title: Looker Connector | Integrate BI with OpenMetadata Docs
-description: Connect Looker dashboards to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction tips.
+description: Connect Looker dashboards to `brandName` with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/dashboard/looker
 ---
 

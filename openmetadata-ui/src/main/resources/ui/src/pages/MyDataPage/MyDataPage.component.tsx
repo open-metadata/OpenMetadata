@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -250,12 +249,13 @@ const MyDataPage = () => {
     <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
         className="p-b-lg"
-        mainContainerClassName="p-t-0"
+        mainContainerClassName="p-t-0 my-data-page-main-container"
         pageTitle={t('label.my-data')}>
         <div className="grid-wrapper">
           <CustomiseLandingPageHeader
             overlappedContainer
             backgroundColor={backgroundColor}
+            dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
@@ -282,4 +282,4 @@ const MyDataPage = () => {
   );
 };
 
-export default withActivityFeed(MyDataPage);
+export default MyDataPage;

@@ -158,6 +158,11 @@ public final class AlertUtil {
           || event.getEntityType().equals(Entity.TEST_CASE);
     }
 
+    // Data Contract
+    if (config.getResources().get(0).equals(Entity.DATA_CONTRACT)) {
+      return event.getEntityType().equals(Entity.DATA_CONTRACT);
+    }
+
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 

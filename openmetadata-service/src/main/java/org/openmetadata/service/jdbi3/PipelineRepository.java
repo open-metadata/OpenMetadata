@@ -28,6 +28,7 @@ import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +86,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     fieldFetchers.put("pipelineStatus", this::fetchAndSetPipelineStatuses);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTaskFieldsInBulk);
-    fieldFetchers.put(FIELD_OWNERS, this::fetchAndSetTaskFieldsInBulk);
   }
 
   @Override
@@ -203,13 +203,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       return;
     }
 
-    // Use bulk tag and owner fetching for all pipeline tasks
-    for (Pipeline pipeline : pipelines) {
-      if (pipeline.getTasks() != null) {
-        // Still need individual calls here as tasks don't have bulk fetching pattern
-        // This is better than the original N+N pattern we had
-        getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
-        getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
+    // First, if tags are requested, fetch pipeline-level tags (important for search indexing)
+    if (fields.contains(FIELD_TAGS)) {
+      List<String> entityFQNs = pipelines.stream().map(Pipeline::getFullyQualifiedName).toList();
+      Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+      for (Pipeline pipeline : pipelines) {
+        pipeline.setTags(
+            addDerivedTags(
+                tagsMap.getOrDefault(pipeline.getFullyQualifiedName(), Collections.emptyList())));
+      }
+    }
+
+    // Then, if tasks field is requested, also handle task-level tags and owners
+    if (fields.contains("tasks")) {
+      // Use bulk tag and owner fetching for all pipeline tasks
+      for (Pipeline pipeline : pipelines) {
+        if (pipeline.getTasks() != null) {
+          // Still need individual calls here as tasks don't have bulk fetching pattern
+          // This is better than the original N+N pattern we had
+          getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
+          getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
+        }
       }
     }
   }
