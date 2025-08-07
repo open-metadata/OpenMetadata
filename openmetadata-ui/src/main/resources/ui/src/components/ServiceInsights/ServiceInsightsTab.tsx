@@ -26,7 +26,10 @@ import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocket
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { AppRunRecord } from '../../generated/entity/applications/appRunRecord';
-import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
+import {
+  WorkflowInstance,
+  WorkflowStatus,
+} from '../../generated/governance/workflows/workflowInstance';
 import { getAgentRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
@@ -43,7 +46,7 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityNameLabel } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityNameLabel } from '../../utils/EntityUtils';
 import {
   filterDistributionChartItem,
   getAssetsByServiceType,
@@ -52,7 +55,10 @@ import {
   getPlatformInsightsChartDataFormattingMethod,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getServiceNameQueryFilter } from '../../utils/ServiceUtils';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceNameQueryFilter,
+} from '../../utils/ServiceUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -81,6 +87,9 @@ const ServiceInsightsTab = ({
   const [isLoading, setIsLoading] = useState(false);
   const [totalAssetsCount, setTotalAssetsCount] =
     useState<Array<TotalAssetsCount>>();
+  const [liveAutoPilotStatusData, setLiveAutoPilotStatusData] = useState<
+    WorkflowInstance | undefined
+  >(workflowStatesData?.mainInstanceState);
   const sessionIdRef = useRef<string>();
 
   const serviceName = serviceDetails.name;
@@ -185,11 +194,16 @@ const ServiceInsightsTab = ({
 
   const triggerSocketConnection = useCallback(async () => {
     if (isUndefined(sessionIdRef.current)) {
+      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
       const { sessionId } = await setChartDataStreamConnection({
         chartNames: LIVE_CHARTS_LIST,
         serviceName,
         startTime: getCurrentDayStartGMTinMillis(),
         endTime: getCurrentDayStartGMTinMillis() + 360000000,
+        entityLink: getEntityFeedLink(
+          entityType,
+          serviceDetails.fullyQualifiedName
+        ),
       });
 
       sessionIdRef.current = sessionId;
@@ -263,6 +277,8 @@ const ServiceInsightsTab = ({
             )
           );
 
+          setLiveAutoPilotStatusData(data.workflowInstances?.[0]);
+
           setChartsResults((prev) => ({
             platformInsightsChart,
             piiDistributionChart: prev?.piiDistributionChart ?? [],
@@ -325,7 +341,7 @@ const ServiceInsightsTab = ({
                 isCollateAIagentsLoading ||
                 isIngestionPipelineLoading
               }
-              workflowStatesData={workflowStatesData}
+              liveAutoPilotStatusData={liveAutoPilotStatusData}
             />
           </Col>
           <Col span={24}>

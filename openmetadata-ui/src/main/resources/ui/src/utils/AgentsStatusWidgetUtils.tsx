@@ -29,7 +29,6 @@ import { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/Age
 import {
   AgentsLiveInfo,
   CollateAgentLiveInfo,
-  WorkflowStatesData,
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import {
   AUTOPILOT_AGENTS_ORDERED_LIST,
@@ -53,7 +52,10 @@ import {
   PipelineType,
   ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
+import {
+  WorkflowInstance,
+  WorkflowStatus,
+} from '../generated/governance/workflows/workflowInstance';
 import { t } from './i18next/LocalUtil';
 
 export const getAgentLabelFromType = (agentType: string) => {
@@ -300,7 +302,7 @@ export const getIconFromStatus = (status?: string) => {
 export const getAgentRunningStatusMessage = (
   isLoading: boolean,
   agentsInfo: AgentsInfo[],
-  workflowStatesData?: WorkflowStatesData
+  liveAutoPilotStatusData?: WorkflowInstance
 ) => {
   if (isLoading) {
     return (
@@ -310,7 +312,7 @@ export const getAgentRunningStatusMessage = (
 
   let message = '';
   let Icon: SvgComponent = () => null;
-  const status = workflowStatesData?.mainInstanceState?.status ?? '';
+  const status = liveAutoPilotStatusData?.status ?? '';
 
   switch (status) {
     case WorkflowStatus.Running:

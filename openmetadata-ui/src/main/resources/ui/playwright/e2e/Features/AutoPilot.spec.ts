@@ -26,7 +26,6 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  reloadAndWaitForNetworkIdle,
 } from '../../utils/common';
 import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
@@ -115,19 +114,67 @@ services.forEach((ServiceClass) => {
           state: 'detached',
         });
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
         // Check the auto pilot status
         await checkAutoPilotStatus(page, service);
-
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
 
         // Wait for the auto pilot status banner to be visible
         await expect(
           page.getByText('AutoPilot agents run completed successfully.')
         ).toBeVisible();
+
+        if (service.serviceType === 'Mysql') {
+          await page.getByTestId('agent-status-widget-view-more').click();
+
+          await page.waitForSelector(
+            '[data-testid="agent-status-card-Metadata"]',
+            {
+              state: 'visible',
+            }
+          );
+
+          // Check the agents statuses
+          await expect(
+            page.getByTestId('agent-status-card-Lineage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Usage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Auto Classification')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Profiler')
+          ).toBeVisible();
+
+          // Check the agents summary
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Successful')
+              .getByTestId('pipeline-count')
+          ).toHaveText('3');
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Pending')
+              .getByTestId('pipeline-count')
+          ).toHaveText('2');
+
+          // Check the total data assets count
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database-count')
+          ).toHaveText('1');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database Schema-count')
+          ).toHaveText('1');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Table-count')
+          ).toHaveText('3');
+        }
       });
 
       test('Agents created by AutoPilot should be deleted', async ({
