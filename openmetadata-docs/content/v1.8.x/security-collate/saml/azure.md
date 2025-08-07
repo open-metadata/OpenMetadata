@@ -1,5 +1,6 @@
 ---
-title: SAML AZURE SSO
+title: SAML Azure SSO Setup | Integrate Microsoft Entra ID with Collate
+description: Set up SAML SSO with Azure Entra ID for Collate. Follow this step-by-step guide to configure the app, claims, and certificates for secure authentication.
 slug: /security/saml/azure
 collate: true
 ---

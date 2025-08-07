@@ -1,5 +1,5 @@
 ---
-title: Team Structure in OpenMetadata | Official Documentation
+title: Team Structure in `brandName` | Official Documentation
 description: Understand team structure setup to align users, roles, and permissions in a way that supports secure and scalable collaboration.
 slug: /how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata
 ---

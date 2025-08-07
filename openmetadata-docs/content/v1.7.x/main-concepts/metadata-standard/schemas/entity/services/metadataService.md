@@ -1,5 +1,5 @@
 ---
-title: Metadata Service | OpenMetadata Metadata Service
+title: Metadata Service | `brandName` Metadata Service
 description: Represent metadata service entity for platform-level operations and orchestration.
 slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
 ---

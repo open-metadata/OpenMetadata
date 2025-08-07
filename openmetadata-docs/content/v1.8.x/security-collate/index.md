@@ -1,5 +1,6 @@
 ---
-title: Enable Security
+title: Enable Security in Collate | Configure SSO Authentication
+description: Secure your Collate platform with SSO authentication. Learn to configure identity providers like Auth0, Azure, Google, Okta, and more for secure access.
 slug: /security
 collate: true
 ---

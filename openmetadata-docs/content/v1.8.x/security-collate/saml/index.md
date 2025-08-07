@@ -1,5 +1,6 @@
 ---
-title: SAML SSO
+title: SAML SSO Integration | Configure Identity Provider for Collate
+description: Set up SAML SSO for Collate. Configure Identity and Service Providers, manage JWT settings, and enable secure authentication with providers like AWS or Azure.
 slug: /security/saml
 collate: true
 ---

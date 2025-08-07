@@ -1,5 +1,6 @@
 ---
-title: OIDC Based Authentication
+title: OIDC Authentication Setup | Universal SSO Configuration for Collate
+description: Configure any OIDC provider for Collate with flexible options for scopes, discovery URLs, client methods, and token verification. Supports Google, Auth0, Azure, Okta.
 slug: /security/oidc
 collate: true
 ---

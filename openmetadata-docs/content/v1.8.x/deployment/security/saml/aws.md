@@ -1,5 +1,6 @@
 ---
-title: SAML AWS SSO
+title: SAML AWS SSO Setup | Configure AWS IAM Identity Center for Collate
+description: Learn to set up SAML SSO using AWS IAM Identity Center. Follow step-by-step instructions to configure OpenMetadata access and share metadata with Collate.
 slug: /deployment/security/saml/aws
 collate: false
 ---

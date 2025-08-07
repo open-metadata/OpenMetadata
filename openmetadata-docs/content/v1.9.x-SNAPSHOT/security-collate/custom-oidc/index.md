@@ -1,5 +1,6 @@
 ---
-title: Custom OIDC SSO
+title: Custom OIDC SSO Setup | Configure Secure Login for Collate
+description: Set up Custom OIDC SSO for Collate. Generate client ID and secret with your preferred OIDC provider, and secure production with proper JWT and user management.
 slug: /security/custom-oidc
 collate: true
 ---

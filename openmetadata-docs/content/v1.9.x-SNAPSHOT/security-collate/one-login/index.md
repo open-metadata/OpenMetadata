@@ -1,5 +1,6 @@
 ---
-title: OneLogin SSO
+title: OneLogin SSO Integration | Enable Secure Access to Collate
+description: Set up OneLogin SSO for Collate with OpenID Connect. Configure login and redirect URIs, assign users, manage tokens, and retrieve the Client ID and Issuer URL.
 slug: /security/one-login
 collate: true
 ---

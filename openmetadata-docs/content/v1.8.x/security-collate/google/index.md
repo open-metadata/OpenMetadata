@@ -1,5 +1,6 @@
 ---
-title: Google SSO
+title: Google SSO Integration | Secure Collate Access with Google OAuth
+description: Set up Google SSO for Collate with step-by-step instructions. Configure OAuth, create credentials, set authorized URLs, and enable secure login for your team.
 slug: /security/google
 collate: true
 ---

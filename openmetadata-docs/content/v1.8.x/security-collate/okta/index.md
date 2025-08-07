@@ -1,5 +1,6 @@
 ---
-title: Okta SSO
+title: Okta SSO Integration | Secure Collate Access via OAuth & OIDC
+description: Set up Okta SSO for Collate with step-by-step guidance on creating apps, configuring scopes, setting issuer URLs, and retrieving Client ID for secure login.
 slug: /security/okta
 collate: true
 ---

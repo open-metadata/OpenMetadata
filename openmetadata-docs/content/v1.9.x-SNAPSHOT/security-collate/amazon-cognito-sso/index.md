@@ -1,5 +1,6 @@
 ---
-title: Amazon Cognito SSO
+title: Amazon Cognito SSO Setup | Secure Collate Access with AWS
+description: Follow step-by-step instructions to integrate Amazon Cognito SSO with Collate. Configure user pools, client credentials, and callback URLs for secure login.
 slug: /security/amazon-cognito
 collate: true
 ---
