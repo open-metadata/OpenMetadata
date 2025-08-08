@@ -84,10 +84,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (assignee == null) {
       return "";
     }
-    // SECURITY: Sanitize input to prevent SQL injection attacks
-    String sanitizedAssignee =
-        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(assignee, 255);
-    return String.format("assignee = '%s'", sanitizedAssignee);
+    return "assignee = :assignee";
   }
 
   private String getCreatedByCondition() {
@@ -105,10 +102,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (workflowDefinitionId == null) {
       return "";
     }
-    // SECURITY: Sanitize input to prevent SQL injection attacks
-    String sanitizedWorkflowId =
-        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(workflowDefinitionId, 255);
-    return String.format("workflowDefinitionId = '%s'", sanitizedWorkflowId);
+    return "workflowDefinitionId = :workflowDefinitionId";
   }
 
   private String getEntityLinkCondition() {
@@ -116,10 +110,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (entityLinkStr == null) {
       return "";
     }
-    // SECURITY: Sanitize input to prevent SQL injection attacks
-    String sanitizedEntityLink =
-        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(entityLinkStr, 255);
-    return String.format("entityLink = '%s'", sanitizedEntityLink);
+    return "entityLink = :entityLink";
   }
 
   private String getAgentTypeCondition() {
@@ -127,13 +118,10 @@ public class ListFilter extends Filter<ListFilter> {
     if (agentType == null) {
       return "";
     } else {
-      // SECURITY: Sanitize input to prevent SQL injection attacks
-      String sanitizedAgentType =
-          org.openmetadata.service.search.SearchUtils.sanitizeUserInput(agentType, 255);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", sanitizedAgentType);
+        return "JSON_EXTRACT(json, '$.agentType') = :agentType";
       } else {
-        return String.format("json->>'agentType' = '%s'", sanitizedAgentType);
+        return "json->>'agentType' = :agentType";
       }
     }
   }
@@ -161,9 +149,9 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.alertType') = '%s'", alertType);
+        return "JSON_EXTRACT(json, '$.alertType') = :alertType";
       } else {
-        return String.format("json->>'alertType' = '%s'", alertType);
+        return "json->>'alertType' = :alertType";
       }
     }
   }
@@ -172,7 +160,7 @@ public class ListFilter extends Filter<ListFilter> {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
     return testFailureStatus == null
         ? ""
-        : String.format("testCaseResolutionStatusType = '%s'", testFailureStatus);
+        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
   }
 
   public String getIncludeCondition(String tableName) {
@@ -251,10 +239,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    // SECURITY: Sanitize input to prevent SQL injection attacks
-    String sanitizedDirectoryFqn =
-        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(directoryFqn, 500);
-    return String.format("directoryFqn = '%s'", sanitizedDirectoryFqn);
+    return "directoryFqn = :directory";
   }
 
   public String getSpreadsheetCondition(String tableName) {
@@ -262,10 +247,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (spreadsheetFqn == null) {
       return "";
     }
-    // SECURITY: Sanitize input to prevent SQL injection attacks
-    String sanitizedSpreadsheetFqn =
-        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(spreadsheetFqn, 500);
-    return String.format("spreadsheetFqn = '%s'", sanitizedSpreadsheetFqn);
+    return "spreadsheetFqn = :spreadsheet";
   }
 
   public String getFileTypeCondition(String tableName) {
@@ -273,10 +255,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
-    // SECURITY: Sanitize input to prevent SQL injection attacks
-    String sanitizedFileType =
-        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(fileType, 100);
-    return String.format("fileType = '%s'", sanitizedFileType);
+    return "fileType = :fileType";
   }
 
   public String getDisabledCondition() {
