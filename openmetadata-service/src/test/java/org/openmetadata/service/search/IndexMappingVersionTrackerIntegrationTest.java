@@ -130,8 +130,9 @@ class IndexMappingVersionTrackerIntegrationTest extends OpenMetadataApplicationT
 
     boolean hasLanguageMappings =
         mappingMap.containsKey("en")
-            || mappingMap.containsKey("zh")
             || mappingMap.containsKey("jp")
+            || mappingMap.containsKey("ru")
+            || mappingMap.containsKey("zh")
             || mappingMap.containsKey("default");
     assertTrue(hasLanguageMappings, "Should contain language-specific mappings");
   }
