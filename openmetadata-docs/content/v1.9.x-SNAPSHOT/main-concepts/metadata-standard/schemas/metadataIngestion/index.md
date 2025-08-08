@@ -1,5 +1,5 @@
 ---
-title: Metadata Ingestion | OpenMetadata Metadata Ingestion Overview
+title: Metadata Ingestion | `brandName` Metadata Ingestion Overview
 description: Metadata schema outlining ingestion workflows, sources, and connector metadata essential to catalog and lineage tracking.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion
 ---

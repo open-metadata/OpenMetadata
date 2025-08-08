@@ -1,5 +1,6 @@
 ---
-title: Azure SSO
+title: Azure SSO Integration | Enable Secure Login for Collate
+description: Learn to set up Azure SSO for Collate. Register your app, retrieve client and tenant IDs, and configure secure authentication for production environments.
 slug: /security/azure
 collate: true
 ---

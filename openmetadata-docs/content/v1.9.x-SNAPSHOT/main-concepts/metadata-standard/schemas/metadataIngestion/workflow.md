@@ -1,5 +1,5 @@
 ---
-title: workflow | OpenMetadata Ingestion Workflow
+title: workflow | `brandName` Ingestion Workflow
 description: Connect Workflow to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/workflow
 ---

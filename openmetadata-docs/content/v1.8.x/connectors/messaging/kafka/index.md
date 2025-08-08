@@ -1,6 +1,6 @@
 ---
-title: Kafka Connector | OpenMetadata Messaging Integration
-description: Connect Kafka to OpenMetadata effortlessly with our comprehensive connector guide. Set up messaging metadata ingestion, configuration, and monitoring in minutes.
+title: Kafka Connector | `brandName` Messaging Integration
+description: Connect Kafka to `brandName` effortlessly with our comprehensive connector guide. Set up messaging metadata ingestion, configuration, and monitoring in minutes.
 slug: /connectors/messaging/kafka
 ---
 
@@ -27,7 +27,11 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 
 Connecting to Kafka does not require any previous configuration.
 
-The ingestion of the Kafka topics' schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory.
+The ingestion of the Kafka topics' schema is done separately by configuring the **Schema Registry URL**. However, only the **Bootstrap Servers** information is mandatory. Below are the required Permissions for fetching the Metadata:-
+
+- READ TOPIC 
+- DESCTIBE TOPIC
+- READ CLUSTER
 
 ## Metadata Ingestion
 
