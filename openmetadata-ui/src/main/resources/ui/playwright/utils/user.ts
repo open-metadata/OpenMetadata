@@ -218,10 +218,9 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.getByText('Save').click();
   await saveResponse;
 
-  // Verify the updated display name
-  const userName = await page.textContent('[data-testid="user-display-name"]');
-
-  expect(userName).toContain(editedUserName);
+  await expect(page.locator('[data-testid="user-display-name"]')).toContainText(
+    editedUserName
+  );
 };
 
 export const editTeams = async (page: Page, teamName: string) => {
