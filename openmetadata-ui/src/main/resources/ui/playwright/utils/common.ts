@@ -78,7 +78,7 @@ export const createNewPage = async (browser: Browser) => {
   const page = await browser.newPage();
   await redirectToHomePage(page);
 
-  // get the token from localStorage
+  // get the token
   const token = await getToken(page);
 
   // create a new context with the token
