@@ -37,4 +37,4 @@ export const updateDataModelColumnDescription = (
   });
 };
 
-export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;

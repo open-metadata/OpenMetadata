@@ -69,7 +69,24 @@ class OpenMetadataLineageBackend(LineageBackend):
 
             config: AirflowLineageConfig = get_lineage_config()
             xlet_list: List[XLets] = get_xlets_from_dag(dag)
-            metadata = OpenMetadata(config.metadata_config)
+            # Only pass client config arguments that are set
+            additional_client_config_arguments = {
+                key: value
+                for key, value in {
+                    "timeout": config.timeout,
+                    "retry": config.retry,
+                    "retry_wait": config.retry_wait,
+                }.items()
+                if value
+            }
+
+            if additional_client_config_arguments:
+                dag.log.info(
+                    f"Using custom timeout={config.timeout}, retry={config.retry}, retry_wait={config.retry_wait}"
+                )
+            metadata = OpenMetadata(
+                config.metadata_config, additional_client_config_arguments
+            )
 
             runner = AirflowLineageRunner(
                 metadata=metadata,

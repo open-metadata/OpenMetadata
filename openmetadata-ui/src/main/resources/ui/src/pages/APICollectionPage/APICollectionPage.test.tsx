@@ -161,7 +161,7 @@ describe('APICollectionPage', () => {
     // Verify initial API calls
     await waitFor(() => {
       expect(getApiCollectionByFQN).toHaveBeenCalledWith('api.collection.v1', {
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       expect(getApiEndPoints).toHaveBeenCalledWith({
@@ -193,7 +193,7 @@ describe('APICollectionPage', () => {
     // Verify APIs are called with new FQN
     await waitFor(() => {
       expect(getApiCollectionByFQN).toHaveBeenCalledWith('api.collection.v2', {
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       expect(getApiEndPoints).toHaveBeenCalledWith({

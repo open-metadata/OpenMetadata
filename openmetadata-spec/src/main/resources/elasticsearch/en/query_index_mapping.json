@@ -39,6 +39,14 @@
           "filter": [
             "lowercase"
           ]
+        },
+        "om_compound_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "compound_word_delimiter_graph",
+            "flatten_graph"
+          ]
         }
       },
       "filter": {
@@ -49,6 +57,18 @@
         "word_delimiter_filter": {
           "type": "word_delimiter",
           "preserve_original": true
+        },
+        "compound_word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true,
+          "catenate_words": false,
+          "catenate_numbers": false,
+          "catenate_all": false,
+          "preserve_original": true,
+          "stem_english_possessive": true
         }
       }
     }
@@ -56,7 +76,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "keyword"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "checksum": {
         "type": "text",
@@ -76,6 +102,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -331,7 +361,7 @@
       "entityType": {
         "type": "keyword"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",

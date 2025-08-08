@@ -1,5 +1,6 @@
 ---
-title: dataInsightPipeline | OpenMetadata Data Insight Pipeline
+title: dataInsightPipeline | `brandName` Data Insight Pipeline
+description: Connect Datainsightpipeline to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/metadataingestion/datainsightpipeline
 ---
 

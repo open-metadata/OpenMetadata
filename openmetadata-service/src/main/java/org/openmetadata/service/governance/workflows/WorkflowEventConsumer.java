@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.HashMap;
@@ -115,6 +116,13 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         variables.put(
             getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
             entityLink.getLinkString());
+
+        // Set the updatedBy variable from the change event userName
+        if (event.getUserName() != null) {
+          variables.put(
+              getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
+              event.getUserName());
+        }
 
         WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }

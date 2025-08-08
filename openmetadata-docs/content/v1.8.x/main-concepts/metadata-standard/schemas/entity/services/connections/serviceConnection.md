@@ -1,5 +1,6 @@
 ---
-title: Service Connection | OpenMetadata Service Connection
+title: Service Connection | `brandName` Service Connection
+description: Schema for generic service connection metadata with protocol, host, authentication, and test endpoint.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/serviceconnection
 ---
 

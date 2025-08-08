@@ -100,6 +100,7 @@ import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -145,7 +146,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -889,8 +890,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
-      Set<String> entities =
-          new HashSet<>(Arrays.asList(entityStr.substring(1, entityStr.length() - 1).split(",")));
+      // Handle entityStr with or without quotes
+      String cleanEntityStr = entityStr;
+      if (entityStr.startsWith("'") && entityStr.endsWith("'")) {
+        cleanEntityStr = entityStr.substring(1, entityStr.length() - 1);
+      }
+      Set<String> entities = new HashSet<>(Arrays.asList(cleanEntityStr.split(",")));
       return executeSearchReindexApp(
           appName,
           entities,
@@ -1315,6 +1320,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(name = "drop-indexes", description = "Drop all indexes from Elasticsearch/OpenSearch.")
+  public Integer dropIndexes() {
+    try {
+      LOG.info("Dropping all indexes from search engine...");
+      parseConfig();
+      for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
+        LOG.info("Dropping index for entity type: {}", entityType);
+        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+      }
+      LOG.info("All indexes dropped successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop indexes due to ", e);
+      return 1;
+    }
+  }
+
   @Command(
       name = "analyze-tables",
       description =
@@ -1435,7 +1457,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
     searchRepository =
-        new SearchRepository(
+        SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
 
     // Initialize secrets manager

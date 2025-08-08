@@ -31,35 +31,6 @@
         }
       ]
     },
-    "qualityExpectation": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.QualityExpectation",
-      "description": "Quality expectation defined in the data contract.",
-      "properties": {
-        "name": {
-          "description": "Name of the quality expectation.",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the quality expectation.",
-          "$ref": "../../type/basic.json#/definitions/markdown"
-        },
-        "definition": {
-          "description": "Definition of the quality expectation.",
-          "type": "string"
-        },
-        "testCase": {
-          "description": "Reference to a test case that enforces this quality expectation.",
-          "$ref": "../../type/entityReference.json",
-          "default": null
-        }
-      },
-      "required": [
-        "name",
-        "definition"
-      ],
-      "additionalProperties": false
-    },
     "contractUpdate": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.ContractUpdate",
@@ -88,36 +59,6 @@
         "version"
       ],
       "additionalProperties": false
-    },
-    "semanticsRule": {
-        "type": "object",
-        "javaType": "org.openmetadata.schema.type.SemanticsRule",
-        "description": "Semantics rule defined in the data contract.",
-        "properties": {
-          "name": {
-            "title": "Rule Name",
-            "description": "Name of the semantics rule.",
-            "type": "string"
-          },
-          "description": {
-            "title": "Rule Description",
-            "description": "Description of the semantics rule.",
-            "$ref": "../../type/basic.json#/definitions/markdown"
-          },
-          "rule": {
-            "title": "Rule Definition",
-            "description": "Definition of the semantics rule.",
-            "type": "string",
-            "outputType": "jsonlogic",
-            "format": "queryBuilder"
-          }
-        },
-        "required": [
-          "name",
-          "description",
-          "rule"
-        ],
-        "additionalProperties": false
     }
   },
   "properties": {
@@ -165,6 +106,10 @@
       "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
       "$ref": "../../type/entityReference.json"
     },
+    "testSuite": {
+      "description": "Reference to the test suite that contains tests related to this data contract.",
+      "$ref": "../../type/entityReference.json"
+    },
     "schema": {
       "description": "Schema definition for the data contract.",
       "type": "array",
@@ -177,7 +122,7 @@
       "description": "Semantics rules defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/semanticsRule"
+        "$ref": "../../type/basic.json#/definitions/semanticsRule"
       },
       "default": null
     },
@@ -185,7 +130,7 @@
       "description": "Quality expectations defined in the data contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/qualityExpectation"
+        "$ref": "../../type/entityReference.json"
       },
       "default": null
     },
@@ -234,54 +179,6 @@
       "description": "Source URL of the data contract.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "scheduleConfig": {
-      "description": "Configuration for scheduling data contract validation checks.",
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "description": "Whether the scheduled validation is enabled.",
-          "type": "boolean",
-          "default": true
-        },
-        "scheduleInterval": {
-          "description": "Schedule interval for validation checks in cron format (e.g., '0 0 * * *' for daily).",
-          "type": "string"
-        },
-        "startDate": {
-          "description": "Start date for the scheduled validation.",
-          "$ref": "../../type/basic.json#/definitions/dateTime"
-        },
-        "endDate": {
-          "description": "End date for the scheduled validation.",
-          "$ref": "../../type/basic.json#/definitions/dateTime"
-        },
-        "timezone": {
-          "description": "Timezone for the scheduled validation.",
-          "type": "string",
-          "default": "UTC"
-        },
-        "retries": {
-          "description": "Number of retries on validation failure.",
-          "type": "integer",
-          "default": 0,
-          "minimum": 0
-        },
-        "retryDelay": {
-          "description": "Delay between retries in seconds.",
-          "type": "integer",
-          "default": 300,
-          "minimum": 0
-        },
-        "timeout": {
-          "description": "Timeout for validation execution in seconds.",
-          "type": "integer",
-          "default": 3600,
-          "minimum": 1
-        }
-      },
-      "required": ["scheduleInterval"],
-      "additionalProperties": false
-    },
     "latestResult": {
       "description": "Latest validation result for this data contract.",
       "type": "object",
@@ -290,8 +187,7 @@
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
         "status": {
-          "type": "string",
-          "enum": ["Success", "Failed", "PartialSuccess", "Aborted", "Queued"]
+          "$ref": "../../type/contractExecutionStatus.json"
         },
         "message": {
           "type": "string"

@@ -57,7 +57,6 @@ import {
   tableSortingFields,
   tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
-  TAGS_INITIAL_SORT_ORDER,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -66,7 +65,6 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Chart } from '../generated/entity/data/chart';
 import { TestSuite } from '../generated/tests/testCase';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
@@ -76,6 +74,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { getChartDetailsPath } from './RouterUtils';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -444,7 +443,6 @@ class SearchClassBase {
         label: t('label.tag-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.TAG,
         icon: ClassificationIcon,
       },
@@ -452,23 +450,20 @@ class SearchClassBase {
         label: t('label.data-product-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.DATA_PRODUCT,
         icon: DataProductIcon,
       },
       [SearchIndex.API_COLLECTION_INDEX]: {
         label: t('label.api-collection-plural'),
         sortingFields: tagSortingFields,
-        sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_COLLECTION,
         icon: IconAPICollection,
       },
       [SearchIndex.API_ENDPOINT_INDEX]: {
         label: t('label.api-endpoint-plural'),
         sortingFields: tagSortingFields,
-        sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_ENDPOINT,
         icon: IconAPIEndpoint,
       },
@@ -476,7 +471,6 @@ class SearchClassBase {
         label: t('label.metric-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
-        sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.METRIC,
         icon: MetricIcon,
       },
@@ -568,15 +562,7 @@ class SearchClassBase {
     }
 
     if (entity.entityType === EntityType.CHART) {
-      const dashboard = (entity as Chart).dashboards?.[0];
-
-      return dashboard
-        ? getEntityLinkFromType(
-            dashboard.fullyQualifiedName ?? '',
-            EntityType.DASHBOARD,
-            dashboard as SourceType
-          )
-        : '';
+      return getChartDetailsPath(entity.fullyQualifiedName ?? '');
     }
 
     if (entity.fullyQualifiedName && entity.entityType) {

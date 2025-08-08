@@ -1,5 +1,6 @@
 ---
-title: usageDetails | OpenMetadata Usage Details
+title: usageDetails | `brandName` Usage Details
+description: UsageDetails schema records fine-grained usage metrics like frequency, duration, and actions.
 slug: /main-concepts/metadata-standard/schemas/type/usagedetails
 ---
 

@@ -107,6 +107,8 @@ export const getApiContext = async (page: Page) => {
   return { apiContext, afterAction };
 };
 
+const DASHBOARD_DATA_MODEL = 'DashboardDataModel';
+
 export const getEntityTypeSearchIndexMapping = (entityType: string) => {
   const entityMapping = {
     Table: 'table_search_index',
@@ -118,7 +120,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'search_entity_search_index',
     ApiEndpoint: 'api_endpoint_search_index',
     Metric: 'metric_search_index',
-    'Dashboard Data Model': 'dashboard_data_model_search_index',
+    [DASHBOARD_DATA_MODEL]: 'dashboard_data_model_search_index',
   };
 
   return entityMapping[entityType as keyof typeof entityMapping];
@@ -179,6 +181,14 @@ export const assignDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
@@ -207,6 +217,14 @@ export const updateDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
@@ -221,7 +239,15 @@ export const removeDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
 };
 
 export const assignDataProduct = async (
@@ -337,7 +363,7 @@ export const verifyDomainPropagation = async (
   await expect(
     page
       .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domain-link')
+      .getByTestId('domains-link')
   ).toContainText(domain.displayName);
 };
 

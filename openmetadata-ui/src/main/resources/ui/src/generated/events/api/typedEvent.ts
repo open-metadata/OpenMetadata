@@ -54,9 +54,9 @@ export interface ChangeEvent {
      */
     currentVersion?: number;
     /**
-     * Domain of the entity that was modified by the operation.
+     * Domain the entity belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * For `eventType` `entityCreated`, this field captures JSON coded string of the entity
      * using the schema corresponding to `entityType`.
@@ -210,9 +210,9 @@ export interface ChangeEventClass {
      */
     currentVersion?: number;
     /**
-     * Domain of the entity that was modified by the operation.
+     * Domain the entity belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * For `eventType` `entityCreated`, this field captures JSON coded string of the entity
      * using the schema corresponding to `entityType`.

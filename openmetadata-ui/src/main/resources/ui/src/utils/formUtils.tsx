@@ -13,6 +13,7 @@
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
+  Checkbox,
   Divider,
   Form,
   FormItemProps,
@@ -48,6 +49,7 @@ import { UserSelectableList } from '../components/common/UserSelectableList/User
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
+import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -146,6 +148,14 @@ export const getField = (field: FieldProp) => {
       };
 
       break;
+    case FieldTypes.CHECK_BOX:
+      fieldElement = <Checkbox {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+
+      break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} id={id} />;
 
@@ -169,7 +179,7 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
-        <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+        <TagSuggestion {...(props as unknown as TagSuggestionProps)} newLook />
       );
 
       break;
@@ -215,6 +225,18 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
+
+    case FieldTypes.USER_TEAM_SELECT_INPUT:
+      {
+        fieldElement = (
+          <UserTeamSelectableListSearchInput
+            {...(props as unknown as UserSelectDropdownProps)}
+          />
+        );
+      }
+
+      break;
+
     case FieldTypes.USER_MULTI_SELECT:
       {
         const { children, ...rest } = props;
@@ -415,3 +437,6 @@ export const handleEntityCreationError = ({
     setInlineAlertDetails
   );
 };
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;

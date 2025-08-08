@@ -74,7 +74,7 @@ p {
   margin-left: 4px;
   padding: 2px 8px;
   font-weight: 500;
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
   color: @error-color;
   background-color: @error-light-color;
 }
@@ -154,6 +154,10 @@ a[href].link-text-grey,
 
 .text-wrap {
   text-wrap: wrap;
+}
+
+.text-no-wrap {
+  text-wrap: nowrap;
 }
 
 .text-underline {
@@ -236,7 +240,7 @@ a[href].link-text-grey,
 // Radius
 
 .rounded-4 {
-  border-radius: @border-radius-base;
+  border-radius: @border-rad-base;
 }
 
 .rounded-full {
@@ -574,14 +578,16 @@ a[href].link-text-grey,
 
 // beta tag for service page
 .service-beta-tag {
+  border-radius: 8px;
   sup {
     height: auto;
     padding: 0 4px;
     margin-left: 2px;
     font-size: 10px;
-    background: @primary-1;
-    border: 1px solid @primary-color;
-    color: @primary-color;
+    font-weight: 500;
+    background: @primary-50;
+    border: 1px solid @primary-1;
+    color: @primary-8;
   }
 }
 
@@ -593,9 +599,9 @@ a[href].link-text-grey,
     border-radius: 30px;
     margin-left: 2px;
     font-size: 10px;
-    background: @primary-1;
-    border: 1px solid @primary-color;
-    color: @primary-color;
+    background: @primary-50;
+    border: 1px solid @primary-1;
+    color: @primary-8;
   }
 }
 
@@ -975,4 +981,14 @@ a[href].link-text-grey,
 
 .transition-all-200ms {
   transition: all 200ms ease;
+}
+
+// Test Case Status Icon
+
+.test-status-icon {
+  svg {
+    fill: none;
+    height: @size-lg;
+    width: @size-lg;
+  }
 }

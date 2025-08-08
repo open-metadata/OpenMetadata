@@ -1,5 +1,6 @@
 ---
-title: Ingestion Pipeline | OpenMetadata Pipeline
+title: Ingestion Pipeline | `brandName` Pipeline
+description: Schema for ingestion pipeline including source config, schedule, transformations, and service bindings.
 slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipelines/ingestionpipeline
 ---
 

@@ -38,6 +38,7 @@ class CustomizeGlossaryPageClassBase {
       REVIEWER: 2,
       TERMS_TABLE: 7.5,
       EMPTY_WIDGET_PLACEHOLDER: 3,
+      WORKFLOW_HISTORY: 2,
     };
   }
 
@@ -65,6 +66,8 @@ class CustomizeGlossaryPageClassBase {
         return this.defaultHeights.OWNER;
       case 'REVIEWER':
         return this.defaultHeights.REVIEWER;
+      case 'WORKFLOW_HISTORY':
+        return this.defaultHeights.WORKFLOW_HISTORY;
       default:
         return this.defaultWidgetHeight;
     }

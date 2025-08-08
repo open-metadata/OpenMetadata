@@ -91,16 +91,15 @@ export const selectNullOption = async (
 
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
-  const queryResponseData = await queryRes;
-  const request = await queryResponseData.request();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+  await queryRes;
 
-  const queryParams = request.url().split('?')[1];
+  const queryParams = page.url().split('?')[1];
   const queryParamsObj = new URLSearchParams(queryParams);
 
-  const queryParamValue = queryParamsObj.get('query_filter');
-  const isQueryFilterPresent = queryParamValue === queryFilter;
+  const queryParamValue = queryParamsObj.get('quickFilter');
 
-  expect(isQueryFilterPresent).toBeTruthy();
+  expect(queryParamValue).toEqual(queryFilter);
 
   if (clearFilter) {
     await page.click(`[data-testid="clear-filters"]`);
@@ -220,4 +219,62 @@ export const verifyDatabaseAndSchemaInExploreTree = async (
   await expect(
     page.getByTestId(`explore-tree-title-${schemaName}`)
   ).toBeVisible();
+};
+
+export const validateBucketsForIndexAndSort = async (
+  page: Page,
+  asset: {
+    key: string;
+    label: string;
+    indexType: string;
+  },
+  docCount: number
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=pw&index=${asset.indexType}&from=0&size=15&deleted=false&sort_field=_score&sort_order=desc`
+    )
+    .then((res) => res.json());
+
+  const totalCount = response.hits.total.value ?? 0;
+
+  expect(totalCount).toEqual(docCount);
+};
+
+export const selectSortOrder = async (page: Page, sortOrder: string) => {
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.getByTestId('sorting-dropdown-label').click();
+  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+    state: 'visible',
+  });
+  await page.getByRole('menuitem', { name: sortOrder }).click();
+
+  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
+    sortOrder
+  );
+
+  await page.getByTestId('sort-order-button').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyEntitiesAreSorted = async (page: Page) => {
+  const entityNames = await page.$$eval(
+    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
+    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
+  );
+
+  // Normalize for case insensitivity, but retain punctuation
+  const normalize = (str: string) => str.toLowerCase().trim();
+
+  // Sort using ASCII-based string comparison (ES behavior)
+  const sortedEntityNames = [...entityNames].sort((a, b) => {
+    const normA = normalize(a);
+    const normB = normalize(b);
+
+    return normA < normB ? -1 : normA > normB ? 1 : 0;
+  });
+
+  expect(entityNames).toEqual(sortedEntityNames);
 };

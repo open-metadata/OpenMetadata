@@ -1,5 +1,6 @@
 ---
-title: Formula Holder | OpenMetadata Data Insight Formulas
+title: Formula Holder | `brandName` Data Insight Formulas
+description: Connect Formulaholder to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom/formulaholder
 ---
 

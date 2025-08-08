@@ -1,7 +1,10 @@
 package org.openmetadata.service.formatter.field;
 
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.openmetadata.schema.entity.feed.DomainFeedInfo;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -43,33 +46,35 @@ public class DomainFormatter extends DefaultFieldFormatter {
   private void populateDomainFeedInfo(Thread.FieldOperation operation, String threadMessage) {
     DomainFeedInfo domainFeedInfo =
         new DomainFeedInfo()
-            .withPreviousDomain(
-                JsonUtils.readOrConvertValue(fieldChange.getOldValue(), EntityReference.class))
-            .withUpdatedDomain(
-                JsonUtils.readOrConvertValue(fieldChange.getNewValue(), EntityReference.class));
+            .withPreviousDomains(
+                JsonUtils.readOrConvertValues(fieldChange.getOldValue(), EntityReference.class))
+            .withUpdatedDomains(
+                JsonUtils.readOrConvertValues(fieldChange.getNewValue(), EntityReference.class));
 
-    String domainUrl = null;
+    List<String> domainUrls = new ArrayList<>();
     // in case of deletion updated domain will be null
-    if (domainFeedInfo.getUpdatedDomain() != null) {
-      domainUrl =
-          messageDecorator.getEntityUrl(
-              Entity.DOMAIN, domainFeedInfo.getUpdatedDomain().getFullyQualifiedName(), "");
+    if (!nullOrEmpty(domainFeedInfo.getUpdatedDomains())) {
+      for (EntityReference domain : domainFeedInfo.getUpdatedDomains()) {
+        domainUrls.add(
+            messageDecorator.getEntityUrl(Entity.DOMAIN, domain.getFullyQualifiedName(), ""));
+      }
     }
 
     FeedInfo feedInfo =
         new FeedInfo()
-            .withHeaderMessage(getHeaderForOwnerUpdate(operation.value(), domainUrl))
-            .withFieldName(FIELD_DOMAIN)
+            .withHeaderMessage(getHeaderForOwnerUpdate(operation.value(), domainUrls))
+            .withFieldName(FIELD_DOMAINS)
             .withEntitySpecificInfo(domainFeedInfo);
     populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.DOMAIN, operation, feedInfo);
   }
 
-  private String getHeaderForOwnerUpdate(String eventTypeMessage, String domainUrl) {
+  private String getHeaderForOwnerUpdate(String eventTypeMessage, List<String> domainUrls) {
+    String concatenatedDomainUrls = String.join(", ", domainUrls);
     return String.format(
         HEADER_MESSAGE,
         thread.getUpdatedBy(),
         eventTypeMessage,
         thread.getEntityUrlLink(),
-        domainUrl);
+        concatenatedDomainUrls);
   }
 }

@@ -1,5 +1,6 @@
 ---
-title: Ingestion Pipelines API | OpenMetadata Ingestion Pipelines
+title: Ingestion Pipelines API | `brandName` Ingestion Pipelines
+description: Define metadata ingestion pipeline services to automate data extraction, transformation, and loading into the catalog.
 slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines
 ---
 

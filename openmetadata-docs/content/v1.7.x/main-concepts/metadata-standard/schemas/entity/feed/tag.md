@@ -1,5 +1,6 @@
 ---
 title: Tag Schema | OpenMetadata Tag Schema and API Reference
+description: Represent tagging activity in feed for classification changes and annotation tracking.
 slug: /main-concepts/metadata-standard/schemas/entity/feed/tag
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: createEventSubscription
+title: createEventSubscription | Official Documentation
+description: Connect Createeventsubscription to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/events/api/createeventsubscription
 ---
 
