@@ -623,7 +623,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    ApplicationHandler.getInstance().setAppPrivateConfig(app);
+    return decryptOrNullify(securityContext, app);
   }
 
   @GET
@@ -1179,6 +1181,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     }
     throw new InternalServerErrorException("Failed to deploy application.");
+  }
+
+  private App decryptOrNullify(SecurityContext securityContext, App app) {
+    if (app == null || app.getPrivateConfiguration() == null) {
+      return app;
+    }
+    // Mask sensitive fields for non-bot users
+    if (authorizer.shouldMaskPasswords(securityContext)) {
+      app.setPrivateConfiguration(
+          EntityMaskerFactory.getEntityMasker()
+              .maskAppPrivateConfig(app.getPrivateConfiguration(), app.getAppType().value()));
+    }
+    return app;
   }
 
   private void decryptOrNullify(
