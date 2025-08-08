@@ -81,7 +81,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
-    return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+    if (assignee == null) {
+      return "";
+    }
+    // SECURITY: Sanitize input to prevent SQL injection attacks
+    String sanitizedAssignee =
+        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(assignee, 255);
+    return String.format("assignee = '%s'", sanitizedAssignee);
   }
 
   private String getCreatedByCondition() {
@@ -96,14 +102,24 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
-    return workflowDefinitionId == null
-        ? ""
-        : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
+    if (workflowDefinitionId == null) {
+      return "";
+    }
+    // SECURITY: Sanitize input to prevent SQL injection attacks
+    String sanitizedWorkflowId =
+        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(workflowDefinitionId, 255);
+    return String.format("workflowDefinitionId = '%s'", sanitizedWorkflowId);
   }
 
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
-    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+    if (entityLinkStr == null) {
+      return "";
+    }
+    // SECURITY: Sanitize input to prevent SQL injection attacks
+    String sanitizedEntityLink =
+        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(entityLinkStr, 255);
+    return String.format("entityLink = '%s'", sanitizedEntityLink);
   }
 
   private String getAgentTypeCondition() {
@@ -111,10 +127,13 @@ public class ListFilter extends Filter<ListFilter> {
     if (agentType == null) {
       return "";
     } else {
+      // SECURITY: Sanitize input to prevent SQL injection attacks
+      String sanitizedAgentType =
+          org.openmetadata.service.search.SearchUtils.sanitizeUserInput(agentType, 255);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", sanitizedAgentType);
       } else {
-        return String.format("json->>'agentType' = '%s'", agentType);
+        return String.format("json->>'agentType' = '%s'", sanitizedAgentType);
       }
     }
   }
@@ -232,7 +251,10 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    return String.format("directoryFqn = '%s'", directoryFqn);
+    // SECURITY: Sanitize input to prevent SQL injection attacks
+    String sanitizedDirectoryFqn =
+        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(directoryFqn, 500);
+    return String.format("directoryFqn = '%s'", sanitizedDirectoryFqn);
   }
 
   public String getSpreadsheetCondition(String tableName) {
@@ -240,7 +262,10 @@ public class ListFilter extends Filter<ListFilter> {
     if (spreadsheetFqn == null) {
       return "";
     }
-    return String.format("spreadsheetFqn = '%s'", spreadsheetFqn);
+    // SECURITY: Sanitize input to prevent SQL injection attacks
+    String sanitizedSpreadsheetFqn =
+        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(spreadsheetFqn, 500);
+    return String.format("spreadsheetFqn = '%s'", sanitizedSpreadsheetFqn);
   }
 
   public String getFileTypeCondition(String tableName) {
@@ -248,7 +273,10 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
-    return String.format("fileType = '%s'", fileType);
+    // SECURITY: Sanitize input to prevent SQL injection attacks
+    String sanitizedFileType =
+        org.openmetadata.service.search.SearchUtils.sanitizeUserInput(fileType, 100);
+    return String.format("fileType = '%s'", sanitizedFileType);
   }
 
   public String getDisabledCondition() {

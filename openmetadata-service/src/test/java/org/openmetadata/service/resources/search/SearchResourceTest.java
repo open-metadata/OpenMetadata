@@ -1445,6 +1445,176 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
     assertTrue(hasTableNames, "Should find fallback table names with test prefix in DESC");
   }
 
+  @Test
+  void testSqlInjectionPrevention_QueryFilter() throws IOException {
+    // Test SQL injection patterns in query_filter parameter
+    String[] sqlInjectionPatterns = {
+      "false\" AND \"1\"=\"1\" --",
+      "false\" OR \"1\"=\"1\" --",
+      "false' AND '1'='1' --",
+      "false' OR '1'='1' --",
+      "case randomblob(100000) when not null then 1 else 1 end",
+      "UTL_INADDR.get_host_name('10.0.0.1')",
+      "union select * from users --"
+    };
+
+    for (String maliciousFilter : sqlInjectionPatterns) {
+      WebTarget target =
+          getResource("search/query")
+              .queryParam("q", "*")
+              .queryParam("index", "table_search_index")
+              .queryParam("query_filter", maliciousFilter)
+              .queryParam("size", "1");
+
+      // Should not cause 500 error or take excessive time
+      long startTime = System.currentTimeMillis();
+      Response response = executeSearchRequest(target);
+      long duration = System.currentTimeMillis() - startTime;
+
+      // Should complete quickly (under 5 seconds) and not return server error
+      assertTrue(duration < 5000, "Request should complete quickly even with malicious input");
+      assertTrue(
+          response.getStatus() == 200 || response.getStatus() == 400,
+          "Should return 200 (sanitized) or 400 (rejected), not 500 for pattern: "
+              + maliciousFilter);
+    }
+  }
+
+  @Test
+  void testSqlInjectionPrevention_PostFilter() throws IOException {
+    // Test SQL injection patterns in post_filter parameter
+    String[] sqlInjectionPatterns = {
+      "field\" AND \"1\"=\"1\" --", "field' AND '1'='1' --", "true AND 1=1", "randomblob(1000000)"
+    };
+
+    for (String maliciousFilter : sqlInjectionPatterns) {
+      WebTarget target =
+          getResource("search/query")
+              .queryParam("q", "*")
+              .queryParam("index", "table_search_index")
+              .queryParam("post_filter", maliciousFilter)
+              .queryParam("size", "1");
+
+      long startTime = System.currentTimeMillis();
+      Response response = executeSearchRequest(target);
+      long duration = System.currentTimeMillis() - startTime;
+
+      assertTrue(duration < 5000, "Request should complete quickly");
+      assertTrue(
+          response.getStatus() == 200 || response.getStatus() == 400,
+          "Should not cause server error for pattern: " + maliciousFilter);
+    }
+  }
+
+  @Test
+  void testSqlInjectionPrevention_NlqEndpoint() throws IOException {
+    // Test SQL injection patterns in NLQ endpoint
+    String[] sqlInjectionPatterns = {
+      "' OR '1'='1' --",
+      "\" OR \"1\"=\"1\" --",
+      "case randomblob(100000) when not null then 1 else 1 end"
+    };
+
+    for (String maliciousQuery : sqlInjectionPatterns) {
+      WebTarget target =
+          getResource("search/nlq/query")
+              .queryParam("q", maliciousQuery)
+              .queryParam("index", "table_search_index")
+              .queryParam("size", "1");
+
+      long startTime = System.currentTimeMillis();
+      Response response = executeSearchRequest(target);
+      long duration = System.currentTimeMillis() - startTime;
+
+      assertTrue(duration < 5000, "NLQ request should complete quickly");
+      assertTrue(
+          response.getStatus() == 200 || response.getStatus() == 400,
+          "Should handle malicious NLQ input safely: " + maliciousQuery);
+    }
+  }
+
+  @Test
+  void testSqlInjectionPrevention_AggregateEndpoint() throws IOException {
+    // Test SQL injection patterns in aggregate endpoint
+    String[] sqlInjectionPatterns = {
+      "field' AND '1'='1", "field\" AND \"1\"=\"1", "randomblob(100000)"
+    };
+
+    for (String maliciousQuery : sqlInjectionPatterns) {
+      WebTarget target =
+          getResource("search/aggregate")
+              .queryParam("index", "table_search_index")
+              .queryParam("field", "service.name")
+              .queryParam("q", maliciousQuery)
+              .queryParam("size", "1");
+
+      long startTime = System.currentTimeMillis();
+      Response response = executeSearchRequest(target);
+      long duration = System.currentTimeMillis() - startTime;
+
+      assertTrue(duration < 5000, "Aggregate request should complete quickly");
+      assertTrue(
+          response.getStatus() == 200 || response.getStatus() == 400,
+          "Should handle malicious aggregate input safely: " + maliciousQuery);
+    }
+  }
+
+  @Test
+  void testSqlInjectionPrevention_EntityTypeCountsEndpoint() throws IOException {
+    // Test SQL injection patterns in entityTypeCounts endpoint
+    String[] sqlInjectionPatterns = {
+      "' OR '1'='1' --", "case randomblob(100000) when not null then 1 else 1 end"
+    };
+
+    for (String maliciousFilter : sqlInjectionPatterns) {
+      WebTarget target =
+          getResource("search/entityTypeCounts")
+              .queryParam("q", "*")
+              .queryParam("index", "dataAsset")
+              .queryParam("query_filter", maliciousFilter);
+
+      long startTime = System.currentTimeMillis();
+      Response response = executeSearchRequest(target);
+      long duration = System.currentTimeMillis() - startTime;
+
+      assertTrue(duration < 5000, "EntityTypeCounts request should complete quickly");
+      assertTrue(
+          response.getStatus() == 200 || response.getStatus() == 400,
+          "Should handle malicious entityTypeCounts input safely: " + maliciousFilter);
+    }
+  }
+
+  @Test
+  void testLegitimateQueriesStillWork() throws IOException {
+    // Ensure legitimate queries still function correctly after sanitization
+    String legitimateFilter = "{\"term\": {\"deleted\": false}}";
+
+    WebTarget target =
+        getResource("search/query")
+            .queryParam("q", "*")
+            .queryParam("index", "table_search_index")
+            .queryParam("query_filter", legitimateFilter)
+            .queryParam("size", "5");
+
+    Response response = executeSearchRequest(target);
+    assertEquals(200, response.getStatus(), "Legitimate queries should still work");
+
+    String responseBody = (String) response.getEntity();
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode jsonResponse = mapper.readTree(responseBody);
+
+    assertTrue(jsonResponse.has("hits"), "Response should contain hits");
+  }
+
+  private Response executeSearchRequest(WebTarget target) {
+    try {
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      return Response.ok(result).build();
+    } catch (org.apache.http.client.HttpResponseException e) {
+      return Response.status(e.getStatusCode()).entity(e.getMessage()).build();
+    }
+  }
+
   private void cleanupTestTables(List<Table> tables) {
     for (Table table : tables) {
       try {
