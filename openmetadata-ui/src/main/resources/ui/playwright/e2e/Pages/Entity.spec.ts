@@ -614,7 +614,7 @@ entities.forEach((EntityClass) => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    // get the token from localStorage
+    // get the token
     const token = await getToken(page);
 
     // create a new context with the token
