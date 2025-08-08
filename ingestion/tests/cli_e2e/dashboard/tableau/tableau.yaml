@@ -5,8 +5,8 @@ source:
     config:
       type: Tableau
       authType:
-        username: $E2E_TABLEAU_USERNAME
-        password: $E2E_TABLEAU_PASSWORD
+        personalAccessTokenName: $E2E_TABLEAU_PAT_NAME
+        personalAccessTokenSecret: $E2E_TABLEAU_PAT_SECRET
       hostPort: $E2E_TABLEAU_HOST_PORT
       siteName: $E2E_TABLEAU_SITE
   sourceConfig:
