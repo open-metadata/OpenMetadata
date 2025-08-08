@@ -50,6 +50,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
@@ -69,7 +70,11 @@ import {
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getDataQualityPagePath,
   getTestSuitePath,
@@ -124,13 +129,19 @@ const TestSuiteDetailsPage = () => {
 
   const permissions = useMemo(() => {
     return {
-      hasViewPermission:
-        testSuitePermissions?.ViewAll || testSuitePermissions?.ViewBasic,
+      hasViewPermission: getPrioritizedViewPermission(
+        testSuitePermissions,
+        Operation.ViewBasic
+      ),
       hasEditPermission: testSuitePermissions?.EditAll,
-      hasEditOwnerPermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
-      hasEditDescriptionPermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
+      hasEditOwnerPermission: getPrioritizedEditPermission(
+        testSuitePermissions,
+        Operation.EditOwners
+      ),
+      hasEditDescriptionPermission: getPrioritizedEditPermission(
+        testSuitePermissions,
+        Operation.EditDescription
+      ),
       hasDeletePermission: testSuitePermissions?.Delete,
     };
   }, [testSuitePermissions]);
@@ -480,8 +491,10 @@ const TestSuiteDetailsPage = () => {
             </Col>
             <Col className="d-flex justify-end" span={6}>
               <Space>
-                {(testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditTests) && (
+                {getPrioritizedEditPermission(
+                  testSuitePermissions,
+                  Operation.EditTests
+                ) && (
                   <Button
                     data-testid="add-test-case-btn"
                     type="primary"
