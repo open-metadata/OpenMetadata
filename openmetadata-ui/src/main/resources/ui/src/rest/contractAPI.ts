@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ContractAllResult,
+  ContractResultFilter,
+} from '../components/DataContract/ContractDetailTab/contract.interface';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import { DataContract } from '../generated/entity/data/dataContract';
@@ -94,7 +98,7 @@ export const validateContractById = async (contractId: string) => {
 
 export const deleteContractById = async (contractId: string) => {
   const response = await APIClient.delete<void>(
-    `/dataContracts/${contractId}?hardDelete=true`
+    `/dataContracts/${contractId}?hardDelete=true&recursive=true`
   );
 
   return response.data;
@@ -113,7 +117,21 @@ export const getContractResultByResultId = async (
 
 export const getLatestContractResults = async (contractId: string) => {
   const response = await APIClient.get<DataContractResult>(
-    `/dataContracts/${contractId}/results`
+    `/dataContracts/${contractId}/results/latest`
+  );
+
+  return response.data;
+};
+
+export const getAllContractResults = async (
+  contractId: string,
+  params: ContractResultFilter
+) => {
+  const response = await APIClient.get<ContractAllResult>(
+    `/dataContracts/${contractId}/results`,
+    {
+      params,
+    }
   );
 
   return response.data;

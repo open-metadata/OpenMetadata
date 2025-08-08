@@ -1,5 +1,5 @@
 ---
-title: Service Token Enum | OpenMetadata Service Tokens
+title: Service Token Enum | `brandName` Service Tokens
 description: Enumerate supported service token types using this enumeration schema.
 slug: /main-concepts/metadata-standard/schemas/auth/servicetokenenum
 noindex: true

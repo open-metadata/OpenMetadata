@@ -1,5 +1,6 @@
 ---
-title: Keycloak SSO
+title: Keycloak SSO Integration | Secure Collate Access with OpenID
+description: Set up Keycloak SSO for Collate. Create a client, configure realms, enable scopes, and retrieve client credentials for secure authentication in production.
 slug: /security/keycloak
 collate: true
 ---

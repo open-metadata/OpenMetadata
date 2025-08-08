@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Typography } from 'antd';
+import { Card, Space, Tag, Typography } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -57,9 +57,18 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
             )
           }
           title={
-            <Typography.Text ellipsis={{ tooltip: true }}>
-              {getEntityName(persona)}
-            </Typography.Text>
+            <div className="d-flex justify-between w-full">
+              <div>
+                <Typography.Text ellipsis={{ tooltip: true }}>
+                  {getEntityName(persona)}
+                </Typography.Text>
+              </div>
+              {persona.default && (
+                <Tag color="blue" data-testid="default-persona-tag">
+                  {t('label.default')}
+                </Tag>
+              )}
+            </div>
           }
         />
       </Space>
