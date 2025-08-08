@@ -17,7 +17,7 @@ import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -121,6 +121,7 @@ const SchemaTable = () => {
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
+  const isFetchingRef = useRef(false); // Prevent double API calls happening for columns - when handlePageChange updates currentPage, it triggers useEffect which calls fetchPaginatedColumns again, causing duplicate requests
 
   const { fqn: decodedEntityFqn } = useFqn();
 
@@ -191,10 +192,11 @@ const SchemaTable = () => {
   // Function to fetch paginated columns or search results
   const fetchPaginatedColumns = useCallback(
     async (page = 1, searchQuery?: string) => {
-      if (!tableFqn) {
+      if (!tableFqn || isFetchingRef.current) {
         return;
       }
 
+      isFetchingRef.current = true;
       setColumnsLoading(true);
       try {
         const offset = (page - 1) * pageSize;
@@ -225,6 +227,7 @@ const SchemaTable = () => {
         });
       }
       setColumnsLoading(false);
+      isFetchingRef.current = false;
     },
     [decodedEntityFqn, pageSize]
   );
@@ -234,7 +237,7 @@ const SchemaTable = () => {
       fetchPaginatedColumns(currentPage, searchText);
       handlePageChange(currentPage);
     },
-    [paging, fetchPaginatedColumns, searchText]
+    [fetchPaginatedColumns, searchText, handlePageChange]
   );
 
   const fetchTestCaseSummary = async () => {
@@ -250,13 +253,13 @@ const SchemaTable = () => {
     fetchTestCaseSummary();
   }, [tableFqn]);
 
-  // Fetch columns when search changes
+  // Fetch columns when search changes or on initial load
   useEffect(() => {
     if (tableFqn) {
-      // Reset to first page when search changes
-      fetchPaginatedColumns(1, searchText || undefined);
+      // Use currentPage from usePaging instead of hardcoding page 1
+      fetchPaginatedColumns(currentPage, searchText || undefined);
     }
-  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize]);
+  }, [tableFqn, searchText, fetchPaginatedColumns, pageSize, currentPage]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
