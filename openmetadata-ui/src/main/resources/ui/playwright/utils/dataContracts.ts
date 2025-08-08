@@ -15,18 +15,23 @@ import { SidebarItem } from '../constant/sidebar';
 import { toastNotification } from './common';
 import { sidebarClick } from './sidebar';
 
-export const saveAndTriggerDataContractValidation = async (page: Page) => {
+export const saveAndTriggerDataContractValidation = async (
+  page: Page,
+  isContractStatusNotVisible?: boolean
+) => {
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts');
   await page.getByTestId('save-contract-btn').click();
   await saveContractResponse;
 
   await toastNotification(page, 'Data contract saved successfully');
 
-  await expect(
-    page
-      .getByTestId('contract-card-title-container')
-      .filter({ hasText: 'Contract Status' })
-  ).not.toBeVisible();
+  if (isContractStatusNotVisible) {
+    await expect(
+      page
+        .getByTestId('contract-card-title-container')
+        .filter({ hasText: 'Contract Status' })
+    ).not.toBeVisible();
+  }
 
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'

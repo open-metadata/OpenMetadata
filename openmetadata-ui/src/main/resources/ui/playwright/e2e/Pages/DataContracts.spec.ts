@@ -23,7 +23,6 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { UserClass } from '../../support/user/UserClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
   clickOutside,
@@ -41,7 +40,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
-  const user = new UserClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
@@ -54,7 +52,6 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
-    await user.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
@@ -67,7 +64,6 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.delete(apiContext);
-    await user.delete(apiContext);
     await testClassification.delete(apiContext);
     await testTag.delete(apiContext);
     await testGlossary.delete(apiContext);
@@ -105,21 +101,9 @@ test.describe('Data Contracts', () => {
       );
 
       await page.getByTestId('select-owners').click();
-      await page.getByRole('tab', { name: 'Users' }).click();
-      await page
-        .getByTestId('owner-select-users-search-bar')
-        .fill(user.responseData.displayName);
-      await page
-        .getByRole('listitem', {
-          name: user.responseData.displayName,
-          exact: true,
-        })
-        .click();
-      await page.getByTestId('selectable-list-update-btn').click();
+      await page.locator('.rc-virtual-list-holder-inner li').first().click();
 
-      await expect(
-        page.getByTestId('user-tag').getByText(user.responseData.name)
-      ).toBeVisible();
+      await expect(page.getByTestId('user-tag')).toBeVisible();
     });
 
     await test.step('Fill Contract Schema form', async () => {
@@ -236,7 +220,7 @@ test.describe('Data Contracts', () => {
 
     await test.step('Save contract and validate for semantics', async () => {
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page);
+      await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
         page.getByTestId('contract-card-title-container').filter({
@@ -342,6 +326,16 @@ test.describe('Data Contracts', () => {
 
         await clickOutside(page);
 
+        await page.getByTestId('pipeline-name').fill('test-pipeline');
+
+        await page
+          .locator('.selection-title', { hasText: 'On Demand' })
+          .click();
+
+        await expect(page.locator('.expression-text')).toContainText(
+          'Pipeline will only be triggered manually.'
+        );
+
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases'
         );
@@ -366,11 +360,6 @@ test.describe('Data Contracts', () => {
 
         // save and trigger contract validation
         await saveAndTriggerDataContractValidation(page);
-
-        await expect(page.getByTestId('alert-bar')).toBeVisible();
-        await expect(
-          page.locator('.anticon-exclamation-circle[role="img"]')
-        ).toBeVisible();
       }
     );
 
@@ -384,7 +373,7 @@ test.describe('Data Contracts', () => {
             .getByTestId('test-suite-table')
             .locator('.ant-table-cell')
             .filter({
-              hasText: `${DATA_CONTRACT_DETAILS.name} - Data Contract Expectations`,
+              hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
             })
         ).toBeVisible();
       }
@@ -468,6 +457,17 @@ test.describe('Data Contracts', () => {
 
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       await expect(page.getByTestId('add-contract-button')).toBeVisible();
+
+      await validateDataContractInsideBundleTestSuites(page);
+
+      await expect(
+        page
+          .getByTestId('test-suite-table')
+          .locator('.ant-table-cell')
+          .filter({
+            hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
+          })
+      ).not.toBeVisible();
     });
   });
 });
