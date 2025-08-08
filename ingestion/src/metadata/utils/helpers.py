@@ -576,3 +576,13 @@ def pprint_format_object(data: Any) -> str:
     Pretty print an object in a format that is easy to read
     """
     return pprint.pformat(data, width=150)
+
+
+def can_spawn_child_process() -> bool:
+    """
+    Check if the current process can spawn a child process
+    """
+    from multiprocessing import Process
+
+    process = Process(target=lambda: None)
+    return not process._config.get("daemon")
