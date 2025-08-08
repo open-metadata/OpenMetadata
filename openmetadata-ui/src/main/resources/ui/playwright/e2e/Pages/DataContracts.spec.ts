@@ -297,7 +297,7 @@ test.describe('Data Contracts', () => {
 
         await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
         await page.fill(
-          '#testCaseFormV1_params_value',
+          '#testCaseFormV1_params_columnCount',
           NEW_TABLE_TEST_CASE.value
         );
 
@@ -360,6 +360,23 @@ test.describe('Data Contracts', () => {
 
         // save and trigger contract validation
         await saveAndTriggerDataContractValidation(page);
+
+        for (let i = 0; i < 10; i++) {
+          const textContent = await page
+            .getByTestId('data-contract-latest-result-btn')
+            .textContent();
+
+          if (!textContent?.includes('Contract Running')) {
+            break;
+          }
+
+          await page.waitForTimeout(10000);
+          await page.reload();
+        }
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
       }
     );
 
@@ -402,6 +419,10 @@ test.describe('Data Contracts', () => {
 
         await expect(
           page.getByTestId('contract-status-card-item-Quality Status')
+        ).not.toBeVisible();
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
         ).not.toBeVisible();
       }
     );
