@@ -1,5 +1,5 @@
 ---
-title: Databricks Connection | OpenMetadata Databricks
+title: Databricks Connection | `brandName` Databricks
 description: Get started with databricksconnection. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/databricksconnection
 ---
