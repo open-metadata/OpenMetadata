@@ -1,5 +1,5 @@
 ---
-title: Unity Catalog Connector | OpenMetadata Data Governance
+title: Unity Catalog Connector | `brandName` Data Governance
 description: Learn how to connect Unity Catalog to `brandName` with our comprehensive connector guide. Setup instructions, configuration tips, and metadata integrat...
 slug: /connectors/database/unity-catalog
 ---

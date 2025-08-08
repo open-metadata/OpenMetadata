@@ -102,6 +102,11 @@
           "type": "boolean",
           "default": false
         },
+        "embeddingProvider": {
+          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
+          "type": "string",
+          "default": "bedrock"
+        },
         "providerClass": {
           "description": "Fully qualified class name of the NLQService implementation to use",
           "type": "string",
@@ -125,6 +130,11 @@
               "description": "Bedrock embedding model identifier to use for vector search",
               "type": "string",
               "default": "amazon.titan-embed-text-v2:0"
+            },
+            "embeddingDimension": {
+              "description": "Dimension of the embedding vector",
+              "type": "integer",
+              "default": 524
             },
             "accessKey": {
               "description": "AWS access key for Bedrock service authentication",
