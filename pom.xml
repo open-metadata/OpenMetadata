@@ -32,6 +32,7 @@
     <module>openmetadata-spec</module>
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
+    <module>openmetadata-dsl</module>
     <module>openmetadata-service</module>
     <module>openmetadata-mcp</module>
     <module>openmetadata-ui</module>
