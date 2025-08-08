@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "木曜日",
     "tier": "ティア",
+    "tier-label-type": "ティアラベルタイプ",
     "tier-number": "ティア{{tier}}",
     "tier-plural": "ティア",
     "tier-plural-lowercase": "ティア",

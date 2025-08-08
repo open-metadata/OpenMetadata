@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "donderdag",
     "tier": "Niveau",
+    "tier-label-type": "Niveau-etikettype",
     "tier-number": "Niveau {{tier}}",
     "tier-plural": "Lagen",
     "tier-plural-lowercase": "niveaus",

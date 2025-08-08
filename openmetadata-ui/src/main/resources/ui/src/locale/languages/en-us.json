@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "Thursday",
     "tier": "Tier",
+    "tier-label-type": "Tier Label Type",
     "tier-number": "Tier{{tier}}",
     "tier-plural": "Tiers",
     "tier-plural-lowercase": "tiers",
