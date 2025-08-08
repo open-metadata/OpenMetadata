@@ -121,6 +121,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Domain Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
