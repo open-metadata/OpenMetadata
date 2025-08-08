@@ -68,6 +68,7 @@ dist
 
 # ts build info and report
 openmetadata-ui/src/main/resources/ui/webpack
+openmetadata-ui/src/main/resources/ui/public/plugins/*
 openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #tests
@@ -143,3 +144,6 @@ ingestion/.nox/
 # Temporary files
 *.tmp
 *.temp 
+
+*storybook.log
+storybook-static

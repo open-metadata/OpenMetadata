@@ -39,6 +39,7 @@
     "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
+    "@openmetadata/common-ui": "file:../../../../../openmetadata-common-ui/src/main/resources/ui/dist",
     "@analytics/session-utils": "^0.1.17",
     "@ant-design/icons": "^4.8.3",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
@@ -119,6 +120,7 @@
     "react-latex-next": "^3.0.0",
     "react-oidc": "^1.0.3",
     "react-papaparse": "^4.1.0",
+    "react-pluggable": "^0.4.3",
     "react-quill-new": "^3.4.0",
     "react-reflex": "^4.1.0",
     "react-router-dom": "^6.22.1",

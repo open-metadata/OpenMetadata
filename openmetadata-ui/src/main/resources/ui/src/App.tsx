@@ -32,8 +32,16 @@ import { useApplicationStore } from './hooks/useApplicationStore';
 import { getCustomUiThemePreference } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 
+import {
+  createPluginStore,
+  PluginProvider,
+  RendererPlugin,
+} from 'react-pluggable';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
+
+const pluginStore = createPluginStore();
+pluginStore.install(new RendererPlugin());
 
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
@@ -84,15 +92,17 @@ const App: FC = () => {
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
-                            <ApplicationsProvider>
-                              <AsyncDeleteProvider>
-                                <EntityExportModalProvider>
-                                  <AirflowStatusProvider>
-                                    <AppRouter />
-                                  </AirflowStatusProvider>
-                                </EntityExportModalProvider>
-                              </AsyncDeleteProvider>
-                            </ApplicationsProvider>
+                            <PluginProvider pluginStore={pluginStore}>
+                              <ApplicationsProvider>
+                                <AsyncDeleteProvider>
+                                  <EntityExportModalProvider>
+                                    <AirflowStatusProvider>
+                                      <AppRouter />
+                                    </AirflowStatusProvider>
+                                  </EntityExportModalProvider>
+                                </AsyncDeleteProvider>
+                              </ApplicationsProvider>
+                            </PluginProvider>
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>

@@ -1,0 +1,23 @@
+<svg version="1.1" id="Layer_2_00000096034091424890845010000002435416763466040722_"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 16 16"
+	 style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FFFFFF;stroke:#0968da;stroke-width:0.5;stroke-miterlimit:10;}
+	.st1{fill:#FFFFFF;stroke:#0968da;stroke-width:0.5;stroke-linecap:square;stroke-miterlimit:10;}
+	.st2{fill:none;stroke:#0968da;stroke-width:0.5;stroke-miterlimit:10;}
+	.st3{fill:none;stroke:#0968da;stroke-width:0.5;stroke-linecap:round;stroke-miterlimit:10;}
+	.st4{fill:#FFFFFF;stroke:#0968da;stroke-width:0.5;stroke-linejoin:bevel;stroke-miterlimit:10;}
+</style>
+<polygon class="st0" points="2.9,8.3 2.9,0.4 11.4,0.4 13.1,2.1 13.1,8.3 "/>
+<rect x="0.4" y="7.9" class="st0" width="15.2" height="7.8"/>
+<polyline class="st1" points="11.2,0.8 11.2,2.5 13.1,2.5 "/>
+<line class="st2" x1="4.6" y1="0.4" x2="4.6" y2="7.9"/>
+<line class="st2" x1="6.2" y1="0.4" x2="6.2" y2="7.9"/>
+<line class="st3" x1="7.1" y1="2.2" x2="9.9" y2="2.2"/>
+<line class="st3" x1="7.1" y1="4.3" x2="11.2" y2="4.3"/>
+<line class="st3" x1="7.1" y1="5.2" x2="11.2" y2="5.2"/>
+<path class="st0" d="M10,12.4H5.9c-0.4,0-0.7-0.3-0.7-0.7l0,0c0-0.4,0.3-0.7,0.7-0.7H10c0.4,0,0.7,0.3,0.7,0.7l0,0
+	C10.7,12.1,10.4,12.4,10,12.4z"/>
+<line class="st4" x1="0.4" y1="7.8" x2="2.9" y2="4.3"/>
+<line class="st4" x1="15.7" y1="7.8" x2="13.1" y2="4.3"/>
+</svg>
