@@ -12,8 +12,9 @@
  */
 
 import { Col, Row } from 'antd';
+import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
@@ -32,7 +33,7 @@ function CustomizeGlossaryTermDetailPage({
   isGlossary,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentPage, currentPageType } = useCustomizeStore();
+  const { currentPage, currentPageType, getPage } = useCustomizeStore();
 
   const handleReset = useCallback(async () => {
     await onSaveLayout();
@@ -47,6 +48,22 @@ function CustomizeGlossaryTermDetailPage({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  const disableSave = useMemo(() => {
+    if (!currentPageType) {
+      return true;
+    }
+
+    const originalPage =
+      getPage(currentPageType) ?? ({ pageType: currentPageType } as Page);
+
+    const editedPage = (currentPage ??
+      ({ pageType: currentPageType } as Page)) as Page;
+
+    const jsonPatch = compare(originalPage, editedPage);
+
+    return jsonPatch.length === 0;
+  }, [currentPage, currentPageType, getPage]);
+
   if (!currentPageType) {
     return null;
   }
@@ -60,6 +77,7 @@ function CustomizeGlossaryTermDetailPage({
       <Row className="customize-details-page" gutter={[0, 20]}>
         <Col span={24}>
           <CustomizablePageHeader
+            disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
             onReset={handleReset}
             onSave={handleSave}
