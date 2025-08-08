@@ -21,7 +21,8 @@ public class ChartDataStreamMessage {
       Long remainingTime,
       Long nextUpdate,
       List<Map> ingestionPipelineStatus,
-      List<Map> appStatus) {
+      List<Map> appStatus,
+      List<Map> workflowInstances) {
     this.sessionId = sessionId;
     this.status = status;
     this.serviceName = serviceName;
@@ -32,6 +33,7 @@ public class ChartDataStreamMessage {
     this.nextUpdate = nextUpdate;
     this.ingestionPipelineStatus = ingestionPipelineStatus;
     this.appStatus = appStatus;
+    this.workflowInstances = workflowInstances;
   }
 
   @JsonProperty("sessionId")
@@ -63,4 +65,7 @@ public class ChartDataStreamMessage {
 
   @JsonProperty("appStatus")
   private List<Map> appStatus;
+
+  @JsonProperty("workflowInstances")
+  private List<Map> workflowInstances;
 }

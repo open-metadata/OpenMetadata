@@ -1,5 +1,5 @@
 ---
-title: Usage Workflow Guide | OpenMetadata Ingestion Workflows
+title: Usage Workflow Guide | `brandName` Ingestion Workflows
 description: Monitor usage patterns from queries and dashboards with workflow-based usage extraction.
 slug: /connectors/ingestion/workflows/usage
 ---
