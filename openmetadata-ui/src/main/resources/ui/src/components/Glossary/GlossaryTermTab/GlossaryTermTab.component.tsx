@@ -197,11 +197,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       // Validate glossaryChildTerms is an array
       if (!Array.isArray(glossaryChildTerms)) {
-        console.error(
-          'glossaryChildTerms is not an array:',
-          glossaryChildTerms
-        );
-
         return;
       }
 
@@ -853,7 +848,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       try {
         // Collect all data first before updating state
         const allChildData: Record<string, GlossaryTermWithChildren[]> = {};
-        
         for (const batch of batches) {
           // Fetch batch of children data
           await Promise.all(
@@ -861,7 +855,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               if (term.fullyQualifiedName) {
                 setLoadingChildren((prev) => ({
                   ...prev,
-                  [term.fullyQualifiedName!]: true,
+                  [term.fullyQualifiedName as string]: true,
                 }));
                 try {
                   const { data } = await getGlossaryTermChildrenLazy(
@@ -870,14 +864,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                   );
                   allChildData[term.fullyQualifiedName] = data;
                 } catch (error) {
-                  console.error(
-                    `Failed to load children for ${term.fullyQualifiedName}:`,
-                    error
-                  );
+                  showErrorToast(error as AxiosError);
                 } finally {
                   setLoadingChildren((prev) => ({
                     ...prev,
-                    [term.fullyQualifiedName!]: false,
+                    [term.fullyQualifiedName as string]: false,
                   }));
                 }
               }
@@ -891,11 +882,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         // Update all terms at once after all data is collected
         if (Object.keys(allChildData).length > 0) {
           const currentTerms = glossaryChildTerms;
+          
           if (!Array.isArray(currentTerms)) {
-            console.error(
-              'glossaryChildTerms is not an array:',
-              currentTerms
-            );
             return;
           }
 

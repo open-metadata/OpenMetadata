@@ -124,7 +124,9 @@ export const useGlossaryStore = create<{
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
     set({
       ...glossaryFunctionRef,
-      loadMoreTerms: glossaryFunctionRef.loadMoreTerms || (() => {}),
+      loadMoreTerms: glossaryFunctionRef.loadMoreTerms || (() => {
+        // Placeholder function
+      }),
     });
   },
 

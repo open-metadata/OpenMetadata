@@ -128,12 +128,15 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
-jest.mock('react-intersection-observer', () => ({
-  useInView: jest.fn().mockReturnValue({
+jest.mock('react-intersection-observer', () => {
+  const mockUseInView = jest.fn().mockReturnValue({
     ref: jest.fn(),
     inView: false,
-  }),
-}));
+  });
+  return {
+    useInView: mockUseInView,
+  };
+});
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
