@@ -50,13 +50,10 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { OwnerType } from '../../../../enums/user.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
   EntityReference as UserTeams,
@@ -73,7 +70,6 @@ import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
@@ -153,7 +149,6 @@ const TeamDetailsV1 = ({
     state: false,
     leave: false,
   };
-  const { permissions } = usePermissionProvider();
   const currentTab = useMemo(() => {
     if (activeTab) {
       return activeTab;
@@ -211,16 +206,12 @@ const TeamDetailsV1 = ({
     navigate({ search: Qs.stringify({ activeTab: key }) });
   };
 
-  const { createTeamPermission, editUserPermission } = useMemo(() => {
+  const { editUserPermission } = useMemo(() => {
     return {
-      createTeamPermission:
-        !isEmpty(permissions) &&
-        checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
       editUserPermission:
-        checkPermission(Operation.EditAll, ResourceEntity.TEAM, permissions) ||
-        checkPermission(Operation.EditUsers, ResourceEntity.TEAM, permissions),
+        entityPermissions.EditAll || entityPermissions.EditUsers,
     };
-  }, [permissions]);
+  }, [entityPermissions]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -674,7 +665,7 @@ const TeamDetailsV1 = ({
       </ErrorPlaceHolder>
     ) : (
       <TeamHierarchy
-        createTeamPermission={createTeamPermission}
+        createTeamPermission={entityPermissions.Create}
         currentTeam={currentTeam}
         data={childTeamList}
         handleAddTeamButtonClick={handleAddTeamButtonClick}
@@ -693,7 +684,7 @@ const TeamDetailsV1 = ({
     currentTeam,
     childTeamList,
     showDeletedTeam,
-    createTeamPermission,
+    entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
     onTeamExpand,
     handleAddTeamButtonClick,
@@ -1112,7 +1103,7 @@ const TeamDetailsV1 = ({
   if (isEmpty(currentTeam)) {
     return fetchErrorPlaceHolder({
       onClick: () => handleAddTeam(true),
-      permission: createTeamPermission,
+      permission: entityPermissions.Create,
       heading: t('label.team-plural'),
       doc: TEAMS_DOCS,
     });
