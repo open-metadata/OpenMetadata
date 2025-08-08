@@ -78,6 +78,10 @@ jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
   getServiceTypeLogo: jest.fn().mockReturnValue('test-logo.png'),
 }));
 
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
+);
+
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(({ children, icon, type, className }) => (
     <div className={className} data-testid="error-placeholder" data-type={type}>
@@ -134,6 +138,10 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () =>
         </div>
       );
     })
+);
+
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
 const mockHandleRemoveWidget = jest.fn();

@@ -1,6 +1,6 @@
 ---
 title: Domo Database Connector | `brandName` Integration Guide
-description: Connect Domo Database to OpenMetadata with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction tips.
+description: Connect Domo Database to `brandName` with our comprehensive connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/domo-database
 ---
 
