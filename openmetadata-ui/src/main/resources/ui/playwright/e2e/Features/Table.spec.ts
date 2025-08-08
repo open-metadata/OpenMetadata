@@ -454,7 +454,7 @@ test.describe(
       classification: testClassification.data.name,
     });
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeEach(async ({ browser }) => {
       const { apiContext } = await performAdminLogin(browser);
 
       await glossary.create(apiContext);
@@ -463,7 +463,7 @@ test.describe(
       await testTag.create(apiContext);
     });
 
-    test.afterAll(async ({ browser }) => {
+    test.afterEach(async ({ browser }) => {
       const { apiContext } = await performAdminLogin(browser);
 
       await glossary.delete(apiContext);
@@ -507,14 +507,16 @@ test.describe(
         glossaryTerm.responseData.displayName
       );
 
+      const getRequest = page.waitForResponse(
+        'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
+      );
+
       await page
         .getByTestId('search-bar-container')
         .getByTestId('searchbar')
         .fill('customer_id');
 
-      await page.waitForResponse(
-        'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
-      );
+      await getRequest;
 
       await expect(
         page.getByTestId('glossary-tags-0').getByTestId('tag-redirect-link')
