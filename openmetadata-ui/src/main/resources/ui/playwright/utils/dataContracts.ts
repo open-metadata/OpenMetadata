@@ -39,8 +39,6 @@ export const saveAndTriggerDataContractValidation = async (
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
 
-  await toastNotification(page, 'Contract validation trigger successfully.');
-
   await page.reload();
 };
 

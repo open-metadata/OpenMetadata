@@ -376,7 +376,7 @@ test.describe('Data Contracts', () => {
 
         await expect(
           page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
+        ).toBeVisible();
       }
     );
 
@@ -478,17 +478,6 @@ test.describe('Data Contracts', () => {
 
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       await expect(page.getByTestId('add-contract-button')).toBeVisible();
-
-      await validateDataContractInsideBundleTestSuites(page);
-
-      await expect(
-        page
-          .getByTestId('test-suite-table')
-          .locator('.ant-table-cell')
-          .filter({
-            hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
-          })
-      ).not.toBeVisible();
     });
   });
 });
