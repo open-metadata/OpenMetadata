@@ -960,3 +960,65 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
 
   await expect(lastRowFirstCell).toBeFocused();
 };
+
+export const performDeleteOperationOnEntity = async (page: Page) => {
+  await page.locator('.rdg-cell-name').last().click();
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
+
+  // Description Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Owner Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Tag Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Glossary Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Backspace');
+
+  // Tier Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Certification Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Retention Period Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Source URL Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+
+  // Domains Remove
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Delete');
+};
