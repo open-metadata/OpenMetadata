@@ -38,6 +38,7 @@ import {
   fillRowDetails,
   fillStoredProcedureCode,
   firstTimeGridAddRowAction,
+  performColumnSelectAndDeleteOperation,
   performDeleteOperationOnEntity,
   pressKeyXTimes,
   validateImportStatus,
@@ -882,18 +883,18 @@ test.describe('Bulk Import Export', () => {
   test('Keyboard Delete selection', async ({ page }) => {
     test.slow(true);
 
-    const dbSchemaEntity = new DatabaseSchemaClass();
+    const dbEntity = new DatabaseClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
-    await dbSchemaEntity.create(apiContext);
+    await dbEntity.create(apiContext);
 
     await test.step('should export data database schema details', async () => {
-      await dbSchemaEntity.visitEntityPage(page);
+      await dbEntity.visitEntityPage(page);
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="export-button-title"]');
-      await page.fill('#fileName', dbSchemaEntity.entity.name);
+      await page.fill('#fileName', dbEntity.entity.name);
       await page.click('#submit-button');
 
       const download = await downloadPromise;
@@ -905,13 +906,13 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should import and perform edit operation on entity',
       async () => {
-        await dbSchemaEntity.visitEntityPage(page);
+        await dbEntity.visitEntityPage(page);
 
         await page.click('[data-testid="manage-button"] > .anticon');
         await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
-          'downloads/' + dbSchemaEntity.entity.name + '.csv',
+          'downloads/' + dbEntity.entity.name + '.csv',
         ]);
 
         // Adding manual wait for the file to load
@@ -925,41 +926,51 @@ test.describe('Bulk Import Export', () => {
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
 
-        await firstTimeGridAddRowAction(page);
-
-        // First Table Details with one Column
+        // Click on first cell and edit
+        await page.click('.rdg-cell[role="gridcell"]');
         await fillRowDetails(
           {
-            ...tableDetails1,
+            ...databaseDetails1,
             owners: [
               EntityDataClass.user1.responseData?.['displayName'],
               EntityDataClass.user2.responseData?.['displayName'],
             ],
             domains: EntityDataClass.domain1.responseData,
           },
-          page
+          page,
+          undefined,
+          true
         );
 
         await fillRecursiveEntityTypeFQNDetails(
-          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}`,
-          tableDetails1.entityType,
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+          databaseSchemaDetails1.entityType,
           page
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
+          passed: '9',
+          processed: '9',
           failed: '0',
         });
 
-        const rowStatus = ['Entity created'];
+        const rowStatus = [
+          'Entity created',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+        ];
 
         await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         const updateButtonResponse = page.waitForResponse(
-          `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
+          `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
         );
 
         await page.getByRole('button', { name: 'Update' }).click();
@@ -976,12 +987,12 @@ test.describe('Bulk Import Export', () => {
     await test.step(
       'should export data database schema details after edit changes',
       async () => {
-        await dbSchemaEntity.visitEntityPage(page);
+        await dbEntity.visitEntityPage(page);
 
         const downloadPromise = page.waitForEvent('download');
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="export-button-title"]');
-        await page.fill('#fileName', `${dbSchemaEntity.entity.name}-delete`);
+        await page.fill('#fileName', `${dbEntity.entity.name}-delete`);
         await page.click('#submit-button');
 
         const download = await downloadPromise;
@@ -991,59 +1002,73 @@ test.describe('Bulk Import Export', () => {
       }
     );
 
-    await test.step(
-      'should import and perform keyboard delete selection',
-      async () => {
-        await page.click('[data-testid="manage-button"] > .anticon');
-        await page.click('[data-testid="import-button-title"]');
-        const fileInput = await page.$('[type="file"]');
-        await fileInput?.setInputFiles([
-          'downloads/' + `${dbSchemaEntity.entity.name}-delete` + '.csv',
-        ]);
+    await test.step('Perform Column Select and Delete Operation', async () => {
+      await page.click('[data-testid="manage-button"] > .anticon');
+      await page.click('[data-testid="import-button-title"]');
+      const fileInput = await page.$('[type="file"]');
+      await fileInput?.setInputFiles([
+        'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
+      ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
 
-        // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
-        await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
-        await expect(
-          page.getByRole('button', { name: 'Previous' })
-        ).toBeVisible();
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByTestId('add-row-btn')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).toBeVisible();
 
-        // Perform Delete Operation  on Edit Operation on Entity
-        await performDeleteOperationOnEntity(page);
+      // Perform Delete Operation  on Edit Operation on Entity
+      await performColumnSelectAndDeleteOperation(page);
+    });
 
-        await page.getByRole('button', { name: 'Next' }).click();
+    await test.step('Perform Cell Delete Operation and Save', async () => {
+      await page.locator('.rdg-cell-name').first().click();
 
-        await validateImportStatus(page, {
-          passed: '2',
-          processed: '2',
-          failed: '0',
-        });
+      // Perform Delete Operation on Edit Operation on Entity
+      await performDeleteOperationOnEntity(page);
 
-        const rowStatus = ['Entity updated'];
+      await page.getByRole('button', { name: 'Next' }).click();
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await validateImportStatus(page, {
+        passed: '10',
+        processed: '10',
+        failed: '0',
+      });
 
-        const updateButtonResponse = page.waitForResponse(
-          `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
-        );
+      const rowStatus = [
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+        'Entity updated',
+      ];
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await page
-          .locator('.inovua-react-toolkit-load-mask__background-layer')
-          .waitFor({ state: 'detached' });
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
-        await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
-        await toastNotification(page, /details updated successfully/);
-      }
-    );
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
+      );
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
+      await toastNotification(page, /details updated successfully/);
+    });
 
     await test.step('should verify the removed value from entity', async () => {
-      await page.getByTestId('column-display-name').click();
+      await page.getByTestId('column-name').first().click();
       await page.waitForLoadState('networkidle');
 
       await expect(
@@ -1068,14 +1093,10 @@ test.describe('Bulk Import Export', () => {
 
       await expect(page.getByTestId('owner-label')).toContainText('No Owners');
 
-      await expect(
-        page.getByTestId('retention-period-container')
-      ).toContainText('Retention Period--');
-
       await expect(page.getByTestId('no-domain-text')).toBeVisible();
     });
 
-    await dbSchemaEntity.delete(apiContext);
+    await dbEntity.delete(apiContext);
     await afterAction();
   });
 
