@@ -24,9 +24,9 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class MlModelClass extends EntityClass {
-  private mlModelName = `pw-mlmodel-${uuid()}`;
+  private mlModelName = `pw.mlmodel%${uuid()}`;
   service = {
-    name: `pw-ml-model-service-${uuid()}`,
+    name: `pw.mlmodel%service-${uuid()}`,
     serviceType: 'Mlflow',
     connection: {
       config: {

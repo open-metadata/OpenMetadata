@@ -24,9 +24,9 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
-  private pipelineName = `pw-pipeline-${uuid()}`;
+  private pipelineName = `pw.pipeline%${uuid()}`;
   service = {
-    name: `pw-pipeline-service-${uuid()}`,
+    name: `pw.pipeline%service-${uuid()}`,
     serviceType: 'Dagster',
     connection: {
       config: {
