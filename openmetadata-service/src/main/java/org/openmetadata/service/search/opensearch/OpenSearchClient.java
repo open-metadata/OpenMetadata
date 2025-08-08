@@ -59,6 +59,7 @@ import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -83,6 +84,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.search.TopHits;
+import org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -2539,6 +2541,57 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                 }
                 return httpAsyncClientBuilder;
               });
+        } else if (esConfig.getAws() != null
+            && Boolean.TRUE.equals(esConfig.getAws().getUseIamAuth())) {
+          AwsConfiguration awsCfg = esConfig.getAws();
+          String region = awsCfg.getRegion();
+          if (StringUtils.isBlank(region)) {
+            LOG.error(
+                "OpenSearch IAM auth enabled but AWS region not provided. Falling back to unsigned requests.");
+          } else {
+            // Build SigV4 signing interceptor using AWS SDK v2
+            software.amazon.awssdk.auth.credentials.AwsCredentialsProvider credsProvider;
+            if (StringUtils.isNotBlank(awsCfg.getAccessKeyId())
+                && StringUtils.isNotBlank(awsCfg.getSecretAccessKey())) {
+              if (StringUtils.isNotBlank(awsCfg.getSessionToken())) {
+                credsProvider =
+                    software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                        software.amazon.awssdk.auth.credentials.AwsSessionCredentials.create(
+                            awsCfg.getAccessKeyId(),
+                            awsCfg.getSecretAccessKey(),
+                            awsCfg.getSessionToken()));
+              } else {
+                credsProvider =
+                    software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                        software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                            awsCfg.getAccessKeyId(), awsCfg.getSecretAccessKey()));
+              }
+            } else {
+              credsProvider =
+                  software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create();
+            }
+
+            String serviceName =
+                StringUtils.isNotBlank(awsCfg.getServiceName()) ? awsCfg.getServiceName() : "es";
+            HttpRequestInterceptor signingInterceptor =
+                new org.openmetadata.service.search.opensearch.aws.SigV4RequestSigningInterceptor(
+                    serviceName, software.amazon.awssdk.regions.Region.of(region), credsProvider);
+
+            SSLContext sslContext = createElasticSearchSSLContext(esConfig);
+            restClientBuilder.setHttpClientConfigCallback(
+                httpAsyncClientBuilder -> {
+                  httpAsyncClientBuilder.addInterceptorLast(signingInterceptor);
+                  if (sslContext != null) {
+                    httpAsyncClientBuilder.setSSLContext(sslContext);
+                  }
+                  if (esConfig.getKeepAliveTimeoutSecs() != null
+                      && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                    httpAsyncClientBuilder.setKeepAliveStrategy(
+                        (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+                  }
+                  return httpAsyncClientBuilder;
+                });
+          }
         }
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
