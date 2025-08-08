@@ -367,7 +367,7 @@ export const getGlossaryTermChildrenLazy = async (
     PagingResponse<GlossaryTermWithChildren[]>
   >(apiUrl, {
     params: {
-      parent: parentFQN,
+      directChildrenOf: parentFQN,
       fields: [
         TabSpecificField.CHILDREN_COUNT,
         TabSpecificField.OWNERS,

@@ -19,6 +19,7 @@ import { findAndUpdateNested } from '../../utils/GlossaryUtils';
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
   childrenCount?: number;
+  termCount?: number;
 };
 
 export type GlossaryFunctionRef = {
@@ -111,7 +112,11 @@ export const useGlossaryStore = create<{
     }
   },
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
-    set({ glossaryChildTerms });
+    // Ensure glossaryChildTerms is always an array
+    const validTerms = Array.isArray(glossaryChildTerms)
+      ? glossaryChildTerms
+      : [];
+    set({ glossaryChildTerms: validTerms });
   },
   setTermsLoading: (termsLoading: boolean) => {
     set({ termsLoading });

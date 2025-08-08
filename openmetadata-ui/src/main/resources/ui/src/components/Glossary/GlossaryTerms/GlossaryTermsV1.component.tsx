@@ -95,9 +95,8 @@ const GlossaryTermsV1 = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { glossaryChildTerms, onAddGlossaryTerm } = useGlossaryStore();
+  const { onAddGlossaryTerm } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
-  const childGlossaryTerms = glossaryChildTerms ?? [];
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
   const { t } = useTranslation();
 
@@ -206,7 +205,7 @@ const GlossaryTermsV1 = ({
                     t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
-                      childGlossaryTerms.length,
+                      glossaryTerm.childrenCount || 0,
                       '',
                       activeTab === EntityTabs.TERMS
                     )}

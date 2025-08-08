@@ -104,7 +104,6 @@ const GlossaryPage = () => {
 
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
-    setActiveGlossary({} as ModifiedGlossary);
 
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
@@ -204,6 +203,7 @@ const GlossaryPage = () => {
           TabSpecificField.REVIEWERS,
           TabSpecificField.VOTES,
           TabSpecificField.DOMAINS,
+          TabSpecificField.TERM_COUNT,
         ],
         limit: PAGE_SIZE_LARGE,
         after: after,
@@ -245,6 +245,7 @@ const GlossaryPage = () => {
           TabSpecificField.VOTES,
           TabSpecificField.DOMAINS,
           TabSpecificField.EXTENSION,
+          TabSpecificField.CHILDREN_COUNT,
         ],
       });
       setActiveGlossary(response as ModifiedGlossary);
@@ -396,6 +397,8 @@ const GlossaryPage = () => {
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
         navigate(getGlossaryPath(fqn));
+        // Refresh glossary list to update term count after deletion
+        fetchGlossaryList();
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -469,6 +472,7 @@ const GlossaryPage = () => {
       isSummaryPanelOpen={Boolean(previewAsset)}
       isVersionsView={false}
       refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
+      refreshGlossaryList={fetchGlossaryList}
       selectedData={activeGlossary as Glossary}
       updateGlossary={updateGlossary}
       updateVote={updateVote}

@@ -32,7 +32,6 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
   addGlossaryTerm,
-  getFirstLevelGlossaryTerms,
   getFirstLevelGlossaryTermsPaginated,
   ListGlossaryTermsParams,
   patchGlossaryTerm,
@@ -67,6 +66,7 @@ const GlossaryV1 = ({
   onAssetClick,
   isSummaryPanelOpen,
   refreshActiveGlossaryTerm,
+  refreshGlossaryList,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } = useRequiredParams<{
@@ -83,7 +83,7 @@ const GlossaryV1 = ({
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isPermissionLoading, setIsPermissionLoading] = useState(false);
-  const { setGlossaryFunctionRef, setTermsLoading } = useGlossaryStore();
+  const { setGlossaryFunctionRef } = useGlossaryStore();
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -131,10 +131,9 @@ const GlossaryV1 = ({
 
       if (append) {
         // Append to existing terms
-        setGlossaryChildTerms((prev) => [
-          ...(prev || []),
-          ...(data as ModifiedGlossary[]),
-        ]);
+        const currentTerms = glossaryChildTerms || [];
+        const mergedTerms = [...currentTerms, ...(data as ModifiedGlossary[])];
+        setGlossaryChildTerms(mergedTerms);
       } else {
         // Replace terms
         setGlossaryChildTerms(data as ModifiedGlossary[]);
@@ -273,8 +272,12 @@ const GlossaryV1 = ({
       // Close modal and set loading to false
       setIsEditModalOpen(false);
       setTermsLoading(false);
+      // Refresh glossary list to update term count
+      if (isGlossaryActive && refreshGlossaryList) {
+        refreshGlossaryList();
+      }
     },
-    [isGlossaryActive, tab, selectedData]
+    [isGlossaryActive, tab, selectedData, refreshGlossaryList]
   );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
@@ -363,7 +366,13 @@ const GlossaryV1 = ({
   const initializeGlossary = async () => {
     const permission = await initPermissions();
     if (permission?.ViewAll || permission?.ViewBasic) {
-      loadGlossaryTerms();
+      // Only load terms if we're viewing a glossary term, not a glossary
+      // GlossaryTermTab handles pagination for glossaries
+      if (!isGlossaryActive) {
+        loadGlossaryTerms();
+      } else {
+        setIsLoading(false);
+      }
     } else {
       setIsLoading(false);
     }
@@ -371,8 +380,17 @@ const GlossaryV1 = ({
 
   useEffect(() => {
     if (id && !action) {
+      // Clear terms and reset pagination when switching entities
+      setGlossaryChildTerms([]);
+      setAfterCursor(undefined);
+      setHasMore(true);
       initializeGlossary();
     }
+
+    // Cleanup on unmount
+    return () => {
+      setGlossaryChildTerms([]);
+    };
   }, [id, isGlossaryActive, isVersionsView, action]);
 
   useEffect(() => {
