@@ -256,11 +256,15 @@ public final class SearchUtils {
     // SQL injection patterns identified from security testing and OWASP guidelines
     // These patterns target the most common attack vectors used against all endpoints
     String[] sqlPatterns = {
-      // Boolean-based blind SQL injection patterns
-      "' AND ", // Single quote boolean AND injection
-      "' OR ", // Single quote boolean OR injection
-      "\" AND ", // Double quote boolean AND injection
-      "\" OR ", // Double quote boolean OR injection
+      // Boolean-based blind SQL injection patterns (comprehensive coverage)
+      "' AND ", // Single quote boolean AND injection with space
+      "' OR ", // Single quote boolean OR injection with space
+      "\" AND ", // Double quote boolean AND injection with space
+      "\" OR ", // Double quote boolean OR injection with space
+      "'AND", // Single quote AND without spaces
+      "'OR", // Single quote OR without spaces
+      "\"AND", // Double quote AND without spaces
+      "\"OR", // Double quote OR without spaces
 
       // SQL comment injection patterns
       "--", // SQL line comments
@@ -279,9 +283,11 @@ public final class SearchUtils {
       "select ", // Select at beginning
       " select", // Select at end
 
-      // Equality-based injection patterns
-      "' = '", // Single quote equality tests
-      "\" = \"", // Double quote equality tests
+      // Equality-based injection patterns (comprehensive coverage)
+      "' = '", // Single quote equality tests with spaces
+      "\" = \"", // Double quote equality tests with spaces
+      "'='", // Single quote equality without spaces
+      "\"=\"", // Double quote equality without spaces
       "1=1", // Always true condition
       "1=2" // Always false condition
     };
