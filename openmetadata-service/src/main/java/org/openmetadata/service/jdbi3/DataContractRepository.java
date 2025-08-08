@@ -307,16 +307,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private TestSuite createOrUpdateDataContractTestSuite(DataContract dataContract, boolean update) {
     try {
       if (update) { // If we're running an update, fetch the existing test suite information
-        setFullyQualifiedName(dataContract);
-        Optional<DataContract> existing =
-            getByNameOrNull(
-                null,
-                dataContract.getFullyQualifiedName(),
-                Fields.EMPTY_FIELDS,
-                Include.NON_DELETED,
-                false);
-        dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
-        dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
+        restoreExistingDataContract(dataContract);
       }
 
       // If we don't have quality expectations or a test suite, we don't need to create one
@@ -348,6 +339,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       LOG.error("Error creating/updating test suite for data contract", e);
       throw e;
     }
+  }
+
+  private void restoreExistingDataContract(DataContract dataContract) {
+    setFullyQualifiedName(dataContract);
+    Optional<DataContract> existing =
+        getByNameOrNull(
+            null,
+            dataContract.getFullyQualifiedName(),
+            Fields.EMPTY_FIELDS,
+            Include.NON_DELETED,
+            false);
+    dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
+    dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
+    dataContract.setId(existing.map(DataContract::getId).orElse(dataContract.getId()));
   }
 
   private void updateTestSuiteTests(DataContract dataContract, TestSuite testSuite) {

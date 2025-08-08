@@ -3211,4 +3211,68 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(testCase1.getEntityLink(), testCase1AfterDeletion.getEntityLink());
     assertEquals(testCase2.getEntityLink(), testCase2AfterDeletion.getEntityLink());
   }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreateContractWithSemanticThenAddQualityExpectationCreatesTestSuite(TestInfo test)
+      throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create initial contract with one semantic rule only
+    List<SemanticsRule> initialSemantics =
+        List.of(
+            new SemanticsRule()
+                .withName("Primary Key Rule")
+                .withDescription("Validates primary key field presence")
+                .withRule("{\"!!\": {\"var\": \"id\"}}"));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withSemantics(initialSemantics)
+            .withStatus(ContractStatus.Active);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Verify initial contract was created with semantics but no test suite yet
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getSemantics());
+    assertEquals(1, dataContract.getSemantics().size());
+    assertEquals("Primary Key Rule", dataContract.getSemantics().get(0).getName());
+    assertNull(dataContract.getTestSuite());
+
+    // Now add a quality expectation to trigger test suite creation
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest("test_case_quality_" + test.getDisplayName())
+            .withEntityLink(tableLink);
+    TestCase testCase =
+        testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations = List.of(testCase.getEntityReference());
+
+    // Update contract with quality expectation
+    create.withQualityExpectations(qualityExpectations);
+    DataContract updatedContract = updateDataContract(create);
+
+    // Verify test suite was created after adding quality expectation
+    assertNotNull(updatedContract.getTestSuite());
+    assertNotNull(updatedContract.getQualityExpectations());
+    assertEquals(1, updatedContract.getQualityExpectations().size());
+
+    // Fetch test suite by ID from the data contract and validate it has correct data contract ID
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntity(
+            updatedContract.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(testSuite);
+    assertNotNull(testSuite.getDataContract());
+    assertEquals(updatedContract.getId(), testSuite.getDataContract().getId());
+
+    // Verify test suite contains the quality expectation test case
+    assertNotNull(testSuite.getTests());
+    assertEquals(1, testSuite.getTests().size());
+    assertEquals(testCase.getId(), testSuite.getTests().get(0).getId());
+  }
 }
