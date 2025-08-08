@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined } from '@ant-design/icons';
 import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -19,6 +18,7 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as TrashIcon } from '../../../../assets/svg/ic-trash.svg';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
@@ -267,7 +267,7 @@ const AccessTokenCard: FC<MockProps> = ({
             <div className="scim-token-delete-modal">
               <div className="scim-modal-header  mb-4">
                 <span className="scim-modal-icon">
-                  <DeleteOutlined style={{ color: '#F04438', fontSize: 24 }} />
+                  <TrashIcon height={20} width={20} />
                 </span>
               </div>
               <div className="flex flex-col gap-2">

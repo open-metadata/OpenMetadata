@@ -21,7 +21,6 @@ import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { Bot } from '../../../../generated/entity/bot';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getTokenExpiry } from '../../../../utils/BotsUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -65,8 +64,6 @@ const AuthMechanism: FC<Props> = ({
   }, [isBot, authenticationMechanism]);
 
   const { tokenExpiryDate, isTokenExpired } = getTokenExpiry(JWTTokenExpiresAt);
-
-  const { currentUser } = useApplicationStore();
 
   return (
     <>
