@@ -83,7 +83,7 @@ const GlossaryTermsV1 = ({
   isTabExpanded,
   toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useRequiredParams<{
+  const { tab: activeTab, version } = useRequiredParams<{
     tab: EntityTabs;
     version: string;
   }>();
@@ -108,10 +108,6 @@ const GlossaryTermsV1 = ({
       ? permissions
       : MOCK_GLOSSARY_NO_PERMISSIONS;
   }, [glossaryTerm, permissions]);
-
-  const activeTab = useMemo(() => {
-    return tab ?? EntityTabs.OVERVIEW;
-  }, [tab]);
 
   const activeTabHandler = (tab: string) => {
     navigate(
@@ -162,8 +158,8 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = useCallback(() => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
-    tab !== 'assets' && activeTabHandler('assets');
-  }, [assetTabRef, tab]);
+    activeTab !== 'assets' && activeTabHandler('assets');
+  }, [assetTabRef, activeTab]);
 
   const onExtensionUpdate = useCallback(
     async (updatedTable: GlossaryTerm) => {

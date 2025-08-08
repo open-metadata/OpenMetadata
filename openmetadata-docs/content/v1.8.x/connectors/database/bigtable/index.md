@@ -1,6 +1,6 @@
 ---
-title: BigTable Connector | OpenMetadata Database Integration
-description: Connect Google Cloud Bigtable to OpenMetadata with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
+title: BigTable Connector | `brandName` Database Integration
+description: Connect Google Cloud Bigtable to `brandName` with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/bigtable
 ---
 

@@ -74,6 +74,8 @@ export enum EntityFields {
   SERVICE_NAME = 'service.name.keyword',
   SUGGESTED_DESCRIPTION = 'descriptionSources.Suggested',
   TAGS_LABEL_TYPE = 'tags.labelType',
+  TIER_LABEL_TYPE = 'tier.labelType',
+  CREATED_BY = 'createdBy',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
@@ -96,9 +98,12 @@ export enum EntityReferenceFields {
   DISPLAY_NAME = 'displayName',
   TAG = 'tags',
   TIER = 'tier.tagFQN',
+  DOMAIN = 'domains',
+  DATA_PRODUCT = 'dataProduct',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
   SERVICE = 'service.name',
   UPDATED_BY = 'updatedBy',
   CHANGE_DESCRIPTION = 'changeDescription',
+  DELETED = 'deleted',
 }

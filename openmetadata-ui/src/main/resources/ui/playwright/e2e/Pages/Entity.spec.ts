@@ -12,6 +12,7 @@
  */
 import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -230,8 +231,8 @@ entities.forEach((EntityClass) => {
       await entity.tier(
         page,
         'Tier1',
-        EntityDataClass.tierTag1.responseData.displayName,
-        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+        COMMON_TIER_TAG[2].name,
+        COMMON_TIER_TAG[2].fullyQualifiedName,
         entity
       );
     });
@@ -398,7 +399,9 @@ entities.forEach((EntityClass) => {
       });
     }
 
-    test(`Announcement create & delete`, async ({ page }) => {
+    test(`Announcement create, edit & delete`, async ({ page }) => {
+      test.slow();
+
       await entity.announcement(page);
     });
 

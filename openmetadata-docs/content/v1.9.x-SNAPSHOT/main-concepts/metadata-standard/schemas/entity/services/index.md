@@ -1,5 +1,5 @@
 ---
-title: Services Schema | OpenMetadata Services Schema Details
+title: Services Schema | `brandName` Services Schema Details
 description: Schema for service-related metadata covering databases, dashboards, pipelines, and messaging platforms.
 slug: /main-concepts/metadata-standard/schemas/entity/services
 ---
