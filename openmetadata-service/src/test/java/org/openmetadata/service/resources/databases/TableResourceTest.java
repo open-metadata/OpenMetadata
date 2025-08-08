@@ -216,6 +216,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
+  }
+
+  @BeforeAll
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
     supportsSearchIndex = true;
   }
@@ -1750,10 +1754,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(3, getClassificationUsageCount("User", ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary1 tags  - 1 column
-    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName()));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY1.getName(), ADMIN_AUTH_HEADERS));
 
     // Total 1 glossary2 tags  - 1 table
-    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName()));
+    assertEquals(1, getGlossaryUsageCount(GLOSSARY2.getName(), ADMIN_AUTH_HEADERS));
 
     // Total 3 USER_ADDRESS tags - 1 table tag and 2 column tags
     assertEquals(3, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), ADMIN_AUTH_HEADERS));
