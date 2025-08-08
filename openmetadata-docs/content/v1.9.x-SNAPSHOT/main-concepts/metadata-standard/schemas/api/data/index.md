@@ -1,5 +1,5 @@
 ---
-title: Data API Schemas | OpenMetadata Data API Overview
+title: Data API Schemas | `brandName` Data API Overview
 description: Connect Data to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data
 ---

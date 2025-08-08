@@ -1,6 +1,6 @@
 ---
-title: Lineage Ingestion | OpenMetadata Data Lineage Setup Guide
-description: Discover how to track data lineage with OpenMetadata ingestion connectors. Learn to visualize data flow, dependencies, and transformations across your e...
+title: Lineage Ingestion | `brandName` Data Lineage Setup Guide
+description: Discover how to track data lineage with `brandName` Ingestion connectors. Learn to visualize data flow, dependencies, and transformations across your e...
 slug: /connectors/ingestion/lineage
 ---
 

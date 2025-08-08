@@ -1,5 +1,5 @@
 ---
-title: ClickHouse Connector | OpenMetadata Database Integration
+title: ClickHouse Connector | `brandName` Database Integration
 description: Learn how to connect ClickHouse databases to `brandName` with our comprehensive connector guide. Setup instructions, configuration options, and trouble...
 slug: /connectors/database/clickhouse
 ---

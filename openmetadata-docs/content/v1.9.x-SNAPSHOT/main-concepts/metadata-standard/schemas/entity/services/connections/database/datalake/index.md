@@ -1,5 +1,5 @@
 ---
-title: Data Lake Connections Schema | OpenMetadata Database Services
+title: Data Lake Connections Schema | `brandName` Database Services
 description: Get started with datalake. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake
 ---

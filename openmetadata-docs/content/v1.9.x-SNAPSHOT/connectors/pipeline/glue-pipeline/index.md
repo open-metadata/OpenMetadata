@@ -1,5 +1,5 @@
 ---
-title: Glue Pipeline | OpenMetadata Data Integration Pipeline
+title: Glue Pipeline | `brandName` Data Integration Pipeline
 description: Set up metadata ingestion from Glue pipelines to track source-to-target flows, logic, and job parameters.
 slug: /connectors/pipeline/glue-pipeline
 ---

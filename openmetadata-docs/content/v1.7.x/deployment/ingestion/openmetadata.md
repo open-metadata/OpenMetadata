@@ -1,6 +1,6 @@
 ---
 title: Run the ingestion from the OpenMetadata UI
-description: Learn how to deploy and configure OpenMetadata ingestion pipelines. Complete setup guide with connectors, scheduling, and best practices.
+description: Learn how to deploy and configure `brandName` Ingestion pipelines. Complete setup guide with connectors, scheduling, and best practices.
 slug: /deployment/ingestion/openmetadata
 collate: false
 ---

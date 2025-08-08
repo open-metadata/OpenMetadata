@@ -1,5 +1,5 @@
 ---
-title: Glossary | OpenMetadata Data Glossary Guide
+title: Glossary | `brandName` Data Glossary Guide
 description: Set up glossary terms and definitions to improve search, categorization, and shared understanding.
 slug: /how-to-guides/data-governance/glossary
 ---

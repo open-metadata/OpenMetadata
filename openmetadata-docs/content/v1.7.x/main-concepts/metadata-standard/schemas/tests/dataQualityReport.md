@@ -1,5 +1,5 @@
 ---
-title: dataQualityReport | OpenMetadata Data Quality Report
+title: dataQualityReport | `brandName` Data Quality Report
 description: Create a data quality report schema summarizing test results, issues found, and key metrics for data monitoring.
 slug: /main-concepts/metadata-standard/schemas/tests/dataqualityreport
 ---
