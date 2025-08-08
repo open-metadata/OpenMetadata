@@ -1,6 +1,6 @@
 ---
 title: Get a Quick Glance of the Data Assets
-description: Preview datasets before diving in, using inline metadata, sample rows, and column-level insights.
+description: Instantly preview data assets with inline metadata, sample rows, schema details, tags, and quality metrics—without leaving the Explore page.
 slug: /how-to-guides/data-discovery/preview
 ---
 

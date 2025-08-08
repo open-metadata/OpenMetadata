@@ -1,6 +1,6 @@
 ---
 title: Run the SAP ERP Connector Externally
-description: Configure SAP ERP database connections in OpenMetadata with YAML. Complete setup guide, authentication options, and configuration examples for seamless ...
+description: Configure SAP ERP database connections in `brandName` with YAML. Complete setup guide, authentication options, and configuration examples for seamless ...
 slug: /connectors/database/sap-erp/yaml
 ---
 
