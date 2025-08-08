@@ -129,13 +129,6 @@ const TestConnection: FC<TestConnectionProps> = ({
     !allowTestConn ||
     !isAirflowAvailable;
 
-  // To display Next button When user is not allowed to test
-  useEffect(() => {
-    if (!isAirflowAvailable || !allowTestConn || isTestingDisabled) {
-      onTestConnection?.();
-    }
-  }, [isAirflowAvailable, allowTestConn, isTestingDisabled]);
-
   // data fetch handlers
 
   const fetchConnectionDefinition = async () => {
