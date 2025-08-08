@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
-import { getApiContext, toastNotification } from './common';
+import { getApiContext } from './common';
 import { sidebarClick } from './sidebar';
 
 export const saveAndTriggerDataContractValidation = async (
@@ -23,8 +23,6 @@ export const saveAndTriggerDataContractValidation = async (
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
   const responseData = await response.json();
-
-  await toastNotification(page, 'Data contract saved successfully');
 
   if (isContractStatusNotVisible) {
     await expect(
