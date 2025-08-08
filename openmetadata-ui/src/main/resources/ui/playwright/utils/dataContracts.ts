@@ -12,16 +12,17 @@
  */
 import { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
-import { toastNotification } from './common';
+import { getApiContext, toastNotification } from './common';
 import { sidebarClick } from './sidebar';
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
-) => {
+): Promise<string | undefined> => {
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts');
   await page.getByTestId('save-contract-btn').click();
-  await saveContractResponse;
+  const response = await saveContractResponse;
+  const responseData = await response.json();
 
   await toastNotification(page, 'Data contract saved successfully');
 
@@ -40,6 +41,8 @@ export const saveAndTriggerDataContractValidation = async (
   await runNowResponse;
 
   await page.reload();
+
+  return responseData;
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
@@ -61,4 +64,44 @@ export const validateDataContractInsideBundleTestSuites = async (
     .click();
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
+};
+
+export const waitForDataContractExecution = async (
+  page: Page,
+  contractId: string,
+  resultId: string,
+  maxConsecutiveErrors = 3
+) => {
+  const { apiContext } = await getApiContext(page);
+  let consecutiveErrors = 0;
+
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await apiContext
+            .get(`/api/v1/dataContracts/${contractId}/results/${resultId}`)
+            .then((res) => res.json());
+
+          consecutiveErrors = 0; // Reset error counter on success
+
+          return response.contractExecutionStatus;
+        } catch (error) {
+          consecutiveErrors++;
+          if (consecutiveErrors >= maxConsecutiveErrors) {
+            throw new Error(
+              `Failed to get contract execution status after ${maxConsecutiveErrors} consecutive attempts`
+            );
+          }
+
+          return 'Running';
+        }
+      },
+      {
+        message: 'Wait for data contract execution to complete',
+        timeout: 750_000,
+        intervals: [30_000, 15_000, 5_000],
+      }
+    )
+    .toEqual(expect.stringMatching(/(Aborted|Success|Failed)/));
 };

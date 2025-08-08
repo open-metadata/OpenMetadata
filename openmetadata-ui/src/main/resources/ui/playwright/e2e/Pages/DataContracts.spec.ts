@@ -33,6 +33,7 @@ import {
 import {
   saveAndTriggerDataContractValidation,
   validateDataContractInsideBundleTestSuites,
+  waitForDataContractExecution,
 } from '../../utils/dataContracts';
 import { addOwner } from '../../utils/entity';
 
@@ -359,19 +360,25 @@ test.describe('Data Contracts', () => {
         ).toBeChecked();
 
         // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page);
+        const response = await saveAndTriggerDataContractValidation(page);
 
-        for (let i = 0; i < 10; i++) {
-          const textContent = await page
-            .getByTestId('data-contract-latest-result-btn')
-            .textContent();
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'latestResult' in response
+        ) {
+          const {
+            id: contractId,
+            latestResult: { resultId: latestResultId },
+          } = response;
 
-          if (!textContent?.includes('Contract Running')) {
-            break;
+          if (contractId && latestResultId) {
+            await waitForDataContractExecution(
+              page,
+              contractId,
+              latestResultId
+            );
           }
-
-          await page.waitForTimeout(10000);
-          await page.reload();
         }
 
         await expect(
