@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "星期四",
     "tier": "分级",
+    "tier-label-type": "分级标签类型",
     "tier-number": "{{tier}}级",
     "tier-plural": "层",
     "tier-plural-lowercase": "分级",

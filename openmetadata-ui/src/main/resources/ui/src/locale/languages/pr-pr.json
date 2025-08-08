@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "پنج‌شنبه",
     "tier": "سطح",
+    "tier-label-type": "نوع برچسب سطح",
     "tier-number": "سطح {{tier}}",
     "tier-plural": "طبقات",
     "tier-plural-lowercase": "سطوح",
