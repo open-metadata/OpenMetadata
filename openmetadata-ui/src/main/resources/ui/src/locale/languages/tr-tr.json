@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "Perşembe",
     "tier": "Katman",
+    "tier-label-type": "Katman Etiketi Türü",
     "tier-number": "Katman{{tier}}",
     "tier-plural": "Katmanlar",
     "tier-plural-lowercase": "katmanlar",

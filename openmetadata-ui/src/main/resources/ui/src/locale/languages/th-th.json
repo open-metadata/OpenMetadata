@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "วันพฤหัสบดี",
     "tier": "ระดับ",
+    "tier-label-type": "ประเภทป้ายระดับ",
     "tier-number": "ระดับ {{tier}}",
     "tier-plural": "ชั้น",
     "tier-plural-lowercase": "ระดับหลายรายการ",

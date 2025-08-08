@@ -1610,6 +1610,7 @@
     "three-dots-symbol": "•••",
     "thursday": "Xoves",
     "tier": "Nivel",
+    "tier-label-type": "Tipo de Etiqueta de Nivel",
     "tier-number": "Nivel{{tier}}",
     "tier-plural": "Niveles",
     "tier-plural-lowercase": "niveis",
