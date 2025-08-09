@@ -1,5 +1,6 @@
 ---
-title: OpenMetadata Chrome Extension
+title: `brandName` Chrome Extension – Access Metadata in Your Workspace
+description: Use the `brandName` Chrome extension to view activity feeds, resolve tasks, and search data assets without leaving your browser workspace.
 slug: /how-to-guides/data-discovery/openmetadata-extension
 ---
 

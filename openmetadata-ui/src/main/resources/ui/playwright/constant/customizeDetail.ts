@@ -33,15 +33,16 @@ export enum ECustomizedGovernance {
 }
 
 export const TABLE_DEFAULT_TABS = [
-  'Schema',
   'Activity Feeds & Tasks',
-  'Sample Data',
-  'Queries',
+  'Contract',
+  'Custom Properties',
   'Data Observability',
   'Lineage',
-  'dbt',
+  'Queries',
+  'Sample Data',
+  'Schema',
   'View Definition',
-  'Custom Properties',
+  'dbt',
 ];
 
 export const TOPIC_DEFAULT_TABS = [

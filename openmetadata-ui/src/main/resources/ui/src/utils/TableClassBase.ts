@@ -102,6 +102,7 @@ class TableClassBase {
       EntityTabs.KNOWLEDGE_GRAPH,
       EntityTabs.DBT,
       EntityTabs.VIEW_DEFINITION,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

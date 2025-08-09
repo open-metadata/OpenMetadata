@@ -1,5 +1,5 @@
 ---
-title: Profiler Tab | OpenMetadata Data Profiling Interface
+title: Profiler Tab | `brandName` Data Profiling Interface
 description: Use the profiler tab to configure, view, and manage profiling metrics including null counts, uniqueness, and stats.
 slug: /how-to-guides/data-quality-observability/profiler/tab
 ---

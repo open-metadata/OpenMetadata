@@ -45,15 +45,11 @@ export interface CreateDataContract {
     /**
      * Quality expectations defined in the data contract.
      */
-    qualityExpectations?: QualityExpectation[];
+    qualityExpectations?: EntityReference[];
     /**
      * User references of the reviewers for this data contract.
      */
     reviewers?: EntityReference[];
-    /**
-     * Configuration for scheduling data contract validation checks.
-     */
-    scheduleConfig?: ScheduleConfig;
     /**
      * Schema definition for the data contract.
      */
@@ -83,8 +79,6 @@ export interface CreateDataContract {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to a test case that enforces this quality expectation.
  */
 export interface EntityReference {
     /**
@@ -127,66 +121,6 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Quality expectation defined in the data contract.
- */
-export interface QualityExpectation {
-    /**
-     * Definition of the quality expectation.
-     */
-    definition: string;
-    /**
-     * Description of the quality expectation.
-     */
-    description?: string;
-    /**
-     * Name of the quality expectation.
-     */
-    name: string;
-    /**
-     * Reference to a test case that enforces this quality expectation.
-     */
-    testCase?: EntityReference;
-}
-
-/**
- * Configuration for scheduling data contract validation checks.
- */
-export interface ScheduleConfig {
-    /**
-     * Whether the scheduled validation is enabled.
-     */
-    enabled?: boolean;
-    /**
-     * End date for the scheduled validation.
-     */
-    endDate?: Date;
-    /**
-     * Number of retries on validation failure.
-     */
-    retries?: number;
-    /**
-     * Delay between retries in seconds.
-     */
-    retryDelay?: number;
-    /**
-     * Schedule interval for validation checks in cron format (e.g., '0 0 * * *' for daily).
-     */
-    scheduleInterval: string;
-    /**
-     * Start date for the scheduled validation.
-     */
-    startDate?: Date;
-    /**
-     * Timeout for validation execution in seconds.
-     */
-    timeout?: number;
-    /**
-     * Timezone for the scheduled validation.
-     */
-    timezone?: string;
 }
 
 /**
@@ -666,13 +600,30 @@ export interface SemanticsRule {
      */
     entityType?: string;
     /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
      * Name of the semantics rule.
      */
-    name: string;
+    name:      string;
+    provider?: ProviderType;
     /**
      * Definition of the semantics rule.
      */
     rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**

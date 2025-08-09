@@ -136,7 +136,8 @@
         "type": "float"
       },
       "updatedAt": {
-        "type": "text"
+        "type": "date",
+        "format": "epoch_second"
       },
       "updatedBy": {
         "type": "text"

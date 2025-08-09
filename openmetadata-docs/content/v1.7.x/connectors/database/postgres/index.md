@@ -1,6 +1,6 @@
 ---
-title: PostgreSQL Connector | OpenMetadata Database Integration
-description: Connect PostgreSQL to OpenMetadata with our comprehensive database connector guide. Step-by-step setup, configuration examples, and metadata extraction tips.
+title: PostgreSQL Connector | `brandName` Database Integration
+description: Connect PostgreSQL to `brandName` with our comprehensive database connector guide. Step-by-step setup, configuration examples, and metadata extraction tips.
 slug: /connectors/database/postgres
 ---
 
@@ -8,8 +8,8 @@ slug: /connectors/database/postgres
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata (Collate Only)", "Auto-Classification"]
-unavailableFeatures=[]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)", "Auto-Classification"]
+unavailableFeatures=["Stored Procedures Lineage"]
 / %}
 
 In this section, we provide guides and references to use the PostgreSQL connector.

@@ -435,6 +435,10 @@ const TestSuiteDetailsPage = () => {
     ]
   );
 
+  const selectedTestCases = useMemo(() => {
+    return testCaseResult.map((test) => test.name);
+  }, [testCaseResult]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -556,6 +560,7 @@ const TestSuiteDetailsPage = () => {
             width={750}>
             <AddTestCaseList
               existingTest={testSuite?.tests ?? []}
+              selectedTest={selectedTestCases}
               onCancel={() => setIsTestCaseModalOpen(false)}
               onSubmit={handleAddTestCaseSubmit}
             />

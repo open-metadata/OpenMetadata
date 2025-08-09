@@ -1,5 +1,5 @@
 ---
-title: Qlik Sense Certificates | OpenMetadata Connector Setup
+title: Qlik Sense Certificates | `brandName` Connector Setup
 description: Configure QlikSense certificate authentication for OpenMetadata dashboard connectors. Step-by-step setup guide for secure SSL/TLS connections and data integration.
 slug: /connectors/dashboard/qliksense/certificates
 ---

@@ -1,5 +1,6 @@
 ---
 title: gitlabCredentials | OpenMetadata GitLab Credentials
+description: Define GitLab credentials schema including personal access tokens for authenticating to GitLab-hosted repositories.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/gitlabcredentials
 ---
 

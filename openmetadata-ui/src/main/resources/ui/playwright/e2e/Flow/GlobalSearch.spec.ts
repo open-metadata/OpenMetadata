@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
+import { sidebarClick } from '../../utils/sidebar';
 
 const DESCRIPTION_SEARCH =
   // eslint-disable-next-line max-len
@@ -20,9 +22,10 @@ const DESCRIPTION_SEARCH =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.fixme('searching for longer description should work', async ({ page }) => {
+test('searching for longer description should work', async ({ page }) => {
   await redirectToHomePage(page);
 
+  await sidebarClick(page, SidebarItem.EXPLORE);
   await page.waitForLoadState('networkidle');
 
   await page.getByTestId('global-search-selector').click();
@@ -34,6 +37,13 @@ test.fixme('searching for longer description should work', async ({ page }) => {
     .fill(DESCRIPTION_SEARCH);
 
   await page.keyboard.press('Enter');
+
+  await page.waitForSelector(
+    '[data-testid="search-container"] [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
 
   await expect(
     page

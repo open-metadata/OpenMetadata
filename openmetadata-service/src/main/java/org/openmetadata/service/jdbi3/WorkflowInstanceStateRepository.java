@@ -9,15 +9,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.Stage;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceStateResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
+@Slf4j
 public class WorkflowInstanceStateRepository
     extends EntityTimeSeriesRepository<WorkflowInstanceState> {
   public WorkflowInstanceStateRepository() {
@@ -99,8 +103,17 @@ public class WorkflowInstanceStateRepository
 
     WorkflowDefinitionRepository workflowDefinitionRepository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    UUID workflowDefinitionId = workflowDefinitionRepository.getIdFromName(workflowDefinitionName);
-    Stage stage = new Stage().withName(workflowInstanceStage).withStartedAt(startedAt);
+    // Efficiently get the workflow definition in a single DB call and extract both ID and
+    // displayName
+    WorkflowDefinition workflowDefinition =
+        workflowDefinitionRepository.getByNameForStageProcessing(workflowDefinitionName);
+    String displayName = getStageDisplayName(workflowDefinition, workflowInstanceStage);
+
+    Stage stage =
+        new Stage()
+            .withName(workflowInstanceStage)
+            .withDisplayName(displayName)
+            .withStartedAt(startedAt);
 
     WorkflowInstanceState entityRecord =
         new WorkflowInstanceState()
@@ -109,7 +122,7 @@ public class WorkflowInstanceStateRepository
             .withWorkflowInstanceId(workflowInstanceId)
             .withTimestamp(System.currentTimeMillis())
             .withStatus(WorkflowInstance.WorkflowStatus.RUNNING)
-            .withWorkflowDefinitionId(workflowDefinitionId);
+            .withWorkflowDefinitionId(workflowDefinition.getId());
 
     UUID stateId = getStateId(workflowInstanceId, workflowInstanceStage);
 
@@ -164,8 +177,74 @@ public class WorkflowInstanceStateRepository
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstanceState), workflowInstanceStateId);
   }
 
+  /**
+   * Marks all states of a workflow instance as FAILED with the given reason.
+   * Preserves audit trail instead of deleting the states.
+   */
+  public void markInstanceStatesAsFailed(UUID workflowInstanceId, String reason) {
+    try {
+      // Get workflow definition to query states
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      WorkflowInstance instance =
+          JsonUtils.readValue(
+              workflowInstanceRepository.getTimeSeriesDao().getById(workflowInstanceId),
+              WorkflowInstance.class);
+
+      WorkflowDefinitionRepository workflowDefinitionRepository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      WorkflowDefinition workflowDefinition =
+          workflowDefinitionRepository.get(
+              null, instance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
+
+      // Query all states for this workflow instance
+      long endTs = System.currentTimeMillis();
+      long startTs = endTs - (7L * 24 * 60 * 60 * 1000);
+
+      ResultList<WorkflowInstanceState> instanceStates =
+          listWorkflowInstanceStateForInstance(
+              workflowDefinition.getName(), workflowInstanceId, null, startTs, endTs, 1000, false);
+
+      // Mark all states as FAILURE
+      for (WorkflowInstanceState state : instanceStates.getData()) {
+        WorkflowInstanceState updatedState =
+            state.withStatus(WorkflowInstance.WorkflowStatus.FAILURE).withException(reason);
+
+        getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
+      }
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark states as failed for instance {}: {}",
+          workflowInstanceId,
+          e.getMessage());
+    }
+  }
+
   private String buildWorkflowInstanceFqn(
       String workflowDefinitionName, String workflowInstanceId) {
     return FullyQualifiedName.build(workflowDefinitionName, workflowInstanceId);
+  }
+
+  /**
+   * Extracts the displayName for a given stage from the workflow definition nodes.
+   * Returns the displayName if available, otherwise falls back to the stage name.
+   */
+  private String getStageDisplayName(WorkflowDefinition workflowDefinition, String stageName) {
+    if (workflowDefinition.getNodes() != null) {
+      return workflowDefinition.getNodes().stream()
+          .filter(node -> stageName.equals(node.getName()))
+          .findFirst()
+          .map(
+              node -> {
+                String nodeDisplayName = node.getDisplayName();
+                return (nodeDisplayName != null && !nodeDisplayName.trim().isEmpty())
+                    ? nodeDisplayName
+                    : stageName;
+              })
+          .orElse(stageName);
+    }
+    return stageName;
   }
 }

@@ -1,5 +1,6 @@
 ---
 title: Mode Connection | OpenMetadata Mode Dashboard Connection
+description: Mode dashboard connection schema specifying API token, user ID, workspace, and region.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/modeconnection
 ---
 

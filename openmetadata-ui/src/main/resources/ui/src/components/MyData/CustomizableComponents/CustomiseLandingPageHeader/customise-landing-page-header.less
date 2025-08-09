@@ -12,7 +12,7 @@
  */
 @import (reference) url('../../../../styles/variables.less');
 
-.customise-landing-page {
+.customise-landing-page-header {
   margin: 0;
   padding: @padding-mlg;
   border-radius: @border-rad-lg;
@@ -76,6 +76,24 @@
       max-height: 125px;
     }
   }
+
+  .search-input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 1px solid @grey-25;
+    border-radius: @border-rad-sm;
+    background: @white;
+    padding: @padding-xs @padding-sm;
+
+    .ant-popover-inner {
+      border-radius: @border-rad-sm;
+    }
+  }
+
+  .disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 }
 
 .landing-page-header-bg {
@@ -129,24 +147,10 @@
     background-color: transparent;
     border: 1px solid @grey-25;
   }
-
-  .disabled {
-    cursor: not-allowed;
-    pointer-events: none;
-  }
 }
 
 .customise-search-container {
   width: 100%;
-}
-
-.search-input {
-  min-width: 0;
-  flex: 1 1 auto;
-  border: 1px solid @grey-25;
-  border-radius: @border-rad-sm;
-  background: @white;
-  padding: @padding-xs @padding-sm;
 }
 
 .domain-selector {
@@ -165,10 +169,6 @@
     color: @grey-700;
   }
 
-  &.disabled {
-    cursor: not-allowed;
-  }
-
   &:hover {
     background-color: @grey-25;
   }
@@ -176,7 +176,7 @@
 
 .custom-arrow {
   position: absolute;
-  top: 50%;
+  top: 40%;
   transform: translateY(-50%);
   width: @size-xl;
   height: @size-xl;

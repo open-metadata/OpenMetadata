@@ -84,7 +84,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
-  test.skip(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
+  test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
@@ -99,9 +99,11 @@ for (const EntityClass of entities) {
     try {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
-        await currentEntity.visitEntityPageWithCustomSearchBox(page);
+        await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
+        // enable fullscreen
+        await page.getByTestId('full-screen').click();
         await editLineage(page);
         await performZoomOut(page);
         for (const entity of entities) {
@@ -121,7 +123,6 @@ for (const EntityClass of entities) {
 
         // Check the Entity Drawer
         await performZoomOut(page);
-        await page.getByTestId('full-screen').click();
 
         for (const entity of entities) {
           const toNodeFqn = get(
@@ -261,7 +262,7 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   // Verify column lineage
   await redirectToHomePage(page);
-  await table.visitEntityPageWithCustomSearchBox(page);
+  await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="lineage-export"]');
@@ -445,7 +446,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
   }
 });
 
-test('Verify table search with special characters as handledd', async ({
+test('Verify table search with special characters as handled', async ({
   browser,
 }) => {
   const { page } = await createNewPage(browser);
@@ -514,6 +515,157 @@ test('Verify table search with special characters as handledd', async ({
   } finally {
     // Cleanup
     await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Verify cycle lineage should be handled properly', async ({ browser }) => {
+  test.slow();
+
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+
+  try {
+    await Promise.all([
+      table.create(apiContext),
+      topic.create(apiContext),
+      dashboard.create(apiContext),
+    ]);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+    const dashboardFqn = get(
+      dashboard,
+      'entityResponseData.fullyQualifiedName'
+    );
+
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+    await page.getByTestId('full-screen').click();
+    await editLineage(page);
+    await performZoomOut(page);
+
+    // connect table to topic
+    await connectEdgeBetweenNodes(page, table, topic);
+    await rearrangeNodes(page);
+
+    // connect topic to dashboard
+    await connectEdgeBetweenNodes(page, topic, dashboard);
+    await rearrangeNodes(page);
+
+    // connect dashboard to table
+    await connectEdgeBetweenNodes(page, dashboard, table);
+    await rearrangeNodes(page);
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('fit-screen').click();
+
+    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`)
+    ).toBeVisible();
+
+    // Collapse the cycle dashboard lineage downstreamNodeHandler
+    await page
+      .getByTestId(`lineage-node-${dashboardFqn}`)
+      .getByTestId('downstream-collapse-handle')
+      .click();
+
+    await expect(
+      page.getByTestId(`edge-${dashboardFqn}-${tableFqn}`)
+    ).not.toBeVisible();
+
+    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`)
+    ).toBeVisible();
+
+    await expect(
+      page
+        .getByTestId(`lineage-node-${tableFqn}`)
+        .getByTestId('upstream-collapse-handle')
+    ).not.toBeVisible();
+
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`).getByTestId('plus-icon')
+    ).toBeVisible();
+
+    // Reclick the plus icon to expand the cycle dashboard lineage downstreamNodeHandler
+    const downstreamResponse = page.waitForResponse(
+      `/api/v1/lineage/getLineage/Downstream?fqn=${dashboardFqn}&type=dashboard**`
+    );
+    await page
+      .getByTestId(`lineage-node-${dashboardFqn}`)
+      .getByTestId('plus-icon')
+      .click();
+
+    await downstreamResponse;
+
+    await expect(
+      page
+        .getByTestId(`lineage-node-${tableFqn}`)
+        .getByTestId('upstream-collapse-handle')
+        .getByTestId('minus-icon')
+    ).toBeVisible();
+
+    // Click the Upstream Node to expand the cycle dashboard lineage
+    await page
+      .getByTestId(`lineage-node-${dashboardFqn}`)
+      .getByTestId('upstream-collapse-handle')
+      .click();
+
+    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`)
+    ).toBeVisible();
+    await expect(
+      page.getByTestId(`lineage-node-${topicFqn}`)
+    ).not.toBeVisible();
+
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`).getByTestId('plus-icon')
+    ).toBeVisible();
+
+    // Reclick the plus icon to expand the cycle dashboard lineage upstreamNodeHandler
+    const upStreamResponse2 = page.waitForResponse(
+      `/api/v1/lineage/getLineage/Upstream?fqn=${dashboardFqn}&type=dashboard**`
+    );
+    await page
+      .getByTestId(`lineage-node-${dashboardFqn}`)
+      .getByTestId('plus-icon')
+      .click();
+    await upStreamResponse2;
+
+    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`)
+    ).toBeVisible();
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+
+    // Collapse the Node from the Parent Cycle Node
+    await page
+      .getByTestId(`lineage-node-${topicFqn}`)
+      .getByTestId('downstream-collapse-handle')
+      .click();
+
+    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+    await expect(
+      page.getByTestId(`lineage-node-${dashboardFqn}`)
+    ).not.toBeVisible();
+  } finally {
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
     await afterAction();
   }
 });

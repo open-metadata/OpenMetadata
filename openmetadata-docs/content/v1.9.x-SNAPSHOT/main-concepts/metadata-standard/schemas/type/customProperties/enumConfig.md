@@ -1,5 +1,6 @@
 ---
 title: Enum Config | OpenMetadata Enum Config Details
+description: Connect Enumconfig to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/type/customproperties/enumconfig
 ---
 

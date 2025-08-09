@@ -77,7 +77,8 @@ export type CustomizeEntityType =
   | EntityType.GLOSSARY
   | EntityType.GLOSSARY_TERM
   | EntityType.CONTAINER
-  | EntityType.METRIC;
+  | EntityType.METRIC
+  | EntityType.CHART;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -97,4 +98,5 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.GLOSSARY_TERM]: PageType.GlossaryTerm,
   [EntityType.CONTAINER]: PageType.Container,
   [EntityType.METRIC]: PageType.Metric,
+  [EntityType.CHART]: PageType.Chart,
 };

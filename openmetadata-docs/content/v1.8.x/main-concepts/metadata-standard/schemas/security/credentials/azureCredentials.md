@@ -1,5 +1,6 @@
 ---
 title: azureCredentials | OpenMetadata Azure Credentials
+description: Set up Azure credentials with client ID, secret, tenant ID, and subscription details to enable secure Azure access.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/azurecredentials
 ---
 

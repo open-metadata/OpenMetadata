@@ -38,6 +38,11 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createDataContract import (
+    CreateDataContractRequest,
+)
+from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
+from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
@@ -52,11 +57,15 @@ from metadata.generated.schema.api.data.createQueryCostRecord import (
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
+from metadata.generated.schema.api.data.createSpreadsheet import (
+    CreateSpreadsheetRequest,
+)
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
 from metadata.generated.schema.api.docStore.createDocument import CreateDocumentRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
@@ -74,6 +83,9 @@ from metadata.generated.schema.api.services.createDashboardService import (
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.services.createDriveService import (
+    CreateDriveServiceRequest,
+)
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
@@ -88,6 +100,9 @@ from metadata.generated.schema.api.services.createPipelineService import (
 )
 from metadata.generated.schema.api.services.createSearchService import (
     CreateSearchServiceRequest,
+)
+from metadata.generated.schema.api.services.createSecurityService import (
+    CreateSecurityServiceRequest,
 )
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
@@ -130,6 +145,9 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
@@ -139,9 +157,11 @@ from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.queryCostRecord import QueryCostRecord
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
@@ -153,6 +173,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionDefinit
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -161,6 +182,7 @@ from metadata.generated.schema.entity.services.metadataService import MetadataSe
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
+from metadata.generated.schema.entity.services.securityService import SecurityService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.persona import Persona
 from metadata.generated.schema.entity.teams.role import Role
@@ -209,6 +231,15 @@ ROUTES = {
     CreateAPICollectionRequest.__name__: "/apiCollections",
     Document.__name__: "/docStore",
     CreateDocumentRequest.__name__: "/docStore",
+    # Drive
+    Directory.__name__: "/drives/directories",
+    CreateDirectoryRequest.__name__: "/drives/directories",
+    Spreadsheet.__name__: "/drives/spreadsheets",
+    CreateSpreadsheetRequest.__name__: "/drives/spreadsheets",
+    File.__name__: "/drives/files",
+    CreateFileRequest.__name__: "/drives/files",
+    Worksheet.__name__: "/drives/worksheets",
+    CreateWorksheetRequest.__name__: "/drives/worksheets",
     # Classifications
     Tag.__name__: "/tags",
     CreateTagRequest.__name__: "/tags",
@@ -238,6 +269,8 @@ ROUTES = {
     Workflow.__name__: "/automations/workflows",
     CreateWorkflowRequest.__name__: "/automations/workflows",
     # Services
+    DriveService.__name__: "/services/driveServices",
+    CreateDriveServiceRequest.__name__: "/services/driveServices",
     ApiService.__name__: "/services/apiServices",
     CreateApiServiceRequest.__name__: "/services/apiServices",
     DatabaseService.__name__: "/services/databaseServices",
@@ -256,6 +289,8 @@ ROUTES = {
     CreateMetadataServiceRequest.__name__: "/services/metadataServices",
     SearchService.__name__: "/services/searchServices",
     CreateSearchServiceRequest.__name__: "/services/searchServices",
+    SecurityService.__name__: "/services/securityServices",
+    CreateSecurityServiceRequest.__name__: "/services/securityServices",
     IngestionPipeline.__name__: "/services/ingestionPipelines",
     CreateIngestionPipelineRequest.__name__: "/services/ingestionPipelines",
     TestConnectionDefinition.__name__: "/services/testConnectionDefinitions",
@@ -289,4 +324,10 @@ ROUTES = {
     # Query Cost
     QueryCostRecord.__name__: "/queryCostRecord",
     CreateQueryCostRecordRequest.__name__: "/queryCostRecord",
+    # Data Contracts
+    DataContract.__name__: "/dataContracts",
+    CreateDataContractRequest.__name__: "/dataContracts",
+    # Drives
+    DriveService.__name__: "/services/driveServices",
+    CreateDriveServiceRequest.__name__: "/services/driveServices",
 }

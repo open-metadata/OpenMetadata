@@ -55,7 +55,7 @@ export interface ApplicationStore
   appPreferences: AppPreferences;
   rdfEnabled?: boolean;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
-  setSelectedPersona: (persona: EntityReference) => void;
+  setSelectedPersona: (persona?: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
   setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;

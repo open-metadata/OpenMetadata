@@ -1,5 +1,6 @@
 ---
 title: Document Schema | OpenMetadata Document Schema Overview
+description: Store document metadata in the docstore for structured or unstructured data documentation.
 slug: /main-concepts/metadata-standard/schemas/entity/docstore/document
 ---
 
