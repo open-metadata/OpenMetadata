@@ -1,0 +1,131 @@
+---
+title: searchSettings
+slug: /main-concepts/metadata-standard/schemas/configuration/searchsettings
+---
+
+# SearchSettings
+
+## Properties
+
+- **`globalSettings`** *(object)*: Cannot contain additional properties.
+  - **`enableAccessControl`** *(boolean)*: Flag to enable or disable RBAC Search Configuration globally. Default: `False`.
+  - **`maxAggregateSize`** *(integer)*: Default: `10000`.
+  - **`maxResultHits`** *(integer)*: Default: `10000`.
+  - **`maxAnalyzedOffset`** *(integer)*: Default: `1000`.
+  - **`aggregations`** *(array)*: List of global aggregations to include in the search query.
+    - **Items**: Refer to *#/definitions/aggregation*.
+  - **`highlightFields`** *(array)*: Which fields to highlight by default.
+    - **Items** *(string)*
+  - **`termBoosts`** *(array)*: List of field=value term-boost rules that apply only to this asset.
+    - **Items**: Refer to *#/definitions/termBoost*.
+  - **`fieldValueBoosts`** *(array)*: Optional list of numeric field-based boosts applied globally.
+    - **Items**: Refer to *#/definitions/fieldValueBoost*.
+- **`assetTypeConfigurations`** *(array)*: List of per-asset search configurations that override the global settings.
+  - **Items**: Refer to *#/definitions/assetTypeConfiguration*.
+- **`defaultConfiguration`**: Fallback configuration for any entity/asset not matched in assetTypeConfigurations. Refer to *#/definitions/assetTypeConfiguration*.
+- **`allowedFields`** *(array)*: Configurations of allowed searchable fields for each entity type.
+  - **Items**: Refer to *#/definitions/allowedSearchFields*.
+- **`allowedFieldValueBoosts`** *(array)*: Configurations of allowed field value boost fields for each entity type.
+  - **Items**: Refer to *#/definitions/allowedFieldValueBoostFields*.
+- **`nlqConfiguration`** *(object)*: Configuration for Natural Language Query capabilities.
+  - **`promptTemplate`** *(string)*: Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific instructions should appear.
+  - **`globalInstructions`** *(array)*
+    - **Items**: Refer to *#/definitions/promptSection*.
+  - **`entitySpecificInstructions`** *(array)*
+    - **Items** *(object)*
+      - **`entityType`** *(string)*: Entity type this instruction applies to (e.g., 'table', 'dashboard').
+      - **`sections`** *(array)*
+        - **Items**: Refer to *#/definitions/promptSection*.
+  - **`examples`** *(array)*
+    - **Items**: Refer to *#/definitions/queryExample*.
+  - **`mappingConfiguration`** *(object)*: Configuration for including Elasticsearch mapping information in prompts.
+    - **`includeMappings`** *(boolean)*: Whether to include mapping information in the prompts. Default: `True`.
+    - **`mappingSection`**: Refer to *#/definitions/titleSection*.
+    - **`fieldInterpretations`** *(array)*: Specific guidance for interpreting field patterns in the mapping.
+      - **Items**: Refer to *#/definitions/fieldInterpretation*.
+  - **`extensionFieldGuidelines`** *(object)*: Guidelines for querying custom properties in extension fields.
+    - **`header`** *(string)*: Title for the extension field guidelines section.
+    - **`sections`** *(array)*
+      - **Items**: Refer to *#/definitions/guidelineSection*.
+    - **`examples`** *(array)*
+      - **Items**: Refer to *#/definitions/queryExample*.
+## Definitions
+
+- **`assetTypeConfiguration`** *(object)*: Cannot contain additional properties.
+  - **`assetType`** *(string)*: Name or type of the asset to which this configuration applies.
+  - **`searchFields`** *(array)*: Which fields to search for this asset, with their boost values.
+    - **Items**: Refer to *#/definitions/fieldBoost*.
+  - **`highlightFields`** *(array)*: Which fields to highlight for this asset.
+    - **Items** *(string)*
+  - **`aggregations`** *(array)*: List of additional aggregations for this asset type.
+    - **Items**: Refer to *#/definitions/aggregation*.
+  - **`termBoosts`** *(array)*: List of field=value term-boost rules that apply only to this asset.
+    - **Items**: Refer to *#/definitions/termBoost*.
+  - **`fieldValueBoosts`** *(array)*: List of numeric field-based boosts that apply only to this asset.
+    - **Items**: Refer to *#/definitions/fieldValueBoost*.
+  - **`scoreMode`** *(string)*: How to combine function scores if multiple boosts are applied. Must be one of: `['multiply', 'sum', 'avg', 'first', 'max', 'min']`.
+  - **`boostMode`** *(string)*: How the function score is combined with the main query score. Must be one of: `['multiply', 'replace', 'sum', 'avg', 'max', 'min']`.
+  - **`additionalSettings`** *(object)*: Catch-all for any advanced or asset-specific search settings. Can contain additional properties.
+  - **`matchTypeBoostMultipliers`** *(object)*: Multipliers applied to different match types to control their relative importance. Cannot contain additional properties.
+    - **`exactMatchMultiplier`** *(number)*: Multiplier for exact match queries (term queries on .keyword fields). Default: `2.0`.
+    - **`phraseMatchMultiplier`** *(number)*: Multiplier for phrase match queries. Default: `1.5`.
+    - **`fuzzyMatchMultiplier`** *(number)*: Multiplier for fuzzy match queries. Default: `1.0`.
+- **`fieldBoost`** *(object)*: Cannot contain additional properties.
+  - **`field`** *(string)*: Field name to search/boost.
+  - **`boost`** *(number)*: Relative boost factor for the above field. Default: `1.0`.
+  - **`matchType`** *(string)*: Type of matching to use for this field. 'exact' uses term query for .keyword fields, 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default behavior. Must be one of: `['exact', 'phrase', 'fuzzy', 'standard']`. Default: `standard`.
+- **`termBoost`** *(object)*: Cannot contain additional properties.
+  - **`field`** *(string)*: The keyword field to match, e.g. tier.tagFQN, tags.tagFQN, certification.tagLabel.tagFQN, etc.
+  - **`value`** *(string)*: The exact keyword value to match in the above field.
+  - **`boost`** *(number)*: Numeric boost factor to apply if a document has field==value.
+- **`fieldValueBoost`** *(object)*: Cannot contain additional properties.
+  - **`field`** *(string)*: Numeric field name whose value will affect the score.
+  - **`factor`** *(number)*: Multiplier factor for the field value.
+  - **`modifier`** *(string)*: Optional mathematical transformation to apply to the field value. Must be one of: `['none', 'log', 'log1p', 'log2p', 'ln', 'ln1p', 'ln2p', 'square', 'sqrt', 'reciprocal']`.
+  - **`missing`** *(number)*: Value to use if the field is missing on a document.
+  - **`condition`** *(object)*: Conditional logic (e.g., range constraints) to apply the boost only for certain values. Cannot contain additional properties.
+    - **`range`** *(object)*: Cannot contain additional properties.
+      - **`gt`** *(number)*
+      - **`gte`** *(number)*
+      - **`lt`** *(number)*
+      - **`lte`** *(number)*
+- **`aggregation`** *(object)*: Cannot contain additional properties.
+  - **`name`** *(string)*: A descriptive name for the aggregation.
+  - **`type`** *(string)*: The type of aggregation to perform. Must be one of: `['terms', 'range', 'histogram', 'date_histogram', 'filters', 'missing', 'nested', 'reverse_nested', 'top_hits', 'max', 'min', 'avg', 'sum', 'stats']`.
+  - **`field`** *(string)*: The field on which this aggregation is performed.
+- **`allowedSearchFields`** *(object)*: Cannot contain additional properties.
+  - **`entityType`** *(string)*: Entity type this field configuration applies to.
+  - **`fields`** *(array)*
+    - **Items** *(object)*: Cannot contain additional properties.
+      - **`name`** *(string)*: Field name that can be used in searchFields.
+      - **`description`** *(string)*: Detailed explanation of what this field represents and how it affects search behavior.
+- **`allowedFieldValueBoostFields`** *(object)*: Cannot contain additional properties.
+  - **`entityType`** *(string)*: Entity type this field value boost configuration applies to.
+  - **`fields`** *(array)*
+    - **Items** *(object)*: Cannot contain additional properties.
+      - **`name`** *(string)*: Field name that can be used in fieldValueBoosts.
+      - **`description`** *(string)*: Detailed explanation of what this numeric field represents and how it can be used for boosting relevance.
+- **`promptSection`** *(object)*
+  - **`section`** *(string)*: Section name (e.g., 'CRITICAL FIELD CORRECTIONS', 'QUERY PATTERNS').
+  - **`content`** *(string)*: The content for this section of the prompt.
+  - **`order`** *(integer)*: Display order for this section (lower numbers appear first). Default: `100`.
+- **`titleSection`** *(object)*
+  - **`title`** *(string)*: Title for the section. Default: `INDEX MAPPINGS`.
+  - **`description`** *(string)*: Description text for the section. Default: `Below are the Elasticsearch mappings for the relevant indices. Use these to understand the document structure:`.
+  - **`order`** *(integer)*: Position of this section in the prompt (lower numbers appear first). Default: `5`.
+- **`fieldInterpretation`** *(object)*
+  - **`pattern`** *(string)*: Field pattern to match (e.g., 'tags.tagFQN').
+  - **`explanation`** *(string)*: How to interpret and query this field pattern.
+- **`guidelineSection`** *(object)*
+  - **`title`** *(string)*: Section title (e.g., 'For EntityReference type custom properties').
+  - **`guidelines`** *(array)*
+    - **Items** *(string)*: Individual guideline or rule for this section.
+- **`queryExample`** *(object)*
+  - **`description`** *(string)*: Human-readable description of the example query.
+  - **`query`** *(string)*: Natural language query example.
+  - **`esQuery`** *(string)*: The corresponding Elasticsearch query.
+  - **`entityTypes`** *(array)*: Entity types this example applies to (empty array = all types).
+    - **Items** *(string)*
+
+
+Documentation file automatically generated at 2025-08-08 15:20:07.536378+00:00.

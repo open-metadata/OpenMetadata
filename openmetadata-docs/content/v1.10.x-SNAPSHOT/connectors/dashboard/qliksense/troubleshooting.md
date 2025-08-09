@@ -1,0 +1,7 @@
+---
+title: Qlik Sense Troubleshooting Guide | `brandName` Support
+description: Resolve QlikSense connector issues in `brandName` with expert troubleshooting guides. Fix dashboard integration problems and get your data flowing smoothly.
+slug: /connectors/dashboard/qliksense/troubleshooting
+---
+
+{% partial file="/v1.9/connectors/troubleshooting.md" /%}
