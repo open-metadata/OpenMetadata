@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -48,6 +48,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     FullyQualifiedEntityName,
     SqlQuery,
     Timestamp,
@@ -85,14 +86,20 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     check_ephemeral_node,
+    check_or_create_test_suite,
+    convert_value_for_custom_property,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
+    extract_meta_fields_from_node,
+    find_domain_by_name,
+    format_domain_reference,
     generate_entity_link,
     get_corrected_name,
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_model_name,
     get_dbt_raw_query,
+    validate_custom_property_match,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
@@ -127,6 +134,8 @@ class DbtSource(DbtServiceSource):
             if self.source_config.dbtClassificationName
             else "dbtTags"
         )
+        self.custom_properties_cache = {}
+        self._load_custom_properties_definitions()
 
     @classmethod
     def create(
@@ -144,6 +153,57 @@ class DbtSource(DbtServiceSource):
         """
         By default for DBT nothing is required to be prepared
         """
+
+    def _load_custom_properties_definitions(self):
+        """
+        Loads custom properties definitions for tables
+        """
+        try:
+            response = self.metadata.client.get(
+                f"/metadata/types/name/table?fields=customProperties"
+            )
+
+            if response and "customProperties" in response:
+                for prop in response["customProperties"]:
+                    self.custom_properties_cache[prop["name"]] = prop
+
+            logger.info(
+                f"Loaded {len(self.custom_properties_cache)} custom properties for tables"
+            )
+        except Exception as exc:
+            logger.warning(f"Error loading custom properties: {exc}")
+
+    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:
+        """
+        Extracts domain from meta.openmetadata.domain and returns EntityReference
+        """
+        try:
+            if not manifest_node.meta:
+                return None
+
+            dbt_meta_info = DbtMeta(**manifest_node.meta)
+            if (
+                    dbt_meta_info.openmetadata
+                    and hasattr(dbt_meta_info.openmetadata, "domain")
+                    and dbt_meta_info.openmetadata.domain
+            ):
+
+                domain_name = dbt_meta_info.openmetadata.domain
+                domain_entity = find_domain_by_name(self.metadata, domain_name)
+
+                if domain_entity:
+                    domain_ref_data = format_domain_reference(domain_entity)
+                    if domain_ref_data:
+                        entity_ref = EntityReference(**domain_ref_data)
+                        return entity_ref
+                else:
+                    logger.warning(f"Domain '{domain_name}' not found in OpenMetadata")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to ingest domain from DBT due to: {exc}")
+
+        return None
 
     def get_dbt_owner(
         self, manifest_node: Any, catalog_node: Optional[Any]
@@ -302,6 +362,161 @@ class DbtSource(DbtServiceSource):
                 if not filter_by_tag(self.source_config.tagFilterPattern, tag)
             ]
         return tags
+
+    def _process_model_meta_fields(
+            self, data_model_link: DataModelLink, manifest_node: Any
+    ):
+        """
+        Processes customProperties fields of dbt model as Openmetadata table's custom properties
+        """
+        try:
+            if not data_model_link.table_entity:
+                return
+            table_fqn = data_model_link.table_entity.fullyQualifiedName.root
+            custom_properties = extract_meta_fields_from_node(manifest_node)
+            if not custom_properties:
+                return
+            logger.info(
+                f"Processing {len(custom_properties)} customProperties for table {table_fqn}"
+            )
+
+            self._update_table_custom_properties(
+                data_model_link.table_entity, custom_properties
+            )
+        except Exception as exc:
+            logger.warning(
+                f"Error processing customProperties for {data_model_link.table_entity.fullyQualifiedName.root}: {exc}"
+            )
+
+    def _update_table_custom_properties(
+            self, table_entity: Table, custom_properties: Dict[str, Any]
+    ):
+        """
+        Filters, converts and applies valid customProperties
+        """
+        valid_custom_properties = {}
+
+        for field_name, field_value in custom_properties.items():
+            if field_name not in self.custom_properties_cache:
+                logger.warning(
+                    f"CustomProperty '{field_name}' not found in OpenMetadata "
+                    f"for table {table_entity.fullyQualifiedName.root}. "
+                    f"Please create it before the next run."
+                )
+                continue
+
+            custom_property = self.custom_properties_cache[field_name]
+            property_type = custom_property["propertyType"]["name"]
+
+            if not validate_custom_property_match(property_type, field_value):
+                logger.warning(
+                    f"Type mismatch for customProperty '{field_name}': "
+                    f"expected {property_type}, "
+                    f"got {type(field_value).__name__}"
+                )
+                continue
+
+            converted_value = convert_value_for_custom_property(
+                self.metadata, property_type, field_value
+            )
+
+            if converted_value is None and property_type in [
+                "entityReference",
+                "entityReferenceList",
+            ]:
+                logger.warning(
+                    f"Could not convert value '{field_value}' for entityReference property '{field_name}' - skipping"
+                )
+                continue
+
+            valid_custom_properties[field_name] = converted_value
+
+        if valid_custom_properties:
+            self._apply_custom_properties_to_table(
+                table_entity, valid_custom_properties
+            )
+
+    def _apply_custom_properties_to_table(
+            self, table_entity: Table, custom_properties: Dict[str, Any]
+    ):
+        """
+        Applies custom properties to table via extension
+        """
+        try:
+            current_table = self.metadata.get_by_name(
+                entity=Table, fqn=table_entity.fullyQualifiedName.root
+            )
+
+            if not current_table:
+                logger.warning(
+                    f"Table {table_entity.fullyQualifiedName.root} not found"
+                )
+                return
+
+            updated_table = current_table.model_copy(deep=True)
+
+            existing_data = {}
+            if hasattr(current_table, "extension") and current_table.extension:
+                if hasattr(current_table.extension, "root") and isinstance(
+                        current_table.extension.root, dict
+                ):
+                    existing_data = current_table.extension.root.copy()
+
+            final_data = {**existing_data, **custom_properties}
+            updated_table.extension = EntityExtension(root=final_data)
+
+            result = self.metadata.patch(
+                entity=Table, source=current_table, destination=updated_table
+            )
+
+            if result:
+                logger.info(
+                    f"Successfully updated {len(custom_properties)} customProperties "
+                    f"for table {table_entity.fullyQualifiedName.root}"
+                )
+            else:
+                logger.warning(
+                    f"Failed to update customProperties for table "
+                    f"{table_entity.fullyQualifiedName.root}"
+                )
+
+        except Exception as exc:
+            logger.error(
+                f"Error applying customProperties to table "
+                f"{table_entity.fullyQualifiedName.root}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+
+    def process_dbt_domain(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT domain
+        """
+        table_entity: Table = data_model_link.table_entity
+
+        if table_entity:
+            table_fqn = table_entity.fullyQualifiedName.root
+
+            try:
+                domain_ref = self.context.get().table_domains.get(table_fqn)
+
+                if domain_ref:
+                    new_entity = deepcopy(table_entity)
+                    new_entity.domain = domain_ref
+
+                    result = self.metadata.patch(
+                        entity=Table, source=table_entity, destination=new_entity
+                    )
+
+                    if result:
+                        logger.info(
+                            f"Successfully updated domain for table {table_fqn}"
+                        )
+                    else:
+                        logger.warning(f"Failed to update domain for table {table_fqn}")
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
+                logger.debug(traceback.format_exc())
 
     def yield_dbt_tags(
         self, dbt_objects: DbtObjects
@@ -510,6 +725,7 @@ class DbtSource(DbtServiceSource):
             self.context.get().data_model_links = []
             self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
+            self.context.get().table_domains = {}
             self.context.get().run_results_generate_time = None
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
@@ -646,6 +862,15 @@ class DbtSource(DbtServiceSource):
                                 tags=dbt_table_tags_list or [],
                             ),
                         )
+
+                        self._process_model_meta_fields(data_model_link, manifest_node)
+
+                        domain_ref = self.get_dbt_domain(manifest_node)
+                        if domain_ref:
+                            self.context.get().table_domains[table_fqn] = domain_ref
+
+                        self.process_dbt_domain(data_model_link)
+
                         yield Either(right=data_model_link)
                         self.context.get().data_model_links.append(data_model_link)
 

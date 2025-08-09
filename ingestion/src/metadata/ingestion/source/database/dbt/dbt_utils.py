@@ -12,9 +12,12 @@
 DBT utils methods.
 """
 import traceback
-from typing import Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -209,3 +212,256 @@ def get_data_model_path(manifest_node):
         else:
             datamodel_path = manifest_node.original_file_path
     return datamodel_path
+
+def extract_meta_fields_from_node(node: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extracts customProperties fields from dbt manifest node from meta.openmetadata.customProperties
+    """
+    try:
+        if hasattr(node, "meta"):
+            meta_fields = node.meta if node.meta else {}
+        else:
+            meta_fields = node.get("meta", {})
+
+        openmetadata = meta_fields.get("openmetadata", {})
+        custom_properties = openmetadata.get("customProperties", {})
+
+        if custom_properties:
+            logger.debug(f"Found customProperties for node: {custom_properties}")
+        else:
+            logger.debug("No customProperties found in meta.openmetadata")
+
+        return custom_properties
+    except Exception as exc:
+        logger.warning(
+            f"Error extracting customProperties from meta.openmetadata: {exc}"
+        )
+        return {}
+
+def get_expected_type_for_value(value: Any) -> str:
+    """
+    Determines expected type for value from dbt meta
+    """
+    if isinstance(value, bool):
+        return "boolean"
+    elif isinstance(value, int):
+        return "integer"
+    elif isinstance(value, float):
+        return "number"
+    elif isinstance(value, list):
+        return "array"
+    elif isinstance(value, dict):
+        return "object"
+    else:
+        return "string"
+
+def validate_custom_property_match(custom_property_type: str, value: Any) -> bool:
+    """
+    Validates value type compatibility with custom property type
+    """
+    if custom_property_type == "entityReference":
+        return isinstance(value, str)
+
+    elif custom_property_type == "entityReferenceList":
+        if isinstance(value, list):
+            return all(isinstance(item, str) for item in value)
+        return False
+
+    expected_type = get_expected_type_for_value(value)
+
+    type_mapping = {
+        "string": ["string", "markdown", "email"],
+        "integer": ["integer", "number"],
+        "number": ["number", "integer"],
+        "boolean": ["boolean"],
+        "array": ["array"],
+        "object": ["object"],
+        "enum": ["string"],
+        "date": ["string"],
+        "dateTime": ["string"],
+        "time": ["string"],
+        "duration": ["string"],
+        "email": ["string"],
+        "sql": ["string"],
+        "markdown": ["string"],
+    }
+
+    return custom_property_type in type_mapping.get(expected_type, [expected_type])
+
+def find_entity_by_name(metadata: OpenMetadata, entity_name: str) -> Optional[Any]:
+    """
+    Universal entity search by name using different methods
+    """
+    entity_ref = metadata.get_reference_by_name(name=entity_name)
+    if entity_ref and entity_ref.root:
+        return entity_ref.root[0]
+
+    entity_ref = metadata.get_reference_by_email(email=entity_name)
+    if entity_ref and entity_ref.root:
+        return entity_ref.root[0]
+
+    try:
+        team_entity = metadata.get_by_name(entity=Team, fqn=entity_name)
+        if team_entity:
+            return team_entity
+    except Exception:
+        pass
+
+    try:
+        user_entity = metadata.get_by_name(entity=User, fqn=entity_name)
+        if user_entity:
+            return user_entity
+    except Exception:
+        pass
+
+    return None
+
+def format_entity_reference(entity: Any) -> Dict[str, Any]:
+    """
+    Formats entity into entityReference structure for OpenMetadata
+    """
+    entity_id = entity.id.root if hasattr(entity.id, "root") else str(entity.id)
+
+    if hasattr(entity, "fullyQualifiedName"):
+        if hasattr(entity.fullyQualifiedName, "root"):
+            entity_fqn = entity.fullyQualifiedName.root
+        else:
+            entity_fqn = str(entity.fullyQualifiedName)
+    else:
+        entity_fqn = getattr(entity, "name", "Unknown")
+
+    return {
+        "id": entity_id,
+        "type": getattr(entity, "type", "user"),
+        "name": entity.name,
+        "fullyQualifiedName": entity_fqn,
+        "deleted": False,
+        "description": getattr(entity, "description", "") or "",
+        "displayName": getattr(entity, "displayName", entity.name) or entity.name,
+    }
+
+def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Optional[Any]:
+    """
+    Search domain by name
+    """
+    try:
+        domain_entity = metadata.get_by_name(entity=Domain, fqn=domain_name)
+        return domain_entity
+    except Exception as exc:
+        logger.warning(f"Error finding domain {domain_name}: {exc}")
+        logger.debug(traceback.format_exc())
+        return None
+
+def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:
+    """
+    Formats domain into EntityReference structure
+    """
+    try:
+        domain_id = (
+            domain_entity.id.root
+            if hasattr(domain_entity.id, "root")
+            else str(domain_entity.id)
+        )
+        domain_name = (
+            domain_entity.name.root
+            if hasattr(domain_entity.name, "root")
+            else str(domain_entity.name)
+        )
+        domain_fqn = (
+            domain_entity.fullyQualifiedName.root
+            if hasattr(domain_entity.fullyQualifiedName, "root")
+            else str(domain_entity.fullyQualifiedName)
+        )
+
+        return {
+            "id": domain_id,
+            "type": "domain",
+            "name": domain_name,
+            "fullyQualifiedName": domain_fqn,
+        }
+    except Exception as exc:
+        logger.warning(f"Error formatting domain reference: {exc}")
+        return None
+
+def convert_entity_reference(
+    metadata: OpenMetadata, value: Any
+) -> Optional[Dict[str, Any]]:
+    """
+    Universal converter for entityReference fields
+    """
+    if not isinstance(value, str):
+        return None
+
+    try:
+        entity = find_entity_by_name(metadata, value)
+
+        if entity:
+            return format_entity_reference(entity)
+        else:
+            logger.warning(f"Entity not found for reference: {value}")
+            return None
+
+    except Exception as exc:
+        logger.warning(f"Error converting entityReference {value}: {exc}")
+        return None
+
+def convert_entity_reference_list(
+    metadata: OpenMetadata, value: Any
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Universal converter for entityReferenceList fields
+    """
+    if not isinstance(value, list):
+        return None
+
+    try:
+        converted_list = []
+        for item in value:
+            converted_item = convert_entity_reference(metadata, item)
+            if converted_item:
+                converted_list.append(converted_item)
+        return converted_list if converted_list else None
+
+    except Exception as exc:
+        logger.warning(f"Error converting entityReferenceList {value}: {exc}")
+        return None
+
+def get_custom_property_type_handlers():
+    """
+    Returns map of handlers for different custom property types
+    """
+    return {
+        "string": lambda metadata, value: str(value),
+        "integer": lambda metadata, value: int(value),
+        "number": lambda metadata, value: float(value),
+        "boolean": lambda metadata, value: bool(value),
+        "entityReference": convert_entity_reference,
+        "entityReferenceList": convert_entity_reference_list,
+        "enum": lambda metadata, value: str(value),
+        "date": lambda metadata, value: str(value),
+        "dateTime": lambda metadata, value: str(value),
+        "email": lambda metadata, value: str(value),
+        "markdown": lambda metadata, value: str(value),
+        "sql": lambda metadata, value: str(value),
+    }
+
+def convert_value_for_custom_property(
+    metadata: OpenMetadata, custom_property_type: str, value: Any
+) -> Any:
+    """
+    Main function for converting values by custom property type
+    """
+    handlers = get_custom_property_type_handlers()
+    handler = handlers.get(custom_property_type)
+
+    if handler:
+        try:
+            return handler(metadata, value)
+        except Exception as exc:
+            logger.warning(
+                f"Error converting {custom_property_type} value {value}: {exc}"
+            )
+            return None
+    else:
+        logger.warning(f"Unknown custom property type: {custom_property_type}")
+        return value

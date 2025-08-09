@@ -12,7 +12,7 @@
 Models required for dbt 
 """
 
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -37,10 +37,12 @@ class DbtFilteredModel(BaseModel):
     model_fqn: Optional[str] = None
 
 
-class DbtMetaGlossaryTier(BaseModel):
+class DbtMetaOpenmetadata(BaseModel):
     tier: Optional[str] = None
+    domain: Optional[str] = None
     glossary: Optional[List[str]] = None
+    customProperties: Optional[Dict[str, Any]]
 
 
 class DbtMeta(BaseModel):
-    openmetadata: Optional[DbtMetaGlossaryTier] = None
+    openmetadata: Optional[DbtMetaOpenmetadata] = None
