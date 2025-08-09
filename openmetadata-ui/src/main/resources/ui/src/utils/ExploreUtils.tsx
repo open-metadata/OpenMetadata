@@ -244,14 +244,38 @@ export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
     if (!isEmpty(filter.value)) {
       const should = [] as Array<QueryFieldInterface>;
       filter.value?.forEach((filterValue) => {
+        const isSplitTagKey = filter.key.startsWith('tags.tagFQN.');
+        const baseTagKey = 'tags.tagFQN';
+        const isGlossarySplit = filter.key === 'tags.tagFQN.glossary';
+        const isClassificationSplit =
+          filter.key === 'tags.tagFQN.classification';
         const term = {
-          [filter.key]: filterValue.key,
-        };
+          [isSplitTagKey ? baseTagKey : filter.key]: filterValue.key,
+        } as Record<string, string>;
 
         if (filterValue.key === NULL_OPTION_KEY) {
           should.push({
             bool: {
               must_not: { exists: { field: filter.key } },
+            },
+          });
+        } else if (
+          isSplitTagKey &&
+          (isGlossarySplit || isClassificationSplit)
+        ) {
+          // Add tag source constraint for split Tags/Terms filters
+          should.push({
+            bool: {
+              must: [
+                { term },
+                {
+                  term: {
+                    'tags.source': isGlossarySplit
+                      ? 'Glossary'
+                      : 'Classification',
+                  },
+                },
+              ],
             },
           });
         } else {

@@ -22,7 +22,8 @@
           "filter": [
             "lowercase"
           ]
-        }
+        },
+        "om_lowercase": { "type": "custom", "filter": ["lowercase"] }
       },
       "analyzer": {
         "om_analyzer": {
@@ -223,6 +224,8 @@
           }
         }
       },
+      "classificationTagFQNs": { "type": "keyword", "fields": { "lc": { "type": "keyword", "normalizer": "om_lowercase" } } },
+      "glossaryTermFQNs": { "type": "keyword", "fields": { "lc": { "type": "keyword", "normalizer": "om_lowercase" } } },
       "version": {
         "type": "float"
       },

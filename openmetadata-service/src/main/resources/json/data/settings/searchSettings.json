@@ -41,6 +41,16 @@
         "field": "tags.tagFQN"
       },
       {
+        "name": "classificationTagFQNs.lc",
+        "type": "terms",
+        "field": "classificationTagFQNs.lc"
+      },
+      {
+        "name": "glossaryTermFQNs.lc",
+        "type": "terms",
+        "field": "glossaryTermFQNs.lc"
+      },
+      {
         "name": "certification.tagLabel.tagFQN",
         "type": "terms",
         "field": "certification.tagLabel.tagFQN"
