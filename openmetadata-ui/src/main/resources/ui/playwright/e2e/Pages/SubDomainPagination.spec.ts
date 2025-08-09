@@ -93,9 +93,11 @@ test.describe('SubDomain Pagination', () => {
     await test.step(
       'Navigate to subdomains tab and verify initial data load',
       async () => {
+        const subDomainRes = page.waitForResponse(
+          '/api/v1/search/query?q=*&from=0&size=50&index=domain_search_index&deleted=false&track_total_hits=true'
+        );
         await page.getByTestId('subdomains').click();
-        await page.waitForResponse('/api/v1/search/query?*');
-        await page.waitForLoadState('networkidle');
+        await subDomainRes;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
