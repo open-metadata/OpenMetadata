@@ -28,6 +28,7 @@ import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -278,7 +279,9 @@ const AddMetricPage = withSuspenseFallback(
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const { plugins } = useApplicationsProvider();
 
+  const pluginRoutes = plugins.flatMap((plugin) => plugin.getRoutes?.() || []);
   const createBotPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.USER, permissions) &&
@@ -685,6 +688,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.EDIT_KPI}
       />
+
+      {/* Plugin routes */}
+      {pluginRoutes.map((route, idx) => {
+        return <Route key={idx} {...route} />;
+      })}
 
       <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
       <Route
