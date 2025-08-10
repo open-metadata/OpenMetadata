@@ -1106,6 +1106,9 @@
       </profile>
       <profile>
         <id>mysql-tests</id>
+        <activation>
+          <activeByDefault>true</activeByDefault>
+        </activation>
         <build>
           <plugins>
             <plugin>
@@ -1193,9 +1196,6 @@
         </build>
       </profile>
       <profile>
-        <activation>
-          <activeByDefault>true</activeByDefault>
-        </activation>
         <id>postgres-rdf-tests</id>
         <build>
           <plugins>

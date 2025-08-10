@@ -17,6 +17,7 @@ import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -53,6 +54,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -936,5 +938,125 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // Verify pipeline no longer exists in RDF after hard delete
     RdfTestUtils.verifyEntityNotInRdf(pipeline.getFullyQualifiedName());
+  }
+
+  @Order(1)
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    // Use existing tags that are already set up in the test environment
+    TagLabel pipelineTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel taskTagLabel = PERSONAL_DATA_TAG_LABEL;
+
+    // Create multiple pipelines with tags at both pipeline and task levels
+    List<Pipeline> createdPipelines = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Task> tasks = new ArrayList<>();
+      for (int j = 0; j < 3; j++) {
+        Task task =
+            new Task()
+                .withName("task" + j + "_" + i)
+                .withDescription("description")
+                .withDisplayName("displayName")
+                .withSourceUrl("http://localhost:0");
+
+        if (j == 0) {
+          // Add tag to first task only
+          task.withTags(List.of(taskTagLabel));
+        }
+        tasks.add(task);
+      }
+
+      CreatePipeline createPipeline =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withTasks(tasks)
+              .withTags(List.of(pipelineTagLabel));
+
+      Pipeline pipeline = createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+      createdPipelines.add(pipeline);
+    }
+
+    // Test pagination with fields=tags (should fetch pipeline-level tags only)
+    WebTarget target =
+        getResource("pipelines").queryParam("fields", "tags").queryParam("limit", "50");
+
+    PipelineList pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(pipelineList.getData());
+
+    // Verify at least one of our created pipelines is in the response
+    List<Pipeline> ourPipelines =
+        pipelineList.getData().stream()
+            .filter(p -> createdPipelines.stream().anyMatch(cp -> cp.getId().equals(p.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourPipelines.isEmpty(), "Should find at least one of our created pipelines in pagination");
+
+    // Verify pipeline-level tags are fetched
+    for (Pipeline pipeline : ourPipelines) {
+      assertNotNull(
+          pipeline.getTags(),
+          "Pipeline-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, pipeline.getTags().size(), "Should have exactly one pipeline-level tag");
+      assertEquals(pipelineTagLabel.getTagFQN(), pipeline.getTags().get(0).getTagFQN());
+
+      // Tasks should not have tags when only fields=tags is specified
+      if (pipeline.getTasks() != null) {
+        for (Task task : pipeline.getTasks()) {
+          assertTrue(
+              task.getTags() == null || task.getTags().isEmpty(),
+              "Task tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    // Test pagination with fields=tasks,tags (should fetch both pipeline and task tags)
+    target = getResource("pipelines").queryParam("fields", "tasks,tags").queryParam("limit", "50");
+
+    pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(pipelineList.getData());
+
+    // Verify at least one of our created pipelines is in the response
+    ourPipelines =
+        pipelineList.getData().stream()
+            .filter(p -> createdPipelines.stream().anyMatch(cp -> cp.getId().equals(p.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourPipelines.isEmpty(), "Should find at least one of our created pipelines in pagination");
+
+    // Verify both pipeline-level and task-level tags are fetched
+    for (Pipeline pipeline : ourPipelines) {
+      // Verify pipeline-level tags
+      assertNotNull(
+          pipeline.getTags(),
+          "Pipeline-level tags should not be null in pagination with tasks,tags");
+      assertEquals(1, pipeline.getTags().size(), "Should have exactly one pipeline-level tag");
+      assertEquals(pipelineTagLabel.getTagFQN(), pipeline.getTags().get(0).getTagFQN());
+
+      // Verify task-level tags
+      assertNotNull(pipeline.getTasks(), "Tasks should not be null when fields includes tasks");
+      assertFalse(pipeline.getTasks().isEmpty(), "Tasks should not be empty");
+
+      // Find the first task which should have a tag
+      Task task0 =
+          pipeline.getTasks().stream()
+              .filter(t -> t.getName().startsWith("task0_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find task0 task"));
+
+      assertNotNull(
+          task0.getTags(), "Task tags should not be null when fields=tasks,tags in pagination");
+      assertEquals(1, task0.getTags().size(), "Task should have exactly one tag");
+      assertEquals(taskTagLabel.getTagFQN(), task0.getTags().get(0).getTagFQN());
+
+      // Other tasks should not have tags
+      for (Task task : pipeline.getTasks()) {
+        if (!task.getName().startsWith("task0_")) {
+          assertTrue(
+              task.getTags() == null || task.getTags().isEmpty(),
+              "Other tasks should not have tags");
+        }
+      }
+    }
   }
 }

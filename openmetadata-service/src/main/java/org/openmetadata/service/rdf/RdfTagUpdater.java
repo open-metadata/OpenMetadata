@@ -142,9 +142,10 @@ public class RdfTagUpdater {
       return "tag";
     } else if (fqnParts[0].contains(".Glossary.")) {
       return "glossaryTerm";
-    } else if (fqnParts.length >= 3) {
-      // database.schema.table.column pattern
-      return fqnParts.length == 4 ? "column" : "table";
+    } else if (fqnParts.length >= 4) {
+      // service.database.schema.table pattern = 4 parts
+      // service.database.schema.table.column pattern = 5 parts
+      return fqnParts.length == 5 ? "column" : "table";
     }
     return "entity";
   }
