@@ -17,7 +17,7 @@ import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -51,7 +51,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
@@ -86,7 +86,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
         assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
   }
 
-  private Thread createApprovalTask(GlossaryTerm entity, List<EntityReference> assignees) {
+  private Thread createApprovalTask(EntityInterface entity, List<EntityReference> assignees) {
     FeedRepository feedRepository = Entity.getFeedRepository();
     MessageParser.EntityLink about =
         new MessageParser.EntityLink(

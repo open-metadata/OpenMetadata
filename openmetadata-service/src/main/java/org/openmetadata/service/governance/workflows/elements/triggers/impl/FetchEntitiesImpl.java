@@ -5,6 +5,7 @@ import static org.openmetadata.service.governance.workflows.elements.triggers.Pe
 import static org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger.HAS_FINISHED_VARIABLE;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -18,33 +19,38 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 
 public class FetchEntitiesImpl implements JavaDelegate {
-  private Expression entityTypeExpr;
+  private Expression entityTypesExpr;
   private Expression searchFilterExpr;
   private Expression batchSizeExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
-    String entityType = (String) entityTypeExpr.getValue(execution);
+    List<String> entityTypes =
+        JsonUtils.readOrConvertValue(entityTypesExpr.getValue(execution), List.class);
     String searchFilter =
         Optional.ofNullable(searchFilterExpr)
             .map(expr -> (String) expr.getValue(execution))
             .orElse(null);
     int batchSize = Integer.parseInt((String) batchSizeExpr.getValue(execution));
 
-    List<Object> searchAfter =
-        JsonUtils.readOrConvertValues(execution.getVariable("searchAfter"), Object.class);
+    List<String> entityList = new ArrayList<>();
+    for (String entityType : entityTypes) {
+      List<Object> searchAfter =
+          JsonUtils.readOrConvertValues(execution.getVariable("searchAfter"), Object.class);
 
-    SearchResultListMapper response =
-        fetchEntities(searchAfter, entityType, searchFilter, batchSize);
+      SearchResultListMapper response =
+          fetchEntities(searchAfter, entityType, searchFilter, batchSize);
 
-    List<String> entityList =
-        response.getResults().stream()
-            .map(
-                result ->
-                    new MessageParser.EntityLink(
-                            entityType, (String) result.get("fullyQualifiedName"))
-                        .getLinkString())
-            .toList();
+      entityList.addAll(
+          response.getResults().stream()
+              .map(
+                  result ->
+                      new MessageParser.EntityLink(
+                              entityType, (String) result.get("fullyQualifiedName"))
+                          .getLinkString())
+              .toList());
+      execution.setVariable("searchAfter", JsonUtils.pojoToJson(response.getLastHitSortValues()));
+    }
 
     int cardinality = entityList.size();
     boolean hasFinished = entityList.isEmpty();
@@ -52,7 +58,6 @@ public class FetchEntitiesImpl implements JavaDelegate {
     execution.setVariable(CARDINALITY_VARIABLE, cardinality);
     execution.setVariable(HAS_FINISHED_VARIABLE, hasFinished);
     execution.setVariable(COLLECTION_VARIABLE, entityList);
-    execution.setVariable("searchAfter", JsonUtils.pojoToJson(response.getLastHitSortValues()));
   }
 
   private SearchResultListMapper fetchEntities(

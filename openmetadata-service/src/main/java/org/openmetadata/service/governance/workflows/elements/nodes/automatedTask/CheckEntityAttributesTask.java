@@ -2,6 +2,8 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import java.util.HashMap;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -22,6 +24,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 
+@Slf4j
 public class CheckEntityAttributesTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
@@ -39,7 +42,11 @@ public class CheckEntityAttributesTask implements NodeInterface {
         getCheckEntityAttributesServiceTask(
             subProcessId,
             nodeDefinition.getConfig().getRules(),
-            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
+            JsonUtils.pojoToJson(
+                nodeDefinition.getInputNamespaceMap() != null
+                    ? nodeDefinition.getInputNamespaceMap()
+                    : new HashMap<>()));
+    ;
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -67,6 +74,8 @@ public class CheckEntityAttributesTask implements NodeInterface {
 
   private ServiceTask getCheckEntityAttributesServiceTask(
       String subProcessId, String rules, String inputNamespaceMap) {
+    LOG.info("CheckEntityAttributesTask: rules = {}", rules);
+    LOG.info("CheckEntityAttributesTask: inputNamespaceMap = {}", inputNamespaceMap);
     FieldExtension rulesExpr =
         new FieldExtensionBuilder().fieldName("rulesExpr").fieldValue(rules).build();
     FieldExtension inputNamespaceMapExpr =

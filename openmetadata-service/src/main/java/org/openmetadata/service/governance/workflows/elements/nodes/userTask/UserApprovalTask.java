@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -57,7 +58,11 @@ public class UserApprovalTask implements NodeInterface {
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
-            .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()))
+            .fieldValue(
+                JsonUtils.pojoToJson(
+                    nodeDefinition.getInputNamespaceMap() != null
+                        ? nodeDefinition.getInputNamespaceMap()
+                        : new HashMap<>()))
             .build();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();

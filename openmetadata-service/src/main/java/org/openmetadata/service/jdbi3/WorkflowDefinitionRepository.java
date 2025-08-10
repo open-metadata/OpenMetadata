@@ -131,8 +131,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void storeEntity(WorkflowDefinition entity, boolean update) {
+  @Transaction
+  public void storeEntity(WorkflowDefinition entity, boolean update) {
     store(entity, update);
+    WorkflowHandler.getInstance().deploy(new Workflow(entity));
   }
 
   @Override

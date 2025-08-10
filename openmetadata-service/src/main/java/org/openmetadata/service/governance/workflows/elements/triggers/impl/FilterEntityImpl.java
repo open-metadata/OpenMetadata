@@ -51,7 +51,7 @@ public class FilterEntityImpl implements JavaDelegate {
           triggerWorkflowDefinitionKey, entityLinkStr, currentProcessInstanceId);
     }
 
-    log.debug("Trigger Glossary Term Approval Workflow: {}", passesFilter);
+    log.info("Trigger Glossary Term Approval Workflow: {}", passesFilter);
     execution.setVariable(PASSES_FILTER_VARIABLE, passesFilter);
   }
 

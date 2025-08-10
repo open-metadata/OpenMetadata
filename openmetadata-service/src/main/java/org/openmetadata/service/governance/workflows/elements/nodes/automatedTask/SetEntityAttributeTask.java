@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import java.util.HashMap;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
@@ -40,7 +41,10 @@ public class SetEntityAttributeTask implements NodeInterface {
             subProcessId,
             nodeDefinition.getConfig().getFieldName(),
             nodeDefinition.getConfig().getFieldValue(),
-            JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
+            JsonUtils.pojoToJson(
+                nodeDefinition.getInputNamespaceMap() != null
+                    ? nodeDefinition.getInputNamespaceMap()
+                    : new HashMap<>()));
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
