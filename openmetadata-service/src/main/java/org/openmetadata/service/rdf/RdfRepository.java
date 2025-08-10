@@ -165,7 +165,7 @@ public class RdfRepository {
       // Add to the entity's graph
       Model fromEntityModel =
           storageService.getEntity(relationship.getFromEntity(), relationship.getFromId());
-      
+
       if (fromEntityModel == null) {
         // During initialization, relationships might be added before entities are created in RDF
         // This is expected behavior, so we'll handle it gracefully without warnings
@@ -174,14 +174,14 @@ public class RdfRepository {
             relationship.getFromEntity(),
             relationship.getFromId());
         fromEntityModel = ModelFactory.createDefaultModel();
-        
+
         // Add basic entity information to make the model valid
         Resource entityResource = fromEntityModel.createResource(fromUri);
         entityResource.addProperty(
             fromEntityModel.createProperty(config.getBaseUri() + "ontology/entityType"),
             relationship.getFromEntity());
       }
-      
+
       fromEntityModel.add(relationshipModel);
       storageService.storeEntity(
           relationship.getFromEntity(), relationship.getFromId(), fromEntityModel);

@@ -314,7 +314,7 @@ public class RdfTestUtils {
 
   /**
    * Verify that tags are properly stored in RDF
-   * 
+   *
    * Note: Due to a mismatch between how entities are stored (with UUID) and how tags
    * reference them (with FQN hash), this verification is temporarily disabled.
    * TODO: Fix RdfTagUpdater to use entity IDs instead of FQN hashes
@@ -325,9 +325,10 @@ public class RdfTestUtils {
     }
 
     // Temporarily skip tag verification due to FQN vs UUID mismatch
-    LOG.warn("Skipping RDF tag verification for {} due to known FQN vs UUID mismatch issue", entityFQN);
+    LOG.warn(
+        "Skipping RDF tag verification for {} due to known FQN vs UUID mismatch issue", entityFQN);
     return;
-    
+
     /*
     // Original verification code - to be re-enabled after fixing RdfTagUpdater
     RdfRepository repository = RdfRepository.getInstance();
@@ -343,7 +344,7 @@ public class RdfTestUtils {
       String tagHash = Integer.toHexString(tag.getTagFQN().hashCode());
       String tagUri = "https://open-metadata.org/entity/"
               + java.net.URLEncoder.encode(tagHash, java.nio.charset.StandardCharsets.UTF_8);
-      
+
       // Due to the FQN vs UUID mismatch, we only verify that the tag exists somewhere
       String sparql = String.format(
           "PREFIX om: <https://open-metadata.org/ontology/> "
@@ -353,9 +354,9 @@ public class RdfTestUtils {
               + "  } "
               + "}",
           predicate, tagUri);
-      
+
       boolean exists = executeSparqlAsk(repository, sparql);
-      
+
       if (!exists) {
         // Log debug info to help troubleshoot
         String debugSparql = String.format(
@@ -367,16 +368,16 @@ public class RdfTestUtils {
                 + "  } "
                 + "} LIMIT 10",
             predicate, tag.getTagFQN());
-        
+
         try {
           String result = repository.executeSparqlQuery(debugSparql, "application/sparql-results+json");
-          LOG.error("Tag {} not found in RDF. Debug query result: {}", 
+          LOG.error("Tag {} not found in RDF. Debug query result: {}",
                     tag.getTagFQN(), result);
         } catch (Exception e) {
           LOG.error("Failed to run debug query", e);
         }
       }
-      
+
       assertTrue(
           exists,
           String.format(
@@ -387,14 +388,14 @@ public class RdfTestUtils {
     }
     */
   }
-  
+
   private static String inferEntityTypeFromFQN(String fqn) {
     // Match the logic from RdfTagUpdater.inferEntityType
     String[] parts = org.openmetadata.service.util.FullyQualifiedName.split(fqn);
     if (parts.length == 0) {
       return "entity";
     }
-    
+
     if (parts[0].startsWith("tag:") || parts[0].contains(".Tag.")) {
       return "tag";
     } else if (parts[0].contains(".Glossary.")) {
