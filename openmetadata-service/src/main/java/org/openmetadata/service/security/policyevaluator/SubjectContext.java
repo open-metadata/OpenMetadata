@@ -20,13 +20,16 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
@@ -75,11 +78,71 @@ public record SubjectContext(User user) {
   }
 
   public boolean hasDomains(List<EntityReference> domains) {
-    return listOrEmpty(user.getDomains()).stream()
-        .anyMatch(
-            userDomain ->
-                listOrEmpty(domains).stream()
-                    .anyMatch(domain -> userDomain.getId().equals(domain.getId())));
+    return checkDomainHierarchyAccess(user.getDomains(), domains);
+  }
+
+  /**
+   * Checks if user has access to resource domains by checking domain hierarchy.
+   * Uses Fully Qualified Names (FQN) for efficient hierarchy matching.
+   * Example: User with "Engineering" domain can access "Engineering.Backend.APIs" resources.
+   */
+  private boolean checkDomainHierarchyAccess(
+      List<EntityReference> userDomains, List<EntityReference> resourceDomains) {
+    if (listOrEmpty(resourceDomains).isEmpty()) {
+      return true; // No domain restriction on resource
+    }
+
+    if (listOrEmpty(userDomains).isEmpty()) {
+      return false; // User has no domains
+    }
+
+    // Build set of user domain FQNs for efficient lookup
+    Set<String> userDomainFQNs = new HashSet<>();
+    for (EntityReference userDomain : userDomains) {
+      if (userDomain != null && userDomain.getFullyQualifiedName() != null) {
+        userDomainFQNs.add(userDomain.getFullyQualifiedName());
+      } else if (userDomain != null && userDomain.getId() != null) {
+        // Fallback: load domain to get FQN if not available
+        try {
+          Domain domain = Entity.getEntity(Entity.DOMAIN, userDomain.getId(), "", NON_DELETED);
+          if (domain.getFullyQualifiedName() != null) {
+            userDomainFQNs.add(domain.getFullyQualifiedName());
+          }
+        } catch (Exception e) {
+          LOG.info("Failed to load domain {}: {}", userDomain.getId(), e.getMessage());
+        }
+      }
+    }
+
+    // Check each resource domain
+    for (EntityReference resourceDomain : resourceDomains) {
+      if (resourceDomain == null) {
+        continue;
+      }
+
+      String resourceFQN = resourceDomain.getFullyQualifiedName();
+      if (resourceFQN == null && resourceDomain.getId() != null) {
+        // Fallback: load domain to get FQN if not available
+        try {
+          Domain domain = Entity.getEntity(Entity.DOMAIN, resourceDomain.getId(), "", NON_DELETED);
+          resourceFQN = domain.getFullyQualifiedName();
+        } catch (Exception e) {
+          LOG.debug("Failed to load domain {}: {}", resourceDomain.getId(), e.getMessage());
+          continue;
+        }
+      }
+
+      if (resourceFQN != null) {
+        // Check if any user domain matches or is a parent
+        for (String userFQN : userDomainFQNs) {
+          if (resourceFQN.equals(userFQN) || resourceFQN.startsWith(userFQN + ".")) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
