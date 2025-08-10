@@ -22,7 +22,7 @@ import static org.openmetadata.service.security.SecurityUtil.validateDomainEnfor
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
-import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithm;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithmFromPublicKey;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -43,7 +43,6 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URL;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
@@ -233,8 +232,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm =
-        getAlgorithm(tokenValidationAlgorithm, (RSAPublicKey) jwk.getPublicKey(), null);
+    Algorithm algorithm = createAlgorithmFromJwk(tokenValidationAlgorithm, jwk);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
@@ -322,5 +320,16 @@ public class JwtFilter implements ContainerRequestFilter {
         SecurityContext.DIGEST_AUTH,
         getUserRolesFromClaims(claims, isBotUser),
         isBotUser);
+  }
+
+  private Algorithm createAlgorithmFromJwk(
+      AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm, Jwk jwk) {
+    try {
+      var publicKey = jwk.getPublicKey();
+      return getAlgorithmFromPublicKey(tokenValidationAlgorithm, publicKey);
+    } catch (Exception e) {
+      throw AuthenticationException.getInvalidTokenException(
+          "Failed to create algorithm from JWK: " + e.getMessage(), e);
+    }
   }
 }
