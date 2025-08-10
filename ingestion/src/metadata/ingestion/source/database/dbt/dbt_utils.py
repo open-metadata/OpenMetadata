@@ -15,9 +15,9 @@ import traceback
 from typing import Any, Dict, List, Optional, Union
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -213,6 +213,7 @@ def get_data_model_path(manifest_node):
             datamodel_path = manifest_node.original_file_path
     return datamodel_path
 
+
 def extract_meta_fields_from_node(node: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extracts customProperties fields from dbt manifest node from meta.openmetadata.customProperties
@@ -238,6 +239,7 @@ def extract_meta_fields_from_node(node: Dict[str, Any]) -> Dict[str, Any]:
         )
         return {}
 
+
 def get_expected_type_for_value(value: Any) -> str:
     """
     Determines expected type for value from dbt meta
@@ -254,6 +256,7 @@ def get_expected_type_for_value(value: Any) -> str:
         return "object"
     else:
         return "string"
+
 
 def validate_custom_property_match(custom_property_type: str, value: Any) -> bool:
     """
@@ -288,6 +291,7 @@ def validate_custom_property_match(custom_property_type: str, value: Any) -> boo
 
     return custom_property_type in type_mapping.get(expected_type, [expected_type])
 
+
 def find_entity_by_name(metadata: OpenMetadata, entity_name: str) -> Optional[Any]:
     """
     Universal entity search by name using different methods
@@ -316,6 +320,7 @@ def find_entity_by_name(metadata: OpenMetadata, entity_name: str) -> Optional[An
 
     return None
 
+
 def format_entity_reference(entity: Any) -> Dict[str, Any]:
     """
     Formats entity into entityReference structure for OpenMetadata
@@ -340,6 +345,7 @@ def format_entity_reference(entity: Any) -> Dict[str, Any]:
         "displayName": getattr(entity, "displayName", entity.name) or entity.name,
     }
 
+
 def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Optional[Any]:
     """
     Search domain by name
@@ -351,6 +357,7 @@ def find_domain_by_name(metadata: OpenMetadata, domain_name: str) -> Optional[An
         logger.warning(f"Error finding domain {domain_name}: {exc}")
         logger.debug(traceback.format_exc())
         return None
+
 
 def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:
     """
@@ -383,6 +390,7 @@ def format_domain_reference(domain_entity: Any) -> Optional[Dict[str, Any]]:
         logger.warning(f"Error formatting domain reference: {exc}")
         return None
 
+
 def convert_entity_reference(
     metadata: OpenMetadata, value: Any
 ) -> Optional[Dict[str, Any]]:
@@ -405,6 +413,7 @@ def convert_entity_reference(
         logger.warning(f"Error converting entityReference {value}: {exc}")
         return None
 
+
 def convert_entity_reference_list(
     metadata: OpenMetadata, value: Any
 ) -> Optional[List[Dict[str, Any]]]:
@@ -426,6 +435,7 @@ def convert_entity_reference_list(
         logger.warning(f"Error converting entityReferenceList {value}: {exc}")
         return None
 
+
 def get_custom_property_type_handlers():
     """
     Returns map of handlers for different custom property types
@@ -444,6 +454,7 @@ def get_custom_property_type_handlers():
         "markdown": lambda metadata, value: str(value),
         "sql": lambda metadata, value: str(value),
     }
+
 
 def convert_value_for_custom_property(
     metadata: OpenMetadata, custom_property_type: str, value: Any

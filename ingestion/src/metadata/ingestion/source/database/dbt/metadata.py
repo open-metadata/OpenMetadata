@@ -86,7 +86,6 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     check_ephemeral_node,
-    check_or_create_test_suite,
     convert_value_for_custom_property,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
@@ -183,9 +182,9 @@ class DbtSource(DbtServiceSource):
 
             dbt_meta_info = DbtMeta(**manifest_node.meta)
             if (
-                    dbt_meta_info.openmetadata
-                    and hasattr(dbt_meta_info.openmetadata, "domain")
-                    and dbt_meta_info.openmetadata.domain
+                dbt_meta_info.openmetadata
+                and hasattr(dbt_meta_info.openmetadata, "domain")
+                and dbt_meta_info.openmetadata.domain
             ):
 
                 domain_name = dbt_meta_info.openmetadata.domain
@@ -364,7 +363,7 @@ class DbtSource(DbtServiceSource):
         return tags
 
     def _process_model_meta_fields(
-            self, data_model_link: DataModelLink, manifest_node: Any
+        self, data_model_link: DataModelLink, manifest_node: Any
     ):
         """
         Processes customProperties fields of dbt model as Openmetadata table's custom properties
@@ -389,7 +388,7 @@ class DbtSource(DbtServiceSource):
             )
 
     def _update_table_custom_properties(
-            self, table_entity: Table, custom_properties: Dict[str, Any]
+        self, table_entity: Table, custom_properties: Dict[str, Any]
     ):
         """
         Filters, converts and applies valid customProperties
@@ -437,7 +436,7 @@ class DbtSource(DbtServiceSource):
             )
 
     def _apply_custom_properties_to_table(
-            self, table_entity: Table, custom_properties: Dict[str, Any]
+        self, table_entity: Table, custom_properties: Dict[str, Any]
     ):
         """
         Applies custom properties to table via extension
@@ -458,7 +457,7 @@ class DbtSource(DbtServiceSource):
             existing_data = {}
             if hasattr(current_table, "extension") and current_table.extension:
                 if hasattr(current_table.extension, "root") and isinstance(
-                        current_table.extension.root, dict
+                    current_table.extension.root, dict
                 ):
                     existing_data = current_table.extension.root.copy()
 
