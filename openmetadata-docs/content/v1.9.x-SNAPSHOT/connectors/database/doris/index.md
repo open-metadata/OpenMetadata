@@ -1,5 +1,5 @@
 ---
-title: Doris Connector | OpenMetadata Database Integration Guide
+title: Doris Connector | `brandName` Database Integration Guide
 description: Connect Apache Doris to `brandName` with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/doris
 ---
