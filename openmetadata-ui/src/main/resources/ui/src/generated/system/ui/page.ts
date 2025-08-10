@@ -113,6 +113,7 @@ export enum EntityType {
 export enum PageType {
     APICollection = "APICollection",
     APIEndpoint = "APIEndpoint",
+    Chart = "Chart",
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",

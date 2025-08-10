@@ -1,5 +1,6 @@
 ---
-title: Ldap Authentication
+title: LDAP Authentication Setup | Secure Collate Login with Directory Services
+description: Learn to configure LDAP authentication for Collate. Set up connection parameters, manage truststore settings, and enable secure user login with LDAP credentials.
 slug: /security/ldap
 collate: true
 ---

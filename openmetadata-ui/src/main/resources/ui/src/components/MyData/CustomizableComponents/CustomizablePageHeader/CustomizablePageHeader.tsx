@@ -26,6 +26,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import './customizable-page-header.less';
 
 export const CustomizablePageHeader = ({
   disableSave,
@@ -105,9 +106,13 @@ export const CustomizablePageHeader = ({
   );
 
   const handleClose = useCallback(() => {
-    setConfirmationModalType('close');
-    setConfirmationModalOpen(true);
-  }, []);
+    if (!disableSave) {
+      setConfirmationModalType('close');
+      setConfirmationModalOpen(true);
+    } else {
+      handleCancel();
+    }
+  }, [disableSave]);
 
   return (
     <Card
@@ -173,6 +178,7 @@ export const CustomizablePageHeader = ({
           </Button>
           {isLandingPage && (
             <Button
+              className="landing-page-cancel-button"
               data-testid="cancel-button"
               disabled={saving}
               icon={<CloseOutlined />}

@@ -56,7 +56,7 @@ function EmptyWidgetPlaceholderV1({
   return (
     <WidgetWrapper
       className="empty-widget-placeholder-v1"
-      data-testid={widgetKey}>
+      dataTestId={widgetKey}>
       {widgetContent}
     </WidgetWrapper>
   );

@@ -21,6 +21,7 @@ import { Page, PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
+import chartDetailsClassBase from '../ChartDetailsClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
@@ -155,6 +156,8 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return metricDetailsClassBase.getMetricDetailPageTabsIds();
     case PageType.MlModel:
       return mlModelClassBase.getMlModelDetailPageTabsIds();
+    case PageType.Chart:
+      return chartDetailsClassBase.getChartDetailPageTabsIds();
     default:
       return [
         {
@@ -205,6 +208,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return metricDetailsClassBase.getDefaultLayout(tab);
     case PageType.MlModel:
       return mlModelClassBase.getDefaultLayout(tab);
+    case PageType.Chart:
+      return chartDetailsClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -272,6 +277,8 @@ export const getCustomizableWidgetByPage = (
       return dashboardDataModelClassBase.getCommonWidgetList();
     case PageType.StoredProcedure:
       return storedProcedureClassBase.getCommonWidgetList();
+    case PageType.Chart:
+      return chartDetailsClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -310,7 +317,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return metricDetailsClassBase.getDummyData();
     case PageType.MlModel:
       return mlModelClassBase.getDummyData();
-
+    case PageType.Chart:
+      return chartDetailsClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -356,6 +364,8 @@ export const getWidgetsFromKey = (
       return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Chart:
+      return chartDetailsClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -398,6 +408,8 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return customizeGlossaryPageClassBase.getWidgetHeight(widgetName);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
+    case PageType.Chart:
+      return chartDetailsClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }
