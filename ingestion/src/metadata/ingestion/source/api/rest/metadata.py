@@ -343,7 +343,7 @@ class RestSource(ApiServiceSource):
                                 )
                     # Extract description if available
                     description = val.get("description")
-                    description_obj = Markdown(root=description) if description else None
+                    description_obj = Markdown(root=description) if description is not None else None
                     
                     fetched_fields.append(
                         FieldModel(name=key, dataType=parsed_dtype, children=children, description=description_obj)
@@ -364,7 +364,7 @@ class RestSource(ApiServiceSource):
                             )
                     # Extract description if available  
                     description = val.get("description")
-                    description_obj = Markdown(root=description) if description else None
+                    description_obj = Markdown(root=description) if description is not None else None
                     
                     fetched_fields.append(
                         FieldModel(
