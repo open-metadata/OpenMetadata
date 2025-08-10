@@ -22,6 +22,7 @@
         "Scatter",
         "Text",
         "BoxPlot",
+        "SanKey",
         "Other"
       ],
       "javaEnums": [
@@ -51,6 +52,9 @@
         },
         {
           "name": "BoxPlot"
+        },
+        {
+          "name": "SanKey"
         },
         {
           "name": "Other"
