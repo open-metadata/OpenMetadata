@@ -423,3 +423,116 @@ class PowerBIUnitTest(TestCase):
             )
         )
         assert lineage_request[0].right is not None
+
+    @pytest.mark.order(6)
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.powerbi.source_config.includeOwners = True
+        
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.powerbi.source_config.includeOwners)
+        
+        # Test with a dashboard that has owners
+        dashboard_with_owners = PowerBIDashboard.model_validate(MOCK_DASHBOARD_WITH_OWNERS)
+        
+        # Mock the metadata.get_reference_by_email method to return different users for different emails
+        with patch.object(self.powerbi.metadata, 'get_reference_by_email') as mock_get_ref:
+            def mock_get_ref_by_email(email):
+                if email == "john.doe@example.com":
+                    return EntityReferenceList(
+                        root=[EntityReference(id=uuid.uuid4(), name="John Doe", type="user")]
+                    )
+                elif email == "jane.smith@example.com":
+                    return EntityReferenceList(
+                        root=[EntityReference(id=uuid.uuid4(), name="Jane Smith", type="user")]
+                    )
+                return EntityReferenceList(root=[])
+            
+            mock_get_ref.side_effect = mock_get_ref_by_email
+            
+            # Test get_owner_ref with includeOwners = True
+            result = self.powerbi.get_owner_ref(dashboard_with_owners)
+            
+            # Should return owner reference when includeOwners is True
+            self.assertIsNotNone(result)
+            self.assertEqual(len(result.root), 2)
+            # Check that both owners are present
+            owner_names = [owner.name for owner in result.root]
+            self.assertIn("John Doe", owner_names)
+            self.assertIn("Jane Smith", owner_names)
+
+    @pytest.mark.order(7)
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.powerbi.source_config.includeOwners = False
+        
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.powerbi.source_config.includeOwners)
+        
+        # Test with a dashboard that has owners
+        dashboard_with_owners = PowerBIDashboard.model_validate(MOCK_DASHBOARD_WITH_OWNERS)
+        
+        # Test get_owner_ref with includeOwners = False
+        result = self.powerbi.get_owner_ref(dashboard_with_owners)
+        
+        # Should return None when includeOwners is False
+        self.assertIsNone(result)
+
+    @pytest.mark.order(8)
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    @pytest.mark.order(9)
+    def test_include_owners_flag_with_no_owners(self):
+        """
+        Test that when includeOwners is True but dashboard has no owners, returns None
+        """
+        # Mock the source config to have includeOwners = True
+        self.powerbi.source_config.includeOwners = True
+        
+        # Create a dashboard with no owners
+        dashboard_no_owners = PowerBIDashboard.model_validate({
+            "id": "dashboard_no_owners",
+            "displayName": "Test Dashboard No Owners",
+            "webUrl": "https://test.com",
+            "embedUrl": "https://test.com/embed",
+            "tiles": [],
+            "users": [],  # No users/owners
+        })
+        
+        # Test get_owner_ref with no owners
+        result = self.powerbi.get_owner_ref(dashboard_no_owners)
+        
+        # Should return None when there are no owners
+        self.assertIsNone(result)
+
+    @pytest.mark.order(10)
+    def test_include_owners_flag_with_exception(self):
+        """
+        Test that when includeOwners is True but an exception occurs, it's handled gracefully
+        """
+        # Mock the source config to have includeOwners = True
+        self.powerbi.source_config.includeOwners = True
+        
+        # Test with a dashboard that has owners
+        dashboard_with_owners = PowerBIDashboard.model_validate(MOCK_DASHBOARD_WITH_OWNERS)
+        
+        # Mock the metadata.get_reference_by_email method to raise an exception
+        with patch.object(self.powerbi.metadata, 'get_reference_by_email', side_effect=Exception("API Error")):
+            # Test get_owner_ref with exception
+            result = self.powerbi.get_owner_ref(dashboard_with_owners)
+            
+            # Should return None when exception occurs
+            self.assertIsNone(result)

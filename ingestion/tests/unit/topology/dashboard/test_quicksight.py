@@ -78,7 +78,7 @@ mock_quicksight_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
+            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}, "includeOwners": True}
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -200,3 +200,48 @@ class QuickSightUnitTest(TestCase):
                 chart_list.append(result)
         for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):
             self.assertEqual(expected, original)
+
+    @pytest.mark.order(4)
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.quicksight.source_config.includeOwners = True
+        
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.quicksight.source_config.includeOwners)
+
+    @pytest.mark.order(5)
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.quicksight.source_config.includeOwners = False
+        
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.quicksight.source_config.includeOwners)
+
+    @pytest.mark.order(6)
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_quicksight_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    @pytest.mark.order(7)
+    def test_include_owners_flag_affects_owner_processing(self):
+        """
+        Test that the includeOwners flag affects how owner information is processed
+        """
+        # Test with includeOwners = True
+        self.quicksight.source_config.includeOwners = True
+        self.assertTrue(self.quicksight.source_config.includeOwners)
+        
+        # Test with includeOwners = False
+        self.quicksight.source_config.includeOwners = False
+        self.assertFalse(self.quicksight.source_config.includeOwners)

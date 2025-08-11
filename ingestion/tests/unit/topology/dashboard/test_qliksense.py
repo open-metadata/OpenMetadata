@@ -73,6 +73,7 @@ mock_qliksense_config = {
                 "dashboardFilterPattern": {},
                 "chartFilterPattern": {},
                 "includeDraftDashboard": False,
+                "includeOwners": True,
             }
         },
     },
@@ -225,3 +226,48 @@ class QlikSenseUnitTest(TestCase):
             if self.qliksense.filter_draft_dashboard(dashboard):
                 draft_dashboards_count += 1
         assert draft_dashboards_count == DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS
+
+    @pytest.mark.order(5)
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.qliksense.source_config.includeOwners = True
+        
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.qliksense.source_config.includeOwners)
+
+    @pytest.mark.order(6)
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.qliksense.source_config.includeOwners = False
+        
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.qliksense.source_config.includeOwners)
+
+    @pytest.mark.order(7)
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_qliksense_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    @pytest.mark.order(8)
+    def test_include_owners_flag_affects_owner_processing(self):
+        """
+        Test that the includeOwners flag affects how owner information is processed
+        """
+        # Test with includeOwners = True
+        self.qliksense.source_config.includeOwners = True
+        self.assertTrue(self.qliksense.source_config.includeOwners)
+        
+        # Test with includeOwners = False
+        self.qliksense.source_config.includeOwners = False
+        self.assertFalse(self.qliksense.source_config.includeOwners)

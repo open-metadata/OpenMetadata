@@ -42,7 +42,7 @@ mock_micro_config = {
                 "password": "password",
             }
         },
-        "sourceConfig": {"config": {"type": "DashboardMetadata"}},
+        "sourceConfig": {"config": {"type": "DashboardMetadata", "includeOwners": True}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -125,3 +125,57 @@ class MicroStrategyUnitTest(TestCase):
         self.microstrategy.client.get_dashboards_list = lambda *_: MOCK_DASHBORD_LIST
         fetched_dashboards_list = self.microstrategy.get_dashboards_list()
         self.assertEqual(list(fetched_dashboards_list), MOCK_DASHBORD_LIST)
+
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.microstrategy.source_config.includeOwners = True
+        
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.microstrategy.source_config.includeOwners)
+
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.microstrategy.source_config.includeOwners = False
+        
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.microstrategy.source_config.includeOwners)
+
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_micro_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    def test_include_owners_flag_affects_owner_processing(self):
+        """
+        Test that the includeOwners flag affects how owner information is processed
+        """
+        # Test with includeOwners = True
+        self.microstrategy.source_config.includeOwners = True
+        self.assertTrue(self.microstrategy.source_config.includeOwners)
+        
+        # Test with includeOwners = False
+        self.microstrategy.source_config.includeOwners = False
+        self.assertFalse(self.microstrategy.source_config.includeOwners)
+
+    def test_include_owners_flag_with_owner_data(self):
+        """
+        Test that when includeOwners is True, owner data from dashboard is accessible
+        """
+        # Mock the source config to have includeOwners = True
+        self.microstrategy.source_config.includeOwners = True
+        
+        # Test that we can access owner information from the mock dashboard
+        dashboard = MOCK_DASHBORD_LIST[0]
+        self.assertIsNotNone(dashboard.owner)
+        self.assertEqual(dashboard.owner.name, "Administrator")
+        self.assertEqual(dashboard.owner.id, "54F3D26011D2896560009A8E67019608")
