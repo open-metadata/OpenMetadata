@@ -1,5 +1,5 @@
 ---
-title: API Collection | `brandName` API Collection
+title: API Collection | OpenMetadata API Collection
 description: Connect Apicollection to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/apicollection
 ---

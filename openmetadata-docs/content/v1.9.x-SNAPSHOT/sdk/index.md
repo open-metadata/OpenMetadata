@@ -1,5 +1,5 @@
 ---
-title: `brandName` SDK | OpenMetadata Software Development Kit
+title: OpenMetadata SDK | OpenMetadata Software Development Kit
 description: Connect Sdk to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /sdk
 ---

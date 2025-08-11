@@ -1,6 +1,6 @@
 ---
 title: Auto PII Tagging
-description: Learn how to automatically identify and tag PII data with `brandName`'sauto-classification feature. Step-by-step guide for data governance teams.
+description: Learn how to automatically identify and tag PII data with OpenMetadata'sauto-classification feature. Step-by-step guide for data governance teams.
 slug: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
 ---
 

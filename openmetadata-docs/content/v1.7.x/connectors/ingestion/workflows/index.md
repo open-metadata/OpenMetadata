@@ -1,5 +1,5 @@
 ---
-title: Ingestion Workflows | `brandName` Pipeline Orchestration
+title: Ingestion Workflows | OpenMetadata Pipeline Orchestration
 description: Navigate available ingestion workflows and customize them to align with your data strategy and infrastructure.
 slug: /connectors/ingestion/workflows
 ---

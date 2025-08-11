@@ -327,6 +327,12 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard/yaml
   - category: Connectors / Dashboard / Domo Dashboard / Troubleshooting
     url: /connectors/dashboard/domo-dashboard/troubleshooting
+  - category: Connectors / Database / Grafana
+    url: /connectors/dashboard/grafana
+  - category: Connectors / Database / Grafana / Run Externally
+    url: /connectors/dashboard/grafana/yaml
+  - category: Connectors / Database / Grafana / Troubleshooting
+    url: /connectors/dashboard/grafana/troubleshooting
   - category: Connectors / Dashboard / Lightdash
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
