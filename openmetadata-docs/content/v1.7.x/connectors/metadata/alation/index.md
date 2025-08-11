@@ -1,6 +1,6 @@
 ---
 title: Alation Connector | Official Documentation
-description: Connect Alation to `brandName` seamlessly with our comprehensive connector guide. Learn setup, configuration, and metadata synchronization steps.
+description: Connect Alation to OpenMetadata seamlessly with our comprehensive connector guide. Learn setup, configuration, and metadata synchronization steps.
 slug: /connectors/metadata/alation
 collate: true
 ---

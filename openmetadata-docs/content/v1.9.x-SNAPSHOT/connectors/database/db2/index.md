@@ -1,6 +1,6 @@
 ---
-title: DB2 Connector | `brandName` Database Integration Guide
-description: Connect DB2 databases to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+title: DB2 Connector | OpenMetadata Database Integration Guide
+description: Connect DB2 databases to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/db2
 ---
 

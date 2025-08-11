@@ -1,5 +1,5 @@
 ---
-title: Redpanda Connector | `brandName` Messaging Services
+title: Redpanda Connector | OpenMetadata Messaging Services
 description: Connect OpenMetadata to Redpanda with our official messaging connector. Stream metadata, automate discovery, and integrate your Kafka-compatible platform seamlessly.
 slug: /connectors/messaging/redpanda
 ---

@@ -1,5 +1,5 @@
 ---
-title: Create ML Model API | `brandName` ML Model API
+title: Create ML Model API | OpenMetadata ML Model API
 description: Connect Createmlmodel to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createmlmodel
 ---

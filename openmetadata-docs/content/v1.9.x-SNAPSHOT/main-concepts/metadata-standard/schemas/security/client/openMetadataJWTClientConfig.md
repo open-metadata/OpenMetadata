@@ -1,5 +1,5 @@
 ---
-title: `brandName`JWTClientConfig | Official Documentation
+title: OpenMetadataJWTClientConfig | Official Documentation
 description: Set JWT-based client configuration for authentication using issuer, audience, token expiry, and signature verification details.
 slug: /main-concepts/metadata-standard/schemas/security/client/openmetadatajwtclientconfig
 ---

@@ -1,6 +1,6 @@
 ---
 title: Trino Connector | OpenMetadata Distributed SQL Integration
-description: Configure `brandName`'sTrino database connector to seamlessly integrate your distributed SQL engine with automated metadata discovery and lineage tracking.
+description: Configure OpenMetadata'sTrino database connector to seamlessly integrate your distributed SQL engine with automated metadata discovery and lineage tracking.
 slug: /connectors/database/trino
 ---
 

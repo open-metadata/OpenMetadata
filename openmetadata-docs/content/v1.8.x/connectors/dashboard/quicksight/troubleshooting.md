@@ -1,5 +1,5 @@
 ---
-title: QuickSight Troubleshooting Guide | `brandName` Support
+title: QuickSight Troubleshooting Guide | OpenMetadata Support
 slug: /connectors/dashboard/quicksight/troubleshooting
 ---
 

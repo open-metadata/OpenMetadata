@@ -1,5 +1,5 @@
 ---
-title: Messaging Connections | `brandName` Messaging
+title: Messaging Connections | OpenMetadata Messaging
 description: Configure messaging service connections for Kafka, Pulsar, and similar platforms with authentication details.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messaging
 ---

@@ -1,6 +1,6 @@
 ---
-title: Custom Connectors | Build & Extend `brandName` Easily
-description: Learn to build custom connectors for `brandName` to integrate any data source. Step-by-step guides, code examples, and best practices included.
+title: Custom Connectors | Build & Extend OpenMetadata Easily
+description: Learn to build custom connectors for OpenMetadata to integrate any data source. Step-by-step guides, code examples, and best practices included.
 slug: /connectors/custom-connectors
 ---
 

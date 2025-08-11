@@ -1,5 +1,5 @@
 ---
-title: Data Insight API | `brandName` Data Insight Schemas
+title: Data Insight API | OpenMetadata Data Insight Schemas
 description: Connect Datainsight to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/datainsight
 ---

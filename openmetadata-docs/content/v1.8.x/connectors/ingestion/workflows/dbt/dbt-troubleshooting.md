@@ -1,5 +1,5 @@
 ---
-title: dbt Troubleshooting | `brandName` Integration Support
+title: dbt Troubleshooting | OpenMetadata Integration Support
 description: Troubleshoot dbt ingestion for configuration issues, parsing errors, or incomplete metadata syncing.
 slug: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
 ---

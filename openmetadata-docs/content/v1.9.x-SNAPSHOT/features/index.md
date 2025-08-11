@@ -1,6 +1,6 @@
 ---
-title: `brandName` Features | Product Overview
-description: Discover `brandName`'spowerful features for data discovery, lineage tracking, governance, and collaboration. Explore comprehensive tools to manage you...
+title: OpenMetadata Features | Product Overview
+description: Discover OpenMetadata'spowerful features for data discovery, lineage tracking, governance, and collaboration. Explore comprehensive tools to manage you...
 slug: /features
 ---
 

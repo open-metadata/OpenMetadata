@@ -1,6 +1,6 @@
 ---
 title: ADLS | Official Documentation
-description: Connect Azure Data Lake Storage to `brandName` with our comprehensive ADLS connector guide. Setup instructions, configuration, and metadata extraction.
+description: Connect Azure Data Lake Storage to OpenMetadata with our comprehensive ADLS connector guide. Setup instructions, configuration, and metadata extraction.
 slug: /connectors/storage/adls
 collate: true
 ---

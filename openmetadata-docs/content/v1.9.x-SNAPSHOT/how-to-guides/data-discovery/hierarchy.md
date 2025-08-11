@@ -1,6 +1,6 @@
 ---
 title: Guide to Searching Data Using Hierarchical View
-description: Learn to navigate and search data with the Hierarchical View in `brandName`. Expand layers, explore relationships, and access detailed asset information easily.
+description: Learn to navigate and search data with the Hierarchical View in OpenMetadata. Expand layers, explore relationships, and access detailed asset information easily.
 slug: /how-to-guides/data-discovery/hierarchy
 ---
 

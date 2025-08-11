@@ -1,5 +1,5 @@
 ---
-title: `brandName`Connection | Official Documentation
+title: OpenMetadataConnection | Official Documentation
 description: Define metadata platform connection using this schema to support full ingestion, lineage, and governance functions.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata/openmetadataconnection
 ---

@@ -1,6 +1,6 @@
 ---
 title: Edit Data Lineage Manually
-description: Learn to manually edit data lineage in `brandName` with step-by-step instructions. Add, modify, and customize lineage connections for better data governance.
+description: Learn to manually edit data lineage in OpenMetadata with step-by-step instructions. Add, modify, and customize lineage connections for better data governance.
 slug: /connectors/ingestion/lineage/edit-lineage-manually
 ---
 

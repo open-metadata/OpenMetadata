@@ -1,5 +1,5 @@
 ---
-title: Redpanda Connector Troubleshooting Guide | `brandName` Support
+title: Redpanda Connector Troubleshooting Guide | OpenMetadata Support
 description: Troubleshoot Redpanda ingestion errors including topic not found, schema mismatch, or token failures.
 slug: /connectors/messaging/redpanda/troubleshooting
 ---

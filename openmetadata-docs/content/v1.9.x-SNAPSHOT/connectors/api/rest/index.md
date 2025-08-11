@@ -1,6 +1,6 @@
 ---
-title: REST API Connector | `brandName` Integration Documentation
-description: Learn how to integrate REST APIs with `brandName` connectors. Complete documentation, setup guides, and examples for seamless data source connections.
+title: REST API Connector | OpenMetadata Integration Documentation
+description: Learn how to integrate REST APIs with OpenMetadata connectors. Complete documentation, setup guides, and examples for seamless data source connections.
 slug: /connectors/api/rest
 ---
 

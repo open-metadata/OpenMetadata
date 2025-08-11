@@ -1,5 +1,5 @@
 ---
-title: Storage Services | `brandName` Cloud Storage Guide
+title: Storage Services | OpenMetadata Cloud Storage Guide
 slug: /connectors/storage
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Ingestion Pipeline UI Deployment
-description: Learn how to deploy `brandName` ingestion connectors with step-by-step guides, configuration options, and best practices for seamless data integration.
+description: Learn how to deploy OpenMetadata ingestion connectors with step-by-step guides, configuration options, and best practices for seamless data integration.
 slug: /connectors/ingestion/deployment
 ---
 

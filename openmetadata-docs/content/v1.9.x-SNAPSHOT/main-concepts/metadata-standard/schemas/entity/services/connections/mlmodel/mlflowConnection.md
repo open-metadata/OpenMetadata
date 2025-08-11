@@ -1,5 +1,5 @@
 ---
-title: MLflow Connection | `brandName` MLflow Model Connection
+title: MLflow Connection | OpenMetadata MLflow Model Connection
 description: Schema for configuring MLflow connections, managing model registry metadata and experiment tracking.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmodel/mlflowconnection
 ---

@@ -1,6 +1,6 @@
 ---
-title: Metadata Versioning | `brandName` Data History Management
-description: Learn how `brandName`'sconnector versioning system manages data ingestion workflows. Discover version control best practices and compatibility guidelines.
+title: Metadata Versioning | OpenMetadata Data History Management
+description: Learn how OpenMetadata'sconnector versioning system manages data ingestion workflows. Discover version control best practices and compatibility guidelines.
 slug: /connectors/ingestion/versioning
 ---
 

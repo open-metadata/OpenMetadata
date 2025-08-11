@@ -1,6 +1,6 @@
 ---
 title: Druid Connector | OpenMetadata Real-Time Analytics Guide
-description: Learn how to connect Apache Druid to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction.
+description: Learn how to connect Apache Druid to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/druid
 ---
 

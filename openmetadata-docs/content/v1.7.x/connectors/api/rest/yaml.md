@@ -1,6 +1,6 @@
 ---
 title: Run the OpenAPI/REST Connector Externally
-description: Learn how to configure `brandName` REST API connectors using YAML. Complete documentation with examples, parameters, and best practices for seamless integration.
+description: Learn how to configure OpenMetadata REST API connectors using YAML. Complete documentation with examples, parameters, and best practices for seamless integration.
 slug: /connectors/api/rest/yaml
 ---
 

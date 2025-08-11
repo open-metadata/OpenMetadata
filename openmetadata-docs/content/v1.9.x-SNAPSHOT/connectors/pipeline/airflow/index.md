@@ -1,6 +1,6 @@
 ---
-title: Airflow Connector | `brandName` Workflow Orchestration
-description: Connect Apache Airflow to `brandName` effortlessly. Complete setup guide, configuration steps, and pipeline metadata extraction for seamless data lineage tracking.
+title: Airflow Connector | OpenMetadata Workflow Orchestration
+description: Connect Apache Airflow to OpenMetadata effortlessly. Complete setup guide, configuration steps, and pipeline metadata extraction for seamless data lineage tracking.
 slug: /connectors/pipeline/airflow
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: Bulk Upload Data Assets with CSV in `brandName`
-description: Save time by importing or updating multiple data assets via CSV. Validate and edit inline before finalizing bulk uploads in `brandName`.
+title: Bulk Upload Data Assets with CSV in OpenMetadata
+description: Save time by importing or updating multiple data assets via CSV. Validate and edit inline before finalizing bulk uploads in OpenMetadata.
 slug: /how-to-guides/data-discovery/bulk-upload
 ---
 

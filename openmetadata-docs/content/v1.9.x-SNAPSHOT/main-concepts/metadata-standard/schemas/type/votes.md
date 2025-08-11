@@ -1,6 +1,6 @@
 ---
 title: Votes | Official Documentation
-description: Explore `brandName`'svoting schema types and data structures. Learn how to implement user feedback systems with comprehensive vote metadata standards.
+description: Explore OpenMetadata'svoting schema types and data structures. Learn how to implement user feedback systems with comprehensive vote metadata standards.
 slug: /main-concepts/metadata-standard/schemas/type/votes
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: dbt Workflow | `brandName` Data Build Tool Integration
+title: dbt Workflow | OpenMetadata Data Build Tool Integration
 description: Learn how to integrate dbt workflows with OpenMetadata connectors for seamless data lineage tracking and metadata ingestion. Step-by-step setup guide included.
 slug: /connectors/ingestion/workflows/dbt
 ---

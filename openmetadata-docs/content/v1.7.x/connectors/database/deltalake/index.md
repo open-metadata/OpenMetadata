@@ -1,5 +1,5 @@
 ---
-title: DeltaLake Connector | `brandName` Data Lake Integration
+title: DeltaLake Connector | OpenMetadata Data Lake Integration
 description: Connect OpenMetadata to Delta Lake with our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/deltalake
 ---
