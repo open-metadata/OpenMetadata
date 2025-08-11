@@ -1,6 +1,6 @@
 ---
-title: BigTable Troubleshooting Guide | `brandName` Support
-description: Resolve BigTable connector issues quickly with `brandName`'scomprehensive troubleshooting guide. Fix common errors, configuration problems, and connec...
+title: BigTable Troubleshooting Guide | OpenMetadata Support
+description: Resolve BigTable connector issues quickly with OpenMetadata'scomprehensive troubleshooting guide. Fix common errors, configuration problems, and connec...
 slug: /connectors/database/bigtable/troubleshooting
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: API Endpoint | `brandName` API Endpoint
+title: API Endpoint | OpenMetadata API Endpoint
 description: Connect Apiendpoint to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/entity/data/apiendpoint
 ---

@@ -1,6 +1,6 @@
 ---
 title: Run the Athena Connector Externally
-description: Configure `brandName`'sAthena database connector with YAML - step-by-step setup guide, connection parameters, and configuration examples for seamless integration.
+description: Configure OpenMetadata'sAthena database connector with YAML - step-by-step setup guide, connection parameters, and configuration examples for seamless integration.
 slug: /connectors/database/athena/yaml
 ---
 
