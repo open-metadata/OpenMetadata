@@ -2,7 +2,6 @@
 title: Grafana Connector | OpenMetadata Integration Guide
 description: Learn how to configure and use the Grafana connector in OpenMetadata. Includes setup, authentication, metadata ingestion, and lineage.
 slug: /connectors/dashboard/grafana
-collate: true
 ---
 
 {% connectorDetailsHeader

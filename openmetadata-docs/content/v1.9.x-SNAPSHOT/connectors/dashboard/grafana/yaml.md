@@ -2,7 +2,6 @@
 title: Run the Grafana Connector Externally
 description: Learn to run the Grafana connector externally in OpenMetadata. Configure metadata ingestion via YAML, including Service Account Token auth, lineage, and SSL setup.
 slug: /connectors/dashboard/grafana/yaml
-collate: true
 ---
 
 {% connectorDetailsHeader
