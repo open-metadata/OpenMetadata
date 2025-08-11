@@ -137,18 +137,18 @@ def get_connection(connection: HiveConnection) -> Engine:
 
         # Add SSL certificate configuration if available
         if hasattr(connection, "sslConfig") and connection.sslConfig:
-            if connection.sslConfig.sslCertificate:
+            if connection.sslConfig.root.sslCertificate:
                 connection.connectionArguments.root[
                     "ssl_certfile"
-                ] = connection.sslConfig.sslCertificate
-            if connection.sslConfig.sslKey:
+                ] = connection.sslConfig.root.sslCertificate
+            if connection.sslConfig.root.sslKey:
                 connection.connectionArguments.root[
                     "ssl_keyfile"
-                ] = connection.sslConfig.sslKey
-            if connection.sslConfig.caCertificate:
+                ] = connection.sslConfig.root.sslKey
+            if connection.sslConfig.root.caCertificate:
                 connection.connectionArguments.root[
                     "ssl_ca_certs"
-                ] = connection.sslConfig.caCertificate
+                ] = connection.sslConfig.root.caCertificate
 
     return create_generic_db_connection(
         connection=connection,
