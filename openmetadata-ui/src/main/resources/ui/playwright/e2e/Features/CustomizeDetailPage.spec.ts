@@ -529,4 +529,66 @@ test.describe('Persona customization', () => {
       });
     });
   });
+
+  test('Validate Glossary Term details page after customization of tabs', async ({
+    adminPage,
+    userPage,
+  }) => {
+    test.slow();
+
+    await test.step('apply customization', async () => {
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage
+        .getByTestId(`persona-details-card-${persona.data.name}`)
+        .click();
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage.getByText('Governance').click();
+      await adminPage.getByText('Glossary Term', { exact: true }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const dragElement = adminPage.getByTestId('tab-Overview');
+      const dropTarget = adminPage.getByTestId('tab-Custom Properties');
+
+      await dragElement.dragTo(dropTarget);
+
+      expect(adminPage.getByTestId('save-button')).toBeEnabled();
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
+
+    await test.step('Validate customization', async () => {
+      await redirectToHomePage(userPage);
+
+      const entity = getCustomizeDetailsEntity(
+        ECustomizedGovernance.GLOSSARY_TERM
+      );
+      await entity.visitEntityPage(userPage);
+      await userPage.waitForLoadState('networkidle');
+      await userPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
+      expect(
+        userPage.getByRole('tab', { name: 'Glossary Terms' })
+      ).toBeVisible();
+      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+
+      await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
+
+      expect(
+        userPage.getByTestId('create-error-placeholder-Glossary Term')
+      ).toBeVisible();
+    });
+  });
 });
