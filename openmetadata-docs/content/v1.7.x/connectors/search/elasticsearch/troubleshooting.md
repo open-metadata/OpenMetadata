@@ -1,5 +1,5 @@
 ---
-title: Elasticsearch Connector Troubleshooting Guide | `brandName` Support
+title: Elasticsearch Connector Troubleshooting Guide | OpenMetadataSupport
 description: Resolve Elasticsearch ingestion issues like index not found, mapping mismatches, or API call failures.
 slug: /connectors/search/elasticsearch/troubleshooting
 ---

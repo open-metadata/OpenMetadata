@@ -1,6 +1,6 @@
 ---
-title: S3 Storage | `brandName` Cloud Storage Integration
-description: Connect your S3 storage to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction for AWS S3.
+title: S3 Storage | OpenMetadataCloud Storage Integration
+description: Connect your S3 storage to OpenMetadatawith our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction for AWS S3.
 slug: /connectors/storage/s3
 ---
 

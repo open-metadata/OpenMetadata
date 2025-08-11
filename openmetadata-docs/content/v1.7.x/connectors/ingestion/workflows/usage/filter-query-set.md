@@ -1,6 +1,6 @@
 ---
-title: Usage Query Filtering | `brandName` Usage Workflow
-description: Learn to filter and customize query sets in `brandName` Usage workflows. Master data ingestion connectors with step-by-step filtering techniques.
+title: Usage Query Filtering | OpenMetadataUsage Workflow
+description: Learn to filter and customize query sets in OpenMetadataUsage workflows. Master data ingestion connectors with step-by-step filtering techniques.
 slug: /connectors/ingestion/workflows/usage/filter-query-set
 ---
 

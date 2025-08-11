@@ -1,5 +1,5 @@
 ---
-title: DeltaLake Troubleshooting Guide | `brandName` Support
+title: DeltaLake Troubleshooting Guide | OpenMetadataSupport
 description: Fix Delta Lake ingestion issues such as path misconfigurations, schema evolution errors, or versioning mismatches.
 slug: /connectors/database/deltalake/troubleshooting
 ---

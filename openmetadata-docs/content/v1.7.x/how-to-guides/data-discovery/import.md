@@ -1,6 +1,6 @@
 ---
 title: Bulk Import Data Assets via CSV in `brandName`
-description: Learn to bulk import databases, schemas, and tables in `brandName` using CSV files. Edit inline, validate changes, and import via UI or API.
+description: Learn to bulk import databases, schemas, and tables in OpenMetadatausing CSV files. Edit inline, validate changes, and import via UI or API.
 slug: /how-to-guides/data-discovery/import
 ---
 

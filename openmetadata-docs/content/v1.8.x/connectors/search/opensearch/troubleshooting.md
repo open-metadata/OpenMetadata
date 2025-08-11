@@ -1,5 +1,5 @@
 ---
-title: OpenSearch Connector Troubleshooting Guide | `brandName` Support
+title: OpenSearch Connector Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot OpenSearch ingestion issues like authentication failures, index access errors, or search gaps.
 slug: /connectors/search/opensearch/troubleshooting
 ---

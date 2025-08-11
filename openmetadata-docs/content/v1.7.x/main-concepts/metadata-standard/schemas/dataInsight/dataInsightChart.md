@@ -1,5 +1,5 @@
 ---
-title: Data Insight Chart | `brandName` Data Insight
+title: Data Insight Chart | OpenMetadataData Insight
 description: Connect Datainsightchart to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/datainsightchart
 ---

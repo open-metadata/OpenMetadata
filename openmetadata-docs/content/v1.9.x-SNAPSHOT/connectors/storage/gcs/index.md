@@ -1,5 +1,5 @@
 ---
-title: GCS Storage | `brandName` Cloud Storage Integration
+title: GCS Storage | OpenMetadataCloud Storage Integration
 description: Connect OpenMetadata to Google Cloud Storage with our comprehensive GCS connector guide. Setup instructions, configuration options, and best practices included.
 slug: /connectors/storage/gcs
 ---

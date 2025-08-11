@@ -1,5 +1,5 @@
 ---
-title: Dagster Connector Troubleshooting Guide | `brandName` Support
+title: Dagster Connector Troubleshooting Guide | OpenMetadataSupport
 description: Resolve Dagster pipeline ingestion issues such as metadata gaps, API rate-limits, or project config errors.
 slug: /connectors/pipeline/dagster/troubleshooting
 ---

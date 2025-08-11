@@ -1,6 +1,6 @@
 ---
-title: GCS Datalake Connector | `brandName` Cloud Storage Integration
-description: Connect your Google Cloud Storage data lake to `brandName` with our comprehensive GCS connector guide. Setup instructions, configuration tips & best practices.
+title: GCS Datalake Connector | OpenMetadataCloud Storage Integration
+description: Connect your Google Cloud Storage data lake to OpenMetadatawith our comprehensive GCS connector guide. Setup instructions, configuration tips & best practices.
 slug: /connectors/database/gcs-datalake
 ---
 

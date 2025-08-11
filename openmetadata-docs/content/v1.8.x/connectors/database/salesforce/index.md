@@ -1,6 +1,6 @@
 ---
-title: Salesforce Connector | `brandName` CRM Integration Guide
-description: Connect Salesforce to `brandName` with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extraction made easy.
+title: Salesforce Connector | OpenMetadataCRM Integration Guide
+description: Connect Salesforce to OpenMetadatawith our comprehensive database connector guide. Setup instructions, configuration tips, and metadata extraction made easy.
 slug: /connectors/database/salesforce
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Connect Synapse | Official Docs
-description: Connect Azure Synapse to `brandName` with our comprehensive database connector guide. Configure metadata extraction, lineage tracking, and profiling in minutes.
+description: Connect Azure Synapse to OpenMetadatawith our comprehensive database connector guide. Configure metadata extraction, lineage tracking, and profiling in minutes.
 slug: /connectors/database/synapse
 collate: true
 ---

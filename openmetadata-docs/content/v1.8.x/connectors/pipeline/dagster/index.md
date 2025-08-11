@@ -1,6 +1,6 @@
 ---
-title: Dagster Connector | `brandName` Pipeline Integration
-description: Connect Dagster pipelines to `brandName` with our comprehensive integration guide. Learn setup, configuration, and metadata extraction in minutes.
+title: Dagster Connector | OpenMetadataPipeline Integration
+description: Connect Dagster pipelines to OpenMetadatawith our comprehensive integration guide. Learn setup, configuration, and metadata extraction in minutes.
 slug: /connectors/pipeline/dagster
 ---
 

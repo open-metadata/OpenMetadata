@@ -1,5 +1,5 @@
 ---
-title: Incident Manager | `brandName` Data Quality Management
+title: Incident Manager | OpenMetadataData Quality Management
 description: Navigate the incident manager to assign, investigate, and resolve data quality incidents.
 slug: /how-to-guides/data-quality-observability/incident-manager
 ---

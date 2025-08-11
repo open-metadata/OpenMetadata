@@ -1,5 +1,5 @@
 ---
-title: Create Role API | `brandName` API for Creating Roles
+title: Create Role API | OpenMetadataAPI for Creating Roles
 description: Connect Createrole to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/teams/createrole
 ---

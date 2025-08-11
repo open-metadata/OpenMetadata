@@ -1,5 +1,5 @@
 ---
-title: Superset Troubleshooting Guide | `brandName` Support
+title: Superset Troubleshooting Guide | OpenMetadataSupport
 description: Solve Apache Superset connector issues with `brandName`'scomprehensive troubleshooting guide. Fix common dashboard integration problems quickly.
 slug: /connectors/dashboard/superset/troubleshooting
 ---

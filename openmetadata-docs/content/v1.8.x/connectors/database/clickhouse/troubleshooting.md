@@ -1,5 +1,5 @@
 ---
-title: Clickhouse Troubleshooting Guide | `brandName` Support
+title: Clickhouse Troubleshooting Guide | OpenMetadataSupport
 description: Resolve ClickHouse connector issues such as type mismatches, invalid credentials, or ingestion slowdowns.
 slug: /connectors/database/clickhouse/troubleshooting
 ---

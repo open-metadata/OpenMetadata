@@ -1,6 +1,6 @@
 ---
-title: Trino Troubleshooting Guide | `brandName` Support
-description: Solve Trino database connector issues in `brandName` with expert troubleshooting guides, error fixes, and step-by-step solutions for seamless data integration.
+title: Trino Troubleshooting Guide | OpenMetadataSupport
+description: Solve Trino database connector issues in OpenMetadatawith expert troubleshooting guides, error fixes, and step-by-step solutions for seamless data integration.
 slug: /connectors/database/trino/troubleshooting
 ---
 

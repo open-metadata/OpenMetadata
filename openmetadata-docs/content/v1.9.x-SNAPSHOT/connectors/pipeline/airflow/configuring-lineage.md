@@ -1,5 +1,5 @@
 ---
-title: Configuring DAG Lineage in Airflow | `brandName` Integration
+title: Configuring DAG Lineage in Airflow | OpenMetadataIntegration
 description: Learn how to configure DAG lineage in Airflow using inlets and outlets. Supports tables, dashboards, pipelines, and more with or without ingestion packages.
 slug: /connectors/pipeline/airflow/configuring-lineage
 ---

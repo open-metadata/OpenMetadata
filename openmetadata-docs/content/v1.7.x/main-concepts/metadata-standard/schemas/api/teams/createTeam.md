@@ -1,5 +1,5 @@
 ---
-title: Create Team API | `brandName` API for Creating Teams
+title: Create Team API | OpenMetadataAPI for Creating Teams
 description: Connect Createteam to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/teams/createteam
 ---

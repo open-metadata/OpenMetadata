@@ -1,5 +1,5 @@
 ---
-title: `brandName` Developers | Developer Resources Overview
+title: OpenMetadataDevelopers | Developer Resources Overview
 description: Learn how to build, extend, and contribute to the metadata platform using developer best practices and APIs.
 slug: /developers
 ---

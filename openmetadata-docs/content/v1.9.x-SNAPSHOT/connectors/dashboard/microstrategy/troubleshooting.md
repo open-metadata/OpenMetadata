@@ -1,6 +1,6 @@
 ---
-title: MicroStrategy Troubleshooting Guide | `brandName` Support
-description: Resolve MicroStrategy connector issues in `brandName` with expert troubleshooting tips, common error fixes, and step-by-step solutions for seamless integration.
+title: MicroStrategy Troubleshooting Guide | OpenMetadataSupport
+description: Resolve MicroStrategy connector issues in OpenMetadatawith expert troubleshooting tips, common error fixes, and step-by-step solutions for seamless integration.
 slug: /connectors/dashboard/microstrategy/troubleshooting
 ---
 

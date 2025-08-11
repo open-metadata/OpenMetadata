@@ -1,5 +1,5 @@
 ---
-title: Data Profiler | `brandName` Data Profiling Guide
+title: Data Profiler | OpenMetadataData Profiling Guide
 description: Explore profiling workflows including histogram metrics, null counts, and field-level health.
 slug: /how-to-guides/data-quality-observability/profiler
 ---

@@ -1,5 +1,5 @@
 ---
-title: Status | `brandName` Pipeline Status and Monitoring
+title: Status | OpenMetadataPipeline Status and Monitoring
 description: Describe ingestion pipeline status including success/failure state, message logs, and duration.
 slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipelines/status
 ---

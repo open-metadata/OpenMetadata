@@ -1,6 +1,6 @@
 ---
-title: Tableau Connector | `brandName` Integration Guide
-description: Connect Tableau dashboards to `brandName` with our comprehensive connector guide. Setup instructions, configuration options, and metadata extraction steps.
+title: Tableau Connector | OpenMetadataIntegration Guide
+description: Connect Tableau dashboards to OpenMetadatawith our comprehensive connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/dashboard/tableau
 ---
 

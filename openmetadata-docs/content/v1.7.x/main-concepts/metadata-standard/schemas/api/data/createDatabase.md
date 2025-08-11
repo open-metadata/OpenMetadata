@@ -1,5 +1,5 @@
 ---
-title: Create Database API | `brandName` Database API
+title: Create Database API | OpenMetadataDatabase API
 description: Connect Createdatabase to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/api/data/createdatabase
 ---

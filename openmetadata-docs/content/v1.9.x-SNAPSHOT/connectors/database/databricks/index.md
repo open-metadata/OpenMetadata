@@ -1,6 +1,6 @@
 ---
-title: Databricks Connector | `brandName` Integration Guide
-description: Connect Databricks to `brandName` effortlessly. Complete setup guide, configuration steps, and metadata extraction for your data lakehouse platform.
+title: Databricks Connector | OpenMetadataIntegration Guide
+description: Connect Databricks to OpenMetadataeffortlessly. Complete setup guide, configuration steps, and metadata extraction for your data lakehouse platform.
 slug: /connectors/database/databricks
 ---
 

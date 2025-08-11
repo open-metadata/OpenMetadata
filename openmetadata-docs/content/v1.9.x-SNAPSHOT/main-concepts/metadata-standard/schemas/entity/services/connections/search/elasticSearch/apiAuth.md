@@ -1,5 +1,5 @@
 ---
-title: API Auth | `brandName` API Authentication Details
+title: API Auth | OpenMetadataAPI Authentication Details
 description: Get started with apiauth. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch/apiauth
 ---

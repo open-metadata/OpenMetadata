@@ -1,5 +1,5 @@
 ---
-title: DB2 Troubleshooting Guide | `brandName` Support
+title: DB2 Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot DB2 connector setup, query failures, or credential problems to ensure smooth ingestion and profiling operations.
 slug: /connectors/database/db2/troubleshooting
 ---

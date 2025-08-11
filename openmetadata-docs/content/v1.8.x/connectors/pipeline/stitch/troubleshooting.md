@@ -1,5 +1,5 @@
 ---
-title: Stitch Connector Troubleshooting Guide | `brandName` Support
+title: Stitch Connector Troubleshooting Guide | OpenMetadataSupport
 description: Fix Stitch ingestion errors such as connector load failures, sync interruptions, or missing pipeline details.
 slug: /connectors/pipeline/stitch/troubleshooting
 collate: true 

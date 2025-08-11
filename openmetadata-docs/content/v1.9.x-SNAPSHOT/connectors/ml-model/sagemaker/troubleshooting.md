@@ -1,5 +1,5 @@
 ---
-title: Sagemaker Connector Troubleshooting Guide | `brandName` Support
+title: Sagemaker Connector Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot SageMaker integration issues such as API failures, metadata gaps, or IAM permission conflicts.
 slug: /connectors/ml-model/sagemaker/troubleshooting
 ---

@@ -1,6 +1,6 @@
 ---
-title: Snowflake Connector | `brandName` Cloud Data Warehouse
-description: Connect Snowflake to `brandName` with our comprehensive database connector guide. Easy setup, metadata extraction, and data lineage tracking.
+title: Snowflake Connector | OpenMetadataCloud Data Warehouse
+description: Connect Snowflake to OpenMetadatawith our comprehensive database connector guide. Easy setup, metadata extraction, and data lineage tracking.
 slug: /connectors/database/snowflake
 ---
 

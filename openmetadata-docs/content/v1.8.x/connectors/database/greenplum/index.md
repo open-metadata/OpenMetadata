@@ -1,6 +1,6 @@
 ---
-title: Greenplum Connector | `brandName` Database Integration Guide
-description: Connect Greenplum to `brandName` with our comprehensive database connector guide. Setup instructions, configuration details, and metadata extraction made simple.
+title: Greenplum Connector | OpenMetadataDatabase Integration Guide
+description: Connect Greenplum to OpenMetadatawith our comprehensive database connector guide. Setup instructions, configuration details, and metadata extraction made simple.
 slug: /connectors/database/greenplum
 ---
 

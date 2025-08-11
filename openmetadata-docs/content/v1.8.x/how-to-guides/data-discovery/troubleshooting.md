@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting for Import-Export issue
-description: Resolve glossary CSV export failures in `brandName` by checking proxy settings, enabling WebSockets, and verifying real-time connectivity.
+description: Resolve glossary CSV export failures in OpenMetadataby checking proxy settings, enabling WebSockets, and verifying real-time connectivity.
 slug: /how-to-guides/data-discovery/troubleshooting
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: ML Tagging Action | `brandName` ML Tagging
+title: ML Tagging Action | OpenMetadataML Tagging
 description: Get started with mltaggingaction. Setup instructions, features, and configuration details inside.
 slug: /main-concepts/metadata-standard/schemas/entity/applications/configuration/external/automator/mltaggingaction
 ---

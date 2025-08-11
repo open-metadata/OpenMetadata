@@ -1,5 +1,5 @@
 ---
-title: Main Concepts | `brandName` Core Concepts Overview
+title: Main Concepts | OpenMetadataCore Concepts Overview
 description: Connect Main Concepts to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts
 ---

@@ -1,6 +1,6 @@
 ---
-title: MariaDB Connector | `brandName` Database Integration Guide
-description: Connect MariaDB to `brandName` with our comprehensive database connector guide. Easy setup, configuration steps, and metadata extraction for your data catalog.
+title: MariaDB Connector | OpenMetadataDatabase Integration Guide
+description: Connect MariaDB to OpenMetadatawith our comprehensive database connector guide. Easy setup, configuration steps, and metadata extraction for your data catalog.
 slug: /connectors/database/mariadb
 ---
 

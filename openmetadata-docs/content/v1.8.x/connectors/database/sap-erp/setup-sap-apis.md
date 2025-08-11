@@ -1,5 +1,5 @@
 ---
-title: Setup SAP ERP APIs | `brandName` Integration Guide
+title: Setup SAP ERP APIs | OpenMetadataIntegration Guide
 description: Set up SAP ERP APIs for metadata ingestion, configure access and validate integration readiness.
 slug: /connectors/database/sap-erp/setup-sap-apis
 ---

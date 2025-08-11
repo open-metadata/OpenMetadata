@@ -1,6 +1,6 @@
 ---
-title: Nifi Connector | `brandName` Data Pipeline Integration
-description: Connect Apache NiFi to `brandName` seamlessly. Complete setup guide for NiFi pipeline connector with step-by-step configuration and metadata extraction.
+title: Nifi Connector | OpenMetadataData Pipeline Integration
+description: Connect Apache NiFi to OpenMetadataseamlessly. Complete setup guide for NiFi pipeline connector with step-by-step configuration and metadata extraction.
 slug: /connectors/pipeline/nifi
 ---
 

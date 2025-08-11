@@ -1,5 +1,5 @@
 ---
-title: Alation Connector Troubleshooting Guide | `brandName` Support
+title: Alation Connector Troubleshooting Guide | OpenMetadataSupport
 description: Resolve metadata sync issues in Alation connector, including authentication errors, sync gaps, and asset duplication.
 slug: /connectors/metadata/alation/troubleshooting
 collate: true

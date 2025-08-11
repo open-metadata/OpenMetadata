@@ -1,5 +1,5 @@
 ---
-title: Lineage Workflow | `brandName` Data Lineage Guide
+title: Lineage Workflow | OpenMetadataData Lineage Guide
 description: Discover how to set up data lineage workflows in OpenMetadata. Learn to track data flow, configure connectors, and visualize dependencies across your data pipeline.
 slug: /connectors/ingestion/workflows/lineage
 ---

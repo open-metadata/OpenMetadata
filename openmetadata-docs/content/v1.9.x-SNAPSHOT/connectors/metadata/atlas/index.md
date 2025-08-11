@@ -1,6 +1,6 @@
 ---
-title: Atlas Connector | `brandName` Metadata Integration
-description: Connect Apache Atlas to `brandName` seamlessly. Complete setup guide, configuration steps, and best practices for Atlas metadata connector integration.
+title: Atlas Connector | OpenMetadataMetadata Integration
+description: Connect Apache Atlas to OpenMetadataseamlessly. Complete setup guide, configuration steps, and best practices for Atlas metadata connector integration.
 slug: /connectors/metadata/atlas
 ---
 

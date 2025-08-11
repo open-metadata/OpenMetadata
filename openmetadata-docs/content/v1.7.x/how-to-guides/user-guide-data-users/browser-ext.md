@@ -1,5 +1,5 @@
 ---
-title: `brandName` Browser Extension | Official Documentation
+title: OpenMetadataBrowser Extension | Official Documentation
 description: Install the browser extension to explore metadata and documentation directly while navigating your data tools.
 slug: /how-to-guides/guide-for-data-users/browser-ext
 ---

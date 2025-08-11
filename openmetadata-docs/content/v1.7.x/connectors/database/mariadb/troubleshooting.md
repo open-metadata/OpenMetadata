@@ -1,5 +1,5 @@
 ---
-title: MariaDB Troubleshooting Guide | `brandName` Support
+title: MariaDB Troubleshooting Guide | OpenMetadataSupport
 description: Resolve MariaDB connector issues including schema drift, access denial, or ingestion configuration errors.
 slug: /connectors/database/mariadb/troubleshooting
 ---

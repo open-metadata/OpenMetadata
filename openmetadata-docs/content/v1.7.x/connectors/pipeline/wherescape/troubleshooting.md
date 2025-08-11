@@ -1,5 +1,5 @@
 ---
-title: Wherescape Connector Troubleshooting Guide | `brandName` Support
+title: Wherescape Connector Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot WhereScape integration problems such as job fetch errors, schema mismatches, or missing lineage.
 slug: /connectors/pipeline/wherescape/troubleshooting
 ---

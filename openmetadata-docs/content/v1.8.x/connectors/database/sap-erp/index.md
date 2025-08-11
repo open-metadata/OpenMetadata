@@ -1,6 +1,6 @@
 ---
 title: SAP ERP Connector | OpenMetadata Enterprise Integration
-description: Connect SAP ERP to `brandName` with our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
+description: Connect SAP ERP to OpenMetadatawith our comprehensive database connector guide. Setup instructions, configuration steps, and metadata extraction tips.
 slug: /connectors/database/sap-erp
 ---
 

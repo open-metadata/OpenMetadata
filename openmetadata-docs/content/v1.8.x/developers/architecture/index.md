@@ -1,5 +1,5 @@
 ---
-title: `brandName` System Architecture | Developer Guide
+title: OpenMetadataSystem Architecture | Developer Guide
 description: Connect Architecture to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /developers/architecture
 ---

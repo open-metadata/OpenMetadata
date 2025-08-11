@@ -1,5 +1,5 @@
 ---
-title: `brandName` UI | Developer Guide & Setup
+title: OpenMetadataUI | Developer Guide & Setup
 description: Build and test the metadata UI locally by setting up this frontend development environment guide.
 slug: /developers/contribute/build-code-and-run-tests/openmetadata-ui
 ---

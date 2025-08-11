@@ -1,5 +1,5 @@
 ---
-title: Snowflake Troubleshooting Guide | `brandName` Support
+title: Snowflake Troubleshooting Guide | OpenMetadataSupport
 description: Fix Snowflake connector issues fast with `brandName`'stroubleshooting guide. Get solutions for common problems, error codes, and connection failures.
 slug: /connectors/database/snowflake/troubleshooting
 ---

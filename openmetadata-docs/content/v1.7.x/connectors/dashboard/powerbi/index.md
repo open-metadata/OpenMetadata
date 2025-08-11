@@ -1,5 +1,5 @@
 ---
-title: PowerBI Connector | `brandName` Integration Documentation
+title: PowerBI Connector | OpenMetadataIntegration Documentation
 slug: /connectors/dashboard/powerbi
 ---
 

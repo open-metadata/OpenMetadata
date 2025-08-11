@@ -1,6 +1,6 @@
 ---
 title: Hive Connector | OpenMetadata Big Data Integration Guide
-description: Connect Apache Hive to `brandName` with our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
+description: Connect Apache Hive to OpenMetadatawith our comprehensive database connector guide. Setup instructions, configuration options, and metadata extraction steps.
 slug: /connectors/database/hive
 ---
 

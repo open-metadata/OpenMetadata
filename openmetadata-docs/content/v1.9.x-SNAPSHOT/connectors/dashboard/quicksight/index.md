@@ -1,6 +1,6 @@
 ---
-title: QuickSight Connector | `brandName` Dashboard Integration
-description: Connect Amazon QuickSight to `brandName` with our comprehensive dashboard connector guide. Step-by-step setup, configuration, and metadata extraction.
+title: QuickSight Connector | OpenMetadataDashboard Integration
+description: Connect Amazon QuickSight to OpenMetadatawith our comprehensive dashboard connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/dashboard/quicksight
 ---
 

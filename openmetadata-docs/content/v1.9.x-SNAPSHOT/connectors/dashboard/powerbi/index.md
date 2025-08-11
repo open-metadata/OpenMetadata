@@ -1,6 +1,6 @@
 ---
-title: PowerBI Connector | `brandName` Integration Documentation
-description: Connect Power BI to `brandName` with our comprehensive dashboard connector guide. Setup instructions, configuration tips, and metadata extraction made simple.
+title: PowerBI Connector | OpenMetadataIntegration Documentation
+description: Connect Power BI to OpenMetadatawith our comprehensive dashboard connector guide. Setup instructions, configuration tips, and metadata extraction made simple.
 slug: /connectors/dashboard/powerbi
 ---
 

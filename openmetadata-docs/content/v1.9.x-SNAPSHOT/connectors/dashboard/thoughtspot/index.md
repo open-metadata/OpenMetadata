@@ -1,5 +1,5 @@
 ---
-title: ThoughtSpot Connector | `brandName` Integration Guide
+title: ThoughtSpot Connector | OpenMetadataIntegration Guide
 description: Learn how to configure and use the ThoughtSpot connector in OpenMetadata. Includes setup, authentication, API access, metadata ingestion, and lineage.
 slug: /connectors/dashboard/thoughtspot
 collate: true

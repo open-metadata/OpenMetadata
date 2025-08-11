@@ -1,6 +1,6 @@
 ---
-title: S3 Datalake Connector | `brandName` Cloud Storage Guide
-description: Connect your S3 data lake to `brandName` with our comprehensive database connector guide. Setup instructions, configuration examples, and best practices included.
+title: S3 Datalake Connector | OpenMetadataCloud Storage Guide
+description: Connect your S3 data lake to OpenMetadatawith our comprehensive database connector guide. Setup instructions, configuration examples, and best practices included.
 slug: /connectors/database/s3-datalake
 ---
 

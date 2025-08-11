@@ -1,6 +1,6 @@
 ---
-title: Kinesis Connector | `brandName` Streaming Integration
-description: Connect Amazon Kinesis to `brandName` with our comprehensive connector guide. Set up real-time streaming data ingestion and metadata extraction easily.
+title: Kinesis Connector | OpenMetadataStreaming Integration
+description: Connect Amazon Kinesis to OpenMetadatawith our comprehensive connector guide. Set up real-time streaming data ingestion and metadata extraction easily.
 slug: /connectors/messaging/kinesis
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Greenplum Troubleshooting Guide | `brandName` Support
+title: Greenplum Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot Greenplum connector issues related to table ingestion, schema parsing, or access errors.
 slug: /connectors/database/greenplum/troubleshooting
 ---

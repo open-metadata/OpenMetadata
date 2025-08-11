@@ -1,5 +1,5 @@
 ---
-title: Search Services | `brandName` Search Integration Guide
+title: Search Services | OpenMetadataSearch Integration Guide
 description: Learn how search connectors work, enabling full-text indexing and discovery across all ingested metadata.
 slug: /connectors/search
 ---

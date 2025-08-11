@@ -1,5 +1,5 @@
 ---
-title: Tests - UI Config | `brandName` Quality Config Guide
+title: Tests - UI Config | OpenMetadataQuality Config Guide
 description: Define UI tests to validate data quality during ingestion and enforce expectations at column or table level.
 slug: /how-to-guides/data-quality-observability/quality/tests-ui
 ---

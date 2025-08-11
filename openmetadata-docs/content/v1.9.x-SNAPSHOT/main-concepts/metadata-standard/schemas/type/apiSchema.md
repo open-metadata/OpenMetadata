@@ -1,5 +1,5 @@
 ---
-title: API Schema | `brandName` API Schema Details
+title: API Schema | OpenMetadataAPI Schema Details
 description: ApiSchema defines request/response structure, parameters, and supported operations for APIs.
 slug: /main-concepts/metadata-standard/schemas/type/apischema
 ---

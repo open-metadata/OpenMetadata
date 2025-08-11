@@ -1,5 +1,5 @@
 ---
-title: Atlas Connector Troubleshooting Guide | `brandName` Support
+title: Atlas Connector Troubleshooting Guide | OpenMetadataSupport
 slug: /connectors/metadata/atlas/troubleshooting
 ---
 

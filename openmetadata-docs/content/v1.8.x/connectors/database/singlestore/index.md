@@ -1,6 +1,6 @@
 ---
 title: SingleStore Connector | OpenMetadata Scalable DB Guide
-description: Learn how to connect SingleStore database to `brandName` with step-by-step setup instructions, configuration options, and metadata extraction guides.
+description: Learn how to connect SingleStore database to OpenMetadatawith step-by-step setup instructions, configuration options, and metadata extraction guides.
 slug: /connectors/database/singlestore
 ---
 

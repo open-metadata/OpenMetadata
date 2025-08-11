@@ -1,5 +1,5 @@
 ---
-title: KafkaConnect Troubleshooting Guide | `brandName` Support
+title: KafkaConnect Troubleshooting Guide | OpenMetadataSupport
 slug: /connectors/pipeline/kafkaconnect/troubleshooting
 ---
 

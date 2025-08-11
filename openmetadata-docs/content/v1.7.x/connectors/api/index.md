@@ -1,6 +1,6 @@
 ---
-title: API Services | `brandName` Connector Integration Guide
-description: Discover `brandName` API connectors to seamlessly integrate your data sources. Complete documentation, setup guides, and examples for all supported APIs.
+title: API Services | OpenMetadataConnector Integration Guide
+description: Discover OpenMetadataAPI connectors to seamlessly integrate your data sources. Complete documentation, setup guides, and examples for all supported APIs.
 slug: /connectors/api
 ---
 

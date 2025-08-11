@@ -1,5 +1,5 @@
 ---
-title: Metadata Connections | `brandName` Metadata
+title: Metadata Connections | OpenMetadataMetadata
 description: Structure metadata service connection types for catalog and discovery tools like Amundsen or Alation.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metadata
 ---

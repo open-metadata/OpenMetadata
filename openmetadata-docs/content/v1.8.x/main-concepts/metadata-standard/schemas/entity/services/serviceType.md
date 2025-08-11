@@ -1,5 +1,5 @@
 ---
-title: Service Type | `brandName` Service Types
+title: Service Type | OpenMetadataService Types
 description: Define service type metadata to classify ingestion source categories such as DB, Dashboard, etc.
 slug: /main-concepts/metadata-standard/schemas/entity/services/servicetype
 noindex: true

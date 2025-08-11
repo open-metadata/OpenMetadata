@@ -1,5 +1,5 @@
 ---
-title: DBT Cloud Troubleshooting Guide | `brandName` Support
+title: DBT Cloud Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot dbt Cloud ingestion for API errors, job sync issues, or metadata gaps.
 slug: /connectors/pipeline/dbtcloud/troubleshooting
 ---

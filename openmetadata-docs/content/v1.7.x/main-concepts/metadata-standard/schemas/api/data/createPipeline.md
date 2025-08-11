@@ -1,5 +1,5 @@
 ---
-title: Create Pipeline API | `brandName` Pipeline API
+title: Create Pipeline API | OpenMetadataPipeline API
 description: Create a pipeline entity to represent data workflows, including tasks, sources, and lineage connections across platforms.
 slug: /main-concepts/metadata-standard/schemas/api/data/createpipeline
 ---

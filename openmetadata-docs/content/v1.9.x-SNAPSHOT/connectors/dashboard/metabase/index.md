@@ -1,6 +1,6 @@
 ---
-title: Metabase Connector | `brandName` Dashboard Integration
-description: Connect Metabase dashboards to `brandName` effortlessly. Complete setup guide, configuration steps, and metadata extraction for seamless integration.
+title: Metabase Connector | OpenMetadataDashboard Integration
+description: Connect Metabase dashboards to OpenMetadataeffortlessly. Complete setup guide, configuration steps, and metadata extraction for seamless integration.
 slug: /connectors/dashboard/metabase
 ---
 

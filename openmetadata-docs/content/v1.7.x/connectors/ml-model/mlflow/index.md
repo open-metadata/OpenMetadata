@@ -1,6 +1,6 @@
 ---
-title: MLflow Connector | `brandName` ML Model Integration
-description: Connect MLflow to `brandName` seamlessly with our comprehensive connector guide. Learn setup, configuration, and ML model metadata integration in minutes.
+title: MLflow Connector | OpenMetadataML Model Integration
+description: Connect MLflow to OpenMetadataseamlessly with our comprehensive connector guide. Learn setup, configuration, and ML model metadata integration in minutes.
 slug: /connectors/ml-model/mlflow
 ---
 

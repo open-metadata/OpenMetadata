@@ -1,5 +1,5 @@
 ---
-title: apiAccessTokenAuth | `brandName` API Access Token Auth
+title: apiAccessTokenAuth | OpenMetadataAPI Access Token Auth
 description: Schema for using API access tokens to authorize external API requests securely without user-based authentication.
 slug: /main-concepts/metadata-standard/schemas/security/credentials/apiaccesstokenauth
 ---

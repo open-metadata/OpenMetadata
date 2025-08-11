@@ -1,5 +1,5 @@
 ---
-title: Connectors | `brandName` Docs for Seamless Data Integration
+title: Connectors | OpenMetadataDocs for Seamless Data Integration
 description: Explore `brandName`'s comprehensive connector library to integrate with databases, dashboards, pipelines, and ML platforms. Easy setup guides included.
 slug: /connectors
 ---

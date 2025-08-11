@@ -1,5 +1,5 @@
 ---
-title: Schemas Index | `brandName` Metadata Schemas Overview
+title: Schemas Index | OpenMetadataMetadata Schemas Overview
 description: Explore `brandName`'scomprehensive schema standards and metadata structures. Learn how to define, manage, and implement data schemas effectively.
 slug: /main-concepts/metadata-standard/schemas
 ---

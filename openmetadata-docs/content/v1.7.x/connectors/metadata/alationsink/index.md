@@ -1,6 +1,6 @@
 ---
-title: Alation Sink | `brandName` Metadata Integration
-description: Connect Alation to `brandName` seamlessly with our AlationSink connector. Complete setup guide, configuration steps, and metadata sync instructions.
+title: Alation Sink | OpenMetadataMetadata Integration
+description: Connect Alation to OpenMetadataseamlessly with our AlationSink connector. Complete setup guide, configuration steps, and metadata sync instructions.
 slug: /connectors/metadata/alationsink
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: ADLS Datalake | `brandName` Database Connector Guide
-description: Connect your Azure Data Lake Storage to `brandName` with our ADLS connector. Simple setup guide, configuration steps, and metadata extraction tips.
+title: ADLS Datalake | OpenMetadataDatabase Connector Guide
+description: Connect your Azure Data Lake Storage to OpenMetadatawith our ADLS connector. Simple setup guide, configuration steps, and metadata extraction tips.
 slug: /connectors/database/adls-datalake
 ---
 

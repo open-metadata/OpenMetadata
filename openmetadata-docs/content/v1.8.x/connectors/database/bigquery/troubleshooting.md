@@ -1,6 +1,6 @@
 ---
-title: BigQuery Troubleshooting Guide | `brandName` Support
-description: Solve BigQuery connector issues in `brandName` with expert troubleshooting guides. Fix connection errors, authentication problems, and data ingestion failures fast.
+title: BigQuery Troubleshooting Guide | OpenMetadataSupport
+description: Solve BigQuery connector issues in OpenMetadatawith expert troubleshooting guides. Fix connection errors, authentication problems, and data ingestion failures fast.
 slug: /connectors/database/bigquery/troubleshooting
 ---
 

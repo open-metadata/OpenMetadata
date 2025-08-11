@@ -1,5 +1,5 @@
 ---
-title: Iceberg DB Connection Schema | `brandName` Service Connections
+title: Iceberg DB Connection Schema | OpenMetadataService Connections
 description: Iceberg table connection schema for tracking schema evolution, partitioning, and storage layer metadata.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/database/iceberg
 ---

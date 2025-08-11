@@ -1,6 +1,6 @@
 ---
 title: Redshift Connector | OpenMetadata AWS Data Warehouse
-description: Connect Amazon Redshift to `brandName` Easily with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata ext...
+description: Connect Amazon Redshift to OpenMetadataEasily with our comprehensive database connector guide. Setup instructions, configuration tips, and metadata ext...
 slug: /connectors/database/redshift
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Glue Pipeline Troubleshooting Guide | `brandName` Support
+title: Glue Pipeline Troubleshooting Guide | OpenMetadataSupport
 description: Troubleshoot Glue pipeline issues by identifying common setup errors, validation failures, and runtime inconsistencies in ingestion workflows.
 slug: /connectors/pipeline/glue-pipeline/troubleshooting
 ---

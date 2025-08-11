@@ -1,6 +1,6 @@
 ---
-title: Tableau Troubleshooting Guide | `brandName` Support
-description: Fix Tableau connector issues in `brandName` with expert troubleshooting guides. Resolve common errors, connection problems, and data ingestion failures fast.
+title: Tableau Troubleshooting Guide | OpenMetadataSupport
+description: Fix Tableau connector issues in OpenMetadatawith expert troubleshooting guides. Resolve common errors, connection problems, and data ingestion failures fast.
 slug: /connectors/dashboard/tableau/troubleshooting
 ---
 

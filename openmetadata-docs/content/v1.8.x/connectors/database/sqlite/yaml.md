@@ -1,6 +1,6 @@
 ---
 title: Run the SQLite Connector Externally
-description: Configure SQLite database connections in `brandName` with YAML. Step-by-step setup guide, configuration examples, and best practices for metadata extraction.
+description: Configure SQLite database connections in OpenMetadatawith YAML. Step-by-step setup guide, configuration examples, and best practices for metadata extraction.
 slug: /connectors/database/sqlite/yaml
 ---
 

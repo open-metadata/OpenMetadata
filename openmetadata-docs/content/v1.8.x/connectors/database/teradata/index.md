@@ -1,6 +1,6 @@
 ---
-title: Teradata Connector | `brandName` Data Warehouse Guide
-description: Connect Teradata databases to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+title: Teradata Connector | OpenMetadataData Warehouse Guide
+description: Connect Teradata databases to OpenMetadatawith our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/teradata
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Messaging Service | `brandName` Messaging Service
+title: Messaging Service | OpenMetadataMessaging Service
 description: Represent messaging service connection configurations and ingestion support for Kafka, Pulsar, etc.
 slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
 ---
