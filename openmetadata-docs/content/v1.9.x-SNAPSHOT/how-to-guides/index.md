@@ -72,6 +72,19 @@ Use LLMs and GenAI agents for automation and intelligent data management within 
 {% /collateContent %}
 {% /tilesContainer %}
 
+## Practical Examples & Test Cases
+
+Get hands-on experience with detailed tutorials and real-world examples that help you implement and troubleshoot common OpenMetadata scenarios.
+
+{% tilesContainer %}
+{% tile
+    title="Ingestion Examples & Test Cases"
+    description="Step-by-step tutorials for configuring connectors, APIs, and profiling with complete examples and troubleshooting guides."
+    link="/how-to-guides/ingestion-examples"
+    icon="ingestion"
+/%}
+{% /tilesContainer %}
+
 ## Quick Start Guides
 
 {% tilesContainer %}

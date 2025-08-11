@@ -1,0 +1,62 @@
+{
+  "source": {
+    "type": "mysql",
+    "serviceName": "mysql_production",
+    "serviceConnection": {
+      "config": {
+        "type": "Mysql",
+        "username": "openmetadata_user",
+        "authType": {
+          "password": "your_mysql_password"
+        },
+        "hostPort": "localhost:3306",
+        "connectionOptions": {
+          "charset": "utf8mb4",
+          "connect_timeout": 30
+        },
+        "connectionArguments": {
+          "ssl_disabled": "true"
+        }
+      }
+    },
+    "sourceConfig": {
+      "config": {
+        "type": "DatabaseMetadata",
+        "schemaFilterPattern": {
+          "includes": ["production_db", "analytics_db"],
+          "excludes": ["test_.*", "temp_.*", "information_schema", "performance_schema", "mysql", "sys"]
+        },
+        "tableFilterPattern": {
+          "includes": [".*"],
+          "excludes": ["tmp_.*", "backup_.*", "archive_.*"]
+        },
+        "includeTables": true,
+        "includeViews": true,
+        "includeTags": true,
+        "markDeletedTables": true,
+        "useFqnForFiltering": false
+      }
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "workflowConfig": {
+    "loggerLevel": "INFO",
+    "openMetadataServerConfig": {
+      "hostPort": "http://localhost:8585/api",
+      "authProvider": "openmetadata",
+      "securityConfig": {
+        "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your-jwt-token-here"
+      },
+      "apiVersion": "v1",
+      "retry": {
+        "enabled": true,
+        "maxRetries": 3,
+        "initialDelay": 1,
+        "maxDelay": 10
+      }
+    }
+  }
+}
