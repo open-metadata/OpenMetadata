@@ -1,6 +1,6 @@
 ---
 title: Run the ADLS Datalake Connector Externally
-description: Configure ADLS Data Lake connections in `brandName` with YAML. Step-by-step setup guide, configuration examples, and best practices for Azure integration.
+description: Configure ADLS Data Lake connections in OpenMetadata with YAML. Step-by-step setup guide, configuration examples, and best practices for Azure integration.
 slug: /connectors/database/adls-datalake/yaml
 ---
 

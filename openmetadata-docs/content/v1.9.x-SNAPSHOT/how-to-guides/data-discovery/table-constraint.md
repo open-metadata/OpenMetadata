@@ -1,6 +1,6 @@
 ---
-title: Managing and Editing Table Constraint in `brandName`
-description: Learn how to view, edit, and manage table constraints in `brandName` to track relationships, enhance lineage, and support data governance.
+title: Managing and Editing Table Constraint in OpenMetadata
+description: Learn how to view, edit, and manage table constraints in OpenMetadata to track relationships, enhance lineage, and support data governance.
 slug: /how-to-guides/data-discovery/table-constraint
 ---
 

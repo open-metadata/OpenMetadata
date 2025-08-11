@@ -1,5 +1,5 @@
 ---
-title: Domo Pipeline | `brandName` Data Pipeline Services
+title: Domo Pipeline | OpenMetadata Data Pipeline Services
 description: Ingest metadata from Domo pipelines to capture ETL flows and integrate with governance and reporting tools.
 slug: /connectors/pipeline/domo-pipeline
 ---
