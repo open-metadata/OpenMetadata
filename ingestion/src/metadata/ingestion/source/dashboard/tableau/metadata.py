@@ -132,16 +132,69 @@ class TableauSource(DashboardServiceSource):
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Iterable[TableauDashboard]:
-        yield from self.client.get_workbooks()
+        """
+        Fetch Tableau dashboards (views with sheetType="dashboard") instead of workbooks.
+        This changes the mapping so that actual Tableau dashboards become OM Dashboards,
+        while Workbooks become containers in the project hierarchy.
+        """
+        for workbook in self.client.get_workbooks():
+            # Fetch data models for the workbook (since views don't have their own data models)
+            workbook_datamodels = self.client.get_datasources(workbook.id)
+            
+            # Get all dashboard views (sheetType="dashboard") from this workbook
+            dashboard_views = [chart for chart in workbook.charts or [] if chart.sheetType == "dashboard"]
+            # Get all non-dashboard views (charts/sheets) from this workbook  
+            chart_views = [chart for chart in workbook.charts or [] if chart.sheetType != "dashboard"]
+            
+            # Create an OM Dashboard for each Tableau dashboard view
+            for dashboard_view in dashboard_views:
+                # Create a TableauDashboard from the dashboard view
+                dashboard_from_view = TableauDashboard(
+                    id=dashboard_view.id,
+                    name=dashboard_view.name,
+                    # Include workbook information in the project hierarchy
+                    project=TableauBaseModel(
+                        id=f"{workbook.project.id}_{workbook.id}",
+                        name=f"{workbook.project.name}/{workbook.name}"
+                    ),
+                    description=None,  # Views don't have descriptions in Tableau API
+                    owner=dashboard_view.owner or workbook.owner,
+                    tags=dashboard_view.tags,
+                    webpageUrl=self._build_dashboard_url_from_view(workbook, dashboard_view),
+                    charts=chart_views,  # Populate with non-dashboard views from the same workbook
+                    user_views=workbook.user_views,  # Use workbook's total views
+                    dataModels=workbook_datamodels,  # Use workbook's data models
+                )
+                yield dashboard_from_view
+
+    def _build_dashboard_url_from_view(self, workbook: TableauDashboard, view: TableauChart) -> str:
+        """
+        Build the dashboard URL for a Tableau view/dashboard
+        """
+        base_url = self.get_base_url()
+        site_url = (
+            f"/site/{self.service_connection.siteName}/"
+            if self.service_connection.siteName
+            else ""
+        )
+        workbook_chart_name = ChartUrl(view.contentUrl)
+        return (
+            f"{clean_uri(str(base_url))}"
+            f"#{site_url}"
+            f"views/{workbook_chart_name.workbook_name}"
+            f"/{workbook_chart_name.chart_url_name}"
+        )
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
 
     def get_dashboard_details(self, dashboard: TableauDashboard) -> TableauDashboard:
         """
-        Get Dashboard Details including the dashboard charts and datamodels
+        Get Dashboard Details. For the new mapping, data models are already populated
+        in get_dashboards_list since they come from the workbook level.
         """
-        dashboard.dataModels = self.client.get_datasources(dashboard.id)
+        # Data models are already populated in get_dashboards_list()
+        # No additional processing needed since dashboard is now a view-based entity
         return dashboard
 
     def get_owner_ref(
@@ -296,9 +349,10 @@ class TableauSource(DashboardServiceSource):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
-        In OM a Dashboard will be a Workbook.
-        The Charts of the Dashboard will all the Views associated to it.
-        The Data Models of the Dashboard will be all the Sheet associated to its.
+        In OM a Dashboard will now be a Tableau Dashboard (view with sheetType="dashboard").
+        The Charts of the Dashboard will be the non-dashboard Views (sheets) associated to the same workbook.
+        The Data Models of the Dashboard will be all the datasources associated to the workbook.
+        Workbooks are now represented in the project hierarchy as containers.
 
         'self.context.dataModels' and 'self.context.charts' are created due to the 'cache_all' option defined in the
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
@@ -769,10 +823,16 @@ class TableauSource(DashboardServiceSource):
         self, dashboard_details: TableauDashboard
     ) -> Iterable[Either[CreateChartRequest]]:
         """
-        Method to fetch charts linked to dashboard
+        Method to fetch charts linked to dashboard.
+        Now that dashboards are actual Tableau dashboards (views with sheetType="dashboard"),
+        the charts are the non-dashboard views (sheets) from the same workbook.
         """
         for chart in dashboard_details.charts or []:
             try:
+                # Skip dashboard views since they are now treated as dashboards themselves
+                if chart.sheetType == "dashboard":
+                    continue
+                    
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
@@ -791,7 +851,7 @@ class TableauSource(DashboardServiceSource):
                     f"/{workbook_chart_name.chart_url_name}"
                 )
 
-                chart = CreateChartRequest(
+                chart_request = CreateChartRequest(
                     name=EntityName(chart.id),
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
@@ -806,7 +866,7 @@ class TableauSource(DashboardServiceSource):
                         self.context.get().dashboard_service
                     ),
                 )
-                yield Either(right=chart)
+                yield Either(right=chart_request)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

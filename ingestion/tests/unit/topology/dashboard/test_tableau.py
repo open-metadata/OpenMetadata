@@ -79,7 +79,8 @@ mock_tableau_config = {
     },
 }
 
-MOCK_DASHBOARD = TableauDashboard(
+# Mock data representing the old workbook-based approach (for some tests that still use it)
+MOCK_WORKBOOK = TableauDashboard(
     id="42a5b706-739d-4d62-94a2-faedf33950a5",
     name="Regional",
     webpageUrl="http://tableauHost.com/#/site/hidarsite/workbooks/897790",
@@ -120,31 +121,53 @@ MOCK_DASHBOARD = TableauDashboard(
     ],
 )
 
+# Mock dashboard representing the new view-based approach - "Obesity" dashboard
+MOCK_DASHBOARD = TableauDashboard(
+    id="b05695a2-d1ea-428e-96b2-858809809da4",  # Now uses the dashboard view ID
+    name="Obesity",  # Dashboard view name
+    webpageUrl="http://tableauHost.com/#/site/hidarsite/views/Regional/Obesity",
+    description=None,  # Views don't have descriptions
+    user_views=10,
+    tags=[],
+    owner=TableauOwner(
+        id="1234", name="Dashboard Owner", email="samplemail@sample.com"
+    ),
+    # Charts now contains only non-dashboard views from the same workbook
+    charts=[
+        TableauChart(
+            id="106ff64d-537b-4534-8140-5d08c586e077",
+            name="College",
+            workbook=TableauBaseModel(id="42a5b706-739d-4d62-94a2-faedf33950a5"),
+            sheetType="view",
+            viewUrlName="College",
+            contentUrl="Regional/sheets/College",
+            tags=[],
+        ),
+    ],
+    # Project now includes workbook info
+    project=TableauBaseModel(
+        id="proj1_42a5b706-739d-4d62-94a2-faedf33950a5", 
+        name="TestProject/Regional"
+    ),
+)
+
 EXPECTED_DASHBOARD = [
     CreateDashboardRequest(
-        name="42a5b706-739d-4d62-94a2-faedf33950a5",
-        displayName="Regional",
-        description="tableau dashboard description",
-        sourceUrl="http://tableauHost.com/#/site/hidarsite/workbooks/897790/views",
+        name="b05695a2-d1ea-428e-96b2-858809809da4",  # Now uses dashboard view ID
+        displayName="Obesity",  # Dashboard view name
+        description=None,  # Views don't have descriptions
+        sourceUrl="http://tableauHost.com/#/site/hidarsite/views/Regional/Obesity",
         charts=[],
         tags=[],
         owners=None,
         service=FullyQualifiedEntityName("tableau_source_test"),
         extension=None,
+        project="TestProject/Regional",  # Now includes workbook in project hierarchy
     )
 ]
 
+# Expected charts are now only the non-dashboard views
 EXPECTED_CHARTS = [
-    CreateChartRequest(
-        name="b05695a2-d1ea-428e-96b2-858809809da4",
-        displayName="Obesity",
-        description=None,
-        chartType="Other",
-        sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/Obesity",
-        tags=None,
-        owners=None,
-        service=FullyQualifiedEntityName("tableau_source_test"),
-    ),
     CreateChartRequest(
         name="106ff64d-537b-4534-8140-5d08c586e077",
         displayName="College",
@@ -155,16 +178,7 @@ EXPECTED_CHARTS = [
         owners=None,
         service=FullyQualifiedEntityName("tableau_source_test"),
     ),
-    CreateChartRequest(
-        name="c1493abc-9057-4bdf-9061-c6d2908e4eaa",
-        displayName="Global Temperatures",
-        description=None,
-        chartType="Other",
-        sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/GlobalTemperatures",
-        tags=None,
-        owners=None,
-        service=FullyQualifiedEntityName("tableau_source_test"),
-    ),
+    # Note: "Obesity" and "Global Temperatures" are no longer charts - they are dashboards
 ]
 
 
