@@ -1,6 +1,7 @@
 {% connectorsListContainer %}
 
 {% connectorInfoCard name="Domo" stage="PROD" href="/connectors/dashboard/domo-dashboard" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Grafana" stage="BETA" href="/connectors/dashboard/grafana" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Lightdash" stage="PROD" href="/connectors/dashboard/lightdash" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Looker" stage="PROD" href="/connectors/dashboard/looker" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Metabase" stage="PROD" href="/connectors/dashboard/metabase" platform="OpenMetadata" / %}
