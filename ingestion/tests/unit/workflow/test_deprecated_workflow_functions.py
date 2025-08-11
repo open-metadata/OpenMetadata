@@ -11,7 +11,7 @@
 """
 Validate the deprecated functions still work.
 """
-from metadata.workflow.workflow_output_handler import print_init_error
+from metadata.workflow.workflow_output_handler import print_init_error, print_status
 
 from .test_base_workflow import SimpleWorkflow, config
 
@@ -21,7 +21,7 @@ class TestDeprecatedSimpleWorkflow:
     def test_workflow_print_status(self):
         workflow = SimpleWorkflow(config=config)
         workflow.execute()
-        workflow.print_status(workflow)
+        print_status(workflow)
 
     def test_workflow_print_init_error(self):
         print_init_error(Exception(), config.model_dump())
