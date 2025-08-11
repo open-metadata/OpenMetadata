@@ -151,6 +151,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
@@ -191,8 +192,8 @@ COL_DESCRIPTION = "Description"
 NUM_SERVICES = 1
 DATABASES_PER_SERVICE = 5
 SCHEMAS_PER_DATABASE = 5
-TABLES_PER_SCHEMA = 10
-COLUMNS_PER_TABLE = 50
+TABLES_PER_SCHEMA = 3000
+COLUMNS_PER_TABLE = 2000
 NUM_THREADS = 10
 BATCH_SIZE = 10
 COLUMNS = [
@@ -2490,9 +2491,23 @@ class SampleDataSource(
 
             # Create with minimal required fields
             try:
+                owner = self.metadata.get_by_name(User, "admin")
                 table_request = Either(
                     right=CreateTableRequest(
-                        name=table_name, databaseSchema=schema_fqn, columns=COLUMNS
+                        name=table_name,
+                        databaseSchema=schema_fqn,
+                        columns=COLUMNS,
+                        description=random.choice(
+                            [f"This is {table_name} description.", None]
+                        ),
+                        owners=random.choice(
+                            [
+                                EntityReferenceList(
+                                    [EntityReference(id=owner.id, type="user")]
+                                ),
+                                None,
+                            ] 
+                        ) if owner else None,
                     )
                 )
                 yield table_request
