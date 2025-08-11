@@ -91,6 +91,7 @@ export enum GlobalSettingOptions {
   SEARCH_SETTINGS = 'search-settings',
   DOMAINS = 'domains',
   ONLINE_USERS = 'online-users',
+  CHARTS = 'charts',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -295,5 +296,9 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.METRICS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
+  ],
+  [GlobalSettingOptions.CHARTS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CHARTS}`,
   ],
 };

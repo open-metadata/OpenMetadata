@@ -36,7 +36,9 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
       <div className="header-theme-container p-box bg-white">
         <CustomiseLandingPageHeader
           hideCustomiseButton
+          isPreviewHeader
           backgroundColor={selectedColor}
+          dataTestId="modal-header-theme"
         />
       </div>
       <div className="select-background-container">
@@ -48,6 +50,7 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
             {headerBackgroundColors.map((value) => (
               <Button
                 className="option-color-container cursor-pointer"
+                data-testid="option-color"
                 key={value.color}
                 style={{
                   backgroundColor: value.color,
@@ -58,7 +61,6 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
                   className={`option-color w-full h-full ${
                     selectedColor === value.color ? 'white-border' : ''
                   }`}
-                  data-testid="option-color"
                 />
               </Button>
             ))}

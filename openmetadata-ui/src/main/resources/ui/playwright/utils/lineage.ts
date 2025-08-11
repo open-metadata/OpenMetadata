@@ -27,7 +27,6 @@ import { TopicClass } from '../support/entity/TopicClass';
 import {
   getApiContext,
   getEntityTypeSearchIndexMapping,
-  redirectToHomePage,
   toastNotification,
 } from './common';
 import { parseCSV } from './entityImport';
@@ -197,6 +196,8 @@ export const connectEdgeBetweenNodes = async (
   await dragAndDropNode(page, source, target);
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
+
+  await page.waitForLoadState('networkidle');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*&from=0&size=10&*`
@@ -502,8 +503,7 @@ export const addPipelineBetweenNodes = async (
   pipelineItem?: PipelineClass,
   bVerifyPipeline = false
 ) => {
-  await redirectToHomePage(page);
-  await sourceEntity.visitEntityPageWithCustomSearchBox(page);
+  await sourceEntity.visitEntityPage(page);
   await visitLineageTab(page);
   await editLineage(page);
 

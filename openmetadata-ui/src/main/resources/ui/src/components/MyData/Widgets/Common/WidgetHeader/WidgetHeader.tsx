@@ -33,6 +33,7 @@ export interface WidgetHeaderProps {
   isEditView?: boolean;
   onEditClick?: () => void;
   onSortChange?: (key: string) => void;
+  onTitleClick?: () => void;
   selectedSortBy?: string;
   sortOptions?: Array<{
     key: string;
@@ -53,6 +54,7 @@ const WidgetHeader = ({
   isEditView = false,
   onEditClick,
   onSortChange,
+  onTitleClick,
   selectedSortBy,
   sortOptions,
   title,
@@ -89,14 +91,16 @@ const WidgetHeader = ({
       data-testid="widget-header"
       justify="space-between">
       <Col className="d-flex items-center h-full min-h-8">
-        {icon && <div className="d-flex h-6 w-6 m-r-xs">{icon}</div>}
-
+        {icon && (
+          <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
+        )}
         <Typography.Paragraph
-          className="widget-title"
+          className="widget-title cursor-pointer"
           ellipsis={{ tooltip: true }}
           style={{
             maxWidth: widgetWidth === 1 ? '200px' : '525px',
-          }}>
+          }}
+          onClick={onTitleClick}>
           {title}
         </Typography.Paragraph>
       </Col>

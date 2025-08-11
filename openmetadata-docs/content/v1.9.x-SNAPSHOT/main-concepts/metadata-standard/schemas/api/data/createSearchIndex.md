@@ -1,5 +1,5 @@
 ---
-title: Create Search Index | OpenMetadata Search API
+title: Create Search Index | `brandName` Search API
 description: Create a search index entity to index specific fields or documents, enabling efficient and accurate metadata search functionality.
 slug: /main-concepts/metadata-standard/schemas/api/data/createsearchindex
 ---

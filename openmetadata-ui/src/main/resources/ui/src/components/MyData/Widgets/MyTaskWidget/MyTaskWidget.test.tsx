@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import {
   TaskType,
   Thread,
@@ -32,6 +33,10 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
 jest.mock('../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New', () =>
   jest.fn().mockImplementation(() => <div>FeedPanelBodyV1New</div>)
 );
+
+jest.mock('../../../AppRouter/withActivityFeed', () => ({
+  withActivityFeed: jest.fn().mockImplementation((Component) => Component),
+}));
 
 const mockProps = {
   isEditView: false,
@@ -129,7 +134,7 @@ describe('MyTaskWidget', () => {
   it('renders widget wrapper', () => {
     renderMyTaskWidget();
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.MyTask')).toBeInTheDocument();
   });
 
   it('calls getFeedData on mount with correct parameters', () => {
@@ -142,12 +147,13 @@ describe('MyTaskWidget', () => {
     renderMyTaskWidget();
 
     expect(mockGetFeedData).toHaveBeenCalledWith(
-      'OWNER',
+      'OWNER_OR_FOLLOWS',
       undefined,
       'Task',
       undefined,
       undefined,
-      'Open'
+      undefined,
+      PAGE_SIZE_MEDIUM
     );
   });
 });

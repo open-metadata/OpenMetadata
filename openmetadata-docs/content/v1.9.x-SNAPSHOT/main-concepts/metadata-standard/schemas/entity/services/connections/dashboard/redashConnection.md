@@ -1,5 +1,6 @@
 ---
 title: Redash Connection | OpenMetadata Redash Connection Setup
+description: Configure Redash dashboard connections to extract visual metadata and support seamless integration into the metadata platform.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/redashconnection
 ---
 

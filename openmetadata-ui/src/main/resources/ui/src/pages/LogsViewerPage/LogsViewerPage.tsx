@@ -217,13 +217,17 @@ const LogsViewerPage = () => {
     }
   }, []);
 
-  const handleScroll = (event: Event) => {
-    const targetElement = event.target as HTMLDivElement;
-
-    const scrollTop = targetElement.scrollTop;
-    const scrollHeight = targetElement.scrollHeight;
-    const clientHeight = targetElement.clientHeight;
-    const isBottom = clientHeight + scrollTop === scrollHeight;
+  const handleScroll = (scrollValues: {
+    scrollTop: number;
+    scrollHeight: number;
+    clientHeight: number;
+  }) => {
+    const scrollTop = scrollValues.scrollTop;
+    const scrollHeight = scrollValues.scrollHeight;
+    const clientHeight = scrollValues.clientHeight;
+    // Fetch more logs when user is at the bottom of the log
+    // with a margin of about 40px (approximate height of one line)
+    const isBottom = Math.abs(clientHeight + scrollTop - scrollHeight) < 40;
 
     if (
       !isLogsLoading &&
@@ -237,20 +241,6 @@ const LogsViewerPage = () => {
 
     return;
   };
-
-  useLayoutEffect(() => {
-    const logBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
-
-    if (logBody) {
-      logBody.addEventListener('scroll', handleScroll, { passive: true });
-    }
-
-    return () => {
-      logBody && logBody.removeEventListener('scroll', handleScroll);
-    };
-  });
 
   useLayoutEffect(() => {
     const lazyLogSearchBarInput = document.getElementsByClassName(
@@ -456,6 +446,7 @@ const LogsViewerPage = () => {
                     extraLines={1} // 1 is to be add so that linux users can see last line of the log
                     ref={lazyLogRef}
                     text={logs}
+                    onScroll={handleScroll}
                   />
                 </Col>
               </Row>

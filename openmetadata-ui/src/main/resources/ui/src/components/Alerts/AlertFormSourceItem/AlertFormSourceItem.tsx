@@ -44,7 +44,7 @@ function AlertFormSourceItem({
     () =>
       getSourceOptionsFromResourceList(
         (filterResources ?? []).map((r) => r.name ?? ''),
-        undefined,
+        false,
         undefined,
         true
       ),

@@ -26,6 +26,16 @@ Please follow the instructions below
 - **Dashboard Filter Pattern (Optional)**: Use it to control whether to include dashboard as part of metadata ingestion.
   - **Include**: Explicitly include dashboards by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be excluded.
   - **Exclude**: Explicitly exclude dashboards by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all dashboards with names matching one or more of the supplied regular expressions. All other dashboards will be included.
+- **projectFilterPattern**: Filter the dashboards, charts and data sources by projects. Note that all of them support regex as include or exclude. E.g., "My project, My proj.*, .*Project".
+
+{% note %} 
+
+We filter the projects by concatenating the entire project hierarchy using dot notation  
+(e.g., `Project1.NestedProjectA.OtherProject`).  
+Make sure the regex filter pattern accounts for this fully-qualified format.
+
+{% /note %}
+
 - **Chart Pattern (Optional)**: Use it to control whether to include charts as part of metadata ingestion.
   - **Include**: Explicitly include charts by adding a list of comma-separated regular expressions to the 'Include' field. OpenMetadata will include all charts with names matching one or more of the supplied regular expressions. All other charts will be excluded.
   - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the 'Exclude' field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.

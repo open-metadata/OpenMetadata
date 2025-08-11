@@ -59,14 +59,8 @@ export const CustomizablePage = () => {
   const { theme } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
-  const {
-    document,
-    setDocument,
-    getNavigation,
-    currentPage,
-    getPage,
-    setCurrentPageType,
-  } = useCustomizeStore();
+  const { document, setDocument, currentPage, getPage, setCurrentPageType } =
+    useCustomizeStore();
 
   const backgroundColor = useMemo(
     () =>
@@ -323,12 +317,7 @@ export const CustomizablePage = () => {
 
   switch (pageFqn) {
     case 'navigation':
-      return (
-        <SettingsNavigationPage
-          currentNavigation={getNavigation()}
-          onSave={handleNavigationSave}
-        />
-      );
+      return <SettingsNavigationPage onSave={handleNavigationSave} />;
 
     case PageType.LandingPage:
     case 'homepage':
@@ -374,6 +363,7 @@ export const CustomizablePage = () => {
     case PageType.MlModel:
     case PageType.APIEndpoint:
     case PageType.APICollection:
+    case PageType.Chart:
       return (
         <CustomizeDetailsPage
           initialPageData={currentPage}

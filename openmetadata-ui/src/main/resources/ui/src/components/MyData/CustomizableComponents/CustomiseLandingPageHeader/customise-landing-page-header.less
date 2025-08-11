@@ -12,13 +12,88 @@
  */
 @import (reference) url('../../../../styles/variables.less');
 
-.customise-landing-page {
+.customise-landing-page-header {
   margin: 0;
   padding: @padding-mlg;
   border-radius: @border-rad-lg;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+
+  // Carousel styles
+  .ant-carousel {
+    max-height: 125px;
+    width: 100%;
+    margin-bottom: @size-xl;
+    padding-bottom: @padding-xss;
+
+    .slick-slide {
+      vertical-align: top;
+      padding: 0 @padding-xs;
+    }
+
+    .slick-arrow {
+      color: @white;
+      font-size: @size-lg;
+      z-index: 10;
+      width: 32px;
+      height: 32px;
+      background-color: rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        color: @white;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      &.slick-prev {
+        left: -@size-lg;
+      }
+
+      &.slick-next {
+        right: -@size-lg;
+      }
+
+      &::before {
+        color: @white;
+        font-size: @size-lg;
+      }
+    }
+  }
+
+  .recently-viewed-data-carousel {
+    max-height: 125px;
+    .slick-dots {
+      bottom: -@size-sm !important;
+    }
+  }
+
+  .slick-list-center {
+    .slick-list {
+      max-height: 125px;
+    }
+  }
+
+  .search-input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 1px solid @grey-25;
+    border-radius: @border-rad-sm;
+    background: @white;
+    padding: @padding-xs @padding-sm;
+
+    .ant-popover-inner {
+      border-radius: @border-rad-sm;
+    }
+  }
+
+  .disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 }
 
 .landing-page-header-bg {
@@ -72,24 +147,10 @@
     background-color: transparent;
     border: 1px solid @grey-25;
   }
-
-  .disabled {
-    cursor: not-allowed;
-    pointer-events: none;
-  }
 }
 
 .customise-search-container {
   width: 100%;
-}
-
-.search-input {
-  min-width: 0;
-  flex: 1 1 auto;
-  border: 1px solid @grey-25;
-  border-radius: @border-rad-sm;
-  background: @white;
-  padding: @padding-xs @padding-sm;
 }
 
 .domain-selector {
@@ -108,62 +169,14 @@
     color: @grey-700;
   }
 
-  &.disabled {
-    cursor: not-allowed;
-  }
-
   &:hover {
     background-color: @grey-25;
   }
 }
 
-// Carousel styles
-.ant-carousel {
-  max-height: 125px;
-  width: 100%;
-  margin-bottom: @size-xl;
-  padding-bottom: @padding-xss;
-
-  .slick-slide {
-    vertical-align: top;
-    padding: 0 @padding-xs;
-  }
-
-  .slick-arrow {
-    color: @white;
-    font-size: @size-lg;
-    z-index: 10;
-    width: 32px;
-    height: 32px;
-    background-color: rgba(0, 0, 0, 0.3);
-    border-radius: 50%;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      color: @white;
-      background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    &.slick-prev {
-      left: -@size-lg;
-    }
-
-    &.slick-next {
-      right: -@size-lg;
-    }
-
-    &::before {
-      color: @white;
-      font-size: @size-lg;
-    }
-  }
-}
-
 .custom-arrow {
   position: absolute;
-  top: 50%;
+  top: 40%;
   transform: translateY(-50%);
   width: @size-xl;
   height: @size-xl;
@@ -189,19 +202,6 @@
 .left-arrow {
   left: -@size-xl;
   transform: translateY(-50%) rotate(180deg);
-}
-
-.recently-viewed-data-carousel {
-  max-height: 125px;
-  .slick-dots {
-    bottom: -@size-sm !important;
-  }
-}
-
-.slick-list-center {
-  .slick-list {
-    max-height: 125px;
-  }
 }
 
 .customise-recently-viewed-data {

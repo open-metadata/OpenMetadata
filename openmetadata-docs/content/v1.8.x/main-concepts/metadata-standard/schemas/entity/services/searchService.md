@@ -1,5 +1,6 @@
 ---
-title: Search Service | OpenMetadata Search Service
+title: Search Service | `brandName` Search Service
+description: Capture search service metadata to ingest and manage full-text indexes and search connectors.
 slug: /main-concepts/metadata-standard/schemas/entity/services/searchservice
 ---
 

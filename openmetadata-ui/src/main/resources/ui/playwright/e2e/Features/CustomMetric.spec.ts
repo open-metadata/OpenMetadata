@@ -36,7 +36,7 @@ test('Table custom metric', async ({ page }) => {
     const profilerResponse = page.waitForResponse(
       `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest?includeColumnProfile=false`
     );
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
 
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
@@ -77,7 +77,7 @@ test('Column custom metric', async ({ page }) => {
     const profilerResponse = page.waitForResponse(
       `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest?includeColumnProfile=false`
     );
-    await table.visitEntityPageWithCustomSearchBox(page);
+    await table.visitEntityPage(page);
     await page.click('[data-testid="profiler"]');
     await profilerResponse;
     await page.waitForTimeout(1000);

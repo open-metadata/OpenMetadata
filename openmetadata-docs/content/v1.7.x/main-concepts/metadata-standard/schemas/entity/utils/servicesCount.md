@@ -1,5 +1,6 @@
 ---
-title: servicesCount | OpenMetadata Service Count
+title: servicesCount | `brandName` Service Count
+description: Display service counts by type across metadata to track ingestion sources and platform scope.
 slug: /main-concepts/metadata-standard/schemas/entity/utils/servicescount
 ---
 

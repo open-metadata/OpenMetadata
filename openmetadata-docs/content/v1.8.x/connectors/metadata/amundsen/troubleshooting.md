@@ -1,5 +1,5 @@
 ---
-title: Amundsen Connector Troubleshooting Guide | OpenMetadata Support
+title: Amundsen Connector Troubleshooting Guide | `brandName` Support
 slug: /connectors/metadata/amundsen/troubleshooting
 ---
 

@@ -22,6 +22,7 @@ import { EmptyWidgetPlaceholderV1Props } from './EmptyWidgetPlaceholderV1.interf
 function EmptyWidgetPlaceholderV1({
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
+  personaName,
   widgetKey,
 }: Readonly<EmptyWidgetPlaceholderV1Props>) {
   const { t } = useTranslation();
@@ -37,7 +38,9 @@ function EmptyWidgetPlaceholderV1({
         {t('label.add-new-widget-plural')}
       </Typography.Title>
       <Typography.Text className="add-widgets-description">
-        {t('message.tailor-experience-for-persona')}
+        {t('message.tailor-experience-for-persona', {
+          persona: personaName,
+        })}
       </Typography.Text>
       <Button
         className="add-widgets-button"
@@ -53,7 +56,7 @@ function EmptyWidgetPlaceholderV1({
   return (
     <WidgetWrapper
       className="empty-widget-placeholder-v1"
-      data-testid={widgetKey}>
+      dataTestId={widgetKey}>
       {widgetContent}
     </WidgetWrapper>
   );

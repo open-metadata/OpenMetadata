@@ -45,6 +45,9 @@ import {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
+  contextOptions: {
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
 });
 
 const glossaryDetails = {
@@ -137,7 +140,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database service details', async () => {
-      await dbService.visitEntityPageWithCustomSearchBox(page);
+      await dbService.visitEntityPage(page);
 
       const downloadPromise = page.waitForEvent('download');
 
@@ -398,7 +401,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database details', async () => {
-      await dbEntity.visitEntityPageWithCustomSearchBox(page);
+      await dbEntity.visitEntityPage(page);
 
       const downloadPromise = page.waitForEvent('download');
 
@@ -607,7 +610,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('should export data database schema details', async () => {
-      await dbSchemaEntity.visitEntityPageWithCustomSearchBox(page);
+      await dbSchemaEntity.visitEntityPage(page);
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
@@ -781,7 +784,7 @@ test.describe('Bulk Import Export', () => {
     await tableEntity.create(apiContext);
 
     await test.step('should export data table details', async () => {
-      await tableEntity.visitEntityPageWithCustomSearchBox(page);
+      await tableEntity.visitEntityPage(page);
 
       const downloadPromise = page.waitForEvent('download');
 
@@ -875,7 +878,9 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test('Range selection', async ({ page }) => {
+  // Skip this test for now, since it is not working in AUT but working in local and CI
+  // <Mostly around the config since it is working in local and CI and not working in AUT>
+  test.skip('Range selection', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
 
