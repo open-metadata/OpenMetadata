@@ -25,28 +25,28 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.TemplateValidationResponse;
@@ -57,16 +57,13 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.email.DefaultTemplateProvider;
 
 @Slf4j
 @Path("/v1/docStore")
@@ -76,6 +73,7 @@ import org.openmetadata.service.util.email.DefaultTemplateProvider;
 @Collection(name = "knowledgePanel", order = 2)
 public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
   public static final String COLLECTION_PATH = "/v1/docStore";
+  private DocStoreMapper mapper;
 
   @Override
   public Document addHref(UriInfo uriInfo, Document doc) {
@@ -91,6 +89,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
 
   public DocStoreResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOCUMENT, authorizer, limits);
+    this.mapper = new DocStoreMapper(authorizer);
   }
 
   public static class DocumentList extends ResultList<Document> {
@@ -127,8 +126,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(
               description = "Limit the number of personas returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
-          @Min(0)
-          @Max(1000000)
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam,
       @Parameter(
@@ -301,7 +300,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = getDocument(cd, securityContext);
+    Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, doc);
   }
 
@@ -324,7 +323,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = getDocument(cd, securityContext);
+    Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, doc);
   }
 
@@ -435,6 +434,25 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDocumentAsync",
+      summary = "Asynchronously delete a Document by id",
+      description = "Asynchronously delete a Document by given `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Document for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDocumentByName",
@@ -488,25 +506,5 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
           .entity("Seed Data init failed: " + e.getMessage())
           .build();
     }
-  }
-
-  private Document getDocument(CreateDocument cd, SecurityContext securityContext) {
-    // Validate email template
-    if (cd.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-      // Only Admins Can do these operations
-      authorizer.authorizeAdmin(securityContext);
-      String content = JsonUtils.convertValue(cd.getData(), EmailTemplate.class).getTemplate();
-      TemplateValidationResponse validationResp =
-          repository.validateEmailTemplate(cd.getName(), content);
-      if (Boolean.FALSE.equals(validationResp.getIsValid())) {
-        throw new CustomExceptionMessage(
-            Response.status(400).entity(validationResp).build(), validationResp.getMessage());
-      }
-    }
-    return repository
-        .copy(new Document(), cd, securityContext.getUserPrincipal().getName())
-        .withFullyQualifiedName(cd.getFullyQualifiedName())
-        .withData(cd.getData())
-        .withEntityType(cd.getEntityType());
   }
 }

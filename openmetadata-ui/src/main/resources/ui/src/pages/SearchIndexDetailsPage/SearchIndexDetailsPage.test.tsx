@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -109,7 +108,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'fields' })),
-  useHistory: jest.fn().mockImplementation(() => ({})),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -153,7 +152,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
       fields:
-        'fields,followers,tags,owners,domain,votes,dataProducts,extension',
+        'fields,followers,tags,owners,domains,votes,dataProducts,extension',
     });
   });
 
@@ -170,7 +169,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
       fields:
-        'fields,followers,tags,owners,domain,votes,dataProducts,extension',
+        'fields,followers,tags,owners,domains,votes,dataProducts,extension',
     });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -201,7 +200,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith('fqn', {
       fields:
-        'fields,followers,tags,owners,domain,votes,dataProducts,extension',
+        'fields,followers,tags,owners,domains,votes,dataProducts,extension',
     });
 
     expect(

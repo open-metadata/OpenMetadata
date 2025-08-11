@@ -12,6 +12,7 @@
  */
 
 import { upperFirst } from 'lodash';
+import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import { getEntityStatsData } from './ApplicationUtils';
 import {
   MOCK_APPLICATION_ENTITY_STATS,
@@ -20,13 +21,16 @@ import {
 
 describe('ApplicationUtils tests', () => {
   it('getEntityStatsData should return stats data in array', () => {
-    const resultData = getEntityStatsData(MOCK_APPLICATION_ENTITY_STATS);
-
-    expect(resultData).toEqual(
-      MOCK_APPLICATION_ENTITY_STATS_DATA.map((data) => ({
-        ...data,
-        name: upperFirst(data.name),
-      }))
+    const resultData = getEntityStatsData(
+      MOCK_APPLICATION_ENTITY_STATS as unknown as EntityStats
     );
+
+    const sortedMockData = MOCK_APPLICATION_ENTITY_STATS_DATA.map((data) => ({
+      ...data,
+      name: upperFirst(data.name),
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    // Verify the result matches the sorted mock data
+    expect(resultData).toEqual(sortedMockData);
   });
 });

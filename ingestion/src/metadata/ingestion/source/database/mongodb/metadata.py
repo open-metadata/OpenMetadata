@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,7 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 from pymongo.errors import OperationFailure
 
@@ -28,6 +28,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
+    TableNameAndType,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -68,14 +69,18 @@ class MongodbSource(CommonNoSQLSource):
             logger.debug(traceback.format_exc())
         return []
 
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         need to be overridden by sources
         """
         try:
             database = self.mongodb.get_database(schema_name)
-            return database.list_collection_names()
+            return [
+                TableNameAndType(name=name) for name in database.list_collection_names()
+            ]
         except Exception as exp:
             logger.debug(
                 f"Failed to list collection names for schema [{schema_name}]: {exp}"

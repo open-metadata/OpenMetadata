@@ -11,20 +11,16 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { Change, diffWordsWithSpace } from 'diff';
-import i18Next from 'i18next';
+import { Change, diffLines } from 'diff';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
-import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
+import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
+import { ReactComponent as CloseIcon } from '../assets/svg/ic-close-circle.svg';
+import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getUserPath,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
@@ -53,7 +49,7 @@ import { TaskType, Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { IncidentManagerTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import {
   EntityData,
   Option,
@@ -92,9 +88,16 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
 import { getEntityFQN, getEntityType } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
+import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
-import { getIncidentManagerDetailPagePath } from './RouterUtils';
+import {
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
+  getServiceDetailsPath,
+  getTestCaseDetailPagePath,
+  getUserPath,
+} from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -185,10 +188,7 @@ export const getTaskDetailPath = (task: Thread) => {
   const entityType = getEntityType(task.about) ?? '';
 
   if (entityType === EntityType.TEST_CASE) {
-    return getIncidentManagerDetailPagePath(
-      entityFqn,
-      IncidentManagerTabs.ISSUES
-    );
+    return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
   } else if (entityType === EntityType.USER) {
     return getUserPath(
       entityFqn,
@@ -217,7 +217,7 @@ export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
 ): Change[] => {
-  return diffWordsWithSpace(oldValue, newValue);
+  return diffLines(oldValue, newValue);
 };
 
 export const fetchOptions = ({
@@ -348,6 +348,7 @@ export const TASK_ENTITIES = [
   EntityType.PIPELINE,
   EntityType.MLMODEL,
   EntityType.CONTAINER,
+  EntityType.DATABASE,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.STORED_PROCEDURE,
@@ -491,7 +492,7 @@ export const getBreadCrumbList = (
     case EntityType.METRIC: {
       return [
         {
-          name: i18Next.t('label.metric-plural'),
+          name: t('label.metric-plural'),
           url: ROUTES.METRICS,
         },
         {
@@ -685,7 +686,7 @@ export const fetchEntityDetail = (
 
 export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
   {
-    label: i18Next.t('label.close'),
+    label: t('label.close'),
     key: TaskActionMode.CLOSE,
     icon: CancelColored,
   },
@@ -693,39 +694,45 @@ export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
 
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.accept-suggestion'),
+    label: t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
-    icon: SuccessColored,
+    icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.edit-amp-accept-suggestion'),
+    label: t('label.edit-suggestion'),
     key: TaskActionMode.EDIT,
-    icon: EditColored,
+    icon: EditSuggestionIcon,
   },
-  ...TASK_ACTION_COMMON_ITEM,
+  {
+    label: t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CloseIcon,
+  },
 ];
 
 export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.approve'),
+    label: t('label.approve'),
     key: TaskActionMode.RESOLVE,
-    icon: SuccessColored,
+    icon: CheckIcon,
   },
   {
-    label: i18Next.t('label.reject'),
+    label: t('label.reject'),
     key: TaskActionMode.CLOSE,
-    icon: CancelColored,
+    icon: CloseIcon,
   },
 ];
 
 export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.re-assign'),
+    label: t('label.re-assign'),
     key: TaskActionMode.RE_ASSIGN,
+    icon: EditSuggestionIcon,
   },
   {
-    label: i18Next.t('label.resolve'),
+    label: t('label.resolve'),
     key: TaskActionMode.RESOLVE,
+    icon: CloseIcon,
   },
 ];
 

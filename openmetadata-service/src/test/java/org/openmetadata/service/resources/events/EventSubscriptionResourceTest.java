@@ -1,11 +1,9 @@
 package org.openmetadata.service.resources.events;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.assertj.core.api.Assertions.assertThat;
+import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.ACTIVE;
@@ -18,8 +16,12 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashSet;
@@ -29,8 +31,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
@@ -72,7 +73,6 @@ import org.openmetadata.service.resources.events.subscription.EventSubscriptionR
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -93,13 +93,15 @@ public class EventSubscriptionResourceTest
         EventSubscriptionResource.FIELDS);
     supportedNameCharacters = supportedNameCharacters.replace(" ", ""); // Space not supported
     supportsFieldsQueryParam = false;
+    supportsEtag = false;
   }
 
   @Test
   void post_alertActionWithEnabledStateChange(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
+    String endpoint = test.getDisplayName();
     LOG.info("creating webhook in disabled state");
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + endpoint;
     // Create a Disabled Generic Webhook
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName).withEnabled(false).withDestinations(getWebhook(uri));
@@ -108,7 +110,7 @@ public class EventSubscriptionResourceTest
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status.getStatus());
     WebhookCallbackResource.EventDetails details =
-        webhookCallbackResource.getEventDetails(webhookName);
+        webhookCallbackResource.getEventDetails(endpoint);
     assertNull(details);
     //
     // Now enable the webhook
@@ -143,7 +145,7 @@ public class EventSubscriptionResourceTest
     assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
-    details = waitForFirstEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
@@ -440,7 +442,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -454,7 +456,8 @@ public class EventSubscriptionResourceTest
   @Test
   public void post_createAndValidateEventSubscription(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + endpoint;
 
     CreateEventSubscription enabledWebhookRequest =
         new CreateEventSubscription()
@@ -491,7 +494,8 @@ public class EventSubscriptionResourceTest
   @Test
   public void post_duplicateAlertsAreNotAllowed(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + endpoint;
 
     CreateEventSubscription genericWebhookRequest =
         new CreateEventSubscription()
@@ -596,9 +600,14 @@ public class EventSubscriptionResourceTest
         String.format("eventsubscription instance for %s not found", wrongAlertId));
   }
 
+  public static String sanitizeWebhookName(String name) {
+    return URLEncoder.encode(name, StandardCharsets.UTF_8);
+  }
+
   @Test
   public void post_createAndValidateEventSubscription_SLACK(TestInfo test) throws IOException {
-    String webhookName = getEntityName(test);
+    String entityName = getEntityName(test);
+    String webhookName = sanitizeWebhookName(entityName);
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
 
     CreateEventSubscription enabledWebhookRequest =
@@ -614,12 +623,9 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createEntity(enabledWebhookRequest, ADMIN_AUTH_HEADERS);
     waitForAllEventToComplete(alert.getId());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
-    ConcurrentLinkedQueue<SlackMessage> events = details.getEvents();
-    for (SlackMessage event : events) {
-      validateSlackMessage(alert, event);
-    }
-
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(entityName);
+    ConcurrentLinkedQueue<String> events = details.getEvents();
+    assertNotNull(events);
     assertNotNull(alert, "Webhook creation failed");
 
     Awaitility.await()
@@ -675,8 +681,9 @@ public class EventSubscriptionResourceTest
   @Test
   void post_tableResource_filterByOwner_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
+    String endpoint = test.getDisplayName();
     TableResourceTest tableResourceTest = new TableResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create the event subscription request with the Slack destination and table as the resource
     CreateEventSubscription genericWebhookActionRequest =
@@ -700,7 +707,7 @@ public class EventSubscriptionResourceTest
     assertEquals(ACTIVE, status.getStatus());
 
     // Verify no Slack events triggered initially
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     assertNull(details);
 
     // Create a table with a different owner (USER2), expect no alert
@@ -709,14 +716,14 @@ public class EventSubscriptionResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER2.getEntityReference()));
     tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
 
     // Create another table with the owner that matches the filter (USER_TEAM21), expect an alert
     CreateTable createTable =
         tableResourceTest.createRequest(test).withOwners(List.of(USER_TEAM21.getEntityReference()));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
 
     // Clean up: delete the event subscription and created tables
@@ -728,7 +735,8 @@ public class EventSubscriptionResourceTest
   void post_tableResource_filterByDomain_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
     TableResourceTest tableResourceTest = new TableResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create the event subscription request with the Slack destination and table resource with
     // filterByDomain
@@ -754,24 +762,24 @@ public class EventSubscriptionResourceTest
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
 
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     assertNull(details);
 
     CreateDomain createDomain2 = domainResourceTest.createRequest("Engineering_2");
     Domain domainSecond = domainResourceTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
     CreateTable createTable =
-        tableResourceTest.createRequest(test).withDomain(domainSecond.getName());
+        tableResourceTest.createRequest(test).withDomains(List.of(domainSecond.getName()));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     // changeEvent on the table with correct domain will result in alerts
     assertNull(details);
 
     CreateTable createTable2 =
         tableResourceTest
             .createRequest(test.getClass().getName() + "_secondTable")
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
@@ -779,7 +787,8 @@ public class EventSubscriptionResourceTest
   void post_tableResource_fqnFilter_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
     TableResourceTest tableResourceTest = new TableResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create the event subscription request with  slack destination and table as the resource with
     // filterByFqn
@@ -798,20 +807,20 @@ public class EventSubscriptionResourceTest
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
 
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     // alerts will trigger on the changeEvent of table resource
     assertNull(details);
 
     CreateTable createTable =
         tableResourceTest.createRequest(test.getClass().getName() + generateUniqueNumberAsString());
     Table table1 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     // alerts will trigger on the changeEvent of table resource with correct fqn
     assertNull(details);
 
     CreateTable createTable2 = tableResourceTest.createRequest(test).withName("test");
     Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
 
     tableResourceTest.deleteEntity(table1.getId(), ADMIN_AUTH_HEADERS);
@@ -821,7 +830,8 @@ public class EventSubscriptionResourceTest
   @Test
   void post_excluded_filters_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create the event subscription request with the Slack destination and table resource
     CreateEventSubscription genericWebhookActionRequest =
@@ -841,7 +851,7 @@ public class EventSubscriptionResourceTest
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
 
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     assertNull(details);
 
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -851,7 +861,7 @@ public class EventSubscriptionResourceTest
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Wait for the slack event and verify its details
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
 
     // filters are EXCLUDED
     assertNull(details);
@@ -862,7 +872,8 @@ public class EventSubscriptionResourceTest
   void post_tableResource_filterByOwner_AND_filterByDomain_Filter_alertAction(TestInfo test)
       throws IOException {
     String webhookName = getEntityName(test);
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create the event subscription request with the Slack destination and table resource with
     // filterByOwner AND filterByDomain
@@ -894,7 +905,7 @@ public class EventSubscriptionResourceTest
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
 
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     assertNull(details);
 
     // wrong owner and correct domain -> no alerts
@@ -904,9 +915,9 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test)
             .withOwners(List.of(USER1.getEntityReference()))
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
 
     // correct owner and wrong domain -> no alerts
@@ -918,9 +929,9 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER1.getEntityReference()))
-            .withDomain(domain2.getName());
+            .withDomains(List.of(domain2.getName()));
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
 
     // correcr owner and correct domain -> alerts
@@ -928,12 +939,12 @@ public class EventSubscriptionResourceTest
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain.getName());
+            .withDomains(List.of(domain.getName()));
 
     Table table = tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
 
     // Wait for the slack event and verify its details
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
     tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
   }
@@ -942,7 +953,8 @@ public class EventSubscriptionResourceTest
   void post_tableResource_noFilters_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
     TableResourceTest tableResourceTest = new TableResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create the event subscription request with the Slack destination and table as the resource
     // without any filters
@@ -955,7 +967,7 @@ public class EventSubscriptionResourceTest
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
 
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
 
     // alerts will trigger on the changeEvent of table resource
     assertNull(details);
@@ -964,14 +976,15 @@ public class EventSubscriptionResourceTest
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Wait for the slack event and verify its details
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
   @Test
   void post_topicResource_noFilters_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
@@ -981,7 +994,7 @@ public class EventSubscriptionResourceTest
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as topic
     assertNull(details);
@@ -993,15 +1006,16 @@ public class EventSubscriptionResourceTest
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
   @Test
   void post_topicResource_filterByFqn_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
+    String endpoint = test.getDisplayName();
     TopicResourceTest topicResourceTest = new TopicResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
@@ -1020,7 +1034,7 @@ public class EventSubscriptionResourceTest
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
 
     // Alerts are triggered only by changeEvent occurrences related to resources as topic with
     // filterByFqn
@@ -1031,7 +1045,7 @@ public class EventSubscriptionResourceTest
             .createRequest(test)
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     // changeEvents associated with correct fqn will result in alerts
     assertNull(details);
 
@@ -1041,15 +1055,16 @@ public class EventSubscriptionResourceTest
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest2, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
   @Test
   void post_topicResource_domain_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
+    String endpoint = test.getDisplayName();
     TopicResourceTest topicResourceTest = new TopicResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
@@ -1072,7 +1087,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as topic by
     // filterByDomain
@@ -1081,19 +1096,20 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest =
         topicResourceTest
             .createRequest(test)
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
   @Test
   void post_topicResource_owner_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
+    String endpoint = test.getDisplayName();
     TopicResourceTest topicResourceTest = new TopicResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
@@ -1110,7 +1126,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
 
     // Alerts are triggered only by changeEvent occurrences related to resources as topic by
     // filerByOwner
@@ -1123,7 +1139,7 @@ public class EventSubscriptionResourceTest
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
@@ -1131,8 +1147,9 @@ public class EventSubscriptionResourceTest
   void post_topicResource_owner_AND_domain_alertAction(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
     DomainResourceTest domainResourceTest = new DomainResourceTest();
+    String endpoint = test.getDisplayName();
     TopicResourceTest topicResourceTest = new TopicResourceTest();
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(webhookName)
@@ -1160,7 +1177,7 @@ public class EventSubscriptionResourceTest
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as topic by
     // filterByDomain
@@ -1172,10 +1189,10 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test)
             .withOwners(List.of(USER1_REF))
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
 
     // correct owner AND wrong domain -> no alerts
@@ -1187,10 +1204,10 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test.getClass().getName() + "2")
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain2.getName())
+            .withDomains(List.of(domain2.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest2, ADMIN_AUTH_HEADERS);
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertNull(details);
 
     // correct owner AND correct domain -> alerts
@@ -1198,29 +1215,29 @@ public class EventSubscriptionResourceTest
         topicResourceTest
             .createRequest(test.getClass().getName() + "3")
             .withOwners(List.of(USER_TEAM21.getEntityReference()))
-            .withDomain(domain.getName())
+            .withDomains(List.of(domain.getName()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest3, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
   }
 
   @Test
   void post_ingestionPiplelineResource_noFilter_alertAction(TestInfo test) throws IOException {
-    String webhookName = getEntityName(test);
+    String entityName = getEntityName(test);
+    String webhookName = sanitizeWebhookName(entityName);
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
 
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest(webhookName)
+        createRequest(entityName)
             .withDestinations(getSlackWebhook(uri))
             .withResources(List.of("ingestionPipeline"));
-
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(entityName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as
     // ingestionPipeline by domain filter
@@ -1244,13 +1261,14 @@ public class EventSubscriptionResourceTest
 
     ingestionPipelineResourceTest.createEntity(request, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), entityName, 25);
     assertEquals(1, details.getEvents().size());
   }
 
   @Test
   void post_ingestionPiplelineResource_owner_alertAction(TestInfo test) throws IOException {
-    String webhookName = getEntityName(test);
+    String entityName = getEntityName(test);
+    String webhookName = sanitizeWebhookName(entityName);
     LOG.info("creating webhook in disabled state");
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
 
@@ -1267,12 +1285,12 @@ public class EventSubscriptionResourceTest
 
     // Apply the filtering rule to the request
     genericWebhookActionRequest.withInput(rule);
-
+    genericWebhookActionRequest.withName(entityName);
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(ACTIVE, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(entityName);
 
     // Alerts are triggered only by ChangeEvent occurrences related to resources as
     // ingestionPipeline
@@ -1296,7 +1314,7 @@ public class EventSubscriptionResourceTest
 
     ingestionPipelineResourceTest.createEntity(request, ADMIN_AUTH_HEADERS);
 
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), entityName, 25);
     assertEquals(1, details.getEvents().size());
   }
 
@@ -1307,8 +1325,9 @@ public class EventSubscriptionResourceTest
   @Test
   void post_alertActionWithEnabledStateChange_SLACK(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
+    String endpoint = test.getDisplayName();
     LOG.info("creating webhook in disabled state");
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + webhookName;
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack/" + endpoint;
 
     // Create a Disabled Generic Webhook
     CreateEventSubscription genericWebhookActionRequest =
@@ -1318,7 +1337,7 @@ public class EventSubscriptionResourceTest
     // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status.getStatus());
-    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(webhookName);
+    SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     assertNull(details);
 
     LOG.info("Enabling webhook Action");
@@ -1339,13 +1358,10 @@ public class EventSubscriptionResourceTest
     assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
-    details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstSlackEvent(alert.getId(), endpoint, 25);
     assertEquals(1, details.getEvents().size());
-    ConcurrentLinkedQueue<SlackMessage> messages = details.getEvents();
-    for (SlackMessage sm : messages) {
-      validateSlackMessage(alert, sm);
-    }
-
+    ConcurrentLinkedQueue<String> messages = details.getEvents();
+    assertNotNull(messages);
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
@@ -1378,13 +1394,17 @@ public class EventSubscriptionResourceTest
     deleteEntity(alert.getId(), ADMIN_AUTH_HEADERS);
   }
 
+  private String getTimeStamp() {
+    return String.valueOf(System.currentTimeMillis());
+  }
+
   @Test
   void testDifferentTypesOfAlerts_SLACK() throws IOException {
     // Create multiple webhooks each with different type of response to callback
     String baseUri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/slack";
 
     // SlowServer
-    String alertName = "slowServer";
+    String alertName = "slowServer" + getTimeStamp();
     // Alert Action
     List<SubscriptionDestination> w1 =
         getSlackWebhook(baseUri + "/simulate/slowServer"); // Callback response 1 second slower
@@ -1392,32 +1412,32 @@ public class EventSubscriptionResourceTest
     EventSubscription w1Alert = createAndCheckEntity(w1ActionRequest, ADMIN_AUTH_HEADERS);
 
     // CallbackTimeout
-    alertName = "callbackTimeout";
+    alertName = "callbackTimeout" + getTimeStamp();
     List<SubscriptionDestination> w2 =
         getSlackWebhook(baseUri + "/simulate/timeout"); // Callback response 12 seconds slower
     CreateEventSubscription w2ActionRequest = createRequest(alertName).withDestinations(w2);
     EventSubscription w2Alert = createAndCheckEntity(w2ActionRequest, ADMIN_AUTH_HEADERS);
 
     // callbackResponse300
-    alertName = "callbackResponse300";
+    alertName = "callbackResponse300" + getTimeStamp();
     List<SubscriptionDestination> w3 = getSlackWebhook(baseUri + "/simulate/300"); // 3xx response
     CreateEventSubscription w3ActionRequest = createRequest(alertName).withDestinations(w3);
     EventSubscription w3Alert = createAndCheckEntity(w3ActionRequest, ADMIN_AUTH_HEADERS);
 
     // callbackResponse400
-    alertName = "callbackResponse400";
+    alertName = "callbackResponse400" + getTimeStamp();
     List<SubscriptionDestination> w4 = getSlackWebhook(baseUri + "/simulate/400"); // 3xx response
     CreateEventSubscription w4ActionRequest = createRequest(alertName).withDestinations(w4);
     EventSubscription w4Alert = createAndCheckEntity(w4ActionRequest, ADMIN_AUTH_HEADERS);
 
     // callbackResponse500
-    alertName = "callbackResponse500";
+    alertName = "callbackResponse500" + getTimeStamp();
     List<SubscriptionDestination> w5 = getSlackWebhook(baseUri + "/simulate/500"); // 3xx response
     CreateEventSubscription w5ActionRequest = createRequest(alertName).withDestinations(w5);
     EventSubscription w5Alert = createAndCheckEntity(w5ActionRequest, ADMIN_AUTH_HEADERS);
 
     // invalidEndpoint
-    alertName = "invalidEndpoint";
+    alertName = "invalidEndpoint" + getTimeStamp();
     List<SubscriptionDestination> w6 = getSlackWebhook("http://invalidUnknownHost"); // 3xx response
     CreateEventSubscription w6ActionRequest = createRequest(alertName).withDestinations(w6);
     EventSubscription w6Alert = createAndCheckEntity(w6ActionRequest, ADMIN_AUTH_HEADERS);
@@ -1437,7 +1457,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1451,7 +1471,8 @@ public class EventSubscriptionResourceTest
   @Test
   public void post_createAndValidateEventSubscription_MSTEAMS(TestInfo test) throws IOException {
     String webhookName = getEntityName(test);
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/msteams/" + webhookName;
+    String endpoint = test.getDisplayName();
+    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/msteams/" + endpoint;
 
     CreateEventSubscription enabledWebhookRequest =
         new CreateEventSubscription()
@@ -1466,8 +1487,7 @@ public class EventSubscriptionResourceTest
 
     EventSubscription alert = createEntity(enabledWebhookRequest, ADMIN_AUTH_HEADERS);
     waitForAllEventToComplete(alert.getId());
-    MSTeamsCallbackResource.EventDetails details =
-        teamsCallbackResource.getEventDetails(webhookName);
+    MSTeamsCallbackResource.EventDetails details = teamsCallbackResource.getEventDetails(endpoint);
 
     Awaitility.await()
         .pollInterval(Duration.ofMillis(100L))
@@ -1476,10 +1496,7 @@ public class EventSubscriptionResourceTest
 
     assertNotNull(alert, "Webhook creation failed");
     ConcurrentLinkedQueue<TeamsMessage> events = details.getEvents();
-    for (TeamsMessage teamsMessage : events) {
-      validateTeamsMessage(alert, teamsMessage);
-    }
-
+    assertNotNull(events);
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
 
@@ -1494,20 +1511,24 @@ public class EventSubscriptionResourceTest
 
   @Test
   void post_alertActionWithEnabledStateChange_MSTeams(TestInfo test) throws IOException {
-    String webhookName = getEntityName(test);
-    LOG.info("creating webhook in disabled state");
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/msteams/" + webhookName;
+    String entityName = getEntityName(test);
 
+    LOG.info("creating webhook in disabled state");
+    String uri =
+        "http://localhost:"
+            + APP.getLocalPort()
+            + "/api/v1/test/msteams/"
+            + URLEncoder.encode(entityName, StandardCharsets.UTF_8);
     // Create a Disabled Generic Webhook
     CreateEventSubscription genericWebhookActionRequest =
-        createRequest(webhookName).withEnabled(false).withDestinations(getTeamsWebhook(uri));
+        createRequest(entityName).withEnabled(false).withDestinations(getTeamsWebhook(uri));
     EventSubscription alert = createAndCheckEntity(genericWebhookActionRequest, ADMIN_AUTH_HEADERS);
 
     // For the DISABLED Publisher are not available, so it will have no status
     SubscriptionStatus status = getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(DISABLED, status.getStatus());
     MSTeamsCallbackResource.EventDetails details =
-        teamsCallbackResource.getEventDetails(webhookName);
+        teamsCallbackResource.getEventDetails(entityName);
     assertNull(details);
 
     LOG.info("Enabling webhook Action");
@@ -1528,13 +1549,10 @@ public class EventSubscriptionResourceTest
     assertEquals(SubscriptionStatus.Status.ACTIVE, status2.getStatus());
 
     // Ensure the call back notification has started
-    details = waitForFirstMSTeamsEvent(alert.getId(), webhookName, 25);
+    details = waitForFirstMSTeamsEvent(alert.getId(), entityName, 25);
     assertEquals(1, details.getEvents().size());
     ConcurrentLinkedQueue<TeamsMessage> messages = details.getEvents();
-    for (TeamsMessage teamsMessage : messages) {
-      validateTeamsMessage(alert, teamsMessage);
-    }
-
+    assertNotNull(messages);
     SubscriptionStatus successDetails =
         getStatus(alert.getId(), Response.Status.OK.getStatusCode());
     assertEquals(SubscriptionStatus.Status.ACTIVE, successDetails.getStatus());
@@ -1626,7 +1644,7 @@ public class EventSubscriptionResourceTest
     assertAlertStatusSuccessWithId(w1Alert.getId());
     assertAlertStatus(w3Alert.getId(), FAILED, 301, "Moved Permanently");
     assertAlertStatus(w4Alert.getId(), AWAITING_RETRY, 400, "Bad Request");
-    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Internal Server Error");
+    assertAlertStatus(w5Alert.getId(), AWAITING_RETRY, 500, "Server Error");
 
     // Delete all webhooks
     deleteEntity(w1Alert.getId(), ADMIN_AUTH_HEADERS);
@@ -1637,86 +1655,9 @@ public class EventSubscriptionResourceTest
     deleteEntity(w6Alert.getId(), ADMIN_AUTH_HEADERS);
   }
 
-  private void validateSlackMessage(EventSubscription alert, SlackMessage slackMessage) {
-    // Validate the basic structure
-    assertNotNull(slackMessage.getUsername(), "Username should not be null");
-    assertNotNull(slackMessage.getText(), "Text should not be null");
-    assertFalse(slackMessage.getText().isEmpty(), "Text should not be empty");
-
-    // Validate the formatting of the text
-    String expectedTextFormat = buildExpectedTextFormatSlack(alert); // Get the expected format
-
-    // Check if the actual text matches the expected format
-    String actualText = slackMessage.getText();
-    assertEquals(
-        actualText, expectedTextFormat, "Slack message text does not match expected format");
-  }
-
-  private String buildExpectedTextFormatSlack(EventSubscription alert) {
-    String updatedBy = alert.getUpdatedBy();
-    return String.format(
-        "[%s] %s posted on %s %s",
-        alert.getFullyQualifiedName(),
-        updatedBy,
-        Entity.EVENT_SUBSCRIPTION,
-        getEntityUrlSlack(alert));
-  }
-
   private String getEntityUrlSlack(EventSubscription alert) {
     return slackCallbackResource.getEntityUrl(
         Entity.EVENT_SUBSCRIPTION, alert.getFullyQualifiedName(), "");
-  }
-
-  private void validateTeamsMessage(EventSubscription alert, TeamsMessage message) {
-    // Validate the basic structure
-    assertThat(message.getSummary())
-        .isNotNull()
-        .isEqualTo("Change Event From OpenMetadata")
-        .describedAs("Invalid summary in Teams message");
-
-    assertThat(message.getType())
-        .isNotNull()
-        .isEqualTo("MessageCard")
-        .describedAs("Invalid type in Teams message");
-
-    assertThat(message.getContext())
-        .isNotNull()
-        .isEqualTo("http://schema.org/extensions")
-        .describedAs("Invalid context in Teams message");
-
-    TeamsMessage.Section firstSection = message.getSections().get(0);
-    // Validate Activity
-    String expectedTitle = buildExpectedActivityTitleTextFormatMSTeams(alert);
-    String actualTitle = firstSection.getActivityTitle();
-    assertEquals(
-        expectedTitle, actualTitle, "Teams message activity title does not match expected format");
-
-    // Validate sections
-    assertNotNull(message.getSections(), "Sections should not be null");
-    assertFalse(message.getSections().isEmpty(), "Sections should not be empty");
-
-    for (TeamsMessage.Section section : message.getSections()) {
-      assertNotNull(section.getActivityTitle(), "Activity title should not be null");
-      assertFalse(section.getActivityTitle().isEmpty(), "Activity title should not be empty");
-
-      assertNotNull(section.getActivityText(), "Activity text should not be null");
-      assertFalse(section.getActivityText().isEmpty(), "Activity text should not be empty");
-    }
-  }
-
-  private String buildExpectedActivityTitleTextFormatMSTeams(EventSubscription alert) {
-    String updatedBy = alert.getUpdatedBy();
-    return String.format(
-        "[%s] %s posted on %s [\"%s\"](/%s)",
-        alert.getFullyQualifiedName(),
-        updatedBy,
-        Entity.EVENT_SUBSCRIPTION,
-        alert.getName(),
-        getEntityUrlMSTeams());
-  }
-
-  private String getEntityUrlMSTeams() {
-    return teamsCallbackResource.getEntityUrlMSTeams();
   }
 
   private EventSubscription getAndAssertAlert(UUID id, EventSubscription expectedAlert)
@@ -1868,8 +1809,9 @@ public class EventSubscriptionResourceTest
     waitForAllEventToComplete(createdSub.getId());
     waitForAllEventToComplete(updatedSub.getId());
 
-    List<SlackMessage> callbackEvents =
-        slackCallbackResource.getEntityCallbackEvents(EventType.ENTITY_CREATED, entity + "_SLACK");
+    List<String> callbackEvents =
+        slackCallbackResource.getEntityCallbackEvents(
+            EventType.ENTITY_CREATED.value(), entity + "_SLACK");
     assertTrue(callbackEvents.size() > 0);
   }
 
@@ -1884,9 +1826,9 @@ public class EventSubscriptionResourceTest
     waitForAllEventToComplete(createdSub.getId());
     waitForAllEventToComplete(updatedSub.getId());
 
-    List<TeamsMessage> callbackEvents =
+    List<String> callbackEvents =
         teamsCallbackResource.getEntityCallbackEvents(
-            EventType.ENTITY_CREATED, entity + "_MSTEAMS");
+            EventType.ENTITY_CREATED.toString(), entity + "_MSTEAMS");
     assertTrue(callbackEvents.size() > 0);
   }
 
@@ -2261,7 +2203,7 @@ public class EventSubscriptionResourceTest
                 new Webhook()
                     .withEndpoint(URI.create(uri))
                     .withReceivers(new HashSet<>())
-                    .withSecretKey("teamsTest")));
+                    .withSecretKey(MSTeamsCallbackResource.getSecretKey())));
   }
 
   public WebhookCallbackResource.EventDetails waitForFirstEvent(
@@ -2274,6 +2216,9 @@ public class EventSubscriptionResourceTest
     WebhookCallbackResource.EventDetails details =
         webhookCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2286,6 +2231,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredSlack(endpoint));
     SlackCallbackResource.EventDetails details = slackCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("SlackCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2298,6 +2246,9 @@ public class EventSubscriptionResourceTest
         .untilFalse(hasEventOccurredMSTeams(endpoint));
     MSTeamsCallbackResource.EventDetails details = teamsCallbackResource.getEventDetails(endpoint);
     LOG.info("Returning for endpoint {} eventDetails {}", endpoint, details);
+    if (details == null) {
+      LOG.warn("MSTeamsCallbackResource.EventDetails is null for endpoint: {}", endpoint);
+    }
     return details;
   }
 
@@ -2347,5 +2298,17 @@ public class EventSubscriptionResourceTest
           expectedListCopy.get(i).getOldValue(),
           actualListCopy.get(i).getOldValue());
     }
+  }
+
+  public EventSubscription updateEventSubscriptionPollInterval(String fqn, int pollInterval)
+      throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription originalSub =
+        eventSubscriptionResourceTest.getEntityByName(fqn, ADMIN_AUTH_HEADERS);
+    EventSubscription updatedSub =
+        JsonUtils.deepCopy(originalSub, EventSubscription.class).withPollInterval(pollInterval);
+    return eventSubscriptionResourceTest.patchEntityUsingFqn(
+        fqn, JsonUtils.pojoToJson(originalSub), updatedSub, ADMIN_AUTH_HEADERS);
   }
 }

@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal } from 'antd';
-import React, { useState } from 'react';
+import { Form, InputNumber, Modal } from 'antd';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  LineageConfig,
-  LineageConfigModalProps,
-} from './EntityLineage.interface';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { LineageConfigModalProps } from './EntityLineage.interface';
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -26,24 +24,6 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const [upstreamDepth, setUpstreamDepth] = useState<number>(
-    config?.upstreamDepth || 1
-  );
-  const [downstreamDepth, setDownstreamDepth] = useState<number>(
-    config?.downstreamDepth || 1
-  );
-  const [nodesPerLayer, setNodesPerLayer] = useState<number>(
-    config?.nodesPerLayer || 1
-  );
-
-  const handleSave = () => {
-    const updatedConfig: LineageConfig = {
-      upstreamDepth,
-      downstreamDepth,
-      nodesPerLayer,
-    };
-    onSave(updatedConfig);
-  };
 
   return (
     <Modal
@@ -56,23 +36,22 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         form={form}
         initialValues={config}
         layout="vertical"
-        onFinish={handleSave}>
+        validateMessages={VALIDATION_MESSAGES}
+        onFinish={onSave}>
         <Form.Item
           label={t('label.upstream-depth')}
           name="upstreamDepth"
           rules={[
             {
               required: true,
-              message: t('message.upstream-depth-message'),
+            },
+            {
+              type: 'number',
+              min: 0,
             },
           ]}
           tooltip={t('message.upstream-depth-tooltip')}>
-          <Input
-            data-testid="field-upstream"
-            type="number"
-            value={upstreamDepth}
-            onChange={(e) => setUpstreamDepth(Number(e.target.value))}
-          />
+          <InputNumber className="w-full" data-testid="field-upstream" />
         </Form.Item>
 
         <Form.Item
@@ -81,16 +60,14 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           rules={[
             {
               required: true,
-              message: t('message.downstream-depth-message'),
+            },
+            {
+              type: 'number',
+              min: 0,
             },
           ]}
           tooltip={t('message.downstream-depth-tooltip')}>
-          <Input
-            data-testid="field-downstream"
-            type="number"
-            value={downstreamDepth}
-            onChange={(e) => setDownstreamDepth(Number(e.target.value))}
-          />
+          <InputNumber className="w-full" data-testid="field-downstream" />
         </Form.Item>
 
         <Form.Item
@@ -99,17 +76,14 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
           rules={[
             {
               required: true,
-              message: t('message.nodes-per-layer-message'),
+            },
+            {
+              type: 'number',
+              min: 5,
             },
           ]}
           tooltip={t('message.nodes-per-layer-tooltip')}>
-          <Input
-            className="w-full"
-            data-testid="field-nodes-per-layer"
-            min={5}
-            type="number"
-            onChange={(e) => setNodesPerLayer(Number(e.target.value))}
-          />
+          <InputNumber className="w-full" data-testid="field-nodes-per-layer" />
         </Form.Item>
       </Form>
     </Modal>

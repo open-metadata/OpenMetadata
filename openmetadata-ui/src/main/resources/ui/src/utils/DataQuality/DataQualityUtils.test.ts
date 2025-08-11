@@ -10,16 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
+  buildDataQualityDashboardFilters,
+  buildMustEsFilterForOwner,
+  buildMustEsFilterForTags,
   buildTestCaseParams,
   createTestCaseParameters,
   getTestCaseFiltersValue,
+  transformToTestCaseStatusObject,
 } from './DataQualityUtils';
 
 jest.mock('../../constants/profiler.constant', () => ({
@@ -292,6 +298,248 @@ describe('DataQualityUtils', () => {
       );
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe('buildMustEsFilterForOwner', () => {
+    it('should return filter for owner when isTestCaseResult is false', () => {
+      const ownerFqn = 'owner1';
+      const expectedFilter = {
+        term: {
+          'owners.name': ownerFqn,
+        },
+      };
+
+      expect(buildMustEsFilterForOwner(ownerFqn)).toEqual(expectedFilter);
+    });
+
+    it('should return filter for test case owner when isTestCaseResult is true', () => {
+      const ownerFqn = 'owner2';
+      const expectedFilter = {
+        term: {
+          'testCase.owners.name': ownerFqn,
+        },
+      };
+
+      expect(buildMustEsFilterForOwner(ownerFqn, true)).toEqual(expectedFilter);
+    });
+  });
+
+  describe('buildMustEsFilterForTags', () => {
+    it('should return filter for tags when isTestCaseResult is false', () => {
+      const tags = ['tag1', 'tag2'];
+      const expectedFilter = {
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'tags.tagFQN': 'tag1' } },
+                { match: { 'tags.tagFQN': 'tag2' } },
+              ],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags)).toEqual(expectedFilter);
+    });
+
+    it('should return filter for test case tags when isTestCaseResult is true', () => {
+      const tags = ['tag1', 'tag2'];
+      const expectedFilter = {
+        nested: {
+          path: 'testCase.tags',
+          query: {
+            bool: {
+              should: [
+                { match: { 'testCase.tags.tagFQN': 'tag1' } },
+                { match: { 'testCase.tags.tagFQN': 'tag2' } },
+              ],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags, true)).toEqual(expectedFilter);
+    });
+
+    it('should handle empty tags array', () => {
+      const tags: string[] = [];
+      const expectedFilter = {
+        nested: {
+          path: 'tags',
+          query: {
+            bool: {
+              should: [],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags)).toEqual(expectedFilter);
+    });
+
+    it('should handle empty tags array with isTestCaseResult true', () => {
+      const tags: string[] = [];
+      const expectedFilter = {
+        nested: {
+          path: 'testCase.tags',
+          query: {
+            bool: {
+              should: [],
+            },
+          },
+        },
+      };
+
+      expect(buildMustEsFilterForTags(tags, true)).toEqual(expectedFilter);
+    });
+  });
+
+  describe('transformToTestCaseStatusObject', () => {
+    it('should return correct counts for basic input', () => {
+      const inputData = [
+        { document_count: '4', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'aborted' },
+      ];
+      const expectedOutput = {
+        success: 4,
+        failed: 3,
+        aborted: 1,
+        total: 8,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return zeros for empty input', () => {
+      const inputData: DataQualityReport['data'] = [];
+      const expectedOutput = {
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for all success input', () => {
+      const inputData = [
+        { document_count: '2', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'success' },
+      ];
+      const expectedOutput = {
+        success: 5,
+        failed: 0,
+        aborted: 0,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for all failed input', () => {
+      const inputData = [
+        { document_count: '2', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'failed' },
+      ];
+      const expectedOutput = {
+        success: 0,
+        failed: 5,
+        aborted: 0,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for all aborted input', () => {
+      const inputData = [
+        { document_count: '2', 'testCaseResult.testCaseStatus': 'aborted' },
+        { document_count: '3', 'testCaseResult.testCaseStatus': 'aborted' },
+      ];
+      const expectedOutput = {
+        success: 0,
+        failed: 0,
+        aborted: 5,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+
+    it('should return correct counts for mixed statuses input', () => {
+      const inputData = [
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'failed' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'aborted' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'success' },
+        { document_count: '1', 'testCaseResult.testCaseStatus': 'failed' },
+      ];
+      const expectedOutput = {
+        success: 2,
+        failed: 2,
+        aborted: 1,
+        total: 5,
+      };
+
+      expect(transformToTestCaseStatusObject(inputData)).toEqual(
+        expectedOutput
+      );
+    });
+  });
+
+  describe('buildDataQualityDashboardFilters', () => {
+    it('should include deleted:false filter by default', () => {
+      const result = buildDataQualityDashboardFilters({});
+
+      expect(result).toEqual([
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
+    });
+
+    it('should include deleted:false filter along with other filters', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          serviceName: 'test-service',
+          testPlatforms: ['DBT'],
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          term: {
+            'service.name.keyword': 'test-service',
+          },
+        },
+        {
+          terms: {
+            testPlatforms: ['DBT'],
+          },
+        },
+        {
+          term: {
+            deleted: false,
+          },
+        },
+      ]);
     });
   });
 });

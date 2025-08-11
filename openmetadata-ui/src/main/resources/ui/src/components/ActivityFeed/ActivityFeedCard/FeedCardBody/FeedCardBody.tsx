@@ -14,14 +14,14 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
@@ -88,7 +88,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           onTextChange={handleMessageUpdate}
         />
       ) : (
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           className="activity-feed-card-text"
           markdown={getFrontEndFormat(postMessage)}
         />
@@ -104,7 +104,11 @@ const FeedCardBody: FC<FeedBodyProp> = ({
     <>
       <div className={classNames('feed-message', isEditPost ? '' : className)}>
         {!isUndefined(announcementDetails) ? (
-          <Space data-testid="announcement-data" direction="vertical" size={4}>
+          <Space
+            className="w-full"
+            data-testid="announcement-data"
+            direction="vertical"
+            size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
               {t('label.schedule')}{' '}
               {formatDateTime(announcementDetails.startTime)}{' '}
@@ -114,7 +118,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             <Typography.Text className="font-medium">
               {postMessage}
             </Typography.Text>
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               className="activity-feed-card-text"
               markdown={announcementDetails.description || ''}
             />

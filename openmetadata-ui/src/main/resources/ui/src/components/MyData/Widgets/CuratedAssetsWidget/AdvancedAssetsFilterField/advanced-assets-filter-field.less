@@ -1,0 +1,182 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../../../styles/variables.less');
+
+.advanced-filter-form-field {
+  .ant-switch {
+    .ant-switch-inner {
+      color: @grey-4;
+    }
+    &.ant-switch-checked {
+      .ant-switch-inner {
+        color: @primary-color;
+      }
+    }
+  }
+
+  .query-builder-container {
+    .rule-container:first-child .action--DELETE {
+      display: none;
+    }
+
+    .group-or-rule-container.rule-container:first-child {
+      max-width: 85%;
+    }
+
+    .group-or-rule-container.rule-container {
+      padding: 0px;
+      height: 32px;
+
+      .rule.group-or-rule {
+        .rule--header {
+          .ant-btn-group {
+            margin: 0px;
+            align-self: flex-start;
+          }
+        }
+      }
+    }
+
+    .group-or-rule-container.group-container {
+      padding: 0px;
+      .group.rule_group {
+        .group--field {
+          margin: 0px;
+          flex: 0 1 25%;
+
+          .ant-select {
+            min-width: 100% !important; // override the inline min-width style of the select provided by antd
+          }
+        }
+      }
+
+      & > .group.group-or-rule {
+        display: flex;
+        flex-direction: column;
+        margin-top: 24px;
+
+        & > .group--header {
+          order: 9999;
+
+          .group--actions.group--actions--tr {
+            justify-content: flex-start;
+            margin: 0px;
+          }
+
+          .action.action--ADD-GROUP {
+            display: none;
+          }
+          .rule-container .ant-btn-group {
+            visibility: visible;
+          }
+
+          .action.action--ADD-RULE {
+            position: static;
+            margin-top: 8px;
+          }
+        }
+
+        .rule--body--wrapper {
+          .rule--body {
+            margin: 0px;
+            display: flex;
+            gap: 16px;
+
+            .group--field,
+            .rule--field,
+            .rule--operator,
+            .rule--value,
+            .widget--widget {
+              margin: 0px;
+              flex: 1;
+
+              .ant-col {
+                padding: 0px !important; // remove padding from ant-col inline styling by antd
+              }
+            }
+
+            .rule--operator,
+            .rule--value .rule--widget {
+              width: 100%;
+
+              .ant-select {
+                min-width: 100% !important; // override the inline min-width style of the select provided by antd
+              }
+            }
+          }
+        }
+      }
+      & > .group.group-or-rule.rule_group {
+        flex-direction: row;
+        align-items: center;
+      }
+    }
+
+    .group--children {
+      padding: 0px;
+      margin: 0px;
+
+      .group-or-rule-container.group-container,
+      .group-or-rule-container.rule-container {
+        .group.group-or-rule,
+        .rule.group-or-rule {
+          background: inherit;
+          padding: 0px;
+          border: none;
+
+          .group--header {
+            .group--conjunctions {
+              top: 0px;
+              right: 0px;
+
+              .ant-btn-group {
+                button {
+                  height: 32px;
+                  padding-top: 0px;
+                  padding-bottom: 0px;
+                }
+              }
+            }
+          }
+
+          .action.action--ADD-RULE {
+            top: -54px !important;
+            right: 0px !important;
+            background-color: @primary-button-background !important;
+            color: @primary-7;
+            border: none;
+            border-radius: 8px !important;
+            padding-top: 4px;
+            padding-bottom: 4px;
+            height: 32px;
+            font-weight: 600;
+          }
+
+          .action.action--DELETE {
+            width: 32px;
+            height: 32px;
+          }
+
+          &:not(:first-child) {
+            padding: 16px 8px;
+          }
+        }
+      }
+
+      .rule-container .ant-btn-group {
+        visibility: visible;
+      }
+    }
+  }
+}

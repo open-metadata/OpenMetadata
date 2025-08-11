@@ -13,6 +13,7 @@
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
+  Checkbox,
   Divider,
   Form,
   FormItemProps,
@@ -21,19 +22,18 @@ import {
   Select,
   Switch,
   TooltipProps,
+  Typography,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { compact, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
+import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import CronEditor from '../components/common/CronEditor/CronEditor';
-import { CronEditorProp } from '../components/common/CronEditor/CronEditor.interface';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -42,12 +42,14 @@ import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
+import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
+import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -58,7 +60,7 @@ import {
 import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
-import i18n from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 export const getField = (field: FieldProp) => {
@@ -78,6 +80,7 @@ export const getField = (field: FieldProp) => {
     hasSeparator = false,
     formItemLayout = FormItemLayout.VERTICAL,
     isBeta = false,
+    newLook = false,
   } = field;
 
   let internalFormItemProps: FormItemProps = {};
@@ -93,7 +96,7 @@ export const getField = (field: FieldProp) => {
       ...fieldRules,
       {
         required,
-        message: i18n.t('label.field-required', {
+        message: t('label.field-required', {
           field: startCase(toString(name)),
         }),
       },
@@ -102,7 +105,9 @@ export const getField = (field: FieldProp) => {
 
   switch (type) {
     case FieldTypes.TEXT:
-      fieldElement = <Input {...props} id={id} placeholder={placeholder} />;
+      fieldElement = (
+        <SanitizedInput {...props} id={id} placeholder={placeholder} />
+      );
 
       break;
     case FieldTypes.PASSWORD:
@@ -143,6 +148,14 @@ export const getField = (field: FieldProp) => {
       };
 
       break;
+    case FieldTypes.CHECK_BOX:
+      fieldElement = <Checkbox {...props} id={id} />;
+      internalFormItemProps = {
+        ...internalFormItemProps,
+        valuePropName: 'checked',
+      };
+
+      break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} id={id} />;
 
@@ -160,13 +173,22 @@ export const getField = (field: FieldProp) => {
       internalFormItemProps = {
         ...internalFormItemProps,
         trigger: 'onTextChange',
-        valuePropName: 'initialValue',
+        initialValue: props?.initialValue ?? '',
       };
 
       break;
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
-        <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+        <TagSuggestion {...(props as unknown as TagSuggestionProps)} newLook />
+      );
+
+      break;
+
+    case FieldTypes.TREE_ASYNC_SELECT_LIST:
+      fieldElement = (
+        <TreeAsyncSelectList
+          {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
+        />
       );
 
       break;
@@ -203,6 +225,18 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
+
+    case FieldTypes.USER_TEAM_SELECT_INPUT:
+      {
+        fieldElement = (
+          <UserTeamSelectableListSearchInput
+            {...(props as unknown as UserSelectDropdownProps)}
+          />
+        );
+      }
+
+      break;
+
     case FieldTypes.USER_MULTI_SELECT:
       {
         const { children, ...rest } = props;
@@ -219,13 +253,43 @@ export const getField = (field: FieldProp) => {
       fieldElement = <ColorPicker {...props} />;
 
       break;
-    case FieldTypes.CRON_EDITOR:
-      fieldElement = <CronEditor {...(props as unknown as CronEditorProp)} />;
-
-      break;
 
     default:
       break;
+  }
+
+  const formProps = {
+    id: id,
+    key: id,
+    name: name,
+    rules: fieldRules,
+    ...internalFormItemProps,
+    ...formItemProps,
+  };
+
+  const labelValue = (
+    <FormItemLabel
+      align={props.tooltipAlign as TooltipProps['align']}
+      helperText={helperText}
+      helperTextType={helperTextType}
+      isBeta={isBeta}
+      label={label}
+      overlayClassName={props.overlayClassName as string}
+      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
+      placement={props.tooltipPlacement as TooltipPlacement}
+      showHelperText={showHelperText}
+    />
+  );
+
+  if (type === FieldTypes.SWITCH && newLook) {
+    return (
+      <div className="d-flex gap-2 form-switch-container">
+        <Form.Item className="m-b-0" {...formProps}>
+          <Switch />
+        </Form.Item>
+        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+      </div>
+    );
   }
 
   return (
@@ -236,25 +300,8 @@ export const getField = (field: FieldProp) => {
           'form-item-vertical': formItemLayout === FormItemLayout.VERTICAL,
           'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
-        id={id}
-        key={id}
-        label={
-          <FormItemLabel
-            align={props.tooltipAlign as TooltipProps['align']}
-            helperText={helperText}
-            helperTextType={helperTextType}
-            isBeta={isBeta}
-            label={label}
-            overlayClassName={props.overlayClassName as string}
-            overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-            placement={props.tooltipPlacement as TooltipPlacement}
-            showHelperText={showHelperText}
-          />
-        }
-        name={name}
-        rules={fieldRules}
-        {...internalFormItemProps}
-        {...formItemProps}>
+        {...formProps}
+        label={labelValue}>
         {fieldElement}
       </Form.Item>
 
@@ -281,7 +328,7 @@ export const generateFormFields = (fields: FieldProp[]) => {
 
 export const transformErrors: ErrorTransformer = (errors) => {
   const errorRet = errors.map((error) => {
-    const { property } = error;
+    const { property, params, name } = error;
 
     /**
      * For nested fields we have to check if it's property start with "."
@@ -293,12 +340,25 @@ export const transformErrors: ErrorTransformer = (errors) => {
 
     // If element is not present in DOM, ignore error
     if (document.getElementById(id)) {
-      const fieldName = error.params?.missingProperty;
-      if (fieldName) {
-        const customMessage = i18n.t('message.field-text-is-required', {
-          fieldText: startCase(fieldName),
-        });
-        error.message = customMessage;
+      const fieldName = startCase(property?.split('/').pop() ?? '');
+
+      const errorMessages = {
+        required: () => ({
+          message: t('message.field-text-is-required', {
+            fieldText: startCase(params?.missingProperty),
+          }),
+        }),
+        minimum: () => ({
+          message: t('message.value-must-be-greater-than', {
+            field: fieldName,
+            minimum: params?.limit,
+          }),
+        }),
+      };
+
+      const errorHandler = errorMessages[name as keyof typeof errorMessages];
+      if (errorHandler && params) {
+        error.message = errorHandler().message;
 
         return error;
       }
@@ -312,12 +372,14 @@ export const transformErrors: ErrorTransformer = (errors) => {
 
 export const setInlineErrorValue = (
   description: string,
+  serverAPIError: string,
   setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
 ) => {
   setInlineAlertDetails({
     type: 'error',
     heading: t('label.error'),
     description,
+    subDescription: serverAPIError,
     onClose: () => setInlineAlertDetails(undefined),
   });
 };
@@ -346,6 +408,7 @@ export const handleEntityCreationError = ({
         entityPlural: entityLowercasePlural ?? entity,
         name: name,
       }),
+      getErrorText(error, t('server.unexpected-error')),
       setInlineAlertDetails
     );
 
@@ -357,6 +420,7 @@ export const handleEntityCreationError = ({
       t('server.entity-limit-reached', {
         entity,
       }),
+      getErrorText(error, t('server.unexpected-error')),
       setInlineAlertDetails
     );
 
@@ -369,6 +433,10 @@ export const handleEntityCreationError = ({
           entity: entityLowercase ?? entity,
         })
       : getErrorText(error, t('server.unexpected-error')),
+    getErrorText(error, t('server.unexpected-error')),
     setInlineAlertDetails
   );
 };
+
+export const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement || document.body;

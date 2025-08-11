@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/navigationItem.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NavigationItem",
+  "description": "Defines a navigation item in the UI navigation menu.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.NavigationItem",
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the navigation item.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "title": {
+      "description": "Display title of the navigation item.",
+      "type": "string"
+    },
+    "pageId": {
+      "description": "Reference to a Page ID that this navigation item links to.",
+      "type": "string"
+    },
+    "isHidden": {
+      "description": "Determine if item is visible or not",
+      "type": "boolean"
+    },
+    "children": {
+      "description": "Optional sub-navigation items.",
+      "type": "array",
+      "items": { "$ref": "#" },
+      "default": []
+    }
+  },
+  "required": ["id", "title", "pageId"],
+  "additionalProperties": false
+}

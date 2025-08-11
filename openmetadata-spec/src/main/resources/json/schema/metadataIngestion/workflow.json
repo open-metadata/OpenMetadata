@@ -31,6 +31,9 @@
               "$ref": "databaseServiceProfilerPipeline.json"
             },
             {
+              "$ref": "databaseServiceAutoClassificationPipeline.json"
+            },
+            {
               "$ref": "pipelineServiceMetadataPipeline.json"
             },
             {
@@ -38,6 +41,9 @@
             },
             {
               "$ref": "storageServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "driveServiceMetadataPipeline.json"
             },
             {
               "$ref": "searchServiceMetadataPipeline.json"
@@ -59,6 +65,9 @@
             },
             {
               "$ref": "apiServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "reverseIngestionPipeline.json"
             }
           ]
         }
@@ -162,6 +171,19 @@
         "loggerLevel": {
           "$ref": "#/definitions/logLevels",
           "default": "INFO"
+        },
+        "raiseOnError": {
+          "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+          "type": "boolean",
+          "default": true
+        },
+        "successThreshold": {
+          "title": "Success Threshold",
+          "description": "The percentage of successfully processed records that must be achieved for the pipeline to be considered successful. Otherwise, the pipeline will be marked as failed.",
+          "type": "integer",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 100
         },
         "openMetadataServerConfig": {
           "$ref": "../entity/services/connections/metadata/openMetadataConnection.json"

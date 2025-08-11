@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ApiEndpointClass extends EntityClass {
@@ -23,6 +28,7 @@ export class ApiEndpointClass extends EntityClass {
   private apiCollectionName = `pw-api-collection-${uuid()}`;
   service = {
     name: this.serviceName,
+    displayName: this.serviceName,
     serviceType: 'Rest',
     connection: {
       config: {
@@ -34,6 +40,7 @@ export class ApiEndpointClass extends EntityClass {
 
   apiCollection = {
     name: this.apiCollectionName,
+    displayName: this.apiCollectionName,
     service: this.service.name,
   };
 
@@ -86,6 +93,7 @@ export class ApiEndpointClass extends EntityClass {
 
   entity = {
     name: this.apiEndpointName,
+    displayName: this.apiEndpointName,
     apiCollection: `${this.service.name}.${this.apiCollection.name}`,
     endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
     requestSchema: {
@@ -139,14 +147,17 @@ export class ApiEndpointClass extends EntityClass {
     },
   };
 
-  serviceResponseData: unknown;
-  apiCollectionResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  apiCollectionResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_ENDPOINT);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.ApiService;
+    this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'ApiEndpoint';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;

@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -12,40 +14,53 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import javax.json.JsonPatch;
-import javax.validation.Valid;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.PATCH;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
+import jakarta.json.JsonPatch;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.email.EmailUtil;
 
@@ -63,6 +78,9 @@ public class SystemResource {
   private OpenMetadataApplicationConfig applicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   private JwtFilter jwtFilter;
+  private SearchSettings defaultSearchSettingsCache = new SearchSettings();
+  private SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
+  private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -77,10 +95,53 @@ public class SystemResource {
 
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+    this.isNlqEnabled =
+        config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
+            ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
+            : false;
   }
 
   public static class SettingsList extends ResultList<Settings> {
     /* Required for serde */
+  }
+
+  public SearchSettings readDefaultSearchSettings() {
+    if (defaultSearchSettingsCache != null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          defaultSearchSettingsCache = JsonUtils.readValue(json, SearchSettings.class);
+        } else {
+          throw new IllegalArgumentException("Default search settings file not found.");
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
+      }
+    }
+    return defaultSearchSettingsCache;
+  }
+
+  public SearchSettings loadDefaultSearchSettings(boolean force) {
+    SearchSettings searchSettings = readDefaultSearchSettings();
+    if (!force) {
+      Settings existingSettings =
+          systemRepository.getConfigWithKey(String.valueOf(SEARCH_SETTINGS));
+      if (existingSettings != null && existingSettings.getConfigValue() != null) {
+        SearchSettings existingSearchSettings = (SearchSettings) existingSettings.getConfigValue();
+        if (existingSearchSettings.getGlobalSettings() != null) {
+          return searchSettings;
+        }
+      }
+    }
+    Settings settings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchSettings);
+    systemRepository.createOrUpdate(settings);
+    LOG.info("Default searchSettings loaded successfully.");
+    return searchSettings;
   }
 
   @GET
@@ -125,8 +186,30 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    authorizer.authorizeAdmin(securityContext);
+    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/search/nlq")
+  @Operation(
+      operationId = "",
+      summary = "Check if Nlq is enabled in elastic search setting",
+      description = "Check if Nlq is enabled in elastic search setting",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Boolean Nlq Service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response checkSearchSettings(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return Response.ok().entity(isNlqEnabled).build();
   }
 
   @GET
@@ -145,9 +228,39 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type for which to get the global profiler configuration",
+              schema = @Schema(type = "string"))
+          @QueryParam("entityType")
+          @DefaultValue("table")
+          String entityType) {
+    ResourceContext resourceContext = new ResourceContext(entityType);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
+  }
+
+  @GET
+  @Path("/settings/customLogicOps")
+  @Operation(
+      operationId = "getCustomLogicOps",
+      summary = "Get a list of custom JSON logic operations",
+      description = "Get a list of custom JSON logic operations used in rules",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Custom Logic Operations Keys as Strings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response getCustomLogicOps(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return Response.ok().entity(LogicOps.getCustomOpsKeys()).build();
   }
 
   @PUT
@@ -170,7 +283,51 @@ public class SystemResource {
       @Context SecurityContext securityContext,
       @Valid Settings settingName) {
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.createOrUpdate(settingName);
+    if (SettingsType.SEARCH_SETTINGS
+        .value()
+        .equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SearchSettings defaultSearchSettings = loadDefaultSearchSettings(false);
+      SearchSettings incomingSearchSettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
+      searchSettingsHandler.validateGlobalSettings(incomingSearchSettings.getGlobalSettings());
+      SearchSettings mergedSettings =
+          searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
+      settingName.setConfigValue(mergedSettings);
+    }
+    Response response = systemRepository.createOrUpdate(settingName);
+    // Explicitly invalidate the cache to ensure latest settings are fetched
+    SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    return response;
+  }
+
+  @PUT
+  @Path("/settings/reset/{name}")
+  @Operation(
+      operationId = "resetSettingToDefault",
+      summary = "Reset a setting to default",
+      description = "Reset the specified setting to its default value.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings reset to default",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response resetSettingToDefault(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    authorizer.authorizeAdmin(securityContext);
+
+    if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
+      throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
+    }
+    SearchSettings settings = loadDefaultSearchSettings(true);
+    return Response.ok(settings).build();
   }
 
   @PUT
@@ -237,30 +394,6 @@ public class SystemResource {
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.patchSetting(settingName, patch);
-  }
-
-  @PUT
-  @Path("/restore/default/email")
-  @Operation(
-      operationId = "restoreEmailSettingToDefault",
-      summary = "Restore Email to Default setting",
-      description = "Restore Email to Default settings",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Settings",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Settings.class)))
-      })
-  public Response restoreDefaultEmailSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    return systemRepository.createOrUpdate(
-        new Settings()
-            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
-            .withConfigValue(applicationConfig.getSmtpSettings()));
   }
 
   @GET

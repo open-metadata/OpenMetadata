@@ -26,6 +26,10 @@
         "queryFilter": {
           "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
           "type": "string"
+        },
+        "filterJsonTree": {
+          "description": "Filter JSON tree to be used for rendering the filters in the UI. This comes from Immutable Tree type of react-awesome-query-builder.",
+          "type": "string"
         }
       }
     },
@@ -48,6 +52,9 @@
           "$ref": "automator/addDescriptionAction.json"
         },
         {
+          "$ref": "automator/addCustomProperties.json"
+        },
+        {
           "$ref": "automator/removeDescriptionAction.json"
         },
         {
@@ -57,10 +64,25 @@
           "$ref": "automator/removeTierAction.json"
         },
         {
+          "$ref": "automator/addTestCaseAction.json"
+        },
+        {
+          "$ref": "automator/removeTestCaseAction.json"
+        },
+        {
           "$ref": "automator/addOwnerAction.json"
         },
         {
           "$ref": "automator/removeOwnerAction.json"
+        },
+        {
+          "$ref": "automator/removeCustomPropertiesAction.json"
+        },
+        {
+          "$ref": "automator/addDataProductAction.json"
+        },
+        {
+          "$ref": "automator/removeDataProductAction.json"
         },
         {
           "$ref": "automator/lineagePropagationAction.json"

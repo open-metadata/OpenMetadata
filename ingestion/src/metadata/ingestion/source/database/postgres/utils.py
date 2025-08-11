@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,6 @@
 """
 Postgres SQLAlchemy util methods
 """
-import json
 import re
 import traceback
 from typing import Dict, Optional, Tuple
@@ -24,18 +23,16 @@ from sqlalchemy.dialects.postgresql.base import ENUM
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
 
-from metadata.generated.schema.entity.data.table import Column
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
     POSTGRES_FETCH_FK,
-    POSTGRES_GET_JSON_FIELDS,
+    POSTGRES_GET_SCHEMA_NAMES,
     POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
     POSTGRES_TABLE_OWNERS,
     POSTGRES_VIEW_DEFINITIONS,
 )
-from metadata.parsers.json_schema_parser import parse_json_schema
 from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
@@ -45,12 +42,10 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = utils_logger()
 
-OLD_POSTGRES_VERSION = "13.0"
+OLD_POSTGRES_VERSION = "130000"
 
-
-def get_etable_owner(
-    self, connection, table_name=None, schema=None
-):  # pylint: disable=unused-argument
+# pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
+def get_etable_owner(self, connection, table_name=None, schema=None):
     """Return all owners.
 
     :param schema: Optional, retrieve names from a non-default schema.
@@ -71,6 +66,16 @@ def get_etable_owner(
 def get_foreign_keys(
     self, connection, table_name, schema=None, postgresql_ignore_search_path=False, **kw
 ):
+    """
+    Args:
+        connection (_type_): _description_
+        table_name (_type_): _description_
+        schema (_type_, optional): _description_. Defaults to None.
+        postgresql_ignore_search_path (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
     preparer = self.identifier_preparer
     table_oid = self.get_table_oid(
         connection, table_name, schema, info_cache=kw.get("info_cache")
@@ -91,7 +96,7 @@ def get_foreign_keys(
     t = sql.text(POSTGRES_FETCH_FK).columns(
         conname=sqltypes.Unicode, condef=sqltypes.Unicode, con_db_name=sqltypes.Unicode
     )
-    c = connection.execute(t, dict(table=table_oid))
+    c = connection.execute(t, {"table": table_oid})
     fkeys = []
     for conname, condef, conschema, con_db_name in c.fetchall():
         m = re.search(FK_REGEX, condef).groups()
@@ -113,7 +118,7 @@ def get_foreign_keys(
         ) = m
 
         if deferrable is not None:
-            deferrable = True if deferrable == "DEFERRABLE" else False
+            deferrable = deferrable == "DEFERRABLE"
         constrained_columns = tuple(re.split(r"\s*,\s*", constrained_columns))
         constrained_columns = [
             preparer._unquote_identifier(x) for x in constrained_columns
@@ -165,9 +170,7 @@ def get_foreign_keys(
 
 
 @reflection.cache
-def get_table_owner(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_owner(self, connection, table_name, schema=None, **kw):
     return get_table_owner_wrapper(
         self,
         connection=connection,
@@ -178,9 +181,7 @@ def get_table_owner(
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):
     return get_table_comment_wrapper(
         self,
         connection,
@@ -191,31 +192,7 @@ def get_table_comment(
 
 
 @reflection.cache
-def get_json_fields_and_type(
-    self, table_name, column_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    try:
-        query = POSTGRES_GET_JSON_FIELDS.format(
-            table_name=table_name, column_name=column_name
-        )
-        cursor = self.engine.execute(query)
-        result = cursor.fetchone()
-        if result:
-            parsed_column = parse_json_schema(json.dumps(result[0]), Column)
-            if parsed_column:
-                return parsed_column[0].children
-    except Exception as err:
-        logger.warning(
-            f"Unable to parse the json fields for {table_name}.{column_name} - {err}"
-        )
-        logger.debug(traceback.format_exc())
-    return None
-
-
-@reflection.cache
-def get_columns(  # pylint: disable=too-many-locals
-    self, connection, table_name, schema=None, **kw
-):
+def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Overriding the dialect method to add raw_data_type in response
     """
@@ -394,7 +371,7 @@ def _handle_array_type(attype):
     )
 
 
-# pylint: disable=too-many-statements,too-many-branches,too-many-locals,too-many-arguments
+# pylint: disable=too-many-statements,too-many-branches
 def get_column_info(
     self,
     name,
@@ -503,9 +480,7 @@ def get_column_info(
 
 
 @reflection.cache
-def get_view_definition(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, table_name, schema=None, **kw):
     return get_view_definition_wrapper(
         self,
         connection,
@@ -523,9 +498,6 @@ def get_postgres_version(engine) -> Optional[str]:
         results = engine.execute(POSTGRES_GET_SERVER_VERSION)
         for res in results:
             version_string = str(res[0])
-            opening_parenthesis_index = version_string.find("(")
-            if opening_parenthesis_index != -1:
-                return version_string[:opening_parenthesis_index].strip()
             return version_string
     except Exception as err:
         logger.warning(f"Unable to fetch the Postgres Version - {err}")
@@ -537,10 +509,37 @@ def get_postgres_time_column_name(engine) -> str:
     """
     Return the correct column name for the time column based on postgres version
     """
-    time_column_name = "total_exec_time"
-    postgres_version = get_postgres_version(engine)
-    if postgres_version and version.parse(postgres_version) < version.parse(
-        OLD_POSTGRES_VERSION
-    ):
-        time_column_name = "total_time"
-    return time_column_name
+    # Try to check the column in pg_stat_statements, fallback to version check if fails
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
+            )
+            columns = {row[0] for row in result}
+            if "total_exec_time" in columns:
+                return "total_exec_time"
+            elif "total_time" in columns:
+                return "total_time"
+            else:
+                logger.warning(
+                    "Neither 'total_exec_time' nor 'total_time' found in pg_stat_statements. Defaulting to 'total_exec_time'."
+                )
+                return "total_exec_time"
+    except Exception as ex:
+        logger.debug(f"Failed to check columns in pg_stat_statements: {ex}")
+        # Fallback to version check
+        time_column_name = "total_exec_time"
+        postgres_version = get_postgres_version(engine)
+        if postgres_version and version.parse(postgres_version) < version.parse(
+            OLD_POSTGRES_VERSION
+        ):
+            time_column_name = "total_time"
+        return time_column_name
+
+
+@reflection.cache
+def get_schema_names(self, connection, **kw):
+    result = connection.execute(
+        sql.text(POSTGRES_GET_SCHEMA_NAMES).columns(nspname=sqltypes.Unicode)
+    )
+    return [name for name, in result]

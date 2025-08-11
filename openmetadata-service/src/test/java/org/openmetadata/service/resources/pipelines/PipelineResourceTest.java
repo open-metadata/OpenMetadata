@@ -13,10 +13,11 @@
 
 package org.openmetadata.service.resources.pipelines;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -34,6 +35,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.ParseException;
@@ -47,14 +50,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -67,17 +71,18 @@ import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePipeline> {
   public static List<Task> TASKS;
 
@@ -239,13 +244,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     create.setTasks(List.of(task));
     Pipeline entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = entity.getTasks().get(0);
-    assertOwners(List.of(USER1_REF), actualTask.getOwners());
+    assertReferenceList(List.of(USER1_REF), actualTask.getOwners());
 
     // We can GET the task retrieving the owner info
     Pipeline storedPipeline =
         getPipelineByName(entity.getFullyQualifiedName(), "owners,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
-    assertOwners(List.of(USER1_REF), storedTask.getOwners());
+    assertReferenceList(List.of(USER1_REF), storedTask.getOwners());
   }
 
   @Test
@@ -521,30 +526,30 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // add description and tags to an existing task - taskEmpty
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> newTasks = new ArrayList<>();
     Task taskWithDesc =
         taskEmptyDesc
             .withDescription("taskDescription")
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     newTasks.add(taskWithDesc);
-    fieldAdded(change, "tasks", newTasks);
-    fieldUpdated(change, "description", "", "newDescription");
+    fieldAdded(change, "tasks.taskEmpty.description", "taskDescription");
+    fieldAdded(
+        change, "tasks.taskEmpty.tags", List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     List<Task> updatedNewTasks =
         Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
-    pipeline =
-        patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the descriptions of pipeline and task and add tags to tasks
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     newTasks = new ArrayList<>();
     taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
     newTasks.add(taskWithDesc);
-    fieldAdded(change, "tasks", tasks);
-    fieldUpdated(change, "description", "", "newDescription2");
+    fieldUpdated(change, "description", "newDescription", "newDescription2");
+    fieldUpdated(change, "tasks.taskEmpty.description", "taskDescription", "newTaskDescription");
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription("newDescription2");
@@ -554,16 +559,16 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Delete task and pipeline description by setting them to null
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     newTasks = new ArrayList<>();
     Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
     newTasks.add(taskWithoutDesc);
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
-    fieldAdded(change, "tasks", newTasks);
     pipeline.setTasks(updatedNewTasks);
-    pipeline.setDescription(
-        ""); // Since description started out to be empty, during consolidation, no change
-    patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    pipeline.setDescription("");
+    fieldUpdated(change, "description", "newDescription2", "");
+    fieldDeleted(change, "tasks.taskEmpty.description", "newTaskDescription");
+    patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -617,12 +622,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // When domain is not set for a pipeline, carry it forward from the pipeline service
     PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
     CreatePipelineService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     PipelineService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a pipeline without domain and ensure it inherits domain from the parent
     CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -651,52 +656,51 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // add description and tags to an existing task - taskEmpty
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     List<Task> newTasks = new ArrayList<>();
     Task taskWithDesc =
         taskEmptyDesc
             .withDescription("taskDescription")
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     newTasks.add(taskWithDesc);
-    fieldAdded(change, "tasks", newTasks);
-    fieldUpdated(change, "description", "", "newDescription");
+    fieldAdded(change, "tasks.taskEmpty.description", "taskDescription");
+    fieldAdded(
+        change, "tasks.taskEmpty.tags", List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
     List<Task> updatedNewTasks =
         Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline =
-        patchEntityUsingFqnAndCheck(
-            pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the descriptions of pipeline and task and add tags to tasks
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     newTasks = new ArrayList<>();
     taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
     newTasks.add(taskWithDesc);
-    fieldAdded(change, "tasks", tasks);
-    fieldUpdated(change, "description", "", "newDescription2");
+    fieldUpdated(change, "description", "newDescription", "newDescription2");
+    fieldUpdated(change, "tasks.taskEmpty.description", "taskDescription", "newTaskDescription");
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription("newDescription2");
     pipeline =
-        patchEntityUsingFqnAndCheck(
-            pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityUsingFqnAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Delete task and pipeline description by setting them to null
     // Changes from this PATCH is consolidated with the previous changes
     origJson = JsonUtils.pojoToJson(pipeline);
-    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(pipeline, MINOR_UPDATE);
     newTasks = new ArrayList<>();
     Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
     newTasks.add(taskWithoutDesc);
     updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
-    fieldAdded(change, "tasks", newTasks);
+    fieldUpdated(change, "description", "newDescription2", "");
+    fieldDeleted(change, "tasks.taskEmpty.description", "newTaskDescription");
     pipeline.setTasks(updatedNewTasks);
     pipeline.setDescription(
         ""); // Since description started out to be empty, during consolidation, no change
-    patchEntityUsingFqnAndCheck(
-        pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -839,5 +843,125 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   private void verifyPipelineStatus(PipelineStatus actualStatus, PipelineStatus expectedStatus) {
     assertEquals(actualStatus, expectedStatus);
+  }
+
+  @Order(1)
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    // Use existing tags that are already set up in the test environment
+    TagLabel pipelineTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel taskTagLabel = PERSONAL_DATA_TAG_LABEL;
+
+    // Create multiple pipelines with tags at both pipeline and task levels
+    List<Pipeline> createdPipelines = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Task> tasks = new ArrayList<>();
+      for (int j = 0; j < 3; j++) {
+        Task task =
+            new Task()
+                .withName("task" + j + "_" + i)
+                .withDescription("description")
+                .withDisplayName("displayName")
+                .withSourceUrl("http://localhost:0");
+
+        if (j == 0) {
+          // Add tag to first task only
+          task.withTags(List.of(taskTagLabel));
+        }
+        tasks.add(task);
+      }
+
+      CreatePipeline createPipeline =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withTasks(tasks)
+              .withTags(List.of(pipelineTagLabel));
+
+      Pipeline pipeline = createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+      createdPipelines.add(pipeline);
+    }
+
+    // Test pagination with fields=tags (should fetch pipeline-level tags only)
+    WebTarget target =
+        getResource("pipelines").queryParam("fields", "tags").queryParam("limit", "10");
+
+    PipelineList pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(pipelineList.getData());
+
+    // Verify at least one of our created pipelines is in the response
+    List<Pipeline> ourPipelines =
+        pipelineList.getData().stream()
+            .filter(p -> createdPipelines.stream().anyMatch(cp -> cp.getId().equals(p.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourPipelines.isEmpty(), "Should find at least one of our created pipelines in pagination");
+
+    // Verify pipeline-level tags are fetched
+    for (Pipeline pipeline : ourPipelines) {
+      assertNotNull(
+          pipeline.getTags(),
+          "Pipeline-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, pipeline.getTags().size(), "Should have exactly one pipeline-level tag");
+      assertEquals(pipelineTagLabel.getTagFQN(), pipeline.getTags().get(0).getTagFQN());
+
+      // Tasks should not have tags when only fields=tags is specified
+      if (pipeline.getTasks() != null) {
+        for (Task task : pipeline.getTasks()) {
+          assertTrue(
+              task.getTags() == null || task.getTags().isEmpty(),
+              "Task tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    // Test pagination with fields=tasks,tags (should fetch both pipeline and task tags)
+    target = getResource("pipelines").queryParam("fields", "tasks,tags").queryParam("limit", "10");
+
+    pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(pipelineList.getData());
+
+    // Verify at least one of our created pipelines is in the response
+    ourPipelines =
+        pipelineList.getData().stream()
+            .filter(p -> createdPipelines.stream().anyMatch(cp -> cp.getId().equals(p.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourPipelines.isEmpty(), "Should find at least one of our created pipelines in pagination");
+
+    // Verify both pipeline-level and task-level tags are fetched
+    for (Pipeline pipeline : ourPipelines) {
+      // Verify pipeline-level tags
+      assertNotNull(
+          pipeline.getTags(),
+          "Pipeline-level tags should not be null in pagination with tasks,tags");
+      assertEquals(1, pipeline.getTags().size(), "Should have exactly one pipeline-level tag");
+      assertEquals(pipelineTagLabel.getTagFQN(), pipeline.getTags().get(0).getTagFQN());
+
+      // Verify task-level tags
+      assertNotNull(pipeline.getTasks(), "Tasks should not be null when fields includes tasks");
+      assertFalse(pipeline.getTasks().isEmpty(), "Tasks should not be empty");
+
+      // Find the first task which should have a tag
+      Task task0 =
+          pipeline.getTasks().stream()
+              .filter(t -> t.getName().startsWith("task0_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find task0 task"));
+
+      assertNotNull(
+          task0.getTags(), "Task tags should not be null when fields=tasks,tags in pagination");
+      assertEquals(1, task0.getTags().size(), "Task should have exactly one tag");
+      assertEquals(taskTagLabel.getTagFQN(), task0.getTags().get(0).getTagFQN());
+
+      // Other tasks should not have tags
+      for (Task task : pipeline.getTasks()) {
+        if (!task.getName().startsWith("task0_")) {
+          assertTrue(
+              task.getTags() == null || task.getTags().isEmpty(),
+              "Other tasks should not have tags");
+        }
+      }
+    }
   }
 }

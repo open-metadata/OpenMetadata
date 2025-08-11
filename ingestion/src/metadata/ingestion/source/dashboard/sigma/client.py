@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +22,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnec
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
-    EdgeSource,
     EdgeSourceResponse,
     Elements,
     ElementsResponse,
@@ -95,13 +94,38 @@ class SigmaApiClient:
         )
         return result.access_token, result.expires_in
 
+    def test_get_dashboards(self) -> Optional[List[Workbook]]:
+        """
+        method to test fetch dashboards from api
+        """
+        result = self.client.get("/workbooks")
+        result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
+        if result:
+            return result.entries
+
     def get_dashboards(self) -> Optional[List[Workbook]]:
         """
         method to fetch dashboards from api
         """
-        result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
-        if result:
-            return result.entries
+        workbooks = []
+        try:
+            result = self.client.get("/workbooks")
+            result = WorkBookResponseDetails.model_validate(
+                self.client.get("/workbooks")
+            )
+            if result:
+                workbooks.extend(result.entries)
+                while result.nextPage:
+                    data = {"page": int(result.nextPage)}
+                    result = WorkBookResponseDetails.model_validate(
+                        self.client.get("/workbooks", data=data)
+                    )
+                    if result:
+                        workbooks.extend(result.entries)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error fetching Dashboards: {exc}")
+        return workbooks
 
     def get_dashboard_detail(self, workbook_id: str) -> Optional[WorkbookDetails]:
         """
@@ -135,6 +159,36 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch owner details for owner {owner_id}: {exc}")
         return None
 
+    def get_page_elements(
+        self, workbook_id: str, page_id: str
+    ) -> Optional[List[Elements]]:
+        """
+        method to fetch dashboards page elements from api
+        """
+        elements = []
+        try:
+            result = ElementsResponse.model_validate(
+                self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements")
+            )
+            if result:
+                elements.extend(result.entries)
+                while result.nextPage:
+                    data = {"page": int(result.nextPage)}
+                    result = ElementsResponse.model_validate(
+                        self.client.get(
+                            f"/workbooks/{workbook_id}/pages/{page_id}/elements",
+                            data=data,
+                        )
+                    )
+                    if result:
+                        elements.extend(result.entries)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to fetch page elements for workbook {workbook_id}: {exc}"
+            )
+        return elements
+
     def get_chart_details(self, workbook_id: str) -> Optional[List[Elements]]:
         """
         method to fetch dashboards chart details from api
@@ -144,13 +198,21 @@ class SigmaApiClient:
             pages = WorkBookPageResponse.model_validate(
                 self.client.get(f"/workbooks/{workbook_id}/pages")
             )
-            for page in pages.entries:
-                elements = ElementsResponse.model_validate(
+            if not pages.entries:
+                return None
+            while pages.nextPage:
+                pages = WorkBookPageResponse.model_validate(
                     self.client.get(
-                        f"/workbooks/{workbook_id}/pages/{page.pageId}/elements"
+                        f"/workbooks/{workbook_id}/pages",
+                        data={"page": int(pages.nextPage)},
                     )
                 )
-                elements_list.extend(elements.entries or [])
+                if not pages.entries:
+                    break
+                for page in pages.entries:
+                    elements_list.extend(
+                        self.get_page_elements(workbook_id, page.pageId)
+                    )
             return elements_list
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -161,7 +223,7 @@ class SigmaApiClient:
 
     def get_lineage_details(
         self, workbook_id: str, element_id: str
-    ) -> Optional[List[EdgeSource]]:
+    ) -> Optional[List[NodeDetails]]:
         """
         method to fetch dashboards lineage details from api
         """

@@ -15,6 +15,7 @@ import { uuid } from '../../utils/common';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
+import { SubDomain } from './SubDomain';
 
 type UserTeamRef = {
   name: string;
@@ -25,7 +26,7 @@ type ResponseDataType = {
   name: string;
   displayName: string;
   description: string;
-  domain: string;
+  domains: string[];
   id?: string;
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
@@ -38,16 +39,20 @@ export class DataProduct extends EntityClass {
     name: `PW%dataProduct.${this.id}`,
     displayName: `PW Data Product ${this.id}`,
     description: 'playwright data product description',
-    domain: 'PW%domain.1',
+    domains: ['PW%domain.1'],
     // eslint-disable-next-line no-useless-escape
     fullyQualifiedName: `\"PW%dataProduct.${this.id}\"`,
   };
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(domain: Domain, name?: string) {
+  constructor(domains: Domain[], name?: string, subDomains?: SubDomain[]) {
     super(EntityTypeEndpoint.DATA_PRODUCT);
-    this.data.domain = domain.data.name;
+    this.data.domains = subDomains?.length
+      ? subDomains.map(
+          (subDomain) => subDomain.data.fullyQualifiedName ?? ''
+        ) ?? []
+      : domains.map((domain) => domain.data.fullyQualifiedName ?? '') ?? [];
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.name}\"`;

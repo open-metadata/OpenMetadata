@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   MOCK_DESCRIPTION_FEED_1,
   MOCK_DESCRIPTION_FEED_2,
@@ -20,7 +19,7 @@ import {
 } from '../../../../../mocks/DescriptionFeed.mock';
 import DescriptionFeed from './DescriptionFeed';
 
-jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

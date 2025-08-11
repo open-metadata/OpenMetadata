@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,9 @@
 Test Sample behavior
 """
 import os
+import sys
 from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -26,15 +28,22 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
     DatalakeConnection,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(Base):
@@ -140,66 +149,103 @@ class DatalakeSampleTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
-    def setUpClass(cls, mock_get_connection, mocked_dfs) -> None:
+    def setUpClass(cls, mock_get_connection, mock_sample_get_connection) -> None:
         """
         Prepare Ingredients
         """
-        cls.datalake_profiler_interface = PandasProfilerInterface(
-            entity=cls.table_entity,
-            service_connection_config=DatalakeConnection(configSource={}),
-            storage_config=None,
-            ometa_client=None,
-            thread_count=None,
-            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-            source_config=None,
-            sample_query=None,
-            table_partition_config=None,
-        )
+        with (
+            patch.object(
+                DatalakeSampler, "raw_dataset", new_callable=lambda: [cls.df1, cls.df2]
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=cls.table_entity,
+                sample_config=SampleConfig(profileSample=50.0),
+            )
+            cls.datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=cls.table_entity,
+                source_config=None,
+                sampler=sampler,
+                thread_count=None,
+            )
 
-    def test_random_sampler(self):
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_random_sampler(self, _):
         """
         The random sampler should be able to
         generate a random subset of data
         """
-        sampler = DatalakeSampler(
-            client=FakeConnection().client,
-            table=[self.df1, self.df2],
-            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-        )
-        random_sample = sampler.random_sample()
-        res = sum(len(r) for r in random_sample)
-        assert res < 5
+        with (
+            patch.object(
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                sample_config=SampleConfig(profileSample=50.0),
+            )
+            random_sample = sampler.get_dataset()
+            res = sum(len(r) for r in random_sample)
+            assert res < 5
 
     @mock.patch(
         "metadata.profiler.interface.profiler_interface.get_ssl_connection",
         return_value=FakeConnection(),
     )
     @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
         "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
         return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
-    def test_sample_property(self, mock_get_connection, mocked_dfs):
+    def test_sample_property(self, *_):
         """
         Sample property should be properly generated
         """
-        datalake_profiler_interface = PandasProfilerInterface(
-            entity=self.table_entity,
-            service_connection_config=DatalakeConnection(configSource={}),
-            storage_config=None,
-            ometa_client=None,
-            thread_count=None,
-            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-            source_config=None,
-            sample_query=None,
-            table_partition_config=None,
-        )
+        with (
+            patch.object(
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                sample_config=SampleConfig(profileSample=50.0),
+            )
+            datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                source_config=None,
+                sampler=sampler,
+                thread_count=None,
+            )
 
-        random_sample = datalake_profiler_interface._get_sampler().random_sample()
-        res = sum(len(r) for r in random_sample)
-        assert res < 5
+            random_sample = datalake_profiler_interface.sampler.get_dataset()
+            res = sum(len(r) for r in random_sample)
+            assert res < 5
 
     def test_table_row_count(self):
         """
@@ -212,7 +258,8 @@ class DatalakeSampleTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 3
+        # We expect the full count of the table
+        assert res.get(Metrics.ROW_COUNT.name) == 2
 
     @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):
@@ -242,31 +289,58 @@ class DatalakeSampleTest(TestCase):
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"]) < 30
 
-    def test_sample_data(self):
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_sample_data(self, *_):
         """
         We should be able to pick up sample data from the sampler
         """
-        sampler = DatalakeSampler(
-            client=FakeConnection().client,
-            table=[self.df1, self.df2],
-        )
-        sample_data = sampler.fetch_sample_data()
+        with (
+            patch.object(
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                sample_config=SampleConfig(profileSample=50.0),
+            )
+            sample_data = sampler.fetch_sample_data()
 
-        assert len(sample_data.columns) == 10
-        # we drop na values when fecthing sample data
-        assert len(sample_data.rows) == 4
+            assert len(sample_data.columns) == 10
+            # we drop na values when fecthing sample data
+            assert len(sample_data.rows) == 4
 
-    def test_sample_from_user_query(self):
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_sample_from_user_query(self, *_):
         """
         Test sample data are returned based on user query
         """
-        stmt = "`age` > 30"
-        sampler = DatalakeSampler(
-            client=FakeConnection().client,
-            table=[self.df1, self.df2],
-            profile_sample_query=stmt,
-        )
-        sample_data = sampler.fetch_sample_data()
+        with (
+            patch.object(
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                default_sample_config=SampleConfig(profileSample=50.0),
+                sample_query="`age` > 30",
+            )
+            sample_data = sampler.fetch_sample_data()
 
-        assert len(sample_data.columns) == 10
-        assert len(sample_data.rows) == 3
+            assert len(sample_data.columns) == 10
+            assert len(sample_data.rows) == 3

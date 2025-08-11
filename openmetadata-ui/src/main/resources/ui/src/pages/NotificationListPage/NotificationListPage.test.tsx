@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import NotificationListPage from './NotificationListPage';
@@ -49,6 +51,22 @@ const MOCK_DATA = [
     provider: 'user',
   },
 ];
+const mockNavigate = jest.fn();
+const mockLocationPathname = '/mock-path';
+
+jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(
+      ({ children, ...props }: { children: React.ReactNode }) => (
+        <p {...props}>{children}</p>
+      )
+    ),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
+}));
 
 jest.mock('../../rest/alertsAPI', () => ({
   getAllAlerts: jest.fn().mockImplementation(() =>
@@ -85,11 +103,42 @@ jest.mock(
   }
 );
 
+jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ visible }) =>
+      visible ? <p>DeleteWidgetModal</p> : null
+    );
+});
+
 jest.mock('../../hoc/LimitWrapper', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+    getResourcePermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
+  }),
+}));
 
 describe('Notification Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
@@ -139,7 +188,7 @@ describe('Notification Alerts Page Tests', () => {
   });
 
   it('Table should render no data', async () => {
-    (getAllAlerts as jest.Mock).mockImplementation(() =>
+    (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         data: [],
         paging: { total: 1 },
@@ -167,5 +216,89 @@ describe('Notification Alerts Page Tests', () => {
       expect.objectContaining({ resource: 'eventsubscription' }),
       {}
     );
+  });
+
+  it('should render edit and delete buttons for alerts with permissions', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const editButton = await screen.findByTestId('alert-edit-alert-test');
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    expect(editButton).toBeInTheDocument();
+    expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('should open delete modal on delete button click', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    await act(async () => {
+      userEvent.click(deleteButton);
+    });
+
+    const deleteModal = await screen.findByText('DeleteWidgetModal');
+
+    expect(deleteModal).toBeInTheDocument();
+  });
+
+  it('should navigate to add notification page on add button click', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const addButton = await screen.findByText(/label.add-entity/);
+    fireEvent.click(addButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      ROUTES.SETTINGS + '/notifications/add-notification'
+    );
+  });
+
+  it('should not render edit and delete buttons for alerts without permissions', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        EditAll: false,
+        EditDescription: false,
+        EditDisplayName: false,
+        EditCustomFields: false,
+      })),
+      getResourcePermission: jest.fn().mockImplementation(() => ({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        EditAll: false,
+        EditDescription: false,
+        EditDisplayName: false,
+        EditCustomFields: false,
+      })),
+    }));
+
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const addButton = screen.queryByText(/label.add-entity/);
+    const editButton = screen.queryByTestId('alert-edit-alert-test');
+    const deleteButton = screen.queryByTestId('alert-delete-alert-test');
+
+    expect(addButton).not.toBeInTheDocument();
+    expect(editButton).not.toBeInTheDocument();
+    expect(deleteButton).not.toBeInTheDocument();
   });
 });

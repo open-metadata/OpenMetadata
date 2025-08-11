@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, queryByText, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  queryByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import LineageLayers from './LineageLayers';
 
 const onMockColumnClick = jest.fn();
@@ -71,7 +76,7 @@ describe('LineageLayers component', () => {
   it('renders LineageLayers component', () => {
     const { container } = render(
       <ReactFlowProvider>
-        <LineageLayers />
+        <LineageLayers entityType={EntityType.TABLE} />
       </ReactFlowProvider>
     );
     const layerBtn = screen.getByText('label.layer-plural');
@@ -90,14 +95,14 @@ describe('LineageLayers component', () => {
   it('calls onUpdateLayerView when a button is clicked', async () => {
     render(
       <ReactFlowProvider>
-        <LineageLayers />
+        <LineageLayers entityType={EntityType.TABLE} />
       </ReactFlowProvider>
     );
 
     const layerBtn = screen.getByTestId('lineage-layer-btn');
 
     await act(async () => {
-      userEvent.click(layerBtn);
+      fireEvent.click(layerBtn);
     });
 
     const popover = screen.getByRole('tooltip');
@@ -110,16 +115,16 @@ describe('LineageLayers component', () => {
     expect(columnButton).toBeInTheDocument();
     expect(dataObservabilityBtn).toBeInTheDocument();
 
-    userEvent.click(columnButton as HTMLElement);
+    fireEvent.click(columnButton as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
-      LineageLayerView.COLUMN,
+      LineageLayer.ColumnLevelLineage,
     ]);
 
-    userEvent.click(dataObservabilityBtn as HTMLElement);
+    fireEvent.click(dataObservabilityBtn as HTMLElement);
 
     expect(onMockUpdateLayerView).toHaveBeenCalledWith([
-      LineageLayerView.DATA_OBSERVARABILITY,
+      LineageLayer.DataObservability,
     ]);
   });
 });

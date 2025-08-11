@@ -32,3 +32,5 @@ export const HTTP_STATUS_CODE = {
   FAILED_DEPENDENCY: 424, // The method could not be performed on the resource because the requested action depended on another action and that action failed.
   LIMIT_REACHED: 429, // Entity creation limit reached
 };
+
+export const UN_AUTHORIZED_EXCLUDED_PATHS = ['/users/refresh', '/users/login'];

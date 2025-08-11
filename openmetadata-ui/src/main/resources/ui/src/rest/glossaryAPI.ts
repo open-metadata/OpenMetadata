@@ -14,18 +14,20 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
+import { MoveGlossaryTermWebsocketResponse } from '../components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
+import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ChangeEvent } from '../generated/type/changeEvent';
-import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -144,12 +146,14 @@ export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
   return response.data;
 };
 
-export const addGlossaryTerm = (
+export const addGlossaryTerm = async (
   data: CreateGlossaryTerm
-): Promise<AxiosResponse> => {
+): Promise<GlossaryTerm> => {
   const url = '/glossaryTerms';
 
-  return APIClient.post(url, data);
+  const response = await APIClient.post(url, data);
+
+  return response.data;
 };
 
 export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
@@ -161,36 +165,20 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteGlossary = (id: string) => {
-  return APIClient.delete(`/glossaries/${id}?recursive=true&hardDelete=true`);
-};
-
-export const deleteGlossaryTerm = (id: string) => {
-  return APIClient.delete(
-    `/glossaryTerms/${id}?recursive=true&hardDelete=true`
-  );
-};
-
-export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
-  const response = await APIClient.get<string>(
-    `/glossaries/name/${getEncodedFqn(glossaryName)}/export`
-  );
+export const moveGlossaryTerm = async (id: string, parent: EntityReference) => {
+  const response = await APIClient.put<
+    MoveGlossaryTermRequest,
+    AxiosResponse<MoveGlossaryTermWebsocketResponse>
+  >(`/glossaryTerms/${id}/moveAsync`, {
+    parent,
+  });
 
   return response.data;
 };
 
-export const importGlossaryInCSVFormat = async (
-  glossaryName: string,
-  data: string,
-  dryRun = true
-) => {
-  const configOptions = {
-    headers: { 'Content-type': 'text/plain' },
-  };
-  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/glossaries/name/${getEncodedFqn(glossaryName)}/import?dryRun=${dryRun}`,
-    data,
-    configOptions
+export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
   );
 
   return response.data;
@@ -276,7 +264,6 @@ export const addAssetsToGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: dryRun,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<
@@ -294,7 +281,6 @@ export const removeAssetsFromGlossaryTerm = async (
   const data = {
     assets: assets,
     dryRun: false,
-    glossaryTags: glossaryTerm.tags ?? [],
   };
 
   const response = await APIClient.put<
@@ -334,7 +320,11 @@ export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
   >(apiUrl, {
     params: {
       directChildrenOf: parentFQN,
-      fields: [TabSpecificField.CHILDREN_COUNT, TabSpecificField.OWNERS],
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
       limit: 100000,
     },
   });

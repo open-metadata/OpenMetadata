@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
@@ -29,12 +29,11 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import GlossaryV1Skeleton from '../../common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { DomainLeftPanelProps } from './DomainLeftPanel.interface';
-
 const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: domainFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const createDomainsPermission = useMemo(
     () => checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
@@ -62,22 +61,16 @@ const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   }, [domains]);
 
   const handleAddDomain = () => {
-    history.push(ROUTES.ADD_DOMAIN);
+    navigate(ROUTES.ADD_DOMAIN);
   };
   const handleMenuClick: MenuProps['onClick'] = (event) => {
-    history.push(getDomainPath(event.key));
+    navigate(getDomainPath(event.key));
   };
 
   return (
     <LeftPanelCard id="domain">
       <GlossaryV1Skeleton loading={domains.length === 0}>
-        <Row className="p-y-xs" gutter={[0, 16]}>
-          <Col className="p-x-sm" span={24}>
-            <Typography.Text strong className="m-b-0">
-              {t('label.domain-plural')}
-            </Typography.Text>
-          </Col>
-
+        <Row gutter={[0, 16]}>
           {createDomainsPermission && (
             <Col className="p-x-sm" span={24}>
               <Button

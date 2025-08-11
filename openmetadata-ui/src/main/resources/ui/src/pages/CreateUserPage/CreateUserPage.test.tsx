@@ -12,7 +12,6 @@
  */
 
 import { act, findByText, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { createUser } from '../../rest/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';
@@ -38,6 +37,16 @@ const mockUserRole = {
     total: 1,
   },
 };
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({
+    state: { isAdminPage: false },
+  }),
+  useParams: jest.fn().mockReturnValue({
+    bot: undefined,
+  }),
+  useNavigate: jest.fn(),
+}));
 
 jest.mock('../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
@@ -65,6 +74,13 @@ jest.mock('../../rest/userAPI', () => ({
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
+  }
+);
 
 const mockCreateUser = jest.fn(() => Promise.resolve({}));
 

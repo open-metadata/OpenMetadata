@@ -215,7 +215,7 @@
     }
     .admonition_tip,
     .admonition_info {
-      background-color: #d1e9ff;
+      background-color: @primary-1;
       border-left-color: @info-color;
     }
     .admonition_tip {
@@ -272,6 +272,12 @@
     .code-copy-button[data-copied='true'] {
       opacity: 0;
     }
+    // for latex expressions
+    .katex {
+      mtext {
+        font-size: 14px;
+      }
+    }
   }
 }
 
@@ -287,6 +293,11 @@
 }
 
 .rich-text-editor-container {
+  ol,
+  ul {
+    margin: unset;
+    padding-inline-start: 20px;
+  }
   .ant-btn {
     padding: 0px;
     margin: 0px;

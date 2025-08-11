@@ -12,30 +12,24 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import { AuthProvider } from '../../../generated/settings/settings';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
   children: ReactNode;
-  onLogoutSuccess: () => void;
 }
 
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig, setOidcToken } =
-      useApplicationStore();
-    const { t } = useTranslation();
-    const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
-      useAuth0();
+  ({ children }: Props, ref) => {
+    const { handleSuccessfulLogout } = useAuthProvider();
+    const {
+      loginWithRedirect,
+      getAccessTokenSilently,
+      getIdTokenClaims,
+      logout,
+    } = useAuth0();
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
@@ -44,52 +38,29 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
           console.error(error);
         });
       },
-      invokeLogout() {
-        setIsAuthenticated(false);
-        onLogoutSuccess();
-      },
-      renewIdToken(): Promise<string> {
-        let idToken = '';
-        if (authConfig && authConfig.provider !== undefined) {
-          return new Promise((resolve, reject) => {
-            const { provider } = authConfig;
-            if (provider === AuthProvider.Auth0) {
-              getAccessTokenSilently()
-                .then(() => {
-                  getIdTokenClaims()
-                    .then((token) => {
-                      if (token !== undefined) {
-                        idToken = token.__raw;
-                        setOidcToken(idToken);
-                        resolve(idToken);
-                      }
-                    })
-                    .catch((err) => {
-                      reject(
-                        t('server.error-while-renewing-id-token-with-message', {
-                          message: err.message,
-                        })
-                      );
-                    });
-                })
-                .catch((err) => {
-                  reject(
-                    t('server.error-while-renewing-id-token-with-message', {
-                      message: err.message,
-                    })
-                  );
-                });
-            } else {
-              reject(
-                t('server.auth-provider-not-supported-renewing', { provider })
-              );
-            }
+      async invokeLogout() {
+        try {
+          logout({
+            localOnly: true,
           });
-        } else {
-          return Promise.reject(
-            t('server.can-not-renew-token-authentication-not-present')
-          );
+        } finally {
+          // This will cleanup the application state
+          handleSuccessfulLogout();
         }
+      },
+      async renewIdToken(): Promise<string> {
+        let idToken = '';
+
+        // Need to emmit error if this fails
+        await getAccessTokenSilently();
+
+        const claims = await getIdTokenClaims();
+        if (claims) {
+          idToken = claims.__raw;
+          setOidcToken(idToken);
+        }
+
+        return idToken;
       },
     }));
 

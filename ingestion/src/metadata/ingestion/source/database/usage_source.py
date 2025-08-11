@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from typing import Iterable
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -65,11 +66,13 @@ class UsageSource(QueryParserSource, ABC):
                         )
                         query_list.append(
                             TableQuery(
+                                dialect=self.dialect.value,
                                 query=query_dict["query_text"],
                                 userName=query_dict.get("user_name", ""),
                                 startTime=query_dict.get("start_time", ""),
                                 endTime=query_dict.get("end_time", ""),
                                 duration=query_dict.get("duration"),
+                                cost=query_dict.get("cost"),
                                 analysisDate=DateTime(analysis_date),
                                 aborted=self.get_aborted_status(query_dict),
                                 databaseName=self.get_database_name(query_dict),
@@ -119,15 +122,18 @@ class UsageSource(QueryParserSource, ABC):
                         for row in rows:
                             row = dict(row)
                             try:
+                                row.update({k.lower(): v for k, v in row.items()})
+                                logger.debug(f"Processing row: {row}")
                                 query_type = row.get("query_type")
-                                query = self.format_query(row["query_text"])
+                                query_text = self.format_query(row["query_text"])
                                 queries.append(
                                     TableQuery(
-                                        query=query,
+                                        query=query_text,
                                         query_type=query_type,
                                         exclude_usage=self.check_life_cycle_query(
-                                            query_type=query_type, query_text=query
+                                            query_type=query_type, query_text=query_text
                                         ),
+                                        dialect=self.dialect.value,
                                         userName=row["user_name"],
                                         startTime=str(row["start_time"]),
                                         endTime=str(row["end_time"]),
@@ -137,6 +143,7 @@ class UsageSource(QueryParserSource, ABC):
                                         duration=row.get("duration"),
                                         serviceName=self.config.serviceName,
                                         databaseSchema=self.get_schema_name(row),
+                                        cost=row.get("cost"),
                                     )
                                 )
                             except Exception as exc:
@@ -148,7 +155,10 @@ class UsageSource(QueryParserSource, ABC):
             except Exception as exc:
                 if query:
                     logger.debug(
-                        f"###### USAGE QUERY #######\n{query}\n##########################"
+                        (
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
+                            "\n##########################"
+                        )
                     )
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")

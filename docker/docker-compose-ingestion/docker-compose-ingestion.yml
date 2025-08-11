@@ -18,7 +18,7 @@ volumes:
 services:  
   ingestion:
     container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:1.5.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/ingestion:1.9.0-SNAPSHOT
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -26,7 +26,7 @@ services:
       DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
       DB_PORT: ${AIRFLOW_DB_PORT:-3306}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
-      DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
+      DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+mysqldb}
       DB_USER: ${AIRFLOW_DB_USER:-airflow_user}
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
       # extra connection-string properties for the database

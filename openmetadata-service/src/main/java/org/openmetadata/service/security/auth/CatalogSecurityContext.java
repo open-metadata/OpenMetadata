@@ -15,18 +15,28 @@ package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.util.HashSet;
 import java.util.Set;
-import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 
 /** Holds authenticated principal and security context which is passed to the JAX-RS request methods */
 @Slf4j
 public record CatalogSecurityContext(
-    Principal principal, String scheme, String authenticationScheme, Set<String> userRoles)
+    Principal principal,
+    String scheme,
+    String authenticationScheme,
+    Set<String> userRoles,
+    boolean isBot)
     implements SecurityContext {
   public static final String OPENID_AUTH = "openid";
+
+  // Backward compatibility constructor
+  public CatalogSecurityContext(
+      Principal principal, String scheme, String authenticationScheme, Set<String> userRoles) {
+    this(principal, scheme, authenticationScheme, userRoles, false);
+  }
 
   @Override
   public Principal getUserPrincipal() {

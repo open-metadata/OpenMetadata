@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,12 @@ from typing import List, Optional, TypeVar
 from pydantic import BaseModel
 
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -26,6 +31,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
@@ -33,6 +39,7 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -42,6 +49,9 @@ logger = utils_logger()
 T = TypeVar("T", bound=BaseModel)
 
 ES_INDEX_MAP = {
+    ApiService.__name__: "api_service_search_index",
+    APICollection.__name__: "api_collection_search_index",
+    APIEndpoint.__name__: "api_endpoint_search_index",
     Table.__name__: "table_search_index",
     Database.__name__: "database_search_index",
     DatabaseSchema.__name__: "database_schema_search_index",
@@ -56,12 +66,14 @@ ES_INDEX_MAP = {
     Topic.__name__: "topic_search_index",
     Pipeline.__name__: "pipeline_search_index",
     Glossary.__name__: "glossary_search_index",
-    GlossaryTerm.__name__: "glossary_search_index",
+    GlossaryTerm.__name__: "glossary_term_search_index",
     MlModel.__name__: "mlmodel_search_index",
     Tag.__name__: "tag_search_index",
+    Classification.__name__: "classification_search_index",
     Container.__name__: "container_search_index",
     Query.__name__: "query_search_index",
     ReportData.__name__: "entity_report_data_index",
+    Metric.__name__: "metric_search_index",
     "web_analytic_user_activity_report": "web_analytic_user_activity_report_data_index",
     "web_analytic_entity_view_report": "web_analytic_entity_view_report_data_index",
 }
@@ -76,6 +88,9 @@ def get_entity_from_es_result(
     :param entity_list: ES query result
     :return: single entity
     """
+    if entity_list is None:
+        return None
+    entity_list = [e for e in entity_list if e is not None]
     if entity_list and len(entity_list):
         if fetch_multiple_entities:
             return entity_list

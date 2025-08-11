@@ -36,7 +36,7 @@ describe('Explore Utils', () => {
     const data = [
       {
         label: 'Domain',
-        key: 'domain.displayName.keyword',
+        key: 'domains.displayName.keyword',
         value: [],
       },
       {
@@ -131,7 +131,7 @@ describe('Explore Utils', () => {
     const dropdownData = [
       {
         label: 'Domain',
-        key: 'domain.displayName.keyword',
+        key: 'domains.displayName.keyword',
       },
       {
         label: 'Owner',
@@ -187,7 +187,7 @@ describe('Explore Utils', () => {
       );
 
       expect(result).toEqual({
-        bucket: EntityFields.DATABASE,
+        bucket: EntityFields.DATABASE_DISPLAY_NAME,
         queryFilter: {
           query: {
             bool: {

@@ -13,18 +13,18 @@
 
 package org.openmetadata.service.resources.searchindex;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -41,6 +41,8 @@ import es.org.elasticsearch.search.aggregations.PipelineAggregatorBuilders;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.sort.SortOrder;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,8 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,7 @@ import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -77,7 +79,6 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -105,13 +106,13 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
 
     // Partitions is required field
     assertResponse(
         () -> createEntity(createRequest(test).withFields(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[fields must not be null]");
+        "[query param fields must not be null]");
   }
 
   @Test
@@ -375,12 +376,12 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     // When domain is not set for a searchIndex, carry it forward from the search service
     SearchServiceResourceTest serviceTest = new SearchServiceResourceTest();
     CreateSearchService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     SearchService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a searchIndex without domain and ensure it inherits domain from the parent
     CreateSearchIndex create = createRequest("user").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -432,7 +433,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   @Test
   void testNewAggregation(TestInfo testInfo) throws IOException {
     DataQualityReport dataQualityReport = new DataQualityReport();
-    SearchRepository searchRepository = getSearchRepository();
+    SearchRepository searchRepository = Entity.getSearchRepository();
     String query =
         "{\"query\":{\"bool\":{\"should\":[{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuite\"}}},{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuiteTwo\"}}}]}}}";
 
@@ -948,6 +949,120 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         assertEquals(
             expectedAggregations.get(i), actualElasticAggregation.getElasticAggregationBuilder());
       }
+    }
+  }
+
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel searchIndexTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel fieldTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    List<SearchIndex> createdSearchIndexes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<SearchIndexField> fields =
+          Arrays.asList(
+              getField("field1_" + i, SearchIndexDataType.KEYWORD, fieldTagLabel),
+              getField("field2_" + i, SearchIndexDataType.TEXT, null));
+
+      CreateSearchIndex createSearchIndex =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withFields(fields)
+              .withTags(List.of(searchIndexTagLabel));
+
+      SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
+      createdSearchIndexes.add(searchIndex);
+    }
+
+    WebTarget target =
+        getResource("searchIndexes").queryParam("fields", "tags").queryParam("limit", "50");
+
+    SearchIndexResource.SearchIndexList searchIndexList =
+        TestUtils.get(target, SearchIndexResource.SearchIndexList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(searchIndexList.getData());
+
+    List<SearchIndex> ourSearchIndexes =
+        searchIndexList.getData().stream()
+            .filter(
+                si -> createdSearchIndexes.stream().anyMatch(csi -> csi.getId().equals(si.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourSearchIndexes.isEmpty(),
+        "Should find at least one of our created search indexes in pagination");
+
+    for (SearchIndex searchIndex : ourSearchIndexes) {
+      assertNotNull(
+          searchIndex.getTags(),
+          "SearchIndex-level tags should not be null when fields=tags in pagination");
+      assertEquals(
+          1, searchIndex.getTags().size(), "Should have exactly one search index-level tag");
+      assertEquals(searchIndexTagLabel.getTagFQN(), searchIndex.getTags().get(0).getTagFQN());
+
+      // Fields should not have tags when only fields=tags is specified
+      if (searchIndex.getFields() != null) {
+        for (SearchIndexField field : searchIndex.getFields()) {
+          assertTrue(
+              field.getTags() == null || field.getTags().isEmpty(),
+              "Field tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    target =
+        getResource("searchIndexes").queryParam("fields", "fields,tags").queryParam("limit", "50");
+
+    searchIndexList =
+        TestUtils.get(target, SearchIndexResource.SearchIndexList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(searchIndexList.getData());
+
+    // Verify at least one of our created search indexes is in the response
+    ourSearchIndexes =
+        searchIndexList.getData().stream()
+            .filter(
+                si -> createdSearchIndexes.stream().anyMatch(csi -> csi.getId().equals(si.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourSearchIndexes.isEmpty(),
+        "Should find at least one of our created search indexes in pagination");
+
+    // Verify both search index-level and field-level tags are fetched
+    for (SearchIndex searchIndex : ourSearchIndexes) {
+      // Verify search index-level tags
+      assertNotNull(
+          searchIndex.getTags(),
+          "SearchIndex-level tags should not be null in pagination with fields,tags");
+      assertEquals(
+          1, searchIndex.getTags().size(), "Should have exactly one search index-level tag");
+      assertEquals(searchIndexTagLabel.getTagFQN(), searchIndex.getTags().get(0).getTagFQN());
+
+      // Verify field-level tags
+      assertNotNull(
+          searchIndex.getFields(), "Fields should not be null when fields includes fields");
+
+      SearchIndexField field1 =
+          searchIndex.getFields().stream()
+              .filter(f -> f.getName().startsWith("field1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find field1 field"));
+
+      assertNotNull(
+          field1.getTags(), "Field tags should not be null when fields=fields,tags in pagination");
+      assertTrue(field1.getTags().size() >= 1, "Field should have at least one tag");
+      boolean hasExpectedTag =
+          field1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(fieldTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Field should have the expected tag: " + fieldTagLabel.getTagFQN());
+
+      SearchIndexField field2 =
+          searchIndex.getFields().stream()
+              .filter(f -> f.getName().startsWith("field2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find field2 field"));
+
+      assertTrue(
+          field2.getTags() == null || field2.getTags().isEmpty(), "field2 should not have tags");
     }
   }
 }

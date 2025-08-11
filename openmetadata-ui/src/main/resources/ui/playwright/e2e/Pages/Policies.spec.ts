@@ -22,11 +22,22 @@ import {
   RULE_DETAILS,
   RULE_NAME,
   UPDATED_DESCRIPTION,
+  UPDATED_POLICY_NAME,
   UPDATED_RULE_NAME,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  PolicyClass,
+  PolicyRulesType,
+} from '../../support/access-control/PoliciesClass';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
+import { getElementWithPagination } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -91,7 +102,7 @@ test.describe('Policy page should work properly', () => {
             hasText: policy,
           });
 
-          await expect(policyElement).toBeVisible();
+          await getElementWithPagination(page, policyElement, false);
         }
       }
     );
@@ -184,6 +195,18 @@ test.describe('Policy page should work properly', () => {
       ).toContainText(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
     });
 
+    await test.step('Edit policy display name', async () => {
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('rename-button-title').click();
+      await page.locator('#displayName').click();
+      await page.locator('#displayName').fill(UPDATED_POLICY_NAME);
+      await page.getByTestId('save-button').click();
+
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(UPDATED_POLICY_NAME);
+    });
+
     await test.step('Add new rule', async () => {
       // Click on add rule button
       await page.locator('[data-testid="add-rule"]').click();
@@ -258,7 +281,8 @@ test.describe('Policy page should work properly', () => {
       await page.locator('[data-testid="delete-rule"]').click();
 
       // Validate the error message
-      await expect(page.locator('.Toastify__toast-body')).toContainText(
+      await toastNotification(
+        page,
         ERROR_MESSAGE_VALIDATION.lastRuleCannotBeRemoved
       );
     });
@@ -270,7 +294,7 @@ test.describe('Policy page should work properly', () => {
       });
       // Click on delete action button
       await page
-        .locator(`[data-testid="delete-action-${POLICY_NAME}"]`)
+        .locator(`[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`)
         .click({ force: true });
 
       // Type 'DELETE' in the confirmation text input
@@ -283,7 +307,7 @@ test.describe('Policy page should work properly', () => {
 
       // Validate deleted policy
       await expect(
-        page.getByText(POLICY_NAME, { exact: true })
+        page.getByText(UPDATED_POLICY_NAME, { exact: true })
       ).not.toBeVisible();
     });
   });
@@ -324,5 +348,46 @@ test.describe('Policy page should work properly', () => {
     await expect(
       page.getByRole('link', { name: 'Organization', exact: true })
     ).toBeVisible();
+  });
+
+  test('Delete policy action from manage button options', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const policy = new PolicyClass();
+    const policyRules: PolicyRulesType[] = [
+      {
+        name: `${RULE_NAME}`,
+        resources: ['bot'],
+        operations: ['ViewAll'],
+        effect: 'allow',
+      },
+    ];
+    const policyLocator = page.locator(
+      `[data-testid="policy-name"][href="/settings/access/policies/${encodeURIComponent(
+        policy.data.name
+      )}"]`
+    );
+
+    await policy.create(apiContext, policyRules);
+
+    await page.reload();
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await page.waitForLoadState('networkidle');
+
+    await getElementWithPagination(page, policyLocator);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button').click();
+    await page
+      .locator('[data-testid="confirmation-text-input"]')
+      .fill('DELETE');
+    await page.locator('[data-testid="confirm-button"]').click();
+
+    await expect(policyLocator).not.toBeVisible();
+
+    await policy.delete(apiContext);
+    await afterAction();
   });
 });

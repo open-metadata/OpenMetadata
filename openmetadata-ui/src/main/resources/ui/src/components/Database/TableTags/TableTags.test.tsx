@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Constraint, DataType } from '../../../generated/entity/data/table';
@@ -85,6 +84,7 @@ const mockProp = {
   index: 0,
   isReadOnly: false,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   onThreadLinkSelect: jest.fn(),
   entityFieldThreads: [
     {

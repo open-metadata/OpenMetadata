@@ -11,32 +11,35 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, DragOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Space, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty, isUndefined, round } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as KPIEmptyIcon } from '../../../../assets/svg/KPI-not-data-placeholder.svg';
+import { ReactComponent as KPIIcon } from '../../../../assets/svg/ic-kpi-widget.svg';
+import { ReactComponent as KPINoDataPlaceholder } from '../../../../assets/svg/no-search-placeholder.svg';
 import {
   CHART_WIDGET_DAYS_DURATION,
-  GRAPH_BACKGROUND_COLOR,
+  ROUTES,
 } from '../../../../constants/constants';
-import { DATA_INSIGHT_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
-import { DATA_INSIGHT_DOCS } from '../../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
-import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/Widgets.constant';
+import { SIZE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import { Kpi, KpiResult } from '../../../../generated/dataInsight/kpi/kpi';
+import {
+  Kpi,
+  KpiResult,
+  KpiTargetType,
+} from '../../../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
@@ -44,16 +47,19 @@ import {
   getListKpiResult,
   getListKPIs,
 } from '../../../../rest/KpiAPI';
-import { Transi18next } from '../../../../utils/CommonUtils';
+import { CustomTooltip } from '../../../../utils/DataInsightUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getYAxisTicks } from '../../../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
+import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
+import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
+import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './kpi-widget.less';
+import KPILegend from './KPILegend/KPILegend';
 import { KPIWidgetProps } from './KPIWidget.interface';
 
 const KPIWidget = ({
@@ -61,17 +67,47 @@ const KPIWidget = ({
   selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
   widgetKey,
-  selectedGridSize = WidgetWidths.medium,
+  currentLayout,
+  handleLayoutUpdate,
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
-  const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(false);
+  const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(true);
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
   >({});
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const widgetData = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey);
+  }, [currentLayout, widgetKey]);
+
+  const isFullSizeWidget = useMemo(() => {
+    return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
+  }, [currentLayout, widgetKey]);
+
+  const customTooltipStyles = useMemo(
+    () => ({
+      cardStyles: {
+        maxWidth: '300px',
+        maxHeight: '350px',
+        overflow: 'auto',
+      },
+      labelStyles: {
+        maxWidth: '160px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap' as const,
+      },
+      listContainerStyles: {
+        padding: '4px 12px',
+      },
+    }),
+    []
+  );
 
   const getKPIResult = async (kpi: Kpi) => {
     const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
@@ -80,6 +116,10 @@ const KPIWidget = ({
     });
 
     return { name: kpi.name, data: response.results };
+  };
+
+  const handleTitleClick = () => {
+    navigate(ROUTES.KPI_LIST);
   };
 
   const fetchKpiResults = async () => {
@@ -157,6 +197,9 @@ const KPIWidget = ({
         fields: TabSpecificField.DATA_INSIGHT_CHART,
       });
       setKpiList(response.data);
+      if (response?.data?.length) {
+        setIsLoading(true);
+      }
     } catch (_err) {
       setKpiList([]);
       showErrorToast(_err as AxiosError);
@@ -165,16 +208,206 @@ const KPIWidget = ({
     }
   };
 
-  const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
-  }, [widgetKey]);
+  const { domain, ticks } = useMemo(() => {
+    if (kpiResults) {
+      return getYAxisTicks(kpiResults, 10);
+    }
 
-  const isWidgetSizeMedium = useMemo(
-    () => selectedGridSize === WidgetWidths.medium,
-    [selectedGridSize]
-  );
+    return { domain: [0, 60], ticks: [0, 15, 30, 45, 60] };
+  }, [kpiResults]);
 
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
+
+  const mapKPIMetricType = useMemo(() => {
+    return kpiList.reduce(
+      (acc, kpi) => {
+        acc[kpi.fullyQualifiedName ?? ''] = kpi.metricType;
+
+        return acc;
+      },
+
+      {} as Record<string, KpiTargetType>
+    );
+  }, [kpiList]);
+
+  const kpiTooltipValueFormatter = (
+    value: string | number,
+    key?: string
+  ): string => {
+    const isPercentage = key
+      ? mapKPIMetricType[key] === KpiTargetType.Percentage
+      : false;
+
+    return isPercentage ? round(Number(value), 2) + '%' : value + '';
+  };
+
+  const emptyState = useMemo(
+    () => (
+      <WidgetEmptyState
+        actionButtonLink={ROUTES.KPI_LIST}
+        actionButtonText={t('label.set-up-kpi')}
+        description={t('message.no-kpi')}
+        icon={<KPINoDataPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />}
+        title={t('label.no-kpis-yet')}
+      />
+    ),
+    [t]
+  );
+
+  // Consolidate data for proper tooltip display
+  const consolidatedChartData = useMemo(() => {
+    if (!kpiResults || isEmpty(kpiResults)) {
+      return [];
+    }
+
+    const allDays = new Set<number>();
+    Object.values(kpiResults).forEach((data) => {
+      data.forEach((point) => allDays.add(point.day));
+    });
+
+    return Array.from(allDays)
+      .sort()
+      .map((day) => {
+        const dataPoint: Record<string, number> = { day };
+
+        kpiNames.forEach((kpiName) => {
+          const kpiData = kpiResults[kpiName];
+          const dayData = kpiData?.find((d) => d.day === day);
+
+          dataPoint[kpiName] = dayData?.count || 0;
+        });
+
+        return dataPoint;
+      });
+  }, [kpiResults, kpiNames]);
+
+  const kpiChartData = useMemo(() => {
+    return (
+      <Row className="p-t-sm p-x-md" gutter={[16, 16]}>
+        <Col span={isFullSizeWidget ? 16 : 24}>
+          <ResponsiveContainer debounce={1} height={350} width="100%">
+            <AreaChart
+              data={consolidatedChartData}
+              margin={{
+                top: 10,
+                right: 30,
+                left: -30,
+                bottom: 0,
+              }}>
+              <defs>
+                {kpiNames.map((key, i) => (
+                  <linearGradient
+                    id={`gradient-${key}`}
+                    key={key}
+                    x1="0"
+                    x2="0"
+                    y1="0"
+                    y2="1">
+                    <stop
+                      offset="0%"
+                      stopColor={KPI_WIDGET_GRAPH_COLORS[i]}
+                      stopOpacity={0.4}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor={KPI_WIDGET_GRAPH_COLORS[i]}
+                      stopOpacity={0.05}
+                    />
+                  </linearGradient>
+                ))}
+              </defs>
+
+              <Tooltip
+                content={
+                  <CustomTooltip
+                    {...customTooltipStyles}
+                    timeStampKey="day"
+                    valueFormatter={kpiTooltipValueFormatter}
+                  />
+                }
+              />
+
+              <CartesianGrid
+                stroke="#E4E6EB"
+                strokeDasharray="3 3"
+                vertical={false}
+              />
+
+              <XAxis
+                allowDuplicatedCategory={false}
+                axisLine={false}
+                dataKey="day"
+                interval="preserveStartEnd"
+                tick={{ fill: '#888', fontSize: 12 }}
+                tickFormatter={(value: number) =>
+                  customFormatDateTime(value, 'dMMM, yy')
+                }
+                tickLine={false}
+                tickMargin={10}
+                type="category"
+              />
+
+              <YAxis
+                axisLine={{
+                  stroke: '#E4E6EB',
+                  strokeWidth: 1,
+                  strokeDasharray: '3 3',
+                }}
+                domain={domain}
+                padding={{ top: 0, bottom: 0 }}
+                tick={{ fill: '#888', fontSize: 12 }}
+                tickLine={{
+                  stroke: '#E4E6EB',
+                  strokeWidth: 1,
+                  strokeDasharray: '3 3',
+                }}
+                ticks={ticks}
+              />
+
+              {kpiNames.map((key, i) => (
+                <Area
+                  activeDot={{
+                    r: 5,
+                    fill: KPI_WIDGET_GRAPH_COLORS[i],
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }}
+                  dataKey={key}
+                  dot={{
+                    stroke: KPI_WIDGET_GRAPH_COLORS[i],
+                    strokeWidth: 2,
+                    fill: KPI_WIDGET_GRAPH_COLORS[i],
+                    r: 4,
+                  }}
+                  fill={`url(#gradient-${key})`}
+                  key={key}
+                  stroke={KPI_WIDGET_GRAPH_COLORS[i]}
+                  strokeWidth={2}
+                  type="monotone"
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        </Col>
+
+        {!isUndefined(kpiLatestResults) &&
+          !isEmpty(kpiLatestResults) &&
+          isFullSizeWidget && (
+            <Col className="h-full" span={8}>
+              <KPILegend isFullSize kpiLatestResultsRecord={kpiLatestResults} />
+            </Col>
+          )}
+      </Row>
+    );
+  }, [
+    consolidatedChartData,
+    kpiNames,
+    isFullSizeWidget,
+    domain,
+    ticks,
+    kpiLatestResults,
+    kpiTooltipValueFormatter,
+  ]);
 
   useEffect(() => {
     fetchKpiList().catch(() => {
@@ -194,108 +427,45 @@ const KPIWidget = ({
     }
   }, [kpiList, selectedDays]);
 
-  return (
-    <Card
-      className="kpi-widget-card h-full"
-      data-testid="kpi-widget"
-      id="kpi-charts"
-      loading={isKPIListLoading || isLoading}>
-      {isEditView && (
-        <Row justify="end">
-          <Col>
-            <Space align="center">
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer"
-                data-testid="drag-widget-button"
-                size={14}
-              />
-              <CloseOutlined
-                data-testid="remove-widget-button"
-                size={14}
-                onClick={handleCloseClick}
-              />
-            </Space>
-          </Col>
-        </Row>
-      )}
-      <Row align="middle" justify="space-between">
-        <Col>
-          <Typography.Text className="font-medium">
-            {t('label.kpi-title')}
-          </Typography.Text>
-        </Col>
-      </Row>
-      {isEmpty(kpiList) || isEmpty(kpiResults) ? (
-        <ErrorPlaceHolder
-          icon={<KPIEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
-            {t('message.no-kpi')}
-          </Typography.Paragraph>
-          <Typography.Paragraph>
-            <Transi18next
-              i18nKey="message.refer-to-our-doc"
-              renderElement={
-                <Link
-                  rel="noreferrer"
-                  target="_blank"
-                  to={{ pathname: DATA_INSIGHT_DOCS }}
-                />
-              }
-              values={{
-                doc: t('label.doc-plural-lowercase'),
-              }}
-            />
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
-      ) : (
-        <Row className="p-t-md">
-          <Col span={isWidgetSizeMedium ? 14 : 24}>
-            <ResponsiveContainer debounce={1} height={250} width="100%">
-              <LineChart
-                margin={{
-                  top: 10,
-                  right: isWidgetSizeMedium ? 50 : 20,
-                  left: -30,
-                  bottom: 0,
-                }}>
-                <CartesianGrid
-                  stroke={GRAPH_BACKGROUND_COLOR}
-                  vertical={false}
-                />
-                <XAxis
-                  allowDuplicatedCategory={false}
-                  dataKey="day"
-                  tickFormatter={(value: number) =>
-                    customFormatDateTime(value, 'MMM DD')
-                  }
-                  type="category"
-                />
-                <YAxis dataKey="count" />
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        className="items-center"
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<KPIIcon className="kpi-widget-icon" height={22} width={22} />}
+        isEditView={isEditView}
+        title={widgetData?.w === 2 ? t('label.kpi-title') : t('label.kpi')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onTitleClick={handleTitleClick}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleTitleClick,
+    ]
+  );
 
-                {kpiNames.map((key, i) => (
-                  <Line
-                    data={kpiResults[key]}
-                    dataKey="count"
-                    key={key}
-                    name={key}
-                    stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
-                    type="monotone"
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </Col>
-          {!isUndefined(kpiLatestResults) &&
-            !isEmpty(kpiLatestResults) &&
-            isWidgetSizeMedium && (
-              <Col span={10}>
-                <KPILatestResultsV1 kpiLatestResultsRecord={kpiLatestResults} />
-              </Col>
-            )}
-        </Row>
-      )}
-    </Card>
+  return (
+    <WidgetWrapper
+      dataLength={kpiList.length > 0 ? kpiList.length : 10}
+      dataTestId="KnowledgePanel.KPI"
+      header={widgetHeader}
+      loading={isKPIListLoading || isLoading}>
+      <div className="kpi-widget-container" data-testid="kpi-widget">
+        <div className="widget-content flex-1 h-full">
+          {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}
+        </div>
+      </div>
+    </WidgetWrapper>
   );
 };
 

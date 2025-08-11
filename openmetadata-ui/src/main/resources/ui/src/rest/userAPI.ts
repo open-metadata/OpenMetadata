@@ -15,18 +15,13 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
-import { SearchIndex } from '../enums/search.enum';
 import {
   AuthenticationMechanism,
   CreateUser,
 } from '../generated/api/teams/createUser';
-import { JwtAuth } from '../generated/auth/jwtAuth';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
-import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
-import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -43,10 +38,29 @@ export interface UsersQueryParams {
   include?: Include;
 }
 
+export interface OnlineUsersQueryParams {
+  timeWindow?: number;
+  fields?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+}
+
 export const getUsers = async (params: UsersQueryParams) => {
   const response = await APIClient.get<PagingResponse<User[]>>('/users', {
     params,
   });
+
+  return response.data;
+};
+
+export const getOnlineUsers = async (params: OnlineUsersQueryParams) => {
+  const response = await APIClient.get<PagingResponse<User[]>>(
+    '/users/online',
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -81,34 +95,6 @@ export const getLoggedInUser = async (params?: ListParams) => {
   return response.data;
 };
 
-export const getUserDetails = (id: string): Promise<AxiosResponse> => {
-  return APIClient.get(`/users/${id}`);
-};
-
-export const getTeams = (): Promise<AxiosResponse> => {
-  return APIClient.get('/teams');
-};
-
-export const getRoles = async () => {
-  const response = await APIClient.get<PagingResponse<Role[]>>('/roles');
-
-  return response.data;
-};
-
-export const updateUserRole = (
-  id: string,
-  options: Array<string>
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/users/${id}/roles`, options);
-};
-
-export const updateUserTeam = (
-  id: string,
-  options: Array<string>
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/users/${id}/teams`, options);
-};
-
 export const createUser = async (userDetails: CreateUser) => {
   const response = await APIClient.post<CreateUser, AxiosResponse<User>>(
     `/users`,
@@ -116,12 +102,6 @@ export const createUser = async (userDetails: CreateUser) => {
   );
 
   return response.data;
-};
-
-export const updateUser = (
-  data: User | CreateUser
-): Promise<AxiosResponse<User>> => {
-  return APIClient.put('/users', data);
 };
 
 export const restoreUser = async (id: string) => {
@@ -133,48 +113,10 @@ export const restoreUser = async (id: string) => {
   return response.data;
 };
 
-export const getUserCounts = (): Promise<AxiosResponse<unknown>> => {
-  return APIClient.get(
-    `/search/query?q=*&from=0&size=0&index=${SearchIndex.USER}`
-  );
-};
-
-export const deleteUser = (id: string) => {
-  return APIClient.delete(`/users/${id}`);
-};
-
-export const getUserToken = async (id: string) => {
-  const response = await APIClient.get<JwtAuth>(`/users/token/${id}`);
-
-  return response.data;
-};
-
-export const generateUserToken = async (id: string, expiry: string) => {
-  const payload = {
-    JWTTokenExpiry: expiry,
-  };
-
-  const response = await APIClient.put<typeof payload, AxiosResponse<JwtAuth>>(
-    `/users/generateToken/${id}`,
-    payload,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER
-  );
-
-  return response.data;
-};
-
 export const revokeUserToken = async (id: string) => {
   const response = await APIClient.put<{ id: string }, AxiosResponse<User>>(
     '/users/revokeToken',
     { id }
-  );
-
-  return response.data;
-};
-
-export const getGroupTypeTeams = async () => {
-  const response = await APIClient.get<EntityReference[]>(
-    `/users/loggedInUser/groupTeams`
   );
 
   return response.data;

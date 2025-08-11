@@ -1,0 +1,478 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) url('../../../../styles/variables.less');
+
+.file-attachment {
+  margin: 0.75em 0;
+  position: relative;
+  border-radius: @border-rad-base;
+  overflow: hidden;
+  background: @white;
+  border: 1px solid @border-color;
+  user-select: none;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: @border-color-2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  &.ProseMirror-selectednode {
+    outline: none;
+    background: @white;
+    border: 1px solid @primary-color;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  }
+
+  &.uploading {
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  .file-content,
+  .media-content {
+    padding: @padding-sm;
+    transition: all 0.3s;
+    background: @white;
+    position: relative;
+
+    &:hover {
+      background: @grey-1;
+    }
+
+    &:focus,
+    &:focus-within {
+      outline: none;
+      background: @grey-1;
+    }
+  }
+
+  .file-link-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: @padding-sm;
+  }
+
+  .file-content-wrapper {
+    display: flex;
+    align-items: center;
+    gap: @padding-sm;
+    flex: 1;
+    position: relative;
+  }
+
+  .file-icon {
+    color: @grey-4;
+    font-size: 24px;
+    transition: all 0.3s;
+  }
+
+  .file-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .file-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    max-width: 100%;
+    display: block;
+
+    &:hover,
+    &:focus,
+    &:active {
+      text-decoration: none;
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid @primary-color;
+      outline-offset: 2px;
+      border-radius: @border-rad-base;
+    }
+  }
+
+  .file-name {
+    font-weight: @font-medium;
+    color: @text-color;
+    font-size: @font-size-base;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.3s;
+
+    &:hover {
+      color: @primary-color;
+    }
+  }
+
+  .file-meta {
+    display: flex;
+    align-items: center;
+    gap: @padding-xss;
+    color: @grey-4;
+    font-size: @font-size-base - 1;
+
+    .upload-progress {
+      flex: 1;
+      height: 2px;
+      background-color: @grey-3;
+      border-radius: 1px;
+      overflow: hidden;
+
+      &::after {
+        content: '';
+        display: block;
+        height: 100%;
+        background-color: @primary-color;
+        transition: width 0.3s ease;
+      }
+    }
+  }
+
+  .separator {
+    color: @border-color;
+  }
+
+  .file-size {
+    color: @grey-4;
+  }
+
+  .file-percentage {
+    color: @grey-4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: @padding-xss;
+    transition: all 0.3s;
+    border-radius: @border-rad-base;
+    width: 28px;
+    height: 28px;
+
+    &:hover {
+      color: @primary-color;
+      background: @primary-1;
+    }
+
+    .anticon {
+      font-size: @font-size-base + 2;
+    }
+  }
+
+  .delete-icon {
+    color: @grey-4;
+    font-size: @font-size-base + 2;
+    cursor: pointer;
+    padding: @padding-xss;
+    transition: all 0.3s;
+    border-radius: @border-rad-base;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: @error-color;
+      background: @error-bg-color;
+    }
+  }
+
+  // Styles for video and audio players
+  &.file-type-video {
+    max-width: 800px;
+    margin: @margin-md auto;
+
+    .media-content {
+      padding: 0;
+      overflow: hidden;
+      border-radius: @border-rad-base;
+      background: @grey-2;
+
+      .video-player {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        background: @black;
+        display: block;
+        outline: none;
+        transition: box-shadow 0.3s ease;
+
+        &:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        &::-webkit-media-controls-panel {
+          background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.8) 0%,
+            rgba(0, 0, 0, 0) 100%
+          );
+          padding: @padding-sm @padding-md;
+        }
+
+        &::-webkit-media-controls-timeline {
+          margin-bottom: 8px;
+          height: 4px;
+
+          &:hover {
+            height: 6px;
+          }
+        }
+
+        &::-webkit-media-controls-current-time-display,
+        &::-webkit-media-controls-time-remaining-display {
+          color: @white;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          padding: 0 @padding-xs;
+        }
+
+        &:focus-visible {
+          outline: 2px solid @primary-color;
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+
+  &.file-type-audio {
+    max-width: 600px;
+    margin: @margin-md auto;
+
+    .media-content {
+      padding: 0;
+      background: @grey-1;
+      border-radius: @border-rad-base;
+
+      .audio-player {
+        width: 100%;
+        height: 56px;
+        padding: @padding-sm;
+        background: transparent;
+        display: block;
+        outline: none;
+
+        &::-webkit-media-controls-panel {
+          background: @white;
+          border: 1px solid @border-color;
+          border-radius: @border-rad-base;
+          padding: @padding-xs;
+        }
+
+        &::-webkit-media-controls-timeline {
+          height: 4px;
+          margin: 0 @padding-md;
+          transition: height 0.2s ease;
+
+          &:hover {
+            height: 6px;
+          }
+        }
+
+        &::-webkit-media-controls-volume-slider {
+          width: 80px;
+          height: 4px;
+          transition: height 0.2s ease;
+
+          &:hover {
+            height: 6px;
+          }
+        }
+
+        &::-webkit-media-controls-current-time-display,
+        &::-webkit-media-controls-time-remaining-display {
+          color: @text-color;
+          padding: 0 @padding-xs;
+        }
+
+        &:focus-visible {
+          outline: 2px solid @primary-color;
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+
+  .upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+
+    .upload-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: @text-color;
+
+      .upload-text {
+        font-size: 14px;
+      }
+    }
+  }
+
+  .upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background-color: @primary-color;
+    transition: width 0.3s ease;
+    z-index: 2;
+  }
+
+  .image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0;
+    background-color: @grey-1;
+    border: 1px dashed @border-color;
+    border-radius: @border-rad-base;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 125px;
+    width: 100%;
+
+    &:hover {
+      border-color: @primary-color;
+      background-color: @grey-2;
+    }
+
+    .anticon {
+      font-size: 32px;
+      color: @grey-4;
+    }
+
+    .ant-typography {
+      color: @grey-4;
+      font-size: 16px;
+      margin: 0;
+      text-align: center;
+    }
+
+    .upload-loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: @grey-4;
+
+      .ant-typography {
+        margin: 0;
+      }
+    }
+  }
+
+  .ant-spin {
+    min-height: max-content;
+    background: @grey-1;
+
+    .ant-spin-dot {
+      transform: scale(1.2);
+
+      .ant-spin-dot-item {
+        background-color: @primary-color;
+      }
+    }
+  }
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 8px 0;
+
+  .image-container {
+    position: relative;
+    width: 100%;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 4px;
+    overflow: hidden;
+
+    &.loading-state {
+      background: #fafafa;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 4px;
+    }
+  }
+
+  .upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+
+    .upload-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: #1890ff;
+    transition: width 0.3s ease;
+  }
+}

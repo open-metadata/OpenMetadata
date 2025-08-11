@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
+import { PageType } from '../generated/system/ui/page';
 import { Paging } from '../generated/type/paging';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
@@ -116,7 +116,7 @@ export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
   announcementWidget: {
     h: 3,
-    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    i: LandingPageWidgetKeys.ACTIVITY_FEED,
     w: 1,
     x: 3,
     y: 0,
@@ -133,9 +133,12 @@ export const mockDocumentData: Document = {
   fullyQualifiedName: `persona.${mockPersonaName}.Page.LandingPage`,
   entityType: 'Page',
   data: {
-    page: {
-      layout: mockCustomizedLayout,
-    },
+    pages: [
+      {
+        pageType: PageType.LandingPage,
+        layout: mockCustomizedLayout,
+      },
+    ],
   },
 };
 

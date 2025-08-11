@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpCredentialsPath,
 )
@@ -47,6 +50,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ingestion_logger
 
@@ -64,32 +68,41 @@ def get_connection_url(connection: BigQueryConnection) -> str:
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId or ''}"
+                return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root or ''}"
             if (
                 not connection.credentials.gcpConfig.privateKey
                 and connection.credentials.gcpConfig.projectId.root
             ):
                 project_id = connection.credentials.gcpConfig.projectId.root
-                os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+                os.environ["GOOGLE_CLOUD_PROJECT"] = (
+                    connection.billingProjectId or project_id
+                )
+            return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
                     # Setting environment variable based on project id given by user / set in ADC
-                    os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                return f"{connection.scheme.value}://{project_id}"
-            return f"{connection.scheme.value}://"
+                    os.environ["GOOGLE_CLOUD_PROJECT"] = (
+                        connection.billingProjectId or project_id
+                    )
+                return f"{connection.scheme.value}://{connection.billingProjectId or project_id}"
+            return f"{connection.scheme.value}://{connection.billingProjectId or ''}"
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
         isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
         and connection.credentials.gcpConfig.projectId
     ):
-        return (
-            f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
-        )
+        if isinstance(  # pylint: disable=no-else-return
+            connection.credentials.gcpConfig.projectId, SingleProjectId
+        ):
+            return f"{connection.scheme.value}://{connection.billingProjectId or connection.credentials.gcpConfig.projectId.root}"
 
-    return f"{connection.scheme.value}://"
+        elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
+            for project_id in connection.credentials.gcpConfig.projectId.root:
+                return f"{connection.scheme.value}://{connection.billingProjectId or project_id}"
+
+    return f"{connection.scheme.value}://{connection.billingProjectId or ''}"
 
 
 def get_connection(connection: BigQueryConnection) -> Engine:
@@ -109,7 +122,8 @@ def test_connection(
     engine: Engine,
     service_connection: BigQueryConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -163,14 +177,15 @@ def test_connection(
             ),
         }
 
-        test_connection_steps(
+        return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
             service_type=service_connection.type.value,
             automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
         )
 
-    test_connection_inner(engine)
+    return test_connection_inner(engine)
 
 
 def get_table_view_names(connection, schema=None):

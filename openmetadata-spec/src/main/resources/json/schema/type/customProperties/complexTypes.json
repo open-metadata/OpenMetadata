@@ -104,7 +104,7 @@
       "title": "Table",
       "description": "A table-type custom property having rows and columns where all column data types are strings.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.type.customproperties.Table",
+      "javaType": "org.openmetadata.schema.type.customProperties.Table",
       "properties": {
         "columns": {
           "type": "array",
@@ -127,9 +127,7 @@
               "type": "string",
               "description": "The cell value of each column in the row."
             }
-          },
-          "minItems": 1,
-          "maxItems": 10
+          }
         }
       },
       "required": ["columns"],

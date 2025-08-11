@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,13 +14,27 @@ Constants required for dbt
 
 from enum import Enum
 
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.mlmodel import MlModel
+
 DBT_RUN_RESULT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 # Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
 REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 
+REQUIRED_EXPOSURE_KEYS = ["name", "meta", "type", "resource_type", "sources"]
+
 # Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
+
+REQUIRED_CONSTRAINT_KEYS = [
+    "type",
+    "name",
+    "expression",
+    "warn_unenforced",
+    "warn_unsupported",
+]
 
 REQUIRED_RESULTS_KEYS = {
     "status",
@@ -76,12 +90,12 @@ REQUIRED_NODE_KEYS = {
     "language",
 }
 
-
 NONE_KEYWORDS_LIST = ["none", "null"]
 
 DBT_CATALOG_FILE_NAME = "catalog.json"
 DBT_MANIFEST_FILE_NAME = "manifest.json"
 DBT_RUN_RESULTS_FILE_NAME = "run_results"
+DBT_SOURCES_FILE_NAME = "sources.json"
 
 
 class SkipResourceTypeEnum(Enum):
@@ -91,6 +105,7 @@ class SkipResourceTypeEnum(Enum):
 
     ANALYSIS = "analysis"
     TEST = "test"
+    SOURCE = "source"
 
 
 class CompiledQueriesEnum(Enum):
@@ -127,6 +142,7 @@ class DbtTestFailureEnum(Enum):
 
     FAILURE = "failure"
     FAIL = "fail"
+    ERROR = "error"
 
 
 class DbtCommonEnum(Enum):
@@ -137,6 +153,9 @@ class DbtCommonEnum(Enum):
     OWNER = "owner"
     NODES = "nodes"
     SOURCES = "sources"
+    EXPOSURE = "exposure"
+    EXPOSURES = "exposures"
+    SOURCES_FILE = "sources_file"
     SOURCE = "source"
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
@@ -144,3 +163,12 @@ class DbtCommonEnum(Enum):
     RESULTS = "results"
     TEST_SUITE_NAME = "test_suite_name"
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
+
+
+# DBT Supports more types of exposures but only these map nicely
+# https://docs.getdbt.com/docs/build/exposures#available-properties
+ExposureTypeMap = {
+    "dashboard": {"entity_type": Dashboard, "entity_type_name": "dashboard"},
+    "ml": {"entity_type": MlModel, "entity_type_name": "mlmodel"},
+    "application": {"entity_type": APIEndpoint, "entity_type_name": "apiEndpoint"},
+}

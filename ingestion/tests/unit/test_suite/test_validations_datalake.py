@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,6 +33,10 @@ DL_DATA = (
         "johnny b goode",
         30,
         datetime.today() - timedelta(days=1),
+        60001,
+        49.6852237,
+        1.7743058,
+        True,
     ],
     [
         "2",
@@ -42,8 +46,24 @@ DL_DATA = (
         "Johnny d",
         31,
         datetime.today() - timedelta(days=2),
+        19005,
+        45.2589385,
+        1.4731471,
+        False,
     ],
-    ["3", "John", "Joh", "John Doe", None, None, datetime.today() - timedelta(days=3)],
+    [
+        "3",
+        "John",
+        "Joh",
+        "John Doe",
+        None,
+        None,
+        datetime.today() - timedelta(days=3),
+        11008,
+        42.9974445,
+        2.2518325,
+        None,
+    ],
 )
 
 
@@ -57,6 +77,10 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
         "nickname",
         "age",
         "inserted_date",
+        "postal_code",
+        "lat",
+        "lon",
+        "is_active",
     ],
 )
 
@@ -381,13 +405,22 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_table_column_count_to_be_between",
             "tableColumnCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "7", None, TestCaseStatus.Success, None, None, None, None),
+            (
+                TestCaseResult,
+                "11",
+                None,
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
         ),
         (
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
-            (TestCaseResult, "7", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_table_column_name_to_exist",
@@ -471,6 +504,36 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
                 None,
+            ),
+        ),
+        (
+            "test_case_column_values_to_be_at_expected_location",
+            "columnValuesToBeAtExpectedLocation",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "6000",
+                "0",
+                TestCaseStatus.Success,
+                None,
+                None,
+                None,
+                None,
+            ),
+        ),
+        (
+            "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Success,
+                4000.0,
+                0.0,
+                66.67,
+                0.0,
             ),
         ),
     ],

@@ -12,9 +12,10 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import RichTextEditorPreviewerV1 from '../../RichTextEditor/RichTextEditorPreviewerV1';
 import './AnnouncementCard.less';
 
 interface Props {
@@ -50,12 +51,13 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
         </Typography.Paragraph>
       </Space>
       {message && (
-        <Typography.Paragraph
-          ellipsis
-          className="text-grey-muted m-0 text-xs"
-          data-testid="announcement-message">
-          {message}
-        </Typography.Paragraph>
+        <RichTextEditorPreviewerV1
+          className="text-grey-muted m-0 text-xss"
+          data-testid="announcement-message"
+          markdown={message}
+          reducePreviewLineClass="max-one-line"
+          showReadMoreBtn={false}
+        />
       )}
     </Card>
   );

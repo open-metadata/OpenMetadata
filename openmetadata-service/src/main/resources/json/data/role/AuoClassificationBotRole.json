@@ -1,0 +1,17 @@
+{
+  "name": "AutoClassificationBotRole",
+  "displayName": "Auto Classification bot role",
+  "description": "Role corresponding to a Auto Classification bot.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "AutoClassificationBotPolicy"
+    }
+  ]
+}

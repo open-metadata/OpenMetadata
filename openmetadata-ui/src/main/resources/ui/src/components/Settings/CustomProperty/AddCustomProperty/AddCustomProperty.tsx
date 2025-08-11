@@ -13,17 +13,13 @@
 
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
+  CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
@@ -50,19 +46,21 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
   const [form] = Form.useForm();
-  const { entityType } = useParams<{ entityType: EntityType }>();
-  const history = useHistory();
-
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [typeDetail, setTypeDetail] = useState<Type>();
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
@@ -95,12 +93,27 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    return map(propertyTypes, (type) => ({
-      key: type.name,
+    return map(propertyTypes, (type) => {
+      const Icon =
+        CUSTOM_PROPERTIES_ICON_MAP[
+          type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+        ];
+
       // Remove -cp from the name and convert to start case
-      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
-      value: type.id,
-    }));
+      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+
+      return {
+        searchField: title,
+        key: type.name,
+        label: (
+          <div className="d-flex gap-2 items-center" title={title}>
+            {Icon && <Icon width={20} />}
+            <span>{title}</span>
+          </div>
+        ),
+        value: type.id,
+      };
+    });
   }, [propertyTypes]);
 
   const {
@@ -152,7 +165,7 @@ const AddCustomProperty = () => {
     }
   };
 
-  const handleCancel = useCallback(() => history.goBack(), [history]);
+  const handleCancel = useCallback(() => navigate(-1), [navigate]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     const isDescription = event.target.classList.contains('ProseMirror');
@@ -171,7 +184,6 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
-      rowCount: number;
       columns: string[];
     }
   ) => {
@@ -208,7 +220,6 @@ const AddCustomProperty = () => {
         customPropertyConfig = {
           config: {
             columns: data.columns,
-            rowCount: data.rowCount ?? 10,
           },
         };
       }
@@ -220,7 +231,6 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
-            'rowCount',
             'columns',
           ]),
           propertyType: {
@@ -233,7 +243,7 @@ const AddCustomProperty = () => {
       ) as unknown as CustomProperty;
 
       await addPropertyToEntity(typeDetail?.id ?? '', payload);
-      history.goBack();
+      navigate(-1);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -269,6 +279,17 @@ const AddCustomProperty = () => {
       ],
     },
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'propertyType',
       required: true,
       label: t('label.type'),
@@ -281,8 +302,8 @@ const AddCustomProperty = () => {
           field: t('label.type'),
         })}`,
         showSearch: true,
-        filterOption: (input: string, option: { label: string }) => {
-          return (option?.label ?? '')
+        filterOption: (input: string, option: { searchField: string }) => {
+          return (option?.searchField ?? '')
             .toLowerCase()
             .includes(input.toLowerCase());
         },
@@ -312,6 +333,8 @@ const AddCustomProperty = () => {
       'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -423,43 +446,15 @@ const AddCustomProperty = () => {
         },
       ],
     },
-    {
-      name: 'rowCount',
-      label: t('label.row-count'),
-      type: FieldTypes.NUMBER,
-      required: false,
-      id: 'root/rowCount',
-      props: {
-        'data-testid': 'rowCount',
-        size: 'default',
-        style: { width: '100%' },
-        placeholder: t('label.row-count'),
-      },
-      rules: [
-        {
-          min: 1,
-          type: 'number',
-          max: 10,
-          message: t('message.entity-size-in-between', {
-            entity: t('label.row-count'),
-            min: 1,
-            max: 10,
-          }),
-        },
-      ],
-    },
   ];
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Form
         className="m-t-md"
         data-testid="custom-property-form"
         form={form}
-        initialValues={{
-          rowCount: 10,
-        }}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>
@@ -503,7 +498,7 @@ const AddCustomProperty = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -519,6 +514,8 @@ const AddCustomProperty = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,

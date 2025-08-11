@@ -10,6 +10,21 @@
       "type": "string",
       "enum": ["Profiler"],
       "default": "Profiler"
+    },
+    "processingEngine": {
+      "title": "Processing Engine",
+      "description": "Processing Engine Configuration. If not provided, the Native Engine will be used by default.",
+      "oneOf": [
+        {
+          "$ref": "../metadataIngestion/engine/nativeEngineConfig.json"
+        },
+        {
+          "$ref": "../metadataIngestion/engine/sparkEngineConfig.json"
+        }
+      ],
+      "default": {
+        "type": "Native"
+      }
     }
   },
   "properties": {
@@ -17,6 +32,14 @@
       "description": "Pipeline type",
       "$ref": "#/definitions/profilerConfigType",
       "default": "Profiler"
+    },
+    "processingEngine": {
+      "$ref": "#/definitions/processingEngine"
+    },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Classification Filter Pattern"
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
@@ -36,7 +59,7 @@
     "includeViews": {
       "description": "Optional configuration to turn off fetching metadata for views.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Include Views"
     },
     "useFqnForFiltering": {
@@ -45,29 +68,29 @@
       "default": false,
       "title": "Use FQN For Filtering"
     },
-    "generateSampleData": {
-      "description": "Option to turn on/off generating sample data. If enabled, profiler will ingest sample data for each table.",
-      "type": "boolean",
-      "default": true,
-      "title": "Generate Sample Data"
-    },
     "computeMetrics": {
       "description": "Option to turn on/off computing profiler metrics.",
       "type": "boolean",
       "default": true,
       "title": "Compute Metrics"
     },
-    "processPiiSensitive": {
-      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+    "computeTableMetrics": {
+      "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Table Metrics"
+    },
+    "computeColumnMetrics": {
+      "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Column Metrics"
+    },
+    "useStatistics": {
+      "description": "Use system tables to extract metrics. Metrics that cannot be gathered from system tables will use the default methods. Using system tables can be faster but requires gathering statistics before running (for example using the ANALYZE procedure). More information can be found in the documentation: https://docs.openmetadata.org/latest/profler",
       "type": "boolean",
       "default": false,
-      "title": "Auto Tag PII"
-    },
-    "confidence": {
-      "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will yield less false positives but more false negatives. A lower number will yield more false positives but less false negatives.",
-      "type": "number",
-      "default": 80,
-      "title": "PII Inference Confidence Level"
+      "title": "Use Gathered Statistics"
     },
     "profileSampleType": {
       "$ref": "../entity/data/table.json#/definitions/profileSampleType",
@@ -83,11 +106,10 @@
       "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
       "title": "Sampling Method Type"
     },
-    "sampleDataCount": {
-      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
-      "type": "integer",
-      "default": 50,
-      "title": "Sample Data Rows Count"
+    "randomizedSample": {
+      "description": "Whether to randomize the sample data or not.",
+      "type": "boolean",
+      "default": true
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",

@@ -4,13 +4,23 @@ import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
+  private final String resourcePath = "/dataInsights/elasticsearch";
+  private final String clusterAlias;
 
-  public ElasticSearchDataInsightsClient(RestClient client) {
+  public ElasticSearchDataInsightsClient(RestClient client, String clusterAlias) {
     this.client = client;
+    this.clusterAlias = clusterAlias;
+  }
+
+  @Override
+  public String getClusterAlias() {
+    return clusterAlias;
   }
 
   private Response performRequest(String method, String path) throws IOException {
@@ -23,11 +33,6 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
     request.setJsonEntity(payload);
 
     return client.performRequest(request);
-  }
-
-  @Override
-  public void createLifecyclePolicy(String name, String policy) throws IOException {
-    performRequest("PUT", String.format("/_ilm/policy/%s", name), policy);
   }
 
   @Override
@@ -52,19 +57,24 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public void createDataAssetsDataStream(String name) throws IOException {
-    String resourcePath = "/dataInsights/elasticsearch";
-    createLifecyclePolicy(
-        "di-data-assets-lifecycle",
-        readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
+  public void createDataAssetsDataStream(
+      String name,
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      int retentionDays)
+      throws IOException {
     createComponentTemplate(
-        "di-data-assets-settings",
-        readResource(String.format("%s/indexSettingsTemplate.json", resourcePath)));
-    createComponentTemplate(
-        "di-data-assets-mapping",
-        readResource(String.format("%s/indexMappingsTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets-mapping"),
+        buildMapping(
+            entityType,
+            entityIndexMapping,
+            language,
+            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
-        "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
+        getStringWithClusterAlias("di-data-assets"),
+        IndexTemplate.getIndexTemplateWithClusterAlias(
+            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
     createDataStream(name);
   }
 

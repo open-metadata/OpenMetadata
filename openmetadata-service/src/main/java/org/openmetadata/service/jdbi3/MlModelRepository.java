@@ -15,15 +15,21 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.MLMODEL;
+import static org.openmetadata.service.Entity.getEntityReference;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -38,6 +44,8 @@ import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -47,7 +55,6 @@ import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
@@ -63,6 +70,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {
@@ -95,6 +106,97 @@ public class MlModelRepository extends EntityRepository<MlModel> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
               : mlModel.getUsageSummary());
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(Fields fields, List<MlModel> entities) {
+    // Always set default service field for all ML models
+    fetchAndSetDefaultService(entities);
+
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+
+    for (MlModel entity : entities) {
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  // Individual field fetchers registered in constructor
+  private void fetchAndSetDashboards(List<MlModel> mlModels, Fields fields) {
+    if (!fields.contains("dashboard") || mlModels == null || mlModels.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, mlModels, batchFetchDashboards(mlModels), MlModel::setDashboard);
+  }
+
+  private void fetchAndSetUsageSummaries(List<MlModel> mlModels, Fields fields) {
+    if (!fields.contains("usageSummary") || mlModels == null || mlModels.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        mlModels,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(mlModels)),
+        MlModel::setUsageSummary);
+  }
+
+  private Map<UUID, EntityReference> batchFetchDashboards(List<MlModel> mlModels) {
+    Map<UUID, EntityReference> dashboardMap = new HashMap<>();
+    if (mlModels == null || mlModels.isEmpty()) {
+      return dashboardMap;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(mlModels), Relationship.HAS.ordinal(), Entity.DASHBOARD);
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID mlModelId = UUID.fromString(record.getFromId());
+      EntityReference dashboardRef =
+          getEntityReferenceById(Entity.DASHBOARD, UUID.fromString(record.getToId()), NON_DELETED);
+      dashboardMap.put(mlModelId, dashboardRef);
+    }
+
+    return dashboardMap;
+  }
+
+  private void fetchAndSetDefaultService(List<MlModel> mlModels) {
+    if (mlModels == null || mlModels.isEmpty()) {
+      return;
+    }
+
+    // Batch fetch service references for all ML models
+    Map<UUID, EntityReference> serviceMap = batchFetchServices(mlModels);
+
+    // Set service for all ML models
+    for (MlModel mlModel : mlModels) {
+      mlModel.setService(serviceMap.get(mlModel.getId()));
+    }
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<MlModel> mlModels) {
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    if (mlModels == null || mlModels.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all ML models
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(mlModels), Relationship.CONTAINS.ordinal());
+
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID mlModelId = UUID.fromString(record.getToId());
+      EntityReference serviceRef =
+          Entity.getEntityReferenceById(
+              Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+      serviceMap.put(mlModelId, serviceRef);
+    }
+
+    return serviceMap;
   }
 
   @Override
@@ -149,8 +251,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   private void validateMlDataSource(MlFeatureSource source) {
     if (source.getDataSource() != null) {
-      Entity.getEntityReferenceById(
-          source.getDataSource().getType(), source.getDataSource().getId(), Include.NON_DELETED);
+      Entity.getEntityReference(source.getDataSource(), Include.NON_DELETED);
     }
   }
 
@@ -211,7 +312,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                       .getFeatureSources()
                       .forEach(
                           mlFeatureSource -> {
-                            EntityReference targetEntity = mlFeatureSource.getDataSource();
+                            EntityReference targetEntity =
+                                getEntityReference(mlFeatureSource.getDataSource(), Include.ALL);
                             if (targetEntity != null) {
                               addRelationship(
                                   targetEntity.getId(),
@@ -227,12 +329,16 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
+  public EntityRepository<MlModel>.EntityUpdater getUpdater(
+      MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
     return new MlModelUpdater(original, updated, operation);
   }
 
   @Override
   public EntityInterface getParentEntity(MlModel entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -322,7 +428,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAlgorithm(original, updated);
       updateDashboard(original, updated);
       updateMlFeatures(original, updated);

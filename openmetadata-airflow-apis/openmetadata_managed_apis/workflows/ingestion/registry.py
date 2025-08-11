@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +15,9 @@ Add a function for each type from PipelineType
 """
 from openmetadata_managed_apis.workflows.ingestion.application import (
     build_application_dag,
+)
+from openmetadata_managed_apis.workflows.ingestion.auto_classification import (
+    build_auto_classification_dag,
 )
 from openmetadata_managed_apis.workflows.ingestion.dbt import build_dbt_dag
 from openmetadata_managed_apis.workflows.ingestion.es_reindex import (
@@ -40,6 +43,7 @@ build_registry.add(PipelineType.usage.value)(build_usage_dag)
 build_registry.add(PipelineType.lineage.value)(build_lineage_dag)
 build_registry.add(PipelineType.dbt.value)(build_dbt_dag)
 build_registry.add(PipelineType.profiler.value)(build_profiler_dag)
+build_registry.add(PipelineType.autoClassification.value)(build_auto_classification_dag)
 build_registry.add(PipelineType.TestSuite.value)(build_test_suite_dag)
 build_registry.add(PipelineType.elasticSearchReindex.value)(build_es_reindex_dag)
 build_registry.add(PipelineType.application.value)(build_application_dag)

@@ -12,11 +12,15 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
-import { uuid } from '../../utils/common';
+import { ServiceTypes } from '../../constant/settings';
+import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
   TestCaseData,
   TestSuiteData,
 } from './Entity.interface';
@@ -50,45 +54,83 @@ export class TableClass extends EntityClass {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
+  columnsName = [
+    `user_id${uuid()}`,
+    `shop_id${uuid()}`,
+    `name${uuid()}`,
+    `first_name${uuid()}`,
+    `last_name${uuid()}`,
+    `address${uuid()}`,
+    `mail${uuid()}`,
+    `email${uuid()}`,
+  ];
+  entityLinkColumnsName = [
+    this.columnsName[0],
+    this.columnsName[1],
+    this.columnsName[2],
+    `${this.columnsName[2]}.${this.columnsName[3]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
+    this.columnsName[7],
+  ];
+
   children = [
     {
-      name: 'user_id',
+      name: this.columnsName[0],
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'Unique identifier for the user of your Shopify POS or your Shopify admin.',
     },
     {
-      name: 'shop_id',
+      name: this.columnsName[1],
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
     },
     {
-      name: 'name',
+      name: this.columnsName[2],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'Name of the staff member.',
       children: [
         {
-          name: 'first_name',
-          dataType: 'VARCHAR',
+          name: this.columnsName[3],
+          dataType: 'STRUCT',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay:
+            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
           description: 'First name of the staff member.',
         },
         {
-          name: 'last_name',
-          dataType: 'VARCHAR',
+          name: this.columnsName[4],
+          dataType: 'ARRAY',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+          children: [
+            {
+              name: this.columnsName[5],
+              dataType: 'STRUCT',
+              dataLength: 100,
+              dataTypeDisplay:
+                'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
+              description: 'First name of the staff member.',
+            },
+            {
+              name: this.columnsName[6],
+              dataType: 'ARRAY',
+              dataLength: 100,
+              dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
+            },
+          ],
         },
       ],
     },
     {
-      name: 'email',
+      name: this.columnsName[7],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
@@ -97,28 +139,35 @@ export class TableClass extends EntityClass {
   ];
 
   entity = {
-    name: `pw-table-${uuid()}`,
-    displayName: `pw table ${uuid()}`,
+    name: `pw-table-${fullUuid()}`,
+    displayName: `pw table ${fullUuid()}`,
     description: 'description',
     columns: this.children,
+    tableType: 'SecureView',
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
-  serviceResponseData: unknown;
-  databaseResponseData: unknown;
-  schemaResponseData: unknown;
-  entityResponseData: unknown;
-  testSuiteResponseData: unknown;
-  testSuitePipelineResponseData: unknown[] = [];
-  testCasesResponseData: unknown[] = [];
-  queryResponseData: unknown[] = [];
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  databaseResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
+  testSuitePipelineResponseData: ResponseDataType[] = [];
+  testCasesResponseData: ResponseDataType[] = [];
+  queryResponseData: ResponseDataType[] = [];
+  additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string) {
+  constructor(name?: string, tableType?: string) {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
+    this.entity.tableType = tableType ?? this.entity.tableType;
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
   }
 
@@ -129,19 +178,25 @@ export class TableClass extends EntityClass {
         data: this.service,
       }
     );
+    const service = await serviceResponse.json();
+
     const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
+      data: { ...this.database, service: service.fullyQualifiedName },
     });
+    const database = await databaseResponse.json();
+
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
+      data: { ...this.schema, database: database.fullyQualifiedName },
     });
+    const schema = await schemaResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/tables', {
-      data: this.entity,
+      data: {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      },
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
     const entity = await entityResponse.json();
 
     this.serviceResponseData = service;
@@ -157,6 +212,31 @@ export class TableClass extends EntityClass {
     };
   }
 
+  async createAdditionalTable(
+    tableData: {
+      name: string;
+      displayName: string;
+      description?: string;
+      columns?: any[];
+      databaseSchema?: string;
+    },
+    apiContext: APIRequestContext
+  ) {
+    const entityResponse = await apiContext.post('/api/v1/tables', {
+      data: {
+        ...this.entity,
+        ...tableData,
+      },
+    });
+    const entity = await entityResponse.json();
+    this.additionalEntityTableResponseData = [
+      ...this.additionalEntityTableResponseData,
+      entity,
+    ];
+
+    return entity;
+  }
+
   get() {
     return {
       service: this.serviceResponseData,
@@ -166,10 +246,10 @@ export class TableClass extends EntityClass {
     };
   }
 
-  async visitEntityPage(page: Page) {
+  async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }
@@ -197,16 +277,15 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testSuite?: TestSuiteData
   ) {
-    if (!this.entityResponseData) {
+    if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
     }
 
     const testSuiteData = await apiContext
-      .post('/api/v1/dataQuality/testSuites/executable', {
+      .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          executableEntityReference:
-            this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
           ...testSuite,
         },
@@ -261,7 +340,7 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (!this.testSuiteResponseData) {
+    if (isEmpty(this.testSuiteResponseData)) {
       await this.createTestSuiteAndPipelines(apiContext);
     }
 
@@ -271,7 +350,6 @@ export class TableClass extends EntityClass {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
           testDefinition: 'tableRowCountToBeBetween',
-          testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
           parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
@@ -291,8 +369,8 @@ export class TableClass extends EntityClass {
     testCaseFqn: string,
     testCaseResult: unknown
   ) {
-    const testCaseResultResponse = await apiContext.put(
-      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+    const testCaseResultResponse = await apiContext.post(
+      `/api/v1/dataQuality/testCases/testCaseResults/${testCaseFqn}`,
       { data: testCaseResult }
     );
 
@@ -335,12 +413,31 @@ export class TableClass extends EntityClass {
     );
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      )}?recursive=true&hardDelete=${hardDelete}`
     );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
+    const tableResponse = await apiContext.delete(
+      `/api/v1/tables/${this.entityResponseData?.['id']}?recursive=true&hardDelete=${hardDelete}`
+    );
+
+    return tableResponse;
+  }
+
+  async restore(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.put('/api/v1/tables/restore', {
+      data: { id: this.entityResponseData?.['id'] },
+    });
 
     return {
       service: serviceResponse.body,

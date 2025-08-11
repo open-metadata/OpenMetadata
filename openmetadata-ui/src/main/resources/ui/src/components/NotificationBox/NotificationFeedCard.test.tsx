@@ -38,6 +38,12 @@ jest.mock('react-router-dom', () => ({
       <p data-testid="link">{children}</p>
     )),
 }));
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
+}));
+jest.mock('../../utils/Fqn', () => ({
+  split: jest.fn().mockReturnValue(['mockGlossary']),
+}));
 const mockThread = {
   about: 'test',
   id: '33873393-bd68-46e9-bccc-7701c1c41ad6',

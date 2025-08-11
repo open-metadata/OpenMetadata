@@ -13,9 +13,10 @@
 
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
-import React from 'react';
+import { TAG_LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
@@ -28,10 +29,13 @@ const TableTags = <T extends TableUnion>({
   isReadOnly,
   hasTagEditAccess,
   showInlineEditTagButton,
-  onThreadLinkSelect,
   handleTagSelection,
   entityType,
+  newLook = false,
 }: TableTagsComponentProps<T>) => {
+  const { onThreadLinkSelect, updateActiveTagDropdownKey } =
+    useGenericContext();
+
   return (
     <div
       className="hover-icon-group"
@@ -41,13 +45,21 @@ const TableTags = <T extends TableUnion>({
         data-testid="tags-wrapper">
         <TagsContainerV2
           showBottomEditButton
+          useGenericControls
+          columnData={{
+            fqn: record.fullyQualifiedName ?? '',
+          }}
+          entityFqn={entityFqn}
+          entityType={entityType}
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
-          showHeader={false}
           showInlineEditButton={showInlineEditTagButton}
+          sizeCap={TAG_LIST_SIZE}
+          tagNewLook={newLook}
           tagType={type}
           onSelectionChange={async (selectedTags) => {
             await handleTagSelection(selectedTags, record);
+            updateActiveTagDropdownKey(null);
           }}>
           <>
             {!isReadOnly && (

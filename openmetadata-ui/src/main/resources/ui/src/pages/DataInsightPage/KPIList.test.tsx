@@ -19,16 +19,14 @@ import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: { ...mockUserData, isAdmin: true },
   })),
 }));
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -40,19 +38,22 @@ jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest.fn().mockReturnValue(<div data-testid="delete-modal">Delete Modal</div>)
 );
 
-jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
+jest.mock(
+  '../../components/common/RichTextEditor/RichTextEditorPreviewNew',
+  () =>
+    jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="richTextEditorPreviewerNew">
+          RichTextEditorPreviewerNew
+        </div>
+      )
+);
+
+jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="next-previous">Next Previous</div>)
-);
-
-jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
-);
-
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
+    .mockReturnValue(<div data-testid="errorPlaceHolder">ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../hooks/authHooks', () => ({
@@ -60,9 +61,32 @@ jest.mock('../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../rest/KpiAPI', () => ({
-  getListKPIs: jest
+  getListKPIs: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: KPI_DATA,
+      paging: { after: '', before: '', total: 2 },
+    })
+  ),
+}));
+
+jest.mock('../../components/DataInsight/EmptyGraphPlaceholder', () => ({
+  EmptyGraphPlaceholder: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: KPI_DATA })),
+    .mockImplementation(() => <div>EmptyGraphPlaceholder</div>),
+}));
+
+jest.mock('../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn(),
+}));
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getKpiPath: jest.fn(),
+}));
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    viewKPIPermission: true,
+  }),
 }));
 
 describe('KPI list component', () => {
@@ -98,7 +122,7 @@ describe('KPI list component', () => {
       fireEvent.click(editButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.click(deleteButton);

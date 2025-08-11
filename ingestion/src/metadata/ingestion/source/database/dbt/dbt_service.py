@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,12 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from collate_dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+    parse_sources,
+)
 from pydantic import Field
 from typing_extensions import Annotated
 
@@ -38,6 +43,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
+    REQUIRED_CONSTRAINT_KEYS,
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
 )
@@ -75,6 +81,7 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_data_model",
             "process_dbt_entities",
             "process_dbt_tests",
+            "process_dbt_exposures",
         ],
     )
     process_dbt_data_model: Annotated[
@@ -116,6 +123,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_descriptions",
                 nullable=True,
             ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_owners",
+                nullable=True,
+            ),
         ],
     )
     process_dbt_tests: Annotated[
@@ -135,6 +147,20 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=TestCaseResult,
                 processor="add_dbt_test_result",
+                nullable=True,
+            ),
+        ],
+    )
+
+    process_dbt_exposures: Annotated[
+        TopologyNode, Field(description="Process dbt exposures")
+    ] = TopologyNode(
+        producer="get_dbt_exposures",
+        stages=[
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="create_dbt_exposures_lineage",
+                consumer=["yield_data_models"],
                 nullable=True,
             ),
         ],
@@ -164,7 +190,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # This step is necessary as the manifest file may not always adhere to the schema definition
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
-        required_manifest_keys = {"nodes", "sources", "metadata"}
+        required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
         manifest_dict.update(
             {
                 key: {}
@@ -182,6 +208,20 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 ]
                 for key in keys_to_delete:
                     del value[key]
+                if value.get("columns"):
+                    for col_name, value in value[
+                        "columns"
+                    ].items():  # pylint: disable=unused-variable
+                        if value.get("constraints"):
+                            keys_to_delete = [
+                                key
+                                for key in value
+                                if key.lower() not in REQUIRED_CONSTRAINT_KEYS
+                            ]
+                            for key in keys_to_delete:
+                                del value[key]
+                        else:
+                            value["constraints"] = None
 
     def remove_run_result_non_required_keys(self, run_results: List[dict]):
         """
@@ -209,11 +249,15 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             self.remove_run_result_non_required_keys(
                 run_results=self.context.get().dbt_file.dbt_run_results
             )
+
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.get().dbt_file.dbt_catalog)
             if self.context.get().dbt_file.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(self.context.get().dbt_file.dbt_manifest),
+            dbt_sources=parse_sources(self.context.get().dbt_file.dbt_sources)
+            if self.context.get().dbt_file.dbt_sources
+            else None,
             dbt_run_results=[
                 parse_run_results(run_result_file)
                 for run_result_file in self.context.get().dbt_file.dbt_run_results
@@ -256,6 +300,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
+    def create_dbt_exposures_lineage(self, exposure_spec: dict) -> AddLineageRequest:
+        """
+        Method to process DBT lineage from exposures
+        """
+
+    @abstractmethod
     def create_dbt_query_lineage(
         self, data_model_link: DataModelLink
     ) -> AddLineageRequest:
@@ -269,12 +319,26 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to process DBT descriptions using patch APIs
         """
 
+    @abstractmethod
+    def process_dbt_owners(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT owners using patch APIs
+        """
+
     def get_dbt_tests(self) -> dict:
         """
         Prepare the DBT tests
         """
         for _, dbt_test in self.context.get().dbt_tests.items():
             yield dbt_test
+
+    def get_dbt_exposures(self) -> dict:
+        """
+        Prepare the DBT exposures
+        """
+
+        for _, exposure in self.context.get().exposures.items():
+            yield exposure
 
     @abstractmethod
     def create_dbt_tests_definition(

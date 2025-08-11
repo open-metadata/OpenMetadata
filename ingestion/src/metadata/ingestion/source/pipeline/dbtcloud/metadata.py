@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -105,7 +105,7 @@ class DbtcloudSource(PipelineServiceSource):
                     )
                     task_list.append(task)
                 self.context.get().latest_run_id = (
-                    task_list[-1].name if task_list else None
+                    task_list[0].name if task_list else None
                 )
             return task_list or None
         except Exception as exc:
@@ -168,13 +168,6 @@ class DbtcloudSource(PipelineServiceSource):
                     entity=Pipeline, fqn=pipeline_fqn
                 )
 
-                lineage_details = LineageDetails(
-                    pipeline=EntityReference(
-                        id=pipeline_entity.id.root, type="pipeline"
-                    ),
-                    source=LineageSource.PipelineLineage,
-                )
-
                 dbt_models = self.client.get_model_details(
                     job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
                 )
@@ -221,6 +214,13 @@ class DbtcloudSource(PipelineServiceSource):
 
                                 if from_entity is None:
                                     continue
+
+                                lineage_details = LineageDetails(
+                                    pipeline=EntityReference(
+                                        id=pipeline_entity.id.root, type="pipeline"
+                                    ),
+                                    source=LineageSource.PipelineLineage,
+                                )
 
                                 yield Either(
                                     right=AddLineageRequest(
@@ -276,8 +276,16 @@ class DbtcloudSource(PipelineServiceSource):
         Get Pipeline Status
         """
         try:
-            task_status = [
-                TaskStatus(
+
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            for task in self.client.get_runs(job_id=int(pipeline_details.id)) or []:
+                task_status = TaskStatus(
                     name=str(task.id),
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
                     startTime=(
@@ -303,37 +311,21 @@ class DbtcloudSource(PipelineServiceSource):
                         else None
                     ),
                 )
-                for task in self.client.get_runs(job_id=int(pipeline_details.id)) or []
-            ]
 
-            pipeline_status = PipelineStatus(
-                executionStatus=STATUS_MAP.get(
-                    pipeline_details.state, StatusType.Pending
-                ),
-                taskStatus=task_status,
-                timestamp=Timestamp(
-                    datetime_to_ts(
-                        datetime.strptime(
-                            pipeline_details.created_at, "%Y-%m-%d %H:%M:%S.%f%z"
-                        )
-                        if pipeline_details.created_at
-                        else None
-                    )
-                ),
-            )
-
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
-            )
-            yield Either(
-                right=OMetaPipelineStatus(
-                    pipeline_fqn=pipeline_fqn,
-                    pipeline_status=pipeline_status,
+                pipeline_status = PipelineStatus(
+                    executionStatus=task_status.executionStatus,
+                    taskStatus=[task_status],
+                    timestamp=task_status.endTime
+                    if task_status.endTime
+                    else task_status.startTime,
                 )
-            )
+
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=pipeline_fqn,
+                        pipeline_status=pipeline_status,
+                    )
+                )
 
         except Exception as exc:
             yield Either(

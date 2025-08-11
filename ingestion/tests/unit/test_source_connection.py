@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,6 +11,8 @@
 
 from unittest import TestCase
 
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
+
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
     AthenaScheme,
@@ -18,6 +20,9 @@ from metadata.generated.schema.entity.services.connections.database.athenaConnec
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.common import (
+    noConfigAuthenticationTypes,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -36,6 +41,12 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.druidConnection import (
     DruidConnection,
     DruidScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
+    ExasolConnection,
+    ExasolScheme,
+    ExasolType,
+    Tls,
 )
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -85,11 +96,15 @@ from metadata.generated.schema.entity.services.connections.database.singleStoreC
     SingleStoreScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeConnection,
+    SnowflakeConnection as SnowflakeConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
-    TrinoConnection,
+    TrinoConnection as TrinoConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
@@ -101,6 +116,8 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
+from metadata.ingestion.source.database.snowflake.connection import SnowflakeConnection
+from metadata.ingestion.source.database.trino.connection import TrinoConnection
 
 
 # pylint: disable=import-outside-toplevel
@@ -117,6 +134,7 @@ class SourceConnectionTest(TestCase):
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
             token="KlivDTACWXKmZVfN1qIM",
+            httpPath="/sql/1.0/warehouses/abcdedfg",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
@@ -132,6 +150,7 @@ class SourceConnectionTest(TestCase):
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
             token="KlivDTACWXKmZVfN1qIM",
+            httpPath="/sql/1.0/warehouses/abcdedfg",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
@@ -391,41 +410,38 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(impala_conn_obj)
 
     def test_trino_url_without_params(self):
-        from metadata.ingestion.source.database.trino.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "trino://username:pass@localhost:443/catalog"
-        trino_conn_obj = TrinoConnection(
+        expected_url = "trino://username@localhost:443/catalog"
+        trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
             authType=BasicAuth(password="pass"),
             catalog="catalog",
         )
+        trino_connection = TrinoConnection(trino_conn_obj)
 
-        assert expected_url == get_connection_url(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
 
         # Passing @ in username and password
-        expected_url = "trino://username%2540444:pass%40111@localhost:443/catalog"
-        trino_conn_obj = TrinoConnection(
+        expected_url = "trino://username%40444@localhost:443/catalog"
+        trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username@444",
             authType=BasicAuth(password="pass@111"),
             catalog="catalog",
         )
+        trino_connection = TrinoConnection(trino_conn_obj)
 
-        assert expected_url == get_connection_url(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
 
     def test_trino_conn_arguments(self):
-        from metadata.ingestion.source.database.trino.connection import (
-            get_connection_args,
-        )
-
         # connection arguments without connectionArguments and without proxies
-        expected_args = {}
-        trino_conn_obj = TrinoConnection(
+        expected_args = {
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
             username="user",
             authType=BasicAuth(password=None),
             hostPort="localhost:443",
@@ -433,11 +449,18 @@ class SourceConnectionTest(TestCase):
             connectionArguments=None,
             scheme=TrinoScheme.trino,
         )
-        assert expected_args == get_connection_args(trino_conn_obj)
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert (
+            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
+        )
 
         # connection arguments with connectionArguments and without proxies
-        expected_args = {"user": "user-to-be-impersonated"}
-        trino_conn_obj = TrinoConnection(
+        expected_args = {
+            "user": "user-to-be-impersonated",
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
             username="user",
             authType=BasicAuth(password=None),
             hostPort="localhost:443",
@@ -445,11 +468,17 @@ class SourceConnectionTest(TestCase):
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=TrinoScheme.trino,
         )
-        assert expected_args == get_connection_args(trino_conn_obj)
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert (
+            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
+        )
 
         # connection arguments without connectionArguments and with proxies
-        expected_args = {}
-        trino_conn_obj = TrinoConnection(
+        expected_args = {
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
             username="user",
             authType=BasicAuth(password=None),
             hostPort="localhost:443",
@@ -458,14 +487,20 @@ class SourceConnectionTest(TestCase):
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
         )
-        conn_args = get_connection_args(trino_conn_obj)
+        trino_connection = TrinoConnection(trino_conn_obj)
+        conn_args = trino_connection.build_connection_args(trino_conn_obj).root
+
         assert "http_session" in conn_args
         conn_args.pop("http_session")
         assert expected_args == conn_args
 
         # connection arguments with connectionArguments and with proxies
-        expected_args = {"user": "user-to-be-impersonated"}
-        trino_conn_obj = TrinoConnection(
+        expected_args = {
+            "user": "user-to-be-impersonated",
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
             username="user",
             authType=BasicAuth(password=None),
             hostPort="localhost:443",
@@ -474,18 +509,15 @@ class SourceConnectionTest(TestCase):
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
         )
-        conn_args = get_connection_args(trino_conn_obj)
+        trino_connection = TrinoConnection(trino_conn_obj)
+        conn_args = trino_connection.build_connection_args(trino_conn_obj).root
         assert "http_session" in conn_args
         conn_args.pop("http_session")
         assert expected_args == conn_args
 
     def test_trino_url_with_params(self):
-        from metadata.ingestion.source.database.trino.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "trino://username:pass@localhost:443/catalog?param=value"
-        trino_conn_obj = TrinoConnection(
+        expected_url = "trino://username@localhost:443/catalog?param=value"
+        trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
@@ -493,32 +525,31 @@ class SourceConnectionTest(TestCase):
             catalog="catalog",
             connectionOptions={"param": "value"},
         )
-        assert expected_url == get_connection_url(trino_conn_obj)
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
 
     def test_trino_url_with_jwt_auth(self):
-        from metadata.ingestion.source.database.trino.connection import (
-            get_connection_url,
-        )
-
-        expected_url = (
-            "trino://username@localhost:443/catalog?access_token=jwt_token_value"
-        )
-        trino_conn_obj = TrinoConnection(
+        expected_url = "trino://username@localhost:443/catalog"
+        expected_args = {
+            "auth": JWTAuthentication("jwt_token_value"),
+            "http_scheme": "https",
+        }
+        trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
             authType=JwtAuth(jwt="jwt_token_value"),
             catalog="catalog",
         )
-        assert expected_url == get_connection_url(trino_conn_obj)
-
-    def test_trino_with_proxies(self):
-        from metadata.ingestion.source.database.trino.connection import (
-            get_connection_args,
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+        assert (
+            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
         )
 
+    def test_trino_with_proxies(self):
         test_proxies = {"http": "http_proxy", "https": "https_proxy"}
-        trino_conn_obj = TrinoConnection(
+        trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
@@ -526,26 +557,55 @@ class SourceConnectionTest(TestCase):
             catalog="catalog",
             proxies=test_proxies,
         )
+        trino_connection = TrinoConnection(trino_conn_obj)
         assert (
             test_proxies
-            == get_connection_args(trino_conn_obj).get("http_session").proxies
+            == trino_connection.build_connection_args(trino_conn_obj)
+            .root.get("http_session")
+            .proxies
         )
 
     def test_trino_without_catalog(self):
-        from metadata.ingestion.source.database.trino.connection import (
-            get_connection_url,
-        )
-
         # Test trino url without catalog
-        expected_url = "trino://username:pass@localhost:443"
-        trino_conn_obj = TrinoConnection(
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
             username="username",
             authType=BasicAuth(password="pass"),
         )
 
-        assert expected_url == get_connection_url(trino_conn_obj)
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+
+    def test_trino_without_catalog(self):
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+        )
+
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert expected_url == str(trino_connection.client.url)
+
+    def test_trino_with_oauth2(self):
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnectionConfig(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2,
+        )
+
+        trino_connection = TrinoConnection(trino_conn_obj)
+        assert (
+            trino_connection.build_connection_args(trino_conn_obj).root.get("auth")
+            == OAuth2Authentication()
+        )
 
     def test_vertica_url(self):
         expected_url = (
@@ -725,31 +785,9 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url_common(db2_conn_obj)
 
     def test_snowflake_url(self):
-        # connection arguments without db
-
-        from metadata.ingestion.source.database.snowflake.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
-        snowflake_conn_obj = SnowflakeConnection(
-            scheme=SnowflakeScheme.snowflake,
-            username="coding",
-            password="Abhi",
-            warehouse="COMPUTE_WH",
-            account="ue18849.us-east-2.aws",
-        )
-
-        assert expected_url == get_connection_url(snowflake_conn_obj)
-
-    def test_snowflake_url(self):
-        from metadata.ingestion.source.database.snowflake.connection import (
-            get_connection_url,
-        )
-
         # Passing @ in username and password
         expected_url = "snowflake://coding%40444:Abhi%40123@ue18849.us-east-2.aws?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             scheme=SnowflakeScheme.snowflake,
             username="coding@444",
             password="Abhi@123",
@@ -757,11 +795,13 @@ class SourceConnectionTest(TestCase):
             account="ue18849.us-east-2.aws",
         )
 
-        assert expected_url == get_connection_url(snowflake_conn_obj)
+        assert expected_url == SnowflakeConnection.get_connection_url(
+            snowflake_conn_obj
+        )
 
         # connection arguments with db
         expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             scheme=SnowflakeScheme.snowflake,
             username="coding",
             password="Abhi",
@@ -769,7 +809,10 @@ class SourceConnectionTest(TestCase):
             warehouse="COMPUTE_WH",
             account="ue18849.us-east-2.aws",
         )
-        assert expected_url == get_connection_url(snowflake_conn_obj)
+
+        assert expected_url == SnowflakeConnection.get_connection_url(
+            snowflake_conn_obj
+        )
 
     def test_mysql_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -951,7 +994,7 @@ class SourceConnectionTest(TestCase):
     def test_snowflake_conn_arguments(self):
         # connection arguments without connectionArguments
         expected_args = {}
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             username="user",
             password="test-pwd",
             database="tiny",
@@ -963,7 +1006,7 @@ class SourceConnectionTest(TestCase):
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
-        snowflake_conn_obj = SnowflakeConnection(
+        snowflake_conn_obj = SnowflakeConnectionConfig(
             username="user",
             password="test-pwd",
             database="tiny",
@@ -1178,3 +1221,61 @@ class SourceConnectionTest(TestCase):
             ),
         )
         assert get_connection_url(oracle_conn_obj) == expected_url
+
+    def test_exasol_url(self):
+        from metadata.ingestion.source.database.exasol.connection import (
+            get_connection_url,
+        )
+
+        def generate_test_data(
+            username="admin", password="password", port=8563, hostname="localhost"
+        ):
+            from collections import namedtuple
+
+            TestData = namedtuple("TestData", ["comment", "kwargs", "expected"])
+            host_port = f"{hostname}:{port}"
+
+            yield from (
+                TestData(
+                    comment="Testing default parameters",
+                    kwargs={
+                        "username": username,
+                        "password": password,
+                        "hostPort": host_port,
+                        "tls": Tls.validate_certificate,
+                    },
+                    expected="exa+websocket://admin:password@localhost:8563",
+                ),
+                TestData(
+                    comment="Testing the manual setting of parameters",
+                    kwargs={
+                        "type": ExasolType.Exasol,
+                        "scheme": ExasolScheme.exa_websocket,
+                        "username": username,
+                        "password": password,
+                        "hostPort": host_port,
+                        "tls": Tls.ignore_certificate,
+                    },
+                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE",
+                ),
+                TestData(
+                    comment="Testing disabling TLS completely",
+                    kwargs={
+                        "type": ExasolType.Exasol,
+                        "scheme": ExasolScheme.exa_websocket,
+                        "username": username,
+                        "password": password,
+                        "hostPort": host_port,
+                        "tls": Tls.disable_tls,
+                    },
+                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE&ENCRYPTION=no",
+                ),
+            )
+
+        # execute test cases
+        for data in generate_test_data():
+            with self.subTest(kwargs=data.kwargs, expected=data.expected):
+                connection = ExasolConnection(**data.kwargs)
+                actual = get_connection_url(connection)
+                expected = data.expected
+                assert actual == expected

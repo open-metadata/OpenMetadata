@@ -1,0 +1,207 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.test-case-form-v1,
+.bundle-suite-form {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 80px; // Space for fixed buttons
+
+  .ant-form-item {
+    margin-bottom: @size-lg;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .form-card-section .custom-select-test-type-style {
+    &.ant-form-item {
+      margin-bottom: @size-md;
+    }
+
+    position: relative;
+
+    .custom-test-type-container {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -8px;
+      display: flex;
+      align-items: center;
+      z-index: 1;
+
+      .test-type-label {
+        color: @grey-700;
+        font-weight: @font-medium;
+        font-size: @font-size-base;
+      }
+    }
+  }
+
+  .ant-btn-icon-only.ant-btn-sm {
+    &.list-add-btn {
+      height: 24px;
+      width: 24px;
+      padding: 0;
+      border-radius: 4px;
+    }
+  }
+
+  .form-switch-container {
+    .ant-form-item-control-input {
+      align-items: baseline;
+    }
+  }
+
+  .form-card-section {
+    background-color: @grey-26;
+    border-radius: @border-rad-sm;
+    margin-bottom: @size-mlg;
+    border: none;
+
+    .ant-card-body {
+      padding: @size-md;
+    }
+
+    .ant-form-item {
+      margin-bottom: @size-lg;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .card-title-container {
+      .card-title-text {
+        color: @grey-700;
+        font-weight: @font-semibold;
+        margin-bottom: 0px;
+      }
+      .card-title-description {
+        color: @grey-600;
+        margin-bottom: @margin-mlg;
+      }
+    }
+    .schedule-interval-v1 {
+      .cron-expression-card {
+        .ant-card-body {
+          padding: @padding-xs;
+        }
+      }
+    }
+  }
+
+  .scheduler-card {
+    .selection-card {
+      background-color: @white;
+
+      &.selected,
+      &:hover {
+        background-color: @blue-22;
+      }
+    }
+  }
+
+  .test-level-section {
+    margin-bottom: @size-lg;
+
+    .form-section-title {
+      color: @grey-800;
+      font-size: @size-md;
+      font-weight: @font-medium;
+      margin-bottom: @size-mlg;
+      line-height: 1.4;
+    }
+
+    .ant-form-item-explain-error {
+      margin-top: @size-xs;
+      color: @error-color;
+      font-size: @font-size-base;
+    }
+  }
+
+  .test-case-form-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: @white;
+    border-top: 1px solid @grey-200;
+    padding: @size-lg @size-xl;
+    display: flex;
+    justify-content: flex-end;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  // Drawer mode adjustments
+  &.drawer-mode {
+    min-height: auto;
+    padding-bottom: 0;
+
+    .test-case-form-actions {
+      display: none; // Hide actions in drawer mode, use drawer footer instead
+    }
+  }
+
+  .block-editor-wrapper {
+    .om-block-editor {
+      background-color: @white;
+      max-height: 120px;
+      padding: @size-sm;
+
+      p:last-child {
+        padding-bottom: 75px;
+      }
+    }
+
+    .bar-menu-wrapper {
+      padding: @size-xxs;
+      .bar-menu-wrapper--format--button--icon {
+        width: @size-mlg;
+        height: @size-mlg;
+      }
+    }
+  }
+
+  // Floating error alert styles
+  .floating-error-alert {
+    position: sticky;
+    top: -20px;
+    z-index: 1;
+    margin-bottom: 16px;
+  }
+
+  .test-case-form-alert {
+    min-height: 75px;
+  }
+}
+
+// Drawer specific styles
+.drawer-form-content {
+  .test-case-form-v1,
+  .edit-test-case-form-v1 {
+    padding-bottom: 0;
+  }
+}
+
+.drawer-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+
+  .ant-space {
+    width: auto;
+  }
+}

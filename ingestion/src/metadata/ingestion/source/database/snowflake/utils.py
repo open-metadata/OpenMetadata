@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,12 +10,14 @@
 #  limitations under the License.
 
 """
-Module to define overriden dialect methods
+Module to define overridden dialect methods
 """
-
+import operator
+from functools import reduce
 from typing import Dict, Optional
 
 import sqlalchemy.types as sqltypes
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
@@ -35,13 +37,18 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_STREAM_DEFINITION,
+    SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_GET_VIEW_DDL,
+    SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
@@ -50,8 +57,10 @@ from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
+    get_view_definition_wrapper,
 )
 
+dialect = SnowflakeDialect()
 Query = str
 QueryMap = Dict[str, Query]
 
@@ -81,6 +90,29 @@ VIEW_QUERY_MAPS = {
         "materialized_views": SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
     },
 }
+
+STREAM_QUERY_MAPS = {
+    "full": {
+        "default": SNOWFLAKE_GET_STREAM_NAMES,
+    },
+    "incremental": {
+        "default": SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
+    },
+}
+
+
+def _denormalize_quote_join(*idents):
+    ip = dialect.identifier_preparer
+    split_idents = reduce(
+        operator.add,
+        [ip._split_schema_by_dot(ids) for ids in idents if ids is not None],
+    )
+    quoted_identifiers = ip._quote_free_identifiers(*split_idents)
+    normalized_identifiers = (
+        item if item.startswith('"') and item.endswith('"') else f'"{item}"'
+        for item in quoted_identifiers
+    )
+    return ".".join(normalized_identifiers)
 
 
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
@@ -133,6 +165,20 @@ def get_view_names_reflection(self, schema=None, **kw):
         )
 
 
+def get_stream_names_reflection(self, schema=None, **kw):
+    """Return all stream names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_stream_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
+
+
 def _get_query_map(
     incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
 ):
@@ -143,9 +189,13 @@ def _get_query_map(
 
 
 def _get_query_parameters(
-    self, connection, schema: str, incremental: Optional[IncrementalConfig]
+    self,
+    connection,
+    schema: str,
+    incremental: Optional[IncrementalConfig],
+    account_usage: Optional[str] = None,
 ):
-    """Returns the proper query parameters depending if the extraciton is Incremental or Full"""
+    """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {"schema": fqn.unquote_name(schema)}
 
     if incremental and incremental.enabled:
@@ -154,6 +204,7 @@ def _get_query_parameters(
             **parameters,
             "date": incremental.start_timestamp,
             "database": database,
+            "account_usage": account_usage or "SNOWFLAKE.ACCOUNT_USAGE",
         }
 
     return parameters
@@ -162,9 +213,12 @@ def _get_query_parameters(
 def get_table_names(self, connection, schema: str, **kw):
     """Return the Table names to process based on the incremental setup."""
     incremental = kw.get("incremental")
+    account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
+    parameters = _get_query_parameters(
+        self, connection, schema, incremental, account_usage
+    )
 
     query = queries["default"]
 
@@ -189,9 +243,12 @@ def get_table_names(self, connection, schema: str, **kw):
 
 def get_view_names(self, connection, schema, **kw):
     incremental = kw.get("incremental")
+    account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
+    parameters = _get_query_parameters(
+        self, connection, schema, incremental, account_usage
+    )
 
     if kw.get("materialized_views"):
         query = queries["materialized_views"]
@@ -208,25 +265,69 @@ def get_view_names(self, connection, schema, **kw):
     return result
 
 
+def get_stream_names(self, connection, schema, **kw):
+    incremental = kw.get("incremental")
+
+    queries = _get_query_map(incremental, STREAM_QUERY_MAPS)
+    parameters = _get_query_parameters(self, connection, schema, incremental)
+
+    query = queries["default"]
+
+    cursor = connection.execute(query.format(**parameters))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(name=self.normalize_name(row[1]), deleted=None)
+            for row in cursor
+        ]
+    )
+    return result
+
+
 @reflection.cache
-def get_view_definition(  # pylint: disable=unused-argument
-    self, connection, view_name, schema=None, **kw
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    view_definition = get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=SNOWFLAKE_GET_VIEW_DEFINITION,
+    )
+    if view_definition:
+        return view_definition
+
+    # If the view definition is not found via optimized query,
+    # we need to get the view definition from the view ddl
+
+    schema = schema or self.default_schema_name
+    view_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
+
+
+@reflection.cache
+def get_stream_definition(  # pylint: disable=unused-argument
+    self, connection, stream_name, schema=None, **kw
 ):
     """
-    Gets the view definition
+    Gets the stream definition
     """
     schema = schema or self.default_schema_name
-    if schema:
-        cursor = connection.execute(
-            f"SELECT GET_DDL('VIEW','{schema}.{view_name}') AS \"text\""
-        )
-    else:
-        cursor = connection.execute(f"SELECT GET_DDL('VIEW','{view_name}') AS \"text\"")
-    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
+    stream_name = f"{schema}.{stream_name}" if schema else stream_name
+    cursor = connection.execute(
+        SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)
+    )
     try:
-        ret = cursor.fetchone()
-        if ret:
-            return ret[n2i["text"]]
+        result = cursor.fetchone()
+        if result:
+            return result[0]
     except Exception:
         pass
     return None
@@ -256,17 +357,16 @@ def get_schema_columns(self, connection, schema, **kw):
     None, as it is cacheable and is an unexpected return type for this function"""
     ans = {}
     current_database, _ = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
-        current_database, fqn.quote_name(schema)
-    )
+    full_schema_name = _denormalize_quote_join(current_database, fqn.quote_name(schema))
     try:
         schema_primary_keys = self._get_schema_primary_keys(
             connection, full_schema_name, **kw
         )
+        # removing " " from schema name because schema name is in the WHERE clause of a query
+        table_schema = self.denormalize_name(fqn.unquote_name(schema))
+        table_schema = table_schema.lower() if schema.islower() else table_schema
         result = connection.execute(
-            text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
-            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))}
-            # removing " " from schema name because schema name is in the WHERE clause of a query
+            text(SNOWFLAKE_GET_SCHEMA_COLUMNS), {"table_schema": table_schema}
         )
 
     except sa_exc.ProgrammingError as p_err:
@@ -300,7 +400,8 @@ def get_schema_columns(self, connection, schema, **kw):
             sa_util.warn(
                 f"Did not recognize type '{coltype}' of column '{column_name}'"
             )
-            col_type = sqltypes.NULLTYPE
+            col_type = sqltypes.NullType
+            type_instance = col_type()
         else:
             if issubclass(col_type, FLOAT):
                 col_type_kw["precision"] = numeric_precision
@@ -310,8 +411,7 @@ def get_schema_columns(self, connection, schema, **kw):
                 col_type_kw["scale"] = numeric_scale
             elif issubclass(col_type, (sqltypes.String, sqltypes.BINARY)):
                 col_type_kw["length"] = character_maximum_length
-
-        type_instance = col_type(**col_type_kw)
+            type_instance = col_type(**col_type_kw)
 
         current_table_pks = schema_primary_keys.get(table_name)
 
@@ -330,11 +430,13 @@ def get_schema_columns(self, connection, schema, **kw):
                 ),
                 "comment": comment,
                 "primary_key": (
-                    column_name
-                    in schema_primary_keys[table_name]["constrained_columns"]
-                )
-                if current_table_pks
-                else False,
+                    (
+                        column_name
+                        in schema_primary_keys[table_name]["constrained_columns"]
+                    )
+                    if current_table_pks
+                    else False
+                ),
             }
         )
         if is_identity == "YES":
@@ -362,9 +464,10 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = _denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
+
     return self._get_schema_primary_keys(
         connection, self.denormalize_name(full_schema_name), **kw
     ).get(table_name, {"constrained_columns": [], "name": None})
@@ -378,7 +481,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = _denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
 
@@ -452,9 +555,10 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = _denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
+
     return self._get_schema_unique_constraints(
         connection, self.denormalize_name(full_schema_name), **kw
     ).get(table_name, [])

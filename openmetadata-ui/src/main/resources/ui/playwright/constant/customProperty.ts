@@ -30,6 +30,8 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.API_ENDPOINT,
   EntityTypeEndpoint.DATA_PRODUCT,
   EntityTypeEndpoint.METRIC,
+  EntityTypeEndpoint.Domain,
+  EntityTypeEndpoint.Chart,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
@@ -48,25 +50,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'containers',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_dashboard: {
@@ -79,25 +71,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dashboards',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_database: {
@@ -110,25 +92,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'databases',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_databaseSchema: {
@@ -141,25 +113,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'databaseSchemas',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_glossaryTerm: {
@@ -172,25 +134,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'glossaryTerm',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_mlmodel: {
@@ -203,25 +155,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'mlmodels',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_pipeline: {
@@ -234,25 +176,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: true,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'pipelines',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_searchIndex: {
@@ -265,25 +197,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'searchIndexes',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_storedProcedure: {
@@ -296,25 +218,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'storedProcedures',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_table: {
@@ -327,25 +239,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'tables',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_topic: {
@@ -358,25 +260,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'topics',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_apiCollection: {
     name: 'apiCollection',
@@ -388,25 +280,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'apiCollections',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 
   entity_apiEndpoint: {
@@ -419,25 +301,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'apiEndpoints',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_dataProduct: {
     name: 'dataProduct',
@@ -449,28 +321,38 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
+    entityObj: {},
+    entityApiType: 'dataProducts',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
+  },
+  entity_domain: {
+    name: 'domain',
+    description: 'This is Domain custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
-    entityApiType: 'dataProducts',
+    entityApiType: 'domains',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_dashboardDataModel: {
-    name: 'dataModel',
+    name: 'dashboardDataModel',
     description: 'This is Data Model custom property',
     integerValue: '23',
     stringValue: 'This is string propery',
@@ -479,25 +361,15 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
-      multiSelect: false,
-    },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
     entityApiType: 'dashboardDataModels',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
   entity_metric: {
     name: 'metric',
@@ -509,25 +381,35 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
       values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
-    enumWithDescriptionConfig: {
-      values: [
-        {
-          key: 'enumWithDescription1',
-          description: 'This is enumWithDescription1',
-        },
-        {
-          key: 'enumWithDescription2',
-          description: 'This is enumWithDescription2',
-        },
-      ],
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
+    entityObj: {},
+    entityApiType: 'metrics',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
+  },
+  entity_chart: {
+    name: 'chart',
+    description: 'This is Chart custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
       multiSelect: false,
     },
     dateFormatConfig: 'yyyy-MM-dd',
     dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
     timeFormatConfig: 'HH:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
+    entityReferenceConfig: ['User', 'Team', 'Metric'],
     entityObj: {},
-    entityApiType: 'metrics',
+    entityApiType: 'charts',
+    tableConfig: {
+      columns: ['pw-column1', 'pw-column2'],
+    },
   },
 };
 

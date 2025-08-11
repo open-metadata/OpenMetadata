@@ -14,6 +14,7 @@
 import { EntityType } from '../../../enums/entity.enum';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -28,6 +29,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
 
@@ -48,6 +50,8 @@ export type ExtentionEntities = {
   [EntityType.API_ENDPOINT]: APIEndpoint;
   [EntityType.DATA_PRODUCT]: DataProduct;
   [EntityType.METRIC]: Metric;
+  [EntityType.DOMAIN]: Domain;
+  [EntityType.CHART]: Chart;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
@@ -55,8 +59,6 @@ export type ExtentionEntitiesKeys = keyof ExtentionEntities;
 export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   isVersionView?: boolean;
   entityType: T;
-  entityDetails: ExtentionEntities[T];
-  handleExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
   hasEditAccess: boolean;
   className?: string;
   hasPermission: boolean;

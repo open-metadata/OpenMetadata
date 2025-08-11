@@ -11,16 +11,24 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, render, screen } from '@testing-library/react';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicyByName } from '../../../rest/rolesAPIV1';
 import { POLICY_DATA } from '../PoliciesData.mock';
 import PoliciesDetailPage from './PoliciesDetailPage';
 
+const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockEntityPermissionByFqn,
+  })),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -49,7 +57,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
@@ -61,6 +69,16 @@ jest.mock(
 
 jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
+);
+
+jest.mock(
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockReturnValue(<div>EntityHeaderTitle</div>)
+);
+
+jest.mock(
+  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  () => jest.fn().mockReturnValue(<div>ManageButton</div>)
 );
 
 jest.mock('../../../constants/HelperTextUtil', () => ({
@@ -96,7 +114,15 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
 
 describe('Test Policy details page', () => {
   it('Should render the policy details page component', async () => {
-    render(<PoliciesDetailPage />);
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
 
     expect(getPolicyByName).toHaveBeenCalledWith(
       'policy',
@@ -129,7 +155,15 @@ describe('Test Policy details page', () => {
   });
 
   it('Should render the rule card and its attributes', async () => {
-    render(<PoliciesDetailPage />);
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<PoliciesDetailPage />);
+    });
 
     const ruleCard = await screen.findByTestId('rule-card');
 

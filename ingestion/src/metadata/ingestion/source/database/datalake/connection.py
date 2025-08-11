@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,8 +12,6 @@
 """
 Source connection handler
 """
-from dataclasses import dataclass
-from functools import singledispatch
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -29,82 +27,68 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
+    DatalakeConnection as DatalakeConnectionConfig,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.datalake.clients.azure_blob import (
     DatalakeAzureBlobClient,
 )
+from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
 from metadata.ingestion.source.database.datalake.clients.gcs import DatalakeGcsClient
 from metadata.ingestion.source.database.datalake.clients.s3 import DatalakeS3Client
+from metadata.utils.constants import THREE_MIN
 
 
-# Only import specific datalake dependencies if necessary
-# pylint: disable=import-outside-toplevel
-@dataclass
-class DatalakeClient:
-    def __init__(self, client, config) -> None:
-        self.client = client
-        self.config = config
+class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseClient]):
+    def _get_client(self) -> DatalakeBaseClient:
+        """
+        Return the appropriate Datalake client based on configSource.
+        """
+        connection = self.service_connection
 
+        if isinstance(connection.configSource, S3Config):
+            return DatalakeS3Client.from_config(connection.configSource)
+        elif isinstance(connection.configSource, GCSConfig):
+            return DatalakeGcsClient.from_config(connection.configSource)
+        elif isinstance(connection.configSource, AzureConfig):
+            return DatalakeAzureBlobClient.from_config(connection.configSource)
+        else:
+            msg = f"Config not implemented for type {type(connection.configSource)}: {connection.configSource}"
+            raise NotImplementedError(msg)
 
-@singledispatch
-def get_datalake_client(config):
-    """
-    Method to retrieve datalake client from the config
-    """
-    if config:
-        msg = f"Config not implemented for type {type(config)}: {config}"
-        raise NotImplementedError(msg)
+    def get_connection_dict(self) -> dict:
+        """
+        Return the connection dictionary for this service.
+        """
+        raise NotImplementedError("get_connection_dict is not implemented for Datalake")
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,
+        timeout_seconds: Optional[int] = THREE_MIN,
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        test_fn = {
+            "ListBuckets": self.client.get_test_list_buckets_fn(
+                self.service_connection.bucketName
+            ),
+        }
 
-@get_datalake_client.register
-def _(config: S3Config):
-    return DatalakeS3Client.from_config(config)
-
-
-@get_datalake_client.register
-def _(config: GCSConfig):
-    return DatalakeGcsClient.from_config(config)
-
-
-@get_datalake_client.register
-def _(config: AzureConfig):
-    return DatalakeAzureBlobClient.from_config(config)
-
-
-def get_connection(connection: DatalakeConnection) -> DatalakeClient:
-    """
-    Create connection.
-
-    Returns an AWS, Azure or GCS Clients.
-    """
-    return DatalakeClient(
-        client=get_datalake_client(connection.configSource),
-        config=connection,
-    )
-
-
-def test_connection(
-    metadata: OpenMetadata,
-    connection: DatalakeClient,
-    service_connection: DatalakeConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    test_fn = {
-        "ListBuckets": connection.client.get_test_list_buckets_fn(
-            connection.config.bucketName
-        ),
-    }
-
-    test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=self.service_connection.type.value
+            if self.service_connection.type
+            else "Datalake",
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

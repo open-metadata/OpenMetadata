@@ -14,7 +14,7 @@
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
@@ -34,13 +34,13 @@ import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
-  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { entityChartColor } from '../../utils/CommonUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
@@ -121,7 +121,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="entity-page-views-card"
       id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}>
@@ -152,7 +152,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                       : false
                   }
                   key={entity}
-                  stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                  stroke={entityChartColor(i)}
                   strokeOpacity={
                     isEmpty(activeMouseHoverKey) ||
                     entity === activeMouseHoverKey

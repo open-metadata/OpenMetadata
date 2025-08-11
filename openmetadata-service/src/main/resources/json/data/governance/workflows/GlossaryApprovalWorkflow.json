@@ -1,0 +1,252 @@
+{
+  "name": "GlossaryTermApprovalWorkflow",
+  "fullyQualifiedName": "GlossaryTermApprovalWorkflow",
+  "displayName": "Glossary Approval Workflow",
+  "description": "When a Glossary Term is Created or Updated, this Workflow will be triggered for the Term to be Approved.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityType": "glossaryTerm",
+      "events": ["Created", "Updated"],
+      "exclude": ["reviewers"],
+      "filter": ""
+    },
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "GlossaryTermCreated",
+      "displayName": "Glossary Term Created or Updated"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutoApprovedByReviewerEnd",
+      "displayName": "Auto-Approved by Reviewer"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd",
+      "displayName": "Glossary Term Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEndAfterApproval",
+      "displayName": "Glossary Term Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd",
+      "displayName": "Glossary Term Status: Rejected"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "DraftEnd",
+      "displayName": "Glossary Term Status: Draft"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "displayName": "Check if Glossary Term Updated By is Reviewer",
+      "config": {
+        "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApprovedByReviewer",
+      "displayName": "Set Status to 'Approved' (By Reviewer)",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckGlossaryTermHasReviewers",
+      "displayName": "Check if Glossary Term has Reviewers",
+      "config": {
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckGlossaryTermIsReadyToBeReviewed",
+      "displayName": "Check if Glossary Term is Ready to be Reviewed",
+      "config": {
+        "rules": "{\"and\":[{\"!!\":[{\"var\":\"description\"}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToInReview",
+      "displayName": "Set Status to 'In Review'",
+      "config": {
+        "glossaryTermStatus": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToDraft",
+      "displayName": "Set Status to 'Draft'",
+      "config": {
+        "glossaryTermStatus": "Draft"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveGlossaryTerm",
+      "displayName": "Create User Approval Task",
+      "config": {
+        "assignees": {
+          "addReviewers": true
+        }
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveGlossaryTerm"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToApproved",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "glossaryTermStatus": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setGlossaryTermStatusTask",
+      "name": "SetGlossaryTermStatusToRejected",
+      "displayName": "Set Status to 'Rejected'",
+      "config": {
+        "glossaryTermStatus": "Rejected"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveGlossaryTerm"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "GlossaryTermCreated",
+      "to": "CheckGlossaryTermHasReviewers"
+    },
+    {
+      "from": "CheckGlossaryTermHasReviewers",
+      "to": "SetGlossaryTermStatusToApproved",
+      "condition": "false"
+    },
+    {
+      "from": "CheckGlossaryTermHasReviewers",
+      "to": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "to": "SetGlossaryTermStatusToApprovedByReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfGlossaryTermUpdatedByIsReviewer",
+      "to": "CheckGlossaryTermIsReadyToBeReviewed",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedByReviewer",
+      "to": "AutoApprovedByReviewerEnd"
+    },
+    {
+      "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "SetGlossaryTermStatusToDraft",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToDraft",
+      "to": "DraftEnd"
+    },
+    {
+      "from": "CheckGlossaryTermIsReadyToBeReviewed",
+      "to": "SetGlossaryTermStatusToInReview",
+      "condition": "true"
+    },
+    {
+      "from": "SetGlossaryTermStatusToInReview",
+      "to": "ApproveGlossaryTerm"
+    },
+    {
+      "from": "ApproveGlossaryTerm",
+      "to": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "condition": "true"
+    },
+    {
+      "from": "ApproveGlossaryTerm",
+      "to": "SetGlossaryTermStatusToRejected",
+      "condition": "false"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApprovedAfterApproval",
+      "to": "ApprovedEndAfterApproval"
+    },
+    {
+      "from": "SetGlossaryTermStatusToApproved",
+      "to": "ApprovedEnd"
+    },
+    {
+      "from": "SetGlossaryTermStatusToRejected",
+      "to": "RejectedEnd"
+    }
+  ]
+}

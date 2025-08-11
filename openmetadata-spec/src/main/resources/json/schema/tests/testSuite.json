@@ -75,7 +75,7 @@
       "$ref": "../entity/services/connections/testConnectionResult.json"
     },
     "pipelines": {
-      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "description": "References to pipelines deployed for this Test Suite to execute the tests.",
       "$ref": "../type/entityReferenceList.json",
       "default": null
     },
@@ -115,19 +115,38 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
     },
-    "executable": {
-      "description": "Indicates if the test suite is executable. Set on the backend.",
+    "basic": {
+      "description": "Indicates if the test suite is basic, i.e., the parent suite of a test and linked to an entity. Set on the backend.",
       "type": "boolean",
       "default": false
     },
-    "executableEntityReference": {
-      "description": "Entity reference the test suite is executed against. Only applicable if the test suite is executable.",
+    "executable": {
+      "description": "DEPRECATED in 1.6.2: Use 'basic'",
+      "type": "boolean",
+      "deprecated": true
+    },
+    "basicEntityReference": {
+      "description": "Entity reference the test suite needs to execute the test against. Only applicable if the test suite is basic.",
       "$ref": "../type/entityReference.json"
+    },
+    "executableEntityReference": {
+      "description": "DEPRECATED in 1.6.2: Use 'basicEntityReference'.",
+      "$ref": "../type/entityReference.json",
+      "deprecated": true
+    },
+    "dataContract": {
+      "description": "Reference to the data contract that this test suite is associated with.",
+      "$ref": "../type/entityReference.json",
+      "default": null
     },
     "summary": {
       "description": "Summary of the previous day test cases execution for this test suite.",
@@ -140,9 +159,9 @@
         "$ref": "#/definitions/testSuiteConnection/resultSummary"
       }
     },
-    "domain": {
-      "description": "Domain the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
-      "$ref": "../type/entityReference.json"
+    "domains": {
+      "description": "Domains the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this test suite. This is an inherited field from the parent entity if the testSuite is native.",
@@ -150,7 +169,7 @@
       "items": {
         "$ref": "../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "inherited": {
       "description": "Indicates if the test suite is inherited from a parent entity.",

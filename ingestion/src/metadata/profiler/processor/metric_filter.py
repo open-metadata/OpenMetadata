@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,22 +33,35 @@ from metadata.profiler.metrics.core import (
     SystemMetric,
     TMetric,
 )
-from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.profiler.registry import MetricRegistry
+from metadata.utils.dependency_injector.dependency_injector import (
+    DependencyNotFoundError,
+    Inject,
+    inject,
+)
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class MetricFilter:
     """Metric filter class for profiler"""
 
+    @inject
     def __init__(
         self,
         metrics: Tuple[Type[TMetric]],
         global_profiler_config: Optional[ProfilerConfiguration] = None,
         table_profiler_config: Optional[TableProfilerConfig] = None,
         column_profiler_config: Optional[List[ColumnProfilerConfig]] = None,
+        metrics_registry: Inject[Type[MetricRegistry]] = None,
     ):
+        if metrics_registry is None:
+            raise DependencyNotFoundError(
+                "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
+            )
+
         self.metrics = metrics
+        self.metrics_registry = metrics_registry
         self.global_profiler_config = global_profiler_config
         self.table_profiler_config = table_profiler_config
         self.column_profiler_config = column_profiler_config
@@ -196,7 +209,7 @@ class MetricFilter:
 
         metrics = [
             Metric.value
-            for Metric in Metrics
+            for Metric in self.metrics_registry
             if Metric.value.name() in {mtrc.value for mtrc in col_dtype_config.metrics}
             and Metric.value in metrics
         ]
@@ -230,7 +243,7 @@ class MetricFilter:
             (
                 include_columns.metrics
                 for include_columns in columns_config or []
-                if include_columns.columnName == column.name
+                if include_columns.columnName in {column.name, "all"}
             ),
             None,
         )
@@ -240,7 +253,7 @@ class MetricFilter:
 
         metrics = [
             Metric.value
-            for Metric in Metrics
+            for Metric in self.metrics_registry
             if Metric.value.name().lower() in {mtrc.lower() for mtrc in metric_names}
             and Metric.value in metrics
         ]

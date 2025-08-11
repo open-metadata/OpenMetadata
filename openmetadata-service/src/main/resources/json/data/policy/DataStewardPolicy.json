@@ -10,7 +10,7 @@
     {
       "name": "DataStewardPolicy-EditRule",
       "resources" : ["all"],
-      "operations": ["ViewAll", "EditDescription", "EditDisplayName","EditLineage","EditOwners", "EditTags"],
+      "operations": ["ViewAll", "EditDescription", "EditDisplayName", "EditLineage", "EditOwners", "EditTags", "EditTier", "EditGlossaryTerms", "EditCertification"],
       "effect": "allow"
     }
   ]

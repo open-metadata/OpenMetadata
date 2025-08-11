@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.resources.datamodels;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
@@ -30,15 +32,21 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -49,14 +57,16 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardDataModelResourceTest
     extends EntityResourceTest<DashboardDataModel, CreateDashboardDataModel> {
 
@@ -76,7 +86,7 @@ public class DashboardDataModelResourceTest
     assertResponse(
         () -> createEntity(createRequest(test).withService(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
   }
 
   @Test
@@ -196,10 +206,8 @@ public class DashboardDataModelResourceTest
                 dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
-    assertListNull(
-        dashboardDataModel.getOwners(),
-        dashboardDataModel.getFollowers(),
-        dashboardDataModel.getTags());
+    assertListNull(dashboardDataModel.getOwners(), dashboardDataModel.getFollowers());
+    assertTrue(dashboardDataModel.getTags().isEmpty());
 
     // .../datamodels?fields=owner
     fields = "owners,followers,tags";
@@ -255,5 +263,165 @@ public class DashboardDataModelResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_getByNameColumnsPaginationConsistency_200_OK(TestInfo test) throws IOException {
+    Column dateStruct =
+        getColumn("date", STRUCT, null)
+            .withChildren(
+                listOf(
+                    getColumn("year", INT, null),
+                    getColumn("month", INT, null),
+                    getColumn("day", INT, null)));
+
+    List<Column> columns =
+        listOf(
+            getColumn("revenue", BIGINT, USER_ADDRESS_TAG_LABEL),
+            getColumn("cost", BIGINT, null),
+            getColumn("profit", BIGINT, null),
+            getColumn("region", INT, GLOSSARY1_TERM1_LABEL),
+            getColumn("product", INT, null),
+            dateStruct,
+            getColumn("customer_count", BIGINT, TIER1_TAG_LABEL),
+            getColumn("order_count", BIGINT, null));
+
+    CreateDashboardDataModel create = createRequest(test).withColumns(columns);
+    DashboardDataModel dataModel = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    DashboardDataModel mixedFieldsDataModel =
+        getEntityByName(
+            dataModel.getFullyQualifiedName(), "columns,owners,description", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        mixedFieldsDataModel.getColumns(), "Mixed fields including columns should return columns");
+    assertEquals(
+        8, mixedFieldsDataModel.getColumns().size(), "Should return all columns in mixed request");
+    assertNotNull(mixedFieldsDataModel.getOwners(), "Should also return other requested fields");
+  }
+
+  @Test
+  @Order(1)
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    TagLabel dataModelTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = PERSONAL_DATA_TAG_LABEL;
+
+    List<DashboardDataModel> createdDataModels = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("column1_" + i, BIGINT, columnTagLabel),
+              getColumn("column2_" + i, BIGINT, null),
+              getColumn("column3_" + i, INT, null));
+
+      CreateDashboardDataModel createDataModel =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withColumns(columns)
+              .withTags(List.of(dataModelTagLabel));
+
+      DashboardDataModel dataModel = createEntity(createDataModel, ADMIN_AUTH_HEADERS);
+      createdDataModels.add(dataModel);
+    }
+
+    // Test pagination with fields=tags (should fetch data model-level tags only)
+    WebTarget target =
+        getResource("dashboard/datamodels").queryParam("fields", "tags").queryParam("limit", "10");
+
+    DashboardDataModelResource.DashboardDataModelList dataModelList =
+        TestUtils.get(
+            target, DashboardDataModelResource.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataModelList.getData());
+
+    // Verify at least one of our created data models is in the response
+    List<DashboardDataModel> ourDataModels =
+        dataModelList.getData().stream()
+            .filter(
+                dm -> createdDataModels.stream().anyMatch(cdm -> cdm.getId().equals(dm.getId())))
+            .collect(java.util.stream.Collectors.toList());
+
+    assertFalse(
+        ourDataModels.isEmpty(),
+        "Should find at least one of our created data models in pagination");
+
+    // Verify data model-level tags are fetched
+    for (DashboardDataModel dataModel : ourDataModels) {
+      assertNotNull(
+          dataModel.getTags(),
+          "Data model-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, dataModel.getTags().size(), "Should have exactly one data model-level tag");
+      assertEquals(dataModelTagLabel.getTagFQN(), dataModel.getTags().get(0).getTagFQN());
+
+      // DashboardDataModel returns columns by default even when not explicitly requested
+      // The columns retain their tags from creation. This is different from Table behavior
+      // but is the expected behavior for DashboardDataModel.
+      // The important part is that the entity-level tags are properly fetched.
+    }
+
+    // Test pagination with fields=columns,tags (should fetch both data model and column tags)
+    target =
+        getResource("dashboard/datamodels")
+            .queryParam("fields", "columns,tags")
+            .queryParam("limit", "10");
+
+    dataModelList =
+        TestUtils.get(
+            target, DashboardDataModelResource.DashboardDataModelList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataModelList.getData());
+
+    // Verify at least one of our created data models is in the response
+    ourDataModels =
+        dataModelList.getData().stream()
+            .filter(
+                dm -> createdDataModels.stream().anyMatch(cdm -> cdm.getId().equals(dm.getId())))
+            .collect(java.util.stream.Collectors.toList());
+
+    assertFalse(
+        ourDataModels.isEmpty(),
+        "Should find at least one of our created data models in pagination");
+
+    // Verify both data model-level and column-level tags are fetched
+    for (DashboardDataModel dataModel : ourDataModels) {
+      // Verify data model-level tags
+      assertNotNull(
+          dataModel.getTags(),
+          "Data model-level tags should not be null in pagination with columns,tags");
+      assertEquals(1, dataModel.getTags().size(), "Should have exactly one data model-level tag");
+      assertEquals(dataModelTagLabel.getTagFQN(), dataModel.getTags().get(0).getTagFQN());
+
+      // Verify column-level tags
+      assertNotNull(
+          dataModel.getColumns(), "Columns should not be null when fields includes columns");
+      assertFalse(dataModel.getColumns().isEmpty(), "Columns should not be empty");
+
+      Column column1 =
+          dataModel.getColumns().stream()
+              .filter(c -> c.getName().startsWith("column1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find column1 column"));
+
+      assertNotNull(
+          column1.getTags(),
+          "Column tags should not be null when fields=columns,tags in pagination");
+      assertEquals(1, column1.getTags().size(), "Column should have exactly one tag");
+      assertEquals(columnTagLabel.getTagFQN(), column1.getTags().get(0).getTagFQN());
+
+      // column2 and column3 should not have tags
+      Column column2 =
+          dataModel.getColumns().stream()
+              .filter(c -> c.getName().startsWith("column2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find column2 column"));
+
+      assertTrue(
+          column2.getTags() == null || column2.getTags().isEmpty(), "column2 should not have tags");
+
+      Column column3 =
+          dataModel.getColumns().stream()
+              .filter(c -> c.getName().startsWith("column3_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find column3 column"));
+
+      assertTrue(
+          column3.getTags() == null || column3.getTags().isEmpty(), "column3 should not have tags");
+    }
   }
 }

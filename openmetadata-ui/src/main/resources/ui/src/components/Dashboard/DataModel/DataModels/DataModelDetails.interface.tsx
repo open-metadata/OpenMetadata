@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { CreateThread } from '../../../../generated/api/feed/createThread';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Column } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
 import { DataAssetWithDomains } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../../Database/TableQueries/TableQueries.interface';
@@ -26,17 +23,18 @@ export interface DataModelDetailsProps {
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   fetchDataModel: () => void;
-  createThread: (data: CreateThread) => Promise<void>;
   handleFollowDataModel: () => Promise<void>;
-  handleUpdateTags: (selectedTags?: EntityTags[]) => Promise<void>;
   handleUpdateOwner: (owner?: EntityReference[]) => Promise<void>;
   handleUpdateTier: (tier?: Tag) => Promise<void>;
-  handleUpdateDescription: (value: string) => Promise<void>;
-  handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onUpdateDataModel: (
     updatedDataModel: DashboardDataModel,
-    key: keyof DashboardDataModel
+    key?: keyof DashboardDataModel
   ) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
+}
+
+export interface DataModelTableProps {
+  showDeleted: boolean;
+  handleShowDeleted: (checked: boolean) => void;
 }

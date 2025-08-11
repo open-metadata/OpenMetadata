@@ -11,49 +11,146 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
-import { ALERT_DESCRIPTION } from '../constant/alert';
 import {
-  AlertDetails,
-  ObservabilityCreationDetails,
-} from '../constant/alert.interface';
+  ALERT_DESCRIPTION,
+  ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
+  ALERT_WITHOUT_PERMISSION_POLICY_NAME,
+  ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
+  ALERT_WITHOUT_PERMISSION_ROLE_NAME,
+  ALERT_WITH_PERMISSION_POLICY_DETAILS,
+  ALERT_WITH_PERMISSION_POLICY_NAME,
+  ALERT_WITH_PERMISSION_ROLE_DETAILS,
+  ALERT_WITH_PERMISSION_ROLE_NAME,
+} from '../constant/alert';
+import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
-import { SidebarItem } from '../constant/sidebar';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   descriptionBox,
-  redirectToHomePage,
+  getApiContext,
   toastNotification,
   uuid,
 } from './common';
+import { getEntityDisplayName, getTextFromHtmlString } from './entity';
 import { validateFormNameFieldInput } from './form';
-import { sidebarClick } from './sidebar';
+import {
+  addFilterWithUsersListInput,
+  addInternalDestination,
+  visitNotificationAlertPage,
+} from './notificationAlert';
+import { visitObservabilityAlertPage } from './observabilityAlert';
 
 export const generateAlertName = () => `0%alert-playwright-${uuid()}`;
 
-export const visitNotificationAlertPage = async (page: Page) => {
-  await redirectToHomePage(page);
-  await sidebarClick(page, SidebarItem.SETTINGS);
-  const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
-  const getActivityFeedAlertDetails = page.waitForResponse(
-    '/api/v1/events/subscriptions/name/ActivityFeedAlert?include=all'
-  );
-  await page.click('[data-testid="notifications"]');
-  await getAlerts;
-  await getActivityFeedAlertDetails;
+export const commonPrerequisites = async ({
+  apiContext,
+  user1,
+  user2,
+  domain,
+  table,
+}: {
+  apiContext: APIRequestContext;
+  user1: UserClass;
+  user2: UserClass;
+  domain: Domain;
+  table: TableClass;
+}) => {
+  await table.create(apiContext);
+  await user1.create(apiContext);
+  await user2.create(apiContext);
+  await domain.create(apiContext);
+  await apiContext.post('/api/v1/policies', {
+    data: ALERT_WITH_PERMISSION_POLICY_DETAILS,
+  });
+
+  await apiContext.post('/api/v1/policies', {
+    data: ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
+  });
+
+  const role1Response = await apiContext.post('/api/v1/roles', {
+    data: ALERT_WITH_PERMISSION_ROLE_DETAILS,
+  });
+
+  const role2Response = await apiContext.post('/api/v1/roles', {
+    data: ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
+  });
+
+  const role1Data = (await role1Response.json()) as {
+    id: string;
+    name: string;
+  };
+
+  const role2Data = (await role2Response.json()) as {
+    id: string;
+    name: string;
+  };
+
+  await user1.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/roles/0',
+        value: {
+          id: role1Data.id,
+          type: 'role',
+          name: role1Data.name,
+        },
+      },
+    ],
+  });
+
+  await user2.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/roles/0',
+        value: {
+          id: role2Data.id,
+          type: 'role',
+          name: role2Data.name,
+        },
+      },
+    ],
+  });
 };
 
-export const visitObservabilityAlertPage = async (page: Page) => {
-  await redirectToHomePage(page);
-  const getAlerts = page.waitForResponse(
-    '/api/v1/events/subscriptions?*alertType=Observability*'
+export const commonCleanup = async ({
+  apiContext,
+  user1,
+  user2,
+  domain,
+  table,
+}: {
+  apiContext: APIRequestContext;
+  user1: UserClass;
+  user2: UserClass;
+  domain: Domain;
+  table: TableClass;
+}) => {
+  await user1.delete(apiContext);
+  await user2.delete(apiContext);
+  await domain.delete(apiContext);
+  await table.delete(apiContext);
+  await apiContext.delete(
+    `/api/v1/policies/name/${ALERT_WITH_PERMISSION_POLICY_NAME}?hardDelete=true`
   );
-  await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
-  await getAlerts;
+  await apiContext.delete(
+    `/api/v1/policies/name/${ALERT_WITHOUT_PERMISSION_POLICY_NAME}?hardDelete=true`
+  );
+  await apiContext.delete(
+    `/api/v1/roles/name/${ALERT_WITH_PERMISSION_ROLE_NAME}?hardDelete=true`
+  );
+  await apiContext.delete(
+    `/api/v1/roles/name/${ALERT_WITHOUT_PERMISSION_ROLE_NAME}?hardDelete=true`
+  );
 };
 
 export const findPageWithAlert = async (
@@ -61,6 +158,10 @@ export const findPageWithAlert = async (
   alertDetails: AlertDetails
 ) => {
   const { id } = alertDetails;
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   const alertRow = page.locator(`[data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
   if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
@@ -72,6 +173,47 @@ export const findPageWithAlert = async (
     });
     await findPageWithAlert(page, alertDetails);
   }
+};
+
+export const deleteAlertSteps = async (
+  page: Page,
+  name: string,
+  displayName: string
+) => {
+  await page.getByTestId(`alert-delete-${name}`).click();
+
+  await expect(page.locator('.ant-modal-header')).toHaveText(
+    `Delete subscription "${displayName}"`
+  );
+
+  await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
+
+  const deleteAlert = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'DELETE' && response.status() === 200
+  );
+  await page.click('[data-testid="confirm-button"]');
+  await deleteAlert;
+
+  await toastNotification(page, `"${displayName}" deleted successfully!`);
+};
+
+export const deleteAlert = async (
+  page: Page,
+  alertDetails: AlertDetails,
+  isNotificationAlert = true
+) => {
+  if (isNotificationAlert) {
+    await visitNotificationAlertPage(page);
+  } else {
+    await visitObservabilityAlertPage(page);
+  }
+  await findPageWithAlert(page, alertDetails);
+  await deleteAlertSteps(
+    page,
+    alertDetails.name,
+    getEntityDisplayName(alertDetails)
+  );
 };
 
 export const visitEditAlertPage = async (
@@ -92,7 +234,9 @@ export const visitEditAlertPage = async (
   );
 
   // Check alert name
-  await expect(page.locator('#name')).toHaveValue(alertDetails.name);
+  await expect(page.locator('#displayName')).toHaveValue(
+    getEntityDisplayName(alertDetails)
+  );
 };
 
 export const visitAlertDetailsPage = async (
@@ -104,30 +248,15 @@ export const visitAlertDetailsPage = async (
   const getAlertDetails = page.waitForResponse(
     '/api/v1/events/subscriptions/name/*'
   );
+  const getEventRecords = page.waitForResponse(
+    '/api/v1/events/subscriptions/name/*/eventsRecord?listCountOnly=true'
+  );
   await page
     .locator(`[data-row-key="${alertDetails.id}"]`)
-    .getByText(alertDetails.name)
+    .getByText(getEntityDisplayName(alertDetails))
     .click();
   await getAlertDetails;
-};
-
-export const deleteAlertSteps = async (page: Page, name: string) => {
-  await page.getByTestId(`alert-delete-${name}`).click();
-
-  await expect(page.locator('.ant-modal-header')).toHaveText(
-    `Delete subscription "${name}"`
-  );
-
-  await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
-
-  const deleteAlert = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'DELETE' && response.status() === 200
-  );
-  await page.click('[data-testid="confirm-button"]');
-  await deleteAlert;
-
-  await toastNotification(page, `"${name}" deleted successfully!`);
+  await getEventRecords;
 };
 
 export const addOwnerFilter = async ({
@@ -149,7 +278,6 @@ export const addOwnerFilter = async ({
 
   // Search and select owner
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.waitForSelector('.ant-select-dropdown:visible');
   await page.fill(
     '[data-testid="owner-name-select"] [role="combobox"]',
     ownerName,
@@ -214,70 +342,35 @@ export const addEntityFQNFilter = async ({
 export const addEventTypeFilter = async ({
   page,
   filterNumber,
-  eventType,
+  eventTypes,
   exclude = false,
 }: {
   page: Page;
   filterNumber: number;
-  eventType: string;
+  eventTypes: string[];
   exclude?: boolean;
 }) => {
   // Select event type filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
   await page.click(`[data-testid="Event Type-filter-option"]:visible`);
 
-  // Search and select event type
-  await page.fill(
-    '[data-testid="event-type-select"] [role="combobox"]',
-    eventType,
-    {
-      force: true,
-    }
-  );
-  await page.click(
-    `.ant-select-dropdown:visible [title="${startCase(eventType)}"]`
-  );
+  for (const eventType of eventTypes) {
+    // Search and select event type
+    await page.fill(
+      '[data-testid="event-type-select"] [role="combobox"]',
+      eventType,
+      {
+        force: true,
+      }
+    );
+    await page.click(
+      `.ant-select-dropdown:visible [title="${startCase(eventType)}"]`
+    );
 
-  await expect(page.getByTestId('event-type-select')).toHaveText(
-    startCase(eventType)
-  );
-
-  if (exclude) {
-    // Change filter effect
-    await page.click(`[data-testid="filter-switch-${filterNumber}"]`);
+    await expect(
+      page.getByTestId('event-type-select').getByTitle(startCase(eventType))
+    ).toBeAttached();
   }
-};
-
-export const addFilterWithUsersListInput = async ({
-  page,
-  filterTestId,
-  filterNumber,
-  updaterName,
-  exclude = false,
-}: {
-  page: Page;
-  filterTestId: string;
-  filterNumber: number;
-  updaterName: string;
-  exclude?: boolean;
-}) => {
-  // Select updater name filter
-  await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="${filterTestId}"]:visible`);
-
-  // Search and select user
-  const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.fill(
-    '[data-testid="user-name-select"] [role="combobox"]',
-    updaterName,
-    {
-      force: true,
-    }
-  );
-  await getSearchResult;
-  await page.click(`.ant-select-dropdown:visible [title="${updaterName}"]`);
-
-  await expect(page.getByTestId('user-name-select')).toHaveText(updaterName);
 
   if (exclude) {
     // Change filter effect
@@ -304,7 +397,7 @@ export const addDomainFilter = async ({
 
   // Search and select domain
   const getSearchResult = page.waitForResponse(
-    '/api/v1/search/query?q=**index=domain_search_index'
+    '/api/v1/search/query?q=**index=domain_search_index*'
   );
   await page.fill(
     '[data-testid="domain-select"] [role="combobox"]',
@@ -349,152 +442,34 @@ export const addGMEFilter = async ({
   }
 };
 
-export const addInternalDestination = async ({
-  page,
-  destinationNumber,
-  category,
-  typeId,
-  type = '',
-  searchText = '',
-}: {
-  page: Page;
-  destinationNumber: number;
-  category: string;
-  typeId?: string;
-  type?: string;
-  searchText?: string;
-}) => {
-  // Select destination category
-  await page.click(
-    `[data-testid="destination-category-select-${destinationNumber}"]`
-  );
-  await page.click(`[data-testid="${category}-internal-option"]:visible`);
-
-  // Select the receivers
-  if (typeId) {
-    if (category === 'Teams' || category === 'Users') {
-      await page.click(
-        `[data-testid="destination-${destinationNumber}"] [data-testid="dropdown-trigger-button"]`
-      );
-      const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-      await page.fill(
-        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input"]`,
-        searchText
-      );
-
-      await getSearchResult;
-      await page.click(
-        `.ant-dropdown:visible [data-testid="${searchText}-option-label"]`
-      );
-    } else {
-      const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-      await page.fill(`[data-testid="${typeId}"]`, searchText);
-      await getSearchResult;
-      await page.click(`.ant-select-dropdown:visible [title="${searchText}"]`);
-    }
-    await clickOutside(page);
-  }
-
-  // Select destination type
-  await page.click(
-    `[data-testid="destination-type-select-${destinationNumber}"]`
-  );
-  await page.click(
-    `.select-options-container [data-testid="${type}-external-option"]:visible`
-  );
-
-  // Check the added destination type
-  await expect(
-    page
-      .getByTestId(`destination-type-select-${destinationNumber}`)
-      .getByTestId(`${type}-external-option`)
-  ).toBeAttached();
-};
-
-export const addExternalDestination = async ({
-  page,
-  destinationNumber,
-  category,
-  secretKey,
-  input = '',
-}: {
-  page: Page;
-  destinationNumber: number;
-  category: string;
-  input?: string;
-  secretKey?: string;
-}) => {
-  // Select destination category
-  await page.click(
-    `[data-testid="destination-category-select-${destinationNumber}"]`
-  );
-
-  // Select external tab
-  await page.click(`[data-testid="tab-label-external"]:visible`);
-
-  // Select destination category option
-  await page.click(
-    `[data-testid="destination-category-dropdown-${destinationNumber}"]:visible [data-testid="${category}-external-option"]:visible`
-  );
-
-  // Input the destination receivers value
-  if (category === 'Email') {
-    await page.fill(
-      `[data-testid="email-input-${destinationNumber}"] [role="combobox"]`,
-      input
-    );
-    await page.keyboard.press('Enter');
-  } else {
-    await page.fill(
-      `[data-testid="endpoint-input-${destinationNumber}"]`,
-      input
-    );
-  }
-
-  // Input the secret key value
-  if (category === 'Webhook' && secretKey) {
-    await page.fill(
-      `[data-testid="secret-key-input-${destinationNumber}"]`,
-      secretKey
-    );
-  }
-};
-
 const checkActionOrFilterDetails = async ({
   page,
   filters,
+  isFilter = true,
 }: {
   page: Page;
   filters: AlertDetails['input']['filters'];
+  isFilter?: boolean;
 }) => {
   if (!isEmpty(filters)) {
     for (const filter of filters) {
       const index = filters.indexOf(filter);
 
-      // Check filter effect
-      await expect(
-        page.locator('[data-testid="effect-value"]').nth(index)
-      ).toContainText(startCase(filter.effect));
+      await expect(page.getByTestId(`filter-${index}`)).toBeAttached();
 
-      // Check filter name
-      await expect(
-        page.locator('[data-testid="filter-name"]').nth(index)
-      ).toContainText(startCase(filter.name));
-
-      if (!isEmpty(filter.arguments)) {
-        for (const argument of filter.arguments) {
-          // Check filter arguments
-          await expect(
-            page.locator(`[data-testid="argument-container-${argument.name}"]`)
-          ).toBeAttached();
-
-          for (const val of argument.input) {
-            await expect(
-              page.locator(`[data-testid="argument-value"]`).getByText(val)
-            ).toBeAttached();
-          }
-        }
-      }
+      filter.effect === 'include'
+        ? await expect(
+            page.getByTestId(
+              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
+            )
+          ).toHaveClass('ant-switch ant-switch-checked ant-switch-disabled')
+        : await expect(
+            page.getByTestId(
+              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
+            )
+          ).not.toHaveClass(
+            'ant-switch ant-switch-checked ant-switch-disabled'
+          );
     }
   }
 };
@@ -508,8 +483,14 @@ export const verifyAlertDetails = async ({
   alertDetails: AlertDetails;
   isObservabilityAlert?: boolean;
 }) => {
-  const { name, description, filteringRules, input, destinations } =
-    alertDetails;
+  const {
+    name,
+    displayName,
+    description,
+    filteringRules,
+    input,
+    destinations,
+  } = alertDetails;
 
   const triggerName = filteringRules.resources[0];
   const filters = input.filters;
@@ -518,19 +499,20 @@ export const verifyAlertDetails = async ({
   await expect(page.getByTestId('alert-details-container')).toBeAttached();
 
   // Check alert name
-  await expect(page.getByTestId('alert-name')).toContainText(name);
+  await expect(page.getByTestId('entity-header-name')).toContainText(name);
+  await expect(page.getByTestId('entity-header-display-name')).toContainText(
+    displayName
+  );
 
   if (description) {
-    // Check alert name
-    await expect(page.getByTestId('alert-description')).toContainText(
-      description
+    // Check alert description
+    await expect(page.getByTestId('markdown-parser')).toContainText(
+      getTextFromHtmlString(description)
     );
   }
 
   // Check trigger name
-  await expect(page.getByTestId('resource-name')).toContainText(
-    startCase(triggerName)
-  );
+  await expect(page.getByTestId('source-select')).toContainText(triggerName);
 
   // Check filter details
   await checkActionOrFilterDetails({ page, filters });
@@ -539,43 +521,28 @@ export const verifyAlertDetails = async ({
     const actions = input.actions;
 
     // Check action details
-    await checkActionOrFilterDetails({ page, filters: actions });
+    await checkActionOrFilterDetails({
+      page,
+      filters: actions,
+      isFilter: false,
+    });
   }
 
   if (!isEmpty(destinations)) {
     // Check connection timeout details
-    await expect(page.getByTestId('connection-timeout')).toContainText(
+    await expect(page.getByTestId('connection-timeout-input')).toHaveValue(
       destinations[0].timeout.toString()
     );
 
-    for (const destination of destinations) {
-      // Check Destination category
+    // Check read timeout details
+    await expect(page.getByTestId('read-timeout-input')).toHaveValue(
+      destinations[0].readTimeout.toString()
+    );
+
+    for (const destinationNumber in destinations) {
       await expect(
-        page
-          .getByTestId(`destination-${destination.category}`)
-          .getByTestId('category-value')
-      ).toContainText(destination.category);
-
-      // Check Destination type
-      await expect(
-        page
-          .getByTestId(`destination-${destination.category}`)
-          .getByTestId('destination-type')
-      ).toContainText(startCase(destination.type));
-
-      if (!isEmpty(destination.config?.secretKey)) {
-        // Check secret key is present
-        await expect(
-          page.getByTestId(`destination-${destination.category}`)
-        ).toContainText('Secret Key');
-      }
-
-      if (!isEmpty(destination.config?.receivers)) {
-        // Check Destination receivers
-        for (const receiver of destination.config.receivers) {
-          await expect(page.getByTestId(`receiver-${receiver}`)).toBeAttached();
-        }
-      }
+        page.getByTestId(`destination-${destinationNumber}`)
+      ).toBeAttached();
     }
   }
 };
@@ -674,7 +641,7 @@ export const addMultipleFilters = async ({
   await addEventTypeFilter({
     page,
     filterNumber: 2,
-    eventType: 'entityCreated',
+    eventTypes: ['entityCreated'],
   });
 
   // Add users list filter
@@ -722,6 +689,7 @@ export const inputBasicAlertInformation = async ({
     value: name,
     fieldName: 'Name',
     errorDivSelector: '#name_help',
+    fieldSelector: '#displayName',
   });
 
   // Enter description
@@ -744,6 +712,7 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
     alertDetails: {
       id: '',
       name: '',
+      displayName: '',
       description: '',
       filteringRules: { resources: [] },
       input: { filters: [], actions: [] },
@@ -775,241 +744,191 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
   return data.alertDetails;
 };
 
-export const deleteAlert = async (
-  page: Page,
-  alertDetails: AlertDetails,
-  isNotificationAlert = true
-) => {
-  if (isNotificationAlert) {
-    await visitNotificationAlertPage(page);
-  } else {
-    await visitObservabilityAlertPage(page);
+export const createAlert = async ({
+  page,
+  alertName,
+  sourceName,
+  sourceDisplayName,
+  user,
+  createButtonId,
+  selectId,
+  addTrigger = false,
+}: {
+  page: Page;
+  alertName: string;
+  sourceName: string;
+  sourceDisplayName: string;
+  user: UserClass;
+  createButtonId?: string;
+  selectId?: string;
+  addTrigger?: boolean;
+}) => {
+  await inputBasicAlertInformation({
+    page,
+    name: alertName,
+    sourceName,
+    sourceDisplayName,
+    createButtonId,
+  });
+
+  // Select filters
+  await page.click('[data-testid="add-filters"]');
+
+  await addOwnerFilter({
+    page,
+    filterNumber: 0,
+    ownerName: user.getUserName(),
+    selectId,
+  });
+
+  if (addTrigger) {
+    // Select trigger
+    await page.click('[data-testid="add-trigger"]');
+
+    await addGetSchemaChangesAction({
+      page,
+      filterNumber: 0,
+    });
+
+    await page.getByTestId('connection-timeout-input').clear();
+    await page.getByTestId('read-timeout-input').clear();
+    await page.fill('[data-testid="connection-timeout-input"]', '26');
+    await page.fill('[data-testid="read-timeout-input"]', '26');
   }
-  await findPageWithAlert(page, alertDetails);
-  await deleteAlertSteps(page, alertDetails.name);
+
+  // Select Destination
+  await page.click('[data-testid="add-destination-button"]');
+
+  await addInternalDestination({
+    page,
+    destinationNumber: 0,
+    category: 'Admins',
+    type: 'Email',
+  });
+
+  return await saveAlertAndVerifyResponse(page);
 };
 
-export const getObservabilityCreationDetails = ({
-  tableName1,
-  tableName2,
-  testCaseName,
-  ingestionPipelineName,
-  domainName,
-  domainDisplayName,
-  userName,
-  testSuiteFQN,
+export const waitForRecentEventsToFinishExecution = async (
+  page: Page,
+  name: string,
+  totalEventsCount: number
+) => {
+  const { apiContext } = await getApiContext(page);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            `/api/v1/events/subscriptions/name/${name}/eventsRecord?listCountOnly=true`
+          )
+          .then((res) => res.json());
+
+        return (
+          response.pendingEventsCount === 0 &&
+          response.totalEventsCount === totalEventsCount
+        );
+      },
+      {
+        // Custom expect message for reporting, optional.
+        message: 'Wait for pending events to complete',
+        intervals: [5_000, 10_000, 15_000, 20_000],
+        timeout: 900_000,
+      }
+    )
+    // Move ahead when the pending events count is 0
+    .toEqual(true);
+};
+
+export const checkRecentEventDetails = async ({
+  page,
+  alertDetails,
+  table,
+  totalEventsCount,
 }: {
-  tableName1: string;
-  tableName2: string;
-  testCaseName: string;
-  ingestionPipelineName: string;
-  domainName: string;
-  domainDisplayName: string;
-  userName: string;
-  testSuiteFQN: string;
-}): Array<ObservabilityCreationDetails> => {
-  return [
-    {
-      source: 'table',
-      sourceDisplayName: 'Table',
-      filters: [
-        {
-          name: 'Table Name',
-          inputSelector: 'fqn-list-select',
-          inputValue: tableName1,
-          exclude: true,
-        },
-        {
-          name: 'Domain',
-          inputSelector: 'domain-select',
-          inputValue: domainName,
-          inputValueId: domainDisplayName,
-          exclude: false,
-        },
-        {
-          name: 'Owner Name',
-          inputSelector: 'owner-name-select',
-          inputValue: userName,
-          exclude: true,
-        },
-      ],
-      actions: [
-        {
-          name: 'Get Schema Changes',
-          exclude: true,
-        },
-        {
-          name: 'Get Table Metrics Updates',
-          exclude: false,
-        },
-      ],
-      destinations: [
-        {
-          mode: 'internal',
-          category: 'Owners',
-          type: 'Email',
-        },
-        {
-          mode: 'external',
-          category: 'Webhook',
-          inputValue: 'https://webhook.com',
-          secretKey: 'secret_key',
-        },
-      ],
-    },
-    {
-      source: 'ingestionPipeline',
-      sourceDisplayName: 'Ingestion Pipeline',
-      filters: [
-        {
-          name: 'Ingestion Pipeline Name',
-          inputSelector: 'fqn-list-select',
-          inputValue: ingestionPipelineName,
-          exclude: false,
-        },
-        {
-          name: 'Domain',
-          inputSelector: 'domain-select',
-          inputValue: domainName,
-          inputValueId: domainDisplayName,
-          exclude: false,
-        },
-        {
-          name: 'Owner Name',
-          inputSelector: 'owner-name-select',
-          inputValue: userName,
-          exclude: true,
-        },
-      ],
-      actions: [
-        {
-          name: 'Get Ingestion Pipeline Status Updates',
-          inputs: [
-            {
-              inputSelector: 'pipeline-status-select',
-              inputValue: 'Queued',
-            },
-          ],
-          exclude: false,
-        },
-      ],
-      destinations: [
-        {
-          mode: 'internal',
-          category: 'Owners',
-          type: 'Email',
-        },
-        {
-          mode: 'external',
-          category: 'Email',
-          inputValue: 'test@example.com',
-        },
-      ],
-    },
-    {
-      source: 'testCase',
-      sourceDisplayName: 'Test case',
-      filters: [
-        {
-          name: 'Test Case Name',
-          inputSelector: 'fqn-list-select',
-          inputValue: testCaseName,
-          exclude: true,
-        },
-        {
-          name: 'Domain',
-          inputSelector: 'domain-select',
-          inputValue: domainName,
-          inputValueId: domainDisplayName,
-          exclude: false,
-        },
-        {
-          name: 'Owner Name',
-          inputSelector: 'owner-name-select',
-          inputValue: userName,
-          exclude: true,
-        },
-        {
-          name: 'Table Name A Test Case Belongs To',
-          inputSelector: 'table-name-select',
-          inputValue: tableName2,
-          exclude: false,
-        },
-      ],
-      actions: [
-        {
-          name: 'Get Test Case Status Updates',
-          inputs: [
-            {
-              inputSelector: 'test-result-select',
-              inputValue: 'Success',
-            },
-          ],
-          exclude: false,
-        },
-        {
-          name: 'Get Test Case Status Updates belonging to a Test Suite',
-          inputs: [
-            {
-              inputSelector: 'test-suite-select',
-              inputValue: testSuiteFQN,
-              waitForAPI: true,
-            },
-            {
-              inputSelector: 'test-status-select',
-              inputValue: 'Failed',
-            },
-          ],
-          exclude: false,
-        },
-      ],
-      destinations: [
-        {
-          mode: 'internal',
-          category: 'Users',
-          inputSelector: 'User-select',
-          inputValue: userName,
-          type: 'Email',
-        },
-        {
-          mode: 'external',
-          category: 'Webhook',
-          inputValue: 'https://webhook.com',
-        },
-      ],
-    },
-    {
-      source: 'testSuite',
-      sourceDisplayName: 'Test Suite',
-      filters: [
-        {
-          name: 'Test Suite Name',
-          inputSelector: 'fqn-list-select',
-          inputValue: testSuiteFQN,
-          exclude: true,
-        },
-        {
-          name: 'Domain',
-          inputSelector: 'domain-select',
-          inputValue: domainName,
-          inputValueId: domainDisplayName,
-          exclude: false,
-        },
-        {
-          name: 'Owner Name',
-          inputSelector: 'owner-name-select',
-          inputValue: userName,
-          exclude: false,
-        },
-      ],
-      actions: [],
-      destinations: [
-        {
-          mode: 'external',
-          category: 'Slack',
-          inputValue: 'https://slack.com',
-        },
-      ],
-    },
-  ];
+  page: Page;
+  alertDetails: AlertDetails;
+  table: TableClass;
+  totalEventsCount: number;
+}) => {
+  await expect(page.getByTestId('total-events-count')).toHaveText(
+    `Total Events: ${totalEventsCount}`
+  );
+
+  await expect(page.getByTestId('failed-events-count')).toHaveText(
+    'Failed Events: 0'
+  );
+
+  // Verify Recent Events tab
+  const getRecentEvents = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(
+          `/api/v1/events/subscriptions/id/${alertDetails.id}/listEvents?limit=15&paginationOffset=0`
+        ) &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  );
+
+  await page.getByRole('tab').getByText('Recent Events').click();
+
+  await getRecentEvents.then(async (response) => {
+    const recentEvents: EventDetails[] = (await response.json()).data;
+
+    // Check the event details
+    for (const event of recentEvents) {
+      // Open collapse
+      await page.getByTestId(`event-collapse-${event.data[0].id}`).click();
+
+      await page.waitForSelector(
+        `[data-testid="event-details-${event.data[0].id}"]`
+      );
+
+      // Check if table id is present in event details
+      await expect(
+        page
+          .getByTestId(`event-details-${event.data[0].id}`)
+          .getByTestId('event-data-entityId')
+          .getByTestId('event-data-value')
+      ).toContainText((table.entityResponseData as { id: string }).id);
+
+      // Check if event type is present in event details
+      await expect(
+        page
+          .getByTestId(`event-details-${event.data[0].id}`)
+          .getByTestId('event-data-eventType')
+          .getByTestId('event-data-value')
+      ).toContainText(event.data[0].eventType);
+
+      // Close collapse
+      await page.getByTestId(`event-collapse-${event.data[0].id}`).click();
+    }
+  });
+
+  await page.getByTestId('filter-button').click();
+
+  await page.waitForSelector(
+    '.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]'
+  );
+
+  const getFailedEvents = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(
+          `/api/v1/events/subscriptions/id/${alertDetails.id}/listEvents?status=failed&limit=15&paginationOffset=0`
+        ) &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  );
+
+  await page.click('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]');
+
+  await getFailedEvents.then(async (response) => {
+    const failedEvents: EventDetails[] = (await response.json()).data;
+
+    expect(failedEvents).toHaveLength(0);
+  });
 };

@@ -24,22 +24,23 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TimeZone;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -120,42 +121,42 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(Date date, int days) {
-    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    calendar.setTime(date);
-    calendar.add(Calendar.DATE, days);
-    return calendar.getTime();
+  public static LocalDate getDateByOffset(LocalDate localDate, int days) {
+    return localDate.plusDays(days);
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) {
-    Date date;
+  public static LocalDate getDateByOffset(DateTimeFormatter dateFormat, String strDate, int days) {
+    LocalDate localDate;
     try {
-      date = dateFormat.parse(strDate);
-    } catch (ParseException e) {
+      localDate = LocalDate.parse(strDate, dateFormat);
+    } catch (DateTimeParseException e) {
       throw new IllegalArgumentException("Failed to parse date " + strDate, e);
     }
-    return getDateByOffset(date, days);
+    return getDateByOffset(localDate, days);
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static String getDateStringByOffset(DateFormat dateFormat, String strDate, int days) {
-    return dateFormat.format(getDateByOffset(dateFormat, strDate, days));
+  public static String getDateStringByOffset(
+      DateTimeFormatter dateFormat, String strDate, int days) {
+    LocalDate localDate = getDateByOffset(dateFormat, strDate, days);
+    return localDate.format(dateFormat);
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
   public static boolean dateInRange(
-      DateFormat dateFormat, String date, int futureDays, int pastDays) {
-    Date today = new Date();
-    Date startDate = getDateByOffset(today, -pastDays);
-    Date endDate = getDateByOffset(today, futureDays);
-    Date givenDate;
+      DateTimeFormatter dateFormat, String date, int futureDays, int pastDays) {
+    LocalDate today = LocalDate.now();
+    LocalDate startDate = getDateByOffset(today, -pastDays);
+    LocalDate endDate = getDateByOffset(today, futureDays);
+    LocalDate givenDate;
     try {
-      givenDate = dateFormat.parse(date);
-    } catch (ParseException e) {
+      givenDate = LocalDate.parse(date, dateFormat);
+    } catch (DateTimeParseException e) {
       throw new IllegalArgumentException("Failed to parse date " + date, e);
     }
-    return givenDate.after(startDate) && givenDate.before(endDate);
+    return (givenDate.isAfter(startDate) || givenDate.equals(startDate))
+        && (givenDate.isBefore(endDate) || givenDate.equals(endDate));
   }
 
   public static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
@@ -178,6 +179,10 @@ public final class CommonUtil {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 
+  public static <K, V> Map<K, V> collectionOrEmpty(Map<K, V> input) {
+    return Optional.ofNullable(input).orElse(new HashMap<>());
+  }
+
   public static <T> List<T> listOrEmptyMutable(List<T> list) {
     return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
   }
@@ -198,11 +203,23 @@ public final class CommonUtil {
     return object == null || nullOrEmpty(object.toString());
   }
 
+  public static List<String> uuidListToStrings(List<UUID> list) {
+    return list.stream().map(UUID::toString).toList();
+  }
+
   public static <T> T nullOrDefault(T object, T defaultValue) {
     if (object == null || (nullOrEmpty(object.toString()))) {
       return defaultValue;
     } else {
       return object;
+    }
+  }
+
+  public static <T> List<T> collectionOrDefault(List<T> c, List<T> defaultValue) {
+    if (nullOrEmpty(c)) {
+      return defaultValue;
+    } else {
+      return c;
     }
   }
 
@@ -245,6 +262,24 @@ public final class CommonUtil {
               });
     } catch (Exception e) {
       return false;
+    }
+  }
+
+  public static <T> Set<String> getChildrenNames(
+      List<?> list, String methodName, String parentFqn) {
+    Set<String> result = new HashSet<>();
+    if (list == null || list.isEmpty()) return new HashSet();
+    try {
+      Method getChildren = list.get(0).getClass().getMethod(methodName);
+      Method getFQN = list.get(0).getClass().getMethod("getFullyQualifiedName");
+      for (int i = 0; i < list.size(); i++) {
+        result.add(getFQN.invoke(list.get(i)).toString().replace(parentFqn + ".", ""));
+        result.addAll(
+            getChildrenNames((List<?>) getChildren.invoke(list.get(i)), methodName, parentFqn));
+      }
+      return result;
+    } catch (Exception e) {
+      return result;
     }
   }
 }

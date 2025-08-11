@@ -12,13 +12,7 @@
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Carousel } from 'antd';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';
 import './avatar-carousel.less';
@@ -64,10 +58,10 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
   }, [currentSlide]);
 
   useEffect(() => {
-    if (selectedUserSuggestions.length === 0) {
+    if (selectedUserSuggestions.combinedData.length === 0) {
       setCurrentSlide(-1);
     }
-  }, [selectedUserSuggestions]);
+  }, [selectedUserSuggestions.combinedData]);
 
   return (
     <div className="avatar-carousel-container d-flex items-center">
@@ -86,7 +80,8 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       <Carousel
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
-        slidesToShow={avatarList.length < 3 ? avatarList.length : 3}>
+        infinite={false}
+        slidesToShow={avatarList.length}>
         {avatarList.map((avatar, index) => (
           <AvatarCarouselItem
             avatar={avatar}

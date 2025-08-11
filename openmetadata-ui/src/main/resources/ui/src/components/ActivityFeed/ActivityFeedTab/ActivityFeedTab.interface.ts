@@ -15,7 +15,6 @@ import { Column } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { FeedCounts } from '../../../interface/feed.interface';
 
-export type FeedKeys = 'all' | 'mentions' | 'tasks';
 export type TaskFilter = 'open' | 'close';
 
 export enum ActivityFeedTabs {
@@ -24,8 +23,12 @@ export enum ActivityFeedTabs {
   TASKS = 'tasks',
 }
 
+export enum ActivityFeedLayoutType {
+  TWO_PANEL = 'TWO_PANEL',
+  THREE_PANEL = 'THREE_PANEL',
+}
+
 export interface ActivityFeedTabBasicProps {
-  fqn: string;
   isForFeedTab?: boolean;
   refetchFeed?: boolean;
   entityFeedTotalCount?: number;
@@ -34,6 +37,9 @@ export interface ActivityFeedTabBasicProps {
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
   owners?: EntityReference[];
+  subTab?: ActivityFeedTabs;
+  layoutType?: ActivityFeedLayoutType;
+  feedCount?: FeedCounts;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

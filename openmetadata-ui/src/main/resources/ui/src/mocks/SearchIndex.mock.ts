@@ -75,45 +75,6 @@ export const MOCK_SEARCH_INDEX_FIELDS: SearchIndexField[] = [
   },
 ];
 
-export const MOCK_SEARCHED_FIELDS: SearchIndexField[] = [
-  {
-    name: 'name',
-    dataType: DataType.Text,
-    dataTypeDisplay: 'text',
-    description: 'Table Entity Name.',
-    fullyQualifiedName: 'elasticsearch_sample.table_search_index.name',
-    tags: [
-      {
-        tagFQN: 'PersonalData.Personal',
-        description:
-          'Data that can be used to directly or indirectly identify a person.',
-        source: TagSource.Classification,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      },
-    ],
-  },
-  {
-    name: 'columns',
-    dataType: DataType.Nested,
-    dataTypeDisplay: 'nested',
-    description: 'Table Columns.',
-    fullyQualifiedName: 'elasticsearch_sample.table_search_index.columns',
-    tags: [],
-    children: [
-      {
-        name: 'column_name',
-        dataType: DataType.Text,
-        dataTypeDisplay: 'text',
-        description: 'Column Name.',
-        fullyQualifiedName:
-          'elasticsearch_sample.table_search_index.columns.name',
-        tags: [],
-      },
-    ],
-  },
-];
-
 export const MOCK_SEARCH_INDEX: SearchIndex = {
   id: '5cb19694-636d-4c8f-93cf-ed6f6a135da7',
   name: 'table_search_index',
@@ -153,15 +114,17 @@ export const MOCK_SEARCH_INDEX: SearchIndex = {
     previousVersion: 0.3,
   },
   deleted: false,
-  domain: {
-    id: '52fc9c67-78b7-42bf-8147-69278853c230',
-    type: 'domain',
-    name: 'Design',
-    fullyQualifiedName: 'Design',
-    description: "Here' the description for Product Design",
-    displayName: 'Product Design ',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/52fc9c67-78b7-42bf-8147-69278853c230',
-  },
+  domains: [
+    {
+      id: '52fc9c67-78b7-42bf-8147-69278853c230',
+      type: 'domain',
+      name: 'Design',
+      fullyQualifiedName: 'Design',
+      description: "Here' the description for Product Design",
+      displayName: 'Product Design ',
+      href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/52fc9c67-78b7-42bf-8147-69278853c230',
+    },
+  ],
   dataProducts: [],
   votes: {
     upVotes: 0,

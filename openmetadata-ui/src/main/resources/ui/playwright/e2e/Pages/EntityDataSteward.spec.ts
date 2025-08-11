@@ -12,6 +12,7 @@
  */
 import { Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -60,6 +61,9 @@ entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
+    const rowSelector =
+      entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -112,11 +116,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(
-        page,
-        'Tier1',
-        EntityDataClass.tierTag1.data.displayName
-      );
+      await entity.tier(page, 'Tier1', COMMON_TIER_TAG[0].name);
     });
 
     test('Update description', async ({ page }) => {
@@ -124,7 +124,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
@@ -147,8 +147,8 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
       });
     }
@@ -165,9 +165,36 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
+      });
+
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
+        test('DisplayName Add, Update and Remove for child entities', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await entity.displayNameChildren({
+            page,
+            columnName: entity.childrenSelectorId ?? '',
+            rowSelector,
+          });
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector,
+          entity.endpoint
+        );
       });
     }
 
@@ -177,6 +204,8 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });
@@ -186,6 +215,8 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);

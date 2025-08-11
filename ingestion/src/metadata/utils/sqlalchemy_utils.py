@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -71,10 +71,13 @@ def get_all_view_definitions(self, connection, query):
     Method to fetch view definition of all available views
     """
     self.all_view_definitions: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = connection.engine.url.database
+    self.current_db: str = connection.engine.url.database  # type: ignore
     result = connection.execute(query)
     for view in result:
-        self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
+        if hasattr(view, "view_def") and hasattr(view, "schema"):
+            self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
+        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+            self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view.VIEW_DEF
 
 
 def get_view_definition_wrapper(self, connection, query, table_name, schema=None):
@@ -169,3 +172,49 @@ def get_table_ddl(
         table_name=table_name,
         schema=schema,
     )
+
+
+@reflection.cache
+def get_schema_comment_results(self, connection, query, database, schema=None):
+    """
+    Method to fetch comment of all available schemas
+    """
+    self.schema_comment_result: Dict[str, str] = {}
+    self.current_db: str = database
+    result = connection.execute(query).fetchall()
+    self.schema_comment_result[schema] = result
+
+
+@reflection.cache
+def get_table_comment_results(
+    self, connection, query, database, table_name, schema=None
+):
+    """
+    Method to fetch comment of all available tables
+    """
+    self.table_comment_result: Dict[Tuple[str, str], str] = {}
+    self.current_db: str = database
+    result = connection.execute(query).fetchall()
+    self.table_comment_result[(table_name, schema)] = result
+
+
+def get_table_comment_result_wrapper(
+    self, connection, query, database, table_name, schema=None
+):
+    if (
+        not hasattr(self, "table_comment_result")
+        or self.table_comment_result.get((table_name, schema)) is None
+        or self.current_db != database
+    ):
+        self.get_table_comment_results(connection, query, database, table_name, schema)
+    return self.table_comment_result.get((table_name, schema))
+
+
+def get_schema_comment_result_wrapper(self, connection, query, database, schema=None):
+    if (
+        not hasattr(self, "schema_comment_result")
+        or self.schema_comment_result.get((schema)) is None
+        or self.current_db != database
+    ):
+        self.get_schema_comment_results(connection, query, database, schema)
+    return self.schema_comment_result.get((schema))

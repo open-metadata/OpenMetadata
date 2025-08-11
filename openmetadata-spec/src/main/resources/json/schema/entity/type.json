@@ -87,9 +87,13 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../type/entityReference.json"
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",

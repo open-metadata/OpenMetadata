@@ -19,9 +19,12 @@ export type ExploreTreeNode = {
   key: string;
   children?: ExploreTreeNode[];
   isLeaf?: boolean;
-  icon?: JSX.Element | SvgComponent;
+  icon?: JSX.Element | SvgComponent | ReactNode;
   data?: TreeNodeData;
   count?: number;
+  totalCount?: number;
+  type?: string | null;
+  tooltip?: string;
 };
 
 export type ExploreTreeProps = {
@@ -44,5 +47,5 @@ export type TreeNodeData = {
 export type DatabaseFields =
   | EntityFields.SERVICE_TYPE
   | EntityFields.SERVICE
-  | EntityFields.DATABASE
-  | EntityFields.DATABASE_SCHEMA;
+  | EntityFields.DATABASE_DISPLAY_NAME
+  | EntityFields.DATABASE_SCHEMA_DISPLAY_NAME;

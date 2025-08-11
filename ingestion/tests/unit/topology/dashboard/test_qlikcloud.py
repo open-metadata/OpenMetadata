@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,9 @@ import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
+    SpaceType,
+)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -33,7 +36,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
 from metadata.ingestion.source.dashboard.qlikcloud.metadata import QlikcloudSource
-from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp
+from metadata.ingestion.source.dashboard.qlikcloud.models import (
+    QlikApp,
+    QlikSpace,
+    QlikSpaceType,
+)
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikSheet,
     QlikSheetInfo,
@@ -67,6 +74,43 @@ mock_qlikcloud_config = {
             },
         }
     },
+}
+
+MOCK_MANAGED_PROJECT_1_ID = "100"
+MOCK_MANAGED_PROJECT_2_ID = "101"
+MOCK_SHARED_PROJECT_1_ID = "102"
+MOCK_PERSONAL_PROJECT_ID = ""
+MOCK_PROJECTS = [
+    QlikSpace(
+        name="managed-space-1",
+        description="managed space",
+        id=MOCK_MANAGED_PROJECT_1_ID,
+        type=QlikSpaceType.MANAGED,
+    ),
+    QlikSpace(
+        name="managed-space-2",
+        description="managed space",
+        id=MOCK_MANAGED_PROJECT_2_ID,
+        type=QlikSpaceType.MANAGED,
+    ),
+    QlikSpace(
+        name="shared-space-1",
+        description="shared space",
+        id=MOCK_SHARED_PROJECT_1_ID,
+        type=QlikSpaceType.SHARED,
+    ),
+]
+MOCK_PERSONAL_PROJECT = QlikSpace(
+    name="Personal",
+    description="Represents personal space of QlikCloud.",
+    id=MOCK_PERSONAL_PROJECT_ID,
+    type=QlikSpaceType.PERSONAL,
+)
+MOCK_PROJECTS_MAP = {
+    MOCK_MANAGED_PROJECT_1_ID: MOCK_PROJECTS[0],
+    MOCK_MANAGED_PROJECT_2_ID: MOCK_PROJECTS[1],
+    MOCK_SHARED_PROJECT_1_ID: MOCK_PROJECTS[2],
+    MOCK_PERSONAL_PROJECT_ID: MOCK_PERSONAL_PROJECT,
 }
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -129,25 +173,52 @@ EXPECTED_CHARTS = [
 
 MOCK_DASHBOARDS = [
     QlikApp(
-        name="sample unpublished dashboard",
+        name="sample managed app's unpublished dashboard",
         id="201",
-        description="sample unpublished dashboard",
+        description="sample managed app's unpublished dashboard",
         published=False,
+        spaceId=MOCK_MANAGED_PROJECT_1_ID,
     ),
     QlikApp(
-        name="sample published dashboard",
+        name="sample managed app's published dashboard",
         id="202",
-        description="sample published dashboard",
+        description="sample managed app's published dashboard",
         published=True,
+        spaceId=MOCK_MANAGED_PROJECT_1_ID,
     ),
     QlikApp(
-        name="sample published dashboard",
+        name="sample managed app's published dashboard",
         id="203",
-        description="sample published dashboard",
+        description="sample managed app's published dashboard",
         published=True,
+        spaceId=MOCK_MANAGED_PROJECT_2_ID,
+    ),
+    QlikApp(
+        name="sample shared app's unpublished dashboard",
+        id="204",
+        description="sample shared app's unpublished dashboard",
+        published=False,
+        spaceId=MOCK_SHARED_PROJECT_1_ID,
+    ),
+    QlikApp(
+        name="sample shared app's published dashboard",
+        id="205",
+        description="sample shared app's published dashboard",
+        published=True,
+        spaceId=MOCK_SHARED_PROJECT_1_ID,
+    ),
+    QlikApp(
+        name="sample personal app's published dashboard",
+        id="206",
+        description="sample personal app's published dashboard",
+        published=True,
+        spaceId=MOCK_PERSONAL_PROJECT_ID,
     ),
 ]
-DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS = 1
+DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS = 2
+MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS = 3
+SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS = 2
+PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS = 1
 
 
 class QlikCloudUnitTest(TestCase):
@@ -175,6 +246,38 @@ class QlikCloudUnitTest(TestCase):
                 "dashboard_service"
             ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
             self.qlikcloud.context.get().__dict__["project_name"] = None
+
+    @pytest.mark.order(0)
+    def test_prepare(self):
+        with patch.object(
+            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
+        ):
+            self.qlikcloud.prepare()
+
+        assert len(self.qlikcloud.projects_map) == len(MOCK_PROJECTS_MAP), (
+            f"Expected projects_map to have {len(MOCK_PROJECTS_MAP) + 1} entries, "
+            f"but got {len(self.qlikcloud.projects_map)}"
+        )
+
+        for space_id, expected_space in MOCK_PROJECTS_MAP.items():
+            mapped_space = self.qlikcloud.projects_map.get(space_id)
+            assert (
+                mapped_space == expected_space
+            ), f"Expected {expected_space} for spaceId {space_id}, but got {mapped_space}"
+
+        personal_space = self.qlikcloud.projects_map.get("")
+        assert (
+            personal_space is not None
+        ), "Expected the 'Personal' space to be added to the map."
+        assert (
+            personal_space.name == "Personal"
+        ), "The 'Personal' space name is incorrect."
+        assert (
+            personal_space.id == ""
+        ), "The 'Personal' space id should be empty string."
+        assert (
+            personal_space.type == QlikSpaceType.PERSONAL
+        ), "The 'Personal' space type is incorrect."
 
     @pytest.mark.order(1)
     def test_dashboard(self):
@@ -215,3 +318,153 @@ class QlikCloudUnitTest(TestCase):
             if self.qlikcloud.filter_draft_dashboard(dashboard):
                 draft_dashboards_count += 1
         assert draft_dashboards_count == DRAFT_DASHBOARDS_IN_MOCK_DASHBOARDS
+
+    @pytest.mark.order(5)
+    def test_managed_app_dashboard(self):
+        with patch.object(
+            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
+        ):
+            self.qlikcloud.prepare()
+
+        managed_app_dashboards_count = 0
+        self.qlikcloud.service_connection.spaceTypes = [
+            SpaceType.Shared,
+            SpaceType.Personal,
+        ]
+        for dashboard in MOCK_DASHBOARDS:
+            space = self.qlikcloud.projects_map[dashboard.space_id]
+            if self.qlikcloud.filter_projects_by_type(space):
+                managed_app_dashboards_count += 1
+        assert managed_app_dashboards_count == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+
+    @pytest.mark.order(6)
+    def test_shared_app_dashboard(self):
+        with patch.object(
+            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
+        ):
+            self.qlikcloud.prepare()
+
+        shared_app_dashboards_count = 0
+        self.qlikcloud.service_connection.spaceTypes = [
+            SpaceType.Managed,
+            SpaceType.Personal,
+        ]
+        for dashboard in MOCK_DASHBOARDS:
+            space = self.qlikcloud.projects_map[dashboard.space_id]
+            if self.qlikcloud.filter_projects_by_type(space):
+                shared_app_dashboards_count += 1
+        assert shared_app_dashboards_count == SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+
+    @pytest.mark.order(7)
+    def test_personal_app_dashboard(self):
+        with patch.object(
+            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
+        ):
+            self.qlikcloud.prepare()
+
+        personal_app_dashboards_count = 0
+        self.qlikcloud.service_connection.spaceTypes = [
+            SpaceType.Managed,
+            SpaceType.Shared,
+        ]
+        for dashboard in MOCK_DASHBOARDS:
+            space = self.qlikcloud.projects_map[dashboard.space_id]
+            if self.qlikcloud.filter_projects_by_type(space):
+                personal_app_dashboards_count += 1
+        assert (
+            personal_app_dashboards_count == PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+        )
+
+    @pytest.mark.order(8)
+    def test_space_type_filter_dashboard(self):
+        with patch.object(
+            QlikCloudClient, "get_projects_list", return_value=MOCK_PROJECTS
+        ):
+            self.qlikcloud.prepare()
+
+        space_type_filtered_dashboards_count = 0
+        self.qlikcloud.service_connection.spaceTypes = [SpaceType.Personal]
+        for dashboard in MOCK_DASHBOARDS:
+            space = self.qlikcloud.projects_map[dashboard.space_id]
+            if self.qlikcloud.filter_projects_by_type(space):
+                space_type_filtered_dashboards_count += 1
+        assert (
+            space_type_filtered_dashboards_count
+            == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+            + SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+        )
+
+        space_type_filtered_dashboards_count = 0
+        self.qlikcloud.service_connection.spaceTypes = [SpaceType.Shared]
+        for dashboard in MOCK_DASHBOARDS:
+            space = self.qlikcloud.projects_map[dashboard.space_id]
+            if self.qlikcloud.filter_projects_by_type(space):
+                space_type_filtered_dashboards_count += 1
+        assert (
+            space_type_filtered_dashboards_count
+            == MANAGED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+            + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+        )
+
+        space_type_filtered_dashboards_count = 0
+        self.qlikcloud.service_connection.spaceTypes = [SpaceType.Managed]
+        for dashboard in MOCK_DASHBOARDS:
+            space = self.qlikcloud.projects_map[dashboard.space_id]
+            if self.qlikcloud.filter_projects_by_type(space):
+                space_type_filtered_dashboards_count += 1
+        assert (
+            space_type_filtered_dashboards_count
+            == SHARED_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+            + PERSONAL_APP_DASHBOARD_IN_MOCK_DASHBOARDS
+        )
+
+    @pytest.mark.order(9)
+    def test_get_script_tables(self):
+        """Test the get_script_tables method that extracts table names from Qlik scripts"""
+        # Mock script content with FROM clauses
+        mock_script = """
+        LOAD * FROM 'mock_schema.sales_data';
+        LOAD column1, column2 FROM database.schema.customers;
+        LEFT JOIN products ON sales_data.product_id = products.id;
+        """
+
+        mock_script_response = {"result": {"qScript": mock_script}}
+
+        with patch.object(
+            QlikCloudClient,
+            "_websocket_send_request",
+            return_value=mock_script_response,
+        ):
+            script_tables = self.qlikcloud.client.get_script_tables()
+
+            # Expected table names extracted from the script
+            expected_table_names = ["sales_data", "customers"]
+
+            # Verify that we got the expected number of tables
+            assert len(script_tables) == len(
+                expected_table_names
+            ), f"Expected {len(expected_table_names)} tables, but got {len(script_tables)}"
+
+            # Verify table names are correctly extracted
+            actual_table_names = [table.tableName for table in script_tables]
+            for expected_name in expected_table_names:
+                assert (
+                    expected_name in actual_table_names
+                ), f"Expected table '{expected_name}' not found in {actual_table_names}"
+
+    @pytest.mark.order(10)
+    def test_get_script_tables_empty(self):
+        """Test the get_script_tables method with empty script"""
+        mock_script_response = {"result": {"qScript": ""}}
+
+        with patch.object(
+            QlikCloudClient,
+            "_websocket_send_request",
+            return_value=mock_script_response,
+        ):
+            script_tables = self.qlikcloud.client.get_script_tables()
+
+            # Should return empty list for empty script
+            assert (
+                len(script_tables) == 0
+            ), f"Expected 0 tables for empty script, but got {len(script_tables)}"

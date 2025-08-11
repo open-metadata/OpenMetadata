@@ -11,25 +11,30 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { useLocation } from 'react-router-dom';
+import { ExportTypes } from '../../../constants/Export.constants';
 import {
   EntityExportModalProvider,
   useEntityExportModalProvider,
 } from './EntityExportModalProvider.component';
 import { ExportData } from './EntityExportModalProvider.interface';
 
-const dummyTeamsCSV = `name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies
-access table only,access table only,,Group,Organization,,true,Only table,
-Engineering,,,BusinessUnit,Organization,,true,,
-Finance,,,BusinessUnit,Organization,,true,,
-Legal,,,BusinessUnit,Organization,,true,,
-Applications,,,Group,Engineering,,true,,
-`;
+const mockExportJob = {
+  jobId: '123456',
+  message: 'Export initiated successfyully',
+};
 
 const mockShowModal: ExportData = {
   name: 'test',
-  onExport: jest.fn().mockImplementation(() => Promise.resolve(dummyTeamsCSV)),
+  exportTypes: [ExportTypes.CSV],
+  onExport: jest.fn().mockImplementation(() => Promise.resolve(mockExportJob)),
 };
+
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: '/mock-path',
+  })),
+}));
 
 const ConsumerComponent = () => {
   const { showModal } = useEntityExportModalProvider();
@@ -139,7 +144,27 @@ describe('EntityExportModalProvider component', () => {
       fireEvent.click(exportBtn);
     });
 
-    expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name);
+    expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name, {
+      recursive: true,
+    });
+
+    expect(await screen.findByText(mockExportJob.message)).toBeInTheDocument();
+  });
+
+  it('Export modal should not be visible if route is bulk edit', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/bulk/edit',
+    });
+    render(
+      <EntityExportModalProvider>
+        <ConsumerComponent />
+      </EntityExportModalProvider>
+    );
+
+    const manageBtn = await screen.findByText('Manage');
+
+    fireEvent.click(manageBtn);
+
     expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
   });
 });

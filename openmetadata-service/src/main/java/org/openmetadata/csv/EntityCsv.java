@@ -18,14 +18,24 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.ENTITY_TYPE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
+import static org.openmetadata.csv.CsvUtil.fieldToColumns;
 import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.service.Entity.DATABASE;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
+import static org.openmetadata.service.util.EntityUtil.findColumnWithChildren;
+import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
@@ -40,25 +50,39 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.StoredProcedure;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -66,11 +90,18 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customProperties.TableConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -89,6 +120,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+
+  // Additional fields for export/import with multiple entity types
+  public static final String FIELD_ENTITY_TYPE = "entityType";
+  public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
+
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
   private final List<String> expectedHeaders;
@@ -155,9 +191,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return CsvUtil.formatCsv(csvFile);
   }
 
-  public static CsvDocumentation getCsvDocumentation(String entityType) {
-    LOG.info("Initializing CSV documentation for entity {}", entityType);
-    String path = String.format(".*json/data/%s/%sCsvDocumentation.json$", entityType, entityType);
+  public static CsvDocumentation getCsvDocumentation(String entityType, boolean recursive) {
+    String effectiveEntityType = (recursive) ? "entity" : entityType;
+    LOG.info("Initializing CSV documentation for entity {}", effectiveEntityType);
+
+    String path =
+        String.format(
+            ".*json/data/%s/%sCsvDocumentation.json$", effectiveEntityType, effectiveEntityType);
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       String json =
@@ -167,7 +207,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } catch (IOException e) {
       LOG.error(
           "FATAL - Failed to load CSV documentation for entity {} from the path {}",
-          entityType,
+          effectiveEntityType,
           path);
     }
     return null;
@@ -177,14 +217,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected abstract void addRecord(CsvFile csvFile, T entity);
 
   /** Implement this method to export an entity into a list of fields to create a CSV record */
-  public final void addRecord(CsvFile csvFile, List<String> recordList) {
+  public void addRecord(CsvFile csvFile, List<String> recordList) {
     List<List<String>> list = csvFile.getRecords();
     list.add(recordList);
     csvFile.withRecords(list);
   }
 
   /** Owner field is in entityType:entityName format */
-  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  public List<EntityReference> getOwners(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      Function<Integer, String> invalidMessageCreator)
       throws IOException {
     if (!processRecord) {
       return null;
@@ -196,9 +240,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> owners = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
     List<EntityReference> refs = new ArrayList<>();
     for (String owner : owners) {
-      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
+      List<String> ownerTypes = listOrEmpty(fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
-        importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+        importFailure(printer, invalidMessageCreator.apply(fieldNumber), csvRecord);
         return Collections.emptyList();
       }
       EntityReference ownerRef =
@@ -208,6 +252,37 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
     return refs.isEmpty() ? null : refs;
+  }
+
+  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidOwner);
+  }
+
+  public List<EntityReference> getReviewers(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidReviewer);
+  }
+
+  public List<EntityReference> getDomains(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    if (!processRecord) {
+      return null;
+    }
+    String domainsRecord = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(domainsRecord)) {
+      return null;
+    }
+    List<String> domains = listOrEmpty(CsvUtil.fieldToStrings(domainsRecord));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String domain : domains) {
+      EntityReference domainRef =
+          getEntityReference(printer, csvRecord, fieldNumber, Entity.DOMAIN, domain);
+      if (domainRef != null) {
+        refs.add(domainRef);
+      }
+    }
+    return refs;
   }
 
   /** Owner field is in entityName format */
@@ -325,6 +400,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return tagLabels;
   }
 
+  protected AssetCertification getCertificationLabels(String certificationTag) {
+    if (nullOrEmpty(certificationTag)) {
+      return null;
+    }
+    TagLabel certificationLabel =
+        new TagLabel().withTagFQN(certificationTag).withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    return new AssetCertification()
+        .withTagLabel(certificationLabel)
+        .withAppliedDate(System.currentTimeMillis())
+        .withExpiryDate(System.currentTimeMillis());
+  }
+
   public Map<String, Object> getExtension(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     String extensionString = csvRecord.get(fieldNumber);
@@ -379,7 +467,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               parseEntityReferences(printer, csvRecord, fieldNumber, fieldValue.toString(), isList);
         }
         case "date-cp", "dateTime-cp", "time-cp" -> fieldValue =
-            getFormattedDateTimeField(
+            parseFormattedDateTimeField(
                 printer,
                 csvRecord,
                 fieldNumber,
@@ -387,24 +475,23 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 fieldValue.toString(),
                 customPropertyType,
                 propertyConfig);
-        case "enum" -> {
-          List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
-          fieldValue = enumKeys.isEmpty() ? null : enumKeys;
-        }
-        case "timeInterval" -> fieldValue =
-            handleTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
-        case "number", "integer", "timestamp" -> {
-          try {
-            fieldValue = Long.parseLong(fieldValue.toString());
-          } catch (NumberFormatException e) {
-            importFailure(
+        case "enum" -> fieldValue =
+            parseEnumType(
                 printer,
-                invalidCustomPropertyValue(
-                    fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
-                csvRecord);
-            fieldValue = null;
-          }
-        }
+                csvRecord,
+                fieldNumber,
+                fieldName,
+                customPropertyType,
+                fieldValue,
+                propertyConfig);
+        case "timeInterval" -> fieldValue =
+            parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
+        case "number", "integer", "timestamp" -> fieldValue =
+            parseLongField(
+                printer, csvRecord, fieldNumber, fieldName, customPropertyType, fieldValue);
+        case "table-cp" -> fieldValue =
+            parseTableType(printer, csvRecord, fieldNumber, fieldName, fieldValue, propertyConfig);
+
         default -> {}
       }
       // Validate the field against the JSON schema
@@ -448,7 +535,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return isList ? entityReferences : entityReferences.isEmpty() ? null : entityReferences.get(0);
   }
 
-  protected String getFormattedDateTimeField(
+  protected String parseFormattedDateTimeField(
       CSVPrinter printer,
       CSVRecord csvRecord,
       int fieldNumber,
@@ -484,7 +571,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
-  private Map<String, Long> handleTimeInterval(
+  private Map<String, Long> parseTimeInterval(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String fieldName, Object fieldValue)
       throws IOException {
     List<String> timestampValues = fieldToEntities(fieldValue.toString());
@@ -509,6 +596,91 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return null;
     }
     return timestampMap;
+  }
+
+  private Object parseLongField(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String customPropertyType,
+      Object fieldValue)
+      throws IOException {
+    try {
+      return Long.parseLong(fieldValue.toString());
+    } catch (NumberFormatException e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyValue(
+              fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
+          csvRecord);
+      return null;
+    }
+  }
+
+  private Object parseTableType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> tableValues = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+    List<Map<String, String>> rows = new ArrayList<>();
+    TableConfig tableConfig =
+        JsonUtils.treeToValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+
+    for (String row : tableValues) {
+      List<String> columns = listOrEmpty(fieldToColumns(row));
+      Map<String, String> rowMap = new LinkedHashMap<>();
+      Iterator<String> columnIterator = tableConfig.getColumns().iterator();
+      Iterator<String> valueIterator = columns.iterator();
+
+      if (columns.size() > tableConfig.getColumns().size()) {
+        importFailure(
+            printer,
+            invalidCustomPropertyValue(
+                fieldNumber,
+                fieldName,
+                "table",
+                "Column count should be less than or equal to " + tableConfig.getColumns().size()),
+            csvRecord);
+        return null;
+      }
+
+      while (columnIterator.hasNext() && valueIterator.hasNext()) {
+        rowMap.put(columnIterator.next(), valueIterator.next());
+      }
+
+      rows.add(rowMap);
+    }
+
+    Map<String, Object> tableJson = new LinkedHashMap<>();
+    tableJson.put("rows", rows);
+    tableJson.put("columns", tableConfig.getColumns());
+    return tableJson;
+  }
+
+  private Object parseEnumType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String customPropertyType,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+    try {
+      EntityRepository.validateEnumKeys(fieldName, JsonUtils.valueToTree(enumKeys), propertyConfig);
+    } catch (Exception e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyValue(fieldNumber, fieldName, customPropertyType, e.getMessage()),
+          csvRecord);
+    }
+    return enumKeys.isEmpty() ? null : enumKeys;
   }
 
   private void validateAndUpdateExtension(
@@ -555,7 +727,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return null;
   }
 
-  private List<CSVRecord> parse(String csv) {
+  public List<CSVRecord> parse(String csv) {
     Reader in = new StringReader(csv);
     try {
       return CSVFormat.DEFAULT.parse(in).stream().toList();
@@ -563,6 +735,87 @@ public abstract class EntityCsv<T extends EntityInterface> {
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
     return null;
+  }
+
+  public List<CSVRecord> parse(String csv, boolean recursive) {
+    List<CSVRecord> records = new ArrayList<>();
+    Reader in = new StringReader(csv);
+
+    try {
+      CSVParser parser =
+          CSVFormat.DEFAULT
+              .withFirstRecordAsHeader()
+              .withIgnoreSurroundingSpaces()
+              .withQuote('"')
+              .withIgnoreEmptyLines() // Ignore empty lines
+              .withEscape('\\') // Handle escaped quotes
+              .parse(in);
+
+      List<List<String>> fixedRows = new ArrayList<>();
+      List<String> headers = new ArrayList<>(parser.getHeaderMap().keySet()); // Extract headers
+
+      // Add headers explicitly at the top if they are missing
+      if (fixedRows.isEmpty()) {
+        fixedRows.add(headers);
+      }
+
+      // Process each record
+      for (CSVRecord record : parser) {
+        List<String> fixedRow = new ArrayList<>();
+        for (String value : record) {
+          // Preserve the raw value without additional processing
+          fixedRow.add(value);
+        }
+        // Pad or trim the row to match the number of columns in headers
+        fixedRow = padOrTrimColumns(fixedRow);
+        fixedRows.add(fixedRow);
+      }
+
+      // Convert fixedRows back to CSVRecords
+      records = convertToCSVRecords(fixedRows, headers);
+
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    return records;
+  }
+
+  private List<CSVRecord> convertToCSVRecords(List<List<String>> fixedRows, List<String> headers)
+      throws IOException {
+    List<CSVRecord> finalRecords = new ArrayList<>();
+    StringWriter stringWriter = new StringWriter();
+
+    CSVPrinter csvPrinter =
+        new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withHeader(headers.toArray(new String[0])));
+
+    // Write updated records
+    for (List<String> row : fixedRows) {
+      csvPrinter.printRecord(row);
+    }
+    csvPrinter.flush();
+
+    // Parse CSV again with headers
+    Reader in = new StringReader(stringWriter.toString());
+    CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
+    finalRecords.addAll(parser.getRecords());
+
+    return finalRecords;
+  }
+
+  private List<String> padOrTrimColumns(List<String> row) {
+    List<String> fixedRow = new ArrayList<>(row);
+
+    // If row has fewer columns than expected, add empty columns
+    while (fixedRow.size() < csvHeaders.size()) {
+      fixedRow.add("");
+    }
+
+    // If row has more columns than expected, trim extra ones
+    while (fixedRow.size() > csvHeaders.size()) {
+      fixedRow.remove(fixedRow.size() - 1);
+    }
+    return fixedRow;
   }
 
   private boolean validateHeaders(CSVRecord csvRecord) {
@@ -630,9 +883,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity, false);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        // In case of updating entity , prepareInternal as update=True
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -640,10 +898,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -653,6 +909,87 @@ public abstract class EntityCsv<T extends EntityInterface> {
       importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  @Transaction
+  protected void createEntity(
+      CSVPrinter resultsPrinter, CSVRecord csvRecord, EntityInterface entity, String type)
+      throws IOException {
+
+    entity.setId(UUID.randomUUID());
+    entity.setUpdatedBy(importedBy);
+    entity.setUpdatedAt(System.currentTimeMillis());
+
+    EntityRepository<EntityInterface> repository =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
+
+    String violations = ValidatorUtil.validate(entity);
+    if (violations != null) {
+      importFailure(resultsPrinter, violations, csvRecord);
+      return;
+    }
+
+    Response.Status responseStatus;
+    if (Boolean.FALSE.equals(importResult.getDryRun())) {
+      try {
+        // In case of updating entity , prepareInternal as update=True
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
+        PutResponse<EntityInterface> response =
+            repository.createOrUpdateForImport(null, entity, importedBy);
+        responseStatus = response.getStatus();
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventAndUpdateInESForGenericEntity(response, importedBy));
+      } catch (Exception ex) {
+        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
+        return;
+      }
+    } else {
+      repository.setFullyQualifiedName(entity);
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
+      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
+    }
+
+    if (Response.Status.CREATED.equals(responseStatus)) {
+      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
+    } else {
+      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
+    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(
+              importedBy, response.getChangeType(), response.getEntity());
+      Object entity = changeEvent.getEntity();
+      changeEvent = copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+      // Change Event and Update in Es
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
+    }
+  }
+
+  private void createChangeEventAndUpdateInESForGenericEntity(
+      PutResponse<? extends EntityInterface> response, String importedBy) {
+
+    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(
+              importedBy, response.getChangeType(), response.getEntity());
+
+      Object entity = changeEvent.getEntity();
+      changeEvent = copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+
+      // Persist event and update ES
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
     }
   }
 
@@ -694,8 +1031,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity, false);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        // In case of updating entity , prepareInternal as update=True
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
@@ -704,10 +1043,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
-      responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
-              ? Response.Status.CREATED
-              : Response.Status.OK;
+      boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -718,6 +1055,477 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
     }
+  }
+
+  protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+      throws IOException {
+    // If FQN is not provided, construct it from database FQN and schema name
+    if (entityFQN == null) {
+      throw new IllegalArgumentException(
+          "Schema import requires fullyQualifiedName to determine the schema it belongs to");
+    }
+    String dbFQN = FullyQualifiedName.getParentFQN(entityFQN);
+
+    Database database;
+    try {
+      database =
+          Entity.getEntityByNameWithExcludedFields(
+              DATABASE,
+              dbFQN,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
+      if (importResult.getDryRun()) {
+        // Dry run mode: Simulate a schema for validation without persisting it
+        database = new Database().withName(dbFQN).withService(null).withId(UUID.randomUUID());
+      } else {
+        throw new IllegalArgumentException("Database not found: " + dbFQN);
+      }
+    }
+
+    DatabaseSchema schema;
+    DatabaseSchemaRepository databaseSchemaRepository =
+        (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
+    try {
+      schema =
+          Entity.getEntityByNameWithExcludedFields(
+              DATABASE_SCHEMA,
+              schemaFqn,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
+    } catch (Exception ex) {
+      LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
+      schema =
+          new DatabaseSchema()
+              .withDatabase(database.getEntityReference())
+              .withService(database.getService());
+    }
+
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+    // sourceUrl, domain
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
+    schema
+        .withId(UUID.randomUUID())
+        .withName(csvRecord.get(0))
+        .withDisplayName(csvRecord.get(1))
+        .withFullyQualifiedName(schemaFqn)
+        .withDescription(csvRecord.get(2))
+        .withOwners(getOwners(printer, csvRecord, 3))
+        .withTags(tagLabels)
+        .withCertification(certification)
+        .withRetentionPeriod(csvRecord.get(8))
+        .withSourceUrl(csvRecord.get(9))
+        .withDomains(getDomains(printer, csvRecord, 10))
+        .withExtension(getExtension(printer, csvRecord, 11))
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(importedBy);
+    if (processRecord) {
+      createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
+    }
+  }
+
+  protected void createTableEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+      throws IOException {
+    if (entityFQN == null) {
+      throw new IllegalArgumentException(
+          "Table import requires fullyQualifiedName to determine the schema it belongs to");
+    }
+
+    // Get the schema
+    String schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
+
+    // Fetch Schema Entity
+    DatabaseSchema schema;
+    try {
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+      if (importResult.getDryRun()) {
+        // Dry run mode: Simulate a schema for validation without persisting it
+        schema =
+            new DatabaseSchema()
+                .withName(schemaFQN)
+                .withDatabase(null)
+                .withService(null)
+                .withId(UUID.randomUUID());
+      } else {
+        throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+      }
+    }
+
+    String tableFqn = FullyQualifiedName.add(schemaFQN, csvRecord.get(0));
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+    Table table;
+
+    try {
+      table =
+          Entity.getEntityByNameWithExcludedFields(
+              TABLE,
+              tableFqn,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      // Table not found, create a new one
+
+      LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
+      table =
+          new Table()
+              .withId(UUID.randomUUID())
+              .withName(csvRecord.get(0))
+              .withFullyQualifiedName(tableFqn)
+              .withService(schema.getService())
+              .withDatabase(schema.getDatabase())
+              .withColumns(new ArrayList<>())
+              .withDatabaseSchema(schema.getEntityReference());
+    }
+
+    // Extract and process tag labels
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+
+    // Populate table attributes
+    table
+        .withDisplayName(csvRecord.get(1))
+        .withDescription(csvRecord.get(2))
+        .withOwners(getOwners(printer, csvRecord, 3))
+        .withTags(tagLabels)
+        .withCertification(certification)
+        .withRetentionPeriod(csvRecord.get(8))
+        .withSourceUrl(csvRecord.get(9))
+        .withDomains(getDomains(printer, csvRecord, 10))
+        .withExtension(getExtension(printer, csvRecord, 11))
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(importedBy);
+    if (processRecord) {
+      createEntity(printer, csvRecord, table, TABLE);
+    }
+  }
+
+  protected void createStoredProcedureEntity(
+      CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
+    // Implementation for creating a stored procedure entity from CSV
+    // Similar to createTableEntity but for stored procedures
+
+    String schemaFQN;
+    String spName = csvRecord.get(0);
+
+    if (entityFQN != null) {
+      // Extract schema FQN from SP FQN
+      schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
+    } else {
+      throw new IllegalArgumentException(
+          "Stored procedure import requires fullyQualifiedName to determine the schema it belongs to");
+    }
+
+    DatabaseSchema schema;
+
+    try {
+      schema =
+          Entity.getEntityByName(
+              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+      if (importResult.getDryRun()) {
+        schema =
+            new DatabaseSchema()
+                .withName(schemaFQN)
+                .withDatabase(null)
+                .withService(null)
+                .withId(UUID.randomUUID());
+      } else {
+        throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+      }
+    }
+
+    StoredProcedure sp;
+    try {
+      sp =
+          Entity.getEntityByName(
+              STORED_PROCEDURE,
+              entityFQN,
+              "name,displayName,fullyQualifiedName",
+              Include.NON_DELETED);
+    } catch (Exception ex) {
+      LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
+      sp =
+          new StoredProcedure()
+              .withName(spName)
+              .withService(schema.getService())
+              .withDatabase(schema.getDatabase())
+              .withDatabaseSchema(schema.getEntityReference());
+    }
+
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
+    AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+    String languageStr = csvRecord.get(19);
+    StoredProcedureLanguage language = null;
+
+    if (languageStr != null && !languageStr.isEmpty()) {
+      try {
+        language = StoredProcedureLanguage.fromValue(languageStr);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid storedProcedure.language: " + languageStr);
+      }
+    }
+
+    StoredProcedureCode storedProcedureCode =
+        new StoredProcedureCode().withCode(csvRecord.get(18)).withLanguage(language);
+
+    sp.withDisplayName(csvRecord.get(1))
+        .withDescription(csvRecord.get(2))
+        .withOwners(getOwners(printer, csvRecord, 3))
+        .withTags(tagLabels)
+        .withCertification(certification)
+        .withSourceUrl(csvRecord.get(9))
+        .withDomains(getDomains(printer, csvRecord, 10))
+        .withStoredProcedureCode(storedProcedureCode)
+        .withExtension(getExtension(printer, csvRecord, 11));
+
+    if (processRecord) {
+      // Only create the stored procedure if the schema actually exists
+      createEntity(printer, csvRecord, sp, STORED_PROCEDURE);
+    }
+  }
+
+  protected void createColumnEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+      throws IOException {
+    if (entityFQN == null) {
+      LOG.error("Column entry is missing table reference in fullyQualifiedName");
+      return;
+    }
+
+    String tableFQN = FullyQualifiedName.getTableFQN(entityFQN);
+    String schemaFQN = FullyQualifiedName.getParentFQN(tableFQN);
+
+    Table table;
+    DatabaseSchema schema;
+    try {
+      table =
+          Entity.getEntityByName(
+              TABLE, tableFQN, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      try {
+        schema =
+            Entity.getEntityByName(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
+      } catch (EntityNotFoundException exception) {
+        LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+
+        if (importResult.getDryRun()) {
+          // Simulate a schema for dry run
+          schema =
+              new DatabaseSchema()
+                  .withName(schemaFQN)
+                  .withDatabase(null)
+                  .withService(null)
+                  .withId(UUID.randomUUID());
+        } else {
+          throw new IllegalArgumentException("Schema not found for the column table: " + schemaFQN);
+        }
+      }
+      if (importResult.getDryRun()) {
+        // Dry run mode: Simulate a schema for validation without persisting it
+        table =
+            new Table()
+                .withId(UUID.randomUUID())
+                .withName(tableFQN)
+                .withFullyQualifiedName(tableFQN)
+                .withDatabaseSchema(schema.getEntityReference())
+                .withColumns(new ArrayList<>());
+      } else {
+        throw new IllegalArgumentException("Table not found: " + entityFQN);
+      }
+    }
+
+    Table originalEntity = JsonUtils.deepCopy(table, Table.class);
+
+    // Delegate parsing and in-memory update to a shared method
+    updateColumnsFromCsvRecursive(table, csvRecord, printer);
+
+    if (processRecord) {
+      // Patch only the changes (like TableCsv does)
+      patchColumns(originalEntity, table, csvRecord, printer);
+    }
+  }
+
+  private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer)
+      throws IOException {
+    String columnFqn = csvRecord.get(0);
+    String columnFullyQualifiedName = csvRecord.get(13);
+    Column column = null;
+    boolean columnExists = false;
+    try {
+      column = findColumnWithChildren(table.getColumns(), columnFullyQualifiedName);
+      columnExists = true;
+    } catch (Exception e) {
+      LOG.warn("column not found, will be created");
+    }
+    if (column == null) columnExists = false;
+
+    if (!columnExists) {
+      column =
+          new Column()
+              .withName(getLocalColumnName(table.getFullyQualifiedName(), columnFqn))
+              .withFullyQualifiedName(table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
+    }
+
+    column.withDisplayName(csvRecord.get(1));
+    column.withDescription(csvRecord.get(2));
+    column.withDataTypeDisplay(csvRecord.get(14));
+    String dataTypeStr = csvRecord.get(15);
+    if (nullOrEmpty(dataTypeStr)) {
+      throw new IllegalArgumentException(
+          "Column dataType is mandatory for column: " + csvRecord.get(0));
+    }
+
+    try {
+      column.withDataType(ColumnDataType.fromValue(dataTypeStr));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Invalid dataType '" + dataTypeStr + "' for column: " + csvRecord.get(0));
+    }
+
+    if (column.getDataType() == ColumnDataType.ARRAY) {
+      if (nullOrEmpty(csvRecord.get(16))) {
+        throw new IllegalArgumentException(
+            "Array data type is mandatory for ARRAY columns: " + csvRecord.get(0));
+      }
+      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(16)));
+    }
+
+    if (column.getDataType() == ColumnDataType.STRUCT && column.getChildren() == null) {
+      column.withChildren(new ArrayList<>());
+    }
+
+    column.withDataLength(
+        parseDataLength(csvRecord.get(17), column.getDataType(), column.getName()));
+
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(Pair.of(4, TagSource.CLASSIFICATION), Pair.of(5, TagSource.GLOSSARY)));
+    column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
+    column.withOrdinalPosition((int) csvRecord.getRecordNumber() - 1);
+
+    if (!columnExists) {
+      String[] parts = FullyQualifiedName.split(columnFqn);
+      if (parts.length == 1) {
+        table.getColumns().add(column);
+      } else {
+        String parentFqn = String.join(Entity.SEPARATOR, Arrays.copyOf(parts, parts.length - 1));
+        Column parent = null;
+        try {
+          parent =
+              findColumnWithChildren(
+                  table.getColumns(), FullyQualifiedName.getParentFQN(columnFullyQualifiedName));
+        } catch (Exception ex) {
+          LOG.warn("parent column not found, will be created");
+        }
+        if (parent == null) {
+          if (Boolean.TRUE.equals(importResult.getDryRun())) {
+            parent =
+                new Column()
+                    .withName(getLocalColumnName(table.getFullyQualifiedName(), parentFqn))
+                    .withFullyQualifiedName(
+                        table.getFullyQualifiedName() + Entity.SEPARATOR + parentFqn);
+          } else {
+            importFailure(printer, "Parent column not found: " + parentFqn, csvRecord);
+            return;
+          }
+        }
+        column.withName(parts[parts.length - 1]);
+        if (parent.getChildren() == null) parent.setChildren(new ArrayList<>());
+        parent.getChildren().add(column);
+      }
+    }
+  }
+
+  private void patchColumns(Table original, Table updated, CSVRecord csvRecord, CSVPrinter printer)
+      throws IOException {
+
+    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    if (Boolean.FALSE.equals(importResult.getDryRun())) {
+      // Actual patch logic
+      try {
+        JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
+        tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
+        importSuccess(printer, csvRecord, ENTITY_UPDATED);
+      } catch (Exception ex) {
+        importFailure(printer, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
+      }
+    } else {
+      // Dry run mode: simulate patch and add to dryRunCreatedEntities
+      tableRepo.setFullyQualifiedName(updated);
+      Table existing =
+          tableRepo.findByNameOrNull(updated.getFullyQualifiedName(), Include.NON_DELETED);
+
+      // Track dry run entity if it doesn't already exist
+      if (existing == null) {
+        dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
+      }
+      importSuccess(printer, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  private Integer parseDataLength(
+      String dataLengthStr, ColumnDataType dataType, String columnName) {
+    Integer dataLength = null;
+
+    if (dataType == ColumnDataType.VARCHAR) {
+      if (nullOrEmpty(dataLengthStr)) {
+        LOG.error("Data length is required for VARCHAR columns: {}", columnName);
+        throw new IllegalArgumentException(
+            "Data length is mandatory for VARCHAR columns: " + columnName);
+      }
+      try {
+        dataLength = Integer.valueOf(dataLengthStr);
+      } catch (NumberFormatException e) {
+        LOG.error("Invalid data length for VARCHAR column {}: {}", columnName, dataLengthStr);
+        throw new IllegalArgumentException("Invalid data length for VARCHAR column: " + columnName);
+      }
+    } else {
+      try {
+        dataLength = nullOrEmpty(dataLengthStr) ? null : Integer.valueOf(dataLengthStr);
+      } catch (NumberFormatException e) {
+        LOG.warn("Invalid data length for column {}, setting to null", columnName);
+        dataLength = null;
+      }
+    }
+
+    return dataLength;
   }
 
   public String failed(String exception, CsvErrorType errorType) {
@@ -755,6 +1563,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   public static String invalidOwner(int field) {
     String error = "Owner should be of format user:userName or team:teamName";
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidReviewer(int field) {
+    String error = "Reviewer should be of format user:userName or team:teamName";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 
@@ -840,6 +1653,35 @@ public abstract class EntityCsv<T extends EntityInterface> {
       status = ApiStatus.PARTIAL_SUCCESS;
     }
     importResult.setStatus(status);
+  }
+
+  public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+    importResult.withDryRun(dryRun);
+    StringWriter writer = new StringWriter();
+    CSVPrinter resultsPrinter = getResultsCsv(csvHeaders, writer);
+    if (resultsPrinter == null) {
+      return importResult;
+    }
+
+    if (records == null) {
+      return importResult; // Error during parsing
+    }
+
+    // First record is CSV header - Validate headers
+    if (!validateHeaders(records.get(recordIndex++))) {
+      return importResult;
+    }
+    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+
+    // Validate and load each record
+    while (recordIndex < records.size()) {
+      processRecord(resultsPrinter, records);
+    }
+
+    // Finally, create the entities parsed from the record
+    setFinalStatus();
+    importResult.withImportResultsCsv(writer.toString());
+    return importResult;
   }
 
   public record ImportResult(String result, CSVRecord record, String details) {}

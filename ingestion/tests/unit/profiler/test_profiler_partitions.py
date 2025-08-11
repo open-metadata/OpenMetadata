@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.sampler.partition import get_partition_details
 from metadata.workflow.profiler import ProfilerWorkflow
 
 """
@@ -154,7 +154,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "e"
@@ -171,7 +171,7 @@ class ProfilerPartitionUnitTest(TestCase):
             )  # type: ignore
         )
 
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "e"
@@ -195,7 +195,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONDATE"
@@ -212,7 +212,7 @@ class ProfilerPartitionUnitTest(TestCase):
             )  # type: ignore
         )
 
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
         if resp:
             assert resp.partitionInterval == 10
             assert resp.partitionColumnName == "_PARTITIONDATE"
@@ -235,7 +235,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONTIME"
@@ -252,7 +252,7 @@ class ProfilerPartitionUnitTest(TestCase):
             )  # type: ignore
         )
 
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
 
         if resp:
             assert resp.partitionInterval == 1
@@ -284,7 +284,7 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
         if resp:
             assert resp.enablePartitioning
             assert resp.partitionColumnName == "foo"
@@ -309,6 +309,6 @@ class ProfilerPartitionUnitTest(TestCase):
         )
 
         table_entity = cast(Table, table_entity)
-        resp = ProfilerInterface.get_partition_details(table_entity)
+        resp = get_partition_details(table_entity)
 
         assert resp is None

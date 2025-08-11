@@ -34,3 +34,48 @@
     z-index: 1;
   }
 }
+.common-style {
+  border-radius: 8px;
+  font-size: 14px;
+  color: #535862;
+  line-height: 20px;
+}
+
+.show-thread {
+  background: @grey-9;
+  padding: 20px;
+  border: 0.5px solid #eaecf5;
+  margin-top: 20px;
+  border-radius: 8px;
+  max-height: 400px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+.feed-widget-body {
+  padding: @size-sm @size-md;
+  margin-top: 10px;
+}
+
+.show-thread.description {
+  padding: 20px 6px 20px 6px;
+}
+
+.hide-thread {
+  background: white;
+  padding: 20px;
+  margin-top: 2px;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  border: 0.5px solid #eaecf5;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.hide-thread.description.updated {
+  padding: 20px 6px 20px 6px;
+}

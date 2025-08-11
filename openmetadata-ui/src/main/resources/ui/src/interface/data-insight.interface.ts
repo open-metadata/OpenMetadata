@@ -27,23 +27,30 @@ export interface ChartAggregateParam {
   from?: number;
   size?: number;
   queryFilter?: string;
-  tier?: string;
-  team?: string;
+  tier?: string[];
+  team?: string[];
 }
 
 export interface ChartFilter {
-  team?: string;
-  tier?: string;
+  team?: string[];
+  tier?: string[];
   startTs: number;
   endTs: number;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
+  cardStyles?: React.CSSProperties;
+  customValueKey?: string;
+  dateTimeFormatter?: (date?: number, format?: string) => string;
   isPercentage?: boolean;
   isTier?: boolean;
-  dateTimeFormatter?: (date?: number) => string;
-  valueFormatter?: (value: number | string, key?: string) => string | number;
+  listContainerStyles?: React.CSSProperties;
   timeStampKey?: string;
+  titleStyles?: React.CSSProperties;
+  labelStyles?: React.CSSProperties;
+  valueStyles?: React.CSSProperties;
+  transformLabel?: boolean;
+  valueFormatter?: (value: number | string, key?: string) => string | number;
 }
 
 export interface UIKpiResult extends KpiResult {
@@ -66,17 +73,9 @@ export enum KpiDate {
   END_DATE = 'endDate',
 }
 
-export type KpiDates = {
-  [x in KpiDate]: string;
-};
-
 export type ChartValue = string | number | undefined;
 
 export type AggregatedCostAnalysisReportDataSearchSource = ReportData; // extends EntityInterface
-
-export type DataInsightSearchSourceMapping = {
-  [DataInsightIndex.AGGREGATED_COST_ANALYSIS_REPORT_DATA]: AggregatedCostAnalysisReportDataSearchSource;
-};
 
 export type DataInsightSearchRequest = {
   pageNumber?: number;

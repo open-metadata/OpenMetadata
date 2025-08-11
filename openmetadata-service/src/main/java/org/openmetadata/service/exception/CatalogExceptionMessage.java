@@ -21,11 +21,12 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
   public static final String REINDEXING_ALREADY_RUNNING = "REINDEXING_ALREADY_RUNNING";
@@ -35,7 +36,7 @@ public final class CatalogExceptionMessage {
   public static final String PASSWORD_INVALID_FORMAT =
       "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
   public static final String MAX_FAILED_LOGIN_ATTEMPT =
-      "Failed Login Attempts Exceeded. Please try after some time.";
+      "Failed Login Attempts Exceeded. Use Forgot Password or retry after some time.";
 
   public static final String INCORRECT_OLD_PASSWORD = "INCORRECT_OLD_PASSWORD";
 
@@ -101,6 +102,7 @@ public final class CatalogExceptionMessage {
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
   public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
+  public static final String CSV_EXPORT_FAILED = "CSV Export Failed.";
 
   private CatalogExceptionMessage() {}
 
@@ -117,6 +119,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String invalidName(String name) {
+    if (name == null) {
+      return "name must not be null";
+    }
     return String.format("Invalid name %s", name);
   }
 
@@ -219,11 +224,20 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
-  public static String domainPermissionNotAllowed(
-      String user, String domainName, List<MetadataOperation> operations) {
+  public static String resourcePermissionNotAllowed(
+      String user, List<MetadataOperation> operations, List<String> resources) {
     return String.format(
-        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
-        user, domainName, operations);
+        "Principal: CatalogPrincipal{name='%s'} operations %s not allowed for resources {%s}.",
+        user, operations, resources);
+  }
+
+  public static String domainPermissionNotAllowed(
+      String user, List<EntityReference> domains, List<MetadataOperation> operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domains [%s] to perform the %s operations.",
+        user,
+        domains.stream().map(EntityReference::getName).collect(Collectors.joining(", ")),
+        operations);
   }
 
   public static String taskOperationNotAllowed(String user, String operations) {
@@ -278,6 +292,11 @@ public final class CatalogExceptionMessage {
         "Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidTeamUpdateUsers(TeamType teamType) {
+    return String.format(
+        "Team is of type %s. Users can be updated only in team of type Group.", teamType);
+  }
+
   public static String invalidOwnerType(String entityType) {
     return String.format(
         "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.",
@@ -318,6 +337,11 @@ public final class CatalogExceptionMessage {
         tag1.getTagFQN(), tag2.getTagFQN());
   }
 
+  public static String disabledTag(TagLabel tag) {
+    return String.format(
+        "Tag label %s is disabled and can't be assigned to a data asset.", tag.getTagFQN());
+  }
+
   public static String csvNotSupported(String entityType) {
     return String.format(
         "Upload/download CSV for bulk operations is not supported for entity [%s]", entityType);
@@ -341,7 +365,8 @@ public final class CatalogExceptionMessage {
 
   public static String eventPublisherFailedToPublish(
       SubscriptionDestination.SubscriptionType type, String message) {
-    return String.format("Failed to publish event %s due to %s ", type.value(), message);
+    return String.format(
+        "Failed to publish event of destination type %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
@@ -372,5 +397,10 @@ public final class CatalogExceptionMessage {
             .map(Object::toString)
             .collect(Collectors.joining(", "));
     return "query param " + key + " must be one of [" + enumValues + "]";
+  }
+
+  public static String duplicateGlossaryTerm(String termName, String glossaryName) {
+    return String.format(
+        "A term with the name '%s' already exists in '%s' glossary.", termName, glossaryName);
   }
 }

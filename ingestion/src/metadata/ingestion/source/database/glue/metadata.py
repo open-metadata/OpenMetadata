@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,21 +12,24 @@
 Glue source methods.
 """
 import traceback
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Table, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    FileFormat,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
@@ -52,6 +55,9 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
+)
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
@@ -66,7 +72,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class GlueSource(DatabaseServiceSource):
+class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
     """
     Implements the necessary methods to extract
     Database metadata from Glue Source
@@ -84,6 +90,7 @@ class GlueSource(DatabaseServiceSource):
 
         self.connection_obj = self.glue
         self.schema_description_map = {}
+        self.external_location_map = {}
         self.test_connection()
 
     @classmethod
@@ -167,12 +174,12 @@ class GlueSource(DatabaseServiceSource):
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-            )
+        database_request = CreateDatabaseRequest(
+            name=database_name,
+            service=self.context.get().database_service,
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -217,24 +224,24 @@ class GlueSource(DatabaseServiceSource):
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                description=self.schema_description_map.get(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                sourceUrl=self.get_source_url(
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            description=self.schema_description_map.get(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
                     database_name=self.context.get().database,
-                    schema_name=schema_name,
-                ),
-            )
+                )
+            ),
+            sourceUrl=self.get_source_url(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+            ),
         )
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
@@ -305,9 +312,16 @@ class GlueSource(DatabaseServiceSource):
         table_name, table_type = table_name_and_type
         table = self.context.get().table_data
         table_constraints = None
+        storage_descriptor = table.StorageDescriptor
+        database_name = self.context.get().database
+        schema_name = self.context.get().database_schema
+        if storage_descriptor.Location:
+            # s3a doesn't occur as a path in containers, so it needs to be replaced for lineage to work
+            self.external_location_map[
+                (database_name, schema_name, table_name)
+            ] = storage_descriptor.Location.replace("s3a://", "s3://")
         try:
-            columns = self.get_columns(table.StorageDescriptor)
-
+            columns = self.get_columns(storage_descriptor)
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -319,8 +333,8 @@ class GlueSource(DatabaseServiceSource):
                         metadata=self.metadata,
                         entity_type=DatabaseSchema,
                         service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
+                        database_name=database_name,
+                        schema_name=schema_name,
                     )
                 ),
                 sourceUrl=self.get_source_url(
@@ -328,6 +342,8 @@ class GlueSource(DatabaseServiceSource):
                     schema_name=self.context.get().database_schema,
                     database_name=self.context.get().database,
                 ),
+                fileFormat=self.get_format(storage_descriptor),
+                locationPath=storage_descriptor.Location,
             )
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
@@ -361,20 +377,105 @@ class GlueSource(DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
+    # pylint: disable=too-many-locals
     def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:
+        """
+        Get columns from Glue.
+        """
+        # Check if this is an Iceberg table
+        table = self.context.get().table_data
+        is_iceberg = table.Parameters and table.Parameters.table_type == "ICEBERG"
+
+        if is_iceberg:
+            # For Iceberg tables, get the full table metadata from Glue to access column parameters
+            try:
+                schema_name = self.context.get().database_schema
+                table_name = table.Name
+
+                # Get full table metadata from Glue API
+                response = self.glue.get_table(
+                    DatabaseName=schema_name, Name=table_name
+                )
+
+                table_info = response["Table"]
+
+                # Filter out non-current Iceberg columns
+                storage_descriptor = table_info.get("StorageDescriptor", {})
+                glue_columns = storage_descriptor.get("Columns", [])
+
+                for glue_col in glue_columns:
+                    col_name = glue_col["Name"]
+                    col_type = glue_col["Type"]
+                    col_comment = glue_col.get("Comment", "")
+                    col_parameters = glue_col.get("Parameters", {})
+
+                    # Check if this is a non-current Iceberg column
+                    iceberg_current = col_parameters.get(
+                        "iceberg.field.current", "true"
+                    )
+                    is_current = iceberg_current != "false"
+
+                    if is_current:
+                        # Create a GlueColumn object for processing
+                        column_obj = GlueColumn(
+                            Name=col_name, Type=col_type, Comment=col_comment
+                        )
+                        yield self._get_column_object(column_obj)
+
+                # Process partition columns
+                partition_keys = table_info.get("PartitionKeys", [])
+                for glue_col in partition_keys:
+                    col_name = glue_col["Name"]
+                    col_type = glue_col["Type"]
+                    col_comment = glue_col.get("Comment", "")
+                    col_parameters = glue_col.get("Parameters", {})
+
+                    # Check if this is a non-current Iceberg column
+                    iceberg_current = col_parameters.get(
+                        "iceberg.field.current", "true"
+                    )
+                    is_current = iceberg_current != "false"
+
+                    if is_current:
+                        # Create a GlueColumn object for processing
+                        column_obj = GlueColumn(
+                            Name=col_name, Type=col_type, Comment=col_comment
+                        )
+                        yield self._get_column_object(column_obj)
+
+                return
+
+            except Exception as e:
+                # If we can't get Glue metadata, fall back to the original method
+                # This ensures backward compatibility
+                logger.warning(
+                    f"Failed to get Glue metadata for Iceberg table {table.Name}: {e}"
+                )
+
+        # For non-Iceberg tables or if Glue access fails, use the original method
         # process table regular columns info
         for column in column_data.Columns:
             yield self._get_column_object(column)
 
-        # process table regular columns info
+        # process table partition columns info
         for column in self.context.get().table_data.PartitionKeys:
             yield self._get_column_object(column)
 
+    @classmethod
+    def get_format(cls, storage: StorageDetails) -> Optional[FileFormat]:
+        library = storage.SerdeInfo.SerializationLibrary
+        if library is None:
+            return None
+        if library.endswith(".LazySimpleSerDe"):
+            return (
+                FileFormat.tsv
+                if storage.SerdeInfo.Parameters.get("serialization.format") == "\t"
+                else FileFormat.csv
+            )
+        return next((fmt for fmt in FileFormat if fmt.value in library.lower()), None)
+
     def standardize_table_name(self, _: str, table: str) -> str:
         return table[:128]
-
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
 
     def yield_tag(
         self, schema_name: str
@@ -391,12 +492,6 @@ class GlueSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Not Implemented"""
-        yield from []
 
     def get_source_url(
         self,

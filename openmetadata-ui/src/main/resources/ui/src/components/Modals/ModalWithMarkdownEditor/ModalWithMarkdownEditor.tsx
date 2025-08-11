@@ -13,15 +13,14 @@
 
 import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './modal-with-markdown-editor.less';
-import {
-  EditorContentRef,
-  ModalWithMarkdownEditorProps,
-} from './ModalWithMarkdownEditor.interface';
+import { ModalWithMarkdownEditorProps } from './ModalWithMarkdownEditor.interface';
 
 export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorProps> =
   ({
@@ -35,13 +34,15 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
     const { t } = useTranslation();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    const markdownRef = useRef<EditorContentRef>();
+    const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
     const handleSaveData = async () => {
       if (markdownRef.current) {
         setIsLoading(true);
         try {
-          await onSave?.(markdownRef.current?.getEditorContent().trim() ?? '');
+          const content =
+            markdownRef.current?.getEditorContent?.()?.trim() ?? '';
+          await onSave?.(content);
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {
@@ -57,35 +58,39 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
         className="description-markdown-editor"
         closable={false}
         data-testid="markdown-editor"
-        footer={[
-          <Button
-            data-testid="cancel"
-            disabled={isLoading}
-            key="cancelButton"
-            type="link"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>,
-          <Button
-            data-testid="save"
-            key="saveButton"
-            loading={isLoading}
-            type="primary"
-            onClick={handleSaveData}>
-            {t('label.save')}
-          </Button>,
-        ]}
+        footer={
+          <KeyDownStopPropagationWrapper>
+            <Button
+              data-testid="cancel"
+              disabled={isLoading}
+              key="cancelButton"
+              type="link"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save"
+              key="saveButton"
+              loading={isLoading}
+              type="primary"
+              onClick={handleSaveData}>
+              {t('label.save')}
+            </Button>
+          </KeyDownStopPropagationWrapper>
+        }
         maskClosable={false}
         open={visible}
         title={<Typography.Text data-testid="header">{header}</Typography.Text>}
         width="90%"
         onCancel={onCancel}>
-        <RichTextEditor
-          autofocus
-          initialValue={value}
-          placeHolder={placeholder}
-          ref={markdownRef}
-        />
+        <KeyDownStopPropagationWrapper>
+          <RichTextEditor
+            autofocus
+            initialValue={value}
+            placeHolder={placeholder}
+            ref={markdownRef}
+          />
+        </KeyDownStopPropagationWrapper>
       </Modal>
     );
   };

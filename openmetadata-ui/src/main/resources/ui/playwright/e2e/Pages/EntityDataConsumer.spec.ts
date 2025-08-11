@@ -12,6 +12,7 @@
  */
 import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -59,6 +60,9 @@ const test = base.extend<{
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
+  const rowSelector =
+    entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
+
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -75,30 +79,29 @@ entities.forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
-    test('User as Owner Add, Update and Remove', async ({ page }) => {
-      test.slow(true);
+    // Running following 2 tests serially since they are dependent on each other
+    test.describe.serial('Owner permission tests', () => {
+      test('User as Owner Add, Update and Remove', async ({ page }) => {
+        test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
-      await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
-    });
-
-    test('No edit owner permission', async ({ page }) => {
-      await page.reload();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
+        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER2 = EntityDataClass.user2.getUserName();
+        const OWNER3 = EntityDataClass.user3.getUserName();
+        await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
       });
 
-      await expect(page.getByTestId('edit-owner')).not.toBeAttached();
+      test('No edit owner permission', async ({ page }) => {
+        await page.reload();
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(page.getByTestId('edit-owner')).not.toBeAttached();
+      });
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(
-        page,
-        'Tier1',
-        EntityDataClass.tierTag1.data.displayName
-      );
+      await entity.tier(page, COMMON_TIER_TAG[0].name, COMMON_TIER_TAG[3].name);
     });
 
     test('Update description', async ({ page }) => {
@@ -106,7 +109,7 @@ entities.forEach((EntityClass) => {
     });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
-      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
@@ -129,9 +132,36 @@ entities.forEach((EntityClass) => {
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          rowSelector,
+          entityEndpoint: entity.endpoint,
         });
+      });
+
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
+        test('DisplayName edit for child entities should not be allowed', async ({
+          page,
+        }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await expect(
+            page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('edit-displayName-button')
+          ).not.toBeVisible();
+        });
+      }
+
+      test('Description Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.descriptionUpdateChildren(
+          page,
+          entity.childrenSelectorId ?? '',
+          rowSelector,
+          entity.endpoint
+        );
       });
     }
 
@@ -147,6 +177,7 @@ entities.forEach((EntityClass) => {
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
+          entityEndpoint: entity.endpoint,
           rowSelector:
             entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
         });
@@ -159,11 +190,15 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Follow & Un-follow entity`, async ({ page }) => {
+      test.slow(true);
+
       const entityName = entity.entityResponseData?.['displayName'];
       await entity.followUnfollowEntity(page, entityName);
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);

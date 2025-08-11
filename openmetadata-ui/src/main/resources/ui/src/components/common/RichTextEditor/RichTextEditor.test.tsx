@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,68 +10,82 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
-import React, { Component } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
 import RichTextEditor from './RichTextEditor';
+import { EditorContentRef } from './RichTextEditor.interface';
 
-jest.mock('@toast-ui/react-editor', () => {
-  class Editor extends Component {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    getInstance() {}
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    getRootElement() {}
-
-    render() {
-      return <p>Editor</p>;
+jest.mock('../../BlockEditor/BlockEditor', () => {
+  return jest.fn().mockImplementation(({ content, onChange, ref }: any) => {
+    if (ref && ref.current) {
+      ref.current = { editor: { getHTML: jest.fn().mockReturnValue(content) } }; // mock the editor object
     }
-  }
 
-  class Viewer extends Component {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    getInstance() {}
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    getRootElement() {}
-
-    render() {
-      return <p>Viewer</p>;
-    }
-  }
-
-  return {
-    Editor,
-    Viewer,
-  };
+    return (
+      <textarea
+        data-testid="editor-textarea"
+        ref={ref as React.Ref<HTMLTextAreaElement>}
+        value={content}
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
+      />
+    );
+  });
 });
 
-const mockProp = {
-  initialValue: '',
-  readonly: false,
-};
+const onTextChangeMock = jest.fn();
 
-describe('Test RichText Editor', () => {
-  it('Should render rich text editor', async () => {
-    const { container } = render(<RichTextEditor {...mockProp} />, {
-      wrapper: MemoryRouter,
-    });
+describe('RichTextEditor', () => {
+  it('renders without crashing', () => {
+    render(<RichTextEditor onTextChange={onTextChangeMock} />);
+    const editorElement = screen.getByTestId('editor');
 
-    const editor = await findByTestId(container, 'editor');
-
-    expect(editor).toBeInTheDocument();
+    expect(editorElement).toBeInTheDocument();
   });
 
-  it('Should render viewer if readOnly is true', async () => {
-    const { container } = render(<RichTextEditor {...mockProp} readonly />, {
-      wrapper: MemoryRouter,
+  it('Passes initialValue prop correctly to BlockEditor', () => {
+    const initialValue = 'Initial content';
+    render(
+      <RichTextEditor
+        initialValue={initialValue}
+        onTextChange={onTextChangeMock}
+      />
+    );
+
+    const textarea = screen.getByTestId('editor-textarea');
+
+    expect(textarea).toHaveValue(initialValue);
+  });
+
+  it('should trigger onTextChange when content changes', () => {
+    render(<RichTextEditor onTextChange={onTextChangeMock} />);
+
+    fireEvent.change(screen.getByTestId('editor-textarea'), {
+      target: { value: 'New content' },
     });
 
-    const editor = queryByTestId(container, 'editor');
-    const viewer = await findByTestId(container, 'viewer');
+    expect(onTextChangeMock).toHaveBeenCalledWith('New content');
+  });
 
-    expect(editor).not.toBeInTheDocument();
-    expect(viewer).toBeInTheDocument();
+  it('should trigger onTextChange with empty content in case of value is <p></p> tags)', () => {
+    render(<RichTextEditor onTextChange={onTextChangeMock} />);
+
+    fireEvent.change(screen.getByTestId('editor-textarea'), {
+      target: { value: '<p></p>' },
+    });
+
+    expect(onTextChangeMock).toHaveBeenCalledWith('');
+  });
+
+  it('should return empty string when value is <p></p> format content is empty', () => {
+    const editorRef: React.RefObject<EditorContentRef> = React.createRef();
+    const initialValue = '<p></p>';
+
+    render(<RichTextEditor initialValue={initialValue} ref={editorRef} />);
+
+    const getEditorContent = editorRef.current?.getEditorContent();
+
+    expect(getEditorContent).toBe('');
   });
 });

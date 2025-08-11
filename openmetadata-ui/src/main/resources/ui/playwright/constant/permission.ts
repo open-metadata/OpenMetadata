@@ -40,6 +40,7 @@ export const DESCRIPTION = `This is ${POLICY_NAME} description`;
 export const RULE_NAME = `Rule / test-${uuid()}`;
 export const RULE_DESCRIPTION = `This is ${RULE_NAME} description`;
 export const UPDATED_DESCRIPTION = 'This is updated description';
+export const UPDATED_POLICY_NAME = `PW Updated ${POLICY_NAME}`;
 
 export const NEW_RULE_NAME = `New / Rule-test-${uuid()}`;
 export const NEW_RULE_DESCRIPTION = `This is ${NEW_RULE_NAME} description`;
@@ -58,6 +59,110 @@ export const DATA_STEWARD_RULES: PolicyRulesType[] = [
       'EditTags',
       'ViewAll',
     ],
+    effect: 'allow',
+  },
+];
+
+export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
+  {
+    name: 'DataConsumerPolicy-EditRule',
+    resources: ['All'],
+    operations: [
+      'EditDescription',
+      'EditGlossaryTerms',
+      'EditTags',
+      'EditTier',
+      'ViewAll',
+    ],
+    effect: 'allow',
+  },
+];
+
+export const VIEW_ALL_RULE: PolicyRulesType[] = [
+  {
+    name: 'OrganizationPolicy-ViewAll-Rule',
+    description: 'Allow all users to view all metadata',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
+];
+
+export const VIEW_ALL_WITH_IS_OWNER: PolicyRulesType[] = [
+  {
+    name: 'viewAll-IsOwner',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+    condition: 'isOwner()',
+  },
+];
+
+export const VIEW_ALL_WITH_MATCH_TAG_CONDITION: PolicyRulesType[] = [
+  {
+    name: 'viewAll-MatchTag',
+    resources: ['All'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+    condition: "matchAnyTag('PersonalData.Personal')",
+  },
+];
+
+export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
+  {
+    name: 'EditUserTeams-EditRule',
+    resources: ['team'],
+    operations: ['EditUsers'],
+    effect: 'allow',
+  },
+];
+
+export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
+  {
+    name: 'OrganizationPolicy-NoOwner-Rule',
+    description:
+      'Allow any one to set the owner of an entity that has no owner set.',
+    effect: 'allow',
+    operations: ['EditOwners'],
+    resources: ['All'],
+    condition: 'noOwner()',
+  },
+  {
+    name: 'OrganizationPolicy-Owner-Rule',
+    description: 'Allow all the operations on an entity for the owner.',
+    effect: 'allow',
+    operations: ['All'],
+    resources: ['All'],
+    condition: 'isOwner()',
+  },
+];
+
+export const EDIT_TAGS_RULE: PolicyRulesType[] = [
+  {
+    name: 'EditTags-EditRule',
+    description: 'Allow EditTags for all entities.',
+    resources: ['All'],
+    operations: ['EditTags'],
+    effect: 'allow',
+  },
+];
+
+export const EDIT_DESCRIPTION_RULE: PolicyRulesType[] = [
+  {
+    name: 'EditDescription-EditRule',
+    description: 'Allow EditDescription for all entities.',
+    resources: ['All'],
+    operations: ['EditDescription'],
+    effect: 'allow',
+  },
+];
+
+export const EDIT_GLOSSARY_TERM_RULE: PolicyRulesType[] = [
+  {
+    name: 'EditGlossaryTerm-EditRule',
+    description: 'Allow EditGlossaryTerm for all entities.',
+    resources: ['All'],
+    operations: ['EditGlossaryTerms'],
     effect: 'allow',
   },
 ];

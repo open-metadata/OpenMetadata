@@ -17,11 +17,13 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
+import { DataContract } from '../../../generated/entity/data/dataContract';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -68,7 +70,8 @@ export type DataAssetsType =
   | APIService
   | APICollection
   | APIEndpoint
-  | Metric;
+  | Metric
+  | Chart;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -79,28 +82,52 @@ export type DataAssetsWithoutServiceField =
   | MetadataService
   | StorageService
   | SearchService
-  | APIService;
+  | APIService
+  | Metric;
 
-export type DataAssetsWithFollowersField = Exclude<
-  DataAssetsType,
-  DataAssetsWithoutServiceField | Database | DatabaseSchema | APICollection
->;
+export type DataAssetsWithFollowersField =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | SearchIndex
+  | DashboardDataModel
+  | StoredProcedure
+  | APIEndpoint
+  | Metric
+  | Chart;
 
-export type DataAssetsWithServiceField = Exclude<
-  DataAssetsType,
-  DataAssetsWithoutServiceField | Metric
->;
+export type DataAssetsWithServiceField =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | SearchIndex
+  | Database
+  | DashboardDataModel
+  | StoredProcedure
+  | DatabaseSchema
+  | APICollection
+  | APIEndpoint
+  | Chart;
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>
   | GlossaryTerm;
 
 export type DataAssetsHeaderProps = {
+  dataContract?: DataContract;
   permissions: OperationPermission;
   openTaskCount?: number;
   allowSoftDelete?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
+  isDqAlertSupported?: boolean;
+  badge?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
@@ -114,6 +141,11 @@ export type DataAssetsHeaderProps = {
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
   onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
+  isCustomizedView?: boolean;
+  disableRunAgentsButton?: boolean;
+  afterTriggerAction?: VoidFunction;
+  isAutoPilotWorkflowStatusLoading?: boolean;
+  onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic
@@ -135,9 +167,11 @@ export type DataAssetsHeaderProps = {
   | DataAssetStorageService
   | DataAssetSearchService
   | DataAssetApiService
+  | DataAssetSecurityService
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
   | DataAssetMetric
+  | DataAssetChart
 );
 
 export interface DataAssetTable {
@@ -244,6 +278,16 @@ export interface DataAssetAPIEndpoint {
 export interface DataAssetMetric {
   dataAsset: Metric;
   entityType: EntityType.METRIC;
+}
+
+export interface DataAssetChart {
+  dataAsset: Chart;
+  entityType: EntityType.CHART;
+}
+
+export interface DataAssetSecurityService {
+  dataAsset: ServicesType;
+  entityType: EntityType.SECURITY_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

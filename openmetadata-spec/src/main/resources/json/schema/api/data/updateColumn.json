@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/updateColumn.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpdateColumn",
+  "description": "Update Column API request to update individual column metadata such as display name, description, tags, and glossary terms. This API works for columns in both tables and dashboard data models using the column's fully qualified name. The constraint field is only applicable to table columns.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.UpdateColumn",
+  "properties": {
+    "displayName": {
+      "description": "Display Name that identifies this column name.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the column.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "tags": {
+      "description": "Tags and glossary terms associated with the column. Use source: 'Classification' for classification tags and source: 'Glossary' for glossary terms. Provide an empty array to remove all tags. Note: Invalid or non-existent tags/glossary terms will result in a 404 error.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "constraint": {
+      "description": "Column level constraint. Only applicable to table columns, ignored for dashboard data model columns.",
+      "$ref": "../../entity/data/table.json#/definitions/constraint"
+    },
+    "removeConstraint": {
+      "description": "Set to true to remove the existing column constraint. Only applicable to table columns, ignored for dashboard data model columns. If both 'constraint' and 'removeConstraint' are provided, 'removeConstraint' takes precedence.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -14,7 +14,7 @@
 @import (reference) url('../../../styles/variables.less');
 
 @lineage-breadcrumb-panel: 50px;
-@lineage-toolbar-height: 54px;
+@lineage-toolbar-height: 12px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -34,22 +34,48 @@
 
 .custom-node-header-tracing {
   border: 1px solid @primary-color;
+
   .react-flow__handle {
     border-color: @primary-color;
   }
+
   .lineage-node-handle {
     border: 1px solid @primary-color;
+
     svg {
       color: @primary-color;
     }
   }
 }
+
+.data-quality-failed-custom-node-header {
+  &.custom-node-header-normal {
+    border: 1px solid @red-3;
+  }
+
+  .react-flow__handle {
+    border-color: @red-3;
+  }
+
+  .lineage-node-handle {
+    border: 1px solid @red-3;
+
+    svg {
+      color: @red-3;
+    }
+  }
+
+  &.custom-node-header-active {
+    border-color: @red-3;
+  }
+}
+
 .custom-node-header-active {
   border-color: @primary-color;
 }
 
 .custom-node-column-lineage {
-  background: @body-bg-color;
+  background: @background-primary;
   border: 1px solid;
   border-radius: 4px;
 
@@ -66,23 +92,13 @@
     }
   }
 }
-.custom-node-column-lineage-normal {
-  border-top: 1px solid @border-color;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  font-size: 12px;
-  &:first-child {
-    border-top: none;
-  }
-}
 
 .custom-node {
   .custom-node-header-active {
     .react-flow__handle {
       opacity: 0;
     }
+
     .custom-lineage-heading {
       color: @white;
     }
@@ -93,6 +109,7 @@
   width: 220px;
   height: 32px;
 }
+
 .ant-select.custom-control-search-box-edit-mode {
   margin-left: @lineage-sidebar-width;
 }
@@ -103,12 +120,14 @@
   height: 32px;
   width: 150px;
 }
+
 .custom-node-expand-button {
   top: -14px;
   left: -12px;
   cursor: pointer;
   z-index: 1;
 }
+
 .load-more-node {
   border: 3.5px dashed @primary-color;
   border-radius: 18px;
@@ -116,6 +135,7 @@
   color: @primary-color;
   font-weight: 600;
   padding: 0.5rem;
+
   .load-more-node-sizes {
     color: @text-color;
   }
@@ -130,13 +150,16 @@
 .custom-control-edit-button {
   display: block !important;
   border: 1px solid @border-color;
-  background-color: @body-bg-color;
+  background-color: @background-primary;
+
   &.active {
     background-color: @primary-color;
   }
+
   &.active:hover {
     background-color: @primary-color;
   }
+
   &.active:focus {
     background-color: @primary-color;
   }
@@ -190,33 +213,65 @@
   align-items: center;
 }
 
+.lineage-root {
+  border-radius: @border-rad-sm;
+  border: 1px solid @grey-15;
+  position: relative;
+
+  .entity-panel-container {
+    right: 80px;
+    margin-top: 12px;
+
+    .ant-drawer-content-wrapper {
+      border-radius: 10px;
+      overflow: hidden;
+    }
+  }
+}
+
 // lineage
 .lineage-card {
-  height: calc(100vh - 240px);
+  height: calc(100vh - 350px);
 
   // lineage and it's children's always should be ltr
   direction: ltr;
+
   * {
     direction: ltr;
   }
 }
 
 .full-screen-lineage {
+  position: fixed;
   top: @om-navbar-height;
   left: @sidebar-width;
-  position: fixed !important;
-  width: calc(100vw - @sidebar-width);
+  width: calc(100% - @sidebar-width);
   height: calc(100vh - @om-navbar-height);
+
+  &.sidebar-collapsed {
+    left: calc(72px + @padding-md);
+    width: calc(100% - 72px - @size-xl);
+  }
+
+  &.sidebar-expanded {
+    left: calc(228px + @padding-md);
+    width: calc(100% - 228px - @size-xl);
+  }
+
   .lineage-card {
     height: calc(100vh - @om-navbar-height);
+    overflow-y: scroll;
   }
+
   .entity-lineage.sidebar {
     top: @lineage-breadcrumb-panel;
   }
+
   .entity-panel-container {
     top: calc(@lineage-breadcrumb-panel + @lineage-toolbar-height);
     margin-top: 0;
   }
+
   .lineage-container {
     height: calc(100vh - @om-navbar-height - @lineage-breadcrumb-panel);
   }
@@ -239,23 +294,27 @@
 }
 
 .custom-edge-pipeline-button {
-  background-color: @body-bg-color;
+  background-color: @background-primary;
   color: @primary-color;
+
   &.green {
     background: @green-6;
     border: 1px solid @green-7;
     color: @green-7;
   }
+
   &.amber {
     background: @yellow-5;
     border: 1px solid @yellow-6;
     color: @yellow-6;
   }
+
   &.red {
     background: @red-6;
     border: 1px solid @red-7;
     color: @red-7;
   }
+
   svg {
     color: inherit;
   }
@@ -267,12 +326,14 @@
   border: 1px solid @yellow-6;
   margin: 0;
 }
+
 .ant-tag.red {
   background: @red-6;
   border: 1px solid @red-7;
   color: @red-7;
   margin: 0;
 }
+
 .ant-tag.green {
   background: @green-6;
   border: 1px solid @green-7;
@@ -284,9 +345,11 @@
   0% {
     border: 1px solid @primary-color;
   }
+
   50% {
     border: 3px solid @primary-color;
   }
+
   100% {
     border: 1px solid @primary-color;
   }
@@ -296,9 +359,11 @@
   0% {
     border: 1px solid @green-7;
   }
+
   50% {
     border: 3px solid @green-7;
   }
+
   100% {
     border: 1px solid @green-7;
   }
@@ -308,9 +373,11 @@
   0% {
     border: 1px solid @yellow-6;
   }
+
   50% {
     border: 3px solid @yellow-6;
   }
+
   100% {
     border: 1px solid @yellow-6;
   }
@@ -320,9 +387,11 @@
   0% {
     border: 1px solid @red-7;
   }
+
   50% {
     border: 3px solid @red-7;
   }
+
   100% {
     border: 1px solid @red-7;
   }
@@ -346,5 +415,12 @@
 
 .react-flow__panel.left.bottom,
 .react-flow__panel.right.bottom {
-  bottom: 8px;
+  bottom: 24px;
+}
+
+.react-flow__minimap {
+  height: 150px;
+  border: 1px solid @border-color;
+  border-radius: 10px;
+  overflow: hidden;
 }

@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 
 const ForbiddenPage = () => {
-  return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  return (
+    <ErrorPlaceHolder
+      className="border-none"
+      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+    />
+  );
 };
 
-export default ForbiddenPage;
+export default withPageLayout(ForbiddenPage);

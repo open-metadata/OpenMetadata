@@ -11,52 +11,411 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { EntityType } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { triggerOnDemandApp } from '../../rest/applicationAPI';
+import { postService } from '../../rest/serviceAPI';
+import { getServiceLogo } from '../../utils/CommonUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceRouteFromServiceType,
+} from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-jest.mock(
-  '../../components/Settings/Services/AddService/AddService.component',
-  () => {
-    return jest.fn().mockImplementation(() => <div>AddService.component</div>);
-  }
-);
+const mockNavigate = jest.fn();
+
+const mockSetInlineAlertDetails = jest.fn();
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockReturnValue({
+    currentUser: { id: '1', name: 'test-user' },
+    setInlineAlertDetails: mockSetInlineAlertDetails,
+  }),
+}));
+
+jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
+  useAirflowStatus: jest.fn().mockImplementation(() => ({
+    platform: 'Argo',
+  })),
+}));
+
+jest.mock('../../utils/ServiceUtilClassBase', () => ({
+  getExtraInfo: jest.fn(),
+  getServiceConfigData: jest.fn(),
+}));
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParam),
 }));
 
-jest.mock('../../constants/constants', () => ({
-  DEPLOYED_PROGRESS_VAL: 0,
-  INGESTION_PROGRESS_END_VAL: 0,
-  INGESTION_PROGRESS_START_VAL: 0,
-}));
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel?.children}</div>
+      <div>{secondPanel?.children}</div>
+    </div>
+  ));
+});
+
+jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () => {
+  return jest.fn().mockImplementation(() => <div>ServiceDocPanel</div>);
+});
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
+  }
+);
+
+jest.mock(
+  '../../components/Settings/Services/AddService/Steps/ConfigureService',
+  () => {
+    return jest.fn().mockImplementation(({ onNext }) => (
+      <div>
+        <button
+          onClick={() =>
+            onNext({ name: 'test-service', description: 'test description' })
+          }>
+          Configure Service
+        </button>
+      </div>
+    ));
+  }
+);
+
+jest.mock(
+  '../../components/Settings/Services/AddService/Steps/SelectServiceType',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ handleServiceTypeClick, onNext, onCancel }) => (
+        <div>
+          <button onClick={() => handleServiceTypeClick('mysql')}>
+            Select MySQL
+          </button>
+          <button onClick={onNext}>Next</button>
+          <button onClick={onCancel}>Cancel</button>
+        </div>
+      ));
+  }
+);
+
+jest.mock(
+  '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
+  }
+);
+
+jest.mock(
+  '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
+  () => {
+    return jest.fn().mockImplementation(({ onSave, onCancel }) => (
+      <div>
+        <button onClick={() => onSave({ formData: { host: 'localhost' } })}>
+          Save Connection
+        </button>
+        <button onClick={onCancel}>Back</button>
+      </div>
+    ));
+  }
+);
+
+jest.mock(
+  '../../components/Settings/Services/ServiceConfig/FiltersConfigForm',
+  () => {
+    return jest.fn().mockImplementation(({ onSave, onCancel }) => (
+      <div>
+        <button onClick={() => onSave({ formData: { filterPattern: {} } })}>
+          Save Filters
+        </button>
+        <button onClick={onCancel}>Back</button>
+      </div>
+    ));
+  }
+);
 
 jest.mock('../../rest/serviceAPI', () => ({
-  postService: jest.fn(),
+  postService: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      name: 'test-service',
+      fullyQualifiedName: 'test-service',
+    })
+  ),
+}));
+
+jest.mock('../../rest/applicationAPI', () => ({
+  triggerOnDemandApp: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../utils/CommonUtils', () => ({
+  getServiceLogo: jest.fn(),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
   getSettingPath: jest.fn(),
+  getAddServicePath: jest.fn(),
+  getServiceDetailsPath: jest
+    .fn()
+    .mockImplementation(() => '/service/details/path'),
 }));
 
 jest.mock('../../utils/ServiceUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
+  getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
+  getEntityTypeFromServiceCategory: jest.fn(),
+  getServiceType: jest.fn(),
 }));
 
-describe('Test AddServicePage component', () => {
-  it('AddServicePage component should render', async () => {
-    const { container } = render(<AddServicePage />);
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
-    const addServiceComponent = await findByText(
-      container,
-      /AddService.component/i
+const baseAirflowMock = {
+  isFetchingStatus: false,
+  isAirflowAvailable: true,
+  error: undefined,
+  reason: '',
+  fetchAirflowStatus: jest.fn(),
+};
+
+const mockProps = {
+  pageTitle: 'add-service',
+};
+
+describe('AddServicePage', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should render the component', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    expect(screen.getByTestId('add-new-service-container')).toBeInTheDocument();
+    expect(screen.getByTestId('header')).toHaveTextContent(
+      'label.add-new-entity'
     );
+  });
 
-    expect(addServiceComponent).toBeInTheDocument();
+  it('should handle service type selection', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    const selectMySQLButton = screen.getByText('Select MySQL');
+    await act(async () => {
+      fireEvent.click(selectMySQLButton);
+    });
+
+    expect(screen.getByTestId('header')).toHaveTextContent(
+      'mysql label.service'
+    );
+    expect(getServiceLogo).toHaveBeenCalledWith('mysql', 'h-6');
+  });
+
+  it('should handle service type selection cancel', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    const cancelButton = screen.getByText('Cancel');
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+
+    expect(getSettingPath).toHaveBeenCalled();
+    expect(getServiceRouteFromServiceType).toHaveBeenCalledWith(
+      ServiceCategory.DATABASE_SERVICES
+    );
+    expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it('should show error when trying to proceed without selecting service type', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    const nextButton = screen.getByText('Next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    expect(screen.getByTestId('add-new-service-container')).toBeInTheDocument();
+  });
+
+  it('should handle connection configuration', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    // First select a service type
+    const selectMySQLButton = screen.getByText('Select MySQL');
+    await act(async () => {
+      fireEvent.click(selectMySQLButton);
+    });
+
+    // Move to next step
+    const nextButton = screen.getByText('Next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    // Configure service
+    const configureButton = screen.getByText('Configure Service');
+    await act(async () => {
+      fireEvent.click(configureButton);
+    });
+
+    // Save connection
+    const saveConnectionButton = screen.getByText('Save Connection');
+    await act(async () => {
+      fireEvent.click(saveConnectionButton);
+    });
+
+    expect(screen.getByText('Save Filters')).toBeInTheDocument();
+  });
+
+  it('should handle service creation success', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    // Select service type
+    const selectMySQLButton = screen.getByText('Select MySQL');
+    await act(async () => {
+      fireEvent.click(selectMySQLButton);
+    });
+
+    // Move through the steps
+    const nextButton = screen.getByText('Next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    // Configure service
+    const configureButton = screen.getByText('Configure Service');
+    await act(async () => {
+      fireEvent.click(configureButton);
+    });
+
+    // Save connection
+    const saveConnectionButton = screen.getByText('Save Connection');
+    await act(async () => {
+      fireEvent.click(saveConnectionButton);
+    });
+
+    // Save filters
+    const saveFiltersButton = screen.getByText('Save Filters');
+    await act(async () => {
+      fireEvent.click(saveFiltersButton);
+    });
+
+    expect(postService).toHaveBeenCalled();
+    expect(triggerOnDemandApp).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
+  });
+
+  it('should handle back navigation in connection configuration', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    // Select service type
+    const selectMySQLButton = screen.getByText('Select MySQL');
+    await act(async () => {
+      fireEvent.click(selectMySQLButton);
+    });
+
+    // Move to next step
+    const nextButton = screen.getByText('Next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    // Configure service
+    const configureButton = screen.getByText('Configure Service');
+    await act(async () => {
+      fireEvent.click(configureButton);
+    });
+
+    // Click back in connection config
+    const backButton = screen.getByText('Back');
+    await act(async () => {
+      fireEvent.click(backButton);
+    });
+
+    expect(screen.getByText('Configure Service')).toBeInTheDocument();
+  });
+
+  it('should not trigger auto pilot application for security service', async () => {
+    (getEntityTypeFromServiceCategory as jest.Mock).mockReturnValue(
+      EntityType.SECURITY_SERVICE
+    );
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    // Select service type
+    const selectMySQLButton = screen.getByText('Select MySQL');
+    await act(async () => {
+      fireEvent.click(selectMySQLButton);
+    });
+
+    // Move through the steps
+    const nextButton = screen.getByText('Next');
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    // Configure service
+    const configureButton = screen.getByText('Configure Service');
+    await act(async () => {
+      fireEvent.click(configureButton);
+    });
+
+    // Save connection
+    const saveConnectionButton = screen.getByText('Save Connection');
+    await act(async () => {
+      fireEvent.click(saveConnectionButton);
+    });
+
+    // Save filters
+    const saveFiltersButton = screen.getByText('Save Filters');
+    await act(async () => {
+      fireEvent.click(saveFiltersButton);
+    });
+
+    expect(postService).toHaveBeenCalled();
+    expect(triggerOnDemandApp).not.toHaveBeenCalled();
+  });
+
+  it('calls getExtraInfo', () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      ...baseAirflowMock,
+    });
+
+    const mockGetExtraInfo = serviceUtilClassBaseModule.default
+      .getExtraInfo as jest.Mock;
+    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockGetExtraInfo).toHaveBeenCalled();
   });
 });

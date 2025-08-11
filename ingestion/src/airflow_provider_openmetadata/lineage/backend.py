@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,7 +69,24 @@ class OpenMetadataLineageBackend(LineageBackend):
 
             config: AirflowLineageConfig = get_lineage_config()
             xlet_list: List[XLets] = get_xlets_from_dag(dag)
-            metadata = OpenMetadata(config.metadata_config)
+            # Only pass client config arguments that are set
+            additional_client_config_arguments = {
+                key: value
+                for key, value in {
+                    "timeout": config.timeout,
+                    "retry": config.retry,
+                    "retry_wait": config.retry_wait,
+                }.items()
+                if value
+            }
+
+            if additional_client_config_arguments:
+                dag.log.info(
+                    f"Using custom timeout={config.timeout}, retry={config.retry}, retry_wait={config.retry_wait}"
+                )
+            metadata = OpenMetadata(
+                config.metadata_config, additional_client_config_arguments
+            )
 
             runner = AirflowLineageRunner(
                 metadata=metadata,

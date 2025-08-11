@@ -12,19 +12,20 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Table, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
-import { getUserPath } from '../../../constants/constants';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../../components/common/Table/Table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPolicyWithFqnPath,
   getTeamsWithFqnPath,
+  getUserPath,
 } from '../../../utils/RouterUtils';
 
 const RolesDetailPageList = ({
@@ -78,7 +79,7 @@ const RolesDetailPageList = ({
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
+          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
         ),
       },
       {
@@ -114,9 +115,8 @@ const RolesDetailPageList = ({
 
   return (
     <Table
-      bordered
-      className="list-table"
       columns={columns}
+      containerClassName="list-table"
       dataSource={list}
       pagination={false}
       rowKey="id"

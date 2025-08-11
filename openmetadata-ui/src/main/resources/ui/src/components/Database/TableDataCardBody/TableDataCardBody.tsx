@@ -13,12 +13,12 @@
 
 import { isEmpty, isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { FunctionComponent } from 'react';
+import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTagValue } from '../../../utils/CommonUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 
 type Props = {
@@ -38,7 +38,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
     <div data-testid="table-body">
       <div className="m-b-sm description-text" data-testid="description-text">
         {description.trim() ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             className="max-two-lines"
             markdown={description}
             showReadMoreBtn={false}

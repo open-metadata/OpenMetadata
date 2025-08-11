@@ -23,13 +23,20 @@
         "sandboxModeEnabled",
         "slackChat",
         "emailConfiguration",
+        "openMetadataBaseUrlConfiguration",
         "customUiThemePreference",
         "loginConfiguration",
         "slackAppConfiguration",
         "slackBot",
         "slackInstaller",
         "slackState",
-        "profilerConfiguration"
+        "profilerConfiguration",
+        "searchSettings",
+        "assetCertificationSettings",
+        "lineageSettings",
+        "workflowSettings",
+        "entityRulesSettings",
+        "scimConfiguration"
       ]
     }
   },
@@ -68,10 +75,28 @@
           "$ref": "../email/smtpSettings.json"
         },
         {
+          "$ref": "../configuration/openMetadataBaseUrlConfiguration.json"
+        },
+        {
           "$ref": "../configuration/slackAppConfiguration.json"
         },
         {
           "$ref": "../configuration/profilerConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/searchSettings.json"
+        },
+        {
+          "$ref": "../configuration/assetCertificationSettings.json"
+        },
+        {
+          "$ref": "../configuration/lineageSettings.json"
+        },
+        {
+          "$ref": "../configuration/workflowSettings.json"
+        },
+        {
+          "$ref": "../configuration/entityRulesSettings.json"
         }
       ]
     }

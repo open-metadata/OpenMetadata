@@ -1,10 +1,10 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -31,14 +31,14 @@ public class OperationContext {
     this.patch = patch;
   }
 
-  public List<MetadataOperation> getOperations() {
+  public List<MetadataOperation> getOperations(ResourceContextInterface resourceContext) {
     // Lazy resolve patch operations
     if (operations != null) {
       return operations;
     }
     if (patch != null) { // Lazy initialize operations for PATCH
       operations = new ArrayList<>();
-      operations.addAll(JsonPatchUtils.getMetadataOperations(patch));
+      operations.addAll(JsonPatchUtils.getMetadataOperations(resourceContext, patch));
       LOG.debug("Lazy initializing operations to {}", Arrays.toString(operations.toArray()));
     }
     return operations;

@@ -13,19 +13,23 @@
 
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
+import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { ChangeDescription } from '../generated/entity/type';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
-import { getDeleteIcon, getUsageCountLink } from './TagsUtils';
+import { getEntityVersionByField } from './EntityVersionUtils';
+import { t } from './i18next/LocalUtil';
+import { getClassificationTagPath } from './RouterUtils';
+import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
 
 export const getDeleteButtonData = (
   record: Tag,
@@ -56,23 +60,30 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     key: 'name',
     width: 200,
     render: (_, record) => (
-      <Space align="center">
+      <div className="d-flex items-center gap-2">
         {record.style?.iconURL && (
-          <img data-testid="tag-icon" src={record.style.iconURL} width={16} />
+          <img
+            data-testid="tag-icon"
+            height={16}
+            src={getTagImageSrc(record.style.iconURL)}
+            width={16}
+          />
         )}
-        <Typography.Text
+        <Link
           className="m-b-0"
-          style={{ color: record.style?.color }}>
+          data-testid={record.name}
+          style={{ color: record.style?.color }}
+          to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
           {record.name}
-        </Typography.Text>
+        </Link>
         {record.disabled ? (
           <Badge
-            className="m-l-xs badge-grey"
+            className="badge-grey"
             count={t('label.disabled')}
             data-testid="disabled"
           />
         ) : null}
-      </Space>
+      </div>
     ),
   },
   {
@@ -88,35 +99,21 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
-    render: (text: string, record: Tag) => (
-      <>
-        <div className="cursor-pointer d-flex">
-          <div>
-            {text ? (
-              <RichTextEditorPreviewer markdown={text} />
-            ) : (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </div>
-        </div>
-        <Space align="center" data-testid="usage" size={4}>
-          <span className="text-grey-muted">{`${t('label.usage')}:`}</span>
-          {record.usageCount ? (
-            <Link
-              className="link-text align-middle"
-              data-testid="usage-count"
-              to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
-              {record.usageCount}
-            </Link>
+    width: 300,
+    render: (text: string) => (
+      <div className="cursor-pointer d-flex">
+        <div>
+          {text ? (
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
-            <span className="text-grey-muted">{t('label.not-used')}</span>
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
+            </span>
           )}
-        </Space>
-      </>
+        </div>
+      </div>
     ),
   },
 ];
@@ -172,9 +169,9 @@ export const getTagsTableColumn = ({
                 icon={
                   <EditIcon
                     data-testid="editTagDescription"
-                    height={16}
+                    height={14}
                     name="edit"
-                    width={16}
+                    width={14}
                   />
                 }
                 size="small"
@@ -243,3 +240,37 @@ export const getClassificationExtraDropdownContent = (
       ]
     : []),
 ];
+
+export const getClassificationInfo = (
+  currentClassification?: Classification,
+  isVersionView = false
+) => {
+  return {
+    currentVersion: currentClassification?.version ?? '0.1',
+    isClassificationDisabled: currentClassification?.disabled ?? false,
+    isTier: currentClassification?.name === 'Tier',
+    isSystemClassification:
+      currentClassification?.provider === ProviderType.System,
+    name: isVersionView
+      ? getEntityVersionByField(
+          currentClassification?.changeDescription ?? ({} as ChangeDescription),
+          EntityField.NAME,
+          currentClassification?.name
+        )
+      : currentClassification?.name,
+    displayName: isVersionView
+      ? getEntityVersionByField(
+          currentClassification?.changeDescription ?? ({} as ChangeDescription),
+          EntityField.DISPLAYNAME,
+          currentClassification?.displayName
+        )
+      : currentClassification?.displayName,
+    description: isVersionView
+      ? getEntityVersionByField(
+          currentClassification?.changeDescription ?? ({} as ChangeDescription),
+          EntityField.DESCRIPTION,
+          currentClassification?.description
+        )
+      : currentClassification?.description,
+  };
+};

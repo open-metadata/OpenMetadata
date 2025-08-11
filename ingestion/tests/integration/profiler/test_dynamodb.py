@@ -2,8 +2,8 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    ProfilerConfigType,
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    AutoClassificationConfigType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
@@ -14,8 +14,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.profiler import ProfilerWorkflow
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -59,7 +59,9 @@ def test_sample_data(db_service, db_fqn, metadata):
             "serviceName": db_service.fullyQualifiedName.root,
             "sourceConfig": {
                 "config": {
-                    "type": ProfilerConfigType.Profiler.value,
+                    "type": AutoClassificationConfigType.AutoClassification.value,
+                    "storeSampleData": True,
+                    "enableAutoClassification": False,
                 },
             },
         },
@@ -76,7 +78,7 @@ def test_sample_data(db_service, db_fqn, metadata):
             "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
-    profiler_workflow = ProfilerWorkflow.create(workflow_config)
+    profiler_workflow = AutoClassificationWorkflow.create(workflow_config)
     profiler_workflow.execute()
     profiler_workflow.raise_from_status()
     table = metadata.list_entities(

@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/triggers/periodicBatchEntityTrigger.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PeriodicBatchEntityTriggerDefinition",
+  "description": "Periodic Batch Entity Trigger.",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface"
+  ],
+  "type": "object",
+  "definitions": {
+    "config": {
+      "title": "Trigger Configuration",
+      "description": "Entity Event Trigger Configuration.",
+      "type": "object",
+      "properties": {
+        "schedule": {
+          "$ref": "../../../../entity/applications/app.json#definitions/appSchedule",
+          "description": "Defines the schedule of the Periodic Trigger."
+        },
+        "entityType": {
+          "title": "Entity Type",
+          "description": "Entity Type for which it should be triggered.",
+          "type": "string"
+        },
+        "filters": {
+          "title": "Filters",
+          "description": "Select the Search Filters to filter down the entities fetched.",
+          "type": "string"
+        },
+        "batchSize": {
+          "title": "Batch Size",
+          "description": "Number of Entities to process at once.",
+          "type": "integer",
+          "default": 500
+        }
+      },
+      "required": [
+        "schedule",
+        "entityType",
+        "filters"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "periodicBatchEntity"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "output": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -11,18 +11,11 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { capitalize } from 'lodash';
 import { FC } from 'react';
+import { NavigateFunction } from 'react-router-dom';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';
-import {
-  getEditWebhookPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
-  getUserPath,
-} from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   OperationPermission,
@@ -30,13 +23,19 @@ import {
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { ServicesType } from '../interface/service.interface';
 import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
 import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
+import ChartDetailsPage from '../pages/ChartDetailsPage/ChartDetailsPage.component';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
@@ -45,20 +44,73 @@ import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../rest/databaseAPI';
+import { getGlossariesByName } from '../rest/glossaryAPI';
+import { getServiceByFQN } from '../rest/serviceAPI';
+import { getTableDetailsByFQN } from '../rest/tableAPI';
+import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
+import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
+import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { EntityTypeName } from './EntityUtils';
+import {
+  FormattedAPIServiceType,
+  FormattedDashboardServiceType,
+  FormattedDatabaseServiceType,
+  FormattedMessagingServiceType,
+  FormattedMetadataServiceType,
+  FormattedMlModelServiceType,
+  FormattedPipelineServiceType,
+  FormattedSearchServiceType,
+  FormattedStorageServiceType,
+} from './EntityUtils.interface';
+import {
   getApplicationDetailsPath,
   getDomainDetailsPath,
-  getIncidentManagerDetailPagePath,
+  getEditWebhookPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
+  getTestCaseDetailPagePath,
+  getUserPath,
 } from './RouterUtils';
+import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 class EntityUtilClassBase {
+  serviceTypeLookupMap: Map<string, string>;
+
+  constructor() {
+    this.serviceTypeLookupMap = this.createNormalizedLookupMap({
+      ...FormattedMlModelServiceType,
+      ...FormattedMetadataServiceType,
+      ...FormattedPipelineServiceType,
+      ...FormattedSearchServiceType,
+      ...FormattedDatabaseServiceType,
+      ...FormattedDashboardServiceType,
+      ...FormattedMessagingServiceType,
+      ...FormattedAPIServiceType,
+      ...FormattedStorageServiceType,
+    });
+  }
+
+  private createNormalizedLookupMap<T extends Record<string, string>>(
+    obj: T
+  ): Map<string, string> {
+    return new Map(
+      Object.entries(obj).map(([key, value]) => [key.toLowerCase(), value])
+    );
+  }
+
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -81,6 +133,14 @@ class EntityUtilClassBase {
       case EntityType.DASHBOARD:
         return getEntityDetailsPath(
           EntityType.DASHBOARD,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.CHART:
+        return getEntityDetailsPath(
+          EntityType.CHART,
           fullyQualifiedName,
           tab,
           subTab
@@ -178,7 +238,7 @@ class EntityUtilClassBase {
         );
 
       case EntityType.TEST_CASE:
-        return getIncidentManagerDetailPagePath(fullyQualifiedName);
+        return getTestCaseDetailPagePath(fullyQualifiedName);
 
       case EntityType.TEST_SUITE:
         return getTestSuiteDetailsPath({
@@ -270,6 +330,22 @@ class EntityUtilClassBase {
     }
   }
 
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string[]) {
+    switch (entityType) {
+      case EntityType.DATABASE_SERVICE:
+        return getServiceByFQN('databaseServices', fqn, { fields });
+      case EntityType.DATABASE:
+        return getDatabaseDetailsByFQN(fqn, { fields });
+      case EntityType.DATABASE_SCHEMA:
+        return getDatabaseSchemaDetailsByFQN(fqn, { fields });
+
+      case EntityType.GLOSSARY_TERM:
+        return getGlossariesByName(fqn, { fields });
+      default:
+        return getTableDetailsByFQN(fqn, { fields });
+    }
+  }
+
   public getEntityDetailComponent(entityType: string) {
     switch (entityType) {
       case EntityType.DATABASE:
@@ -282,6 +358,8 @@ class EntityUtilClassBase {
         return TopicDetailsPage;
       case EntityType.DASHBOARD:
         return DashboardDetailsPage;
+      case EntityType.CHART:
+        return ChartDetailsPage;
       case EntityType.STORED_PROCEDURE:
         return StoredProcedurePage;
       case EntityType.DASHBOARD_DATA_MODEL:
@@ -318,6 +396,9 @@ class EntityUtilClassBase {
       }
       case EntityType.DASHBOARD: {
         return ResourceEntity.DASHBOARD;
+      }
+      case EntityType.CHART: {
+        return ResourceEntity.CHART;
       }
       case EntityType.PIPELINE: {
         return ResourceEntity.PIPELINE;
@@ -370,11 +451,84 @@ class EntityUtilClassBase {
   }
 
   public getManageExtraOptions(
-    _entityType?: EntityType,
-    _fqn?: string,
-    _permission?: OperationPermission
+    _entityType: EntityType,
+    _fqn: string,
+    _permission: OperationPermission,
+    _entityDetails:
+      | VersionData
+      | ServicesType
+      | Database
+      | DatabaseSchema
+      | APICollection,
+    navigate: NavigateFunction
   ): ItemType[] {
-    return [];
+    const isEntityDeleted = _entityDetails?.deleted ?? false;
+    switch (_entityType) {
+      case EntityType.TABLE:
+        return [
+          ...ExtraTableDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      case EntityType.DATABASE:
+        return [
+          ...ExtraDatabaseDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      case EntityType.DATABASE_SCHEMA:
+        return [
+          ...ExtraDatabaseSchemaDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      case EntityType.DATABASE_SERVICE:
+        return [
+          ...ExtraDatabaseServiceDropdownOptions(
+            _fqn,
+            _permission,
+            isEntityDeleted,
+            navigate
+          ),
+        ];
+      default:
+        return [];
+    }
+  }
+
+  public getServiceTypeLookupMap(): Map<string, string> {
+    return this.serviceTypeLookupMap;
+  }
+
+  public getEntityTypeLookupMap(): Map<string, string> {
+    return this.createNormalizedLookupMap(EntityTypeName);
+  }
+
+  public getFormattedEntityType(entityType: string): string {
+    const normalizedKey = entityType?.toLowerCase();
+
+    return (
+      this.getEntityTypeLookupMap().get(normalizedKey) || capitalize(entityType)
+    );
+  }
+
+  public getFormattedServiceType(serviceType: string): string {
+    const normalizedKey = serviceType.toLowerCase();
+
+    return (
+      this.getServiceTypeLookupMap().get(normalizedKey) ??
+      this.getEntityTypeLookupMap().get(normalizedKey) ??
+      serviceType
+    );
   }
 }
 

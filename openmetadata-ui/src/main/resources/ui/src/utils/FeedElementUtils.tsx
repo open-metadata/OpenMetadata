@@ -12,21 +12,12 @@
  */
 
 import { Tooltip } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityUtils';
-
-const iconsProps = {
-  height: 14,
-  name: 'comments',
-  width: 14,
-  style: { color: DE_ACTIVE_COLOR },
-};
+import { t } from './i18next/LocalUtil';
 
 export const getFieldThreadElement = (
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
@@ -50,9 +41,9 @@ export const getFieldThreadElement = (
         entity: t('label.conversation'),
       })}>
       <IconComments
-        {...iconsProps}
-        className="hover-cell-icon cursor-pointer"
+        className="table-action-icon hover-cell-icon"
         data-testid="field-thread"
+        name="comments"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

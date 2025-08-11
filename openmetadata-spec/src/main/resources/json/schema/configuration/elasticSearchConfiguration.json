@@ -91,6 +91,69 @@
     "searchIndexFactoryClassName": {
       "description": "Index factory name",
       "type": "string"
+    },
+    "naturalLanguageSearch": {
+      "description": "Configuration for natural language search capabilities",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration",
+      "properties": {
+        "enabled": {
+          "description": "Enable or disable natural language search",
+          "type": "boolean",
+          "default": false
+        },
+        "embeddingProvider": {
+          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
+          "type": "string",
+          "default": "bedrock"
+        },
+        "providerClass": {
+          "description": "Fully qualified class name of the NLQService implementation to use",
+          "type": "string",
+          "default": "org.openmetadata.service.search.nlq.NoOpNLQService"
+        },
+        "bedrock": {
+          "description": "AWS Bedrock configuration for natural language processing",
+          "type": "object",
+          "properties": {
+            "region": {
+              "description": "AWS Region for Bedrock service",
+              "type": "string",
+              "default": "us-east-1"
+            },
+            "modelId": {
+              "description": "Bedrock model identifier to use for query transformation",
+              "type": "string",
+              "default": "anthropic.claude-v2"
+            },
+            "embeddingModelId": {
+              "description": "Bedrock embedding model identifier to use for vector search",
+              "type": "string",
+              "default": "amazon.titan-embed-text-v2:0"
+            },
+            "embeddingDimension": {
+              "description": "Dimension of the embedding vector",
+              "type": "integer",
+              "default": 524
+            },
+            "accessKey": {
+              "description": "AWS access key for Bedrock service authentication",
+              "type": "string"
+            },
+            "secretKey": {
+              "description": "AWS secret key for Bedrock service authentication",
+              "type": "string"
+            },
+            "useIamRole": {
+              "description": "Set to true to use IAM role based authentication instead of access/secret keys.",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

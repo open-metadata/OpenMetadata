@@ -12,19 +12,15 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { DATA_STEWARD_RULES } from '../../constant/permission';
+import {
+  DATA_CONSUMER_RULES,
+  DATA_STEWARD_RULES,
+} from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
-import { PolicyClass } from '../access-control/PoliciesClass';
+import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
+import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  id: string;
-  fullyQualifiedName: string;
-};
 
 type UserData = {
   email: string;
@@ -40,14 +36,14 @@ let dataStewardTeam: TeamClass;
 export class UserClass {
   data: UserData;
 
-  responseData: ResponseDataType;
+  responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
 
   constructor(data?: UserData) {
     this.data = data ? data : generateRandomUsername();
   }
 
-  async create(apiContext: APIRequestContext) {
+  async create(apiContext: APIRequestContext, assignRole = true) {
     const dataConsumerRoleResponse = await apiContext.get(
       '/api/v1/roles/name/DataConsumer'
     );
@@ -59,22 +55,26 @@ export class UserClass {
     });
 
     this.responseData = await response.json();
-    const { entity } = await this.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/roles/0',
-          value: {
-            id: dataConsumerRole.id,
-            type: 'role',
-            name: dataConsumerRole.name,
+    if (assignRole) {
+      const { entity } = await this.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: dataConsumerRole.id,
+              type: 'role',
+              name: dataConsumerRole.name,
+            },
           },
-        },
-      ],
-    });
+        ],
+      });
 
-    return entity;
+      return entity;
+    }
+
+    return this.responseData;
   }
 
   async patch({
@@ -114,6 +114,51 @@ export class UserClass {
     });
   }
 
+  async setCustomRulePolicy(
+    apiContext: APIRequestContext,
+    rules: PolicyRulesType[],
+    prefix: string
+  ) {
+    const id = uuid();
+    const policy = new PolicyClass();
+    const role = new RolesClass();
+
+    await policy.create(apiContext, rules);
+    await role.create(apiContext, [policy.responseData.name]);
+    const team = new TeamClass({
+      name: `${prefix}-${id}`,
+      displayName: `${prefix} Team ${id}`,
+      description: `${prefix} team description`,
+      teamType: 'Group',
+      users: [this.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+      policies: policy.responseData.id ? [policy.responseData.id] : [],
+    });
+    await team.create(apiContext);
+  }
+
+  async setDataConsumerRole(apiContext: APIRequestContext) {
+    const id = uuid();
+    const dataConsumerPolicy = new PolicyClass();
+    const dataConsumerRoles = new RolesClass();
+
+    await dataConsumerPolicy.create(apiContext, DATA_CONSUMER_RULES);
+    await dataConsumerRoles.create(apiContext, [
+      dataConsumerPolicy.responseData.name,
+    ]);
+    const dataConsumerTeam = new TeamClass({
+      name: `PW%data_consumer_team-${id}`,
+      displayName: `PW Data Consumer Team ${id}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Group',
+      users: [this.responseData.id],
+      defaultRoles: dataConsumerRoles.responseData.id
+        ? [dataConsumerRoles.responseData.id]
+        : [],
+    });
+    await dataConsumerTeam.create(apiContext);
+  }
+
   async setDataStewardRole(apiContext: APIRequestContext) {
     this.isUserDataSteward = true;
     const id = uuid();
@@ -134,7 +179,7 @@ export class UserClass {
     await dataStewardTeam.create(apiContext);
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     if (this.isUserDataSteward) {
       await dataStewardPolicy.delete(apiContext);
       await dataStewardRoles.delete(apiContext);
@@ -142,7 +187,7 @@ export class UserClass {
     }
 
     const response = await apiContext.delete(
-      `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=true`
+      `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=${hardDelete}`
     );
 
     return response.body;
@@ -164,10 +209,21 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
     await loginRes;
+
+    const modal = await page
+      .getByRole('dialog')
+      .locator('div')
+      .filter({ hasText: 'Getting Started' })
+      .nth(1)
+      .isVisible();
+
+    if (modal) {
+      await page.getByRole('dialog').getByRole('img').first().click();
+    }
   }
 
   async logout(page: Page) {
-    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByRole('menuitem', { name: 'Logout' }).click();
     await page.getByTestId('confirm-logout').click();
   }
 }

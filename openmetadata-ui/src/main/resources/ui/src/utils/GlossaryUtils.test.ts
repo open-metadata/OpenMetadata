@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
+import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -22,9 +24,11 @@ import {
 import {
   buildTree,
   filterTreeNodeOptions,
+  findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
+  glossaryTermTableColumnsWidth,
 } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
@@ -217,5 +221,164 @@ describe('Glossary Utils', () => {
     ]);
 
     expect(filteredOptions).toEqual(expected_glossary);
+  });
+});
+
+describe('Glossary Utils - findAndUpdateNested', () => {
+  it('should add new term to the correct parent', () => {
+    const terms: ModifiedGlossary[] = [
+      {
+        fullyQualifiedName: 'parent1',
+        children: [],
+        id: 'parent1',
+        name: 'parent1',
+        description: 'parent1',
+      },
+      {
+        fullyQualifiedName: 'parent2',
+        children: [],
+        id: 'parent2',
+        name: 'parent2',
+        description: 'parent2',
+      },
+    ];
+
+    const newTerm: GlossaryTerm = {
+      fullyQualifiedName: 'child1',
+      parent: {
+        fullyQualifiedName: 'parent1',
+        id: 'parent1',
+        type: 'Glossary',
+      },
+      id: 'child1',
+      name: 'child1',
+      description: 'child1',
+      glossary: {
+        fullyQualifiedName: 'child1',
+        id: 'child1',
+        name: 'child1',
+        description: 'child1',
+        type: 'Glossary',
+      },
+    };
+
+    const updatedTerms = findAndUpdateNested(terms, newTerm);
+
+    expect(updatedTerms[0].childrenCount).toBe(1);
+    expect(updatedTerms[0].children).toHaveLength(1);
+    expect(updatedTerms?.[0].children?.[0]).toEqual(newTerm);
+  });
+
+  it('should add new term to nested parent', () => {
+    const terms: ModifiedGlossary[] = [
+      {
+        fullyQualifiedName: 'parent1',
+        children: [
+          {
+            fullyQualifiedName: 'child1',
+            children: [],
+            glossary: {
+              fullyQualifiedName: 'child1',
+              id: 'child1',
+              name: 'child1',
+              description: 'child1',
+              type: 'Glossary',
+            },
+            id: 'child1',
+            name: 'child1',
+            description: 'child1',
+          },
+        ],
+        id: 'parent1',
+        name: 'parent1',
+        description: 'parent1',
+      },
+    ];
+
+    const newTerm: GlossaryTerm = {
+      fullyQualifiedName: 'child2',
+      parent: { fullyQualifiedName: 'child1', id: 'child1', type: 'Glossary' },
+      id: 'child2',
+      name: 'child2',
+      description: 'child2',
+      glossary: {
+        fullyQualifiedName: 'child2',
+        id: 'child2',
+        name: 'child2',
+        description: 'child2',
+        type: 'Glossary',
+      },
+    };
+
+    const updatedTerms = findAndUpdateNested(terms, newTerm);
+
+    const modifiedTerms = updatedTerms[0].children?.[0].children ?? [];
+
+    expect(modifiedTerms).toHaveLength(1);
+    expect(updatedTerms[0].children?.[0].childrenCount).toBe(1);
+    expect(modifiedTerms[0]).toEqual(newTerm);
+  });
+
+  it('should not modify terms if parent is not found', () => {
+    const terms: ModifiedGlossary[] = [
+      {
+        fullyQualifiedName: 'parent1',
+        children: [],
+        id: 'parent1',
+        name: 'parent1',
+        description: 'parent1',
+      },
+    ];
+
+    const newTerm: GlossaryTerm = {
+      fullyQualifiedName: 'child1',
+      parent: {
+        fullyQualifiedName: 'nonexistent',
+        id: 'nonexistent',
+        type: 'Glossary',
+      },
+      id: 'child1',
+      name: 'child1',
+      description: 'child1',
+      glossary: {
+        fullyQualifiedName: 'child1',
+        id: 'child1',
+        name: 'child1',
+        description: 'child1',
+        type: 'Glossary',
+      },
+    };
+
+    const updatedTerms = findAndUpdateNested(terms, newTerm);
+
+    expect(updatedTerms).toEqual(terms);
+  });
+});
+
+describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
+  it('should return columnsWidth object based on Table width', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+
+    expect(columnWidthObject).toEqual({
+      description: 210,
+      name: 200,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
+    });
+  });
+
+  it('should return columnsWidth object based on Table width when not having create permission', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
+
+    expect(columnWidthObject).toEqual({
+      description: 330,
+      name: 200,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
+    });
   });
 });

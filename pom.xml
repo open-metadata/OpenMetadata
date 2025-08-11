@@ -26,13 +26,14 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.6.0-SNAPSHOT</version>
+  <version>1.9.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
+    <module>openmetadata-mcp</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
     <module>openmetadata-clients</module>
@@ -64,32 +65,32 @@
   <distributionManagement>
     <snapshotRepository>
       <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
     </snapshotRepository>
     <repository>
       <id>ossrh</id>
-      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+      <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
     </repository>
   </distributionManagement>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>5.13.0</mockito.version>
+    <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
-    <slf4j.version>1.7.36</slf4j.version>
+    <slf4j.version>2.0.4</slf4j.version>
     <jackson.version>2.17.2</jackson.version>
-    <dropwizard.version>2.1.11</dropwizard.version>
-    <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
+    <dropwizard.version>4.0.14</dropwizard.version>
+    <dropwizard-jdbi3.version>4.0.14</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <jersey-bom.version>2.40</jersey-bom.version>
+    <jersey-bom.version>3.1.5</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
-    <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
+    <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-surefire.version>3.1.2</maven-surefire.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
-    <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <jakarta.version>3.0.2</jakarta.version>
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
@@ -97,32 +98,28 @@
     <!-- Upgrading to jdbi version causes test failures-->
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
-    <commons-io.version>2.16.1</commons-io.version>
+    <commons-io.version>2.17.0</commons-io.version>
     <flyway.version>9.22.3</flyway.version>
     <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
-    <mysql.connector.version>8.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.4</postgres.connector.version>
-    <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
+    <mysql.connector.version>9.3.0</mysql.connector.version>
+    <postgres.connector.version>42.7.7</postgres.connector.version>
+    <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
-    <lombok.version>1.18.34</lombok.version>
-    <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.23</elasticsearch.version>
-    <opensearch.version>2.5.0</opensearch.version>
+    <lombok.version>1.18.36</lombok.version>
+    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <elasticsearch.version>7.17.25</elasticsearch.version>
+    <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.23</openapiswagger.version>
-
+    <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <!-- Upgrading to spring version 6.x requires Java 17 -->
-    <spring.version>6.1.12</spring.version>
+    <spring.version>6.1.14</spring.version>
     <log4j.version>2.21.0</log4j.version>
-    <!-- Upgrading jupiter version causes test failures -->
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
-    <dropwizard-health.version>1.7.3</dropwizard-health.version>
+    <dropwizard-health.version>4.0.14</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
-    <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
     <sonar.organization>open-metadata</sonar.organization>
@@ -133,30 +130,36 @@
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
-    <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
-    <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.1.0</json-schema-validator.version>
+    <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
+    <json-schema-validator.version>1.5.2</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
-    <freemarker.version>2.3.32</freemarker.version>
-    <passay.version>1.6.5</passay.version>
+    <freemarker.version>2.3.33</freemarker.version>
+    <passay.version>1.6.6</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
-    <simplejavamail.version>8.11.2</simplejavamail.version>
+    <simplejavamail.version>8.12.2</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
     <unboundsdk.version>6.0.11</unboundsdk.version>
-    <dropwizard-web.version>1.5.1</dropwizard-web.version>
+    <dropwizard-web.version>3.0.1</dropwizard-web.version>
     <snakeyaml.version>2.3</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.2.13</logback-core.version>
-    <logback-classic.version>1.2.13</logback-classic.version>
+    <logback-core.version>1.5.18</logback-core.version>
+    <logback-classic.version>1.5.18</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
+    <everit.version>1.14.4</everit.version>
+    <json-patch.version>1.13</json-patch.version>
+    <jetty.version>11.0.25</jetty.version>
+    <jakarta-el.version>5.0.0-M1</jakarta-el.version>
+    <mcp-sdk.version>0.8.1</mcp-sdk.version>
+    <lettuce.version>6.7.1.RELEASE</lettuce.version>
   </properties>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -208,6 +211,33 @@
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <!-- https://mvnrepository.com/artifact/io.modelcontextprotocol.sdk/mcp-bom -->
+      <dependency>
+        <groupId>io.modelcontextprotocol.sdk</groupId>
+        <artifactId>mcp-bom</artifactId>
+        <version>${mcp-sdk.version}</version>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>io.modelcontextprotocol.sdk</groupId>
+        <artifactId>mcp</artifactId>
+        <version>${mcp-sdk.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jetty.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -222,6 +252,10 @@
           <exclusion>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -261,6 +295,11 @@
         <version>${logback-classic.version}</version>
       </dependency>
       <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-access</artifactId>
+        <version>${logback-classic.version}</version>
+      </dependency>
+      <dependency>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-json-logging</artifactId>
         <version>${dropwizard.version}</version>
@@ -275,10 +314,25 @@
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
         <version>${dropwizard-jdbi3.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.jdbi</groupId>
+            <artifactId>jdbi3-sqlobject</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-jdbc</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>
         <artifactId>jdbi3-core</artifactId>
+        <version>${jdbi3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.jdbi</groupId>
+        <artifactId>jdbi3-sqlobject</artifactId>
         <version>${jdbi3.version}</version>
       </dependency>
       <dependency>
@@ -378,22 +432,26 @@
         <artifactId>spring-core</artifactId>
         <version>${spring.version}</version>
       </dependency>
-      <dependency>
-        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
-        <artifactId>dropwizard-micrometer-core</artifactId>
-        <version>${dropwizard-micrometer.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
-        <artifactId>dropwizard-micrometer-jdbi</artifactId>
-        <version>${dropwizard-micrometer.version}</version>
-      </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
         <artifactId>jakarta.xml.bind-api</artifactId>
         <version>4.0.2</version>
       </dependency>
+
+      <dependency>
+        <groupId>io.dropwizard</groupId>
+        <artifactId>dropwizard-metrics</artifactId>
+        <version>${dropwizard.version}</version>
+      </dependency>
+
+      <!-- For Prometheus support -->
+      <dependency>
+        <groupId>io.prometheus</groupId>
+        <artifactId>prometheus-metrics-instrumentation-dropwizard</artifactId>
+        <version>1.3.6</version>
+      </dependency>
+
 
       <!-- Runtime, com.sun.xml.bind module -->
       <dependency>
@@ -453,11 +511,6 @@
         <version>${tomcat-jdbc.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.dropwizard.modules</groupId>
-        <artifactId>dropwizard-health</artifactId>
-        <version>${dropwizard-health.version}</version>
-      </dependency>
-      <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
         <version>${org.junit.jupiter.version}</version>
@@ -466,7 +519,7 @@
       <dependency>
         <groupId>io.github.classgraph</groupId>
         <artifactId>classgraph</artifactId>
-        <version>4.8.175</version>
+        <version>4.8.177</version>
       </dependency>
       <dependency>
         <groupId>org.reflections</groupId>
@@ -510,27 +563,27 @@
       <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
-        <version>2.2.0</version>
+        <version>2.3.0</version>
       </dependency>
       <dependency>
         <groupId>info.picocli</groupId>
         <artifactId>picocli</artifactId>
         <version>${picocli.version}</version>
       </dependency>
-
-      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->
+      <dependency>
+        <groupId>com.github.erosb</groupId>
+        <artifactId>everit-json-schema</artifactId>
+        <version>${everit.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
-        <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>9.4.53.v20231009</version>
+        <version>${jetty.version}</version>
       </dependency>
-
-      <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
       <dependency>
         <groupId>org.glassfish</groupId>
         <artifactId>jakarta.el</artifactId>
-        <version>3.0.4</version>
+        <version>${jakarta-el.version}</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONDATAFORMAT-1047329 -->
@@ -544,9 +597,66 @@
         <groupId>com.jayway.jsonpath</groupId>
         <artifactId>json-path</artifactId>
         <version>${jsonpath.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
-
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+      <version>${json-patch.version}</version>
+    </dependency>
+      <dependency>
+        <groupId>com.microsoft.azure</groupId>
+        <artifactId>msal4j</artifactId>
+        <version>1.22.0</version>
+        <exclusions>
+          <exclusion>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-identity</artifactId>
+        <version>1.15.2</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>4.1.118.Final</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
+      <!-- Enforce consistent snakeyaml version -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>${snakeyaml.version}</version>
+      </dependency>
+      <!-- Enforce consistent jackson-dataformat-yaml version -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-yaml</artifactId>
+        <version>2.17.2</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <!-- Redis/Cache dependencies -->
+      <dependency>
+        <groupId>io.lettuce</groupId>
+        <artifactId>lettuce-core</artifactId>
+        <version>${lettuce.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -811,10 +921,17 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.10.1</version>
+          <version>3.13.0</version>
           <configuration>
-            <source>17</source>
-            <target>17</target>
+            <source>21</source>
+            <target>21</target>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+            </annotationProcessorPaths>
           </configuration>
         </plugin>
         <plugin>
@@ -929,7 +1046,7 @@
         <extensions>true</extensions>
         <configuration>
           <serverId>ossrh</serverId>
-          <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+          <nexusUrl>https://ossrh-staging-api.central.sonatype.com/</nexusUrl>
           <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
       </plugin>

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Space } from 'antd';
+import { Button, Skeleton } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
@@ -34,11 +34,13 @@ import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import './persona-page.less';
 
-export const PersonaPage = () => {
+const PERSONA_PAGE_SIZE = 12;
+
+export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
-
   const [persona, setPersona] = useState<Persona[]>();
 
   const [addEditPersona, setAddEditPersona] = useState<Persona>();
@@ -48,11 +50,10 @@ export const PersonaPage = () => {
     currentPage,
     handlePageChange,
     pageSize,
-    handlePageSizeChange,
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging();
+  } = usePaging(PERSONA_PAGE_SIZE);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.PERSONA),
@@ -71,7 +72,7 @@ export const PersonaPage = () => {
 
       setPersona(data);
       handlePagingChange(paging);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
@@ -82,93 +83,121 @@ export const PersonaPage = () => {
     fetchPersonas();
   }, [pageSize]);
 
-  const handleAddNewPersona = () => {
+  const handleAddNewPersona = useCallback(() => {
     setAddEditPersona({} as Persona);
-  };
+  }, []);
 
   const errorPlaceHolder = useMemo(
     () => (
-      <Col className="mt-24 text-center" span={24}>
+      <div className="h-full text-center w-full p-x-box">
         <ErrorPlaceHolder
+          buttonId="add-persona-button"
+          className="border-none"
           heading={t('label.persona')}
           permission={isAdminUser}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.persona'),
+          })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
         />
-      </Col>
+      </div>
     ),
     [isAdminUser]
   );
 
-  const handlePersonalAddEditCancel = () => {
+  const handlePersonalAddEditCancel = useCallback(() => {
     setAddEditPersona(undefined);
-  };
+  }, []);
 
-  const handlePersonaAddEditSave = () => {
+  const handlePersonaAddEditSave = useCallback(() => {
     handlePersonalAddEditCancel();
     fetchPersonas();
-  };
+  }, [fetchPersonas]);
 
-  const handlePersonaPageChange = ({
-    currentPage,
-    cursorType,
-  }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    if (cursorType) {
-      fetchPersonas({ [cursorType]: paging[cursorType] });
-    }
-  };
+  const handlePersonaPageChange = useCallback(
+    ({ currentPage, cursorType }: PagingHandlerParams) => {
+      handlePageChange(currentPage);
+      if (cursorType) {
+        fetchPersonas({ [cursorType]: paging[cursorType] });
+      }
+    },
+    [handlePageChange, fetchPersonas, paging]
+  );
+
+  if (isEmpty(persona) && !isLoading) {
+    return (
+      <div className="flex-center full-height">
+        {errorPlaceHolder}
+        {Boolean(addEditPersona) && (
+          <AddEditPersonaForm
+            persona={addEditPersona}
+            onCancel={handlePersonalAddEditCancel}
+            onSave={handlePersonaAddEditSave}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.persona-plural')}>
-      <Row
-        className="user-listing page-container p-b-md"
-        data-testid="user-list-v1-component"
-        gutter={[16, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={18}>
-          <PageHeader data={PAGE_HEADERS.PERSONAS} />
-        </Col>
-        <Col span={6}>
-          <Space align="center" className="w-full justify-end" size={16}>
-            <Button
-              data-testid="add-persona-button"
-              type="primary"
-              onClick={handleAddNewPersona}>
-              {t('label.add-entity', { entity: t('label.persona') })}
-            </Button>
-          </Space>
-        </Col>
+    <PageLayoutV1
+      mainContainerClassName="persona-main-container"
+      pageTitle={pageTitle}>
+      <div className="h-full d-flex flex-col">
+        <div className="d-flex flex-col m-b-md">
+          <div className="m-b-md">
+            <TitleBreadcrumb titleLinks={breadcrumbs} />
+          </div>
+          <div className="d-flex justify-between align-center">
+            <div className="flex-1">
+              <PageHeader data={PAGE_HEADERS.PERSONAS} />
+            </div>
+            <div>
+              <Button
+                data-testid="add-persona-button"
+                type="primary"
+                onClick={handleAddNewPersona}>
+                {t('label.add-entity', { entity: t('label.persona') })}
+              </Button>
+            </div>
+          </div>
+        </div>
 
-        {isLoading
-          ? [1, 2, 3].map((key) => (
-              <Col key={key} span={8}>
-                <Card>
-                  <Skeleton active paragraph title />
-                </Card>
-              </Col>
-            ))
-          : persona?.map((persona) => (
-              <Col key={persona.id} span={8}>
-                <PersonaDetailsCard persona={persona} />
-              </Col>
-            ))}
+        {/* Main content area with flex-grow to take remaining space */}
+        <div className="d-flex flex-col justify-between flex-1">
+          {/* Persona cards section */}
+          <div className="persona-cards-grid">
+            {isLoading
+              ? [1, 2, 3].map((key) => (
+                  <div className="skeleton-card-item" key={key}>
+                    <Card>
+                      <Skeleton active paragraph title />
+                    </Card>
+                  </div>
+                ))
+              : persona?.map((persona) => (
+                  <div className="persona-card-item" key={persona.id}>
+                    <div className="w-full h-full">
+                      <PersonaDetailsCard persona={persona} />
+                    </div>
+                  </div>
+                ))}
+          </div>
 
-        {isEmpty(persona) && !isLoading && errorPlaceHolder}
-
-        {showPagination && (
-          <Col span={24}>
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handlePersonaPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          </Col>
-        )}
+          {/* Pagination at bottom of page */}
+          {showPagination && (
+            <div className="d-flex justify-center align-center m-b-sm">
+              <NextPrevious
+                currentPage={currentPage}
+                isLoading={isLoading}
+                pageSize={pageSize}
+                paging={paging}
+                pagingHandler={handlePersonaPageChange}
+              />
+            </div>
+          )}
+        </div>
 
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
@@ -177,7 +206,7 @@ export const PersonaPage = () => {
             onSave={handlePersonaAddEditSave}
           />
         )}
-      </Row>
+      </div>
     </PageLayoutV1>
   );
 };

@@ -24,6 +24,7 @@
   border-radius: 4px;
   cursor: pointer;
   overflow: hidden;
+  border-color: @border-color;
 }
 
 .ant-tag.tag-highlight {
@@ -51,7 +52,34 @@
     margin: inherit;
   }
 }
+.ant-tag.tag-chip-content.new-chip-style {
+  .ant-select-selection-item {
+    border: 1px solid @blue-30;
+    border-radius: @border-rad-xs;
+    background: @blue-29;
+    height: 30px;
+  }
 
+  .ant-select-selection-item {
+    display: flex;
+    align-items: center;
+  }
+  border: 1px solid @blue-30;
+  background: @blue-29;
+  border-radius: @border-rad-xs;
+  .tags-label {
+    color: @tag-text;
+    font-weight: @font-regular;
+  }
+}
+.ant-tag.tag-chip-content.new-chip-style-with-color {
+  border: 1px solid @blue-30;
+  border-radius: @border-rad-xs;
+  .tags-label {
+    color: @tag-text;
+    font-weight: @font-regular;
+  }
+}
 .ant-tag.tag-chip-add-button {
   padding: 3px 8px;
   background: @white;

@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/tab.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tab",
+  "description": "This schema defines a Tab within a Page.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.Tab",
+  "properties": {
+    "id": { "$ref": "../../type/basic.json#/definitions/uuid" },
+    "name": {
+      "description": "Name of the tab.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "DisplayName of the tab.",
+      "type": "string"
+    },
+    "layout": {
+      "description": "Layout configuration for this tab.",
+      "type": "object"
+    },
+    "editable": {
+      "description": "Weather tab can be edit by the user or not.",
+      "type": "boolean"
+    },
+    "knowledgePanels": {
+      "description": "KnowledgePanels that are part of this Tab.",
+      "$ref": "../../type/entityReferenceList.json"
+    }
+  },
+  "required": ["id", "name", "layout"],
+  "additionalProperties": false
+}

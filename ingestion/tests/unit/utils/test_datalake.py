@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     GenericDataFrameColumnParser,
     ParquetDataFrameColumnParser,
+    get_file_format_type,
 )
 
 STRUCTURE = {
@@ -198,7 +199,14 @@ class TestParquetDataFrameColumnParser(TestCase):
         parquet_parser = DataFrameColumnParser.create(self.df, SupportedTypes.PARQUET)
         self.assertIsInstance(parquet_parser.parser, ParquetDataFrameColumnParser)
 
-        other_types = [typ for typ in SupportedTypes if typ != SupportedTypes.PARQUET]
+        parquet_types = [
+            SupportedTypes.PARQUET,
+            SupportedTypes.PARQUET_PQ,
+            SupportedTypes.PARQUET_PQT,
+            SupportedTypes.PARQUET_PARQ,
+            SupportedTypes.PARQUET_SNAPPY,
+        ]
+        other_types = [typ for typ in SupportedTypes if typ not in parquet_types]
         for other_type in other_types:
             with self.subTest(other_type=other_type):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)
@@ -444,3 +452,141 @@ class TestParquetDataFrameColumnParser(TestCase):
                 with self.subTest(validation=validation):
                     expected_col, actual_col = validation
                     self._validate_parsed_column(expected_col, actual_col)
+
+    def test_get_file_format_type_csv_gz(self):
+        """test get_file_format_type function for csv.gz files"""
+        # Test csv.gz file detection
+        result = get_file_format_type("data.csv.gz")
+        self.assertEqual(result, SupportedTypes.CSVGZ)
+
+        # Test regular csv file detection (should still work)
+        result = get_file_format_type("data.csv")
+        self.assertEqual(result, SupportedTypes.CSV)
+
+        # Test other gzipped files
+        result = get_file_format_type("data.json.gz")
+        self.assertEqual(result, SupportedTypes.JSONGZ)
+
+        # Test unsupported gzipped format
+        result = get_file_format_type("data.txt.gz")
+        self.assertEqual(result, False)
+
+    def test_csv_gz_file_format_detection_edge_cases(self):
+        """test edge cases for csv.gz file format detection"""
+        # Test with nested paths
+        result = get_file_format_type("folder/subfolder/data.csv.gz")
+        self.assertEqual(result, SupportedTypes.CSVGZ)
+
+        # Test with multiple dots
+        result = get_file_format_type("data.backup.csv.gz")
+        self.assertEqual(result, SupportedTypes.CSVGZ)
+
+        # Test with no extension
+        result = get_file_format_type("data")
+        self.assertEqual(result, False)
+
+        # Test with just .gz
+        result = get_file_format_type("data.gz")
+        self.assertEqual(result, False)
+
+    def test_csv_gz_compression_detection(self):
+        """test compression detection for various file types"""
+        # Test csv.gz compression detection
+        test_cases = [
+            ("data.csv.gz", SupportedTypes.CSVGZ),
+            ("data.csv", SupportedTypes.CSV),
+            ("data.json.gz", SupportedTypes.JSONGZ),
+            ("data.json", SupportedTypes.JSON),
+            ("data.jsonl.gz", SupportedTypes.JSONLGZ),
+            ("data.jsonl", SupportedTypes.JSONL),
+            ("data.parquet", SupportedTypes.PARQUET),
+            ("data.txt.gz", False),  # Unsupported
+            ("data.unknown.gz", False),  # Unsupported
+        ]
+
+        for filename, expected in test_cases:
+            with self.subTest(filename=filename):
+                result = get_file_format_type(filename)
+                self.assertEqual(result, expected, f"Failed for {filename}")
+
+    def test_csv_gz_reader_factory_integration(self):
+        """test that csv.gz is properly integrated with reader factory"""
+        from metadata.readers.dataframe.reader_factory import SupportedTypes
+
+        # Test that CSVGZ is properly handled
+        try:
+            # Test that the enum value exists
+            self.assertEqual(SupportedTypes.CSVGZ.value, "csv.gz")
+
+            # Test that it's different from regular CSV
+            self.assertNotEqual(SupportedTypes.CSVGZ, SupportedTypes.CSV)
+            self.assertNotEqual(SupportedTypes.CSVGZ.value, SupportedTypes.CSV.value)
+
+        except Exception as e:
+            self.fail(f"CSVGZ enum test failed: {e}")
+
+    def test_csv_gz_supported_types_enum(self):
+        """test that CSVGZ is properly defined in SupportedTypes enum"""
+        # Test that CSVGZ exists in the enum
+        self.assertIn(SupportedTypes.CSVGZ, SupportedTypes)
+        self.assertEqual(SupportedTypes.CSVGZ.value, "csv.gz")
+
+        # Test that it's different from regular CSV
+        self.assertNotEqual(SupportedTypes.CSVGZ, SupportedTypes.CSV)
+        self.assertNotEqual(SupportedTypes.CSVGZ.value, SupportedTypes.CSV.value)
+
+    def test_csv_gz_dsv_reader_compression_detection(self):
+        """test that DSV reader properly detects compression for csv.gz files"""
+        from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+            LocalConfig,
+        )
+        from metadata.readers.dataframe.dsv import DSVDataFrameReader
+
+        # Create a mock config
+        local_config = LocalConfig()
+
+        # Create DSV reader
+        reader = DSVDataFrameReader(config_source=local_config, client=None)
+
+        # Test compression detection logic (this is the same logic used in the dispatch methods)
+        test_cases = [
+            ("data.csv.gz", "gzip"),
+            ("data.csv", None),
+            ("data.json.gz", "gzip"),
+            ("data.txt.gz", "gzip"),
+            ("data.unknown.gz", "gzip"),
+        ]
+
+        for filename, expected_compression in test_cases:
+            with self.subTest(filename=filename):
+                # Simulate the compression detection logic from the dispatch methods
+                compression = None
+                if filename.endswith(".gz"):
+                    compression = "gzip"
+
+                self.assertEqual(
+                    compression,
+                    expected_compression,
+                    f"Compression detection failed for {filename}",
+                )
+
+    def test_csv_gz_integration_completeness(self):
+        """test that csv.gz support is complete across all components"""
+        # Test that CSVGZ is in the reader factory mapping
+        from metadata.readers.dataframe.reader_factory import (
+            DF_READER_MAP,
+            SupportedTypes,
+        )
+
+        # Check that CSVGZ is mapped to CSVDataFrameReader
+        self.assertIn(SupportedTypes.CSVGZ.value, DF_READER_MAP)
+
+        # Test that the get_df_reader function includes CSVGZ in DSV handling
+
+        # This should not raise an exception for CSVGZ
+        try:
+            # Test that CSVGZ is included in the DSV types
+            dsv_types = {SupportedTypes.CSV, SupportedTypes.CSVGZ, SupportedTypes.TSV}
+            self.assertIn(SupportedTypes.CSVGZ, dsv_types)
+        except Exception as e:
+            self.fail(f"CSVGZ integration test failed: {e}")

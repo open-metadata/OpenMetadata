@@ -16,8 +16,11 @@ package org.openmetadata.service.util;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
-import javax.validation.constraints.NotNull;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.Paging;
 
@@ -95,6 +98,16 @@ public class ResultList<T> {
     paging = new Paging().withBefore(null).withAfter(null).withTotal(total).withOffset(offset);
   }
 
+  /* Conveniently map the data to another type without the need to create a new ResultList */
+  public <S> ResultList<S> map(Function<T, S> mapper) {
+    return new ResultList<>(data.stream().map(mapper).collect(Collectors.toList()), paging);
+  }
+
+  /* Conveniently filter the data without the need to create a new ResultList */
+  public ResultList<T> filter(Predicate<T> predicate) {
+    return new ResultList<>(data.stream().filter(predicate).collect(Collectors.toList()), paging);
+  }
+
   public ResultList(List<T> data, Integer offset, Integer limit, Integer total) {
     this.data = data;
     paging =
@@ -104,6 +117,17 @@ public class ResultList<T> {
             .withTotal(total)
             .withOffset(offset)
             .withLimit(limit);
+  }
+
+  public ResultList(List<T> data, Paging other) {
+    this.data = data;
+    paging =
+        new Paging()
+            .withBefore(null)
+            .withAfter(null)
+            .withTotal(other.getTotal())
+            .withOffset(other.getOffset())
+            .withLimit(other.getLimit());
   }
 
   public ResultList(

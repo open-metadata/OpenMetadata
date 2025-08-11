@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { isEmpty, isString } from 'lodash';
+import Qs from 'qs';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
   APICollectionSource,
   APIEndpointSource,
   ChartSource,
   DashboardSource,
+  DatabaseSchemaSource,
+  DatabaseSource,
   DataProductSource,
   GlossarySource,
   MetricSource,
@@ -41,7 +45,7 @@ import {
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
 } from '../../interface/search.interface';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import {
@@ -57,12 +61,16 @@ type SuggestionProp = {
   searchCriteria?: SearchIndex;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
+  isNLPActive?: boolean;
+  onSearchTextUpdate?: (text: string) => void;
 };
 
 const Suggestions = ({
   searchText,
   setIsOpen,
   searchCriteria,
+  isNLPActive = false,
+  onSearchTextUpdate,
 }: SuggestionProp) => {
   const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
@@ -85,6 +93,12 @@ const Suggestions = ({
   >([]);
   const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
+  >([]);
+  const [databaseSuggestions, setDatabaseSuggestions] = useState<
+    DatabaseSource[]
+  >([]);
+  const [databaseSchemaSuggestions, setDatabaseSchemaSuggestions] = useState<
+    DatabaseSchemaSource[]
   >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
     SearchIndexSource[]
@@ -144,6 +158,10 @@ const Suggestions = ({
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
     );
+    setDatabaseSuggestions(filterOptionsByIndex(options, SearchIndex.DATABASE));
+    setDatabaseSchemaSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DATABASE_SCHEMA)
+    );
 
     setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
 
@@ -158,6 +176,18 @@ const Suggestions = ({
       filterOptionsByIndex(options, SearchIndex.METRIC_SEARCH_INDEX)
     );
   };
+
+  const quickFilter = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
+
+    return !isString(parsedSearch.quickFilter)
+      ? {}
+      : JSON.parse(parsedSearch.quickFilter);
+  }, [location.search]);
 
   const getSuggestionsForIndex = (
     suggestions: SearchSuggestions,
@@ -212,6 +242,14 @@ const Suggestions = ({
             suggestions: glossaryTermSuggestions,
             searchIndex: SearchIndex.GLOSSARY_TERM,
           },
+          {
+            suggestions: databaseSuggestions,
+            searchIndex: SearchIndex.DATABASE,
+          },
+          {
+            suggestions: databaseSchemaSuggestions,
+            searchIndex: SearchIndex.DATABASE_SCHEMA,
+          },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {
             suggestions: dataProductSuggestions,
@@ -242,25 +280,22 @@ const Suggestions = ({
   };
 
   const fetchSearchData = useCallback(async () => {
+    if (isNLPActive) {
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const res = await searchData(
-        searchText,
-        1,
-        PAGE_SIZE_BASE,
-        '',
-        '',
-        '',
-        searchCriteria ?? SearchIndex.DATA_ASSET,
-        false,
-        false,
-        false
-      );
 
-      if (res.data) {
-        setOptions(res.data.hits.hits as unknown as Option[]);
-        updateSuggestions(res.data.hits.hits as unknown as Option[]);
-      }
+      const res = await searchQuery({
+        query: searchText,
+        searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
+        queryFilter: quickFilter,
+        pageSize: PAGE_SIZE_BASE,
+      });
+
+      setOptions(res.hits.hits as unknown as Option[]);
+      updateSuggestions(res.hits.hits as unknown as Option[]);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -286,8 +321,48 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
+  // Add a function to render AI query suggestions
+  const renderAIQuerySuggestions = () => {
+    const aiQueries = [
+      'Tables owned by marketing',
+      'Tables with Tier1 classification',
+      'Find dashboards tagged with PII.Sensitive',
+      'Topics with schema fields containing address',
+      'Tables tagged with tier1 or tier2',
+    ];
+
+    return (
+      <div data-testid="ai-query-suggestions">
+        <Typography.Text strong className="m-b-sm d-block">
+          {t('label.ai-queries')}
+        </Typography.Text>
+        {aiQueries.map((query) => (
+          <Button
+            block
+            className="m-b-md w-100 text-left d-flex items-center p-0"
+            data-testid="nlp-suggestions-button"
+            icon={
+              <div className="nlp-button w-6 h-6 flex-center m-r-md">
+                <IconSuggestionsBlue />
+              </div>
+            }
+            key={query}
+            type="text"
+            onClick={() => onSearchTextUpdate?.(query)}>
+            {query}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <Loader />;
+  }
+
+  // Add a condition to show AI query suggestions when searchText is empty and isNLPActive is true
+  if (isEmpty(searchText) && isNLPActive) {
+    return renderAIQuerySuggestions();
   }
 
   if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {

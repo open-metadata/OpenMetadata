@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,11 @@ test entity link utils
 import pytest
 from antlr4.error.Errors import ParseCancellationException
 
-from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn
+from metadata.utils.entity_link import (
+    get_decoded_column,
+    get_table_fqn,
+    get_table_or_column_fqn,
+)
 
 
 @pytest.mark.parametrize(
@@ -33,6 +37,10 @@ from metadata.utils.entity_link import get_decoded_column, get_table_or_column_f
         (
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>",
             "随机的",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::test__reserved__colon____reserved__arrow__test>",
+            "test::>test",
         ),
     ],
 )
@@ -94,6 +102,21 @@ def test_get_decoded_column(entity_link, expected):
             "rds.dev.dbt_jaffle>.customers",
             id="valid_entity_link10",
         ),
+        pytest.param(
+            '<#E::dashboard::"rds.dev.dbt_jaffle.customers">',
+            '"rds.dev.dbt_jaffle.customers"',
+            id="valid_entity_link11",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.:dbt_jaffle.customers::columns::阿>",
+            "rds.dev.:dbt_jaffle.customers.阿",
+            id="valid_entity_link12",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::grea:>hdfwsd>",
+            "rds.dev.dbt_jaffle.customers.grea:>hdfwsd",
+            id="valid_entity_link13",
+        ),
     ],
 )
 def test_valid_get_table_or_column_fqn(entity_link, fqn):
@@ -113,16 +136,6 @@ def test_valid_get_table_or_column_fqn(entity_link, fqn):
             "<#E::table::rds.dev.dbt_jaffle.customers::foo::number_of_orders>",
             ParseCancellationException,
             id="invalid_entity_link1",
-        ),
-        pytest.param(
-            "<#E::table::rds.dev.dbt_jaffle.customers::columns::grea:>hdfwsd>",
-            ParseCancellationException,
-            id="invalid_entity_link2",
-        ),
-        pytest.param(
-            "<#E::table::rds.dev.:dbt_jaffle.customers::columns::阿>",
-            ParseCancellationException,
-            id="invalid_entity_link3",
         ),
         pytest.param(
             "<#E::table::rds.dev.dbt_jaffle.customers::columns>",
@@ -145,3 +158,16 @@ def test_invalid_get_table_or_column_fqn(entity_link, error):
     """
     with pytest.raises(error):
         get_table_or_column_fqn(entity_link)
+
+
+@pytest.mark.parametrize(
+    "entity_link,expected",
+    [
+        (
+            "<#E::table::red.dev.dbt_jaffle.customers::columns::a>",
+            "red.dev.dbt_jaffle.customers",
+        ),
+    ],
+)
+def test_get_table_fqn(entity_link, expected):
+    assert get_table_fqn(entity_link) == expected

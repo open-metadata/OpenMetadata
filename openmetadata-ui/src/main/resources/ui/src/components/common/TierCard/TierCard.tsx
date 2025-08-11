@@ -12,6 +12,7 @@
  */
 
 import {
+  Button,
   Card,
   Collapse,
   Popover,
@@ -22,15 +23,18 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import Loader from '../Loader/Loader';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
@@ -40,12 +44,16 @@ const TierCard = ({
   updateTier,
   children,
   popoverProps,
+  onClose,
 }: TierCardProps) => {
+  const popoverRef = useRef<any>(null);
   const [tiers, setTiers] = useState<Array<Tag>>([]);
   const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
     []
   );
+  const [selectedTier, setSelectedTier] = useState<string>(currentTier ?? '');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const { t } = useTranslation();
 
   const getTierData = async () => {
     setIsLoadingTierData(true);
@@ -91,12 +99,18 @@ const TierCard = ({
     const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
     await updateTier?.(tier);
     setIsLoadingTierData(false);
+    popoverRef.current?.close();
   };
 
   const handleTierSelection = async ({
     target: { value },
   }: RadioChangeEvent) => {
-    updateTierData(value);
+    setSelectedTier(value);
+  };
+
+  const handleCloseTier = async () => {
+    popoverRef.current?.close();
+    onClose?.();
   };
 
   useEffect(() => {
@@ -109,70 +123,94 @@ const TierCard = ({
     <Popover
       className="p-0"
       content={
-        <Card
-          className="tier-card"
-          data-testid="cards"
-          title={
-            <Space className="w-full p-xs justify-between">
-              <Typography.Text className="m-b-0 font-medium text-md">
-                {t('label.edit-entity', { entity: t('label.tier') })}
-              </Typography.Text>
-              <Typography.Text
-                className="m-b-0 font-normal text-primary cursor-pointer"
-                data-testid="clear-tier"
-                // we need to pass undefined to clear the tier
-                onClick={() => updateTierData()}>
-                {t('label.clear')}
-              </Typography.Text>
-            </Space>
-          }>
-          <Spin
-            indicator={<Loader size="small" />}
-            spinning={isLoadingTierData}>
-            <Radio.Group value={currentTier} onChange={handleTierSelection}>
-              <Collapse
-                accordion
-                className="bg-white border-none tier-card-content"
-                collapsible="icon"
-                defaultActiveKey={currentTier}
-                expandIconPosition="end">
-                {tierCardData.map((card) => (
-                  <Panel
-                    data-testid="card-list"
-                    header={
-                      <Radio
-                        className="radio-input"
-                        data-testid={`radio-btn-${card.title}`}
-                        value={card.id}>
-                        <Space direction="vertical" size={0}>
-                          <Typography.Paragraph
-                            className="m-b-0 font-regular text-grey-body"
-                            style={{ color: card.style?.color }}>
-                            {card.title}
-                          </Typography.Paragraph>
-                          <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                            {card.description.replace(/\*/g, '')}
-                          </Typography.Paragraph>
-                        </Space>
-                      </Radio>
+        <FocusTrapWithContainer active={popoverProps?.open || false}>
+          <Card
+            className="tier-card"
+            data-testid="cards"
+            title={
+              <Space className="w-full p-xs justify-between">
+                <Typography.Text className="m-b-0 font-medium text-md">
+                  {t('label.edit-entity', { entity: t('label.tier') })}
+                </Typography.Text>
+                <Typography.Text
+                  className="m-b-0 font-normal text-primary cursor-pointer"
+                  data-testid="clear-tier"
+                  tabIndex={0}
+                  // we need to pass undefined to clear the tier
+                  onClick={() => updateTierData()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      updateTierData();
                     }
-                    key={card.id}>
-                    <div className="m-l-md">
-                      <RichTextEditorPreviewer
-                        className="tier-card-description"
-                        enableSeeMoreVariant={false}
-                        markdown={card.data}
-                      />
-                    </div>
-                  </Panel>
-                ))}
-              </Collapse>
-            </Radio.Group>
-          </Spin>
-        </Card>
+                  }}>
+                  {t('label.clear')}
+                </Typography.Text>
+              </Space>
+            }>
+            <Spin
+              indicator={<Loader size="small" />}
+              spinning={isLoadingTierData}>
+              <Radio.Group value={selectedTier} onChange={handleTierSelection}>
+                <Collapse
+                  accordion
+                  className="bg-white border-none tier-card-content"
+                  collapsible="icon"
+                  defaultActiveKey={selectedTier}
+                  expandIconPosition="end">
+                  {tierCardData.map((card) => (
+                    <Panel
+                      data-testid="card-list"
+                      header={
+                        <Radio
+                          className="radio-input"
+                          data-testid={`radio-btn-${card.title}`}
+                          value={card.id}>
+                          <Space direction="vertical" size={0}>
+                            <Typography.Paragraph
+                              className="m-b-0 font-regular text-grey-body"
+                              style={{ color: card.style?.color }}>
+                              {card.title}
+                            </Typography.Paragraph>
+                            <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                              {card.description.replace(/\*/g, '')}
+                            </Typography.Paragraph>
+                          </Space>
+                        </Radio>
+                      }
+                      key={card.id}>
+                      <div className="m-l-md">
+                        <RichTextEditorPreviewerV1
+                          className="tier-card-description"
+                          enableSeeMoreVariant={false}
+                          markdown={card.data}
+                        />
+                      </div>
+                    </Panel>
+                  ))}
+                </Collapse>
+              </Radio.Group>
+              <div className="flex justify-end text-lg gap-2 mt-4">
+                <Button
+                  data-testid="close-tier-card"
+                  type="default"
+                  onClick={handleCloseTier}>
+                  <CloseOutlined />
+                </Button>
+                <Button
+                  data-testid="update-tier-card"
+                  type="primary"
+                  onClick={() => updateTierData(selectedTier)}>
+                  <CheckOutlined />
+                </Button>
+              </div>
+            </Spin>
+          </Card>
+        </FocusTrapWithContainer>
       }
       overlayClassName="tier-card-popover"
       placement="bottomRight"
+      ref={popoverRef}
       showArrow={false}
       trigger="click"
       onOpenChange={(visible) =>

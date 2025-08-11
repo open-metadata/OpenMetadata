@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import RetentionPeriod from './RetentionPeriod.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
@@ -21,12 +20,9 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock(
-  '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
-  () => ({
-    ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
-  })
-);
+jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
+  ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
+}));
 
 const mockOnUpdate = jest.fn();
 

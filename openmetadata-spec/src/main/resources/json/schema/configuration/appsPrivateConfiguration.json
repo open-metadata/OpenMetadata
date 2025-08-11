@@ -21,6 +21,9 @@
           "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
           "default": false
         },
+        "schedule": {
+          "$ref": "../entity/applications/app.json#/definitions/appSchedule"
+        },
         "parameters": {
           "javaType": "org.openmetadata.schema.api.configuration.apps.Parameters",
           "description": "Parameters to initialize the Applications.",

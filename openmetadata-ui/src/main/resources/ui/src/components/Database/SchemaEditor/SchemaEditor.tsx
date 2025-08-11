@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
@@ -21,13 +22,15 @@ import 'codemirror/addon/fold/foldgutter.css';
 import 'codemirror/addon/fold/foldgutter.js';
 import 'codemirror/addon/selection/active-line';
 import 'codemirror/lib/codemirror.css';
+import 'codemirror/mode/clike/clike';
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -46,7 +49,10 @@ const SchemaEditor = ({
   editorClass,
   showCopyButton = true,
   onChange,
+  onFocus,
+  refreshEditor,
 }: SchemaEditorProps) => {
+  const wrapperRef = useRef<CodeMirror | null>(null);
   const { t } = useTranslation();
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
@@ -66,6 +72,8 @@ const SchemaEditor = ({
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
+  // Store the CodeMirror editor instance
+  const editorInstance = useRef<Editor | null>(null);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   const handleEditorInputBeforeChange = (
@@ -85,13 +93,37 @@ const SchemaEditor = ({
     }
   };
 
+  const editorWillUnmount = useCallback(() => {
+    if (editorInstance.current) {
+      const editorWrapper = editorInstance.current.getWrapperElement();
+      if (editorWrapper) {
+        editorWrapper.remove();
+      }
+    }
+    if (wrapperRef.current) {
+      (wrapperRef.current as unknown as { hydrated: boolean }).hydrated = false;
+    }
+  }, [editorInstance, wrapperRef]);
+
   useEffect(() => {
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
 
+  useEffect(() => {
+    if (refreshEditor) {
+      // CodeMirror can't measure its container if hidden (e.g., in an inactive tab with display: none).
+      // When the tab becomes visible, the browser may not have finished layout/reflow when this runs.
+      // Delaying refresh by 50ms ensures the editor is visible and DOM is ready for CodeMirror to re-render.
+      // This is a common workaround for editors inside tabbed interfaces.
+      setTimeout(() => {
+        editorInstance.current?.refresh();
+      }, 50);
+    }
+  }, [refreshEditor]);
+
   return (
     <div
-      className={classNames('relative', className)}
+      className={classNames('schema-editor-container relative', className)}
       data-testid="code-mirror-container">
       {showCopyButton && (
         <div className="query-editor-button">
@@ -100,9 +132,9 @@ const SchemaEditor = ({
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
             }>
             <Button
-              className="flex-center bg-white"
+              className="query-editor-copy-button"
               data-testid="query-copy-button"
-              icon={<CopyIcon height={16} width={16} />}
+              icon={<Icon component={CopyIcon} />}
               onClick={onCopyToClipBoard}
             />
           </Tooltip>
@@ -111,10 +143,16 @@ const SchemaEditor = ({
 
       <CodeMirror
         className={editorClass}
+        editorDidMount={(editor) => {
+          editorInstance.current = editor;
+        }}
+        editorWillUnmount={editorWillUnmount}
         options={defaultOptions}
+        ref={wrapperRef}
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
         onChange={handleEditorInputChange}
+        {...(onFocus && { onFocus })}
       />
     </div>
   );

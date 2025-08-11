@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import TabsLabel from './TabsLabel.component';
 import { TabsLabelProps } from './TabsLabel.interface';
 
@@ -39,6 +38,13 @@ describe('TabsLabel component', () => {
   it('Container should have id, provided via prop', async () => {
     render(<TabsLabel {...mockProps} count={3} />);
     const container = await screen.findByTestId(mockProps.id);
+
+    expect(container).toBeVisible();
+  });
+
+  it('Description should visible, if provided via prop', async () => {
+    render(<TabsLabel {...mockProps} description="test-description" />);
+    const container = await screen.findByTestId('label-description');
 
     expect(container).toBeVisible();
   });

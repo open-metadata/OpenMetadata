@@ -16,18 +16,19 @@ import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './add-attribute-modal.less';
 
@@ -55,6 +56,7 @@ const AddAttributeModal: FC<Props> = ({
   const [searchedData, setSearchedData] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedValues, setSelectedValues] = useState<string[]>(selectedKeys);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   const fetchPolicies = async () => {
     setIsLoading(true);
@@ -108,6 +110,7 @@ const AddAttributeModal: FC<Props> = ({
   };
 
   const handleSearch = (value: string) => {
+    setSearchTerm(value);
     if (value) {
       setSearchedData(
         data.filter(
@@ -178,10 +181,17 @@ const AddAttributeModal: FC<Props> = ({
                 gutter={[16, 16]}
                 key={option.id}
                 onClick={() => handleValueSelect(option.id)}>
-                <Col span={6}>{getEntityName(option)}</Col>
+                <Col span={6}>
+                  {stringToHTML(
+                    highlightSearchText(getEntityName(option), searchTerm)
+                  )}
+                </Col>
                 <Col span={16}>
-                  <RichTextEditorPreviewer
-                    markdown={option.description || ''}
+                  <RichTextEditorPreviewerV1
+                    markdown={highlightSearchText(
+                      option.description ?? '',
+                      searchTerm
+                    )}
                   />
                 </Col>
                 <Col span={2}>

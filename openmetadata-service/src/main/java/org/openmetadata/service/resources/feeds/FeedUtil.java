@@ -13,8 +13,13 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import java.util.List;
+import java.util.UUID;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 public final class FeedUtil {
 
@@ -24,5 +29,20 @@ public final class FeedUtil {
     // Add new post to the thread
     thread.getPosts().add(post);
     thread.withPostsCount(thread.getPosts().size());
+  }
+
+  public static void cleanUpTaskForAssignees(UUID entityId, String entityType) {
+    List<String> userTasks =
+        Entity.getCollectionDAO().feedDAO().listThreadsByTaskAssignee(entityId.toString());
+    List<Thread> threads = JsonUtils.readObjects(userTasks, Thread.class);
+    for (Thread thread : threads) {
+      List<EntityReference> assignees = thread.getTask().getAssignees();
+      assignees.removeIf(
+          entityReference ->
+              entityReference.getId().equals(entityId)
+                  && entityReference.getType().equals(entityType));
+      thread.getTask().setAssignees(assignees);
+      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+    }
   }
 }

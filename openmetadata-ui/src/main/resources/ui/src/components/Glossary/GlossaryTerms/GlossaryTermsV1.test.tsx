@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import React from 'react';
+import { render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   mockedGlossaryTerms,
   MOCK_ASSETS_DATA,
+  MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
@@ -27,6 +27,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'terms',
     version: 'glossaryVersion',
   })),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock(
@@ -44,15 +45,6 @@ jest.mock('../../../rest/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
 }));
 
-jest.mock('./tabs/RelatedTerms', () =>
-  jest.fn().mockReturnValue(<div>RelatedTermsComponent</div>)
-);
-jest.mock('./tabs/GlossaryTermSynonyms', () =>
-  jest.fn().mockReturnValue(<div>GlossaryTermSynonymsComponent</div>)
-);
-jest.mock('./tabs/GlossaryTermReferences', () =>
-  jest.fn().mockReturnValue(<div>GlossaryTermReferencesComponent</div>)
-);
 jest.mock('./tabs/AssetsTabs.component', () =>
   jest.fn().mockReturnValue(<div>AssetsTabs</div>)
 );
@@ -61,6 +53,9 @@ jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () =>
 );
 jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
+);
+jest.mock('../../Customization/GenericTab/GenericTab', () =>
+  jest.fn().mockReturnValue(<div>GenericTab</div>)
 );
 
 const mockProps = {
@@ -84,25 +79,42 @@ const mockProps = {
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),
   onThreadLinkSelect: jest.fn(),
+  isTabExpanded: false,
+  toggleTabExpanded: jest.fn(),
 };
 
+jest.mock('../../../utils/GlossaryTerm/GlossaryTermUtil', () => ({
+  getGlossaryTermDetailTabs: jest.fn().mockImplementation((items) => items),
+  getTabLabelMap: jest.fn().mockReturnValue({}),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
+  return {
+    useGenericContext: jest.fn().mockImplementation(() => ({
+      permissions: MOCK_PERMISSIONS,
+    })),
+    GenericProvider: jest.fn().mockImplementation(({ children }) => children),
+    _esModule: true,
+  };
+});
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 describe('Test Glossary-term component', () => {
-  it('Should render Glossary-term component', async () => {
+  it('Should render GenericTab component', async () => {
     render(<GlossaryTerms {...mockProps} />);
 
-    act(() => {
-      jest.runAllTimers();
-    });
-    const glossaryTerm = screen.getByTestId('glossary-term');
     const tabs = await screen.findAllByRole('tab');
 
     expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
-    expect(glossaryTerm).toBeInTheDocument();
+
     expect(tabs).toHaveLength(5);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
       'label.glossary-term-plural0',
-      'label.asset-plural1', // 1 added as its count for assets
+      'label.asset-plural0',
       'label.activity-feed-and-task-plural0',
       'label.custom-property-plural',
     ]);

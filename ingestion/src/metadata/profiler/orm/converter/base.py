@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -109,10 +109,29 @@ def ometa_to_sqa_orm(
     We are building the class dynamically using
     `type` and passing SQLAlchemy `Base` class
     as the bases tuple for inheritance.
+
+    Args:
+        table (Table): OpenMetadata Table instance
+        metadata (OpenMetadata): OpenMetadata connection
+        sqa_metadata_obj (MetaData): For advanced use cases, you can pass a custom MetaData object. For most cases, this
+        can be left as None so that the global_metadata object is used.
     """
+    _metadata = sqa_metadata_obj or Base.metadata
     table.serviceType = cast(
         databaseService.DatabaseServiceType, table.serviceType
     )  # satisfy mypy
+
+    orm_database_name = get_orm_database(table, metadata)
+    # SQLite does not support schemas
+    orm_schema_name = (
+        get_orm_schema(table, metadata)
+        if table.serviceType != databaseService.DatabaseServiceType.SQLite
+        else None
+    )
+    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(
+        ".", "_"
+    )
+
     cols = {
         (
             col.name.root + "_"
@@ -122,12 +141,6 @@ def ometa_to_sqa_orm(
         for idx, col in enumerate(table.columns)
     }
 
-    orm_database_name = get_orm_database(table, metadata)
-    orm_schema_name = get_orm_schema(table, metadata)
-    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(
-        ".", "_"
-    )
-
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
         orm_name,  # Output class name
@@ -135,23 +148,20 @@ def ometa_to_sqa_orm(
         {
             "__tablename__": str(table.name.root),
             "__table_args__": {
-                # SQLite does not support schemas
-                "schema": orm_schema_name
-                if table.serviceType != databaseService.DatabaseServiceType.SQLite
-                else None,
+                "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
                 "quote": check_snowflake_case_sensitive(
                     table.serviceType, table.name.root
-                ),
+                )
+                or None,
             },
             **cols,
-            "metadata": sqa_metadata_obj or Base.metadata,
+            "metadata": _metadata,
         },
     )
 
     if not isinstance(orm, DeclarativeMeta):
         raise ValueError("OMeta to ORM did not create a DeclarativeMeta")
-
     return orm
 
 

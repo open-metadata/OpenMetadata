@@ -12,9 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import NodeSuggestions from './NodeSuggestions.component';
 
 const mockProps = {
@@ -34,8 +33,8 @@ const entityType = [
   SearchIndex.DASHBOARD_DATA_MODEL,
 ];
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 describe('Test NodeSuggestions Component', () => {
@@ -52,15 +51,21 @@ describe('Test NodeSuggestions Component', () => {
   entityType.forEach((value) => {
     it(`Suggest & Suggest API for ${value} should work properly`, async () => {
       jest.useFakeTimers('modern');
-      const mockSearchData = searchData as jest.Mock;
+      const mockSearchQueryData = searchQuery as jest.Mock;
       const searchValue = 'sale';
       await act(async () => {
         render(<NodeSuggestions {...mockProps} entityType={value} />);
       });
 
       // 1st call on page load with empty search string and respective searchIndex
-      expect(mockSearchData.mock.calls[0][0]).toBe('');
-      expect(mockSearchData.mock.calls[0][6]).toEqual(value);
+      expect(mockSearchQueryData.mock.calls[0][0]).toStrictEqual({
+        includeDeleted: false,
+        pageNumber: 1,
+        pageSize: 10,
+        query: '',
+        queryFilter: undefined,
+        searchIndex: value,
+      });
 
       const suggestionNode = await screen.findByTestId('suggestion-node');
       const searchInput = await screen.findByRole('combobox');
@@ -77,7 +82,7 @@ describe('Test NodeSuggestions Component', () => {
         jest.runAllTimers();
       });
 
-      expect(mockSearchData.mock.instances).toHaveLength(2);
+      expect(mockSearchQueryData.mock.instances).toHaveLength(2);
     });
   });
 });

@@ -11,23 +11,11 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import { debounce } from 'lodash';
 import Qs from 'qs';
-import React, {
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import ReactFlow, {
-  Background,
-  Controls,
-  Panel,
-  ReactFlowProvider,
-} from 'reactflow';
+import { useNavigate } from 'react-router-dom';
+import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -47,7 +35,9 @@ import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
+import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -55,9 +45,10 @@ const Lineage = ({
   hasEditAccess,
   entity,
   entityType,
+  isPlatformLineage,
 }: LineageProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const location = useCustomLocation();
@@ -71,25 +62,23 @@ const Lineage = ({
     onNodeDrop,
     onNodesChange,
     onEdgesChange,
-    entityLineage,
     onPaneClick,
     onConnect,
-    onZoomUpdate,
     onInitReactFlow,
-    updateEntityType,
+    updateEntityData,
   } = useLineageProvider();
 
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get('fullscreen') === 'true';
 
   const onFullScreenClick = useCallback(() => {
-    history.push({
+    navigate({
       search: Qs.stringify({ fullscreen: true }),
     });
   }, []);
 
   const onExitFullScreenViewClick = useCallback(() => {
-    history.push({
+    navigate({
       search: '',
     });
   }, []);
@@ -98,10 +87,6 @@ const Lineage = ({
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
-
-  const handleZoomLevel = debounce((value: number) => {
-    onZoomUpdate(value);
-  }, 150);
 
   const breadcrumbs = useMemo(
     () =>
@@ -119,8 +104,37 @@ const Lineage = ({
   );
 
   useEffect(() => {
-    updateEntityType(entityType);
-  }, [entityType]);
+    updateEntityData(entityType, entity as SourceType, isPlatformLineage);
+  }, [entity, entityType, isPlatformLineage]);
+
+  // Memoize callback for onEdgeClick to prevent unnecessary re-renders
+  const handleEdgeClick = useCallback(
+    (_e: React.MouseEvent, data: any) => {
+      onEdgeClick(data);
+      _e.stopPropagation();
+    },
+    [onEdgeClick]
+  );
+
+  // Memoize callback for onNodeClick to prevent unnecessary re-renders
+  const handleNodeClick = useCallback(
+    (_e: React.MouseEvent, node: any) => {
+      onNodeClick(node);
+      _e.stopPropagation();
+    },
+    [onNodeClick]
+  );
+
+  // Memoize callback for onNodeDrop to prevent unnecessary re-renders
+  const handleNodeDrop = useCallback(
+    (_e: DragEvent) => {
+      onNodeDrop(
+        _e,
+        reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
+      );
+    },
+    [onNodeDrop, reactFlowWrapper]
+  );
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
@@ -128,30 +142,32 @@ const Lineage = ({
     <Card
       className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
-      {isFullScreen && (
+      {isFullScreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
       <div
         className="h-full relative lineage-container"
         data-testid="lineage-container"
+        id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>
-        {entityLineage && (
-          <CustomControlsComponent
-            className="absolute top-1 right-1 p-xs"
-            deleted={deleted}
-            handleFullScreenViewClick={
-              !isFullScreen ? onFullScreenClick : undefined
-            }
-            hasEditAccess={hasEditAccess}
-            onExitFullScreenViewClick={
-              isFullScreen ? onExitFullScreenViewClick : undefined
-            }
-          />
-        )}
         {init ? (
-          <ReactFlowProvider>
+          <>
+            {isPlatformLineage ? null : (
+              <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            )}
+            <LineageControlButtons
+              deleted={deleted}
+              entityType={entityType}
+              handleFullScreenViewClick={
+                !isFullScreen ? onFullScreenClick : undefined
+              }
+              hasEditAccess={hasEditAccess}
+              onExitFullScreenViewClick={
+                isFullScreen ? onExitFullScreenViewClick : undefined
+              }
+            />
             <ReactFlow
-              onlyRenderVisibleElements
+              elevateEdgesOnSelect
               className="custom-react-flow"
               data-testid="react-flow-component"
               deleteKeyCode={null}
@@ -162,29 +178,18 @@ const Lineage = ({
               }}
               maxZoom={MAX_ZOOM_VALUE}
               minZoom={MIN_ZOOM_VALUE}
+              nodeDragThreshold={1}
               nodeTypes={nodeTypes}
               nodes={nodes}
               nodesConnectable={isEditMode}
               selectNodesOnDrag={false}
               onConnect={onConnect}
               onDragOver={onDragOver}
-              onDrop={(_e) =>
-                onNodeDrop(
-                  _e,
-                  reactFlowWrapper.current?.getBoundingClientRect() as DOMRect
-                )
-              }
-              onEdgeClick={(_e, data) => {
-                onEdgeClick(data);
-                _e.stopPropagation();
-              }}
+              onDrop={handleNodeDrop}
+              onEdgeClick={handleEdgeClick}
               onEdgesChange={onEdgesChange}
               onInit={onInitReactFlow}
-              onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
-              onNodeClick={(_e, node) => {
-                onNodeClick(node);
-                _e.stopPropagation();
-              }}
+              onNodeClick={handleNodeClick}
               onNodeContextMenu={onNodeContextMenu}
               onNodeDrag={dragHandle}
               onNodeDragStart={dragHandle}
@@ -195,12 +200,13 @@ const Lineage = ({
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
-              <Controls position="bottom-right" showInteractive={false} />
+              <MiniMap pannable zoomable position="bottom-right" />
+
               <Panel position="bottom-left">
-                <LineageLayers />
+                <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
             </ReactFlow>
-          </ReactFlowProvider>
+          </>
         ) : (
           <div className="loading-card">
             <Loader />

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,24 +13,60 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import List
+from typing import List, Type, cast
 
 from pyhive.sqlalchemy_hive import HiveCompiler
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import Column as OMColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataType,
+    SystemProfile,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.system.databricks.system import (
+    DatabricksSystemMetricsComputer,
+)
+from metadata.profiler.metrics.system.system import System
 from metadata.profiler.orm.converter.base import build_orm_col
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.logger import profiler_interface_registry_logger
+
+logger = profiler_interface_registry_logger()
 
 
 class DatabricksProfilerInterface(SQAProfilerInterface):
     """Databricks profiler interface"""
+
+    def _compute_system_metrics(
+        self,
+        metrics: Type[System],
+        runner: QueryRunner,
+        *args,
+        **kwargs,
+    ) -> List[SystemProfile]:
+        if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
+            logger.debug(
+                f"Skipping {metrics.name()} metric for view {runner.table_name}"
+            )
+            return []
+        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
+        self.system_metrics_class = cast(
+            Type[DatabricksSystemMetricsComputer], self.system_metrics_class
+        )
+        instance = self.system_metrics_class(
+            session=self.session,
+            runner=runner,
+            catalog=self.service_connection_config.catalog,
+        )
+        return instance.get_system_metrics()
 
     def visit_column(self, *args, **kwargs):
         result = super(  # pylint: disable=bad-super-call
@@ -97,18 +133,3 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
                 )
                 columns.append(col)
         return columns
-
-    def fetch_sample_data(self, table, columns) -> TableData:
-        """Fetch sample data from database
-
-        Args:
-            table: ORM declarative table
-
-        Returns:
-            TableData: sample table data
-        """
-        sampler = self._get_sampler(
-            table=table,
-        )
-
-        return sampler.fetch_sample_data(list(inspect(self.table).c))

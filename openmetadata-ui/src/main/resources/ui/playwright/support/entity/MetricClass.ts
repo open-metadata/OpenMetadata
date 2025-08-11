@@ -13,11 +13,11 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MetricClass extends EntityClass {
-  private metricName = `pw-metric-${uuid()}`;
+  private metricName = `playwright-metric-${uuid()}`;
 
   entity = {
     name: this.metricName,
@@ -32,7 +32,7 @@ export class MetricClass extends EntityClass {
     unitOfMeasurement: 'DOLLARS',
   };
 
-  entityResponseData: unknown;
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor() {
     super(EntityTypeEndpoint.METRIC);

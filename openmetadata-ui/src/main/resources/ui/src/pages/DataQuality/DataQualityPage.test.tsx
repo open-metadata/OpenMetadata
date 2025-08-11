@@ -10,108 +10,344 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
-const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
+const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
   tab?: DataQualityPageTabs;
 };
-const mockUseHistory = {
-  push: jest.fn(),
-};
+
+// Mock navigation function
+const mockNavigate = jest.fn();
 
 // mock components
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('./DataQualityProvider', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock(
-  '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component',
-  () => {
-    return {
-      TestSuites: jest
-        .fn()
-        .mockImplementation(() => <div>TestSuites.component</div>),
-    };
-  }
-);
-jest.mock('../../components/DataQuality/TestCases/TestCases.component', () => {
+jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+// Import DataQualityClassBase before mocking to avoid hoisting issues
+jest.mock('./DataQualityClassBase', () => {
+  const MockTestCasesComponent = () => <div>Test Cases Component</div>;
+  const MockTestSuitesComponent = () => <div>Test Suites Component</div>;
+  const MockDashboardComponent = () => <div>Dashboard Component</div>;
+
   return {
-    TestCases: jest
-      .fn()
-      .mockImplementation(() => <div>TestCases.component</div>),
+    __esModule: true,
+    default: {
+      getLeftSideBar: jest.fn().mockReturnValue([
+        {
+          key: 'tables',
+          label: 'Tables',
+          icon: jest.fn(),
+          iconProps: {
+            className: 'side-panel-icons',
+          },
+        },
+      ]),
+      getDataQualityTab: jest.fn().mockReturnValue([
+        {
+          component: MockTestCasesComponent,
+          key: 'test-cases',
+          label: 'Test Cases',
+          path: '/data-quality/test-cases',
+        },
+        {
+          component: MockTestSuitesComponent,
+          key: 'test-suites',
+          label: 'Test Suites',
+          path: '/data-quality/test-suites',
+        },
+        {
+          component: MockDashboardComponent,
+          key: 'dashboard',
+          label: 'Dashboard',
+          path: '/data-quality/dashboard',
+        },
+      ]),
+      getDefaultActiveTab: jest.fn().mockReturnValue('test-cases'),
+      getManageExtraOptions: jest.fn().mockReturnValue([]),
+      getExportDataQualityDashboardButton: jest.fn().mockReturnValue(null),
+    },
   };
 });
-jest.mock('react-router-dom', () => {
-  return {
-    useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
-  };
+jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
 });
 
-jest.mock(
-  '../../components/DataQuality/SummaryPannel/SummaryPanel.component',
-  () => ({ SummaryPanel: jest.fn() })
-);
+jest.mock('../../hoc/withPageLayout', () => ({
+  __esModule: true,
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest
+    .fn()
+    .mockImplementation(() => ({ tab: mockUseParam.tab })),
+}));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest
-    .fn()
-    .mockImplementation(() => ({ permissions: DEFAULT_ENTITY_PERMISSION })),
+  usePermissionProvider: jest.fn().mockReturnValue({
+    permissions: {
+      testSuite: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+    },
+  }),
 }));
 
-jest.mock('../../rest/testAPI', () => ({
-  getTestCaseExecutionSummary: jest.fn(),
+// Mock TabsLabel component
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ name }) => <span>{name}</span>),
 }));
+
+// Mock PageHeader component
+jest.mock('../../components/PageHeader/PageHeader.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ data }) => (
+    <div className="page-header-container" data-testid="page-header-container">
+      <h5 className="ant-typography heading" data-testid="heading">
+        {data?.header}
+      </h5>
+      <div className="ant-typography sub-heading" data-testid="sub-heading">
+        {data?.subHeader}
+      </div>
+    </div>
+  )),
+}));
+
+// Mock TestCaseFormV1 and BundleSuiteForm components
+jest.mock(
+  '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1',
+  () => {
+    return jest.fn().mockImplementation(({ drawerProps, onCancel }) => (
+      <div data-testid="test-case-form-v1-modal">
+        <div>TestCaseFormV1 Modal</div>
+        <button data-testid="test-case-cancel-btn" onClick={onCancel}>
+          Cancel
+        </button>
+        <div>title: {drawerProps?.title}</div>
+        <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
+      </div>
+    ));
+  }
+);
+
+jest.mock(
+  '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ drawerProps, onCancel, onSuccess }) => (
+        <div data-testid="bundle-suite-form-modal">
+          <div>BundleSuiteForm Modal</div>
+          <button data-testid="bundle-suite-cancel-btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button data-testid="bundle-suite-success-btn" onClick={onSuccess}>
+            Success
+          </button>
+          <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
+        </div>
+      ));
+  }
+);
+
+const mockProps = {
+  pageTitle: 'data-quality',
+};
 
 describe('DataQualityPage', () => {
-  it('component should render', async () => {
-    render(<DataQualityPage />);
-
-    expect(await screen.findByTestId('page-title')).toBeInTheDocument();
-    expect(await screen.findByTestId('page-sub-title')).toBeInTheDocument();
-    expect(await screen.findByTestId('tabs')).toBeInTheDocument();
-    expect(await screen.findByText('TestSuites.component')).toBeInTheDocument();
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
   });
 
-  it('should render 3 tabs', async () => {
-    render(<DataQualityPage />);
+  describe('Component Rendering', () => {
+    it('should render component with basic elements', async () => {
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
 
-    const tabs = await screen.findAllByRole('tab');
-
-    expect(tabs).toHaveLength(3);
-  });
-
-  it('should change the tab, onClick of tab', async () => {
-    render(<DataQualityPage />);
-
-    const tabs = await screen.findAllByRole('tab');
-
-    expect(await screen.findByText('TestSuites.component')).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(tabs[1]);
+      expect(await screen.findByTestId('heading')).toBeInTheDocument();
+      expect(await screen.findByTestId('sub-heading')).toBeInTheDocument();
+      expect(await screen.findByTestId('tabs')).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('data-insight-container')
+      ).toBeInTheDocument();
     });
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith(
-      getDataQualityPagePath(DataQualityPageTabs.TEST_CASES)
-    );
+    it('should render with correct page header content', async () => {
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      expect(await screen.findByText('label.data-quality')).toBeInTheDocument();
+      expect(
+        await screen.findByText('message.page-sub-header-for-data-quality')
+      ).toBeInTheDocument();
+    });
+
+    it('should show "Add Test Case" button on TEST_CASES tab with Create permission', async () => {
+      mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
+
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      // Debug: Check if the tab content is being rendered
+      expect(screen.getByTestId('data-insight-container')).toBeInTheDocument();
+
+      expect(
+        await screen.findByTestId('add-test-case-btn')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.add-a-entity')).toBeInTheDocument();
+    });
+
+    it('should show "Add Test Suite" button on TEST_SUITES tab with Create permission', async () => {
+      mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
+
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      expect(
+        await screen.findByTestId('add-test-suite-btn')
+      ).toBeInTheDocument();
+    });
   });
 
-  it('should render tables tab by default', async () => {
-    mockUseParam.tab = undefined;
-    render(<DataQualityPage />);
+  describe('Modal Functionality', () => {
+    it('should open TestCaseFormV1 modal when Add Test Case button is clicked', async () => {
+      mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
 
-    expect(await screen.findByText('TestSuites.component')).toBeInTheDocument();
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      const addButton = await screen.findByTestId('add-test-case-btn');
+
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+
+      expect(
+        await screen.findByTestId('test-case-form-v1-modal')
+      ).toBeInTheDocument();
+      expect(screen.getByText('TestCaseFormV1 Modal')).toBeInTheDocument();
+      expect(screen.getByText('open: true')).toBeInTheDocument();
+    });
+
+    it('should close TestCaseFormV1 modal when cancel is clicked', async () => {
+      mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
+
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      const addButton = await screen.findByTestId('add-test-case-btn');
+
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+
+      expect(
+        await screen.findByTestId('test-case-form-v1-modal')
+      ).toBeInTheDocument();
+
+      const cancelButton = screen.getByTestId('test-case-cancel-btn');
+
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('test-case-form-v1-modal')
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('should open BundleSuiteForm modal when Add Test Suite button is clicked', async () => {
+      mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
+
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      const addButton = await screen.findByTestId('add-test-suite-btn');
+
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-modal')
+      ).toBeInTheDocument();
+      expect(screen.getByText('BundleSuiteForm Modal')).toBeInTheDocument();
+      expect(screen.getByText('open: true')).toBeInTheDocument();
+    });
+
+    it('should close BundleSuiteForm modal when cancel is clicked', async () => {
+      mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
+
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      const addButton = await screen.findByTestId('add-test-suite-btn');
+
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-modal')
+      ).toBeInTheDocument();
+
+      const cancelButton = screen.getByTestId('bundle-suite-cancel-btn');
+
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('bundle-suite-form-modal')
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
-  it('should render testCase tab, if active tab is testCase', async () => {
-    mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
-    render(<DataQualityPage />);
+  describe('Tab Integration', () => {
+    it('should render tabs correctly', async () => {
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(await screen.findByText('TestCases.component')).toBeInTheDocument();
+      const tabs = await screen.findByTestId('tabs');
+
+      expect(tabs).toBeInTheDocument();
+    });
+
+    it('should show dropdown menu on DASHBOARD tab', async () => {
+      mockUseParam.tab = DataQualityPageTabs.DASHBOARD;
+
+      render(<DataQualityPage {...mockProps} />, { wrapper: MemoryRouter });
+
+      expect(
+        await screen.findByTestId('data-quality-add-button-menu')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.add')).toBeInTheDocument();
+    });
   });
 });

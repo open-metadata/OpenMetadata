@@ -5,18 +5,19 @@
     <parent>
         <artifactId>platform</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.6.0-SNAPSHOT</version>
+        <version>1.9.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>openmetadata-clients</artifactId>
+    <name>OpenMetadata Clients</name>
     <packaging>pom</packaging>
     <modules>
         <module>openmetadata-java-client</module>
     </modules>
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <profiles>

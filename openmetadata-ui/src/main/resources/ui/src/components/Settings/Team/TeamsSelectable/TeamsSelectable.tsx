@@ -14,13 +14,15 @@
 import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
@@ -28,8 +30,8 @@ const TeamsSelectable = ({
   showTeamsAlert,
   onSelectionChange,
   filterJoinable,
-  placeholder = t('label.search-for-type', {
-    type: t('label.team-plural-lowercase'),
+  placeholder = i18n.t('label.search-for-type', {
+    type: i18n.t('label.team-plural-lowercase'),
   }),
   selectedTeams,
   maxValueCount,
@@ -37,7 +39,7 @@ const TeamsSelectable = ({
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const { t } = useTranslation();
   const onChange = (newValue: { label: string; value: string }[]) => {
     onSelectionChange &&
       onSelectionChange(
@@ -56,7 +58,13 @@ const TeamsSelectable = ({
     try {
       setIsLoading(true);
       const { data } = await getTeamsHierarchy(filterJoinable);
-      setTeams(data);
+      const sortedData = [...data].sort((a, b) => {
+        const nameA = a.fullyQualifiedName ?? '';
+        const nameB = b.fullyQualifiedName ?? '';
+
+        return nameA.localeCompare(nameB);
+      });
+      setTeams(sortedData);
       showTeamsAlert && setNoTeam(isEmpty(data));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -110,6 +118,7 @@ const TeamsSelectable = ({
         treeDefaultExpandAll
         data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        getPopupContainer={(triggerNode) => triggerNode.parentElement}
         loading={isLoading}
         maxTagCount={maxValueCount}
         placeholder={placeholder}

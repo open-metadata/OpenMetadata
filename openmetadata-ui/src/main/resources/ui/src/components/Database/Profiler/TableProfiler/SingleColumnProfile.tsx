@@ -14,7 +14,7 @@ import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_RANGE_DATA,
@@ -23,6 +23,8 @@ import {
 import { ColumnProfile } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
+import documentationLinksClassBase from '../../../../utils/DocumentationLinksClassBase';
 import {
   calculateColumnProfilerMetrics,
   calculateCustomMetrics,
@@ -46,9 +48,15 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   dateRangeObject,
   tableDetails,
 }) => {
-  const { isProfilerDataLoading, customMetric: tableCustomMetric } =
-    useTableProfiler();
+  const {
+    isProfilerDataLoading,
+    customMetric: tableCustomMetric,
+    isProfilingEnabled,
+  } = useTableProfiler();
   const { t } = useTranslation();
+  const profilerDocsLink =
+    documentationLinksClassBase.getDocsURLS()
+      .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
   const [isLoading, setIsLoading] = useState(true);
   const [columnProfilerData, setColumnProfilerData] = useState<ColumnProfile[]>(
     []
@@ -57,7 +65,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   const customMetrics = useMemo(
     () =>
       getColumnCustomMetric(
-        tableDetails ?? tableCustomMetric,
+        tableDetails?.customMetrics ? tableDetails : tableCustomMetric,
         activeColumnFqn
       ) ?? [],
     [tableCustomMetric, activeColumnFqn, tableDetails]
@@ -67,6 +75,23 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   );
   const [isMinMaxStringData, setIsMinMaxStringData] = useState(false);
 
+  const noProfilerMessage = useMemo(() => {
+    return isProfilingEnabled ? (
+      t('message.profiler-is-enabled-but-no-data-available')
+    ) : (
+      <Transi18next
+        i18nKey="message.no-profiler-card-message-with-link"
+        renderElement={
+          <a
+            href={profilerDocsLink}
+            rel="noreferrer"
+            target="_blank"
+            title="Profiler Documentation"
+          />
+        }
+      />
+    );
+  }, [isProfilingEnabled]);
   const columnCustomMetrics = useMemo(
     () => calculateCustomMetrics(columnProfilerData, customMetrics),
     [columnProfilerData, customMetrics]
@@ -134,6 +159,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           chartCollection={columnMetric.countMetrics}
           isLoading={isLoading}
           name="count"
+          noDataPlaceholderText={noProfilerMessage}
           title={t('label.data-count-plural')}
         />
       </Col>
@@ -142,6 +168,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           chartCollection={columnMetric.proportionMetrics}
           isLoading={isLoading}
           name="proportion"
+          noDataPlaceholderText={noProfilerMessage}
           tickFormatter="%"
           title={t('label.data-proportion-plural')}
         />
@@ -151,6 +178,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           chartCollection={columnMetric.mathMetrics}
           isLoading={isLoading}
           name="math"
+          noDataPlaceholderText={noProfilerMessage}
           showYAxisCategory={isMinMaxStringData}
           // only min/max category can be string
           title={t('label.data-range')}
@@ -161,6 +189,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           chartCollection={columnMetric.sumMetrics}
           isLoading={isLoading}
           name="sum"
+          noDataPlaceholderText={noProfilerMessage}
           title={t('label.data-aggregate')}
         />
       </Col>
@@ -169,6 +198,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           chartCollection={columnMetric.quartileMetrics}
           isLoading={isLoading}
           name="quartile"
+          noDataPlaceholderText={noProfilerMessage}
           title={t('label.data-quartile-plural')}
         />
       </Col>
@@ -186,6 +216,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
             <Col span={24}>
               <DataDistributionHistogram
                 data={{ firstDayData: firstDay, currentDayData: currentDay }}
+                noDataPlaceholderText={noProfilerMessage}
               />
             </Col>
           </Row>

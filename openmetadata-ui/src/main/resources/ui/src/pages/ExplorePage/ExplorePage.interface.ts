@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { AntdIconProps } from '@ant-design/icons/lib/components/AntdIcon';
+import { ForwardRefExoticComponent, RefAttributes } from 'react';
 import { SortingField } from '../../components/Explore/SortingDropDown';
 import { SORT_ORDER } from '../../enums/common.enum';
 
@@ -20,7 +22,12 @@ export type TabsInfoData = {
   sortField: string;
   sortOrder?: SORT_ORDER;
   path: string;
-  icon: React.ReactNode;
+  icon:
+    | React.ReactNode
+    | SvgComponent
+    | ForwardRefExoticComponent<
+        Omit<AntdIconProps, 'ref'> & RefAttributes<HTMLSpanElement>
+      >;
 };
 
 export type FieldValue = string | boolean | null | number | undefined;
@@ -31,11 +38,17 @@ export interface EsTermQuery {
 }
 
 export type EsTermsQuery = {
-  [property: string]: string;
+  [property: string]: string | string[];
 };
 
 export interface EsExistsQuery {
   field: string;
+}
+
+export interface EsWildCard {
+  wildcard: {
+    [key: string]: { value: string };
+  };
 }
 
 export interface EsBoolQuery {
@@ -56,7 +69,8 @@ export interface QueryFilterInterface {
   query: QueryFieldInterface;
 }
 
-export enum ExploreSidebarTab {
-  ASSETS = 'assets',
-  TREE = 'tree',
+export interface EsTerm {
+  term: {
+    [key: string]: string | boolean;
+  };
 }

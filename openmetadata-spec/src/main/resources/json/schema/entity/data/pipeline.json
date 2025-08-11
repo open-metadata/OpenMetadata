@@ -28,6 +28,19 @@
         }
       ]
     },
+    "pipelineState": {
+      "description": "Enum defining the possible Pipeline State.",
+      "type": "string",
+      "enum": ["Active", "Inactive"],
+      "javaEnums": [
+        {
+          "name": "Active"
+        },
+        {
+          "name": "Inactive"
+        }
+      ]
+    },
     "taskStatus": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.Status",
@@ -112,7 +125,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "owners": {
           "description": "Owners of this task.",
@@ -213,6 +226,11 @@
       "$ref": "#/definitions/pipelineStatus",
       "default": null
     },
+    "state": {
+      "description": "State of the Pipeline.",
+      "$ref": "#/definitions/pipelineState",
+      "default": null
+    },
     "followers": {
       "description": "Followers of this Pipeline.",
       "$ref": "../../type/entityReferenceList.json"
@@ -241,7 +259,16 @@
       "description": "Service type where this pipeline is hosted in.",
       "$ref": "../services/pipelineService.json#/definitions/pipelineServiceType"
     },
+    "usageSummary": {
+      "description": "Latest usage information for this pipeline.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -259,9 +286,9 @@
       "type": "string",
       "default": null
     },
-    "domain" : {
-      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "votes" : {
       "description": "Votes on the entity.",
@@ -270,6 +297,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

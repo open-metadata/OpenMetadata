@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
-
-.page-layout-rightpanel {
-  border: 1px solid @border-color;
-  border-radius: 0;
-  padding-left: 0 !important;
-  border-top: 0;
-}
+@import (reference) url('../../styles/variables.less');
 
 .right-panel-announcement {
   .feed-header-content {
@@ -27,7 +20,7 @@
 }
 
 .announcement-alert-heading {
-  color: @info-color;
+  color: @blue-27;
   font-weight: 600;
 }
 
@@ -41,5 +34,39 @@
   height: 100%;
   .ant-card-body {
     height: 100%;
+  }
+}
+
+// MyData page scrollbar styles
+.my-data-page-main-container {
+  * {
+    ::-webkit-scrollbar {
+      width: 4px !important;
+      height: 4px !important;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: @grey-300;
+      border-radius: 3px;
+      opacity: 0.6;
+
+      &:hover {
+        background: @grey-300;
+        opacity: 0.8;
+      }
+    }
+
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    // Firefox scrollbar styles
+    scrollbar-width: thin;
+    scrollbar-color: @grey-300 transparent;
   }
 }

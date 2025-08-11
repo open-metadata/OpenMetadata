@@ -12,19 +12,12 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Tooltip, Typography } from 'antd';
-import { t } from 'i18next';
+import { Button, Select, Space, Typography } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
@@ -32,51 +25,42 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
+import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
+import {
+  EditIconButton,
+  PlusIconButton,
+} from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
-interface GlossaryTermSynonymsProps {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
-}
-
-const GlossaryTermSynonyms = ({
-  permissions,
-  glossaryTerm,
-  onGlossaryTermUpdate,
-  isVersionView,
-}: GlossaryTermSynonymsProps) => {
+const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [saving, setSaving] = useState<boolean>(false);
+  const {
+    data: glossaryTerm,
+    onUpdate: onGlossaryTermUpdate,
+    isVersionView,
+    permissions,
+  } = useGenericContext<GlossaryTerm>();
+  const { t } = useTranslation();
 
-  const getSynonyms = () => (
-    <div className="d-flex flex-wrap">
-      {synonyms.map((synonym) => (
-        <TagButton
-          className="glossary-synonym-tag"
-          key={synonym}
-          label={synonym}
-        />
-      ))}
-      {permissions.EditAll && synonyms.length === 0 && (
-        <TagButton
-          className="text-primary cursor-pointer"
-          dataTestId="synonym-add-button"
-          icon={<PlusIcon height={16} name="plus" width={16} />}
-          label={t('label.add')}
-          tooltip=""
-          onClick={() => {
-            setIsViewMode(false);
-          }}
-        />
-      )}
-      {!permissions.EditAll && synonyms.length === 0 && (
-        <div>{NO_DATA_PLACEHOLDER}</div>
-      )}
-    </div>
-  );
+  const getSynonyms = () =>
+    !permissions.EditAll || !isEmpty(synonyms) ? (
+      <div className="d-flex flex-wrap">
+        {synonyms.map((synonym) => (
+          <TagButton
+            className="glossary-synonym-tag"
+            key={synonym}
+            label={synonym}
+          />
+        ))}
+
+        {!permissions.EditAll && synonyms.length === 0 && (
+          <div>{NO_DATA_PLACEHOLDER}</div>
+        )}
+      </div>
+    ) : null;
 
   const getSynonymsContainer = useCallback(() => {
     if (!isVersionView) {
@@ -178,35 +162,45 @@ const GlossaryTermSynonyms = ({
     }
   }, [glossaryTerm]);
 
-  return (
-    <div className="flex flex-col m-r-xs" data-testid="synonyms-container">
-      <div className="d-flex items-center">
-        <Typography.Text className="right-panel-label">
-          {t('label.synonym-plural')}
-        </Typography.Text>
-        {permissions.EditAll && synonyms.length > 0 && isViewMode && (
-          <Tooltip
-            placement="top"
-            title={
-              permissions.EditAll
-                ? t('label.edit-entity', {
-                    entity: t('label.synonym-plural'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="cursor-pointer flex-center m-l-xss"
-              data-testid="edit-button"
-              disabled={!permissions.EditAll}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => setIsViewMode(false)}
-            />
-          </Tooltip>
-        )}
-      </div>
+  const header = (
+    <div className="d-flex items-center gap-2">
+      <Typography.Text className="text-sm font-medium">
+        {t('label.synonym-plural')}
+      </Typography.Text>
+      {permissions.EditAll &&
+        isViewMode &&
+        (isEmpty(synonyms) ? (
+          <PlusIconButton
+            data-testid="synonym-add-button"
+            size="small"
+            title={t('label.add-entity', {
+              entity: t('label.synonym-plural'),
+            })}
+            onClick={() => {
+              setIsViewMode(false);
+            }}
+          />
+        ) : (
+          <EditIconButton
+            newLook
+            data-testid="edit-button"
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.synonym-plural'),
+            })}
+            onClick={() => setIsViewMode(false)}
+          />
+        ))}
+    </div>
+  );
 
+  return (
+    <ExpandableCard
+      cardProps={{
+        title: header,
+      }}
+      dataTestId="synonyms-container"
+      isExpandDisabled={isEmpty(synonyms)}>
       {isViewMode ? (
         getSynonymsContainer()
       ) : (
@@ -243,7 +237,7 @@ const GlossaryTermSynonyms = ({
           />
         </>
       )}
-    </div>
+    </ExpandableCard>
   );
 };
 

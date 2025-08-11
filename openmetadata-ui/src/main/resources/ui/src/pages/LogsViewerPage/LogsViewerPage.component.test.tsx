@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { TextDecoder, TextEncoder } from 'util';
+global.TextEncoder = TextEncoder as unknown as typeof TextEncoder;
+global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -26,13 +36,17 @@ import {
   getExternalApplicationRuns,
   getLatestApplicationRuns,
 } from '../../rest/applicationAPI';
+import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
 import LogsViewerPage from './LogsViewerPage';
+
+const mockScrollToIndex = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     logEntityType: 'TestSuite',
     ingestionName: 'ingestion_123456',
   }),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../utils/LogsClassBase', () => ({
@@ -48,12 +62,6 @@ jest.mock(
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-
-jest.mock('react-lazylog', () => ({
-  LazyLog: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
-}));
 
 jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
@@ -91,21 +99,76 @@ jest.mock('../../rest/applicationAPI', () => ({
     ),
 }));
 
+jest.mock('../../hooks/useDownloadProgressStore', () => ({
+  useDownloadProgressStore: jest.fn(() => ({
+    progress: 0,
+    reset: jest.fn(),
+    updateProgress: jest.fn(),
+  })),
+}));
+
+let mockScrollPosition = {
+  scrollTop: 80,
+  scrollHeight: 100,
+  clientHeight: 20,
+};
+
+jest.mock('@melloware/react-logviewer', () => ({
+  LazyLog: React.forwardRef(
+    (
+      {
+        text,
+        onScroll,
+      }: {
+        text: string;
+        onScroll: (args: {
+          scrollTop: number;
+          scrollHeight: number;
+          clientHeight: number;
+        }) => void;
+      },
+      ref
+    ) => {
+      // Mock the ref structure that the component expects
+      if (ref) {
+        (ref as { current: Record<string, unknown> }).current = {
+          state: {
+            count: 230,
+          },
+          listRef: {
+            current: {
+              scrollToIndex: mockScrollToIndex,
+            },
+          },
+        };
+      }
+
+      return (
+        <div data-testid="lazy-log">
+          {text}
+          <div
+            data-testid="scroll-container"
+            onClick={() => onScroll(mockScrollPosition)}
+          />
+        </div>
+      );
+    }
+  ),
+}));
+
 describe('LogsViewerPage.component', () => {
   it('On initial, component should render', async () => {
-    await act(async () => {
-      render(<LogsViewerPage />);
+    render(<LogsViewerPage />);
 
-      expect(
-        await screen.findByText('TitleBreadcrumb.component')
-      ).toBeInTheDocument();
-    });
+    expect(
+      await screen.findByText('TitleBreadcrumb.component')
+    ).toBeInTheDocument();
 
     expect(
       await screen.findByText('test-redshift_metadata_ZeCajs9g')
     ).toBeInTheDocument();
 
-    const logElement = await screen.findByTestId('logs');
+    const logElement = await screen.findByText(mockLogsData.ingestion_task);
 
     expect(logElement).toBeInTheDocument();
   });
@@ -116,13 +179,13 @@ describe('LogsViewerPage.component', () => {
       fqn: 'DataInsightsApplication',
     });
 
-    await act(async () => {
-      render(<LogsViewerPage />);
-    });
+    render(<LogsViewerPage />);
 
-    expect(getApplicationByName).toHaveBeenCalled();
-    expect(getExternalApplicationRuns).toHaveBeenCalled();
-    expect(getLatestApplicationRuns).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getApplicationByName).toHaveBeenCalled();
+      expect(getExternalApplicationRuns).toHaveBeenCalled();
+      expect(getLatestApplicationRuns).toHaveBeenCalled();
+    });
   });
 
   it('should show basic configuration for application in right panel', async () => {
@@ -143,5 +206,160 @@ describe('LogsViewerPage.component', () => {
 
     expect(screen.getByText('Recent Runs')).toBeInTheDocument();
     expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
+  });
+
+  it('should show logs for ingestion pipeline', async () => {
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('jump-to-end-button')).toBeInTheDocument();
+    });
+
+    const jumpToEndButton = screen.getByTestId('jump-to-end-button');
+
+    expect(jumpToEndButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(jumpToEndButton);
+    });
+
+    // Verify that scrollToIndex was called with the correct parameter (totalLines - 1)
+    expect(mockScrollToIndex).toHaveBeenCalledWith(229);
+  });
+
+  it('should call handleScroll when user scrolls at the bottom', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'TestSuite',
+      ingestionName: 'ingestion_123456',
+    });
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-container')).toBeInTheDocument();
+    });
+
+    const scrollContainer = screen.getByTestId('scroll-container');
+
+    await act(async () => {
+      fireEvent.click(scrollContainer);
+    });
+
+    expect(getIngestionPipelineLogById).toHaveBeenCalledWith(
+      'c379d75a-43cd-4d93-a799-0bba4a22c690',
+      '1'
+    );
+  });
+
+  it('should not call handleScroll when user scrolls and is not at the bottom', async () => {
+    // Set scroll position to NOT be at the bottom
+    mockScrollPosition = { scrollTop: 10, scrollHeight: 100, clientHeight: 20 };
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-container')).toBeInTheDocument();
+    });
+
+    const scrollContainer = screen.getByTestId('scroll-container');
+
+    // Simulate scroll that is NOT at the bottom
+    await act(async () => {
+      fireEvent.click(scrollContainer);
+    });
+
+    // Verify that the API was not called since we're not at the bottom
+    expect(getIngestionPipelineLogById).not.toHaveBeenCalledWith(
+      'c379d75a-43cd-4d93-a799-0bba4a22c690',
+      '1'
+    );
+  });
+
+  it('should not call handleScroll when user scrolls and is at the bottom with 40- margin', async () => {
+    mockScrollPosition = { scrollTop: 41, scrollHeight: 100, clientHeight: 20 };
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-container')).toBeInTheDocument();
+    });
+
+    const scrollContainer = screen.getByTestId('scroll-container');
+
+    // Simulate scroll that is NOT at the bottom
+    await act(async () => {
+      fireEvent.click(scrollContainer);
+    });
+
+    // Verify that the API was not called since we're not at the bottom
+    expect(getIngestionPipelineLogById).toHaveBeenCalledWith(
+      'c379d75a-43cd-4d93-a799-0bba4a22c690',
+      '1'
+    );
+  });
+
+  it('should not call handleScroll when user scrolls and is at the bottom with 40 margin', async () => {
+    mockScrollPosition = { scrollTop: 40, scrollHeight: 100, clientHeight: 20 };
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-container')).toBeInTheDocument();
+    });
+
+    const scrollContainer = screen.getByTestId('scroll-container');
+
+    // Simulate scroll that is NOT at the bottom
+    await act(async () => {
+      fireEvent.click(scrollContainer);
+    });
+
+    // Verify that the API was not called since we're not at the bottom
+    expect(getIngestionPipelineLogById).not.toHaveBeenCalledWith(
+      'c379d75a-43cd-4d93-a799-0bba4a22c690',
+      '1'
+    );
+  });
+
+  it('should not call handleScroll when user scrolls and is at the bottom but after is undefined', async () => {
+    mockScrollPosition = { scrollTop: 80, scrollHeight: 100, clientHeight: 20 };
+    (getIngestionPipelineLogById as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          ...mockLogsData,
+          after: undefined,
+        },
+      })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-container')).toBeInTheDocument();
+    });
+
+    const scrollContainer = screen.getByTestId('scroll-container');
+
+    // Simulate scroll that is NOT at the bottom
+    await act(async () => {
+      fireEvent.click(scrollContainer);
+    });
+
+    // Verify that the API was not called since we're not at the bottom
+    expect(getIngestionPipelineLogById).not.toHaveBeenCalledWith(
+      'c379d75a-43cd-4d93-a799-0bba4a22c690',
+      '1'
+    );
   });
 });

@@ -13,24 +13,27 @@
 
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import React, {
+import {
   CSSProperties,
   FC,
   Fragment,
   HTMLAttributes,
   ReactNode,
+  useEffect,
   useMemo,
+  useState,
 } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useAlertStore } from '../../hooks/useAlertStore';
+import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
-  header?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
-  headerClassName?: string;
   mainContainerClassName?: string;
   pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
@@ -38,7 +41,6 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const pageContainerStyles: CSSProperties = {
-  padding: 0,
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -52,14 +54,16 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanel,
   className,
   pageTitle,
-  header,
   center = false,
   leftPanelWidth = 230,
   rightPanelWidth = 284,
-  headerClassName = '',
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
+  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
+  const location = useLocation();
+  const [prevPath, setPrevPath] = useState<string | undefined>();
+
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
       return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
@@ -72,25 +76,28 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
+  useEffect(() => {
+    if (prevPath !== location.pathname) {
+      if (isErrorTimeOut) {
+        resetAlert();
+      }
+    }
+  }, [location.pathname, resetAlert, isErrorTimeOut]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setPrevPath(location.pathname);
+    }, 3000);
+  }, [location.pathname]);
+
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      {header && (
-        <div
-          className={classNames(
-            {
-              'header-center': center,
-              'm-t-md p-x-md': !center,
-            },
-            headerClassName
-          )}>
-          {header}
-        </div>
-      )}
       <Row
-        className={classNames(className, 'bg-white')}
+        className={classNames('p-x-box', className)}
         data-testid="page-layout-v1"
-        style={{ ...pageContainerStyles, ...pageContainerStyle }}>
+        style={{ ...pageContainerStyles, ...pageContainerStyle }}
+        wrap={false}>
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"
@@ -101,7 +108,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
+            `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
             },
@@ -110,7 +117,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           flex={contentWidth}
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
-          {children}
+          <Row>
+            {alert && (
+              <Col id="page-alert" span={24}>
+                <AlertBar message={alert.message} type={alert.type} />
+              </Col>
+            )}
+            <Col span={24}>{children}</Col>
+          </Row>
         </Col>
         {rightPanel && (
           <Col

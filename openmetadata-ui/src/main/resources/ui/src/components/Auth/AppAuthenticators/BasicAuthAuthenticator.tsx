@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,
@@ -26,6 +26,11 @@ import {
 } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
 import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
@@ -37,14 +42,7 @@ const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
     const { t } = useTranslation();
-    const {
-      setIsAuthenticated,
-      authConfig,
-      getRefreshToken,
-      setRefreshToken,
-      setOidcToken,
-      isApplicationLoading,
-    } = useApplicationStore();
+    const { authConfig, isApplicationLoading } = useApplicationStore();
 
     const handleSilentSignIn =
       useCallback(async (): Promise<AccessTokenResponse> => {
@@ -54,7 +52,13 @@ const BasicAuthenticator = forwardRef(
           authConfig?.provider !== AuthProvider.Basic &&
           authConfig?.provider !== AuthProvider.LDAP
         ) {
-          Promise.reject(t('message.authProvider-is-not-basic'));
+          return Promise.reject(
+            new Error(t('message.authProvider-is-not-basic'))
+          );
+        }
+
+        if (!refreshToken) {
+          return Promise.reject(new Error(t('message.no-token-available')));
         }
 
         const response = await getAccessTokenOnExpiry({
@@ -68,10 +72,7 @@ const BasicAuthenticator = forwardRef(
       }, [authConfig, getRefreshToken, setOidcToken, setRefreshToken, t]);
 
     useImperativeHandle(ref, () => ({
-      invokeLogout() {
-        handleLogout();
-        setIsAuthenticated(false);
-      },
+      invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
     }));
 

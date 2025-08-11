@@ -29,10 +29,10 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
-  default as React,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -41,9 +41,15 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import {
+  ES_UPDATE_DELAY,
+  PAGE_SIZE_MEDIUM,
+  SOCKET_EVENTS,
+} from '../../../constants/constants';
+import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -64,6 +70,7 @@ import {
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
@@ -72,10 +79,15 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExploreUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Banner from '../../common/Banner/Banner';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
+import {
+  CSVExportJob,
+  CSVExportResponse,
+} from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -94,37 +106,34 @@ export const AssetSelectionModal = ({
 }: AssetSelectionModalProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
+  const [exportJob, setExportJob] = useState<Partial<CSVExportJob>>();
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<SearchIndex>(
     type === AssetsOfEntity.GLOSSARY ? SearchIndex.DATA_ASSET : SearchIndex.ALL
   );
-  const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
+  const [activeEntity, setActiveEntity] = useState<
+    Domain | DataProduct | Tag
+  >();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+  const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([]);
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
-  const [updatedQueryFilter, setUpdatedQueryFilter] =
-    useState<QueryFilterInterface>(
-      getCombinedQueryFilterObject(queryFilter as QueryFilterInterface, {
-        query: {
-          bool: {},
-        },
-      })
-    );
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+
+  const { socket } = useWebSocketConnector();
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -144,6 +153,11 @@ export const AssetSelectionModal = ({
       page = 1,
       index = activeFilter,
       updatedQueryFilter,
+    }: {
+      searchText?: string;
+      page?: number;
+      index?: SearchIndex;
+      updatedQueryFilter?: Record<string, unknown>;
     }) => {
       try {
         setIsLoading(true);
@@ -170,20 +184,40 @@ export const AssetSelectionModal = ({
   );
 
   const fetchCurrentEntity = useCallback(async () => {
-    if (type === AssetsOfEntity.DOMAIN) {
-      const data = await getDomainByName(entityFqn);
-      setActiveEntity(data);
-    } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-      const data = await getDataProductByName(entityFqn, {
-        fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
-      });
-      setActiveEntity(data);
-    } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(entityFqn, {
-        fields: TabSpecificField.TAGS,
-      });
-      setActiveEntity(data);
+    let data: GlossaryTerm | Tag | Domain | DataProduct | undefined;
+
+    switch (type) {
+      case AssetsOfEntity.DOMAIN:
+        data = await getDomainByName(entityFqn);
+
+        break;
+
+      case AssetsOfEntity.DATA_PRODUCT:
+        data = await getDataProductByName(entityFqn, {
+          fields: [TabSpecificField.DOMAINS, TabSpecificField.ASSETS],
+        });
+
+        break;
+
+      case AssetsOfEntity.GLOSSARY:
+        data = await getGlossaryTermByFQN(entityFqn, {
+          fields: TabSpecificField.TAGS,
+        });
+
+        break;
+
+      case AssetsOfEntity.TAG:
+        data = await getTagByFqn(entityFqn);
+
+        break;
+
+      default:
+        data = undefined;
+
+        break;
     }
+
+    setActiveEntity(data);
   }, [type, entityFqn]);
 
   useEffect(() => {
@@ -199,13 +233,17 @@ export const AssetSelectionModal = ({
 
   useEffect(() => {
     if (open) {
+      const combinedQueryFilter = getCombinedQueryFilterObject(
+        queryFilter as unknown as QueryFilterInterface,
+        quickFilterQuery as QueryFilterInterface
+      );
       fetchEntities({
         index: activeFilter,
         searchText: search,
-        updatedQueryFilter,
+        updatedQueryFilter: combinedQueryFilter,
       });
     }
-  }, [open, activeFilter, search, type, updatedQueryFilter]);
+  }, [open, activeFilter, search, type, quickFilterQuery, queryFilter]);
 
   useEffect(() => {
     if (open) {
@@ -274,6 +312,11 @@ export const AssetSelectionModal = ({
           );
 
           break;
+
+        case AssetsOfEntity.TAG:
+          res = await addAssetsToTags(activeEntity.id ?? '', entities);
+
+          break;
         case AssetsOfEntity.DOMAIN:
           res = await addAssetsToDomain(
             activeEntity.fullyQualifiedName ?? '',
@@ -286,16 +329,22 @@ export const AssetSelectionModal = ({
           break;
       }
 
-      if ((res as BulkOperationResult).status === Status.Success) {
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolve('');
-            onSave?.();
-          }, ES_UPDATE_DELAY);
-        });
-        onCancel();
+      // check if res has jobId property
+      if (isUndefined((res as CSVExportResponse).jobId)) {
+        if ((res as BulkOperationResult).status === Status.Success) {
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve('');
+              onSave?.();
+            }, ES_UPDATE_DELAY);
+          });
+          onCancel();
+        } else {
+          setFailedStatus(res as BulkOperationResult);
+        }
       } else {
-        setFailedStatus(res as BulkOperationResult);
+        // handle websocket response
+        setAssetJobResponse(res as CSVExportResponse);
       }
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -307,18 +356,6 @@ export const AssetSelectionModal = ({
   const onSaveAction = useCallback(() => {
     handleSave();
   }, [type, handleSave]);
-
-  const mergeFilters = useCallback(() => {
-    const res = getCombinedQueryFilterObject(
-      queryFilter as QueryFilterInterface,
-      quickFilterQuery as QueryFilterInterface
-    );
-    setUpdatedQueryFilter(res);
-  }, [queryFilter, quickFilterQuery]);
-
-  useEffect(() => {
-    mergeFilters();
-  }, [quickFilterQuery, queryFilter]);
 
   useEffect(() => {
     const updatedQuickFilters = filters
@@ -353,22 +390,28 @@ export const AssetSelectionModal = ({
         scrollHeight < 501 &&
         items.length < totalCount
       ) {
+        const combinedQueryFilter = getCombinedQueryFilterObject(
+          queryFilter as unknown as QueryFilterInterface,
+          quickFilterQuery as QueryFilterInterface
+        );
+
         !isLoading &&
           fetchEntities({
             searchText: search,
             page: pageNumber + 1,
             index: activeFilter,
-            updatedQueryFilter,
+            updatedQueryFilter: combinedQueryFilter,
           });
       }
     },
     [
       pageNumber,
-      updatedQueryFilter,
       activeFilter,
       search,
       totalCount,
       items,
+      quickFilterQuery,
+      queryFilter,
       isLoading,
       fetchEntities,
     ]
@@ -452,8 +495,35 @@ export const AssetSelectionModal = ({
     });
   }, [setQuickFilterQuery, handleQuickFiltersChange, setSelectedQuickFilters]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          const activity = JSON.parse(newActivity);
+          if (activity.status === 'COMPLETED') {
+            setAssetJobResponse(undefined);
+            if (activity.result.status === 'success') {
+              onSave?.();
+              onCancel();
+            } else {
+              setFailedStatus(activity.result);
+            }
+          } else if (activity.status === 'FAILED') {
+            setExportJob(activity);
+            setAssetJobResponse(undefined);
+          }
+        }
+      });
+    }
+
+    return () => {
+      socket?.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
+    };
+  }, [socket]);
+
   return (
     <Modal
+      centered
       destroyOnClose
       className="asset-selection-modal"
       closable={false}
@@ -487,7 +557,7 @@ export const AssetSelectionModal = ({
             <Button
               data-testid="save-btn"
               disabled={!selectedItems?.size || isLoading}
-              loading={isSaveLoading}
+              loading={isSaveLoading || !isUndefined(assetJobResponse)}
               type="primary"
               onClick={onSaveAction}>
               {t('label.save')}
@@ -496,11 +566,19 @@ export const AssetSelectionModal = ({
         </div>
       }
       open={open}
-      style={{ top: 40 }}
       title={t('label.add-entity', { entity: t('label.asset-plural') })}
       width={675}
       onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
+        {(assetJobResponse || exportJob?.error) && (
+          <Banner
+            className="border-radius"
+            isLoading={isUndefined(exportJob?.error)}
+            message={exportJob?.error ?? assetJobResponse?.message ?? ''}
+            type={exportJob?.error ? 'error' : 'success'}
+          />
+        )}
+
         <div className="d-flex items-center gap-3">
           <Dropdown
             menu={{
@@ -603,9 +681,11 @@ export const AssetSelectionModal = ({
                         showCheckboxes
                         checked={selectedItems?.has(item.id ?? '')}
                         className="border-none asset-selection-model-card cursor-pointer"
+                        displayNameClassName="text-md"
                         handleSummaryPanelDisplay={handleCardClick}
                         id={`tabledatacard-${item.id}`}
                         key={item.id}
+                        nameClassName="text-md"
                         showBody={false}
                         showName={false}
                         source={{ ...item, tags: [] }}

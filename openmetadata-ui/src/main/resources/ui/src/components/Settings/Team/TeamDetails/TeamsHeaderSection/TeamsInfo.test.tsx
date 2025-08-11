@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
@@ -93,8 +92,10 @@ describe('TeamsInfo', () => {
       render(<TeamsInfo {...teamProps} />);
     });
     const domainLabel = screen.getByText('DomainLabel');
+    const userCount = screen.getByTestId('team-user-count');
 
     expect(domainLabel).toBeInTheDocument();
+    expect(userCount).toContainHTML('1');
   });
 
   it('should handle edit team email', () => {

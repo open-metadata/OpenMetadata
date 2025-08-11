@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Push content
       id: push_content
@@ -59,7 +59,7 @@ jobs:
     - name: Prepare Collate content and partials
       id: prepare_collate
       continue-on-error: true
-      run: cp -R openmetadata-docs/content/partials/ openmetadata-docs/content/v1.5.x/partials
+      run: cp -R openmetadata-docs/content/partials/ openmetadata-docs/content/v1.8.x/partials
 
     - name: Push content Collate
       id: push_content_collate
@@ -68,7 +68,7 @@ jobs:
       env:
         SSH_DEPLOY_KEY: ${{ secrets.DOCS_COLLATE_SSH_DEPLOY_KEY }}
       with:
-        source-directory: openmetadata-docs/content/v1.5.x
+        source-directory: openmetadata-docs/content/v1.8.x
         target-directory: content/
         destination-github-username: 'open-metadata'
         destination-repository-name: 'docs-collate'

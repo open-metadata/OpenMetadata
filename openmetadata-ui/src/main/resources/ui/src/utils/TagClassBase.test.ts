@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import tagClassBase, { TagClassBase } from './TagClassBase';
 
 jest.mock('../rest/searchAPI');
+
+jest.mock('./StringsUtils', () => ({
+  getEncodedFqn: jest.fn().mockReturnValue('test'),
+  escapeESReservedCharacters: jest.fn().mockReturnValue('test'),
+}));
 
 describe('TagClassBase', () => {
   beforeEach(() => {
@@ -52,7 +58,7 @@ describe('TagClassBase', () => {
       filters: 'disabled:false',
       pageNumber: page,
       pageSize: 10, // Assuming PAGE_SIZE is 10
-      queryFilter: {},
+      queryFilter: queryFilterToRemoveSomeClassification,
       searchIndex: SearchIndex.TAG,
     });
   });

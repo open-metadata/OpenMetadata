@@ -60,6 +60,8 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
       return GlobalSettingOptions.DATABASE_SCHEMA;
     case EntityType.GLOSSARY_TERM:
       return GlobalSettingOptions.GLOSSARY_TERM;
+    case EntityType.CHART:
+      return GlobalSettingOptions.CHARTS;
 
     case EntityType.TABLE:
     default:
@@ -77,9 +79,13 @@ export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
 
 export const getSettingPageEntityBreadCrumb = (
   category: GlobalSettingsMenuCategory,
-  entityName?: string
+  entityName?: string,
+  subCategory?: GlobalSettingOptions
 ) => {
   const categoryObject = globalSettingsClassBase.settingCategories[category];
+
+  const subCategoryObject =
+    globalSettingsClassBase.settingCategories[subCategory ?? ''];
 
   return [
     {
@@ -91,6 +97,15 @@ export const getSettingPageEntityBreadCrumb = (
       url: entityName ? getSettingPath(categoryObject.url) : '',
       activeTitle: !entityName,
     },
+    ...(subCategory
+      ? [
+          {
+            name: subCategoryObject?.name ?? '',
+            url: entityName ? getSettingPath(subCategoryObject?.url ?? '') : '',
+            activeTitle: !entityName,
+          },
+        ]
+      : []),
     ...(entityName
       ? [
           {

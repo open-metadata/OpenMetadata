@@ -12,5 +12,6 @@
  */
 
 export interface DatabaseSchemaTableProps {
-  isDatabaseDeleted?: boolean;
+  isVersionPage?: boolean;
+  isCustomizationPage?: boolean;
 }

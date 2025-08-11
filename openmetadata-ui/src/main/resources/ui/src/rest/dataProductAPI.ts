@@ -13,8 +13,10 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
-import { PAGE_SIZE } from '../constants/constants';
+import {
+  APPLICATION_JSON_CONTENT_TYPE_HEADER,
+  PAGE_SIZE,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
 import {
@@ -22,24 +24,15 @@ import {
   EntityReference,
 } from '../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../generated/type/entityHistory';
-import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
+import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';
-
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-  domain?: string;
-};
 
 export const addDataProducts = async (data: CreateDataProduct) => {
   const response = await APIClient.post<
@@ -73,17 +66,6 @@ export const getDataProductByName = async (
   return response.data;
 };
 
-export const getDataProductList = async (params?: Params) => {
-  const response = await APIClient.get<PagingResponse<DataProduct[]>>(
-    BASE_URL,
-    {
-      params,
-    }
-  );
-
-  return response.data;
-};
-
 export const deleteDataProduct = (id: string) => {
   return APIClient.delete(`${BASE_URL}/${id}`);
 };
@@ -107,6 +89,7 @@ export const getDataProductVersionData = async (
 
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
+  domainFQNs: string[],
   page: number
 ): Promise<{
   data: {
@@ -115,12 +98,15 @@ export const fetchDataProductsElasticSearch = async (
   }[];
   paging: Paging;
 }> => {
+  // Use the utility function to build the domain filter
+  const queryFilter = buildDomainFilter(domainFQNs);
+
   const res = await searchQuery({
     query: searchText,
     filters: '',
     pageNumber: page,
     pageSize: PAGE_SIZE,
-    queryFilter: {},
+    queryFilter,
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
 
@@ -163,6 +149,29 @@ export const removeAssetsFromDataProduct = async (
     { assets: EntityReference[] },
     AxiosResponse<DataProduct>
   >(`/dataProducts/${getEncodedFqn(dataProductFqn)}/assets/remove`, data);
+
+  return response.data;
+};
+
+export const addFollower = async (dataProductID: string, userId: string) => {
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<{
+      changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
+    }>
+  >(
+    `${BASE_URL}/${dataProductID}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const removeFollower = async (dataProductID: string, userId: string) => {
+  const response = await APIClient.delete<{
+    changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
+  }>(`${BASE_URL}/${dataProductID}/followers/${userId}`);
 
   return response.data;
 };

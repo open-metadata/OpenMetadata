@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Space, Tooltip, Typography } from 'antd';
-import { t } from 'i18next';
-import React, { useCallback, useState } from 'react';
+import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_LARGE,
-} from '../../../../constants/constants';
+import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
+import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
+import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
+
+import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
@@ -26,10 +27,12 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
-import { SelectableList } from '../../../common/SelectableList/SelectableList.component';
+import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
+  const { t } = useTranslation();
+
   return (
     <Space>
       {props ? (
@@ -42,20 +45,54 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
     </Space>
   );
 };
+
 export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
   onUpdate,
   children,
   popoverProps,
-  multiSelect = false,
   personaList,
+  isDefaultPersona,
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
   const [allPersona, setAllPersona] = useState<EntityReference[]>(
     personaList ?? []
   );
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [currentlySelectedPersonas, setCurrentlySelectedPersonas] =
+    useState<any>([]);
+  const [popoverHeight, setPopoverHeight] = useState<number>(
+    isDefaultPersona ? 116 : 156
+  );
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const dropdown = document.querySelector(
+        '.persona-custom-dropdown-class'
+      ) as HTMLElement;
+
+      if (dropdown) {
+        setPopoverHeight(
+          dropdown.scrollHeight + (isDefaultPersona ? 116 : 156)
+        );
+      }
+    });
+
+    const dropdown = document.querySelector('.persona-custom-dropdown-class');
+    if (dropdown) {
+      observer.observe(dropdown, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+
+    return () => observer.disconnect();
+  }, [isDropdownOpen]);
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -93,66 +130,143 @@ export const PersonaSelectableList = ({
       }
     }
   };
+  const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
 
-  const handleUpdate = useCallback(
-    async (users: EntityReference[]) => {
-      if (multiSelect) {
-        await (onUpdate as (users: EntityReference[]) => Promise<void>)(users);
-      } else {
-        await (onUpdate as (users: EntityReference) => Promise<void>)(users[0]);
-      }
+  const loadOptions = async () => {
+    const { data } = await fetchOptions('');
+    setSelectOptions(data);
+  };
 
+  useEffect(() => {
+    loadOptions();
+  }, [personaList]);
+
+  const handlePersonaUpdate = () => {
+    setIsSaving(true);
+
+    Promise.resolve(
+      onUpdate(
+        isDefaultPersona
+          ? currentlySelectedPersonas[0]
+          : currentlySelectedPersonas
+      )
+    ).finally(() => {
+      setIsSaving(false);
       setPopupVisible(false);
-    },
-    [onUpdate]
-  );
+    });
+  };
 
   if (!hasPermission) {
     return null;
   }
+  const handleCloseEditTeam = () => {
+    setPopupVisible(false);
+  };
 
   return (
-    // Used Button to stop click propagation event anywhere in the form to parent User.component collapsible panel
-    <Button
-      className="remove-button-default-styling"
-      onClick={(e) => e.stopPropagation()}>
-      <Popover
-        destroyTooltipOnHide
-        content={
-          <SelectableList
-            customTagRenderer={PersonaListItemRenderer}
-            fetchOptions={fetchOptions}
-            multiSelect={multiSelect}
-            searchPlaceholder={t('label.search-for-type', {
-              type: t('label.persona'),
-            })}
-            selectedItems={selectedPersonas}
-            onCancel={() => setPopupVisible(false)}
-            onUpdate={handleUpdate}
-          />
-        }
-        open={popupVisible}
-        overlayClassName="user-select-popover p-0"
-        placement="bottomRight"
-        showArrow={false}
-        trigger="click"
-        onOpenChange={setPopupVisible}
-        {...popoverProps}>
-        {children ?? (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.persona'),
-            })}>
-            <Button
-              className="p-0 flex-center"
-              data-testid="edit-persona"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
+    <Popover
+      destroyTooltipOnHide
+      content={
+        <div
+          className="user-profile-edit-popover-card relative"
+          style={{
+            height: `${popoverHeight}px`,
+          }}>
+          <div className="d-flex justify-start items-center gap-2 m-b-sm">
+            <div className="d-flex flex-start items-center">
+              <PersonaIcon height={16} />
+            </div>
+
+            <Typography.Text className="user-profile-edit-popover-card-title">
+              {isDefaultPersona
+                ? t('label.default-persona')
+                : t('label.persona')}
+            </Typography.Text>
+          </div>
+
+          <div className="border" id="area" style={{ borderRadius: '5px' }}>
+            <Select
+              allowClear
+              className={classNames('profile-edit-popover', {
+                'single-select': isDefaultPersona,
+              })}
+              data-testid="persona-select-list"
+              defaultValue={selectedPersonas.map((persona) => persona.id)}
+              dropdownStyle={{
+                maxHeight: '200px',
+                overflow: 'auto',
+              }}
+              maxTagCount={3}
+              maxTagPlaceholder={(omittedValues) => (
+                <span className="max-tag-text">
+                  {t('label.plus-count-more', { count: omittedValues.length })}
+                </span>
+              )}
+              mode={!isDefaultPersona ? 'multiple' : undefined}
+              options={selectOptions?.map((persona) => ({
+                label: persona.displayName || persona.name,
+                value: persona.id,
+                className: 'font-normal',
+              }))}
+              placeholder="Please select"
+              popupClassName="persona-custom-dropdown-class"
+              ref={dropdownRef as any}
+              style={{ width: '100%' }}
+              tagRender={TagRenderer}
+              onChange={(selectedIds) => {
+                const selectedPersonasList = selectOptions.filter((persona) =>
+                  selectedIds.includes(persona.id)
+                );
+                setCurrentlySelectedPersonas(selectedPersonasList);
+              }}
+              onDropdownVisibleChange={(open) => {
+                setIsDropdownOpen(open);
+              }}
             />
-          </Tooltip>
-        )}
-      </Popover>
-    </Button>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              className="persona-profile-edit-save"
+              data-testid="user-profile-persona-edit-cancel"
+              icon={<ClosePopoverIcon height={24} />}
+              size="small"
+              type="primary"
+              onClick={handleCloseEditTeam}
+            />
+            <Button
+              className="persona-profile-edit-cancel"
+              data-testid="user-profile-persona-edit-save"
+              icon={<SavePopoverIcon height={24} />}
+              loading={isSaving}
+              size="small"
+              type="primary"
+              onClick={handlePersonaUpdate}
+            />
+          </div>
+        </div>
+      }
+      data-testid="persona-popover"
+      open={popupVisible}
+      overlayClassName="profile-edit-popover-card"
+      placement="bottomLeft"
+      showArrow={false}
+      style={{ borderRadius: '12px' }}
+      trigger="click"
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
+      {children ?? (
+        <Tooltip
+          title={t('label.edit-entity', {
+            entity: t('label.persona'),
+          })}>
+          <EditIcon
+            className="cursor-pointer"
+            data-testid="edit-user-persona"
+            height={16}
+          />
+        </Tooltip>
+      )}
+    </Popover>
   );
 };

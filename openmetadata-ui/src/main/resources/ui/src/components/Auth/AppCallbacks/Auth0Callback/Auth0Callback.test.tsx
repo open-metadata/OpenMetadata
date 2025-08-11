@@ -13,8 +13,7 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import { render, screen } from '@testing-library/react';
-import { t } from 'i18next';
-import React from 'react';
+
 import { MemoryRouter } from 'react-router-dom';
 import Auth0Callback from './Auth0Callback';
 
@@ -52,11 +51,19 @@ jest.mock('../../../../hooks/useApplicationStore', () => {
   return {
     useApplicationStore: jest.fn(() => ({
       authConfig: {},
-      handleSuccessfulLogin: mockHandleSuccessfulLogin,
-      setOidcToken: jest.fn(),
     })),
   };
 });
+
+jest.mock('../../AuthProviders/AuthProvider', () => ({
+  useAuthProvider: jest.fn().mockImplementation(() => ({
+    handleSuccessfulLogin: mockHandleSuccessfulLogin,
+  })),
+}));
+
+jest.mock('../../../../utils/LocalStorageUtils', () => ({
+  setOidcToken: jest.fn(),
+}));
 
 describe('Test Auth0Callback component', () => {
   afterEach(() => {
@@ -79,7 +86,7 @@ describe('Test Auth0Callback component', () => {
     });
     const error = screen.getByTestId('auth0-error');
 
-    expect(error).toHaveTextContent(t('server.unexpected-error'));
+    expect(error).toHaveTextContent('server.unexpected-error');
     expect(error).toHaveTextContent('unknown error');
   });
 

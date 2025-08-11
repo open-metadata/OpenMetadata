@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { capitalize, map, startCase, values } from 'lodash';
+import { map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
-import { CSMode } from '../enums/codemirror.enum';
 import { SORT_ORDER } from '../enums/common.enum';
+import { TestCaseType } from '../enums/TestSuite.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
@@ -27,29 +26,16 @@ import {
 } from '../generated/entity/data/table';
 import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import { TestPlatform } from '../generated/tests/testDefinition';
-import { TestCaseType } from '../rest/testAPI';
+import {
+  DataQualityDimensions,
+  TestPlatform,
+} from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
-import i18n from '../utils/i18next/LocalUtil';
+import { t } from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
-import { JSON_TAB_SIZE } from './constants';
-
-export const excludedMetrics = [
-  'profilDate',
-  'name',
-  'nullCount',
-  'nullProportion',
-  'uniqueCount',
-  'uniqueProportion',
-  'rows',
-  'histogram',
-  'missingCount',
-  'missingPercentage',
-  'distinctProportion',
-];
 
 export const PROFILER_METRIC = [
   'valuesCount',
@@ -76,8 +62,7 @@ export const PROFILER_METRIC = [
   'histogram',
   'customMetricsProfile',
 ];
-
-export const INCIDENT = 'Incident';
+export const PROFILER_CHART_DATA_SIZE = 500;
 
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
@@ -130,13 +115,6 @@ export const DEFAULT_RANGE_DATA = {
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
-
-export const DEFAULT_CHART_COLLECTION_VALUE = {
-  distinctCount: { data: [], color: '#1890FF' },
-  uniqueCount: { data: [], color: '#008376' },
-  nullCount: { data: [], color: '#7147E8' },
-  nullProportion: { data: [], color: '#B02AAC' },
-};
 
 export const INITIAL_COUNT_METRIC_VALUE = {
   information: [
@@ -233,22 +211,22 @@ export const INITIAL_SUM_METRIC_VALUE = {
 export const INITIAL_QUARTILE_METRIC_VALUE = {
   information: [
     {
-      title: i18n.t('label.first-quartile'),
+      title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
       color: '#1890FF',
     },
     {
-      title: i18n.t('label.median'),
+      title: t('label.median'),
       dataKey: 'median',
       color: '#7147E8',
     },
     {
-      title: i18n.t('label.inter-quartile-range'),
+      title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
       color: '#008376',
     },
     {
-      title: i18n.t('label.third-quartile'),
+      title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
       color: '#B02AAC',
     },
@@ -297,41 +275,16 @@ export const DEFAULT_INCLUDE_PROFILE: ColumnProfilerConfig[] = [
   },
 ];
 
-export const INITIAL_TEST_RESULT_SUMMARY = {
-  success: 0,
-  aborted: 0,
-  failed: 0,
+export const INITIAL_ENTITY_HEALTH_MATRIX = {
+  healthy: 0,
+  unhealthy: 0,
+  total: 0,
 };
 
-export const DEFAULT_TEST_VALUE = [
-  {
-    value: 0,
-    type: TestCaseStatus.Success,
-  },
-  {
-    value: 0,
-    type: TestCaseStatus.Aborted,
-  },
-  {
-    value: 0,
-    type: TestCaseStatus.Failed,
-  },
-];
-
-export const codeMirrorOption = {
-  tabSize: JSON_TAB_SIZE,
-  indentUnit: JSON_TAB_SIZE,
-  indentWithTabs: true,
-  lineNumbers: true,
-  lineWrapping: true,
-  styleActiveLine: true,
-  matchBrackets: true,
-  autoCloseBrackets: true,
-  foldGutter: true,
-  gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-  mode: {
-    name: CSMode.SQL,
-  },
+export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
+  covered: 0,
+  notCovered: 0,
+  total: 0,
 };
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
@@ -405,7 +358,7 @@ export const TIME_BASED_PARTITION = [
 
 export const TEST_CASE_TYPE_OPTION = [
   ...map(TestCaseType, (value) => ({
-    label: capitalize(value),
+    label: t('label.' + value),
     value: value,
   })),
 ];
@@ -416,7 +369,7 @@ export const TEST_CASE_STATUS_OPTION = [
     value: '',
   },
   ...values(TestCaseStatus).map((value) => ({
-    label: value,
+    label: t('label.' + value.toLowerCase()),
     value: value,
   })),
 ];
@@ -430,12 +383,20 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tier: 'tier',
   tags: 'tags',
   service: 'serviceName',
+  dimension: 'dataQualityDimension',
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
 }));
+
+export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
+  (value) => ({
+    label: value,
+    value: value,
+  })
+);
 
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,

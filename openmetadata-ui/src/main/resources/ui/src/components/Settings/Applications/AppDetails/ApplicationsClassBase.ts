@@ -12,15 +12,30 @@
  */
 
 import { FC } from 'react';
-import { App, AppType } from '../../../../generated/entity/applications/app';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
+import { AppType } from '../../../../generated/entity/applications/app';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { AppPlugin } from '../plugins/AppPlugin';
 
 class ApplicationsClassBase {
   public importSchema(fqn: string) {
     return import(`../../../../utils/ApplicationSchemas/${fqn}.json`);
   }
   public getJSONUISchema() {
-    return {};
+    return {
+      moduleConfiguration: {
+        dataAssets: {
+          serviceFilter: {
+            'ui:widget': 'hidden',
+          },
+        },
+      },
+      entityLink: {
+        'ui:widget': 'hidden',
+      },
+      type: {
+        'ui:widget': 'hidden',
+      },
+    };
   }
   public importAppLogo(appName: string) {
     return import(`../../../../assets/svg/${appName}.svg`);
@@ -38,15 +53,14 @@ class ApplicationsClassBase {
     return [];
   }
 
-  public isFloatingButtonPresent(applications: App[]) {
-    return applications.some((app) =>
-      this.getFloatingApplicationEntityList().includes(app.name)
-    );
-  }
-
   public importAppScreenshot(screenshotName: string) {
     return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
   }
+
+  public appPluginRegistry: Record<
+    string,
+    new (name: string, isInstalled: boolean) => AppPlugin
+  > = {};
 
   public getScheduleOptionsForApp(
     app: string,

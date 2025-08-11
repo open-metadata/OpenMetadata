@@ -25,6 +25,8 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,8 +45,10 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -55,7 +59,6 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
 
@@ -68,6 +71,12 @@ public class TopicRepository extends EntityRepository<Topic> {
         "",
         "");
     supportsSearch = true;
+
+    // Register bulk field fetchers for efficient database operations
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetSchemaFieldTags);
+    fieldFetchers.put("followers", this::fetchAndSetFollowers);
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+    fieldFetchers.put("service", this::fetchAndSetServices);
   }
 
   @Override
@@ -116,7 +125,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void setFields(Topic topic, Fields fields) {
+    // Set default service field
     topic.setService(getContainer(topic.getId()));
+
     if (topic.getMessageSchema() != null) {
       populateEntityFieldTags(
           entityType,
@@ -127,12 +138,101 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<Topic> entities) {
+    // Always set default service field for all topics
+    fetchAndSetDefaultService(entities);
+
+    fetchAndSetFields(entities, fields);
+    fetchAndSetTopicSpecificFields(entities, fields);
+    setInheritedFields(entities, fields);
+    entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private void fetchAndSetTopicSpecificFields(List<Topic> topics, Fields fields) {
+    if (topics == null || topics.isEmpty()) {
+      return;
+    }
+
+    if (fields.contains(FIELD_TAGS)) {
+      fetchAndSetSchemaFieldTags(topics, fields);
+    }
+
+    if (fields.contains("followers")) {
+      fetchAndSetFollowers(topics, fields);
+    }
+
+    if (fields.contains("usageSummary")) {
+      fetchAndSetUsageSummaries(topics, fields);
+    }
+
+    if (fields.contains("service")) {
+      fetchAndSetServices(topics, fields);
+    }
+  }
+
+  private void fetchAndSetSchemaFieldTags(List<Topic> topics, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || topics == null || topics.isEmpty()) {
+      return;
+    }
+
+    // First, fetch topic-level tags (important for search indexing)
+    List<String> entityFQNs = topics.stream().map(Topic::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (Topic topic : topics) {
+      topic.setTags(
+          addDerivedTags(
+              tagsMap.getOrDefault(topic.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if messageSchema field is requested, also fetch schema field tags
+    if (fields.contains("messageSchema")) {
+      // Filter topics that have message schemas and use bulk tag fetching
+      List<Topic> topicsWithSchemas =
+          topics.stream().filter(t -> t.getMessageSchema() != null).toList();
+
+      if (!topicsWithSchemas.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            topicsWithSchemas,
+            entityType,
+            t -> t.getMessageSchema().getSchemaFields(),
+            Topic::getFullyQualifiedName);
+      }
+    }
+  }
+
+  private void fetchAndSetFollowers(List<Topic> topics, Fields fields) {
+    if (!fields.contains("followers") || topics == null || topics.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, topics, batchFetchFollowers(topics), Topic::setFollowers);
+  }
+
+  private void fetchAndSetUsageSummaries(List<Topic> topics, Fields fields) {
+    if (!fields.contains("usageSummary") || topics == null || topics.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true,
+        topics,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(topics)),
+        Topic::setUsageSummary);
+  }
+
+  private void fetchAndSetServices(List<Topic> topics, Fields fields) {
+    if (!fields.contains("service") || topics == null || topics.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, topics, batchFetchServices(topics), Topic::setService);
+  }
+
+  @Override
   public void clearFields(Topic topic, Fields fields) {
     /* Nothing to do */
   }
 
   @Override
-  public TopicUpdater getUpdater(Topic original, Topic updated, Operation operation) {
+  public EntityRepository<Topic>.EntityUpdater getUpdater(
+      Topic original, Topic updated, Operation operation, ChangeSource changeSource) {
     return new TopicUpdater(original, updated, operation);
   }
 
@@ -237,6 +337,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public EntityInterface getParentEntity(Topic entity, String fields) {
+    if (entity.getService() == null) {
+      return null;
+    }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
@@ -370,6 +473,74 @@ public class TopicRepository extends EntityRepository<Topic> {
     return tags;
   }
 
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<Topic> topics) {
+    var followersMap = new HashMap<UUID, List<EntityReference>>();
+    if (topics == null || topics.isEmpty()) {
+      return followersMap;
+    }
+
+    // Initialize empty lists for all topics
+    topics.forEach(topic -> followersMap.put(topic.getId(), new ArrayList<>()));
+
+    // Single batch query to get all followers for all topics
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(topics),
+                org.openmetadata.schema.type.Relationship.FOLLOWS.ordinal());
+
+    // Group followers by topic ID
+    records.forEach(
+        record -> {
+          var topicId = UUID.fromString(record.getToId());
+          var followerRef =
+              Entity.getEntityReferenceById(
+                  record.getFromEntity(), UUID.fromString(record.getFromId()), NON_DELETED);
+          followersMap.get(topicId).add(followerRef);
+        });
+
+    return followersMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchServices(List<Topic> topics) {
+    var serviceMap = new HashMap<UUID, EntityReference>();
+    if (topics == null || topics.isEmpty()) {
+      return serviceMap;
+    }
+
+    // Single batch query to get all services for all topics
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(topics),
+                org.openmetadata.schema.type.Relationship.CONTAINS.ordinal());
+
+    records.forEach(
+        record -> {
+          var topicId = UUID.fromString(record.getToId());
+          var serviceRef =
+              Entity.getEntityReferenceById(
+                  Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+          serviceMap.put(topicId, serviceRef);
+        });
+
+    return serviceMap;
+  }
+
+  private void fetchAndSetDefaultService(List<Topic> topics) {
+    if (topics == null || topics.isEmpty()) {
+      return;
+    }
+
+    // Use the existing batch fetch method
+    var serviceMap = batchFetchServices(topics);
+
+    // Set service for all topics
+    topics.forEach(topic -> topic.setService(serviceMap.get(topic.getId())));
+  }
+
   public class TopicUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
@@ -379,7 +550,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
       recordChange(

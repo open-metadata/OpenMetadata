@@ -19,7 +19,11 @@ import { SidebarItem } from '../../constant/sidebar';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import {
+  clickOutside,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
 const user = new UserClass();
@@ -80,7 +84,7 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.click('#metricConfiguration_0_metrics');
       await adminPage.fill('#metricConfiguration_0_metrics', 'All');
       await adminPage.getByRole('tree').getByText('All').click();
-      await adminPage.getByTestId('heading').click();
+      await clickOutside(adminPage);
 
       await adminPage.click('[data-testid="add-fields"]');
       await adminPage.click('#metricConfiguration_1_dataType');
@@ -95,7 +99,7 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.fill('#metricConfiguration_1_metrics', 'column');
       await adminPage.click(`[title="Column Count"]:has(:visible)`);
       await adminPage.click(`[title="Column Names"]:has(:visible)`);
-      await adminPage.getByTestId('heading').click();
+      await clickOutside(adminPage);
 
       await adminPage.click('[data-testid="add-fields"]');
       await adminPage.click('#metricConfiguration_2_dataType');
@@ -111,7 +115,7 @@ test.describe('Profiler Configuration Page', () => {
       await adminPage.click('#metricConfiguration_2_metrics');
       await adminPage.fill('#metricConfiguration_2_metrics', 'All');
       await adminPage.getByRole('tree').getByText('All').click();
-      await adminPage.getByTestId('heading').click();
+      await clickOutside(adminPage);
 
       await adminPage.click('#metricConfiguration_2_disabled');
 
@@ -123,7 +127,8 @@ test.describe('Profiler Configuration Page', () => {
         );
       });
 
-      await expect(adminPage.getByRole('alert').first()).toHaveText(
+      await toastNotification(
+        adminPage,
         /Profiler Configuration updated successfully./
       );
     });

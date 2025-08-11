@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 import { NodeSelection, Plugin } from '@tiptap/pm/state';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { EditorView, __serializeForClipboard } from '@tiptap/pm/view';
+import { EditorView } from '@tiptap/pm/view';
 import { isUndefined } from 'lodash';
+import { DOMSerializer } from 'prosemirror-model';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
 import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
@@ -51,10 +50,16 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     );
 
     const slice = view.state.selection.content();
-    const { dom, text } = __serializeForClipboard(view, slice);
+    const serializer = DOMSerializer.fromSchema(view.state.schema);
+    const dom = serializer.serializeFragment(slice.content);
+    const text = slice.content.textBetween(0, slice.content.size, '\n\n');
+    // Convert DocumentFragment to HTML string
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(dom);
+    const html = tempDiv.innerHTML;
 
     event.dataTransfer.clearData();
-    event.dataTransfer.setData('text/html', dom.innerHTML);
+    event.dataTransfer.setData('text/html', html);
     event.dataTransfer.setData('text/plain', text);
     event.dataTransfer.effectAllowed = 'copyMove';
 
@@ -197,42 +202,63 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
 
   return new Plugin({
     view: (view) => {
-      // drag handle initialization
-      dragHandleElement = document.createElement('div');
-      dragHandleElement.draggable = true;
-      dragHandleElement.dataset.dragHandle = '';
-      dragHandleElement.title = 'Drag to move\nClick to open menu';
-      dragHandleElement.classList.add('om-drag-handle');
-      dragHandleElement.addEventListener('dragstart', (e) => {
-        handleDragStart(e, view);
-      });
-      dragHandleElement.addEventListener('click', (e) => {
-        handleDragClick(e, view);
-      });
+      try {
+        const isBarMenu =
+          view.dom?.parentElement?.parentElement?.classList.contains(
+            'block-editor-wrapper--bar-menu'
+          );
 
-      hideDragHandle();
+        if (isBarMenu) {
+          return {
+            destroy: () => {
+              // do nothing
+            },
+          };
+        }
 
-      // block handle initialization
-      blockHandleElement = document.createElement('div');
-      blockHandleElement.draggable = false;
-      blockHandleElement.dataset.blockHandle = '';
-      blockHandleElement.title = 'Add new node';
-      blockHandleElement.classList.add('om-block-handle');
+        // drag handle initialization
+        dragHandleElement = document.createElement('div');
+        dragHandleElement.draggable = true;
+        dragHandleElement.dataset.dragHandle = '';
+        dragHandleElement.title = 'Drag to move\nClick to open menu';
+        dragHandleElement.classList.add('om-drag-handle');
+        dragHandleElement.addEventListener('dragstart', (e) => {
+          handleDragStart(e, view);
+        });
+        dragHandleElement.addEventListener('click', (e) => {
+          handleDragClick(e, view);
+        });
 
-      hideBlockHandle();
+        hideDragHandle();
 
-      view?.dom?.parentElement?.appendChild(dragHandleElement);
-      view?.dom?.parentElement?.appendChild(blockHandleElement);
+        // block handle initialization
+        blockHandleElement = document.createElement('div');
+        blockHandleElement.draggable = false;
+        blockHandleElement.dataset.blockHandle = '';
+        blockHandleElement.title = 'Add new node';
+        blockHandleElement.classList.add('om-block-handle');
 
-      return {
-        destroy: () => {
-          dragHandleElement?.remove?.();
-          dragHandleElement = null;
+        hideBlockHandle();
 
-          blockHandleElement?.remove?.();
-          blockHandleElement = null;
-        },
-      };
+        view?.dom?.parentElement?.appendChild(dragHandleElement);
+        view?.dom?.parentElement?.appendChild(blockHandleElement);
+
+        return {
+          destroy: () => {
+            dragHandleElement?.remove?.();
+            dragHandleElement = null;
+
+            blockHandleElement?.remove?.();
+            blockHandleElement = null;
+          },
+        };
+      } catch (error) {
+        return {
+          destroy: () => {
+            // do nothing
+          },
+        };
+      }
     },
     props: {
       handleDOMEvents: {

@@ -45,7 +45,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -145,6 +145,15 @@ export interface TestCaseResolutionStatusSearchSource
   serviceType: string;
   description: string;
 }
+export interface TestCaseResultSearchSource
+  extends SearchSourceBase,
+    TestCaseResult {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
 
 export interface IngestionPipelineSearchSource
   extends SearchSourceBase,
@@ -220,6 +229,7 @@ export type ExploreSearchSource =
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
   [SearchIndex.DATA_ASSET]: TableSearchSource;
+  [SearchIndex.SERVICE]: DatabaseServiceSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
@@ -279,6 +289,7 @@ export type SearchRequest<
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
   filters?: string;
+  excludeSourceFields?: string[];
 } & (
   | {
       fetchSource: true;

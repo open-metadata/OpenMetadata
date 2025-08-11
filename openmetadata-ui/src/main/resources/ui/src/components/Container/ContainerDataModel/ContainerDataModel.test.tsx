@@ -20,7 +20,7 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import ContainerDataModel from './ContainerDataModel';
 
@@ -71,6 +71,7 @@ const props = {
   },
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   isReadOnly: false,
   onUpdate: jest.fn(),
   entityFqn: 's3_storage_sample.departments',
@@ -95,6 +96,26 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    type: 'container',
+  }),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+  handleUpdateTableColumnSelections: jest.fn(),
+}));
+
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
   getFilterTags: jest.fn().mockReturnValue({
@@ -109,7 +130,7 @@ jest.mock('../../../utils/ContainerDetailUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
   () =>
     jest
       .fn()
@@ -145,7 +166,11 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
 
 describe('ContainerDataModel', () => {
   it('Should render the Container data model component', async () => {
-    render(<ContainerDataModel {...props} />);
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
 
     const containerDataModel = await screen.findByTestId(
       'container-data-model-table'
@@ -171,7 +196,11 @@ describe('ContainerDataModel', () => {
   });
 
   it('On edit description button click modal editor should render', async () => {
-    render(<ContainerDataModel {...props} />);
+    render(
+      <MemoryRouter>
+        <ContainerDataModel {...props} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -190,11 +219,13 @@ describe('ContainerDataModel', () => {
 
   it('Should not render the edit action if isReadOnly', async () => {
     render(
-      <ContainerDataModel
-        {...props}
-        isReadOnly
-        hasDescriptionEditAccess={false}
-      />
+      <MemoryRouter>
+        <ContainerDataModel
+          {...props}
+          isReadOnly
+          hasDescriptionEditAccess={false}
+        />
+      </MemoryRouter>
     );
 
     const rows = await screen.findAllByRole('row');

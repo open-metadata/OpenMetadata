@@ -11,36 +11,41 @@
  *  limitations under the License.
  */
 export enum EntityTypeEndpoint {
-  Table = 'tables',
-  StoreProcedure = 'storedProcedures',
-  Topic = 'topics',
-  Dashboard = 'dashboards',
-  Pipeline = 'pipelines',
+  API_COLLECTION = 'apiCollections',
+  API_ENDPOINT = 'apiEndpoints',
+  ApiService = 'services/apiServices',
+  Chart = 'charts',
   Container = 'containers',
-  MlModel = 'mlmodels',
+  DATA_PRODUCT = 'dataProducts',
+  Dashboard = 'dashboards',
+  DashboardService = 'services/dashboardServices',
+  DataModel = 'dashboard/datamodels',
+  DataProduct = 'dataProducts',
+  Database = 'databases',
+  DatabaseSchema = 'databaseSchemas',
+  DatabaseService = 'services/databaseServices',
   Domain = 'domains',
   Glossary = 'glossaries',
   GlossaryTerm = 'glossaryTerms',
-  SearchIndex = 'searchIndexes',
-  DatabaseService = 'services/databaseServices',
-  DashboardService = 'services/dashboardServices',
-  StorageService = 'services/storageServices',
-  MlModelService = 'services/mlmodelServices',
-  PipelineService = 'services/pipelineServices',
-  MessagingService = 'services/messagingServices',
-  SearchService = 'services/searchServices',
-  MetadataService = 'services/metadataServices',
-  ApiService = 'services/apiServices',
-  Database = 'databases',
-  DatabaseSchema = 'databaseSchemas',
-  DataModel = 'dashboard/datamodels',
-  User = 'users',
-  API_COLLECTION = 'apiCollections',
-  API_ENDPOINT = 'apiEndpoints',
-  DATA_PRODUCT = 'dataProducts',
   METRIC = 'metrics',
-  TestSuites = 'dataQuality/testSuites',
+  MessagingService = 'services/messagingServices',
+  MetadataService = 'services/metadataServices',
+  MlModel = 'mlmodels',
+  MlModelService = 'services/mlmodelServices',
+  NotificationAlert = 'events/subscriptions',
+  Pipeline = 'pipelines',
+  PipelineService = 'services/pipelineServices',
+  SearchIndex = 'searchIndexes',
+  SearchService = 'services/searchServices',
+  StorageService = 'services/storageServices',
+  StoreProcedure = 'storedProcedures',
+  Table = 'tables',
   Teams = 'teams',
+  TestSuites = 'dataQuality/testSuites',
+  Topic = 'topics',
+  User = 'users',
+  Classification = 'classifications',
+  Tag = 'tags',
 }
 
 export type EntityDataType = {
@@ -68,6 +73,7 @@ export enum ENTITY_PATH {
   'apiEndpoints' = 'apiEndpoint',
   'dataProducts' = 'dataProduct',
   'metrics' = 'metric',
+  charts = 'chart',
 }
 
 export type ResponseDataType = {
@@ -87,6 +93,37 @@ export type TestCaseData = {
 
 export type TestSuiteData = {
   name?: string;
-  executableEntityReference?: string;
+  basicEntityReference?: string;
   description?: string;
 };
+
+export interface ResponseDataWithServiceType extends ResponseDataType {
+  service: ResponseDataType;
+}
+
+export interface UserResponseDataType extends ResponseDataType {
+  email: string;
+  isAdmin: boolean;
+  isBot: boolean;
+  href?: string;
+}
+
+export interface EntityReference {
+  id: string;
+  type: string;
+  name: string;
+  displayName?: string;
+  deleted?: boolean;
+  description?: string;
+  fullyQualifiedName?: string;
+  href?: string;
+  inherited?: boolean;
+}
+
+export interface ServiceEntity {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
+  };
+}

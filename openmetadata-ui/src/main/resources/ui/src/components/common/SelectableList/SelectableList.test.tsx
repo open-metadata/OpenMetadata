@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SelectableList } from './SelectableList.component';
 
 const mockFetchOptions = jest
@@ -26,6 +25,10 @@ const mockCustomTagRenderer = jest
 jest.mock('../UserTag/UserTag.component', () => ({
   UserTag: jest.fn().mockImplementation(({ name }) => <>{name}</>),
 }));
+
+jest.mock('../SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>Searchbar</div>)
+);
 
 describe('SelectableList Component Test', () => {
   it('should call fetchOptions on render', () => {
@@ -56,7 +59,7 @@ describe('SelectableList Component Test', () => {
     );
 
     act(() => {
-      const searchBar = screen.getByTestId('search-bar-container');
+      const searchBar = screen.getByText('Searchbar');
 
       expect(searchBar).toBeInTheDocument();
     });
@@ -79,7 +82,7 @@ describe('SelectableList Component Test', () => {
     );
 
     act(() => {
-      const searchBar = screen.getByTestId('search-bar-container');
+      const searchBar = screen.getByText('Searchbar');
       const updateBtn = screen.getByText('label.update');
       const cancelBtn = screen.getByText('label.cancel');
 
@@ -133,14 +136,13 @@ describe('SelectableList Component Test', () => {
       />
     );
 
-    await act(async () => {
-      const testItem = await screen.findByText('CustomRenderer');
+    const testItem = await screen.findByText(
+      'CustomRenderer',
+      {},
+      { timeout: 3000 }
+    );
 
-      expect(testItem).toBeInTheDocument();
-    });
-
-    expect(mockCustomTagRenderer).toHaveBeenCalled();
-
+    expect(testItem).toBeInTheDocument();
     expect(mockCustomTagRenderer).toHaveBeenCalledWith({
       displayName: 'test',
       id: '1',
@@ -218,11 +220,9 @@ describe('SelectableList Component Test', () => {
       />
     );
 
-    await act(async () => {
-      const userTag = await screen.findByText('test2');
+    const userTag = await screen.findByText('test2');
 
-      expect(userTag).toBeInTheDocument();
-    });
+    expect(userTag).toBeInTheDocument();
 
     const removeIcon = screen.queryAllByTestId('remove-owner');
 

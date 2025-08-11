@@ -11,38 +11,43 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Form, Input, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import IconAuth0 from '../../assets/img/icon-auth0.png';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
-import loginBG from '../../assets/img/login-bg.png';
-import { ReactComponent as IconFailBadge } from '../../assets/svg/fail-badge.svg';
+import AlertBar from '../../components/AlertBar/AlertBar';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
+import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './login.style.less';
-import LoginCarousel from './LoginCarousel';
 
 const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
-  const history = useHistory();
-  const { authConfig, onLoginHandler, isAuthenticated } = useApplicationStore();
+  const navigate = useNavigate();
+  const { authConfig, isAuthenticated } = useApplicationStore();
+  const { onLoginHandler } = useAuthProvider();
+  const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();
+
+  const brandName = brandClassBase.getPageTitle();
 
   const { isAuthProviderBasic, isAuthProviderLDAP } = useMemo(() => {
     return {
@@ -53,13 +58,13 @@ const SignInPage = () => {
     };
   }, [authConfig]);
 
-  const { handleLogin, loginError } = useBasicAuth();
+  const { handleLogin } = useBasicAuth();
 
   const handleSignIn = () => {
     onLoginHandler && onLoginHandler();
   };
 
-  const getSignInButton = (): JSX.Element => {
+  const signInButton = useMemo(() => {
     let ssoBrandLogo;
     let ssoBrandName;
     switch (authConfig?.provider) {
@@ -125,13 +130,13 @@ const SignInPage = () => {
         onClick={handleSignIn}
       />
     );
-  };
+  }, [authConfig?.provider, handleSignIn]);
 
   useEffect(() => {
     // If the user is already logged in or if security is disabled
     // redirect the user to the home page.
     if (isAuthenticated) {
-      history.push(ROUTES.HOME);
+      navigate(ROUTES.HOME);
     }
   }, [isAuthenticated]);
 
@@ -151,21 +156,36 @@ const SignInPage = () => {
     setLoading(false);
   };
 
-  const onClickSignUp = () => history.push(ROUTES.REGISTER);
+  const onClickSignUp = () => {
+    navigate(ROUTES.REGISTER);
+    resetAlert();
+  };
 
-  const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
+  const onClickForgotPassword = () => {
+    navigate(ROUTES.FORGOT_PASSWORD);
+    resetAlert();
+  };
 
   return (
-    <Row className="h-full" data-testid="signin-page">
-      <Col className="bg-white" span={8}>
+    <CarouselLayout pageTitle={t('label.sign-in')}>
+      <div className="login-form-container" data-testid="login-form-container">
         <div
-          className={classNames('mt-24 text-center flex-center flex-col', {
+          className={classNames('login-box', {
             'sso-container': !isAuthProviderBasic,
           })}>
-          <BrandImage height="auto" width={200} />
-          <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-            {t('message.om-description')}{' '}
-          </Typography.Text>
+          <BrandImage isMonoGram height="auto" width={50} />
+          <Typography.Title className="header-text display-sm" level={3}>
+            {t('label.welcome-to')} {brandName}
+          </Typography.Title>
+          {alert && (
+            <div className="login-alert">
+              <AlertBar
+                defafultExpand
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </div>
+          )}
 
           {isAuthProviderBasic ? (
             <div className="login-form ">
@@ -179,7 +199,6 @@ const SignInPage = () => {
                   data-testid="email"
                   label={t('label.email')}
                   name="email"
-                  requiredMark={false}
                   rules={[
                     { required: true },
                     {
@@ -190,98 +209,80 @@ const SignInPage = () => {
                       }),
                     },
                   ]}>
-                  <Input autoFocus placeholder={t('label.email')} />
+                  <Input
+                    autoFocus
+                    className="input-field"
+                    placeholder={t('label.email')}
+                  />
                 </Form.Item>
                 <Form.Item
                   data-testid="password"
-                  label={t('label.password')}
+                  label={
+                    <>
+                      <Typography.Text className="mr-1">
+                        {t('label.password')}
+                      </Typography.Text>
+                      <Typography.Link
+                        className="forgot-password-link"
+                        data-testid="forgot-password"
+                        onClick={onClickForgotPassword}>
+                        {t('label.forgot-password')}
+                      </Typography.Link>
+                    </>
+                  }
                   name="password"
-                  requiredMark={false}
                   rules={[{ required: true }]}>
                   <Input.Password
                     autoComplete="off"
+                    className="input-field"
                     placeholder={t('label.password')}
                   />
                 </Form.Item>
 
                 <Button
-                  className="w-full"
+                  block
+                  className="login-btn"
                   data-testid="login"
                   disabled={loading}
                   htmlType="submit"
                   loading={loading}
+                  size="large"
                   type="primary">
-                  {t('label.login')}
+                  {t('label.sign-in')}
                 </Button>
               </Form>
-              {loginError && (
-                <div
-                  className="d-flex flex-col m-y-md"
-                  data-testid="login-error-container">
-                  <div className="flex global-border rounded-4 p-sm error-alert ">
-                    <div className="m-r-xs">
-                      <Icon
-                        component={IconFailBadge}
-                        style={{ fontSize: '20px' }}
-                      />
-                    </div>
-                    <p data-testid="success-line">
-                      <span>{loginError}</span>
-                    </p>
-                  </div>
-                </div>
-              )}
               {!isAuthProviderLDAP && (
                 <>
-                  <div className="mt-8" onClick={onClickForgotPassword}>
-                    <Typography.Link underline data-testid="forgot-password">
-                      {t('label.forgot-password')}
-                    </Typography.Link>
-                  </div>
                   {authConfig?.enableSelfSignup && (
-                    <>
-                      <Divider className="w-min-0 mt-8 mb-12 justify-center">
-                        <Typography.Text className="text-sm" type="secondary">
-                          {t('label.or-lowercase')}
-                        </Typography.Text>
-                      </Divider>
-
-                      <div className="mt-4 d-flex flex-center">
-                        <Typography.Text className="mr-4">
-                          {t('message.new-to-the-platform')}
-                        </Typography.Text>
-                        <Button
-                          data-testid="signup"
-                          type="link"
-                          onClick={onClickSignUp}>
-                          {t('label.create-entity', {
-                            entity: t('label.account'),
-                          })}
-                        </Button>
-                      </div>
-                    </>
+                    <div className="mt-4 d-flex flex-center signup-text">
+                      <Typography.Text>
+                        {t('message.new-to-the-platform')}
+                      </Typography.Text>
+                      <Button
+                        className="link-btn"
+                        data-testid="signup"
+                        type="link"
+                        onClick={onClickSignUp}>
+                        {t('label.create-entity', {
+                          entity: t('label.account'),
+                        })}
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
             </div>
           ) : (
-            <div className="">{getSignInButton()}</div>
+            <div className=" login-form">
+              <Typography.Text className="text-xl text-grey-muted m-t-lg">
+                {t('message.om-description')}
+              </Typography.Text>
+              <div className="sso-signup">{signInButton}</div>
+            </div>
           )}
         </div>
-      </Col>
-      <Col className="relative" span={16}>
-        <div className="absolute inset-0">
-          <img
-            alt="Login Background"
-            className="w-full h-full"
-            data-testid="bg-image"
-            src={loginBG}
-          />
-        </div>
-
-        <LoginCarousel />
-      </Col>
-    </Row>
+      </div>
+    </CarouselLayout>
   );
 };
 

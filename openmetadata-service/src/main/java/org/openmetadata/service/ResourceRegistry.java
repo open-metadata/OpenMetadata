@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -23,6 +24,8 @@ public class ResourceRegistry {
       new HashMap<>();
   protected static final Map<MetadataOperation, String> EDIT_OPERATION_TO_OPERATION_MAP =
       new EnumMap<>(MetadataOperation.class);
+  protected static final Map<String, Map<String, MetadataOperation>>
+      ENTITY_FIELD_TO_VIEW_OPERATION_MAP = new ConcurrentHashMap<>();
 
   // Operations common to all the entities
   protected static final List<MetadataOperation> COMMON_OPERATIONS =
@@ -34,7 +37,9 @@ public class ResourceRegistry {
               MetadataOperation.VIEW_BASIC,
               MetadataOperation.EDIT_ALL,
               MetadataOperation.EDIT_DESCRIPTION,
-              MetadataOperation.EDIT_DISPLAY_NAME));
+              MetadataOperation.EDIT_DISPLAY_NAME,
+              MetadataOperation.EDIT_GLOSSARY_TERMS,
+              MetadataOperation.EDIT_TIER));
 
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
@@ -48,6 +53,7 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_TEAMS, "teams");
     mapFieldOperation(MetadataOperation.EDIT_DESCRIPTION, Entity.FIELD_DESCRIPTION);
     mapFieldOperation(MetadataOperation.EDIT_DISPLAY_NAME, Entity.FIELD_DISPLAY_NAME);
+    mapFieldOperation(MetadataOperation.EDIT_CERTIFICATION, Entity.FIELD_CERTIFICATION);
 
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
@@ -96,6 +102,9 @@ public class ResourceRegistry {
     if (entityFields.contains("reviewers")) {
       operations.add(MetadataOperation.EDIT_REVIEWERS);
     }
+    if (entityFields.contains(Entity.FIELD_CERTIFICATION)) {
+      operations.add(MetadataOperation.EDIT_CERTIFICATION);
+    }
     return new ArrayList<>(operations);
   }
 
@@ -109,6 +118,15 @@ public class ResourceRegistry {
             .filter(r -> r.getName().equalsIgnoreCase(resourceType))
             .findAny()
             .orElse(null);
+    if (rd == null) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.resourceTypeNotFound(resourceType));
+    }
+    return rd;
+  }
+
+  public static Map<String, MetadataOperation> getResourceFieldViewOperations(String resourceType) {
+    Map<String, MetadataOperation> rd = ENTITY_FIELD_TO_VIEW_OPERATION_MAP.get(resourceType);
     if (rd == null) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.resourceTypeNotFound(resourceType));
@@ -137,5 +155,10 @@ public class ResourceRegistry {
   private static void mapFieldOperation(MetadataOperation operation, String field) {
     FIELD_TO_EDIT_OPERATION_MAP.put(field, operation);
     EDIT_OPERATION_TO_OPERATION_MAP.put(operation, field);
+  }
+
+  public static void entityFieldToViewOperation(
+      String entityType, Map<String, MetadataOperation> operations) {
+    ENTITY_FIELD_TO_VIEW_OPERATION_MAP.put(entityType, operations);
   }
 }

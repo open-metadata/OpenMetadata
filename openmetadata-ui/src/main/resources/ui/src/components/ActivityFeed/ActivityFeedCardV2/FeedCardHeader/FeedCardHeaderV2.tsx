@@ -14,9 +14,8 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserPath } from '../../../../constants/constants';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -36,6 +35,7 @@ import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v2.less';

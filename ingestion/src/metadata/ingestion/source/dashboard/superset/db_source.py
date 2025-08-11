@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +25,9 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 )
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -55,6 +57,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
     get_database_name_for_lineage,
@@ -81,7 +84,10 @@ class SupersetDBSource(SupersetSourceMixin):
         the required information which is not available in fetch_charts_with_id api
         """
         try:
-            charts = self.engine.execute(FETCH_ALL_CHARTS)
+            if isinstance(self.service_connection.connection, MysqlConnection):
+                charts = self.engine.execute(FETCH_ALL_CHARTS.replace('"', "`"))
+            else:
+                charts = self.engine.execute(FETCH_ALL_CHARTS)
             for chart in charts:
                 chart_detail = FetchChart(**chart)
                 self.all_charts[chart_detail.id] = chart_detail
@@ -89,17 +95,15 @@ class SupersetDBSource(SupersetSourceMixin):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch chart list due to - {err}]")
 
-    def get_column_list(self, table_name: str) -> Iterable[FetchChart]:
+    def get_column_list(self, table_id: Optional[int]) -> Iterable[FetchChart]:
         try:
-            if table_name:
-                col_list = self.engine.execute(
-                    FETCH_COLUMN, table_name=table_name.lower()
-                )
+            if table_id:
+                col_list = self.engine.execute(FETCH_COLUMN, table_id=table_id)
                 return [FetchColumn(**col) for col in col_list]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Failed to fetch column name list for table: [{table_name} due to - {err}]"
+                f"Failed to fetch column name list for table: [{table_id} due to - {err}]"
             )
         return []
 
@@ -156,10 +160,10 @@ class SupersetDBSource(SupersetSourceMixin):
             )
 
     def _get_datasource_fqn_for_lineage(
-        self, chart_json: FetchChart, db_service_entity: DatabaseService
+        self, chart_json: FetchChart, db_service_prefix: Optional[str]
     ):
         return (
-            self._get_datasource_fqn(db_service_entity, chart_json)
+            self._get_datasource_fqn(db_service_prefix, chart_json)
             if chart_json.table_name
             else None
         )
@@ -182,9 +186,11 @@ class SupersetDBSource(SupersetSourceMixin):
                 chart = CreateChartRequest(
                     name=EntityName(str(chart_json.id)),
                     displayName=chart_json.slice_name,
-                    description=Markdown(chart_json.description)
-                    if chart_json.description
-                    else None,
+                    description=(
+                        Markdown(chart_json.description)
+                        if chart_json.description
+                        else None
+                    ),
                     chartType=get_standard_chart_type(chart_json.viz_type),
                     sourceUrl=SourceUrl(
                         f"{clean_uri(self.service_connection.hostPort)}/explore/?slice_id={chart_json.id}"
@@ -195,7 +201,7 @@ class SupersetDBSource(SupersetSourceMixin):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=chart_json.id,
+                        name=str(chart_json.id),
                         error=f"Error yielding Chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
@@ -208,23 +214,65 @@ class SupersetDBSource(SupersetSourceMixin):
         if sqa_str:
             sqa_url = make_url(sqa_str)
             default_db_name = sqa_url.database if sqa_url else None
+
         return get_database_name_for_lineage(db_service_entity, default_db_name)
 
     def _get_datasource_fqn(
-        self, db_service_entity: DatabaseService, chart_json: FetchChart
+        self, db_service_prefix: Optional[str], chart_json: FetchChart
     ) -> Optional[str]:
         try:
-            dataset_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                table_name=chart_json.table_name,
-                database_name=self._get_database_name(
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
+
+            database_name = None
+            if db_service_name:
+                db_service_entity = self.metadata.get_by_name(
+                    entity=DatabaseService, fqn=db_service_name
+                )
+                database_name = self._get_database_name(
                     chart_json.sqlalchemy_uri, db_service_entity
-                ),
-                schema_name=chart_json.table_schema,
-                service_name=db_service_entity.name.root,
+                )
+
+            if (
+                prefix_database_name
+                and database_name
+                and prefix_database_name.lower() != database_name.lower()
+            ):
+                logger.debug(
+                    f"Database {database_name} does not match prefix {prefix_database_name}"
+                )
+                return None
+
+            if (
+                prefix_schema_name
+                and chart_json.table_schema
+                and prefix_schema_name.lower() != chart_json.table_schema.lower()
+            ):
+                logger.debug(
+                    f"Schema {chart_json.table_schema} does not match prefix {prefix_schema_name}"
+                )
+                return None
+
+            if (
+                prefix_table_name
+                and chart_json.table_name
+                and prefix_table_name.lower() != chart_json.table_name.lower()
+            ):
+                logger.debug(
+                    f"Table {chart_json.table_name} does not match prefix {prefix_table_name}"
+                )
+                return None
+
+            return build_es_fqn_search_string(
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or chart_json.table_schema,
+                service_name=db_service_name or "*",
+                table_name=prefix_table_name or chart_json.table_name,
             )
-            return dataset_fqn
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -249,7 +297,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     self.status.filter(
                         chart_json.table_name, "Data model filtered out."
                     )
-                col_names = self.get_column_list(chart_json.table_name)
+                col_names = self.get_column_list(chart_json.table_id)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(str(chart_json.datasource_id)),
@@ -279,5 +327,5 @@ class SupersetDBSource(SupersetSourceMixin):
         Returns:
             List of columns as str to generate column lineage
         """
-        col_list = self.get_column_list(chart_json.table_name)
+        col_list = self.get_column_list(chart_json.table_id)
         return [col.column_name for col in col_list]

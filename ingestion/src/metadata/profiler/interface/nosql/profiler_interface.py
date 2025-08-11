@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,6 @@ from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.metric_filter import MetricFilter
-from metadata.profiler.processor.sampler.nosql.sampler import NoSQLSampler
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -44,10 +43,6 @@ class NoSQLProfilerInterface(ProfilerInterface):
     """
 
     # pylint: disable=too-many-arguments
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.sampler = self._get_sampler()
 
     def _compute_table_metrics(
         self,
@@ -157,32 +152,12 @@ class NoSQLProfilerInterface(ProfilerInterface):
     def fetch_sample_data(self, table, columns: List[SQALikeColumn]) -> TableData:
         return self.sampler.fetch_sample_data(columns)
 
-    def _get_sampler(self) -> NoSQLSampler:
-        """Get NoSQL sampler from config"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        return sampler_factory_.create(
-            self.service_connection_config.__class__.__name__,
-            table=self.table,
-            client=factory.create(
-                self.service_connection_config.__class__.__name__,
-                client=self.connection,
-            ),
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-        )
-
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
     ):
         return None
 
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
-    ):
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):
         return None
 
     def get_all_metrics(

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
+import incidentManagerClassBase from './IncidentManagerClassBase';
 import IncidentManagerPage from './IncidentManagerPage';
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -23,6 +23,10 @@ jest.mock('../../components/IncidentManager/IncidentManager.component', () => {
     .mockImplementation(() => <div>IncidentManager.component</div>);
 });
 
+jest.mock('./IncidentManagerClassBase', () => ({
+  getIncidentWidgets: jest.fn(),
+}));
+
 describe('IncidentManagerPage', () => {
   it('should render component', async () => {
     render(<IncidentManagerPage />);
@@ -33,5 +37,26 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('IncidentManager.component')
     ).toBeInTheDocument();
+  });
+
+  it('should render WidgetComponent when getIncidentWidgets returns a component', async () => {
+    const MockWidgetComponent = () => <div>Mock Widget</div>;
+    (incidentManagerClassBase.getIncidentWidgets as jest.Mock).mockReturnValue(
+      MockWidgetComponent
+    );
+
+    render(<IncidentManagerPage />);
+
+    expect(await screen.findByText('Mock Widget')).toBeInTheDocument();
+  });
+
+  it('should not render WidgetComponent when getIncidentWidgets returns null', async () => {
+    (incidentManagerClassBase.getIncidentWidgets as jest.Mock).mockReturnValue(
+      null
+    );
+
+    render(<IncidentManagerPage />);
+
+    expect(screen.queryByText('Mock Widget')).not.toBeInTheDocument();
   });
 });

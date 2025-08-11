@@ -6,6 +6,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
 public interface ResourceContextInterface {
+  enum Operation {
+    PATCH,
+    PUT,
+    NONE
+  }
+
   String getResource();
 
   // Get owner of a resource. If the resource does not support owner or has no owner, return null
@@ -17,5 +23,5 @@ public interface ResourceContextInterface {
 
   EntityInterface getEntity();
 
-  EntityReference getDomain();
+  List<EntityReference> getDomains();
 }

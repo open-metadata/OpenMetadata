@@ -18,14 +18,14 @@ on:
       e2e-tests:
         description: "E2E Tests to run"
         required: True
-        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
+        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]'
       debug:
-        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]. Default will trigger only on main branch."
         required: False
-        default: "false"
+        default: "default"
 
 env:
-  DEBUG: ${{ inputs.debug || 'false' }}
+  DEBUG: "${{ (inputs.debug == 'default' && github.ref == 'refs/heads/main' && 'false') || (inputs.debug == 'default' && github.ref != 'refs/heads/main' && 'true') || inputs.debug  || 'false' }}"
 
 permissions:
   id-token: write
@@ -38,14 +38,14 @@ jobs:
     outputs:
       DEBUG: ${{ env.DEBUG }}
     steps:
-      - run: echo "null"
+      - run: echo "INPUTS_DEBUG=${{ inputs.debug }}, GITHUB_REF=${{ github.ref }}, DEBUG=$DEBUG"
 
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]') }}
+        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol"]') }}
     environment: test
 
     steps:
@@ -61,11 +61,11 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
         role-session-name: github-ci-aws-e2e-tests
@@ -74,7 +74,7 @@ jobs:
     - name: Setup Openmetadata Test Environment
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        python-version: 3.9
+        python-version: '3.10'
 
 
     - name: Run Python Tests & record coverage
@@ -97,7 +97,8 @@ jobs:
         E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
         E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
         E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
+        E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD_YAML }}
+        E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
         E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
         E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
         E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
@@ -164,21 +165,21 @@ jobs:
 
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage
 
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
       if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tests-${{ matrix.e2e-test }}
         path: ingestion/junit/test-results-*.xml
@@ -188,14 +189,14 @@ jobs:
         cd ./docker/development
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
-
+    
     - name: Slack on Failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nCommit: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"        
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"         
           }          
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
@@ -215,12 +216,12 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: '3.10'
 
       - name: Install Ubuntu dependencies
         run: |

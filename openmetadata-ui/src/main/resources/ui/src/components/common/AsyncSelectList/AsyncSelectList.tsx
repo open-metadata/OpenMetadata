@@ -13,6 +13,7 @@
 import { CloseOutlined } from '@ant-design/icons';
 import {
   Button,
+  Empty,
   Form,
   Select,
   SelectProps,
@@ -22,19 +23,14 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -49,7 +45,10 @@ import {
   SelectOption,
 } from './AsyncSelectList.interface';
 
-const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
+const AsyncSelectList: FC<
+  AsyncSelectListProps &
+    SelectProps & { dropdownContainerRef?: React.RefObject<HTMLDivElement> }
+> = ({
   mode,
   onChange,
   fetchOptions,
@@ -60,10 +59,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   tagType,
   onCancel,
   isSubmitLoading,
+  newLook = false,
+  dropdownContainerRef,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasContentLoading, setHasContentLoading] = useState(false);
+  const [open, setOpen] = useState(props.autoFocus ?? false);
   const [options, setOptions] = useState<SelectOption[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -82,7 +84,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     const filteredData = data.filter((item) => {
       const isFiltered = filterOptions.includes(
-        item.data?.fullyQualifiedName ?? ''
+        (item.data as Tag)?.fullyQualifiedName ?? ''
       );
       if (isFiltered) {
         count = optionFilteredCount + 1;
@@ -121,36 +123,30 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   );
 
   const tagOptions = useMemo(() => {
-    const newTags = options
-      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) // To filter out Tier tags
-      .map((tag) => {
-        const displayName = tag.data?.displayName;
-        const parts = Fqn.split(tag.label);
-        const lastPartOfTag = isEmpty(displayName)
-          ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
-          : displayName;
-        parts.pop();
+    const newTags = options.map((tag) => {
+      const displayName = tag.data?.displayName;
+      const parts = Fqn.split(tag.label);
+      const lastPartOfTag = isEmpty(displayName)
+        ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
+        : displayName;
+      parts.pop();
 
-        return {
-          label: tag.label,
-          displayName: (
-            <Space className="w-full" direction="vertical" size={0}>
-              <Typography.Paragraph
-                ellipsis
-                className="text-grey-muted m-0 p-0">
-                {parts.join(FQN_SEPARATOR_CHAR)}
-              </Typography.Paragraph>
-              <Typography.Text
-                ellipsis
-                style={{ color: tag.data?.style?.color }}>
-                {lastPartOfTag}
-              </Typography.Text>
-            </Space>
-          ),
-          value: tag.value,
-          data: tag.data,
-        };
-      });
+      return {
+        label: tag.label,
+        displayName: (
+          <Space className="w-full" direction="vertical" size={0}>
+            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
+              {parts.join(FQN_SEPARATOR_CHAR)}
+            </Typography.Paragraph>
+            <Typography.Text ellipsis style={{ color: tag.data?.style?.color }}>
+              {lastPartOfTag}
+            </Typography.Text>
+          </Space>
+        ),
+        value: tag.value,
+        data: tag.data,
+      };
+    });
 
     return newTags;
   }, [options]);
@@ -179,7 +175,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   };
 
   const dropdownRender = (menu: React.ReactElement) => (
-    <>
+    <div ref={dropdownContainerRef}>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
@@ -187,6 +183,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
+            disabled={isEmpty(tagOptions)}
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
@@ -201,7 +198,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
           </Button>
         </Space>
       )}
-    </>
+    </div>
   );
 
   const customTagRender = (data: CustomTagProps) => {
@@ -216,7 +213,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     const { label, onClose } = data;
     const tagLabel = getTagDisplay(label as string);
     const tag = {
-      tagFQN: selectedTag?.data.fullyQualifiedName,
+      tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
         selectedTag?.data,
         'description',
@@ -252,6 +249,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     return (
       <TagsV1
+        isEditTags
+        newLook={newLook}
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
@@ -297,16 +296,32 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   return (
     <Select
       showSearch
-      className="async-select-list"
+      className={classNames('async-select-list', {
+        'new-chip-style': newLook,
+      })}
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}
       mode={mode}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
+      notFoundContent={
+        isLoading ? (
+          <Loader size="small" />
+        ) : (
+          <Empty
+            description={t('label.no-entity-available', {
+              entity: t('label.tag-plural'),
+            })}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )
+      }
+      open={open}
       optionLabelProp="label"
+      popupClassName="async-select-list-dropdown" // this popupClassName class is used to identify the dropdown in the playwright tests
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
+      onDropdownVisibleChange={setOpen}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();

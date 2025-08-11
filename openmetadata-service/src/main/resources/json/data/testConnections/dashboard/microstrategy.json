@@ -1,0 +1,21 @@
+{
+    "name": "MicroStrategy",
+    "displayName": "MicroStrategy Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+      {
+        "name": "GetToken",
+        "description": "Fetch the Auth Token",
+        "errorMessage": "Failed to fetch auth token, please validate the credentials or if user has access to fetch token or if you are using the correct login mode",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetProjects",
+        "description": "List all the projects available to the user",
+        "errorMessage": "Failed to fetch projects, please validate the credentials or validate if user has access to fetch projects",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+}

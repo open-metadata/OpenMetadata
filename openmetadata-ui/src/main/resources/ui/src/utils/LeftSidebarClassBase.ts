@@ -14,11 +14,21 @@ import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.in
 import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
 class LeftSidebarClassBase {
+  sidebarItems: Array<LeftSidebarItem>;
+
+  constructor() {
+    this.sidebarItems = SIDEBAR_LIST;
+  }
+
   /**
    * getSidebarItems
    */
   public getSidebarItems(): Array<LeftSidebarItem> {
-    return SIDEBAR_LIST;
+    return this.sidebarItems;
+  }
+
+  public setSidebarItems(items: Array<LeftSidebarItem>): void {
+    this.sidebarItems = items;
   }
 }
 

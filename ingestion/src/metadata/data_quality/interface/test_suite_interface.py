@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,9 +15,9 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Type
+from typing import Optional, Set, Type
 
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -31,9 +31,8 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.partition import get_partition_details
 
 logger = test_suite_logger()
 
@@ -43,32 +42,44 @@ class TestSuiteInterface(ABC):
 
     runtime_params_setter_fact = RuntimeParameterSetterFactory
 
-    @abstractmethod
     def __init__(
         self,
-        ometa_client: OpenMetadata,
         service_connection_config: DatabaseConnection,
+        ometa_client: OpenMetadata,
+        sampler: SamplerInterface,
         table_entity: Table,
+        validator_builder: Type[ValidatorBuilder],
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
         self.table_entity = table_entity
+        self.sampler = sampler
+        self.validator_builder_class = validator_builder
 
-    @property
-    def sampler(self):
-        """Get the sampler object
-
-        Note: Overriden in the implementation class. This should be removed from the interface. It has been
-        implemented as the RuntimeParameterSetter takes the sampler as an argument, though we may want to
-        remove that dependency.
-        """
-        return None
+    @classmethod
+    def create(
+        cls,
+        service_connection_config: DatabaseConnection,
+        ometa_client: OpenMetadata,
+        sampler: SamplerInterface,
+        table_entity: Table,
+        *args,
+        **kwargs,
+    ):
+        return cls(
+            service_connection_config,
+            ometa_client,
+            sampler,
+            table_entity,
+            *args,
+            **kwargs,
+        )
 
     @abstractmethod
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
+    ) -> ValidatorBuilder:
         """get the builder class for the validator. Define this in the implementation class
 
         Args:
@@ -76,7 +87,7 @@ class TestSuiteInterface(ABC):
             entity_type (str): type of the entity
 
         Returns:
-            IValidatorBuilder: a validator builder
+            ValidatorBuilder: a validator builder
         """
         raise NotImplementedError
 
@@ -102,9 +113,9 @@ class TestSuiteInterface(ABC):
         runtime_params_setter_fact: RuntimeParameterSetterFactory = (
             self._get_runtime_params_setter_fact()
         )  # type: ignore
-        runtime_params_setter: Optional[
+        runtime_params_setters: Set[
             RuntimeParameterSetter
-        ] = runtime_params_setter_fact.get_runtime_param_setter(
+        ] = runtime_params_setter_fact.get_runtime_param_setters(
             test_case.testDefinition.fullyQualifiedName,  # type: ignore
             self.ometa_client,
             self.service_connection_config,
@@ -118,7 +129,7 @@ class TestSuiteInterface(ABC):
         ).entityType.value
 
         validator_builder = self._get_validator_builder(test_case, entity_type)
-        validator_builder.set_runtime_params(runtime_params_setter)
+        validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
         try:
             return validator.run_validation()
@@ -128,37 +139,10 @@ class TestSuiteInterface(ABC):
             )
             raise RuntimeError(err)
 
-    def _get_sample_query(self) -> Optional[str]:
-        """Get the sampling query for the data quality tests
-
-        Args:
-            entity (Table): _description_
-        """
-        if self.table_entity.tableProfilerConfig:
-            return self.table_entity.tableProfilerConfig.profileQuery
-
-        return None
-
-    def _get_profile_sample(self) -> Optional[ProfileSampleConfig]:
-        try:
-            if self.table_entity.tableProfilerConfig.profileSample:
-                return ProfileSampleConfig(
-                    profile_sample=self.table_entity.tableProfilerConfig.profileSample,
-                    profile_sample_type=self.table_entity.tableProfilerConfig.profileSampleType,
-                )
-        except AttributeError:
-            # if tableProfilerConfig is None it will indicate that the table has not profiler config
-            # hence we can return None
-            return None
-        return None
-
     def _get_table_config(self):
         """Get the sampling configuration for the data quality tests"""
-        sample_query = self._get_sample_query()
-        sample_config = None
-        partition_config = None
-        if not sample_query:
-            sample_config = self._get_profile_sample()
-            partition_config = get_partition_details(self.table_entity)
-
-        return sample_query, sample_config, partition_config
+        return (
+            self.sampler.sample_query,
+            self.sampler.sample_config,
+            self.sampler.partition_details,
+        )

@@ -15,7 +15,8 @@
         "REFRESH_TOKEN",
         "EMAIL_VERIFICATION",
         "PASSWORD_RESET",
-        "PERSONAL_ACCESS_TOKEN"
+        "PERSONAL_ACCESS_TOKEN",
+        "SUPPORT_TOKEN"
       ]
     }
   },
@@ -43,12 +44,6 @@
       "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
-  "required": [
-    "token",
-    "user",
-    "tokenType",
-    "tokenStatus",
-    "expiryDate"
-  ],
+  "required": ["token", "userId", "tokenType", "tokenStatus", "expiryDate"],
   "additionalProperties": false
 }

@@ -1,12 +1,15 @@
 package org.openmetadata.service.resources.storages;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -31,6 +34,9 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,8 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -59,13 +64,13 @@ import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -132,7 +137,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertResponse(
         () -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[service must not be null]");
+        "[query param service must not be null]");
   }
 
   @Test
@@ -254,6 +259,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
     change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    change.setPreviousVersion(container.getVersion());
     ContainerDataModel newModel =
         new ContainerDataModel()
             .withIsPartitioned(false)
@@ -262,22 +268,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldDeleted(change, "fileFormats", FILE_FORMATS);
     fieldAdded(change, "fileFormats", newFileFormats);
-    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the container size and number of objects
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
-    fieldAdded(change, "fileFormats", newFileFormats);
+    change = getChangeDescription(container, MINOR_UPDATE);
     container.withSize(2.0).withNumberOfObjects(3.0);
     container =
-        patchEntityAndCheck(
-            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+        patchEntityAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
@@ -344,7 +347,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(container, MINOR_UPDATE);
     ContainerDataModel newModel =
         new ContainerDataModel()
             .withIsPartitioned(false)
@@ -353,23 +356,20 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         List.of(ContainerFileFormat.Gz, ContainerFileFormat.Csv);
     container.withPrefix("prefix2").withDataModel(newModel).withFileFormats(newFileFormats);
 
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
+    fieldUpdated(change, "prefix", "prefix1", "prefix2");
+    fieldUpdated(change, "dataModel.partition", true, false);
+    fieldDeleted(change, "fileFormats", FILE_FORMATS);
     fieldAdded(change, "fileFormats", newFileFormats);
-    patchEntityUsingFqnAndCheck(
-        container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Update the container size and number of objects
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(container);
-    change = getChangeDescription(container, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "dataModel", newModel);
-    fieldAdded(change, "prefix", "prefix2");
-    fieldAdded(change, "fileFormats", newFileFormats);
+    change = getChangeDescription(container, MINOR_UPDATE);
     container.withSize(2.0).withNumberOfObjects(3.0);
     container =
         patchEntityUsingFqnAndCheck(
-            container, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            container, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     assertEquals(2.0, container.getSize());
     assertEquals(3.0, container.getNumberOfObjects());
   }
@@ -398,6 +398,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
+    String rootContainerFQN = rootContainer.getFullyQualifiedName();
 
     CreateContainer createChildOneContainer =
         new CreateContainer()
@@ -489,6 +490,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(1, rootContainerList.getData().size());
     assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
+
+    // Test paginated child container list
+    ResultList<Container> children = getContainerChildren(rootContainerFQN, null, null);
+    assertEquals(2, children.getData().size());
+
+    ResultList<Container> childrenWithLimit = getContainerChildren(rootContainerFQN, 5, 0);
+    assertEquals(2, childrenWithLimit.getData().size());
+
+    ResultList<Container> childrenWithOffset = getContainerChildren(rootContainerFQN, 1, 1);
+    assertEquals(1, childrenWithOffset.getData().size());
+
+    ResultList<Container> childrenWithLargeOffset = getContainerChildren(rootContainerFQN, 1, 3);
+    assertTrue(childrenWithLargeOffset.getData().isEmpty());
   }
 
   @Test
@@ -700,6 +714,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         createdEntity.getFullyQualifiedName());
   }
 
+  private ResultList<Container> getContainerChildren(String fqn, Integer limit, Integer offset)
+      throws HttpResponseException {
+    WebTarget target = getResource(String.format("containers/name/%s/children", fqn));
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+  }
+
   @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a storage service with owner data consumer
@@ -797,9 +819,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         container.getChildren(),
         container.getDataModel(),
         container.getOwners(),
-        container.getTags(),
         container.getFollowers(),
         container.getExtension());
+    assertTrue(container.getTags().isEmpty());
 
     // .../models?fields=dataModel - parent,children are not set in createEntity - these are tested
     // separately
@@ -843,5 +865,126 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     List<ContainerFileFormat> actualFormats =
         JsonUtils.readObjects(actual, ContainerFileFormat.class);
     assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
+  }
+
+  @Test
+  @Order(2)
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    // Use existing tags that are already set up in the test environment
+    TagLabel containerTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel columnTagLabel = GLOSSARY1_TERM1_LABEL;
+
+    // Create multiple containers with tags at both container and column levels
+    List<Container> createdContainers = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Column> columns =
+          Arrays.asList(
+              getColumn("col1_" + i, BIGINT, null).withTags(List.of(columnTagLabel)),
+              getColumn("col2_" + i, ColumnDataType.VARCHAR, null).withDataLength(50));
+
+      ContainerDataModel dataModel =
+          new ContainerDataModel().withIsPartitioned(false).withColumns(columns);
+
+      CreateContainer createContainer =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withDataModel(dataModel)
+              .withTags(List.of(containerTagLabel));
+
+      Container container = createEntity(createContainer, ADMIN_AUTH_HEADERS);
+      createdContainers.add(container);
+    }
+
+    // Test pagination with fields=tags (should fetch container-level tags only)
+    WebTarget target =
+        getResource("containers").queryParam("fields", "tags").queryParam("limit", "50");
+
+    ContainerList containerList = TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(containerList.getData());
+
+    // Verify at least one of our created containers is in the response
+    List<Container> ourContainers =
+        containerList.getData().stream()
+            .filter(c -> createdContainers.stream().anyMatch(cc -> cc.getId().equals(c.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourContainers.isEmpty(),
+        "Should find at least one of our created containers in pagination");
+
+    // Verify container-level tags are fetched
+    for (Container container : ourContainers) {
+      assertNotNull(
+          container.getTags(),
+          "Container-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, container.getTags().size(), "Should have exactly one container-level tag");
+      assertEquals(containerTagLabel.getTagFQN(), container.getTags().get(0).getTagFQN());
+
+      // Columns should not have tags when only fields=tags is specified
+      if (container.getDataModel() != null && container.getDataModel().getColumns() != null) {
+        for (Column col : container.getDataModel().getColumns()) {
+          assertTrue(
+              col.getTags() == null || col.getTags().isEmpty(),
+              "Column tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    // Test pagination with fields=dataModel,tags (should fetch both container and column tags)
+    target =
+        getResource("containers").queryParam("fields", "dataModel,tags").queryParam("limit", "50");
+
+    containerList = TestUtils.get(target, ContainerList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(containerList.getData());
+
+    // Verify at least one of our created containers is in the response
+    ourContainers =
+        containerList.getData().stream()
+            .filter(c -> createdContainers.stream().anyMatch(cc -> cc.getId().equals(c.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourContainers.isEmpty(),
+        "Should find at least one of our created containers in pagination");
+
+    // Verify both container-level and column-level tags are fetched
+    for (Container container : ourContainers) {
+      // Verify container-level tags
+      assertNotNull(
+          container.getTags(),
+          "Container-level tags should not be null in pagination with dataModel,tags");
+      assertEquals(1, container.getTags().size(), "Should have exactly one container-level tag");
+      assertEquals(containerTagLabel.getTagFQN(), container.getTags().get(0).getTagFQN());
+
+      // Verify column-level tags
+      assertNotNull(
+          container.getDataModel(), "DataModel should not be null when fields includes dataModel");
+      assertNotNull(container.getDataModel().getColumns(), "Columns should not be null");
+
+      Column col1 =
+          container.getDataModel().getColumns().stream()
+              .filter(c -> c.getName().startsWith("col1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col1 column"));
+
+      assertNotNull(
+          col1.getTags(),
+          "Column tags should not be null when fields=dataModel,tags in pagination");
+      assertTrue(col1.getTags().size() >= 1, "Column should have at least one tag");
+      // Check that our expected tag is present
+      boolean hasExpectedTag =
+          col1.getTags().stream()
+              .anyMatch(tag -> tag.getTagFQN().equals(columnTagLabel.getTagFQN()));
+      assertTrue(
+          hasExpectedTag, "Column should have the expected tag: " + columnTagLabel.getTagFQN());
+
+      // col2 should not have tags
+      Column col2 =
+          container.getDataModel().getColumns().stream()
+              .filter(c -> c.getName().startsWith("col2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find col2 column"));
+
+      assertTrue(col2.getTags() == null || col2.getTags().isEmpty(), "col2 should not have tags");
+    }
   }
 }

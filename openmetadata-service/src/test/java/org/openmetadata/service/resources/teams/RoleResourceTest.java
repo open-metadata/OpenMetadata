@@ -13,9 +13,11 @@
 
 package org.openmetadata.service.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
@@ -24,17 +26,18 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.validation.constraints.Positive;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.validation.constraints.Positive;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -43,12 +46,13 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource.RoleList;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -95,18 +99,53 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Test
   void post_validRoles_as_admin_200_OK(TestInfo test) throws IOException {
-    // Create role with different optional fields
+    // Create role with different optional fields and verify each creation
+
+    // Test 1: Create basic role
     CreateRole create = createRequest(test, 1);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Role role1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(role1);
+    assertNotNull(role1.getId());
+    assertEquals(create.getName(), role1.getName());
+    assertListNotNull(role1.getPolicies());
+    assertEquals(create.getPolicies().size(), role1.getPolicies().size());
 
+    // Test 2: Create role with display name
     create = createRequest(test, 2).withDisplayName("displayName");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Role role2 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(role2);
+    assertEquals("displayName", role2.getDisplayName());
+    assertEquals(create.getName(), role2.getName());
+    assertListNotNull(role2.getPolicies());
 
+    // Test 3: Create role with description
     create = createRequest(test, 3).withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Role role3 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(role3);
+    assertEquals("description", role3.getDescription());
+    assertEquals(create.getName(), role3.getName());
+    assertListNotNull(role3.getPolicies());
 
+    // Test 4: Create role with both display name and description
     create = createRequest(test, 4).withDisplayName("displayName").withDescription("description");
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    Role role4 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(role4);
+    assertEquals("displayName", role4.getDisplayName());
+    assertEquals("description", role4.getDescription());
+    assertEquals(create.getName(), role4.getName());
+    assertListNotNull(role4.getPolicies());
+
+    // Verify all roles have the expected policies
+    for (Role role : List.of(role1, role2, role3, role4)) {
+      assertEquals(DATA_CONSUMER_ROLE.getPolicies().size(), role.getPolicies().size());
+      // Verify policy names match
+      for (int i = 0; i < role.getPolicies().size(); i++) {
+        assertEquals(
+            DATA_CONSUMER_ROLE.getPolicies().get(i).getName(),
+            role.getPolicies().get(i).getName(),
+            "Policy name should match");
+      }
+    }
   }
 
   @Test
@@ -136,10 +175,9 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(role);
     role.setPolicies(DATA_STEWARD_ROLE.getPolicies());
-    change = getChangeDescription(role, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(role, MINOR_UPDATE);
     fieldDeleted(change, "policies", DATA_CONSUMER_ROLE.getPolicies());
-    fieldAdded(change, "policies", DATA_STEWARD_ROLE.getPolicies());
-    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    role = patchEntityAndCheck(role, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Remove all the policies. It should be disallowed
     final String originalJson1 = JsonUtils.pojoToJson(role);
@@ -159,6 +197,78 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
           () -> deleteEntity(role.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(role.getName(), Entity.ROLE));
+    }
+  }
+
+  @Test
+  void test_bulkFetchWithPolicies_pagination(TestInfo test) throws IOException {
+    // This test verifies that bulk fetching roles with policies field works correctly
+    // Create multiple roles with different policies to trigger bulk fetching
+    List<Role> createdRoles = new ArrayList<>();
+
+    // Create 5 roles to ensure bulk fetching is triggered
+    for (int i = 0; i < 5; i++) {
+      CreateRole create =
+          createRequest(test.getDisplayName() + "_role" + i)
+              .withPolicies(
+                  List.of(DATA_CONSUMER_ROLE.getPolicies().getFirst().getFullyQualifiedName()));
+
+      Role role = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+      createdRoles.add(role);
+    }
+
+    // Test 1: Get all roles with policies field via list API
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("fields", "policies");
+    queryParams.put("limit", "100"); // Ensure we get all roles in one page
+    queryParams.put("default", "false"); // Exclude default roles to focus on created ones
+
+    ResultList<Role> roleList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(roleList);
+    assertTrue(roleList.getData().size() >= 5, "Should have at least 5 roles");
+
+    // Verify that policies are populated for all roles
+    for (Role role : roleList.getData()) {
+      if (createdRoles.stream().anyMatch(r -> r.getId().equals(role.getId()))) {
+        assertListNotNull(role.getPolicies());
+        assertEquals(
+            1,
+            role.getPolicies().size(),
+            "Role " + role.getName() + " should have exactly one policy");
+
+        // Verify the policy reference is valid
+        assertNotNull(role.getPolicies().getFirst().getId());
+        assertNotNull(role.getPolicies().getFirst().getName());
+        assertNotNull(role.getPolicies().getFirst().getType());
+      }
+    }
+
+    // Test 2: Get each role individually to compare with bulk response
+    for (Role createdRole : createdRoles) {
+      Role individualRole =
+          getEntityByName(
+              createdRole.getFullyQualifiedName(), null, "policies", ADMIN_AUTH_HEADERS);
+
+      assertListNotNull(individualRole.getPolicies());
+      assertEquals(1, individualRole.getPolicies().size());
+
+      // Find the same role in bulk response
+      Role bulkRole =
+          roleList.getData().stream()
+              .filter(r -> r.getId().equals(createdRole.getId()))
+              .findFirst()
+              .orElse(null);
+
+      if (bulkRole != null) {
+        assertEquals(
+            individualRole.getPolicies().getFirst().getId(),
+            bulkRole.getPolicies().getFirst().getId(),
+            "Policy from bulk fetch should match individual fetch");
+      } else {
+        LOG.info(
+            "Role {} not found in bulk response - might be on a different page",
+            createdRole.getName());
+      }
     }
   }
 

@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
   TEXT_BODY_COLOR,
 } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { getOidcToken } from '../../utils/LocalStorageUtils';
 import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
-  const { getOidcToken, theme } = useApplicationStore();
+  const { theme } = useApplicationStore();
   const idToken = getOidcToken();
 
   return (

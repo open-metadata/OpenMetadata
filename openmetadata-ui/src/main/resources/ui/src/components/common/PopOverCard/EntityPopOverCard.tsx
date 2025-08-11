@@ -13,9 +13,10 @@
 
 import { Popover, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, {
+import {
   FC,
   HTMLAttributes,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -28,6 +29,7 @@ import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
+import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -112,8 +114,11 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.DASHBOARD:
-      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, { fields });
+
+        break;
+      case EntityType.CHART:
+        promise = getChartByFqn(entityFQN, { fields });
 
         break;
       case EntityType.PIPELINE:
@@ -176,7 +181,7 @@ export const PopoverContent: React.FC<{
 
       case EntityType.DATA_PRODUCT:
         promise = getDataProductByName(entityFQN, {
-          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
         });
 
         break;
@@ -200,7 +205,7 @@ export const PopoverContent: React.FC<{
           fields: [
             TabSpecificField.OWNERS,
             TabSpecificField.TAGS,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
           ],
         });
 
@@ -245,6 +250,7 @@ export const PopoverContent: React.FC<{
   return (
     <ExploreSearchCard
       actionPopoverContent={extraInfo}
+      className="entity-popover-card"
       id="tabledatacard"
       showTags={false}
       source={entityData}
@@ -261,7 +267,7 @@ const EntityPopOverCard: FC<Props> = ({
 }) => {
   return (
     <Popover
-      align={{ targetOffset: [0, -10] }}
+      align={{ targetOffset: [0, 10] }}
       content={
         <PopoverContent
           entityFQN={entityFQN}
@@ -273,7 +279,7 @@ const EntityPopOverCard: FC<Props> = ({
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>
-      {children}
+      {children as ReactNode}
     </Popover>
   );
 };

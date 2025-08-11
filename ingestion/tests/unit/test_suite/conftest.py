@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,6 +22,7 @@ import pytest
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
@@ -32,6 +33,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -42,6 +44,9 @@ ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 ENTITY_LINK_USER = "<#E::table::service.db.users>"
 ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
+ENTITY_LINK_EXPECTED_LOCATION = "<#E::table::service.db.users::columns::postal_code>"
+ENTITY_LINK_IS_ACTIVE = "<#E::table::service.db.users::columns::is_active>"
+
 
 TABLE = Table(
     id=uuid4(),
@@ -55,6 +60,10 @@ TABLE = Table(
         Column(name="nickname", dataType=DataType.STRING),  # type: ignore
         Column(name="age", dataType=DataType.INT),  # type: ignore
         Column(name="inserted_date", dataType=DataType.DATE),  # type: ignore
+        Column(name="postal_code", dataType=DataType.INT),  # type: ignore
+        Column(name="lat", dataType=DataType.DECIMAL),  # type: ignore
+        Column(name="lon", dataType=DataType.DECIMAL),  # type: ignore
+        Column(name="is_active", dataType=DataType.BOOLEAN),  # type: ignore
     ],
     database=EntityReference(id=uuid4(), name="db", type="database"),  # type: ignore
 )  # type: ignore
@@ -69,6 +78,10 @@ class User(Base):
     nickname = sqa.Column(sqa.String(256))
     age = sqa.Column(sqa.Integer)
     inserted_date = sqa.Column(sqa.DATE)
+    postal_code = sqa.Column(sqa.INT)
+    lat = sqa.Column(sqa.DECIMAL)
+    lon = sqa.Column(sqa.DECIMAL)
+    is_active = sqa.Column(sqa.BOOLEAN)
 
 
 @pytest.fixture
@@ -82,14 +95,19 @@ def create_sqlite_table():
         databaseMode=db_path + "?check_same_thread=False",
     )  # type: ignore
 
-    with patch.object(
-        SQATestSuiteInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQATestSuiteInterface(
-            sqlite_conn,  # type: ignore
-            table_entity=TABLE,
-            ometa_client=None,  # type: ignore
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=TABLE,
         )
+    sqa_profiler_interface = SQATestSuiteInterface(
+        sqlite_conn,
+        None,
+        sampler,
+        TABLE,
+        validator_builder=ValidatorBuilder,
+    )
 
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()
@@ -105,6 +123,10 @@ def create_sqlite_table():
                 nickname="",
                 age=30,
                 inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
+                is_active=True,
             ),
             User(
                 name="Jane",
@@ -113,6 +135,10 @@ def create_sqlite_table():
                 nickname="Johnny d",
                 age=31,
                 inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=19005,
+                lat=45.2589385,
+                lon=1.4731471,
+                is_active=False,
             ),
             User(
                 name="John",
@@ -121,6 +147,10 @@ def create_sqlite_table():
                 nickname=None,
                 age=None,
                 inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=11008,
+                lat=42.9974445,
+                lon=2.2518325,
+                is_active=None,
             ),
         ]
         session.add_all(data)
@@ -464,7 +494,7 @@ def test_case_table_column_count_to_be_between():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="minColValue", value="2"),
-            TestCaseParameterValue(name="maxColValue", value="10"),
+            TestCaseParameterValue(name="maxColValue", value="11"),
         ],
     )  # type: ignore
 
@@ -706,3 +736,34 @@ def test_case_column_values_to_be_between_datetime():
             TestCaseParameterValue(name="maxValue", value="1625171052000"),
         ],
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_at_expected_location():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_EXPECTED_LOCATION,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="locationReferenceType", value="POSTAL_CODE"),
+            TestCaseParameterValue(name="longitudeColumnName", value="lon"),
+            TestCaseParameterValue(name="latitudeColumnName", value="lat"),
+            TestCaseParameterValue(name="radius", value="1000"),
+        ],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_in_set_boolean():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value="[True, False]"),
+        ],
+        computePassedFailedRowCount=True,
+    )

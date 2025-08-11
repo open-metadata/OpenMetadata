@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,6 +52,7 @@ from metadata.profiler.metrics.core import MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import MissingMetricException, Profiler
 from metadata.profiler.processor.default import DefaultProfiler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -107,12 +108,17 @@ class ProfilerTest(TestCase):
             ),
         ],
     )
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
+
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=table_entity,
         )
+
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, None, table_entity, None, sampler, 5, 43200
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -133,7 +139,7 @@ class ProfilerTest(TestCase):
         Check our pre-cooked profiler
         """
         simple = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
         )
         simple.compute_metrics()
 
@@ -280,23 +286,18 @@ class ProfilerTest(TestCase):
     def test_profiler_with_timeout(self):
         """check timeout is properly used"""
 
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-                timeout_seconds=0,
-            )
+        sqa_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            self.table_entity,
+            None,
+            self.sampler,
+            5,
+            0,
+        )
 
         simple = DefaultProfiler(
-            profiler_interface=sqa_profiler_interface,
+            profiler_interface=sqa_profiler_interface, metrics_registry=Metrics
         )
 
         with pytest.raises(TimeoutError):
@@ -315,7 +316,7 @@ class ProfilerTest(TestCase):
         )  # type: ignore
 
         default_profiler = DefaultProfiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=self.sqa_profiler_interface, metrics_registry=Metrics
         )
 
         column_metrics = default_profiler._prepare_column_metrics()

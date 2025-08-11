@@ -1,0 +1,91 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTask/userApprovalTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserApprovalTaskDefinition",
+  "description": "Defines a Task for a given User to approve.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "userTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "userApprovalTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "assignees": {
+          "title": "Assignees",
+          "description": "People/Teams assigned to the Task.",
+          "type": "object",
+          "properties": {
+            "addReviewers": {
+              "description": "Add the Reviewers to the assignees List.",
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "required": ["assignees"],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "output": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["updatedBy"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["true", "false"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

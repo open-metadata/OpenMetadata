@@ -6,13 +6,12 @@ source:
       hostPort: my-host:5439
       username: username
       password: strongPassword
-      database: databseToConnect
+      database: databaseToConnect
       type: Redshift
   sourceConfig:
     config:
       type: Profiler
-      generateSampleData: true
-      databaseFilterPattern: 
+      databaseFilterPattern:
         includes: 
           - database
       schemaFilterPattern:

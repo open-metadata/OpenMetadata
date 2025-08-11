@@ -39,19 +39,6 @@ const mockDescriptionChangeDiff = {
   previousVersion: 0.1,
 };
 
-const mockTagChangeDiff = {
-  fieldsAdded: [
-    {
-      name: 'tags',
-      newValue:
-        '[{"tagFQN":"PersonalData.Personal","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
-    },
-  ],
-  fieldsUpdated: [],
-  fieldsDeleted: [],
-  previousVersion: 0.2,
-};
-
 const mockColumnChangeDiff = {
   fieldsAdded: [
     {
@@ -116,7 +103,7 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   currentVersionData: mockPipelineData,
   isVersionLoading: false,
   owners: mockOwner,
-  domain: mockDomain,
+  domains: [mockDomain],
   dataProducts: [],
   tier: mockTier,
   slashedPipelineName: [],
@@ -127,19 +114,9 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   entityPermissions: ENTITY_PERMISSIONS,
 };
 
-const mockTagDiffPipelineData = {
-  ...mockPipelineData,
-  changeDescription: mockTagChangeDiff,
-};
-
 const mockColumnDiffPipelineData = {
   ...mockPipelineData,
   changeDescription: mockColumnChangeDiff,
-};
-
-export const mockTagDiffPipelineVersionMockProps = {
-  ...pipelineVersionMockProps,
-  currentVersionData: mockTagDiffPipelineData,
 };
 
 export const mockColumnDiffPipelineVersionMockProps = {

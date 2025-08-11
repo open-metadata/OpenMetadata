@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,21 +45,43 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
         return [row[0] for row in connection.execute(query)]
 
     def _get_table_columns(self, connection, table_name, schema):
-        query = f"""
-            SELECT 
-                col.COLUMN_NAME, 
-                col.TYPE_NAME,
-                col.COMMENT
-            from 
-                COLUMNS_V2 col 
-                join CDS cds ON col.CD_ID = cds.CD_ID 
-                join SDS sds ON sds.CD_ID = cds.CD_ID 
-                join TBLS tbsl on sds.SD_ID = tbsl.SD_ID 
-                and tbsl.TBL_NAME = '{table_name}'
+        schema_join = (
+            f"""
+            JOIN DBS db on tbsl.DB_ID = db.DB_ID
+            AND db.NAME = '{schema}'
         """
-        if schema:
-            query += f""" join DBS db on tbsl.DB_ID = db.DB_ID
-            and db.NAME = '{schema}'"""
+            if schema
+            else ""
+        )
+
+        query = f"""
+            WITH regular_columns AS (
+                SELECT 
+                    col.COLUMN_NAME,
+                    col.TYPE_NAME, 
+                    col.COMMENT
+                FROM COLUMNS_V2 col
+                JOIN CDS cds ON col.CD_ID = cds.CD_ID
+                JOIN SDS sds ON sds.CD_ID = cds.CD_ID
+                JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
+                    AND tbsl.TBL_NAME = '{table_name}'
+                            {schema_join}
+                        ),
+                        partition_columns AS (
+                SELECT 
+                    pk.PKEY_NAME as COLUMN_NAME,
+                    pk.PKEY_TYPE as TYPE_NAME,
+                    pk.PKEY_COMMENT as COMMENT
+                FROM PARTITION_KEYS pk
+                JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
+                    AND tbsl.TBL_NAME = '{table_name}'
+                {schema_join}
+            )
+            -- Combine regular and partition columns
+            SELECT * FROM regular_columns
+            UNION ALL
+            SELECT * FROM partition_columns
+        """
 
         return connection.execute(query).fetchall()
 

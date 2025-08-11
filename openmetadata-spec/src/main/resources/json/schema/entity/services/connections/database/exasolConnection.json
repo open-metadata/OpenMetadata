@@ -1,0 +1,104 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/exasolConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExasolConnection",
+  "description": "Exasol Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.ExasolConnection",
+  "definitions": {
+    "exasolType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Exasol"
+      ],
+      "default": "Exasol"
+    },
+    "exasolScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "exa+websocket"
+      ],
+      "default": "exa+websocket"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/exasolType",
+      "default": "Exasol"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/exasolScheme",
+      "default": "exa+websocket"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Exasol. This user should have privileges to read all the metadata in Exasol.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Exasol.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the source service.",
+      "type": "string",
+      "default": "127.0.0.1:8563"
+    },
+    "tls": {
+      "title": "SSL/TLS Settings",
+      "description": "Client SSL/TLS settings.",
+      "type": "string",
+      "enum": [
+        "disable-tls",
+        "ignore-certificate",
+        "validate-certificate"
+      ],
+      "default": "validate-certificate"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern":{
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "password"
+  ]
+}

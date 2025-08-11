@@ -13,15 +13,54 @@
 
 @import (reference) url('../variables.less');
 
+// Mixins for icon button styles
+.icon-button-base() {
+  border-radius: @border-rad-base;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.icon-button-default() {
+  .icon-button-base();
+  width: 30px;
+  height: 30px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+  }
+}
+
+.icon-button-sm() {
+  .icon-button-base();
+  width: 20px;
+  height: 20px;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+  }
+}
+
 .ant-btn,
 button {
   &:disabled {
     cursor: not-allowed;
+
     img,
     svg {
       opacity: 0.5;
     }
   }
+}
+
+.ant-btn.ant-btn-default:not(:hover) {
+  border-color: @grey-15;
 }
 
 .ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
@@ -39,6 +78,7 @@ button {
 .ant-btn-link-custom:hover {
   color: @primary-color;
 }
+
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
   background: @primary-color;
@@ -53,6 +93,7 @@ button {
   border-color: @primary-color;
   border-left-color: #ffffff;
 }
+
 .ant-btn-primary-custom:hover,
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
@@ -67,11 +108,153 @@ button {
 }
 
 .ant-btn-primary {
-  box-shadow: none;
+  background: @primary-color;
+  border-color: @primary-color;
+  color: @white;
+  box-shadow: @button-box-shadow-default;
+
+  &.ant-btn-lg {
+    font-weight: 600;
+  }
+
+  &:hover {
+    background: @blue-9;
+    border-color: @blue-9;
+    color: @white;
+    box-shadow: @button-box-shadow-hover;
+  }
+  &:focus {
+    background: @blue-12;
+    border-color: @blue-12;
+    color: @white;
+    box-shadow: @button-box-shadow-focus;
+  }
+  &:disabled {
+    background: @blue-25;
+    border-color: @blue-25;
+    color: @white;
+    box-shadow: @button-box-shadow-disabled;
+
+    &:hover {
+      background: @blue-25;
+      border-color: @blue-25;
+      color: @white;
+      box-shadow: @button-box-shadow-disabled;
+    }
+  }
 }
 
 .ant-btn.btn-outlined {
   border: 1px solid @primary-color;
   color: @primary-color;
   background: transparent;
+}
+
+.ant-tooltip-disabled-compatible-wrapper.bordered {
+  .ant-btn-default {
+    .icon-button-default();
+  }
+
+  .ant-btn-sm {
+    .icon-button-sm();
+  }
+}
+
+.ant-btn.ant-btn-icon-only.bordered {
+  border: 1px solid @grey-300;
+  background-color: @white;
+
+  &.ant-btn-default {
+    .icon-button-default();
+  }
+
+  &.ant-btn-sm {
+    .icon-button-sm();
+  }
+
+  svg {
+    color: @grey-600;
+  }
+}
+
+.ant-btn-group.spaced {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+
+  .ant-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    min-width: 50px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0px 1px 2px 0px #0a0d120f, 0px 1px 3px 0px #0a0d121a;
+  }
+
+  .ant-btn-primary:first-child:not(:last-child) {
+    border-right-color: transparent;
+  }
+
+  .ant-btn-default:not(.ant-btn-primary):not([disabled]) {
+    border-left-color: @grey-15;
+
+    &:hover {
+      border-left-color: @primary-color;
+    }
+  }
+
+  .ant-btn-default {
+    background-color: @background-color;
+
+    &:hover {
+      background-color: @primary-button-background;
+      border-color: @primary-color;
+    }
+  }
+
+  > .ant-btn:first-child:not(:last-child),
+  > span:first-child:not(:last-child) > .ant-btn {
+    border-radius: 8px;
+  }
+}
+
+// Remove background color from button
+.remove-button-background-hover.ant-btn-text:hover {
+  background-color: @white;
+  color: inherit;
+}
+.ant-btn.ant-btn-dangerous {
+  background: @red-14;
+  border-color: @red-14;
+  color: @white;
+  box-shadow: @button-box-shadow-default;
+  &:hover {
+    background: @red-10;
+    border-color: @red-10;
+    color: @white;
+    box-shadow: @button-box-shadow-hover;
+  }
+
+  &:focus {
+    background: @red-14;
+    border-color: @red-14;
+    color: @white;
+    box-shadow: @button-box-shadow-focus;
+  }
+
+  &:disabled {
+    background: @red-19;
+    color: @white;
+    border: 1px solid @red-19;
+    box-shadow: @button-box-shadow-disabled;
+    &:hover {
+      background: @red-19;
+      color: @white;
+      border: 1px solid @red-19;
+      box-shadow: @button-box-shadow-disabled;
+    }
+  }
 }

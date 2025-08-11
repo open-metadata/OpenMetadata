@@ -15,6 +15,7 @@ package org.openmetadata.service.formatter.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.service.Entity.DATA_CONTRACT_RESULT;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
@@ -22,6 +23,8 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.formatter.factory.ParserFactory.getFieldParserObject;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldNameChange;
 
+import jakarta.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,26 +32,27 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.factory.ParserFactory;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -253,7 +257,7 @@ public class FormatterUtil {
     return null;
   }
 
-  private static ChangeEvent createChangeEventForEntity(
+  public static ChangeEvent createChangeEventForEntity(
       String updateBy, EventType eventType, EntityInterface entityInterface) {
     return getChangeEvent(
             updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
@@ -295,8 +299,10 @@ public class FormatterUtil {
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
-        .withDomain(
-            nullOrEmpty(entityInterface.getDomain()) ? null : entityInterface.getDomain().getId())
+        .withDomains(
+            entityInterface.getDomains() == null
+                ? null
+                : entityInterface.getDomains().stream().map(EntityReference::getId).toList())
         .withUserName(updateBy)
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
@@ -321,7 +327,11 @@ public class FormatterUtil {
               TEST_CASE_RESULT + ",testSuites",
               Include.ALL);
       ChangeEvent changeEvent =
-          getChangeEvent(updateBy, eventType, testCase.getEntityReference().getType(), testCase);
+          getChangeEvent(
+              updateBy,
+              eventType,
+              testCase.getEntityReference().getType(),
+              testCase.withUpdatedAt(testCaseResult.getTimestamp()));
       return changeEvent
           .withChangeDescription(
               new ChangeDescription()
@@ -333,6 +343,24 @@ public class FormatterUtil {
           .withEntity(testCase)
           .withEntityFullyQualifiedName(testCase.getFullyQualifiedName());
     }
+    if (entityTimeSeries instanceof DataContractResult) {
+      DataContractResult result =
+          JsonUtils.readOrConvertValue(entityTimeSeries, DataContractResult.class);
+      DataContract contract =
+          Entity.getEntityByName(
+              Entity.DATA_CONTRACT, result.getDataContractFQN(), "", Include.ALL);
+      ChangeEvent changeEvent =
+          getChangeEvent(updateBy, eventType, contract.getEntityReference().getType(), contract);
+
+      return changeEvent
+          .withChangeDescription(
+              new ChangeDescription()
+                  .withFieldsUpdated(
+                      List.of(
+                          new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
+          .withEntity(contract)
+          .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
+    }
     return null;
   }
 
@@ -342,7 +370,7 @@ public class FormatterUtil {
         .withId(UUID.randomUUID())
         .withEventType(eventType)
         .withEntityId(thread.getId())
-        .withDomain(thread.getDomain())
+        .withDomains(thread.getDomains())
         .withEntityType(entityType)
         .withUserName(updateBy)
         .withTimestamp(thread.getUpdatedAt());

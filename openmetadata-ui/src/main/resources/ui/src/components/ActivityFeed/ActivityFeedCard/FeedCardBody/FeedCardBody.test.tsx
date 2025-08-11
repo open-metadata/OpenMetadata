@@ -18,7 +18,6 @@ import {
   getByTestId,
   render,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardBody from './FeedCardBody';
 
@@ -37,7 +36,7 @@ jest.mock('../../../../utils/FeedUtils', () => ({
   },
 }));
 
-jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichText Preview</p>);
 });
 

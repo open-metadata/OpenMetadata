@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Config, ImmutableTree } from '@react-awesome-query-builder/antd';
 import { ReactNode } from 'react';
-import { Config, ImmutableTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../../enums/search.enum';
+
+export enum SearchOutputType {
+  ElasticSearch = 'elasticsearch',
+  JSONLogic = 'jsonlogic',
+}
 
 export interface AdvanceSearchProviderProps {
   children: ReactNode;
@@ -22,6 +27,9 @@ export interface AdvanceSearchProviderProps {
     subTitle?: string;
   };
   updateURL?: boolean;
+  fieldOverrides?: { field: string; type: string }[];
+  searchOutputType?: SearchOutputType;
+  entityType?: string; // Optional entity type to filter custom properties
 }
 
 export interface AdvanceSearchContext {
@@ -31,9 +39,9 @@ export interface AdvanceSearchContext {
   toggleModal: (show: boolean) => void;
   treeInternal: ImmutableTree;
   config: Config;
+  isUpdating: boolean;
   onReset: () => void;
   onResetAllFilters: () => void;
-  onUpdateConfig: (config: Config) => void;
   onChangeSearchIndex: (index: SearchIndex | Array<SearchIndex>) => void;
   searchIndex: string | Array<string>;
   onSubmit: () => void;
@@ -43,4 +51,7 @@ export interface AdvanceSearchContext {
   };
 }
 
-export type FilterObject = Record<string, string[]>;
+export interface CustomPropertyEnumConfig {
+  multiSelect: boolean;
+  values: string[];
+}

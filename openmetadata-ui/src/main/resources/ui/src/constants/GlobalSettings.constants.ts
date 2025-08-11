@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
@@ -23,18 +21,22 @@ export enum GlobalSettingsMenuCategory {
   BOTS = 'bots',
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
+  SEARCH = 'search',
 }
 
 export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
+  ONLINE_USERS = 'online-users',
   TEAMS = 'teams',
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  PERMISSION_DEBUGGER = 'permission-debugger',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
+  DATA_ASSET_RULES = 'dataAssetRules',
   MESSAGING = 'messaging',
   METADATA = 'metadata',
   DASHBOARDS = 'dashboards',
@@ -77,19 +79,15 @@ export enum GlobalSettingOptions {
   API_ENDPOINTS = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
   METRICS = 'metrics',
+  SEARCH_RBAC = 'search-rbac',
+  LINEAGE_CONFIG = 'lineageConfig',
+  OM_URL_CONFIG = 'om-url-config',
+  SEARCH_SETTINGS = 'search-settings',
+  DATA_ASSETS = 'dataAssets',
+  QUERY = 'query',
+  TEST_CASES = 'testCases',
+  TAGS = 'tags',
+  DOMAINS = 'domains',
+  CHARTS = 'charts',
+  SECURITY = 'security',
 }
-
-export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
-  ResourceEntity.TEAM,
-  ResourceEntity.USER,
-  ResourceEntity.ROLE,
-  ResourceEntity.POLICY,
-  ResourceEntity.DATABASE_SERVICE,
-  ResourceEntity.MESSAGING_SERVICE,
-  ResourceEntity.DASHBOARD_SERVICE,
-  ResourceEntity.PIPELINE_SERVICE,
-  ResourceEntity.ML_MODEL_SERVICE,
-  ResourceEntity.TYPE,
-  ResourceEntity.WEBHOOK,
-  ResourceEntity.BOT,
-];

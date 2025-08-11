@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import i18next from 'i18next';
 import { filter, startCase } from 'lodash';
-import React from 'react';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -41,7 +41,10 @@ export const INTERNAL_CATEGORY_OPTIONS = filter(
 
 export const EXTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionType,
-  (value) => value !== SubscriptionType.ActivityFeed
+  (value) =>
+    // Exclude the following categories from the external dropdown
+    value !== SubscriptionType.ActivityFeed &&
+    value !== SubscriptionType.GovernanceWorkflowChangeEvent
 ).map((value) => ({
   label: (
     <div
@@ -69,3 +72,24 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
   [SubscriptionType.Webhook]: 'https://example.com',
   [SubscriptionType.Email]: 'Add ↵ separated Email addresses',
 };
+
+export const DEFAULT_READ_TIMEOUT = 12;
+
+export const DATA_CONTRACT_ALERT_FILTERS = [
+  'filterByFqn',
+  'filterByDomain',
+  'filterByOwner',
+  'filterByEntityName',
+];
+
+export const DATA_CONTRACT_ALERT_ACTIONS = [
+  'GetDataContractStatusUpdates',
+  'GetDataContractValidationFailures',
+];
+
+export const DATA_CONTRACT_STATUS_OPTIONS = [
+  { label: i18next.t('label.success'), value: 'Success' },
+  { label: i18next.t('label.failed'), value: 'Failed' },
+  { label: i18next.t('label.running'), value: 'Running' },
+  { label: i18next.t('label.aborted'), value: 'Aborted' },
+];

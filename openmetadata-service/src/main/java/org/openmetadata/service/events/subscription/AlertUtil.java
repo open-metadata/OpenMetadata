@@ -20,6 +20,8 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import jakarta.ws.rs.BadRequestException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -27,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
@@ -38,12 +39,14 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.util.JsonUtils;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
@@ -155,6 +158,11 @@ public final class AlertUtil {
           || event.getEntityType().equals(Entity.TEST_CASE);
     }
 
+    // Data Contract
+    if (config.getResources().get(0).equals(Entity.DATA_CONTRACT)) {
+      return event.getEntityType().equals(Entity.DATA_CONTRACT);
+    }
+
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
@@ -176,6 +184,28 @@ public final class AlertUtil {
         .withTimestamp(timeStamp);
   }
 
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withStatusCode(statusCode)
+        .withTimestamp(timestamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status, StatusContext statusContext) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(statusContext.getStatusInfo())
+        .withStatusCode(statusContext.getStatusCode())
+        .withStatusInfo(statusContext.getStatusInfo())
+        .withHeaders(statusContext.getHeaders())
+        .withEntity(statusContext.getEntity())
+        .withMediaType(statusContext.getMediaType())
+        .withLocation(URI.create(statusContext.getLocation()))
+        .withTimestamp(statusContext.getTimestamp());
+  }
+
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
       EventSubscription eventSubscription, Map<ChangeEvent, Set<UUID>> events) {
     return events.entrySet().stream()
@@ -185,7 +215,7 @@ public final class AlertUtil {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  private static boolean checkIfChangeEventIsAllowed(
+  public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
     boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
@@ -203,7 +233,8 @@ public final class AlertUtil {
   }
 
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
-    long eventSubscriptionOffset;
+    long startingOffset;
+    long currentOffset;
     String json =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
@@ -211,11 +242,15 @@ public final class AlertUtil {
     if (json != null) {
       EventSubscriptionOffset offsetFromDb =
           JsonUtils.readValue(json, EventSubscriptionOffset.class);
-      eventSubscriptionOffset = offsetFromDb.getOffset();
+      startingOffset = offsetFromDb.getStartingOffset();
+      currentOffset = offsetFromDb.getCurrentOffset();
     } else {
-      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      startingOffset = currentOffset;
     }
-    return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
+    return new EventSubscriptionOffset()
+        .withCurrentOffset(currentOffset)
+        .withStartingOffset(startingOffset);
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(

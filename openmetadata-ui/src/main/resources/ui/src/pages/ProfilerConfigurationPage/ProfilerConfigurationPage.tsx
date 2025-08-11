@@ -10,23 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
-  Card,
   Col,
+  Collapse,
   Form,
   Row,
   Select,
   Switch,
   TreeSelect,
-  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isEmpty, isEqual, values } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -51,11 +50,13 @@ import {
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './profiler-configuration-page.style.less';
+import profilerConfigurationClassBase from './ProfilerConfigurationClassBase';
 
 const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useTranslation();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -82,6 +83,17 @@ const ProfilerConfigurationPage = () => {
       ),
     }));
   }, [selectedMetricConfiguration]);
+
+  const sparkAgentConfigComponent = useMemo(() => {
+    const SparkAgentConfig =
+      profilerConfigurationClassBase.getSparkAgentConfigComponent();
+
+    return SparkAgentConfig ? (
+      <Col span={24}>
+        <SparkAgentConfig />
+      </Col>
+    ) : null;
+  }, []);
 
   const handleSubmit = async (data: ProfilerConfiguration) => {
     setIsFormSubmitting(true);
@@ -144,13 +156,10 @@ const ProfilerConfigurationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.profiler-configuration')}>
-      <Row
-        align="middle"
-        className="profiler-configuration-page-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+      <div className="m-b-mlg">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+      </div>
+      <Row className="profiler-configuration-page-container" gutter={[0, 24]}>
         <Col span={24}>
           <PageHeader
             data={{
@@ -162,136 +171,155 @@ const ProfilerConfigurationPage = () => {
           />
         </Col>
         <Col span={24}>
-          <Card className="profiler-configuration-form-item-container">
-            <Form<ProfilerConfiguration>
-              data-testid="profiler-config-form"
-              form={form}
-              id="profiler-config"
-              layout="vertical"
-              onFinish={handleSubmit}>
-              <Form.List name="metricConfiguration">
-                {(fields, { add, remove }) => {
-                  return (
-                    <Row gutter={[16, 16]}>
-                      <Col span={24}>
-                        <Typography.Text className="text-grey-muted">
-                          {t('label.add-entity', {
-                            entity: t('label.metric-configuration'),
-                          })}
-                        </Typography.Text>
-                      </Col>
-                      <Col span={10}>
-                        {t('label.data-type')}
-                        <span className="text-failure">*</span>
-                      </Col>
-                      <Col span={11}>{t('label.metric-type')}</Col>
-                      <Col span={3}>{t('label.disable')}</Col>
-                      {fields.map(({ key, name }) => (
-                        <Fragment key={key}>
-                          <Col span={10}>
-                            <Form.Item
-                              name={[name, 'dataType']}
-                              rules={[
-                                {
-                                  required: true,
-                                  message: t('message.field-text-is-required', {
-                                    fieldText: t('label.data-type'),
-                                  }),
-                                },
-                              ]}>
-                              <Select
-                                allowClear
-                                data-testid="data-type-select"
-                                options={dataTypeOptions}
-                                placeholder={t('label.select-field', {
-                                  field: t('label.data-type'),
-                                })}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={11}>
-                            <Form.Item
-                              noStyle
-                              shouldUpdate={(prevValues, currentValues) => {
-                                return !isEqual(
-                                  prevValues['metricConfiguration']?.[name]?.[
-                                    'disabled'
-                                  ],
-                                  currentValues['metricConfiguration']?.[
-                                    name
-                                  ]?.['disabled']
-                                );
-                              }}>
-                              {() => (
-                                <Form.Item name={[name, 'metrics']}>
-                                  <TreeSelect
-                                    allowClear
-                                    treeCheckable
-                                    data-testid="metric-type-select"
-                                    disabled={form.getFieldValue([
-                                      'metricConfiguration',
-                                      name,
-                                      'disabled',
-                                    ])}
-                                    maxTagCount={5}
-                                    placeholder={t('label.select-field', {
-                                      field: t('label.metric-type'),
-                                    })}
-                                    showCheckedStrategy={TreeSelect.SHOW_PARENT}
-                                    treeData={PROFILER_METRICS_TYPE_OPTIONS}
-                                  />
-                                </Form.Item>
-                              )}
-                            </Form.Item>
-                          </Col>
-                          <Col className="d-flex justify-between" span={3}>
-                            <Form.Item
-                              name={[name, 'disabled']}
-                              valuePropName="checked">
-                              <Switch data-testid="disabled-switch" />
-                            </Form.Item>
-                            <Form.Item>
-                              <Button
-                                data-testid={`remove-filter-${name}`}
-                                icon={<CloseOutlined />}
-                                size="small"
-                                onClick={() => remove(name)}
-                              />
-                            </Form.Item>
-                          </Col>
-                        </Fragment>
-                      ))}
+          <Collapse
+            className="profiler-configuration-collapse"
+            defaultActiveKey={['profileConfig']}
+            expandIconPosition="right">
+            <Collapse.Panel
+              header={
+                <PageHeader
+                  data={{
+                    header: t('label.metric-configuration'),
+                    subHeader: t('message.metric-configuration-description'),
+                  }}
+                />
+              }
+              key="profileConfig">
+              <Form<ProfilerConfiguration>
+                className="new-form-style"
+                data-testid="profiler-config-form"
+                form={form}
+                id="profiler-config"
+                layout="vertical"
+                onFinish={handleSubmit}>
+                <Form.List name="metricConfiguration">
+                  {(fields, { add, remove }) => {
+                    return (
+                      <Row gutter={[16, 16]}>
+                        <Col span={10}>
+                          {t('label.data-type')}
+                          <span className="text-failure">*</span>
+                        </Col>
+                        <Col span={11}>{t('label.metric-type')}</Col>
+                        <Col span={3}>{t('label.disable')}</Col>
+                        {fields.map(({ key, name }) => (
+                          <Fragment key={key}>
+                            <Col span={10}>
+                              <Form.Item
+                                name={[name, 'dataType']}
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: t(
+                                      'message.field-text-is-required',
+                                      {
+                                        fieldText: t('label.data-type'),
+                                      }
+                                    ),
+                                  },
+                                ]}>
+                                <Select
+                                  allowClear
+                                  data-testid="data-type-select"
+                                  options={dataTypeOptions}
+                                  placeholder={t('label.select-field', {
+                                    field: t('label.data-type'),
+                                  })}
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={11}>
+                              <Form.Item
+                                noStyle
+                                shouldUpdate={(prevValues, currentValues) => {
+                                  return !isEqual(
+                                    prevValues['metricConfiguration']?.[name]?.[
+                                      'disabled'
+                                    ],
+                                    currentValues['metricConfiguration']?.[
+                                      name
+                                    ]?.['disabled']
+                                  );
+                                }}>
+                                {() => (
+                                  <Form.Item name={[name, 'metrics']}>
+                                    <TreeSelect
+                                      allowClear
+                                      treeCheckable
+                                      data-testid="metric-type-select"
+                                      disabled={form.getFieldValue([
+                                        'metricConfiguration',
+                                        name,
+                                        'disabled',
+                                      ])}
+                                      maxTagCount={5}
+                                      placeholder={t('label.select-field', {
+                                        field: t('label.metric-type'),
+                                      })}
+                                      showCheckedStrategy={
+                                        TreeSelect.SHOW_PARENT
+                                      }
+                                      treeData={PROFILER_METRICS_TYPE_OPTIONS}
+                                    />
+                                  </Form.Item>
+                                )}
+                              </Form.Item>
+                            </Col>
+                            <Col className="d-flex justify-between" span={3}>
+                              <Form.Item
+                                name={[name, 'disabled']}
+                                valuePropName="checked">
+                                <Switch data-testid="disabled-switch" />
+                              </Form.Item>
+                              <Form.Item>
+                                <Button
+                                  data-testid={`remove-filter-${name}`}
+                                  icon={<CloseOutlined />}
+                                  size="small"
+                                  onClick={() => remove(name)}
+                                />
+                              </Form.Item>
+                            </Col>
+                          </Fragment>
+                        ))}
 
-                      <Col span={24}>
-                        <Button
-                          data-testid="add-fields"
-                          type="primary"
-                          onClick={() => add()}>
-                          {t('label.add-entity', {
-                            entity: t('label.field'),
-                          })}
-                        </Button>
-                      </Col>
-                    </Row>
-                  );
-                }}
-              </Form.List>
-            </Form>
-          </Card>
+                        <Col span={24}>
+                          <div className="matric-collapse-footer">
+                            <Button
+                              className="text-primary p-0"
+                              data-testid="add-fields"
+                              icon={<PlusOutlined />}
+                              type="text"
+                              onClick={() => add()}>
+                              {t('label.add-new-field')}
+                            </Button>
+                            <div className="d-flex justify-end gap-2">
+                              <Button
+                                data-testid="cancel-button"
+                                onClick={() => navigate(-1)}>
+                                {t('label.cancel')}
+                              </Button>
+                              <Button
+                                data-testid="save-button"
+                                form="profiler-config"
+                                htmlType="submit"
+                                loading={isFormSubmitting}
+                                type="primary">
+                                {t('label.save')}
+                              </Button>
+                            </div>
+                          </div>
+                        </Col>
+                      </Row>
+                    );
+                  }}
+                </Form.List>
+              </Form>
+            </Collapse.Panel>
+          </Collapse>
         </Col>
-        <Col className="d-flex justify-end gap-2" span={24}>
-          <Button data-testid="cancel-button" onClick={() => history.goBack()}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            data-testid="save-button"
-            form="profiler-config"
-            htmlType="submit"
-            loading={isFormSubmitting}
-            type="primary">
-            {t('label.save')}
-          </Button>
-        </Col>
+
+        {sparkAgentConfigComponent}
       </Row>
     </PageLayoutV1>
   );

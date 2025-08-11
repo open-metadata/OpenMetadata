@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,7 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
+import base64
 import traceback
 from typing import List, Optional, Type, TypeVar
 
@@ -56,6 +57,7 @@ class OMetaTableMixin:
 
     client: REST
 
+    # pylint: disable=too-many-nested-blocks
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
     ) -> Optional[TableData]:
@@ -67,9 +69,37 @@ class OMetaTableMixin:
         """
         resp = None
         try:
+            # Pre-process sample data to handle binary/non-UTF-8 data before serialization
+            if sample_data and sample_data.rows:
+
+                for row in sample_data.rows:
+                    if not row:
+                        continue
+                    for col_idx, value in enumerate(row):
+                        # Handle binary data explicitly
+                        if isinstance(value, bytes):
+                            # Convert binary data to Base64-encoded string
+                            try:
+                                row[
+                                    col_idx
+                                ] = f"[base64]{base64.b64encode(value).decode('ascii', errors='ignore')}"
+                            except Exception as _:
+                                row[col_idx] = f"[binary]{value}"
+
+            try:
+                data = sample_data.model_dump_json()
+            except Exception as _:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error serializing sample data for {table.fullyQualifiedName.root}"
+                    " please check if the data is valid"
+                )
+                return None
+
+            # Now safely serialize to JSON
             resp = self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
-                data=sample_data.model_dump_json(),
+                data=data,
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -257,7 +287,7 @@ class OMetaTableMixin:
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
 
         resp = self.client.get(
-            f"{self.get_suffix(Table)}/{fqn}/{profile_type_url}?limit={limit}{url_after}",
+            f"{self.get_suffix(Table)}/{quote(fqn)}/{profile_type_url}?limit={limit}{url_after}",
             data={"startTs": start_ts, "endTs": end_ts},
         )
 

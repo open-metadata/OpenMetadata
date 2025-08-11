@@ -10,16 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
@@ -28,10 +22,10 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
+import { getCronDefaultValue } from '../../../../utils/SchedularUtils';
 import Loader from '../../../common/Loader/Loader';
-import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
+import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
@@ -40,6 +34,7 @@ import { AppScheduleProps } from './AppScheduleProps.interface';
 const AppSchedule = ({
   appData,
   loading: { isRunLoading, isDeployLoading },
+  jsonSchema,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -53,11 +48,9 @@ const AppSchedule = ({
   const { config } = useLimitStore();
 
   const showRunNowButton = useMemo(() => {
-    if (appData && appData.scheduleType === ScheduleType.ScheduledOrManual) {
-      return true;
-    }
-
-    return false;
+    return [ScheduleType.ScheduledOrManual, ScheduleType.OnlyManual].includes(
+      appData?.scheduleType
+    );
   }, [appData]);
 
   const { pipelineSchedules } =
@@ -103,16 +96,20 @@ const AppSchedule = ({
     setShowModal(false);
   };
 
-  const onDialogSave = async (data: TestSuiteIngestionDataType) => {
+  const onDialogSave = async (data: WorkflowExtraConfig) => {
     setIsSaveLoading(true);
-    await onSave(data.repeatFrequency);
+    await onSave(data.cron ?? '');
     setIsSaveLoading(false);
     setShowModal(false);
   };
 
   const onAppTrigger = async () => {
     await onDemandTrigger();
-    appRunsHistoryRef.current?.refreshAppHistory();
+
+    // Refresh the app history after 750ms to get the latest run as the run is triggered asynchronously
+    setTimeout(() => {
+      appRunsHistoryRef.current?.refreshAppHistory();
+    }, 750);
   };
 
   const appRunHistory = useMemo(() => {
@@ -123,6 +120,7 @@ const AppSchedule = ({
       return (
         <AppRunsHistory
           appData={appData}
+          jsonSchema={jsonSchema}
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
@@ -145,13 +143,19 @@ const AppSchedule = ({
     );
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
-  const initialOptions = useMemo(() => {
-    return applicationsClassBase.getScheduleOptionsForApp(
-      appData.name,
-      appData.appType,
-      pipelineSchedules
-    );
-  }, [appData.name, appData.appType, pipelineSchedules]);
+  const { initialOptions, initialData, defaultCron } = useMemo(() => {
+    return {
+      initialOptions: applicationsClassBase.getScheduleOptionsForApp(
+        appData.name,
+        appData.appType,
+        pipelineSchedules
+      ),
+      initialData: {
+        cron: (appData.appSchedule as AppScheduleClass)?.cronExpression,
+      },
+      defaultCron: getCronDefaultValue(appData?.name ?? ''),
+    };
+  }, [appData.name, appData.appType, appData.appSchedule, pipelineSchedules]);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -232,9 +236,9 @@ const AppSchedule = ({
           </Col>
         )}
 
-        <Divider />
-
-        <Col span={24}>{appRunHistory}</Col>
+        <Col className="mt-4" span={24}>
+          {appRunHistory}
+        </Col>
       </Row>
       <Modal
         destroyOnClose
@@ -245,21 +249,20 @@ const AppSchedule = ({
         maskClosable={false}
         okText={t('label.save')}
         open={showModal}
-        title={t('label.update-entity', { entity: t('label.schedule') })}>
-        <TestSuiteScheduler
+        title={t('label.update-entity', { entity: t('label.schedule') })}
+        width={650}>
+        <ScheduleInterval
+          isEditMode
           buttonProps={{
             cancelText: t('label.cancel'),
             okText: t('label.save'),
           }}
+          defaultSchedule={defaultCron}
           includePeriodOptions={initialOptions}
-          initialData={{
-            repeatFrequency:
-              (appData.appSchedule as AppScheduleClass)?.cronExpression ??
-              getWeekCron({ hour: 0, min: 0, dow: 0 }),
-          }}
-          isLoading={isSaveLoading}
-          onCancel={onDialogCancel}
-          onSubmit={onDialogSave}
+          initialData={initialData}
+          status={isSaveLoading ? 'waiting' : 'initial'}
+          onBack={onDialogCancel}
+          onDeploy={onDialogSave}
         />
       </Modal>
     </>

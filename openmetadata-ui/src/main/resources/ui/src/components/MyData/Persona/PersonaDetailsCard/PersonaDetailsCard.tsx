@@ -10,40 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Typography } from 'antd';
-import React, { useCallback } from 'react';
+import { Card, Space, Tag, Typography } from 'antd';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 
 interface PersonaDetailsCardProps {
   persona: Persona;
 }
 
 export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const handleCardClick = useCallback(() => {
     if (persona.fullyQualifiedName) {
-      history.push(getPersonaDetailsPath(persona.fullyQualifiedName));
+      navigate({
+        pathname: getPersonaDetailsPath(persona.fullyQualifiedName),
+        hash: '#customize-ui',
+      });
     }
   }, [persona]);
 
   return (
     <Card
       bodyStyle={{ height: '100%' }}
-      className="h-full cursor-pointer"
+      className="h-full w-full cursor-pointer overflow-hidden"
       data-testid={`persona-details-card-${persona.name}`}
       onClick={handleCardClick}>
-      <Space className="justify-between h-full" direction="vertical">
+      <Space className="justify-between w-full" direction="vertical">
         <Card.Meta
           description={
             persona.description ? (
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 className="text-grey-muted max-two-lines"
                 markdown={persona.description ?? ''}
               />
@@ -53,7 +56,20 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
               </Typography.Text>
             )
           }
-          title={getEntityName(persona)}
+          title={
+            <div className="d-flex justify-between w-full">
+              <div>
+                <Typography.Text ellipsis={{ tooltip: true }}>
+                  {getEntityName(persona)}
+                </Typography.Text>
+              </div>
+              {persona.default && (
+                <Tag color="blue" data-testid="default-persona-tag">
+                  {t('label.default')}
+                </Tag>
+              )}
+            </div>
+          }
         />
       </Space>
     </Card>

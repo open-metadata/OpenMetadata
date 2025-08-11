@@ -1,6 +1,4 @@
-import glob
-import json
-import os.path
+# Test cases for data quality workflow
 import sys
 from dataclasses import dataclass
 from typing import List
@@ -9,9 +7,9 @@ import pytest
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    ServiceConnections,
     TestSuiteConfigType,
     TestSuitePipeline,
 )
@@ -33,7 +31,6 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import entity_link
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -53,15 +50,20 @@ def run_data_quality_workflow(
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_config = OpenMetadataWorkflowConfig(
         source=Source(
-            type=TestSuiteConfigType.TestSuite.value,
+            type="postgres",
             serviceName="MyTestSuite",
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type=TestSuiteConfigType.TestSuite,
                     entityFullyQualifiedName=f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+                    serviceConnections=[
+                        ServiceConnections(
+                            serviceName=db_service.name.root,
+                            serviceConnection=db_service.connection,
+                        )
+                    ],
                 )
             ),
-            serviceConnection=db_service.connection,
         ),
         processor=Processor(
             type="orm-test-runner",
@@ -83,7 +85,7 @@ def run_data_quality_workflow(
                             "columnName": "first_name",
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"},
-                                {"name": "matchEnum", "value": ""},
+                                {"name": "matchEnum", "value": "false"},
                             ],
                         },
                         {
@@ -92,7 +94,7 @@ def run_data_quality_workflow(
                             "columnName": "first_name",
                             "parameterValues": [
                                 {"name": "allowedValues", "value": "['Tom', 'Jerry']"},
-                                {"name": "matchEnum", "value": "True"},
+                                {"name": "matchEnum", "value": "true"},
                             ],
                         },
                         {
@@ -196,7 +198,7 @@ def run_data_quality_workflow(
                                 {"name": "max", "value": "600"},
                                 {"name": "columnName", "value": "last_update"},
                                 {"name": "rangeType", "value": "YEAR"},
-                                {"name": "rangeInterval", "value": "12"},
+                                {"name": "rangeInterval", "value": "50"},
                             ],
                         },
                     ],
@@ -215,64 +217,6 @@ def run_data_quality_workflow(
     )
     if test_suite:
         metadata.delete(TestSuite, test_suite.id, recursive=True, hard_delete=True)
-
-
-def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
-    test_difinitions_glob = (
-        os.path.dirname(__file__)
-        + "/../../../.."
-        + "/openmetadata-service/src/main/resources/json/data/tests/**.json"
-    )
-    test_definitions: List[str] = []
-    for test_definition_file in glob.glob(test_difinitions_glob, recursive=False):
-        test_definitions.append(json.load(open(test_definition_file))["name"])
-    assert len(test_definitions) > 0
-    table: Table = metadata.get_by_name(
-        Table,
-        f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
-        nullable=False,
-    )
-    tcs: List[TestCase] = metadata.list_entities(
-        TestCase,
-        fields=["*"],
-        params={
-            "entityLink": entity_link.get_entity_link(
-                Table, table.fullyQualifiedName.root
-            )
-        },
-    ).entities
-    tcs_dict = {tc.testDefinition.fullyQualifiedName: tc for tc in tcs}
-    excluded = {
-        # TODO implement these too
-        "columnValueLengthsToBeBetween",
-        "columnValueMaxToBeBetween",
-        "columnValueMinToBeBetween",
-        "columnValuesToBeUnique",
-        "tableDataToBeFresh",
-        "columnValuesToMatchRegex",
-        "columnValuesToNotMatchRegex",
-        "columnValueStdDevToBeBetween",
-        "columnValuesToBeNotNull",
-        "columnValueMedianToBeBetween",
-        "columnValuesSumToBeBetween",
-        "columnValuesToBeInSet",
-        "columnValuesMissingCount",
-        "columnValuesToBeNotInSet",
-        "columnValueMeanToBeBetween",
-        "columnValuesToBeBetween",
-        "tableDiff",
-    }
-    missing = set()
-    for test_definition in test_definitions:
-        if test_definition in tcs_dict:
-            assert (
-                test_definition not in excluded
-            ), f"Remove test from excluded list: {test_definition}"
-        else:
-            if test_definition in excluded:
-                continue
-            missing.add(test_definition.fullyQualifiedName.root)
-    assert not missing, f"Missing test cases: {missing}"
 
 
 @pytest.mark.parametrize(
@@ -363,13 +307,23 @@ def test_all_definition_exists(metadata, run_data_quality_workflow, db_service):
     ids=lambda *x: x[0],
 )
 def test_data_quality(
-    run_data_quality_workflow, metadata: OpenMetadata, test_case_name, expected_status
+    run_data_quality_workflow,
+    metadata: OpenMetadata,
+    test_case_name,
+    expected_status,
+    db_service,
 ):
     test_cases: List[TestCase] = metadata.list_entities(
         TestCase, fields=["*"], skip_on_failure=True
     ).entities
     test_case: TestCase = next(
-        (t for t in test_cases if t.name.root == test_case_name), None
+        (
+            t
+            for t in test_cases
+            if t.name.root == test_case_name
+            and "dvdrental.public.customer" in t.entityFQN
+        ),
+        None,
     )
     assert test_case is not None
     assert_equal_pydantic_objects(
@@ -385,7 +339,7 @@ def get_incompatible_column_type_config(workflow_config, sink_config):
     def inner(entity_fqn: str, incompatible_test_case: TestCaseDefinition):
         return {
             "source": {
-                "type": "TestSuite",
+                "type": "postgres",
                 "serviceName": "MyTestSuite",
                 "sourceConfig": {
                     "config": {

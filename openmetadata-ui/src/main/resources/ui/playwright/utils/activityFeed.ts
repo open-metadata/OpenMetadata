@@ -57,9 +57,14 @@ export const checkDescriptionInEditModal = async (
   // click on the Current tab
   await page.getByRole('tab', { name: 'current' }).click();
 
-  await expect(page.getByTestId('markdown-parser')).toContainText(
-    taskValue.oldDescription ?? ''
-  );
+  const taskDescriptionTabs = page.getByTestId('task-description-tabs');
+
+  await expect(
+    taskDescriptionTabs
+      .locator('.ant-tabs-content-holder')
+      .getByTestId('markdown-parser')
+      .first()
+  ).toContainText(taskValue.oldDescription ?? '');
 };
 
 export const deleteFeedComments = async (page: Page, feed: Locator) => {
@@ -80,11 +85,11 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await deleteResponse;
 };
 
-export const reactOnFeed = async (page: Page) => {
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
   for (const reaction of FEED_REACTIONS) {
     await page
       .locator(
-        '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
+        `[data-testid="activity-feed-widget"] [data-testid="message-container"]:nth-child(${feedNumber})`
       )
       .locator('[data-testid="feed-reaction-container"]')
       .locator('[data-testid="add-reactions"]')
@@ -117,32 +122,14 @@ export const addMentionCommentInFeed = async (
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  // Click on add reply
-  const feedResponse = page.waitForResponse('/api/v1/feed/*');
-
-  if (isReply) {
-    await page
-      .locator(FIRST_FEED_SELECTOR)
-      .locator('[data-testid="reply-count"]')
-      .click();
-  } else {
-    await page
-      .locator(FIRST_FEED_SELECTOR)
-      .locator('[data-testid="thread-count"]')
-      .click();
-  }
-  await feedResponse;
-
+  await page
+    .locator(FIRST_FEED_SELECTOR)
+    .locator('[data-testid="reply-count"]')
+    .click();
   await page.waitForSelector('.ant-drawer-content', {
     state: 'visible',
   });
-
-  // Type reply with mention
-  await page
-    .locator(
-      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-    )
-    .click();
+  await page.getByTestId('comments-input-field').click();
 
   const userSuggestionsResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${user}***`
@@ -155,7 +142,7 @@ export const addMentionCommentInFeed = async (
     .fill(`Can you resolve this thread for me? @${user}`);
   await userSuggestionsResponse;
 
-  await page.locator(`[data-value="@${user}"]`).click();
+  await page.locator(`[data-value="@${user}"]`).first().click();
 
   // Send reply
   await expect(page.locator('[data-testid="send-button"]')).toBeVisible();

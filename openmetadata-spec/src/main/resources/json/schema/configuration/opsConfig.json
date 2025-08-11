@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/ppsConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpsConfig",
+  "description": "This schema defines the Operations Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.security.OpsConfig",
+  "properties": {
+    "enable": {
+      "description": "Whether operations configuration is enabled or not.",
+      "type": "boolean",
+      "default": false
+    },
+    "operationsConfigFile": {
+      "description": "Operations Configuration File.",
+      "type": "string",
+      "default": "operations.yaml"
+    }
+  },
+  "required": ["enable"],
+  "additionalProperties": false
+}

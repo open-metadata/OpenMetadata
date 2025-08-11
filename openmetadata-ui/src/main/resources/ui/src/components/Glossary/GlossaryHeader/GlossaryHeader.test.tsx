@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   mockedGlossaryTerms,
   MOCK_GLOSSARY,
 } from '../../../mocks/Glossary.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
-import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import GlossaryHeader from './GlossaryHeader.component';
 
-const glossaryTermPermission = {
+const mockGlossaryTermPermission = {
   All: true,
   Create: true,
   Delete: true,
@@ -37,17 +36,17 @@ const glossaryTermPermission = {
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
-      glossaryTerm: glossaryTermPermission,
+      glossaryTerm: mockGlossaryTermPermission,
     },
   })),
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryFqn: 'glossaryFqn',
     action: 'action',
   }),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock(
@@ -79,11 +78,10 @@ jest.mock('../../Entity/EntityHeader/EntityHeader.component', () => ({
 jest.mock(
   '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component',
   () => {
-    return jest.fn().mockImplementation(({ onCancel, onSubmit }) => (
+    return jest.fn().mockImplementation(({ onCancel }) => (
       <div data-testid="glossary-change-parent-modal">
         <span>ChangeParentHierarchyComponent</span>
         <button onClick={onCancel}>Cancel_Button</button>
-        <button onClick={() => onSubmit('test.data')}>Submit_Button</button>
       </div>
     ));
   }
@@ -164,24 +162,31 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTermsById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
-  patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
+  moveGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-const mockOnUpdate = jest.fn();
 const mockOnDelete = jest.fn();
 const mockOnUpdateVote = jest.fn();
+
+const mockContext = {
+  data: { displayName: 'glossaryTest' } as Glossary,
+  onUpdate: jest.fn(),
+  isVersionView: false,
+  type: EntityType.GLOSSARY,
+  permissions: DEFAULT_ENTITY_PERMISSION,
+};
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => mockContext),
+}));
 
 describe('GlossaryHeader component', () => {
   it('should render name of Glossary', () => {
     render(
       <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -191,13 +196,9 @@ describe('GlossaryHeader component', () => {
   it('should render import and export dropdown menu items only for glossary', async () => {
     render(
       <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -215,17 +216,13 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should not render import and export dropdown menu items if no permission', async () => {
-    glossaryTermPermission.All = false;
-    glossaryTermPermission.EditAll = false;
+    mockGlossaryTermPermission.All = false;
+    mockGlossaryTermPermission.EditAll = false;
     render(
       <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -233,15 +230,15 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+    mockGlossaryTermPermission.All = true;
+    mockGlossaryTermPermission.EditAll = true;
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -259,13 +256,9 @@ describe('GlossaryHeader component', () => {
   it('should not render ChangeParentHierarchy component when it is close', () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -277,13 +270,9 @@ describe('GlossaryHeader component', () => {
   it('should render ChangeParentHierarchy component after clicking dropdown menu item', async () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -307,13 +296,9 @@ describe('GlossaryHeader component', () => {
   it('should not render ChangeParentHierarchy component after onCancel call', async () => {
     render(
       <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
         updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
       />
     );
 
@@ -336,37 +321,5 @@ describe('GlossaryHeader component', () => {
     expect(
       screen.queryByText('ChangeParentHierarchyComponent')
     ).not.toBeInTheDocument();
-  });
-
-  it('should call onSubmit of ChangeParentHierarchy Component along with the patch API', async () => {
-    render(
-      <GlossaryHeader
-        isGlossary={false}
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={{ displayName: 'glossaryTest' } as Glossary}
-        updateVote={mockOnUpdateVote}
-        onAddGlossaryTerm={mockOnDelete}
-        onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    expect(
-      screen.queryByText('ChangeParentHierarchyComponent')
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.change-parent-entity'));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Submit_Button'));
-    });
-
-    expect(patchGlossaryTerm).toHaveBeenCalled();
   });
 });

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@ from unittest import TestCase
 from unittest.mock import PropertyMock, patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
@@ -28,7 +29,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.nifi.metadata import (
     NifiPipelineDetails,
     NifiProcessor,
@@ -78,6 +83,27 @@ mock_nifi_config = {
     },
 }
 
+EXPECTED_PARENT_NIFI_DETAILS = NifiPipelineDetails(
+    id_="affe20b6-b5b6-47fb-8dd3-ff53cd4aee4a",
+    name="Parent NiFi Flow",
+    uri="/nifi-api/flow/process-groups/affe20b6-b5b6-47fb-8dd3-ff53cd4aee4a",
+    processors=[
+        NifiProcessor(
+            id_="ec8246b3-d740-4d8e-8571-7059a9f615e7",
+            name="Wait",
+            type_="org.apache.nifi.processors.standard.Wait",
+            uri="/nifi-api/processors/ec8246b3-d740-4d8e-8571-7059a9f615e7",
+        ),
+        NifiProcessor(
+            id_="be1ecb80-3c73-46ec-8e3f-6b90a14f91c7",
+            name="ValidateJson",
+            type_="org.apache.nifi.processors.standard.ValidateJson",
+            uri="/nifi-api/processors/be1ecb80-3c73-46ec-8e3f-6b90a14f91c7",
+        ),
+    ],
+    connections=[],
+)
+
 
 EXPECTED_NIFI_DETAILS = NifiPipelineDetails(
     id_="d3d6b945-0182-1000-d7e4-d81b8f79f310",
@@ -104,6 +130,15 @@ EXPECTED_NIFI_DETAILS = NifiPipelineDetails(
             destination_id="d3f023ac-0182-1000-8bbe-e2b00347fff8",
         )
     ],
+    parent_pipeline_id="affe20b6-b5b6-47fb-8dd3-ff53cd4aee4a",
+)
+
+EXPECTED_NIFI_DETAILS_2 = NifiPipelineDetails(
+    id_="364e6ed1-feab-403c-a0c7-0003a55ea8aa",
+    name="NiFi Flow 2",
+    uri="/nifi-api/flow/process-groups/364e6ed1-feab-403c-a0c7-0003a55ea8aa",
+    processors=[],
+    connections=[],
 )
 
 
@@ -183,6 +218,79 @@ MOCK_PIPELINE = Pipeline(
     ),
 )
 
+MOCK_PIPELINE_2 = Pipeline(
+    id="38cd7319-cde9-4d68-b9d3-82d28b20b7bc",
+    name="364e6ed1-feab-403c-a0c7-0003a55ea8aa",
+    fullyQualifiedName="nifi_source.364e6ed1-feab-403c-a0c7-0003a55ea8aa",
+    displayName="NiFi Flow 2",
+    sourceUrl=(
+        "https://localhost:8443/nifi-api/flow/"
+        "process-groups/364e6ed1-feab-403c-a0c7-0003a55ea8aa"
+    ),
+    tasks=[],
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    ),
+)
+
+
+MOCK_PARENT_PIPELINE = Pipeline(
+    id="f9d1c7e1-4c0a-4578-a1bd-e9941c88a1c5",
+    name="affe20b6-b5b6-47fb-8dd3-ff53cd4aee4a",
+    fullyQualifiedName="nifi_source.affe20b6-b5b6-47fb-8dd3-ff53cd4aee4a",
+    displayName="Parent NiFi Flow",
+    sourceUrl=(
+        "https://localhost:8443/nifi-api/flow/"
+        "process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310"
+    ),
+    tasks=[
+        Task(
+            name="ec8246b3-d740-4d8e-8571-7059a9f615e7",
+            displayName="Wait",
+            sourceUrl=(
+                "https://localhost:8443/nifi-api/processors/"
+                "ec8246b3-d740-4d8e-8571-7059a9f615e7"
+            ),
+            taskType="org.apache.nifi.processors.standard.Wait",
+            downstreamTasks=[],
+        ),
+        Task(
+            name="be1ecb80-3c73-46ec-8e3f-6b90a14f91c7",
+            displayName="ValidateJson",
+            sourceUrl=(
+                "https://localhost:8443/nifi-api/processors/"
+                "be1ecb80-3c73-46ec-8e3f-6b90a14f91c7"
+            ),
+            taskType="org.apache.nifi.processors.standard.ValidateJson",
+            downstreamTasks=["ec8246b3-d740-4d8e-8571-7059a9f615e7"],
+        ),
+    ],
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
+    ),
+)
+
+EXPECTED_PIPELINE_BULK_LINEAGE_DETAILS = [
+    Either(
+        right=AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=MOCK_PARENT_PIPELINE.id, type="pipeline"),
+                toEntity=EntityReference(id=MOCK_PIPELINE.id, type="pipeline"),
+                lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
+            ),
+        )
+    ),
+    Either(
+        right=AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=MOCK_PIPELINE.id, type="pipeline"),
+                toEntity=EntityReference(id=MOCK_PIPELINE_2.id, type="pipeline"),
+                lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
+            ),
+        )
+    ),
+]
+
 
 class NifiUnitTest(TestCase):
     """
@@ -205,12 +313,36 @@ class NifiUnitTest(TestCase):
         config = OpenMetadataWorkflowConfig.model_validate(mock_nifi_config)
         self.nifi = NifiSource.create(
             mock_nifi_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
         )
         self.nifi.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
         self.nifi.context.get().__dict__[
             "pipeline_service"
         ] = MOCK_PIPELINE_SERVICE.name.root
+
+        # Mock metadata.get_by_name to return different pipeline entities based on FQN
+        self.original_get_by_name = self.nifi.metadata.get_by_name
+        self.nifi.metadata.get_by_name = self._mock_get_by_name
+
+        self.nifi.pipeline_parents_mapping = {
+            EXPECTED_NIFI_DETAILS.id_: [EXPECTED_NIFI_DETAILS.parent_pipeline_id],
+        }
+        self.nifi.process_group_connections = [
+            NifiProcessorConnections(
+                id_="fd99b000-6117-47c1-a075-b09591b04d61",
+                source_id="d3d6b945-0182-1000-d7e4-d81b8f79f310",
+                destination_id="364e6ed1-feab-403c-a0c7-0003a55ea8aa",
+            )
+        ]
+
+    def _mock_get_by_name(self, entity, fqn):
+        """Mock function to return different pipeline entities based on FQN"""
+        fqn_pipeline_mapping = {
+            f"{self.nifi.context.get().pipeline_service}.{EXPECTED_PARENT_NIFI_DETAILS.id_}": MOCK_PARENT_PIPELINE,
+            f"{self.nifi.context.get().pipeline_service}.{EXPECTED_NIFI_DETAILS.id_}": MOCK_PIPELINE,
+            f"{self.nifi.context.get().pipeline_service}.{EXPECTED_NIFI_DETAILS_2.id_}": MOCK_PIPELINE_2,
+        }
+        return fqn_pipeline_mapping.get(fqn, self.original_get_by_name(entity, fqn))
 
     def test_pipeline_name(self):
         assert (
@@ -221,3 +353,9 @@ class NifiUnitTest(TestCase):
     def test_pipelines(self):
         pipline = list(self.nifi.yield_pipeline(EXPECTED_NIFI_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES
+
+    def test_pipeline_bulk_lineage_details(self):
+        pipeline_bulk_lineage_details = list(
+            self.nifi.yield_pipeline_bulk_lineage_details()
+        )
+        assert pipeline_bulk_lineage_details == EXPECTED_PIPELINE_BULK_LINEAGE_DETAILS

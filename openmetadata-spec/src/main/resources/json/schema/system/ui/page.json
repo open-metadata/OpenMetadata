@@ -12,26 +12,33 @@
       "type": "string",
       "enum": [
         "LandingPage",
-        "TableLandingPage",
-        "StoredProcedureLandingPage",
-        "DatabaseLandingPage",
-        "DatabaseSchemaLandingPage",
-        "TopicLandingPage",
-        "PipelineLandingPage",
-        "DashboardLandingPage",
-        "DashboardDataModelLandingPage",
-        "ContainerLandingPage",
-        "SearchIndexLandingPage",
-        "GlossaryLandingPage",
-        "GlossaryTermLandingPage",
-        "DomainLandingPage"
+        "Table",
+        "StoredProcedure",
+        "Database",
+        "DatabaseSchema",
+        "Topic",
+        "Pipeline",
+        "Dashboard",
+        "DashboardDataModel",
+        "Container",
+        "SearchIndex",
+        "Glossary",
+        "GlossaryTerm",
+        "Domain",
+        "APICollection",
+        "APIEndpoint",
+        "Metric",
+        "MlModel",
+        "Chart"
       ]
     }
   },
   "properties": {
     "entityType": {
       "description": "Entity Type.",
-      "enum": ["Page"],
+      "enum": [
+        "Page"
+      ],
       "default": "Page"
     },
     "pageType": {
@@ -41,19 +48,32 @@
       "description": "Configuration for the Knowledge Panel.",
       "type": "object"
     },
+    "tabs": {
+      "description": "Tabs included in this page.",
+      "type": "array",
+      "items": {
+        "$ref": "tab.json"
+      },
+      "default": []
+    },
     "persona": {
       "description": "Persona this page belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "domain": {
-      "description": "Domain this page belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains this page belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "knowledgePanels": {
       "description": "KnowledgePanels that are part of this Page.",
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["entityType", "pageType", "knowledgePanels", "layout"],
+  "required": [
+    "entityType",
+    "pageType",
+    "knowledgePanels",
+    "layout"
+  ],
   "additionalProperties": false
 }

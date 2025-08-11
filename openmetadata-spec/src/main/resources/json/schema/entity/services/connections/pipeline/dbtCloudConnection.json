@@ -39,20 +39,44 @@
         "description": "ID of your DBT cloud account",
         "type": "string"
       },
-      "jobId": {
-        "title": "Job Id",
-        "description": "ID of your DBT cloud job",
-        "type": "string",
-        "default": null
+      "jobIds": {
+        "title": "Job Ids",
+        "description": "List of IDs of your DBT cloud jobs seperated by comma `,`",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "projectIds": {
+        "title": "Project Ids",
+        "description": "List of IDs of your DBT cloud projects seperated by comma `,`",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "numberOfRuns": {
+        "title": "Number of Runs",
+        "description": "Number of runs to fetch from DBT cloud",
+        "type": "integer",
+        "default": 100
       },
       "token": {
         "title": "Token",
         "description": "Generated Token to connect to DBTCloud.",
         "type": "string",
         "format": "password"
+      },
+      "pipelineFilterPattern": {
+        "description": "Regex exclude pipelines.",
+        "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+        "title": "Default Pipeline Filter Pattern"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
       }
     },
     "additionalProperties": false,
     "required": ["host", "discoveryAPI", "accountId", "token"]
   }
-  

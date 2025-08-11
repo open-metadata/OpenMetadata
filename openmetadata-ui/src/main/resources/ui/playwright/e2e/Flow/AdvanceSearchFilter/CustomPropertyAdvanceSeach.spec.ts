@@ -15,6 +15,7 @@ import { CUSTOM_PROPERTIES_ENTITIES } from '../../../constant/customProperty';
 import { GlobalSettingOptions } from '../../../constant/settings';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { selectOption } from '../../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage, uuid } from '../../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -27,7 +28,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const dashboardEntity = new DashboardClass();
 const propertyName = `pwCustomPropertyDashboardTest${uuid()}`;
-const propertyValue = 'dashboardcustomproperty';
+const propertyValue = `dashboardcustomproperty_${uuid()}`;
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -96,20 +97,14 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       await redirectToHomePage(page);
 
       const responseExplorePage = page.waitForResponse(
-        '/api/v1/metadata/types/name/storedProcedure?fields=customProperties'
+        '/api/v1/metadata/types/customProperties'
       );
 
       await sidebarClick(page, SidebarItem.EXPLORE);
 
       await responseExplorePage;
 
-      const responseCustomPropertyDashboard = page.waitForResponse(
-        '/api/v1/metadata/types/name/dashboard?fields=customProperties'
-      );
-
       await page.getByTestId('explore-tree-title-Dashboards').click();
-
-      await responseCustomPropertyDashboard;
 
       await page.getByTestId('advance-search-button').click();
 
@@ -128,15 +123,36 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
         .getByText('Owner')
         .click();
 
-      await page.getByTitle('Custom Properties').click();
+      const ruleLocator = page.locator('.rule').nth(0);
+
+      // Perform click on rule field
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Custom Properties'
+      );
+
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Dashboard'
+      );
 
       // Select Custom Property Field when we want filter
       await page
         .locator(
-          '.group--children .rule--field .ant-select-selector .ant-select-selection-search'
+          '.group--children .rule--field .ant-select-selector .ant-select-selection-search .ant-select-selection-search-input'
         )
-        .click();
+        .fill(propertyName);
       await page.getByTitle(propertyName).click();
+
+      await page
+        .locator('.rule--operator .ant-select-selection-search-input')
+        .click();
+      await page.waitForSelector(`.ant-select-dropdown:visible`, {
+        state: 'visible',
+      });
+      await page.click(`.ant-select-dropdown:visible [title="=="]`);
 
       // type custom property value based, on which the filter should be made on dashboard
       await page
@@ -149,15 +165,27 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
 
       await applyAdvanceFilter;
 
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       // Validate if filter dashboard appeared
 
-      expect(page.getByTestId('advance-search-filter-text')).toContainText(
-        `extension.${propertyName} = '${propertyValue}'`
+      await expect(
+        page.getByTestId('advance-search-filter-text')
+      ).toContainText(
+        `extension.dashboard.${propertyName} = '${propertyValue}'`
       );
 
-      expect(page.getByTestId('entity-header-display-name')).toContainText(
-        dashboardEntity.entity.displayName
-      );
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(dashboardEntity.entity.displayName);
     }
   );
 

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,16 +11,21 @@
 """
 Base class for ingesting database services
 """
+import traceback
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Iterable, List, Optional, Set
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineState
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -31,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
@@ -46,14 +52,24 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class PipelineUsage(BaseModel):
+    """
+    Wrapper to handle type at the sink
+    """
+
+    pipeline: Pipeline
+    usage: UsageRequest
 
 
 class PipelineServiceTopology(ServiceTopology):
@@ -111,7 +127,14 @@ class PipelineServiceTopology(ServiceTopology):
                 consumer=["pipeline_service"],
                 nullable=True,
             ),
+            NodeStage(
+                type_=UsageRequest,
+                processor="yield_pipeline_usage",
+                consumer=["pipeline_service"],
+                nullable=True,
+            ),
         ],
+        post_process=["process_pipeline_bulk_lineage"],
     )
 
 
@@ -130,6 +153,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     pipeline_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -138,6 +162,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
+        self.today = datetime.now().strftime("%Y-%m-%d")
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -179,6 +204,100 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Get Pipeline Status"""
 
+    def get_pipeline_state(self, pipeline_details: Any) -> Optional[PipelineState]:
+        """Get Pipeline State"""
+
+    def yield_pipeline_usage(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[PipelineUsage]]:
+        """
+        Yield the usage of the pipeline
+        we will check the usage of the pipeline
+        by checking the tasks that have run today or are running today or ends today
+        we get the count of these tasks and compare it with the usageSummary
+        if the usageSummary is not present or the date is not today
+        we yield the fresh usage
+        """
+        try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            pipeline: Pipeline = self.metadata.get_by_name(
+                entity=Pipeline,
+                fqn=pipeline_fqn,
+                fields=["tasks", "usageSummary"],
+            )
+
+            if pipeline.tasks:
+                current_task_usage = sum(
+                    1
+                    for task in pipeline.tasks
+                    if task.startDate
+                    and task.startDate.startswith(self.today)
+                    or task.endDate
+                    and task.endDate.startswith(self.today)
+                )
+                if not current_task_usage:
+                    logger.debug(
+                        f"No usage to report for {pipeline.fullyQualifiedName.root}"
+                    )
+
+                if not pipeline.usageSummary:
+                    logger.info(
+                        f"Yielding fresh usage for {pipeline.fullyQualifiedName.root}"
+                    )
+                    yield Either(
+                        right=PipelineUsage(
+                            pipeline=pipeline,
+                            usage=UsageRequest(
+                                date=self.today, count=current_task_usage
+                            ),
+                        )
+                    )
+
+                elif (
+                    str(pipeline.usageSummary.date.root) != self.today
+                    or not pipeline.usageSummary.dailyStats.count
+                ):
+                    latest_usage = pipeline.usageSummary.dailyStats.count
+
+                    new_usage = current_task_usage - latest_usage
+                    if new_usage < 0:
+                        raise ValueError(
+                            f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                        )
+
+                    logger.info(
+                        f"Yielding new usage for {pipeline.fullyQualifiedName.root}"
+                    )
+                    yield Either(
+                        right=PipelineUsage(
+                            pipeline=pipeline,
+                            usage=UsageRequest(date=self.today, count=new_usage),
+                        )
+                    )
+
+                else:
+                    logger.debug(
+                        f"Latest usage {pipeline.usageSummary} vs. today {self.today}. Nothing to compute."
+                    )
+                    logger.info(
+                        f"Usage already informed for {pipeline.fullyQualifiedName.root}"
+                    )
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Pipeline Usage",
+                    error=f"Exception computing pipeline usage for {pipeline_details}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def yield_pipeline_lineage(
         self, pipeline_details: Any
     ) -> Iterable[Either[OMetaLineageRequest]]:
@@ -195,11 +314,27 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 else:
                     yield lineage
 
+    def yield_pipeline_bulk_lineage_details(self) -> Iterable[AddLineageRequest]:
+        """Method to yield the bulk pipeline lineage details"""
+
+    def process_pipeline_bulk_lineage(self) -> Iterable[AddLineageRequest]:
+        """Method to process the bulk pipeline lineage"""
+        if self.source_config.includeLineage:
+            for lineage in self.yield_pipeline_bulk_lineage_details() or []:
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+
     def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
         """
         Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
+        :param table_details: TableDetails object containing table name, schema, database information
         :return: fully qualified name of a Table in Open Metadata
         """
         result = None
@@ -209,7 +344,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Table,
                 service_name=db_service,
-                database_name=None,
+                database_name=table_details.database,
                 schema_name=table_details.schema,
                 table_name=table_details.name,
             )
@@ -219,11 +354,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             f"Table FQN not found for table: {table_details} within services: {services}"
         )
 
-    def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""
 
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
+        self.metadata.compute_percentile(Pipeline, self.today)
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -250,8 +388,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             yield pipeline_detail
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        test_connection_common(
+            self.metadata, self.connection_obj, self.service_connection
+        )
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
         """Mark the pipeline record as scanned and update the pipeline_source_state"""

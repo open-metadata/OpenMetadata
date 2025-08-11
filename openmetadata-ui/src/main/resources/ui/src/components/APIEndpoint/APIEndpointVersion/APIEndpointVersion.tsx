@@ -13,11 +13,9 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { noop } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPath } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/apiEndpoint';
@@ -27,10 +25,13 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -49,11 +50,11 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
 }: APIEndpointVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
@@ -65,9 +66,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -77,7 +78,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.API_ENDPOINT,
         currentVersionData.fullyQualifiedName ?? '',
@@ -113,7 +114,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -124,12 +125,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  <APIEndpointSchema
-                    isVersionView
-                    apiEndpointDetails={currentVersionData}
-                    permissions={entityPermissions}
-                    onThreadLinkSelect={noop}
-                  />
+                  <APIEndpointSchema isVersionView />
                 </Col>
               </Row>
             </Col>
@@ -139,12 +135,14 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               flex="220px">
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
-                  activeDomain={domain}
+                  newLook
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
+                    newLook
                     entityType={EntityType.API_ENDPOINT}
                     key={tagType}
                     permission={false}
@@ -166,15 +164,12 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityDetails={currentVersionData}
-              entityType={EntityType.API_ENDPOINT}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.API_ENDPOINT}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
@@ -204,19 +199,28 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.SCHEMA}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.API_ENDPOINT}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  className="tabs-new"
+                  defaultActiveKey={tab}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.API_ENDPOINT}
         versionHandler={versionHandler}
         versionList={versionList}

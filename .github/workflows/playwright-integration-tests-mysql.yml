@@ -14,39 +14,33 @@
 
 name: MySQL Playwright Integration Tests
 on:
-  push:
-    branches:
-      - main 
-      - '0.[0-9]+.[0-9]+'
-      - '1.[0-9]+[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths-ignore:
-      - 'openmetadata-docs/**'
+      - "openmetadata-docs/**"
 
 jobs:
   playwright-mysql:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     strategy:
       fail-fast: false
       matrix:
-        browser-type: ['chromium']
+        browser-type: ["chromium"]
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-            tool-cache: false
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: false
-            swap-storage: true
-            docker-images: false
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -57,17 +51,17 @@ jobs:
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -77,7 +71,7 @@ jobs:
         if: steps.cache-output.outputs.exit-code == 0
         id: yarn-cache-dir-path
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         if: steps.yarn-cache-dir-path.outputs.exit-code == 0
         id: yarn-cache
         with:
@@ -88,10 +82,10 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: '3.9'
+          python-version: "3.9"
           args: "-d mysql"
-          ingestion_dependency: "all"
-      - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }} 
+          ingestion_dependency: "playwright"
+      - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }}
         env:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
           E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
@@ -103,7 +97,7 @@ jobs:
           source env/bin/activate
           make install_e2e_tests
           make run_e2e_tests
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-artifacts

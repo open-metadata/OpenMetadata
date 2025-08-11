@@ -21,6 +21,7 @@
         "ViewTests",
         "ViewQueries",
         "ViewDataProfile",
+        "ViewProfilerGlobalConfiguration",
         "ViewSampleData",
         "ViewTestCaseFailedRowsSample",
         "EditAll",
@@ -29,6 +30,7 @@
         "EditDescription",
         "EditDisplayName",
         "EditLineage",
+        "EditEntityRelationship",
         "EditPolicy",
         "EditOwners",
         "EditQueries",
@@ -37,8 +39,10 @@
         "EditSampleData",
         "EditStatus",
         "EditTags",
+        "EditGlossaryTerms",
         "EditTeams",
         "EditTier",
+        "EditCertification",
         "EditTests",
         "EditUsage",
         "EditUsers",
@@ -50,7 +54,11 @@
         "Deploy",
         "Trigger",
         "Kill",
-        "GenerateToken"
+        "GenerateToken",
+        "EditScim",
+        "CreateScim",
+        "DeleteScim",
+        "ViewScim"
       ]
     }
   },

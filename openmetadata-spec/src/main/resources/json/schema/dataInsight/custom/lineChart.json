@@ -5,6 +5,38 @@
     "description": "Line Chart",
     "type": "object",
     "javaType": "org.openmetadata.schema.dataInsight.custom.LineChart",
+    "definitions": {
+        "metrics": {
+            "name": "Metrics",
+            "type": "object",
+            "javaType": "org.openmetadata.schema.dataInsight.custom.LineChartMetric",
+            "properties": {
+                "name": {
+                    "description": "Name of the metric for the data insight chart.",
+                    "type": "string"
+                },
+                "function": {
+                    "$ref": "dataInsightCustomChart.json#/definitions/function"
+                },
+                "field": {
+                    "description": "Filter field for the data insight chart.",
+                    "type": "string"
+                },
+                "filter": {
+                    "description": "Filter value for the data insight chart.",
+                    "type": "string"
+                },
+                "treeFilter": {
+                    "description": "Tree filter value for the data insight chart. Needed for UI to recreate advance filter tree.",
+                    "type": "string"
+                },
+                "formula": {
+                    "description": "Formula for the data insight chart calculation.",
+                    "type": "string"
+                }
+            }
+        }
+    },
     "properties": {
         "type": {
             "description": "Type of the data insight chart.",
@@ -14,24 +46,12 @@
             ],
             "default": "LineChart"
         },
-        "function": {
-            "$ref": "dataInsightCustomChart.json#/definitions/function"
-        },
-        "field": {
-            "description": "Filter field for the data insight chart.",
-            "type": "string"
-        },
-        "filter": {
-            "description": "Filter value for the data insight chart.",
-            "type": "string"
-        },
-        "treeFilter": {
-            "description": "Tree filter value for the data insight chart. Needed for UI to recreate advance filter tree.",
-            "type": "string"
-        },
-        "formula": {
-            "description": "Formula for the data insight chart calculation.",
-            "type": "string"
+        "metrics": {
+            "description": "Metrics for the data insight chart.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/metrics"
+            }
         },
         "groupBy": {
             "description": "Breakdown field for the data insight chart.",
@@ -61,6 +81,23 @@
         },
         "kpiDetails": {
             "$ref": "dataInsightCustomChart.json#/definitions/kpiDetails"
+        },
+        "xAxisField": {
+            "description": "X-axis field for the data insight chart.",
+            "type": "string",
+            "default": "@timestamp"
+        },
+        "includeXAxisFiled": {
+            "description": "Regex to include fields in the data insight chart when xAxisField is specified.",
+            "type": "string"
+        },
+        "excludeXAxisField": {
+            "description": "Regex to exclude fields from the data insight chart when xAxisField is specified.",
+            "type": "string"
+        },
+        "searchIndex": {
+            "description": "Search index for the data insight chart.",
+            "type": "string"
         }
     },
     "additionalProperties": false

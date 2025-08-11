@@ -11,41 +11,65 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
-import cronstrue from 'cronstrue';
-import { t } from 'i18next';
-import { capitalize, isUndefined } from 'lodash';
-import React from 'react';
+import classNames from 'classnames';
+import cronstrue from 'cronstrue/i18n';
+import { capitalize, isUndefined, startCase } from 'lodash';
+import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
+import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../constants/pipeline.constants';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getEntityName } from './EntityUtils';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getEntityName, highlightSearchText } from './EntityUtils';
+import { getCurrentLocaleForConstrue } from './i18next/i18nextUtil';
+import { t } from './i18next/LocalUtil';
+import { stringToHTML } from './StringsUtils';
 
-export const renderNameField = (_: string, record: IngestionPipeline) => (
-  <Typography.Text
-    className="m-b-0 d-block break-word"
-    data-testid="pipeline-name">
-    {getEntityName(record)}
-  </Typography.Text>
-);
+export const renderNameField =
+  (searchText?: string) => (_: string, record: IngestionPipeline) =>
+    (
+      <Typography.Text
+        className="m-b-0 d-block break-word"
+        data-testid="pipeline-name">
+        {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
+      </Typography.Text>
+    );
 
-export const renderTypeField = (_: string, record: IngestionPipeline) => (
-  <Typography.Text
-    className="m-b-0 d-block break-word"
-    data-testid="pipeline-type">
-    {record.pipelineType}
-  </Typography.Text>
-);
+export const renderTypeField =
+  (searchText?: string) => (_: string, record: IngestionPipeline) => {
+    const typeText =
+      record.pipelineType === PipelineType.Dbt
+        ? record.pipelineType
+        : startCase(record.pipelineType);
 
-export const renderStatusField = (_: string, record: IngestionPipeline) => (
-  <Tag
-    className="ingestion-run-badge latest"
-    color={PIPELINE_INGESTION_RUN_STATUS[record.enabled ? 'success' : 'paused']}
-    data-testid="pipeline-active-status">
-    {record.enabled ? t('label.active-uppercase') : t('label.paused-uppercase')}
-  </Tag>
-);
+    return (
+      <Typography.Text
+        className="m-b-0 d-block break-word"
+        data-testid="pipeline-type">
+        {stringToHTML(highlightSearchText(typeText, searchText))}
+      </Typography.Text>
+    );
+  };
+
+export const renderStatusField = (_: string, record: IngestionPipeline) => {
+  const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
+
+  return (
+    <Tag
+      className={classNames(
+        'ingestion-run-badge latest pipeline-status',
+        record.enabled ? 'success' : 'paused'
+      )}
+      data-testid="pipeline-active-status">
+      <Icon component={statusIcon} />
+      {record.enabled ? t('label.active') : t('label.paused')}
+    </Tag>
+  );
+};
 
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
@@ -60,6 +84,7 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
     {
       use24HourTimeFormat: false,
       verbose: true,
+      locale: getCurrentLocaleForConstrue(), // To get localized string
     }
   );
 

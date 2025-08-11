@@ -10,21 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../../components/common/Table/Table';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,7 +33,6 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { Include } from '../../../generated/type/include';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
@@ -42,12 +41,14 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { getMetrics } from '../../../rest/metricsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const {
     pageSize,
@@ -159,6 +160,7 @@ const MetricListPage = () => {
         title: t('label.description'),
         dataIndex: 'description',
         flex: true,
+        width: 300,
         key: 'description',
         render: (description: string) =>
           isEmpty(description) ? (
@@ -168,14 +170,13 @@ const MetricListPage = () => {
               })}
             </Typography.Text>
           ) : (
-            description
+            <RichTextEditorPreviewerNew markdown={description} />
           ),
       },
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Metric, index: number) => (
           <TableTags<Metric>
@@ -188,7 +189,6 @@ const MetricListPage = () => {
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={noop}
           />
         ),
       },
@@ -196,7 +196,6 @@ const MetricListPage = () => {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'glossary',
-        accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Metric, index: number) => (
           <TableTags<Metric>
@@ -209,17 +208,10 @@ const MetricListPage = () => {
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={noop}
           />
         ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        width: 200,
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<Metric>(),
     ],
     []
   );
@@ -244,7 +236,7 @@ const MetricListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.metric-plural')}>
-      <Row className="p-x-lg p-t-md p-b-md" gutter={[0, 16]}>
+      <Row className="p-b-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader
@@ -258,7 +250,7 @@ const MetricListPage = () => {
                 <Button
                   data-testid="create-metric"
                   type="primary"
-                  onClick={() => history.push(ROUTES.ADD_METRIC)}>
+                  onClick={() => navigate(ROUTES.ADD_METRIC)}>
                   {t('label.add-entity', { entity: t('label.metric') })}
                 </Button>
               </LimitWrapper>
@@ -267,18 +259,29 @@ const MetricListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             columns={columns}
+            customPaginationProps={{
+              showPagination,
+              currentPage,
+              isLoading: loadingMore,
+              pageSize,
+              paging,
+              pagingHandler: onPageChange,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             dataSource={metrics}
             loading={loadingMore}
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   heading={t('label.metric')}
                   permission={permission.Create}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.metric'),
+                  })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() => history.push(ROUTES.ADD_METRIC)}
+                  onClick={() => navigate(ROUTES.ADD_METRIC)}
                 />
               ),
             }}
@@ -286,17 +289,6 @@ const MetricListPage = () => {
             rowKey="id"
             size="small"
           />
-        </Col>
-        <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={onPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
         </Col>
       </Row>
     </PageLayoutV1>

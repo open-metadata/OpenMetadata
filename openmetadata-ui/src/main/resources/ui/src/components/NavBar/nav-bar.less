@@ -12,13 +12,24 @@
  */
 @import (reference) '../../styles/variables.less';
 
-.global-search-overlay {
-  .ant-popover-inner-content {
-    padding: 8px;
-  }
-}
-
 .navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  > div {
+    height: 40px;
+
+    .ant-input-wrapper.ant-input-group,
+    .ant-input-affix-wrapper {
+      height: 40px;
+    }
+  }
+
+  .search-container {
+    width: 35vw;
+  }
+
   .app-user-icon {
     display: flex;
     justify-content: space-between;
@@ -30,36 +41,12 @@
       line-height: 21px;
     }
   }
-  & + .refresh-alert {
-    width: 470px;
-    bottom: 30px;
-    align-items: center;
-    z-index: 9999;
-    margin: 0 auto;
-    box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
-    border-radius: 10px;
-    border: 1px solid @text-color;
-    background: @text-color;
-    color: @white;
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
 
-    .ant-alert-message {
-      color: @white;
-    }
-    .ant-alert-description {
-      color: @grey-4;
-    }
-
-    .ant-alert-content {
-      border-right: 1px solid @white;
-    }
-
-    .ant-btn {
-      font-weight: 700;
-      color: @white;
-    }
+  .navbar-title {
+    font-size: 18px;
+    line-height: 32px;
+    font-weight: 600;
+    color: @grey-700;
   }
 }
 
@@ -76,7 +63,66 @@
   0% {
     transform: translate(-50%, 100%);
   }
+
   100% {
     transform: translate(-50%, 0);
+  }
+}
+
+.ant-btn.domain-nav-btn {
+  background-color: @white;
+  border: 1px solid @grey-15;
+  color: @text-color;
+  height: 40px;
+
+  .domain-text {
+    max-width: 15vw;
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus {
+    background-color: @primary-button-background;
+    border: 1px solid @alert-info-icon-bg-1;
+    color: @text-color;
+  }
+
+  &.domain-active {
+    color: @primary-color;
+    border: 1px solid @primary-color;
+    background-color: @primary-button-background;
+  }
+}
+
+.ant-alert.ant-alert-info.refresh-alert {
+  width: 470px;
+  bottom: 30px;
+  align-items: center;
+  z-index: 9999;
+  margin: 0 auto;
+  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  border: 1px solid @text-color;
+  background: @text-color;
+  color: @white;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+
+  .ant-alert-message {
+    color: @white;
+  }
+
+  .ant-alert-description {
+    color: @grey-4;
+  }
+
+  .ant-alert-content {
+    border-right: 1px solid @white;
+  }
+
+  .ant-btn {
+    font-weight: 700;
+    color: @white;
   }
 }

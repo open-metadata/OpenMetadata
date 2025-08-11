@@ -21,10 +21,11 @@ export enum SidebarItem {
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   TAGS = 'tags',
-  INSIGHTS = 'insights',
+  INSIGHTS = 'data-insight',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
   METRICS = 'metrics',
+  LINEAGE = 'lineage',
 }
 
 export const SIDEBAR_LIST_ITEMS = {

@@ -60,10 +60,12 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -71,7 +73,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -136,7 +137,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Glossary original, Glossary updated, Operation operation) {
+  public EntityRepository<Glossary>.EntityUpdater getUpdater(
+      Glossary original, Glossary updated, Operation operation, ChangeSource changeSource) {
     return new GlossaryUpdater(original, updated, operation);
   }
 
@@ -151,29 +153,30 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   /** Export glossary as CSV */
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
     List<GlossaryTerm> terms =
-        repository.listAll(
-            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension"), filter);
+        repository.listAllForCSV(
+            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension,parent"),
+            glossary.getFullyQualifiedName());
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }
 
   /** Load CSV provided for bulk upload */
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryCsv glossaryCsv = new GlossaryCsv(glossary, user);
     return glossaryCsv.importCsv(csv, dryRun);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(Entity.GLOSSARY);
+    public static final CsvDocumentation DOCUMENTATION =
+        getCsvDocumentation(Entity.GLOSSARY, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
 
@@ -186,11 +189,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
+      String glossaryTermFqn =
+          nullOrEmpty(csvRecord.get(0))
+              ? FullyQualifiedName.build(glossary.getFullyQualifiedName(), csvRecord.get(1))
+              : FullyQualifiedName.add(csvRecord.get(0), csvRecord.get(1));
 
       // TODO add header
       glossaryTerm
           .withParent(getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM))
           .withName(csvRecord.get(1))
+          .withFullyQualifiedName(glossaryTermFqn)
           .withDisplayName(csvRecord.get(2))
           .withDescription(csvRecord.get(3))
           .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
@@ -199,12 +207,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withTags(
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
-          .withReviewers(getOwners(printer, csvRecord, 8))
+          .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm);
+        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }
 
@@ -324,7 +332,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // List of entity references tagged with the glossary term
     Map<String, EntityReference> targetFQNFromES =
         repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
+            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
     List<EntityReference> childrenTerms =
         searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
@@ -333,12 +341,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
           repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
+              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
       searchRepository.updateEntity(child); // update es index of child term
       searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
 
-    searchRepository.updateEntity(original); // update es index of child term
+    searchRepository.updateEntityIndex(original); // update es index of child term
     searchRepository
         .getSearchClient()
         .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());
@@ -385,7 +393,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(original, updated);
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
@@ -439,7 +447,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.DRAFT)) {
+          if (term.getStatus().equals(Status.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

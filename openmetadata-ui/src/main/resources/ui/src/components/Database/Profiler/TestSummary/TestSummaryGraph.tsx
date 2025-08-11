@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { first, isEmpty, isUndefined } from 'lodash';
-import React, { ReactElement, useMemo, useRef, useState } from 'react';
+import { ReactElement, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -60,9 +60,11 @@ import {
   axisTickFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
-import { formatTimeFromSeconds } from '../../../../utils/CommonUtils';
 import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  formatDateTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LineChartRef } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -176,9 +178,9 @@ function TestSummaryGraph({
 
   // Todo: need to find better approach to create dynamic scale for graph, need to work with @TeddyCr for the same!
   const formatYAxis = (value: number) => {
-    // table freshness will always have output value in seconds
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? formatTimeFromSeconds(value)
+      ? // table freshness will always have output value in seconds, so we need to convert it to milliseconds
+        convertMillisecondsToHumanReadableFormat(value * 1000, 2)
       : axisTickFormatter(value);
   };
 

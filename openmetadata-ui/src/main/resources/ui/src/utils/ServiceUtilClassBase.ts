@@ -11,8 +11,18 @@
  *  limitations under the License.
  */
 
-import { capitalize, get, toLower } from 'lodash';
-import MetricIcon from '../assets/svg/metric.svg';
+import {
+  ObjectFieldTemplatePropertyType,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
+import { cloneDeep, get, toLower } from 'lodash';
+import { ServiceTypes } from 'Models';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
+import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -24,7 +34,10 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  CASSANDRA,
   CLICKHOUSE,
+  COCKROACH,
+  COMMON_UI_SCHEMA,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -41,6 +54,7 @@ import {
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
+  EXASOL,
   FIVETRAN,
   FLINK,
   GCS,
@@ -57,6 +71,7 @@ import {
   LOOKER,
   MARIADB,
   METABASE,
+  MICROSTRATEGY,
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
@@ -111,8 +126,11 @@ import {
   MlModelServiceTypeSmallCaseType,
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
+  SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -122,7 +140,11 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { ConfigData, ServicesType } from '../interface/service.interface';
+import profilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -131,6 +153,8 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getSecurityConfig } from './SecurityServiceUtils';
+import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -144,6 +168,15 @@ class ServiceUtilClassBase {
     APIServiceType.Webhook,
     MlModelServiceType.VertexAI,
     PipelineServiceType.Matillion,
+    PipelineServiceType.DataFactory,
+    PipelineServiceType.Stitch,
+    DashboardServiceType.PowerBIReportServer,
+    DatabaseServiceType.Ssas,
+    DashboardServiceType.ThoughtSpot,
+    PipelineServiceType.Ssis,
+    PipelineServiceType.Wherescape,
+    SecurityServiceType.Ranger,
+    DatabaseServiceType.Epic,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -191,12 +224,74 @@ class ServiceUtilClassBase {
     ApiServiceTypeSmallCaseType
   >(APIServiceType);
 
+  SecurityServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    SecurityServiceTypeSmallCaseType
+  >(SecurityServiceType);
+
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
   }
 
   filterUnsupportedServiceType(types: string[]) {
     return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
+
+  private serviceDetails?: ServicesType;
+
+  public setEditServiceDetails(serviceDetails?: ServicesType) {
+    this.serviceDetails = serviceDetails;
+  }
+
+  public getEditServiceDetails() {
+    return this.serviceDetails;
+  }
+
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigClass },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
+  }
+
+  public getServiceConfigData(data: {
+    serviceName: string;
+    serviceType: string;
+    description: string;
+    userId: string;
+    configData: ConfigData;
+  }) {
+    const { serviceName, serviceType, description, userId, configData } = data;
+
+    return {
+      name: serviceName,
+      serviceType: serviceType,
+      description: description,
+      owners: [
+        {
+          id: userId,
+          type: 'user',
+        },
+      ],
+      connection: {
+        config: configData,
+      },
+    };
+  }
+
+  public getServiceExtraInfo(_data?: ServicesType): any {
+    return null;
   }
 
   public getSupportedServiceFromList() {
@@ -227,6 +322,9 @@ class ServiceUtilClassBase {
       ).sort(customServiceComparator),
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
+      ).sort(customServiceComparator),
+      securityServices: this.filterUnsupportedServiceType(
+        Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
@@ -311,6 +409,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.DynamoDB:
         return DYNAMODB;
 
+      case this.DatabaseServiceTypeSmallCase.Exasol:
+        return EXASOL;
+
       case this.DatabaseServiceTypeSmallCase.SingleStore:
         return SINGLESTORE;
 
@@ -338,11 +439,17 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return MONGODB;
 
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return CASSANDRA;
+
       case this.DatabaseServiceTypeSmallCase.SAS:
         return SAS;
 
       case this.DatabaseServiceTypeSmallCase.Couchbase:
         return COUCHBASE;
+
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return COCKROACH;
 
       case this.DatabaseServiceTypeSmallCase.Greenplum:
         return GREENPLUM;
@@ -370,6 +477,7 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.CustomDashboard:
         return DASHBOARD_DEFAULT;
+
       case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
@@ -462,6 +570,7 @@ class ServiceUtilClassBase {
 
       case this.MlModelServiceTypeSmallCase.Sklearn:
         return SCIKIT;
+
       case this.MlModelServiceTypeSmallCase.SageMaker:
         return SAGEMAKER;
 
@@ -498,6 +607,9 @@ class ServiceUtilClassBase {
       case this.ApiServiceTypeSmallCase.REST:
         return REST_SERVICE;
 
+      case this.DashboardServiceTypeSmallCase.MicroStrategy:
+        return MICROSTRATEGY;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -514,6 +626,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_STORAGE_DEFAULT;
         } else if (serviceTypes.searchServices.includes(type)) {
           logo = CUSTOM_SEARCH_DEFAULT;
+        } else if (serviceTypes.securityServices.includes(type)) {
+          logo = DEFAULT_SERVICE;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -545,6 +659,7 @@ class ServiceUtilClassBase {
     const storage = this.StorageServiceTypeSmallCase;
     const search = this.SearchServiceTypeSmallCase;
     const api = this.ApiServiceTypeSmallCase;
+    const security = this.SecurityServiceTypeSmallCase;
 
     switch (true) {
       case Object.values(database).includes(
@@ -581,86 +696,15 @@ class ServiceUtilClassBase {
       ):
         return ExplorePageTabs.API_ENDPOINT;
 
+      case Object.values(security).includes(
+        serviceType as typeof security[keyof typeof security]
+      ):
+        return ExplorePageTabs.TABLES; // Security services don't have a specific tab, default to tables
+
       default:
         return ExplorePageTabs.TABLES;
     }
   }
-
-  public getServiceName = (serviceType: string) => {
-    switch (serviceType) {
-      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
-        return 'Custom Database';
-      case this.DatabaseServiceTypeSmallCase.AzureSQL:
-        return 'AzureSQL';
-      case this.DatabaseServiceTypeSmallCase.BigQuery:
-        return 'BigQuery';
-      case this.DatabaseServiceTypeSmallCase.BigTable:
-        return 'BigTable';
-      case this.DatabaseServiceTypeSmallCase.DeltaLake:
-        return 'DeltaLake';
-      case this.DatabaseServiceTypeSmallCase.DomoDatabase:
-        return 'DomoDatabase';
-      case this.DatabaseServiceTypeSmallCase.DynamoDB:
-        return 'DynamoDB';
-      case this.DatabaseServiceTypeSmallCase.MariaDB:
-        return 'MariaDB';
-      case this.DatabaseServiceTypeSmallCase.MongoDB:
-        return 'MongoDB';
-      case this.DatabaseServiceTypeSmallCase.PinotDB:
-        return 'pinotdb';
-      case this.DatabaseServiceTypeSmallCase.SapHana:
-        return 'SapHana';
-      case this.DatabaseServiceTypeSmallCase.SAS:
-        return 'SAS';
-      case this.DatabaseServiceTypeSmallCase.SingleStore:
-        return 'SingleStore';
-      case this.DatabaseServiceTypeSmallCase.SQLite:
-        return 'SQlite';
-      case this.DatabaseServiceTypeSmallCase.UnityCatalog:
-        return 'UnityCatalog';
-      case this.MessagingServiceTypeSmallCase.CustomMessaging:
-        return 'Custom Messaging';
-      case this.DashboardServiceTypeSmallCase.DomoDashboard:
-        return 'DomoDashboard';
-      case this.DashboardServiceTypeSmallCase.PowerBI:
-        return 'PowerBI';
-      case this.DashboardServiceTypeSmallCase.QlikCloud:
-        return 'QlikCloud';
-      case this.DashboardServiceTypeSmallCase.QlikSense:
-        return 'QlikSense';
-      case this.DashboardServiceTypeSmallCase.QuickSight:
-        return 'QuickSight';
-      case this.DashboardServiceTypeSmallCase.CustomDashboard:
-        return 'Custom Dashboard';
-      case this.PipelineServiceTypeSmallCase.DatabricksPipeline:
-        return 'DatabricksPipeline';
-      case this.PipelineServiceTypeSmallCase.DBTCloud:
-        return 'DBTCloud';
-      case this.PipelineServiceTypeSmallCase.DomoPipeline:
-        return 'DomoPipeline';
-      case this.PipelineServiceTypeSmallCase.GluePipeline:
-        return 'Glue Pipeline';
-      case this.PipelineServiceTypeSmallCase.KafkaConnect:
-        return 'KafkaConnect';
-      case this.PipelineServiceTypeSmallCase.OpenLineage:
-        return 'OpenLineage';
-      case this.PipelineServiceTypeSmallCase.CustomPipeline:
-        return 'Custom Pipeline';
-      case this.MlModelServiceTypeSmallCase.SageMaker:
-        return 'SageMaker';
-      case this.MlModelServiceTypeSmallCase.CustomMlModel:
-        return 'Custom Ml Model';
-      case this.StorageServiceTypeSmallCase.CustomStorage:
-        return 'Custom Storage';
-      case this.SearchServiceTypeSmallCase.ElasticSearch:
-        return 'ElasticSearch';
-      case this.SearchServiceTypeSmallCase.CustomSearch:
-        return 'Custom Search';
-
-      default:
-        return capitalize(serviceType);
-    }
-  };
 
   public getPipelineServiceConfig(type: PipelineServiceType) {
     return getPipelineConfig(type);
@@ -698,6 +742,64 @@ class ServiceUtilClassBase {
     return getAPIConfig(type);
   }
 
+  public getSecurityServiceConfig(type: SecurityServiceType) {
+    return getSecurityConfig(type);
+  }
+
+  public getInsightsTabWidgets(_: ServiceTypes) {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      AgentsStatusWidget,
+      PlatformInsightsWidget,
+      TotalDataAssetsWidget,
+    };
+
+    return widgets;
+  }
+
+  public getExtraInfo(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  public getProperties(property: ObjectFieldTemplatePropertyType[]) {
+    return {
+      properties: property,
+      additionalField: '',
+      additionalFieldContent: null,
+    };
+  }
+
+  public getEditConfigData(
+    serviceData?: ServicesType,
+    data?: ConfigData
+  ): ServicesType {
+    if (!serviceData || !data) {
+      return serviceData as ServicesType;
+    }
+    const updatedData = { ...serviceData };
+    if (updatedData.connection) {
+      const connection = updatedData.connection as {
+        config: Record<string, unknown>;
+      };
+      updatedData.connection = {
+        ...connection,
+        config: {
+          ...connection.config,
+          ...data,
+        },
+      } as typeof updatedData.connection;
+    }
+
+    return updatedData;
+  }
+
+  public getAgentsTabWidgets() {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      MetadataAgentsWidget,
+    };
+
+    return widgets;
+  }
+
   /**
    * @param originalEnum will take the enum that should be converted
    * @returns object with lowercase value
@@ -711,6 +813,17 @@ class ServiceUtilClassBase {
         value.toLowerCase(),
       ])
     ) as unknown as U;
+  }
+
+  public getProfilerConfig() {
+    const uiSchema = { ...COMMON_UI_SCHEMA };
+
+    const config = cloneDeep({ schema: profilerPipeline, uiSchema }) as {
+      schema: RJSFSchema;
+      uiSchema: UiSchema;
+    };
+
+    return config;
   }
 }
 

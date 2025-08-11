@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,13 +25,14 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Column, Table, TableConstraint
-from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.reverseIngestionResponse import (
+    ReverseIngestionResponse,
+)
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink, Markdown
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
@@ -121,6 +122,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         restrict_update_fields: Optional[List] = None,
         array_entity_fields: Optional[List] = None,
         override_metadata: Optional[bool] = False,
+        skip_on_failure: Optional[bool] = True,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -132,6 +134,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             destination: payload with changes applied to the source.
             allowed_fields: List of field names to filter from source and destination models
             restrict_update_fields: List of field names which will only support add operation
+            array_entity_fields: List of array fields to sort for consistent patching
+            override_metadata: Whether to override existing metadata fields
+            skip_on_failure: Whether to skip the patch operation on failure (default: True)
 
         Returns
             Updated Entity
@@ -144,6 +149,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                 restrict_update_fields=restrict_update_fields,
                 array_entity_fields=array_entity_fields,
                 override_metadata=override_metadata,
+                skip_on_failure=skip_on_failure,
             )
 
             if not patch:
@@ -157,9 +163,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error trying to PATCH {get_log_name(source)}: {exc}")
-
-        return None
+            if skip_on_failure:
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to update {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc}"
+                )
+                return None
+            else:
+                entity_name = get_log_name(source)
+                raise RuntimeError(
+                    f"Failed to update {entity_name}. The patch operation failed. "
+                    f"Set 'skip_on_failure=True' to skip failed patches. Error: {exc}"
+                ) from exc
 
     def patch_description(
         self,
@@ -167,6 +183,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         source: T,
         description: str,
         force: bool = False,
+        skip_on_failure: bool = True,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the description.
@@ -177,33 +194,51 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             description: new description to add
             force: if True, we will patch any existing description. Otherwise, we will maintain
                 the existing data.
+            skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity
         """
-        if isinstance(source, TestCase):
-            instance: Optional[T] = self._fetch_entity_if_exists(
+        try:
+            if isinstance(source, TestCase):
+                instance: Optional[T] = self._fetch_entity_if_exists(
+                    entity=entity,
+                    entity_id=source.id,
+                    fields=["testDefinition", "testSuite"],
+                )
+            else:
+                instance: Optional[T] = self._fetch_entity_if_exists(
+                    entity=entity, entity_id=source.id
+                )
+
+            if not instance:
+                return None
+
+            if instance.description and not force:
+                # If the description is already present and force is not passed,
+                # description will not be overridden
+                return None
+
+            # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
+            destination = source.model_copy(deep=True)
+            destination.description = Markdown(description)
+
+            return self.patch(
                 entity=entity,
-                entity_id=source.id,
-                fields=["testDefinition", "testSuite"],
+                source=source,
+                destination=destination,
+                skip_on_failure=skip_on_failure,
             )
-        else:
-            instance: Optional[T] = self._fetch_entity_if_exists(
-                entity=entity, entity_id=source.id
-            )
-
-        if not instance:
-            return None
-
-        if instance.description and not force:
-            # If the description is already present and force is not passed,
-            # description will not be overridden
-            return None
-
-        # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
-        destination = source.model_copy(deep=True)
-        destination.description = Markdown(description)
-
-        return self.patch(entity=entity, source=source, destination=destination)
+        except Exception as exc:
+            if skip_on_failure:
+                logger.debug(traceback.format_exc())
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to patch description for {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc}"
+                )
+                return None
+            else:
+                raise
 
     def patch_table_constraints(
         self,
@@ -272,6 +307,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
+        skip_on_failure: bool = True,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the tag.
@@ -281,29 +317,47 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             source: Source entity object
             tag_label: TagLabel to add or remove
             operation: Patch Operation to add or remove the tag.
+            skip_on_failure: if True, return None on failure instead of raising exception
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id, fields=["tags"]
-        )
-        if not instance:
-            return None
+        try:
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity, entity_id=source.id, fields=["tags"]
+            )
+            if not instance:
+                return None
 
-        # Initialize empty tag list or the last updated tags
-        source.tags = instance.tags or []
-        destination = source.model_copy(deep=True)
+            # Initialize empty tag list or the last updated tags
+            source.tags = instance.tags or []
+            destination = source.model_copy(deep=True)
 
-        tag_fqns = {label.tagFQN.root for label in tag_labels}
+            tag_fqns = {label.tagFQN.root for label in tag_labels}
 
-        if operation == PatchOperation.REMOVE:
-            for tag in destination.tags:
-                if tag.tagFQN.root in tag_fqns:
-                    destination.tags.remove(tag)
-        else:
-            destination.tags.extend(tag_labels)
+            if operation == PatchOperation.REMOVE:
+                for tag in destination.tags:
+                    if tag.tagFQN.root in tag_fqns:
+                        destination.tags.remove(tag)
+            else:
+                destination.tags.extend(tag_labels)
 
-        return self.patch(entity=entity, source=source, destination=destination)
+            return self.patch(
+                entity=entity,
+                source=source,
+                destination=destination,
+                skip_on_failure=skip_on_failure,
+            )
+        except Exception as exc:
+            if skip_on_failure:
+                logger.debug(traceback.format_exc())
+                entity_name = get_log_name(source)
+                logger.warning(
+                    f"Failed to patch tags for {entity_name}. The patch operation was skipped. "
+                    f"Reason: {exc}"
+                )
+                return None
+            else:
+                raise
 
     def patch_tag(
         self,
@@ -313,11 +367,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
+        skip_on_failure: bool = True,
     ) -> Optional[T]:
         """Will be deprecated in 1.3"""
         logger.warning("patch_tag will be deprecated in 1.3. Use `patch_tags` instead.")
         return self.patch_tags(
-            entity=entity, source=source, tag_labels=[tag_label], operation=operation
+            entity=entity,
+            source=source,
+            tag_labels=[tag_label],
+            operation=operation,
+            skip_on_failure=skip_on_failure,
         )
 
     def patch_owner(
@@ -488,7 +547,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
     def patch_automation_workflow_response(
         self,
         automation_workflow: AutomationWorkflow,
-        test_connection_result: TestConnectionResult,
+        result: Union[TestConnectionResult, ReverseIngestionResponse],
         workflow_status: WorkflowStatus,
     ) -> None:
         """
@@ -496,14 +555,21 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         result_data: Dict = {
             PatchField.PATH: PatchPath.RESPONSE,
-            PatchField.VALUE: test_connection_result.model_dump(),
+            PatchField.VALUE: result.model_dump(),
             PatchField.OPERATION: PatchOperation.ADD,
         }
 
         # for deserializing into json convert enum object to string
-        result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
-            "status"
-        ].value
+        if isinstance(result, TestConnectionResult):
+            result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
+                "status"
+            ].value
+        else:
+            # Convert UUID in string
+            data = result_data[PatchField.VALUE]
+            data["serviceId"] = str(data["serviceId"])
+            for operation_result in data["results"]:
+                operation_result["id"] = str(operation_result["id"])
 
         status_data: Dict = {
             PatchField.PATH: PatchPath.STATUS,
@@ -544,17 +610,37 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
             return None
 
-    def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
-        """Patch domain data for an Entity"""
-        try:
-            destination: Entity = entity.model_copy(deep=True)
-            destination.domain = EntityReference(id=domain.id, type="domain")
-            return self.patch(
-                entity=type(entity), source=entity, destination=destination
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to Patch Domain for {entity.fullyQualifiedName.root}: {exc}"
-            )
+    def patch_domain(
+        self,
+        entity: Type[T],
+        source: T,
+        domains: EntityReferenceList = None,
+        force: bool = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
+        not owner ID are provided, the owner is removed.
+
+        Args
+            entity (T): Entity Type of the entity to be patched
+            entity_id: ID of the entity to be patched
+            owner: Entity Reference of the owner. If None, the owner will be removed
+            force: if True, we will patch any existing owner. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance: Optional[T] = self._fetch_entity_if_exists(
+            entity=entity, entity_id=source.id, fields=["domains"]
+        )
+
+        if not instance:
             return None
+
+        if instance.domains and instance.domains.root and not force:
+            return None
+
+        destination = deepcopy(instance)
+        destination.domains = domains
+
+        return self.patch(entity=entity, source=instance, destination=destination)

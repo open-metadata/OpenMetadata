@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 import {
-  act,
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
@@ -42,6 +41,10 @@ jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
 }));
 
+jest.mock('../ApplicationsProvider/ApplicationsProvider', () => ({
+  useApplicationsProvider: () => ({ applications: [], plugins: [] }),
+}));
+
 const mockConfigureApp = jest.fn();
 const mockDeployApp = jest.fn();
 const mockRestoreApp = jest.fn();
@@ -49,9 +52,19 @@ const mockTriggerOnDemandApp = jest.fn();
 const mockUninstallApp = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
 const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
+
+jest.mock('../ApplicationConfiguration/ApplicationConfiguration', () =>
+  jest.fn().mockImplementation(({ onConfigSave }) => (
+    <div data-testid="application-configuration">
+      <button onClick={() => onConfigSave({ formData: {} })}>
+        Save Config
+      </button>
+    </div>
+  ))
+);
 
 jest.mock('../../../../rest/applicationAPI', () => ({
   configureApp: mockConfigureApp,
@@ -144,9 +157,7 @@ jest.mock('./ApplicationsClassBase', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 const renderAppDetails = async () => {
@@ -155,11 +166,11 @@ const renderAppDetails = async () => {
 };
 
 const ConfirmAction = (buttonLabel: string) => {
-  userEvent.click(screen.getByRole('menuitem', { name: buttonLabel }));
+  fireEvent.click(screen.getByRole('menuitem', { name: buttonLabel }));
 
   expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
 
-  userEvent.click(
+  fireEvent.click(
     screen.getByRole('button', { name: 'Confirm Confirmation Modal' })
   );
 };
@@ -171,26 +182,32 @@ describe('AppDetails component', () => {
     expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
 
     // back button
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'left label.browse-app-plural' })
     );
 
-    expect(mockPush).toHaveBeenCalledWith(GlobalSettingOptions.APPLICATIONS);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
 
     // menu items
-    userEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByTestId('manage-button'));
 
     // uninstall app
     ConfirmAction('label.uninstall');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), true);
-    expect(mockPush).toHaveBeenCalledWith(GlobalSettingOptions.APPLICATIONS);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
 
     // disable app
     ConfirmAction('label.disable');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), false);
-    expect(mockPush).toHaveBeenCalledWith(GlobalSettingOptions.APPLICATIONS);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
   });
 
   it('check for restore button', async () => {
@@ -201,7 +218,7 @@ describe('AppDetails component', () => {
 
     await renderAppDetails();
 
-    userEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByTestId('manage-button'));
 
     // enable app
     ConfirmAction('label.restore');
@@ -209,29 +226,43 @@ describe('AppDetails component', () => {
     expect(mockRestoreApp).toHaveBeenCalled();
   });
 
-  it('Configuration tab actions check', async () => {
+  it('Schedule and Recent Runs tab should not be visible for NoScheduleApps', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      scheduleType: 'NoSchedule',
+      deleted: true,
+    });
+
     await renderAppDetails();
 
-    userEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
-    userEvent.click(screen.getByRole('button', { name: 'Configure Save' }));
+    // Narrow the scope to the tablist within the container
+    const tabList = screen.getByTestId('tabs');
 
-    expect(mockPatchApplication).toHaveBeenCalled();
+    expect(
+      within(tabList).getByRole('tab', { name: 'label.configuration' })
+    ).toBeInTheDocument();
+
+    expect(
+      within(tabList).queryByRole('tab', { name: 'label.schedule' })
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(tabList).queryByRole('tab', { name: 'label.recent-run-plural' })
+    ).not.toBeInTheDocument();
   });
 
   it('Schedule tab Actions check', async () => {
     await renderAppDetails();
 
-    userEvent.click(
+    fireEvent.click(
       screen.getByRole('button', { name: 'DemandTrigger AppSchedule' })
     );
 
     expect(mockTriggerOnDemandApp).toHaveBeenCalled();
 
-    act(() => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'DeployTrigger AppSchedule' })
-      );
-    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'DeployTrigger AppSchedule' })
+    );
 
     expect(mockDeployApp).toHaveBeenCalled();
     expect(mockGetApplicationByName).toHaveBeenCalled();

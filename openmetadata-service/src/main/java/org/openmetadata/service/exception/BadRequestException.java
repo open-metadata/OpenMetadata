@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public final class BadRequestException extends WebServiceException {
@@ -24,7 +24,7 @@ public final class BadRequestException extends WebServiceException {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, DEFAULT_MESSAGE);
   }
 
-  private BadRequestException(String message) {
+  public BadRequestException(String message) {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 

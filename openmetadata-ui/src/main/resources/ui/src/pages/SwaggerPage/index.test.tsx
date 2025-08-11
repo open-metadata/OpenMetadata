@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import SwaggerPage from './index';
 
 jest.mock('./RapiDocReact', () => {
@@ -23,9 +22,12 @@ jest.mock('./RapiDocReact', () => {
   ));
 });
 
+jest.mock('../../utils/LocalStorageUtils', () => ({
+  getOidcToken: jest.fn().mockReturnValue('fakeToken'),
+}));
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
-    getOidcToken: () => 'fakeToken',
     theme: {
       primaryColor: '#9c27b0',
     },

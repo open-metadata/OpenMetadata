@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,6 +12,7 @@
 Elasticsearch source to extract metadata
 """
 import shutil
+import traceback
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -21,6 +22,7 @@ from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
 from metadata.generated.schema.entity.data.searchIndex import (
+    IndexType,
     SearchIndex,
     SearchIndexSampleData,
 )
@@ -103,6 +105,7 @@ class ElasticsearchSource(SearchServiceSource):
                 fields=parse_es_index_mapping(
                     search_index_details.get(index_name, {}).get("mappings")
                 ),
+                indexType=IndexType.Index,
             )
             yield Either(right=search_index_request)
             self.register_record(search_index_request=search_index_request)
@@ -142,6 +145,56 @@ class ElasticsearchSource(SearchServiceSource):
                     ),
                 )
             )
+
+    def get_search_index_template_list(self) -> Iterable[dict]:
+        """
+        Get List of all search index template
+        """
+        yield from self.client.indices.get_index_template().get("index_templates", [])
+
+    def get_search_index_template_name(
+        self, search_index_template_details: dict
+    ) -> Optional[str]:
+        """
+        Get Search Index Template Name
+        """
+        return search_index_template_details and search_index_template_details["name"]
+
+    def yield_search_index_template(
+        self, search_index_template_details: Any
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """
+        Method to Get Search Index Template Entity
+        """
+        try:
+            if self.source_config.includeIndexTemplate:
+                index_name = self.get_search_index_template_name(
+                    search_index_template_details
+                )
+                index_template = search_index_template_details["index_template"]
+                if index_name:
+                    search_index_template_request = CreateSearchIndexRequest(
+                        name=EntityName(index_name),
+                        displayName=index_name,
+                        searchIndexSettings=index_template.get("template", {}).get(
+                            "settings", {}
+                        ),
+                        service=FullyQualifiedEntityName(
+                            self.context.get().search_service
+                        ),
+                        fields=parse_es_index_mapping(
+                            index_template.get("template", {}).get("mappings")
+                        ),
+                        indexType=IndexType.IndexTemplate,
+                        description=index_template.get("_meta", {}).get("description"),
+                    )
+                    yield Either(right=search_index_template_request)
+                    self.register_record(
+                        search_index_request=search_index_template_request
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Could not include index templates due to {exc}")
 
     def close(self):
         try:

@@ -1,8 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -10,29 +8,14 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseResolutionStatus)
     implements SearchIndex {
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    List<SearchSuggest> suggest = new ArrayList<>();
-    suggest.add(
-        SearchSuggest.builder()
-            .input(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName())
-            .weight(5)
-            .build());
-    suggest.add(
-        SearchSuggest.builder()
-            .input(testCaseResolutionStatus.getTestCaseReference().getName())
-            .weight(10)
-            .build());
     doc.put(
         "fqnParts",
-        getFQNParts(
-            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
+        getFQNParts(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()));
     doc.put("@timestamp", testCaseResolutionStatus.getTimestamp());
     setParentRelationships(doc);
     return doc;
@@ -46,13 +29,28 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
   private void setParentRelationships(Map<String, Object> doc) {
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
-    TestCase testCase = Entity.getEntityOrNull(testCaseReference, "testSuite", Include.ALL);
+    TestCase testCase =
+        Entity.getEntityOrNull(testCaseReference, "testSuite,domains,tags,owners", Include.ALL);
     if (testCase == null) return;
-    doc.put("testCase", testCase.getEntityReference());
+    testCase =
+        new TestCase()
+            .withId(testCase.getId())
+            .withName(testCase.getName())
+            .withFullyQualifiedName(testCase.getFullyQualifiedName())
+            .withDescription(testCase.getDescription())
+            .withDisplayName(testCase.getDisplayName())
+            .withDeleted(testCase.getDeleted())
+            .withDomains(testCase.getDomains())
+            .withTags(testCase.getTags())
+            .withEntityFQN(testCase.getEntityFQN())
+            .withOwners(testCase.getOwners());
+    doc.put("testCase", testCase);
     TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
-    TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
+    if (testSuite.getBasicEntityReference() != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getBasicEntityReference(), doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

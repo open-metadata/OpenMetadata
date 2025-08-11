@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
@@ -14,19 +15,21 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -137,15 +140,15 @@ public class AppRepository extends EntityRepository<App> {
     return null;
   }
 
+  public List<EntityReference> listAllAppsReference() {
+    return daoCollection.applicationDAO().listAppsRef();
+  }
+
   @Override
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();
     entity.withOwners(null);
-
-    // Store
     store(entity, update);
-
-    // Restore entity fields
     entity.withOwners(ownerRefs);
   }
 
@@ -178,7 +181,6 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public final List<App> listAll() {
-    // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfterWithOffset(Integer.MAX_VALUE, 0);
     List<App> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -190,11 +192,21 @@ public class AppRepository extends EntityRepository<App> {
 
   public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset) {
     return listAppExtensionById(
-        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset, UUID service) {
+    return listAppExtensionById(
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
-    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public AppRunRecord getLatestAppRuns(App app, UUID service) {
+    return getLatestExtensionById(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRunsAfterStartTime(App app, long startTime) {
@@ -214,7 +226,6 @@ public class AppRepository extends EntityRepository<App> {
             .listAppExtensionCountByName(app.getName(), extensionType.toString());
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
           daoCollection
               .appExtensionTimeSeriesDao()
@@ -237,10 +248,20 @@ public class AppRepository extends EntityRepository<App> {
       int offset,
       Class<T> clazz,
       AppExtension.ExtensionType extensionType) {
+    return listAppExtensionById(app, limitParam, offset, clazz, extensionType, null);
+  }
+
+  public <T> ResultList<T> listAppExtensionById(
+      App app,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType,
+      UUID service) {
     int total =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtensionCount(app.getId().toString(), extensionType.toString());
+            .listAppExtensionCount(app.getId().toString(), extensionType.toString(), service);
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
@@ -248,7 +269,7 @@ public class AppRepository extends EntityRepository<App> {
           daoCollection
               .appExtensionTimeSeriesDao()
               .listAppExtension(
-                  app.getId().toString(), limitParam, offset, extensionType.toString());
+                  app.getId().toString(), limitParam, offset, extensionType.toString(), service);
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -274,7 +295,6 @@ public class AppRepository extends EntityRepository<App> {
                 app.getName(), startTime, extensionType.toString());
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
       List<String> jsons =
           daoCollection
               .appExtensionTimeSeriesDao()
@@ -287,7 +307,6 @@ public class AppRepository extends EntityRepository<App> {
 
       return new ResultList<>(entities, offset, total);
     } else {
-      // limit == 0 , return total count of entity.
       return new ResultList<>(entities, null, total);
     }
   }
@@ -336,11 +355,11 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public <T> T getLatestExtensionById(
-      App app, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
     List<String> result =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString());
+            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString(), service);
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
@@ -374,18 +393,72 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void cleanup(App app) {
+  protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
-    super.cleanup(app);
   }
 
   @Override
-  public EntityUpdater getUpdater(App original, App updated, Operation operation) {
-    return new AppRepository.AppUpdater(original, updated, operation);
+  public EntityRepository<App>.EntityUpdater getUpdater(
+      App original, App updated, Operation operation, ChangeSource changeSource) {
+    return new AppUpdater(original, updated, operation);
+  }
+
+  public App addEventSubscription(App app, EventSubscription eventSubscription) {
+    EntityReference existing =
+        listOrEmpty(app.getEventSubscriptions()).stream()
+            .filter(e -> e.getId().equals(eventSubscription.getId()))
+            .findFirst()
+            .orElse(null);
+    if (existing != null) {
+      return app;
+    }
+    addRelationship(
+        app.getId(),
+        eventSubscription.getId(),
+        Entity.APPLICATION,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.add(eventSubscription.getEntityReference());
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, Operation.PUT, null).update();
+    return updated;
+  }
+
+  public App deleteEventSubscription(App app, UUID eventSubscriptionId) {
+    deleteRelationship(
+        app.getId(),
+        Entity.APPLICATION,
+        eventSubscriptionId,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, Operation.PUT, null).update();
+    return updated;
+  }
+
+  public void updateAppStatus(UUID appID, AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .update(
+            appID.toString(),
+            JsonUtils.pojoToJson(record),
+            record.getTimestamp(),
+            AppExtension.ExtensionType.STATUS.toString());
+  }
+
+  public void addAppStatus(AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .insert(JsonUtils.pojoToJson(record), AppExtension.ExtensionType.STATUS.toString());
   }
 
   public class AppUpdater extends EntityUpdater {
@@ -394,11 +467,13 @@ public class AppRepository extends EntityRepository<App> {
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
       recordChange("bot", original.getBot(), updated.getBot());
+      recordChange(
+          "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
     }
   }
 }

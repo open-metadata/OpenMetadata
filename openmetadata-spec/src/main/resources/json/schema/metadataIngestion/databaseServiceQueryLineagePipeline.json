@@ -60,6 +60,68 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only fetch stored procedures that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
+    "overrideViewLineage":{
+      "title": "Override View Lineage",
+      "description": "Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.",
+      "type": "boolean",
+      "default": false
+    },
+    "processViewLineage": {
+      "title": "Process View Lineage",
+      "description": "Set the 'Process View Lineage' toggle to control whether to process view lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "processQueryLineage": {
+      "title": "Process Query Lineage",
+      "description": "Set the 'Process Query Lineage' toggle to control whether to process query lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "processStoredProcedureLineage": {
+      "title": "Process Stored Procedure Lineage",
+      "description": "Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored procedure lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to parallelize lineage ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads",
+      "minimum": 1
+    },
+    "processCrossDatabaseLineage": {
+      "title": "Process Cross Database Lineage",
+      "description": "Set the 'Process Cross Database Lineage' toggle to control whether to process table lineage across different databases.",
+      "type": "boolean",
+      "default": false
+    },
+    "crossDatabaseServiceNames": {
+      "title": "Cross Database Service Names",
+      "description": "Set 'Cross Database Service Names' to process lineage with the database.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enableTempTableLineage": {
+      "title": "Enable Temp Table Lineage",
+      "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
+      "type": "boolean",
+      "default": false
+    },
+    "incrementalLineageProcessing": {
+      "title": "Incremental Lineage Processing",
+      "description": "Set the 'Incremental Lineage Processing' toggle to control whether to process lineage incrementally.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

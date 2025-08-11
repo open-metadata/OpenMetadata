@@ -14,9 +14,20 @@
 export interface LeftSidebarItem {
   key: string;
   isBeta?: boolean;
-  label: string;
+  title: string;
   redirect_url?: string;
   icon: SvgComponent;
   dataTestId: string;
   children?: Array<LeftSidebarItem>;
+}
+
+export interface LeftSidebarItemProps {
+  data: {
+    key: string;
+    title: string;
+    dataTestId: string;
+    redirect_url?: string;
+    icon: SvgComponent;
+    isBeta?: boolean;
+  };
 }

@@ -13,7 +13,6 @@
 
 import { Button, Popover, Space } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { get, isEmpty } from 'lodash';
 import React, {
   FC,
@@ -24,14 +23,11 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  TERM_ADMIN,
-} from '../../../constants/constants';
+import { TERM_ADMIN } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -40,14 +36,19 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../utils/RouterUtils';
 import { getUserWithImage } from '../../../utils/UserDataUtils';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
-const UserTeams = React.memo(({ userName }: { userName: string }) => {
+export const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
+  const { t } = useTranslation();
 
   return teams?.length ? (
     <div className="m-t-xs">
@@ -71,11 +72,12 @@ const UserTeams = React.memo(({ userName }: { userName: string }) => {
   ) : null;
 });
 
-const UserRoles = React.memo(({ userName }: { userName: string }) => {
+export const UserRoles = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
   const isAdmin = userData?.isAdmin;
+  const { t } = useTranslation();
 
   return roles?.length ? (
     <div className="m-t-xs">
@@ -104,7 +106,7 @@ const UserRoles = React.memo(({ userName }: { userName: string }) => {
   ) : null;
 });
 
-const PopoverContent = React.memo(
+export const PopoverContent = React.memo(
   ({
     userName,
     type = OwnerType.USER,
@@ -120,14 +122,18 @@ const PopoverContent = React.memo(
     });
     const { updateUserProfilePics } = useApplicationStore();
     const [loading, setLoading] = useState(false);
-
+    const { t } = useTranslation();
     const teamDetails = get(user, 'teams', null);
 
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
         let user = await getUserByName(userName, {
-          fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+          fields: [
+            TabSpecificField.TEAMS,
+            TabSpecificField.ROLES,
+            TabSpecificField.PROFILE,
+          ],
         });
         user = getUserWithImage(user);
 
@@ -135,7 +141,7 @@ const PopoverContent = React.memo(
           id: userName,
           user,
         });
-      } catch (error) {
+      } catch {
         // Error
       } finally {
         setLoading(false);
@@ -171,7 +177,7 @@ const PopoverContent = React.memo(
   }
 );
 
-const PopoverTitle = React.memo(
+export const PopoverTitle = React.memo(
   ({
     userName,
     profilePicture,
@@ -181,7 +187,7 @@ const PopoverTitle = React.memo(
     profilePicture: JSX.Element;
     type: OwnerType;
   }) => {
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const [, , userData] = useUserProfile({
       permission: true,
@@ -190,7 +196,7 @@ const PopoverTitle = React.memo(
     });
 
     const onTitleClickHandler = (path: string) => {
-      history.push(path);
+      navigate(path);
     };
     const name = userData?.name ?? '';
     const displayName = getEntityName(userData as unknown as EntityReference);
@@ -204,9 +210,15 @@ const PopoverTitle = React.memo(
             type="link"
             onClick={(e) => {
               e.stopPropagation();
-              onTitleClickHandler(getUserPath(name));
+              onTitleClickHandler(
+                type === OwnerType.TEAM
+                  ? getTeamAndUserDetailsPath(name)
+                  : getUserPath(name)
+              );
             }}>
-            <span className="font-medium m-r-xs">{displayName}</span>
+            <span className="font-medium m-r-xs" data-testid="user-name">
+              {displayName}
+            </span>
           </Button>
           {displayName !== name ? (
             <span className="text-grey-muted">{name}</span>
@@ -218,7 +230,7 @@ const PopoverTitle = React.memo(
   }
 );
 
-interface Props extends HTMLAttributes<HTMLDivElement> {
+export interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
   displayName?: ReactNode;
   type?: OwnerType;
@@ -259,8 +271,9 @@ const UserPopOverCard: FC<Props> = ({
           userName={userName}
         />
       }
-      trigger="hover">
-      {children ?? (
+      trigger="hover"
+      zIndex={9999}>
+      {(children as ReactNode) ?? (
         <Link
           className={classNames(
             'assignee-item d-flex gap-1 cursor-pointer items-center',
@@ -276,7 +289,9 @@ const UserPopOverCard: FC<Props> = ({
               : getUserPath(userName ?? '')
           }>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? <span>{displayName ?? userName}</span> : null}
+          {showUserName ? (
+            <span className="truncate">{displayName ?? userName}</span>
+          ) : null}
         </Link>
       )}
     </Popover>

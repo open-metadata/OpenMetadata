@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,9 @@ from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -32,6 +35,8 @@ from metadata.utils import fqn
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+PUBLIC_SCHEMA = "public"
 
 
 def get_host_from_host_port(uri: str) -> str:
@@ -55,6 +60,7 @@ def get_view_lineage(
     table_name = view.table_name
     schema_name = view.schema_name
     db_name = view.db_name
+    schema_fallback = False
     view_definition = view.view_definition
     table_fqn = fqn.build(
         metadata,
@@ -64,10 +70,14 @@ def get_view_lineage(
         schema_name=schema_name,
         table_name=table_name,
     )
-    table_entity = metadata.get_by_name(
+    table_entity: Table = metadata.get_by_name(
         entity=Table,
         fqn=table_fqn,
     )
+
+    if not view_definition:
+        logger.warning(f"View definition for view {table_fqn} not available")
+        return
 
     try:
         connection_type = str(connection_type)
@@ -75,6 +85,12 @@ def get_view_lineage(
         lineage_parser = LineageParser(
             view_definition, dialect, timeout_seconds=timeout_seconds
         )
+
+        if table_entity.serviceType == DatabaseServiceType.Postgres:
+            # For Postgres, if schema is not defined, we need to use the public schema
+            schema_name = PUBLIC_SCHEMA
+            schema_fallback = True
+
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
                 metadata,
@@ -85,6 +101,7 @@ def get_view_lineage(
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                schema_fallback=schema_fallback,
             ) or []
 
         else:
@@ -98,6 +115,7 @@ def get_view_lineage(
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                schema_fallback=schema_fallback,
             ) or []
     except Exception as exc:
         logger.debug(traceback.format_exc())

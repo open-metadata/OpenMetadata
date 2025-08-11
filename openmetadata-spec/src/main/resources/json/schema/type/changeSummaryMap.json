@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/type/changeSummary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Change Summary",
+  "description": "This schema defines structure for change summaries.",
+  "definitions": {
+    "changeSource": {
+      "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+      "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+      "type": "string",
+      "enum": [
+        "Manual",
+        "Propagated",
+        "Automated",
+        "Derived",
+        "Ingested",
+        "Suggested"
+      ],
+      "default": "Manual"
+    },
+    "changeSummary": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.change.ChangeSummary",
+      "properties": {
+        "changeSource": {
+          "$ref": "#/definitions/changeSource"
+        },
+        "changedBy": {
+          "description": "Name of the user or bot who made this change",
+          "type": "string"
+        },
+        "changedAt": {
+          "$ref": "./basic.json#/definitions/timestamp"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/definitions/changeSummary"
+  }
+}

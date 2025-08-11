@@ -10,13 +10,73 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../../styles/variables.less');
+
 .profile-dropdown {
   .ant-dropdown-menu-item-group {
+    padding: 6px 4px;
+
+    .ant-dropdown-menu-item-group-list {
+      padding-left: 14px;
+    }
+
+    .ant-dropdown-menu-item-group-title {
+      padding: 4px 0;
+    }
+
     .ant-dropdown-menu-item-only-child {
-      padding: 0 5px;
+      padding: 4px 0 4px 6px;
+      border-radius: 4px;
     }
-    .ant-dropdown-menu-item-group-list .ant-dropdown-menu-item:last-child {
-      padding-bottom: 5px;
+
+    .ant-dropdown-menu-item-disabled {
+      color: inherit;
+      cursor: default;
     }
+  }
+}
+
+.user-profile-btn.ant-btn {
+  padding: 0;
+  gap: @padding-md;
+
+  &:hover,
+  &:active,
+  &:focus {
+    background: none;
+    border-color: transparent;
+  }
+
+  .app-bar-user-profile-pic {
+    display: inline-block;
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+  }
+
+  .name-persona-container {
+    max-width: 120px;
+    display: flex;
+    flex-direction: column;
+    line-height: 20px;
+    text-align: left;
+
+    .ant-typography {
+      width: 100%;
+      // add ellipsis to the text
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    // Need to change this to 14px
+    font-size: @font-size-base;
+  }
+}
+
+.persona-label {
+  .ant-typography {
+    width: 160px;
   }
 }

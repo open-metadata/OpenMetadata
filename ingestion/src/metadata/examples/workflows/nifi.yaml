@@ -1,0 +1,51 @@
+source:
+  type: nifi
+  serviceName: nifi_source
+  serviceConnection:
+    config:
+      type: Nifi
+      nifiConfig:
+        username: XXXX
+        password: XXXX
+        verifySSL: false
+        ## client certificate authentication
+        # certificateAuthorityPath: path/to/CA
+        # clientCertificatePath: path/to/clientCertificate
+        # clientkeyPath: path/to/clientKey
+      hostPort: https://localhost:8443
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      # lineageInformation:
+      #   dbServiceNames: []
+      #   storageServiceNames: []
+      # markDeletedPipelines: True
+      # includeTags: True
+      # includeLineage: true
+      # includeUnDeployedPipelines: true
+      # pipelineFilterPattern:
+      #   includes:
+      #     - pipeline1
+      #     - pipeline2
+      #   excludes:
+      #     - pipeline3
+      #     - pipeline4
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  loggerLevel: INFO  # DEBUG, INFO, WARNING or ERROR
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: XXXX
+    ## Store the service Connection information
+    storeServiceConnection: true  # false
+    ## Secrets Manager Configuration
+    # secretsManagerProvider: aws, azure or noop
+    # secretsManagerLoader: airflow or env
+    ## If SSL, fill the following
+    # verifySSL: validate  # or ignore
+    # sslConfig:
+    #   caCertificate: /local/path/to/certificate

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,9 +50,10 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_search_index
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -80,7 +81,7 @@ class SearchServiceTopology(ServiceTopology):
                 cache_entities=True,
             ),
         ],
-        children=["search_index"],
+        children=["search_index", "search_index_template"],
         post_process=["mark_search_indexes_as_deleted"],
     )
     search_index: Annotated[
@@ -104,6 +105,21 @@ class SearchServiceTopology(ServiceTopology):
         ],
     )
 
+    search_index_template: Annotated[
+        TopologyNode, Field(description="Search Index Template Processing Node")
+    ] = TopologyNode(
+        producer="get_search_index_template",
+        stages=[
+            NodeStage(
+                type_=SearchIndex,
+                context="search_index_template",
+                processor="yield_search_index_template",
+                consumer=["search_service"],
+                use_cache=True,
+            )
+        ],
+    )
+
 
 class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -120,6 +136,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     index_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -175,6 +192,34 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield index_details
 
+    def yield_search_index_template(
+        self, search_index_template_details: Any
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """Method to Get Search Index Templates"""
+
+    def get_search_index_template_list(self) -> Optional[List[Any]]:
+        """Get list of all search index templates"""
+
+    def get_search_index_template_name(self, search_index_template_details: Any) -> str:
+        """Get Search Index Template Name"""
+
+    def get_search_index_template(self) -> Any:
+        if self.source_config.includeIndexTemplate:
+            for index_template_details in self.get_search_index_template_list():
+                if search_index_template_name := self.get_search_index_template_name(
+                    index_template_details
+                ):
+                    if filter_by_search_index(
+                        self.source_config.searchIndexFilterPattern,
+                        search_index_template_name,
+                    ):
+                        self.status.filter(
+                            search_index_template_name,
+                            "Search Index Template Filtered Out",
+                        )
+                        continue
+                    yield index_template_details
+
     def yield_create_request_search_service(
         self, config: WorkflowSource
     ) -> Iterable[Either[CreateSearchServiceRequest]]:
@@ -191,8 +236,9 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Nothing to prepare by default"""
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        test_connection_common(
+            self.metadata, self.connection_obj, self.service_connection
+        )
 
     def mark_search_indexes_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the search index as deleted"""

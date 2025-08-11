@@ -21,33 +21,35 @@
     "searchIndexFilterPattern": {
       "title": "Search Index Filter Pattern",
       "description": "Regex to only fetch search indexes that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
-      "title": "Search Index Filter Pattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "markDeletedSearchIndexes": {
       "title": "Mark Deleted Search Indexes",
       "description": "Optional configuration to soft delete search indexes in OpenMetadata if the source search indexes are deleted. Also, if the search index is deleted, all the associated entities like lineage, etc., with that search index will be deleted",
       "type": "boolean",
-      "default": true,
-      "title": "Mark Deleted Search Index"
+      "default": true
     },
     "includeSampleData": {
       "title": "Include Sample Data",
       "description": "Optional configuration to turn off fetching sample data for search index.",
       "type": "boolean",
-      "default": true,
-      "title": "Include Sample Data"
+      "default": true
     },
     "sampleSize": {
       "title": "Sample Size",
       "description": "No. of records of sample data we want to ingest.",
       "default": 10,
-      "type": "integer",
-      "title": "Sample Size"
+      "type": "integer"
     },
-    "overrideMetadata":{
+    "overrideMetadata": {
       "title": "Override Metadata",
       "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "includeIndexTemplate": {
+      "title": "Include Index Template",
+      "description": "Enable the 'Include Index Template' toggle to manage the ingestion of index template data.",
       "type": "boolean",
       "default": false
     }

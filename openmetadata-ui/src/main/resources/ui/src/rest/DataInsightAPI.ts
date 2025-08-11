@@ -11,29 +11,23 @@
  *  limitations under the License.
  */
 
-import { PagingResponse } from 'Models';
-import { DataInsightChart } from '../generated/dataInsight/dataInsightChart';
+import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataInsightChartResult } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartAggregateParam } from '../interface/data-insight.interface';
+import {
+  StartChartDataStreamConnectionResponse,
+  StopChartDataStreamConnectionResponse,
+} from './DataInsightAPI.interface';
 import APIClient from './index';
 
-export enum SystemChartType {
-  TotalDataAssets = 'total_data_assets',
-  PercentageOfDataAssetWithDescription = 'percentage_of_data_asset_with_description',
-  PercentageOfDataAssetWithOwner = 'percentage_of_data_asset_with_owner',
-  PercentageOfServiceWithDescription = 'percentage_of_service_with_description',
-  PercentageOfServiceWithOwner = 'percentage_of_service_with_owner',
-  TotalDataAssetsByTier = 'total_data_assets_by_tier',
-  TotalDataAssetsSummaryCard = 'total_data_assets_summary_card',
-  DataAssetsWithDescriptionSummaryCard = 'data_assets_with_description_summary_card',
-  DataAssetsWithOwnerSummaryCard = 'data_assets_with_owner_summary_card',
-  TotalDataAssetsWithTierSummaryCard = 'total_data_assets_with_tier_summary_card',
-  NumberOfDataAssetWithDescription = 'number_of_data_asset_with_description_kpi',
-  NumberOfDataAssetWithOwner = 'number_of_data_asset_with_owner_kpi',
-}
-
 export interface DataInsightCustomChartResult {
-  results: Array<{ count: number; day: number; group: string }>;
+  results: Array<{
+    count: number;
+    day: number;
+    group: string;
+    term: string;
+    metric?: string;
+  }>;
 }
 
 export const getAggregateChartData = async (params: ChartAggregateParam) => {
@@ -42,22 +36,6 @@ export const getAggregateChartData = async (params: ChartAggregateParam) => {
     {
       params,
     }
-  );
-
-  return response.data;
-};
-
-export const getListDataInsightCharts = async () => {
-  const response = await APIClient.get<PagingResponse<DataInsightChart[]>>(
-    '/analytics/dataInsights/charts'
-  );
-
-  return response.data;
-};
-
-export const getChartById = async (id: string) => {
-  const response = await APIClient.get<DataInsightChart>(
-    `/analytics/dataInsights/charts/${id}`
   );
 
   return response.data;
@@ -89,6 +67,33 @@ export const getMultiChartsPreviewByName = async (
       ...params,
     },
   });
+
+  return response.data;
+};
+
+export const setChartDataStreamConnection = async (params: {
+  chartNames: SystemChartType[];
+  serviceName: string;
+  startTime: number;
+  endTime: number;
+  entityLink: string;
+}) => {
+  const response = await APIClient.post<StartChartDataStreamConnectionResponse>(
+    `/analytics/dataInsights/system/charts/stream`,
+    {},
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const stopChartDataStreamConnection = async (sessionId: string) => {
+  const response =
+    await APIClient.delete<StopChartDataStreamConnectionResponse>(
+      `/analytics/dataInsights/system/charts/stream/${sessionId}`
+    );
 
   return response.data;
 };

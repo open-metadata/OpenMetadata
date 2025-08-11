@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,7 @@ from typing import Iterable, Optional, Tuple
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy.engine.reflection import Inspector
 
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -53,6 +54,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
+from metadata.ingestion.source.database.glue.models import DatabasePage
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_ddls, get_table_ddl
@@ -112,6 +114,32 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             connection=self.service_connection
         )
         self.external_location_map = {}
+        self.schema_description_map = {}
+        self.glue_client = None
+
+    def prepare(self):
+        """
+        Prepare the source by fetching the schema descriptions from the AWS Glue service.
+        """
+        try:
+            super().prepare()
+            self.glue_client = AWSClient(
+                self.service_connection.awsConfig
+            ).get_glue_client()
+            paginator = self.glue_client.get_paginator("get_databases")
+            for page in paginator.paginate():
+                database_page = DatabasePage(**page)
+                for database in database_page.DatabaseList or []:
+                    if database.Description:
+                        self.schema_description_map[
+                            database.Name
+                        ] = database.Description
+        except Exception as exc:
+            logger.warning(f"Error preparing Athena source: {exc}")
+            logger.debug(traceback.format_exc())
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -156,6 +184,14 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             )
             return True, partition_details
         return False, None
+
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the location path of the table
+        """
+        return self.external_location_map.get(
+            (self.context.get().database, schema_name, table_name)
+        )
 
     def yield_tag(
         self, schema_name: str
@@ -251,6 +287,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                     )
                 )
 
+    # pylint: disable=arguments-differ
     def get_table_description(
         self, schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
@@ -270,3 +307,23 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         else:
             description = table_info.get("text")
         return description
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        """
+        Override to pass Glue client to get_columns for Iceberg table filtering
+        """
+        # Pass the Glue client as a keyword argument to get_columns
+        return inspector.get_columns(
+            table_name,
+            schema_name,
+            table_type=table_type,
+            db_name=db_name,
+            glue_client=self.glue_client,
+        )

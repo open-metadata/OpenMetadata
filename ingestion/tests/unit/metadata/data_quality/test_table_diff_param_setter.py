@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -6,6 +6,9 @@ from sqlalchemy import Column as SAColumn
 from sqlalchemy import MetaData, String, create_engine
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
+    BaseTableParameter,
+)
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
@@ -38,7 +41,7 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 MOCK_TABLE = Table(
     id=uuid4(),
@@ -50,6 +53,14 @@ MOCK_TABLE = Table(
             dataType=DataType.INT,
         ),
     ],
+)
+SERVICE_CONNECTION_CONFIG = MysqlConnection(
+    username="test",
+    authType=BasicAuth(
+        password="test",
+    ),
+    hostPort="localhost:5432",
+    databaseSchema="mysql_db",
 )
 
 
@@ -78,16 +89,7 @@ MOCK_TABLE = Table(
             DatabaseService(
                 id="85811038-099a-11ed-861d-0242ac120002",
                 name="mysql",
-                connection=DatabaseConnection(
-                    config=MysqlConnection(
-                        username="test",
-                        authType=BasicAuth(
-                            password="test",
-                        ),
-                        hostPort="localhost:5432",
-                        databaseSchema="mysql_db",
-                    )
-                ),
+                connection=DatabaseConnection(config=SERVICE_CONNECTION_CONFIG),
                 serviceType=DatabaseServiceType.Mysql,
             ),
             "mysql://test:test@localhost:5432/mysql_db",
@@ -112,9 +114,9 @@ MOCK_TABLE = Table(
     ],
 )
 def test_get_data_diff_url(input, expected):
-    assert expected == TableDiffParamsSetter(
-        None, None, MOCK_TABLE, None
-    ).get_data_diff_url(input, "service.database.schema.table")
+    assert expected == BaseTableParameter.get_data_diff_url(
+        input, "service.database.schema.table"
+    )
 
 
 @pytest.mark.parametrize(
@@ -149,21 +151,29 @@ def test_partitioned_where_clause(input, expected):
         my_column = SAColumn(String(30))
 
     metadata_obj.create_all(engine)
-    mock_sampler = SQASampler(session, MyTable, Mock())
-    mock_sampler._partition_details = input
-    setter = TableDiffParamsSetter(None, None, MOCK_TABLE, mock_sampler)
-    test_case = TestCase(
-        name="test",
-        testDefinition=EntityReference(id=uuid4(), type="testDefinition"),
-        testSuite=EntityReference(id=uuid4(), type="testSuite"),
-        entityLink=EntityLink(
-            root="<#E::table::POSTGRES_SERVICE.dvdrental.public.customer>"
-        ),
-        parameterValues=[
-            TestCaseParameterValue(
-                name="run",
-                value="y",
-            )
-        ],
-    )
-    assert setter.build_where_clause(test_case) == expected
+
+    with patch.object(SQASampler, "get_client", return_value=session), patch.object(
+        SQASampler, "build_table_orm", return_value=MyTable
+    ):
+        mock_sampler = SQASampler(
+            service_connection_config=SERVICE_CONNECTION_CONFIG,
+            ometa_client=Mock(),
+            entity=Mock(),
+        )
+        mock_sampler.partition_details = input
+        setter = TableDiffParamsSetter(None, None, MOCK_TABLE, mock_sampler)
+        test_case = TestCase(
+            name="test",
+            testDefinition=EntityReference(id=uuid4(), type="testDefinition"),
+            testSuite=EntityReference(id=uuid4(), type="testSuite"),
+            entityLink=EntityLink(
+                root="<#E::table::POSTGRES_SERVICE.dvdrental.public.customer>"
+            ),
+            parameterValues=[
+                TestCaseParameterValue(
+                    name="run",
+                    value="y",
+                )
+            ],
+        )
+        assert setter.build_where_clause(test_case) == expected

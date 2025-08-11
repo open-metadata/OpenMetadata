@@ -11,30 +11,33 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
-import {
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_TOPIC_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
+import {
+  DataTypeTopic,
+  Field,
+  MessageSchemaObject,
+  Topic,
+} from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
@@ -45,9 +48,12 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -59,23 +65,61 @@ import {
 } from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
-  messageSchema,
   className,
-  hasDescriptionEditAccess,
-  isReadOnly,
-  onUpdate,
-  hasTagEditAccess,
-  entityFqn,
-  onThreadLinkSelect,
-  isVersionView = false,
   schemaTypePlaceholder,
 }) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
+  );
+  const viewTypeOptions = [
+    {
+      label: t('label.field-plural'),
+      value: SchemaViewType.FIELDS,
+    },
+    { label: t('label.text'), value: SchemaViewType.TEXT },
+  ];
+
+  const { fqn: entityFqn } = useFqn();
+  const {
+    data: topicDetails,
+    isVersionView,
+    permissions,
+    onUpdate,
+    currentVersionData,
+  } = useGenericContext<Topic>();
+
+  const isReadOnly = useMemo(() => {
+    // If there is a current version, it should be read only
+    return currentVersionData ? true : topicDetails.deleted;
+  }, [currentVersionData, topicDetails.deleted]);
+
+  const messageSchema = useMemo(
+    () =>
+      isVersionView && currentVersionData?.changeDescription
+        ? getVersionedSchema(
+            currentVersionData?.['messageSchema'] as MessageSchemaObject,
+            currentVersionData?.changeDescription
+          )
+        : topicDetails.messageSchema,
+    [currentVersionData, isVersionView, topicDetails]
+  );
+
+  const {
+    hasDescriptionEditAccess,
+    hasTagEditAccess,
+    hasGlossaryTermEditAccess,
+  } = useMemo(
+    () => ({
+      hasDescriptionEditAccess:
+        permissions.EditAll || permissions.EditDescription,
+      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
+      hasGlossaryTermEditAccess:
+        permissions.EditAll || permissions.EditGlossaryTerms,
+    }),
+    [permissions]
   );
 
   const schemaAllRowKeys = useMemo(() => {
@@ -96,7 +140,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         selectedTags,
         schema?.schemaFields
       );
-      await onUpdate(schema);
+      await onUpdate({ ...topicDetails, messageSchema: schema });
     }
   };
 
@@ -108,7 +152,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         updatedDescription,
         schema?.schemaFields
       );
-      await onUpdate(schema);
+      await onUpdate({ ...topicDetails, messageSchema: schema });
       setEditFieldDescription(undefined);
     } else {
       setEditFieldDescription(undefined);
@@ -128,12 +172,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const renderSchemaName = useCallback(
-    (_, record: Field) => (
+    (_: unknown, record: Field) => (
       <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
-              <RichTextEditorPreviewer markdown={getEntityName(record)} />
+              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
@@ -148,7 +192,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     (dataType: DataTypeTopic, record: Field) => (
       <Typography.Text>
         {isVersionView ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
           />
         ) : (
@@ -172,25 +216,24 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
         render: renderSchemaName,
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataType',
-        key: 'dataType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         ellipsis: true,
         width: 220,
         render: renderDataType,
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -204,24 +247,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             index={index}
             isReadOnly={isReadOnly}
             onClick={() => setEditFieldDescription(record)}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="tag-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -233,7 +267,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Classification,
@@ -242,30 +275,21 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
         width: 300,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            data-testid="glossary-filter"
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ),
         filters: tagFilter.Glossary,
@@ -285,22 +309,20 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
-
   useEffect(() => {
     setExpandedRowKeys(schemaAllRowKeys);
   }, []);
 
   return (
-    <Row className="mt-4" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
         <Col>
           <Typography.Text type="secondary">
             {t('label.schema')}
           </Typography.Text>
-          {schemaTypePlaceholder ?? <Tag>{messageSchema.schemaType}</Tag>}
+          {schemaTypePlaceholder ?? (
+            <Tag className="ml-4">{messageSchema.schemaType}</Tag>
+          )}
         </Col>
       )}
       {isEmpty(messageSchema?.schemaFields) &&
@@ -308,35 +330,17 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ErrorPlaceHolder />
       ) : (
         <>
-          {!isEmpty(messageSchema?.schemaFields) && (
+          {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
             <Col span={24}>
-              <Row justify="space-between">
-                {!isVersionView && (
-                  <Col>
-                    <Radio.Group value={viewType} onChange={handleViewChange}>
-                      <Radio.Button value={SchemaViewType.FIELDS}>
-                        {t('label.field-plural')}
-                      </Radio.Button>
-                      <Radio.Button value={SchemaViewType.TEXT}>
-                        {t('label.text')}
-                      </Radio.Button>
-                    </Radio.Group>
-                  </Col>
-                )}
-                <Col flex="auto">
-                  <Row justify="end">
-                    <Col>
-                      <ToggleExpandButton
-                        allRowKeys={schemaAllRowKeys}
-                        expandedRowKeys={expandedRowKeys}
-                        toggleExpandAll={toggleExpandAll}
-                      />
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+              <Segmented
+                className="segment-toggle"
+                options={viewTypeOptions}
+                value={viewType}
+                onChange={(value) => setViewType(value as SchemaViewType)}
+              />
             </Col>
           )}
+
           <Col span={24}>
             {viewType === SchemaViewType.TEXT ||
             isEmpty(messageSchema?.schemaFields) ? (
@@ -353,39 +357,51 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               )
             ) : (
               <Table
-                bordered
                 className={classNames('align-table-filter-left', className)}
                 columns={columns}
                 data-testid="topic-schema-fields-table"
                 dataSource={messageSchema?.schemaFields}
+                defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
                 expandable={{
                   ...getTableExpandableConfig<Field>(),
                   rowExpandable: (record) => !isEmpty(record.children),
                   onExpandedRowsChange: handleExpandedRowsChange,
                   expandedRowKeys,
                 }}
+                extraTableFilters={
+                  <ToggleExpandButton
+                    allRowKeys={schemaAllRowKeys}
+                    expandedRowKeys={expandedRowKeys}
+                    toggleExpandAll={toggleExpandAll}
+                  />
+                }
                 pagination={false}
                 rowKey="name"
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
+                staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
               />
             )}
           </Col>
         </>
       )}
       {editFieldDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.schema-field'),
-          })}: "${getEntityName(editFieldDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.schema-field'),
-          })}
-          value={editFieldDescription.description ?? ''}
-          visible={Boolean(editFieldDescription)}
-          onCancel={() => setEditFieldDescription(undefined)}
-          onSave={handleFieldDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editFieldDescription.fullyQualifiedName}
+          entityType={EntityType.TOPIC}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.schema-field'),
+            })}: "${getEntityName(editFieldDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.schema-field'),
+            })}
+            value={editFieldDescription.description ?? ''}
+            visible={Boolean(editFieldDescription)}
+            onCancel={() => setEditFieldDescription(undefined)}
+            onSave={handleFieldDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </Row>
   );

@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
+import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
+import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
+import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
+import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -27,19 +31,40 @@ import {
   mockExternalDestinationOptions,
   mockNonTaskInternalDestinationOptions,
   mockTaskInternalDestinationOptions,
+  mockTypedEvent1,
+  mockTypedEvent2,
+  mockTypedEvent3,
+  mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
 import { searchData } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
+  getAlertExtraInfo,
+  getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
+  getAlertStatusIcon,
+  getChangeEventDataFromTypedEvent,
+  getConfigHeaderArrayFromObject,
+  getConfigHeaderObjectFromArray,
+  getConfigQueryParamsArrayFromObject,
+  getConfigQueryParamsObjectFromArray,
   getConnectionTimeoutField,
   getDestinationConfigField,
   getDisplayNameForEntities,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFunctionDisplayName,
+  getLabelsForEventDetails,
   listLengthValidator,
 } from './AlertsUtil';
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: {
+    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
+  },
+}));
 
 jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
@@ -183,7 +208,7 @@ describe('AlertsUtil tests', () => {
     [resultTask, resultTable].forEach((results) => {
       expect(results).toHaveLength(5);
 
-      results.map((result) =>
+      results.forEach((result) =>
         expect(
           mockExternalDestinationOptions.includes(
             result.value as Exclude<
@@ -248,9 +273,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -270,9 +293,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -297,9 +318,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -324,9 +343,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -351,9 +368,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -373,9 +388,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -490,9 +503,7 @@ describe('getFieldByArgumentType tests', () => {
 
     const selectDiv = screen.getByText('AsyncSelect');
 
-    await act(async () => {
-      userEvent.click(selectDiv);
-    });
+    fireEvent.click(selectDiv);
 
     expect(searchData).toHaveBeenCalledWith(
       undefined,
@@ -515,24 +526,35 @@ describe('getFieldByArgumentType tests', () => {
     expect(selectDiv).toBeNull();
   });
 
-  it('getDestinationConfigField should return secretKey field for webhook type', () => {
+  it('getDestinationConfigField should return advanced configurations for webhook type', async () => {
     const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
       <></>
     );
 
     render(field);
 
-    const secretKeyInput = screen.getByTestId('secret-key-input-4');
+    const secretKeyInput = screen.getByText('label.advanced-configuration');
 
     expect(secretKeyInput).toBeInTheDocument();
+
+    fireEvent.click(secretKeyInput);
+
+    expect(await screen.findByTestId('secret-key')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('webhook-4-headers-list')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('webhook-4-query-params-list')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
   });
 
-  it('getDestinationConfigField should not return secretKey field for or other type', () => {
+  it('getDestinationConfigField should not return advanced configurations for other type', () => {
     const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
 
     render(field);
 
-    const secretKeyInput = screen.queryByTestId('secret-key-input-4');
+    const secretKeyInput = screen.queryByText('label.advanced-configuration');
 
     expect(secretKeyInput).toBeNull();
   });
@@ -547,5 +569,369 @@ describe('getFieldByArgumentType tests', () => {
     const input = screen.getByTestId('connection-timeout-input');
 
     expect(input).toHaveValue(10);
+  });
+});
+
+describe('getAlertEventsFilterLabels', () => {
+  it('should return correct filter labels', () => {
+    const allLabel = getAlertEventsFilterLabels(AlertRecentEventFilters.ALL);
+    const successLabel = getAlertEventsFilterLabels(
+      AlertRecentEventFilters.SUCCESSFUL
+    );
+    const failedLabel = getAlertEventsFilterLabels(
+      AlertRecentEventFilters.FAILED
+    );
+
+    expect(allLabel).toStrictEqual('label.all');
+    expect(successLabel).toStrictEqual('label.successful');
+    expect(failedLabel).toStrictEqual('label.failed');
+  });
+
+  it('should return empty string for unknown filter', () => {
+    const unknownLabel = getAlertEventsFilterLabels(
+      'unknown' as AlertRecentEventFilters
+    );
+
+    expect(unknownLabel).toStrictEqual('');
+  });
+});
+
+describe('getAlertRecentEventsFilterOptions', () => {
+  it('should return correct options', () => {
+    const options = getAlertRecentEventsFilterOptions();
+
+    expect(options).toHaveLength(3);
+    expect(options[0]?.key).toStrictEqual(AlertRecentEventFilters.ALL);
+    expect(options[1]?.key).toStrictEqual(AlertRecentEventFilters.SUCCESSFUL);
+    expect(options[2]?.key).toStrictEqual(AlertRecentEventFilters.FAILED);
+  });
+});
+
+describe('getAlertStatusIcon', () => {
+  it('should return correct icon for Successful status', () => {
+    const icon = getAlertStatusIcon(Status.Successful);
+
+    expect(icon).toStrictEqual(
+      <CheckIcon className="status-icon successful-icon" />
+    );
+  });
+
+  it('should return correct icon for Failed status', () => {
+    const icon = getAlertStatusIcon(Status.Failed);
+
+    expect(icon).toStrictEqual(
+      <AlertIcon className="status-icon failed-icon" />
+    );
+  });
+
+  it('should return correct icon for Unprocessed status', () => {
+    const icon = getAlertStatusIcon(Status.Unprocessed);
+
+    expect(icon).toStrictEqual(
+      <ClockIcon className="status-icon unprocessed-icon" />
+    );
+  });
+
+  it('should return null for unknown status', () => {
+    const icon = getAlertStatusIcon('unknown' as Status);
+
+    expect(icon).toBeNull();
+  });
+});
+
+describe('getLabelsForEventDetails', () => {
+  it('should return correct label for eventType', () => {
+    const label = getLabelsForEventDetails('eventType');
+
+    expect(label).toBe('label.event-type');
+  });
+
+  it('should return correct label for entityId', () => {
+    const label = getLabelsForEventDetails('entityId');
+
+    expect(label).toBe('label.entity-id');
+  });
+
+  it('should return correct label for userName', () => {
+    const label = getLabelsForEventDetails('userName');
+
+    expect(label).toBe('label.user-name');
+  });
+
+  it('should return correct label for previousVersion', () => {
+    const label = getLabelsForEventDetails('previousVersion');
+
+    expect(label).toBe('label.previous-version');
+  });
+
+  it('should return correct label for currentVersion', () => {
+    const label = getLabelsForEventDetails('currentVersion');
+
+    expect(label).toBe('label.current-version');
+  });
+
+  it('should return empty string for unknown prop', () => {
+    const label = getLabelsForEventDetails(
+      'unknown' as keyof AlertEventDetailsToDisplay
+    );
+
+    expect(label).toBe('');
+  });
+});
+
+describe('getChangeEventDataFromTypedEvent', () => {
+  it('should return correct change event data for successful event', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent1);
+
+    expect(changeEventData).toStrictEqual(mockTypedEvent1.data[0]);
+    expect(changeEventDataToDisplay).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: 'entityId1',
+      userName: 'user1',
+      previousVersion: 0.1,
+      currentVersion: 0.2,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should return correct change event data for failed event', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent2);
+
+    expect(changeEventData).toStrictEqual(mockTypedEvent2.data[0].changeEvent);
+    expect(changeEventDataToDisplay).toStrictEqual({
+      eventType: EventType.EntityUpdated,
+      entityId: 'entityId2',
+      userName: 'user2',
+      previousVersion: 0.2,
+      currentVersion: 0.3,
+      reason: 'Some reason',
+      source: 'Some source',
+      failingSubscriptionId: 'subscriptionId1',
+    });
+  });
+
+  it('should return correct change event data for unprocessed event', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent3);
+
+    expect(changeEventData).toStrictEqual(mockTypedEvent3.data[0]);
+    expect(changeEventDataToDisplay).toStrictEqual({
+      eventType: EventType.EntityDeleted,
+      entityId: 'entityId3',
+      userName: 'user3',
+      previousVersion: 0.3,
+      currentVersion: 0.4,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should return correct change event data for unknown status', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent4);
+
+    expect(changeEventData).toStrictEqual(mockTypedEvent4.data[0]);
+    expect(changeEventDataToDisplay).toStrictEqual({
+      eventType: EventType.EntityCreated,
+      entityId: 'entityId4',
+      userName: 'user4',
+      previousVersion: 0.4,
+      currentVersion: 0.5,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+});
+
+describe('getAlertExtraInfo', () => {
+  it('should return skeletons when alertEventCountsLoading is true', () => {
+    const alertExtraInfo = getAlertExtraInfo(true);
+
+    render(alertExtraInfo);
+
+    const skeletons = screen.getAllByText('Skeleton.Button');
+
+    expect(skeletons).toHaveLength(3);
+  });
+
+  it('should return correct extra info when alertEventCountsLoading is false', () => {
+    const alertEventCounts = {
+      totalEventsCount: 100,
+      pendingEventsCount: 5,
+      failedEventsCount: 2,
+    };
+
+    const alertExtraInfo = getAlertExtraInfo(false, alertEventCounts);
+
+    render(alertExtraInfo);
+
+    const totalEvents = screen.getByText('100');
+    const pendingEvents = screen.getByText('5');
+    const failedEvents = screen.getByText('2');
+
+    expect(totalEvents).toBeInTheDocument();
+    expect(pendingEvents).toBeInTheDocument();
+    expect(failedEvents).toBeInTheDocument();
+  });
+
+  it('should return zero values when alertEventCounts is undefined', () => {
+    const alertExtraInfo = getAlertExtraInfo(false);
+
+    render(alertExtraInfo);
+
+    const eventCounts = screen.getAllByText('0');
+
+    expect(eventCounts).toHaveLength(3);
+  });
+});
+
+describe('Query Parameters Utility Functions', () => {
+  describe('getConfigQueryParamsObjectFromArray', () => {
+    it('should convert query params array to object', () => {
+      const queryParamsArray = [
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ];
+
+      const result = getConfigQueryParamsObjectFromArray(queryParamsArray);
+
+      expect(result).toEqual({
+        param1: 'value1',
+        param2: 'value2',
+      });
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigQueryParamsObjectFromArray(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty array', () => {
+      const result = getConfigQueryParamsObjectFromArray([]);
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle duplicate keys by using last value', () => {
+      const queryParamsArray = [
+        { key: 'param1', value: 'value1' },
+        { key: 'param1', value: 'value2' },
+      ];
+
+      const result = getConfigQueryParamsObjectFromArray(queryParamsArray);
+
+      expect(result).toEqual({
+        param1: 'value2',
+      });
+    });
+  });
+
+  describe('getConfigQueryParamsArrayFromObject', () => {
+    it('should convert query params object to array', () => {
+      const queryParamsObject = {
+        param1: 'value1',
+        param2: 'value2',
+      };
+
+      const result = getConfigQueryParamsArrayFromObject(queryParamsObject);
+
+      expect(result).toEqual([
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ]);
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigQueryParamsArrayFromObject(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty object', () => {
+      const result = getConfigQueryParamsArrayFromObject({});
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle object with various value types', () => {
+      const queryParamsObject = {
+        param1: 'string',
+        param2: 123,
+        param3: true,
+      };
+
+      const result = getConfigQueryParamsArrayFromObject(queryParamsObject);
+
+      expect(result).toEqual([
+        { key: 'param1', value: 'string' },
+        { key: 'param2', value: 123 },
+        { key: 'param3', value: true },
+      ]);
+    });
+  });
+});
+
+describe('Headers Utility Functions', () => {
+  describe('getConfigHeaderObjectFromArray', () => {
+    it('should convert headers array to object', () => {
+      const headersArray = [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ];
+
+      const result = getConfigHeaderObjectFromArray(headersArray);
+
+      expect(result).toEqual({
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      });
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigHeaderObjectFromArray(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty array', () => {
+      const result = getConfigHeaderObjectFromArray([]);
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe('getConfigHeaderArrayFromObject', () => {
+    it('should convert headers object to array', () => {
+      const headersObject = {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      };
+
+      const result = getConfigHeaderArrayFromObject(headersObject);
+
+      expect(result).toEqual([
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ]);
+    });
+
+    it('should return undefined for undefined input', () => {
+      const result = getConfigHeaderArrayFromObject(undefined);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle empty object', () => {
+      const result = getConfigHeaderArrayFromObject({});
+
+      expect(result).toEqual([]);
+    });
   });
 });

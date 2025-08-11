@@ -13,25 +13,19 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
-import {
-  FilterPattern,
-  PipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+
+const { t } = i18next;
 
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.ingestion'),
+    name: t('label.configure-entity', {
+      entity: t('label.ingestion'),
     }),
     step: 1,
   },
-  { name: i18next.t('label.schedule-interval'), step: 2 },
+  { name: t('label.schedule-interval'), step: 2 },
 ];
-
-export const INITIAL_FILTER_PATTERN: FilterPattern = {
-  includes: [],
-  excludes: [],
-};
 
 export const INGESTION_ACTION_TYPE = {
   ADD: 'add',
@@ -40,6 +34,7 @@ export const INGESTION_ACTION_TYPE = {
 
 export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.DataInsight]: 'data-insight',
+  [PipelineType.AutoClassification]: 'auto-classification',
   [PipelineType.Dbt]: 'dbt-lowercase',
   [PipelineType.ElasticSearchReindex]: 'elastic-search-re-index',
   [PipelineType.Lineage]: 'lineage',
@@ -49,7 +44,3 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.Usage]: 'usage',
   [PipelineType.Application]: 'application',
 };
-
-export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
-
-export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;

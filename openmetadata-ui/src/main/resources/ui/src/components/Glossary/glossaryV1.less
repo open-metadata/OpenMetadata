@@ -20,6 +20,7 @@
   .ant-typography {
     margin-bottom: 0;
   }
+
   .ant-btn {
     padding: 0px;
   }
@@ -53,6 +54,7 @@
     border: 1px solid #dde3ea;
     box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
     border-radius: 4px;
+
     .ant-dropdown-menu-item {
       padding: 5px 16px;
     }
@@ -71,22 +73,98 @@
   }
 }
 
-.glossary-header-edit-btn {
-  height: 16px;
-  width: 16px;
-}
-
 .glossary-name-column {
   white-space: nowrap;
   min-width: 300px;
 }
 
-.glossary-page-layout {
-  .ant-table-wrapper .ant-table-cell {
-    vertical-align: middle;
+.custom-glossary-dropdown-menu {
+  .ant-dropdown-menu {
+    background-color: @white;
+    border-color: @grey-4;
   }
-  .ant-table-row-indent {
-    float: none;
-    display: inline-block;
+
+  .ant-dropdown-menu-item {
+    padding-left: 0px;
+    padding-right: 0px;
   }
+
+  .ant-dropdown-menu-item:hover {
+    background-color: @white;
+    color: inherit;
+  }
+}
+
+.glossary-col-sel-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: @white;
+  border-color: @grey-3;
+}
+
+.status-dropdown {
+  .ant-dropdown-menu-item {
+    padding-left: @padding-sm;
+    padding-right: @padding-xs;
+  }
+
+  .ant-checkbox-wrapper {
+    height: 33px;
+  }
+}
+
+.custom-status-dropdown-btn {
+  background-color: @white;
+  outline: 1px solid @grey-2;
+  color: @black;
+}
+
+.custom-glossary-dropdown-action-btn {
+  height: 26px;
+  width: 75px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.glossary-page-tabs {
+  .ant-tabs-tabpane {
+    height: @glossary-page-height;
+    overflow-y: auto;
+
+    .activity-feed-tab {
+      height: 100%;
+
+      .right-container,
+      .center-container {
+        height: 100%;
+      }
+    }
+  }
+}
+
+.glossary-term-page-tabs {
+  .ant-tabs-tabpane {
+    height: @glossary-term-page-height;
+    overflow-y: auto;
+  }
+
+  .activity-feed-tab {
+    height: 100%;
+
+    .right-container,
+    .center-container {
+      height: 100%;
+    }
+  }
+}
+
+.warning-icon {
+  background-color: @alert-warning-icon-bg-1;
+  border: 6px solid @alert-warning-icon-bg-2;
+  font-size: 20px;
+  border-radius: 50%;
+  padding: 8px;
+  color: #dc6803;
 }

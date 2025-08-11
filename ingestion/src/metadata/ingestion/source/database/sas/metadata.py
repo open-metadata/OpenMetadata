@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ import json
 import re
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 from requests.exceptions import HTTPError
 
@@ -28,7 +28,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -73,7 +72,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection, test_connection_common
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sas.client import SASClient
@@ -846,12 +845,12 @@ class SasSource(
     def yield_database(
         self, database_name: str
     ) -> Iterable[Either[CreateDatabaseRequest]]:
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=EntityName(database_name),
-                service=self.context.get().database_service,
-            )
+        database_request = CreateDatabaseRequest(
+            name=EntityName(database_name),
+            service=self.context.get().database_service,
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[Tuple[str, str]]:
         for database, database_schemas in self.database_schemas.items():
@@ -861,25 +860,24 @@ class SasSource(
     def yield_database_schema(
         self, schema_name: Tuple[str, str]
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=schema_name[1],
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=schema_name[0],
-                ),
-            )
+
+        schema_request = CreateDatabaseSchemaRequest(
+            name=schema_name[1],
+            database=fqn.build(
+                metadata=self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=schema_name[0],
+            ),
         )
+
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
-
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:
         """Not implemented"""
@@ -897,14 +895,10 @@ class SasSource(
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
 
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        yield from []
-
     def close(self) -> None:
         pass
 
     def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        test_connection_common(
+            self.metadata, self.connection_obj, self.service_connection
+        )

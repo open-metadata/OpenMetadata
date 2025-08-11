@@ -23,7 +23,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -31,7 +33,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
@@ -62,10 +63,9 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       Set<String> receivers =
           getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
       EmailMessage emailMessage =
-          emailDecorator.buildOutgoingMessage(eventSubscription.getFullyQualifiedName(), event);
+          emailDecorator.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
       for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(
-            eventSubscription.getFullyQualifiedName(), email, emailMessage);
+        EmailUtil.sendChangeEventMail(getDisplayNameOrFqn(eventSubscription), email, emailMessage);
       }
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
@@ -73,7 +73,9 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
@@ -81,15 +83,17 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     try {
       Set<String> receivers = emailAlertConfig.getReceivers();
-      EmailMessage emailMessage =
-          emailDecorator.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      EmailUtil.testConnection();
+
       for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(
-            eventSubscription.getFullyQualifiedName(), email, emailMessage);
+        EmailUtil.sendTestEmail(email, false);
       }
       setSuccessStatus(System.currentTimeMillis());
+      this.setStatusForTestDestination(
+          TestDestinationStatus.Status.SUCCESS, 200, System.currentTimeMillis());
     } catch (Exception e) {
-      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+      this.setStatusForTestDestination(
+          TestDestinationStatus.Status.FAILED, 500, System.currentTimeMillis());
       String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);

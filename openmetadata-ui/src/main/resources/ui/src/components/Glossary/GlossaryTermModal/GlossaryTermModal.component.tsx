@@ -13,12 +13,13 @@
 import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../common/Loader/Loader';
 import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.component';
 import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
@@ -72,6 +73,33 @@ const GlossaryTermModal: FC<Props> = ({
     setSaving(true);
     try {
       await onSave(values);
+    } catch (error) {
+      if ((error as AxiosError)?.response?.status === 400) {
+        const errorMessage =
+          (error as AxiosError<{ message: string }>)?.response?.data?.message ??
+          '';
+
+        // Handle name duplication error
+        if (errorMessage.includes('already exists')) {
+          form.setFields([
+            {
+              name: 'name',
+              errors: [errorMessage],
+            },
+          ]);
+        }
+        // Handle tag mutual exclusivity error
+        else if (errorMessage.includes('mutually exclusive')) {
+          form.setFields([
+            {
+              name: 'tags',
+              errors: [errorMessage],
+            },
+          ]);
+        }
+      }
+
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -83,7 +111,9 @@ const GlossaryTermModal: FC<Props> = ({
     } else {
       setIsLoading(false);
     }
-    !visible && form.resetFields();
+    if (!visible) {
+      form.resetFields();
+    }
   }, [visible]);
 
   return (
@@ -113,17 +143,21 @@ const GlossaryTermModal: FC<Props> = ({
       title={dialogTitle}
       width={800}
       onCancel={onCancel}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <AddGlossaryTermForm
-          editMode={editMode}
-          formRef={form}
-          glossaryTerm={glossaryTerm}
-          onCancel={onCancel}
-          onSave={handleSave}
-        />
-      )}
+      <EntityAttachmentProvider
+        entityFqn={glossaryTermFQN}
+        entityType={EntityType.GLOSSARY_TERM}>
+        {isLoading ? (
+          <Loader />
+        ) : (
+          <AddGlossaryTermForm
+            editMode={editMode}
+            formRef={form}
+            glossaryTerm={glossaryTerm}
+            onCancel={onCancel}
+            onSave={handleSave}
+          />
+        )}
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

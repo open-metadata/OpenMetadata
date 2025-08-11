@@ -12,29 +12,22 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import EditKPIPage from './EditKPIPage';
-import { DESCRIPTION_CHART, KPI_DATA } from './KPIMock.mock';
-
-const mockPush = jest.fn();
+import { KPI_DATA } from './KPIMock.mock';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: mockPush,
-  }),
   useParams: jest.fn().mockReturnValue({ useParams: 'description-kpi' }),
-}));
-
-jest.mock('../../rest/DataInsightAPI', () => ({
-  getChartById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(DESCRIPTION_CHART)),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+}));
 
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
@@ -59,6 +52,7 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
   getDisabledDates: jest.fn().mockReturnValue(true),
+  getDataInsightPathWithFqn: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -74,9 +68,17 @@ jest.mock('../../constants/DataInsight.constants', () => ({
   KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
+jest.mock('../../components/common/DatePicker/DatePicker', () =>
+  jest.fn().mockImplementation((props) => <input type="text" {...props} />)
+);
+
+const mockProps = {
+  pageTitle: 'edit-kpi',
+};
+
 describe('Edit KPI page', () => {
   it('Should render all the components', async () => {
-    render(<EditKPIPage />, { wrapper: MemoryRouter });
+    render(<EditKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const container = await screen.findByTestId('edit-kpi-container');
     const breadCrumb = await screen.findByTestId('breadcrumb');
@@ -99,7 +101,7 @@ describe('Edit KPI page', () => {
   });
 
   it('Should render all the form fields', async () => {
-    render(<EditKPIPage />, { wrapper: MemoryRouter });
+    render(<EditKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const formContainer = await screen.findByTestId('kpi-form');
 
@@ -124,7 +126,7 @@ describe('Edit KPI page', () => {
   });
 
   it('Chart input and Metric type input should be disable for edit form', async () => {
-    render(<EditKPIPage />, { wrapper: MemoryRouter });
+    render(<EditKPIPage {...mockProps} />, { wrapper: MemoryRouter });
 
     const chart = await screen.findByTestId('chartType');
 

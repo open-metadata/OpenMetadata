@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/operationalConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OperationalConfiguration",
+  "description": "This schema defines the Operations Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.operations.OperationalConfiguration",
+  "properties": {
+    "email": {
+      "$ref": "../email/smtpSettings.json"
+    },
+    "serverUrl": {
+      "$ref": "./openMetadataBaseUrlConfiguration.json"
+    }
+  },
+  "additionalProperties": false
+}

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import LineageConfigModal from './LineageConfigModal';
 
 const onCancel = jest.fn();
@@ -62,5 +61,138 @@ describe('LineageConfigModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onSave with updated values when form is submitted', async () => {
+    render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    const fieldUpstream = await screen.findByTestId('field-upstream');
+    const fieldDownstream = await screen.findByTestId('field-downstream');
+    const fieldNodesPerLayer = await screen.findByTestId(
+      'field-nodes-per-layer'
+    );
+
+    // Update values
+    fireEvent.change(fieldUpstream, { target: { value: '5' } });
+    fireEvent.change(fieldDownstream, { target: { value: '6' } });
+    fireEvent.change(fieldNodesPerLayer, { target: { value: '7' } });
+
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith({
+        upstreamDepth: 5,
+        downstreamDepth: 6,
+        nodesPerLayer: 7,
+      });
+    });
+  });
+
+  it('validates minimum value for upstream depth', async () => {
+    render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    const fieldUpstream = await screen.findByTestId('field-upstream');
+
+    // Try to set negative value
+    fireEvent.change(fieldUpstream, { target: { value: '-1' } });
+
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  it('validates minimum value for downstream depth', async () => {
+    render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    const fieldDownstream = await screen.findByTestId('field-downstream');
+
+    // Try to set negative value
+    fireEvent.change(fieldDownstream, { target: { value: '-1' } });
+
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  it('validates minimum value for nodes per layer', async () => {
+    render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    const fieldNodesPerLayer = await screen.findByTestId(
+      'field-nodes-per-layer'
+    );
+
+    // Try to set value less than minimum (5)
+    fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
+
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  it('validates required fields', async () => {
+    render(
+      <LineageConfigModal
+        visible
+        config={config}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+
+    const fieldUpstream = await screen.findByTestId('field-upstream');
+    const fieldDownstream = await screen.findByTestId('field-downstream');
+    const fieldNodesPerLayer = await screen.findByTestId(
+      'field-nodes-per-layer'
+    );
+
+    // Clear all fields
+    fireEvent.change(fieldUpstream, { target: { value: '' } });
+    fireEvent.change(fieldDownstream, { target: { value: '' } });
+    fireEvent.change(fieldNodesPerLayer, { target: { value: '' } });
+
+    // Submit form
+    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => {
+      expect(onSave).not.toHaveBeenCalled();
+    });
   });
 });

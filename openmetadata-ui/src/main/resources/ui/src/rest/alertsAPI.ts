@@ -17,6 +17,11 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
+import { Destination } from '../generated/events/api/testEventSubscriptionDestination';
+import {
+  Status as TypedEventStatus,
+  TypedEvent,
+} from '../generated/events/api/typedEvent';
 import {
   AlertType,
   EventSubscription,
@@ -108,14 +113,6 @@ export const updateNotificationAlert = async (
   return response.data;
 };
 
-export const updateNotificationAlertWithPut = async (
-  alert: CreateEventSubscription
-) => {
-  const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
-
-  return response.data;
-};
-
 export const deleteAlert = async (id: string) => {
   const response = await axiosClient.delete(`${BASE_URL}/${id}`);
 
@@ -132,6 +129,42 @@ export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
   >(`${BASE_URL}/${AlertType.Notification}/resources`);
+
+  return response.data;
+};
+
+export const getAlertEventsFromId = async ({
+  id,
+  params,
+}: {
+  id: string;
+  params?: {
+    status?: TypedEventStatus;
+    limit?: number;
+    paginationOffset?: number;
+  };
+}) => {
+  const response = await axiosClient.get<PagingResponse<TypedEvent[]>>(
+    `${BASE_URL}/id/${id}/listEvents`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const testAlertDestination = async ({
+  destinations,
+}: {
+  destinations: Destination[];
+}) => {
+  const response = await axiosClient.post<Destination[]>(
+    `${BASE_URL}/testDestination`,
+    {
+      destinations,
+    }
+  );
 
   return response.data;
 };

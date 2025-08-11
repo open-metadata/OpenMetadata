@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -190,52 +190,26 @@ EXPECTED_JOB_DETAILS = json.loads(
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name=EntityName(root="redshift workflow"),
     displayName="redshift workflow",
-    description=None,
-    dataProducts=None,
     sourceUrl=SourceUrl(
         root="https://us-east-2.console.aws.amazon.com/glue/home?region=us-east-2#/v2/etl-configuration/workflows/view/redshift workflow"
     ),
-    concurrency=None,
-    pipelineLocation=None,
-    startDate=None,
     tasks=[
         Task(
             name="redshift_event",
             displayName="redshift_event",
-            fullyQualifiedName=None,
-            description=None,
-            sourceUrl=None,
             downstreamTasks=["Redshift DBT Job"],
             taskType="TRIGGER",
-            taskSQL=None,
-            startDate=None,
-            endDate=None,
-            tags=None,
-            owners=None,
+            tags=[],
         ),
         Task(
             name="Redshift DBT Job",
             displayName="Redshift DBT Job",
-            fullyQualifiedName=None,
-            description=None,
-            sourceUrl=None,
             downstreamTasks=[],
             taskType="JOB",
-            taskSQL=None,
-            startDate=None,
-            endDate=None,
-            tags=None,
-            owners=None,
+            tags=[],
         ),
     ],
-    tags=None,
-    owners=None,
     service=FullyQualifiedEntityName(root="gluepipeline_test"),
-    extension=None,
-    scheduleInterval=None,
-    domain=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
@@ -252,57 +226,33 @@ MOCK_PIPELINE = Pipeline(
     fullyQualifiedName="gluepipeline_test.redshift workflow",
     displayName="OpenMetadata DBTCloud Workflow",
     description=Markdown(root="Example Job Description"),
-    dataProducts=None,
     sourceUrl=SourceUrl(
         root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/jobs/70403103936332"
     ),
-    concurrency=None,
-    pipelineLocation=None,
-    startDate=None,
     tasks=[
         Task(
             name="70403110257794",
-            displayName=None,
-            fullyQualifiedName=None,
-            description=None,
             sourceUrl=SourceUrl(
                 root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403110257794/"
             ),
-            downstreamTasks=None,
-            taskType=None,
-            taskSQL=None,
             startDate="2024-05-27 10:42:20.621788+00:00",
             endDate="2024-05-28 10:42:52.622408+00:00",
-            tags=None,
-            owners=None,
+            tags=[],
         ),
         Task(
             name="70403111615088",
-            displayName=None,
-            fullyQualifiedName=None,
-            description=None,
             sourceUrl=SourceUrl(
                 root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403111615088/"
             ),
-            downstreamTasks=None,
-            taskType=None,
-            taskSQL=None,
             startDate="None",
             endDate="None",
-            tags=None,
-            owners=None,
+            tags=[],
         ),
     ],
-    tags=None,
-    owners=None,
     service=EntityReference(
         id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
     ),
-    extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
-    domain=None,
-    lifeCycle=None,
-    sourceHash=None,
 )
 
 EXPECTED_PIPELINE_NAME = "redshift workflow"

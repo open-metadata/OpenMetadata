@@ -69,10 +69,12 @@ public class PolicyEvaluator {
     // Next run through all the ALLOW policies based on the user
     evaluateAllowSubjectPolicies(subjectContext, resourceContext, operationContext);
 
-    if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
+    if (!operationContext
+        .getOperations(resourceContext)
+        .isEmpty()) { // Some operations have not been allowed
       throw new AuthorizationException(
           CatalogExceptionMessage.permissionNotAllowed(
-              subjectContext.user().getName(), operationContext.getOperations()));
+              subjectContext.user().getName(), operationContext.getOperations(resourceContext)));
     }
   }
 
@@ -82,14 +84,16 @@ public class PolicyEvaluator {
       @NonNull ResourceContextInterface resourceContext,
       OperationContext operationContext) {
     // If the Resource Does not belong to any Domain, then evaluate via other permissions
-    if (!nullOrEmpty(resourceContext.getDomain())) {
-      EntityReference domain = resourceContext.getDomain();
-      if (!subjectContext.hasDomain(domain)) {
+    if (!nullOrEmpty(resourceContext.getDomains())
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()) {
+      List<EntityReference> domains = resourceContext.getDomains();
+      if (!subjectContext.hasDomains(domains)) {
         throw new AuthorizationException(
             CatalogExceptionMessage.domainPermissionNotAllowed(
                 subjectContext.user().getName(),
-                domain.getName(),
-                operationContext.getOperations()));
+                domains,
+                operationContext.getOperations(resourceContext)));
       }
     }
   }
@@ -120,7 +124,7 @@ public class PolicyEvaluator {
       boolean evaluateDeny) {
     // When an operation is allowed by a rule, it is removed from operation context
     // When list of operations is empty in the operation context, all operations have been allowed
-    while (policies.hasNext() && !operationContext.getOperations().isEmpty()) {
+    while (policies.hasNext() && !operationContext.getOperations(resourceContext).isEmpty()) {
       PolicyContext context = policies.next();
       for (CompiledRule rule : context.getRules()) {
         LOG.debug(
@@ -154,7 +158,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermissions(new ArrayList<>(resourcePermissionMap.values()));
+    return new ArrayList<>(resourcePermissionMap.values());
   }
 
   /** Returns a list of operations that a user can perform on all the resources. */
@@ -172,7 +176,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermissions(new ArrayList<>(resourcePermissionMap.values()));
+    return new ArrayList<>(resourcePermissionMap.values());
   }
 
   /** Returns a list of operations that a user can perform on the given resource/entity type */
@@ -195,7 +199,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourceType, resourcePermission, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermission(resourcePermission);
+    return resourcePermission;
   }
 
   public static ResourcePermission getPermission(
@@ -218,7 +222,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
       }
     }
-    return PolicyEvaluator.trimResourcePermission(resourcePermission);
+    return resourcePermission;
   }
 
   /** Get list of resources with all their permissions set to given Access */
@@ -233,7 +237,7 @@ public class PolicyEvaluator {
           new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
       resourcePermissions.add(resourcePermission);
     }
-    return PolicyEvaluator.trimResourcePermissions(resourcePermissions);
+    return resourcePermissions;
   }
 
   /** Get list of resources with all their permissions set to given Access */
@@ -243,8 +247,7 @@ public class PolicyEvaluator {
     for (MetadataOperation operation : rd.getOperations()) {
       permissions.add(new Permission().withOperation(operation).withAccess(access));
     }
-    return PolicyEvaluator.trimResourcePermission(
-        new ResourcePermission().withResource(rd.getName()).withPermissions(permissions));
+    return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
   }
 
   /**
@@ -286,17 +289,5 @@ public class PolicyEvaluator {
       }
     }
     return permissions;
-  }
-
-  public static ResourcePermission trimResourcePermission(ResourcePermission resourcePermission) {
-    return resourcePermission.withPermissions(trimPermissions(resourcePermission.getPermissions()));
-  }
-
-  public static List<ResourcePermission> trimResourcePermissions(
-      List<ResourcePermission> resourcePermissions) {
-    for (ResourcePermission resourcePermission : resourcePermissions) {
-      trimResourcePermission(resourcePermission);
-    }
-    return resourcePermissions;
   }
 }

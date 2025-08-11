@@ -1,9 +1,12 @@
 package org.openmetadata.service.resources.apps;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.CREATED;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -13,20 +16,23 @@ import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.PageViewData;
@@ -34,24 +40,34 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
+import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AccessDetails;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LifeCycle;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -62,11 +78,12 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.BaseCallbackResource;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.RetryableAssertionError;
 import org.openmetadata.service.util.TestUtils;
@@ -79,6 +96,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     super(Entity.APPLICATION, App.class, AppResource.AppList.class, "apps", AppResource.FIELDS);
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
+    supportsEtag = false;
   }
 
   public static final RetryRegistry APP_TRIGGER_RETRY =
@@ -140,7 +158,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(
             databaseServiceResourceTest
-                .createRequest("DI_Test_Snowflake")
+                .createRequest("DI Test Snowflake")
                 .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake),
             ADMIN_AUTH_HEADERS);
 
@@ -203,7 +221,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                         new AccessDetails()
                             .withTimestamp(tableAccessedAt)
                             .withAccessedBy(user.getEntityReference())));
-    tableRepository.createOrUpdate(null, table);
+    tableRepository.createOrUpdate(null, table, ADMIN_USER_NAME);
 
     // Adding the ProfileData for the CostAnalysis Workflow to use it
     tableResourceTest.putTableProfileData(
@@ -300,10 +318,16 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // -------------------------------------------------
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
-    Request request = new Request("GET", "di-data-assets-*/_search");
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String endpointSuffix = "di-data-assets-*";
+    String endpoint =
+        !(clusterAlias == null || clusterAlias.isEmpty())
+            ? String.format("%s-%s", clusterAlias, endpointSuffix)
+            : endpointSuffix;
+    Request request = new Request("GET", String.format("%s/_search", endpoint));
     String payload =
         String.format(
-            "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName.keyword\":\"%s\"}}}}}",
+            "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}}}",
             table.getFullyQualifiedName());
     request.setJsonEntity(payload);
     response = searchClient.performRequest(request);
@@ -339,6 +363,23 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertAppStatusAvailableAfterTrigger(appName);
     assertListExtension(appName, AppExtension.ExtensionType.STATUS);
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
+
+    postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("batchSize", 1234));
+
+    assertEventually(
+        "triggerCustomConfig",
+        () ->
+            Assertions.assertEquals(
+                1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
+  }
+
+  @Test
+  void post_trigger_app_400() {
+    String appName = "SearchIndexingApplication";
+    assertResponseContains(
+        () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),
+        BAD_REQUEST,
+        "Unrecognized field \"thisShouldFail\"");
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
@@ -384,10 +425,197 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         "App does not support manual trigger.");
   }
 
+  @SneakyThrows
+  @Test
+  void app_with_event_subscription() {
+    String subscriptionName = "TestEventSubscription";
+    // register app in marketplace
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    CreateAppMarketPlaceDefinitionReq createRequest =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName("TestAppEventSubscription")
+            .withDisplayName("Test App Event Subscription")
+            .withDescription("A Test application with event subscriptions.")
+            .withFeatures("nothing really")
+            .withDeveloper("Collate Inc.")
+            .withDeveloperUrl("https://www.example.com")
+            .withPrivacyPolicyUrl("https://www.example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAppType(AppType.Internal)
+            .withScheduleType(ScheduleType.Scheduled)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(Map.of())
+            .withPermission(NativeAppPermission.All)
+            .withEventSubscriptions(
+                List.of(
+                    new CreateEventSubscription()
+                        .withName(subscriptionName)
+                        .withDisplayName("Test Event Subscription")
+                        .withDescription(
+                            "Consume EntityChange Events in order to trigger reverse metadata changes.")
+                        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                        .withResources(List.of("all"))
+                        .withProvider(ProviderType.USER)
+                        .withPollInterval(5)
+                        .withEnabled(true)));
+    String endpoint =
+        "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + subscriptionName;
+    createRequest
+        .getEventSubscriptions()
+        .get(0)
+        .setDestinations(eventSubscriptionResourceTest.getWebhook(endpoint));
+    createAppMarketPlaceDefinition(createRequest, ADMIN_AUTH_HEADERS);
+
+    // install app
+    CreateApp installApp =
+        new CreateApp().withName(createRequest.getName()).withAppConfiguration(Map.of());
+    createEntity(installApp, ADMIN_AUTH_HEADERS);
+    TestUtils.get(
+        getResource(String.format("events/subscriptions/name/%s", subscriptionName)),
+        EventSubscription.class,
+        ADMIN_AUTH_HEADERS);
+
+    // make change in the system
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table =
+        tableResourceTest.getEntityByName(TEST_TABLE1.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    Table updated = JsonUtils.deepCopy(table, Table.class);
+    updated.setDescription("Updated Description");
+    tableResourceTest.patchEntity(
+        table.getId(), JsonUtils.pojoToJson(table), updated, ADMIN_AUTH_HEADERS);
+    // assert webhook was called
+    Awaitility.await()
+        .timeout(
+            Duration.ofSeconds(createRequest.getEventSubscriptions().get(0).getPollInterval() + 10))
+        .untilAsserted(
+            () -> {
+              BaseCallbackResource.EventDetails<ChangeEvent> result =
+                  webhookCallbackResource.getEventDetails(subscriptionName);
+              Assertions.assertNotNull(result);
+              Assertions.assertTrue(
+                  result.getEvents().stream()
+                      .anyMatch(
+                          e ->
+                              e.getEventType().equals(EventType.ENTITY_UPDATED)
+                                  && e.getChangeDescription()
+                                      .getFieldsUpdated()
+                                      .get(0)
+                                      .getNewValue()
+                                      .equals("Updated Description")));
+            });
+    // uninstall app
+    deleteEntityByName(installApp.getName(), true, true, ADMIN_AUTH_HEADERS);
+    Table updated2 = JsonUtils.deepCopy(updated, Table.class);
+    updated2.setDescription("Updated Description 2");
+    tableResourceTest.patchEntity(
+        table.getId(), JsonUtils.pojoToJson(table), updated2, ADMIN_AUTH_HEADERS);
+
+    // assert event subscription was deleted
+    TestUtils.assertResponse(
+        () ->
+            TestUtils.get(
+                getResource(String.format("events/subscriptions/name/%s", subscriptionName)),
+                EventSubscription.class,
+                ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        String.format("eventsubscription instance for %s not found", subscriptionName));
+  }
+
+  @Test
+  void test_data_retention_app_deletes_old_change_events()
+      throws IOException, InterruptedException {
+    // Create database service, database, and schema
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    DatabaseService databaseService =
+        databaseServiceResourceTest.createEntity(
+            databaseServiceResourceTest
+                .createRequest("RetentionTestService")
+                .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    Database database =
+        databaseResourceTest.createEntity(
+            databaseResourceTest
+                .createRequest("retention_test_db")
+                .withService(databaseService.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchema schema =
+        schemaResourceTest.createEntity(
+            schemaResourceTest
+                .createRequest("retention_test_schema")
+                .withDatabase(database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a new table to work with
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    String tableName = "retention_test_table_" + System.currentTimeMillis();
+
+    Table table =
+        tableResourceTest.createEntity(
+            tableResourceTest
+                .createRequest(tableName)
+                .withDatabaseSchema(schema.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create some change events by updating the table multiple times
+    for (int i = 0; i < 5; i++) {
+      Table updatedTable = JsonUtils.deepCopy(table, Table.class);
+      updatedTable.setDescription("Updated description " + i);
+      tableResourceTest.patchEntity(
+          table.getId(), JsonUtils.pojoToJson(updatedTable), updatedTable, ADMIN_AUTH_HEADERS);
+      table = updatedTable;
+
+      // Add a small delay between updates to ensure they're recorded as separate events
+      Thread.sleep(100);
+    }
+
+    // Wait a moment for change events to be processed
+    Thread.sleep(1000);
+
+    // Trigger the Data Retention application
+    postTriggerApp("DataRetentionApplication", ADMIN_AUTH_HEADERS);
+
+    // Wait for the app to complete
+    Thread.sleep(5000);
+
+    // Assert the app status is available after trigger
+    assertAppStatusAvailableAfterTrigger("DataRetentionApplication");
+
+    // Assert the app ran with SUCCESS status
+    assertAppRanAfterTriggerWithStatus("DataRetentionApplication", AppRunRecord.Status.SUCCESS);
+
+    // Get the latest run record to check statistics
+    AppRunRecord latestRun = getLatestAppRun("DataRetentionApplication", ADMIN_AUTH_HEADERS);
+    Assertions.assertNotNull(latestRun);
+
+    // Check whether successContext is not null
+    Assertions.assertNotNull(latestRun.getSuccessContext());
+
+    // Clean up - delete the test entities
+    tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
+    schemaResourceTest.deleteEntity(schema.getId(), true, true, ADMIN_AUTH_HEADERS);
+    databaseResourceTest.deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
+    databaseServiceResourceTest.deleteEntity(
+        databaseService.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
   @Override
   public void validateCreatedEntity(
       App createdEntity, CreateApp request, Map<String, String> authHeaders)
       throws HttpResponseException {}
+
+  public void createAppMarketPlaceDefinition(
+      CreateAppMarketPlaceDefinitionReq create, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("apps/marketplace");
+    TestUtils.post(
+        target, create, AppMarketPlaceDefinition.class, CREATED.getStatusCode(), authHeaders);
+  }
 
   @Override
   public void compareEntities(App expected, App updated, Map<String, String> authHeaders)
@@ -418,8 +646,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
   private void postTriggerApp(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
+    postTriggerApp(appName, authHeaders, Map.of());
+  }
+
+  private void postTriggerApp(
+      String appName, Map<String, String> authHeaders, Map<String, Object> config)
+      throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
-    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders).post(jakarta.ws.rs.client.Entity.json(config));
     readResponse(response, OK.getStatusCode());
   }
 
