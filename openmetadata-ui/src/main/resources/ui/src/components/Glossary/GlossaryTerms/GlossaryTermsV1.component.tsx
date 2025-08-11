@@ -309,20 +309,6 @@ const GlossaryTermsV1 = ({
     }
   }, [glossaryFqn, isVersionView]);
 
-  useEffect(() => {
-    if (!activeTab && !isVersionView) {
-      navigate(
-        {
-          pathname: getGlossaryTermDetailsPath(
-            glossaryFqn,
-            EntityTabs.OVERVIEW
-          ),
-        },
-        { replace: true }
-      );
-    }
-  }, [activeTab, isVersionView, glossaryFqn, navigate]);
-
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView
       ? getEntityVersionByField(

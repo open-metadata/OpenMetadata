@@ -113,13 +113,16 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 }));
 
 describe('Test Glossary-term component', () => {
-  it('Should trigger navigation to overview tab when activeTab is undefined', async () => {
+  it('Should make first tab active when activeTab is undefined', async () => {
     render(<GlossaryTerms {...mockProps} />);
 
-    expect(mockPush).toHaveBeenCalledWith(
-      { pathname: '/glossary/glossaryTerm/overview' },
-      { replace: true }
-    );
+    const tabs = await screen.findAllByRole('tab');
+    const overviewTab = tabs[0];
+
+    expect(overviewTab).toBeInTheDocument();
+    expect(overviewTab.textContent).toBe('label.overview');
+
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('Should render GlossaryTermTab component', async () => {
