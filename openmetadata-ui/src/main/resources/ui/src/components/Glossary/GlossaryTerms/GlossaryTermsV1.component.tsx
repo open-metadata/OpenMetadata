@@ -323,20 +323,6 @@ const GlossaryTermsV1 = ({
     }
   }, [glossaryFqn, isVersionView]);
 
-  //   useEffect(() => {
-  //     if (isUndefined(activeTab) && !isVersionView) {
-  //       navigate(
-  //         {
-  //           pathname: getGlossaryTermDetailsPath(
-  //             glossaryFqn,
-  //             EntityTabs.OVERVIEW
-  //           ),
-  //         },
-  //         { replace: true }
-  //       );
-  //     }
-  //   }, [activeTab, glossaryFqn]);
-
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView
       ? getEntityVersionByField(
