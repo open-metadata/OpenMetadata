@@ -524,3 +524,56 @@ class TestOMetaGlossary:
         assert patched_glossary_term_1 is not None
         assert len(patched_glossary_term_1.references) == 3
         assert patched_glossary_term_1.references[1].name == "GT1S2"
+
+    def test_glossary_term_description_update_methods(
+        self, metadata, create_glossary, create_glossary_term
+    ):
+        """
+        Test different methods for updating glossary term descriptions.
+        Demonstrates when to use create_or_update vs patch methods.
+        """
+        glossary = create_glossary(
+            CreateGlossaryRequest(
+                name=EntityName("test-glossary"),
+                displayName="test-glossary",
+                description=Markdown("Description of test glossary"),
+            )
+        )
+
+        # Create initial glossary term with description
+        create_glossary_term_1 = CreateGlossaryTermRequest(
+            glossary=FullyQualifiedEntityName(glossary.name.root),
+            name=EntityName("GT1"),
+            displayName="Glossary Term 1",
+            description=Markdown("Initial description"),
+        )
+        glossary_term_1 = create_glossary_term(create_glossary_term_1)
+        assert glossary_term_1.description.root == "Initial description"
+
+        # Method 1: Use patch_description with force=True to override description
+        updated_term = metadata.patch_description(
+            entity=GlossaryTerm,
+            source=glossary_term_1,
+            description="Updated description via patch_description",
+            force=True,
+        )
+        assert updated_term is not None
+        assert (
+            updated_term.description.root == "Updated description via patch_description"
+        )
+
+        # Method 2: Use patch with override_metadata=True to override description
+        updated_glossary_term_1 = deepcopy(updated_term)
+        updated_glossary_term_1.description = Markdown("Updated description via patch")
+
+        patched_term = metadata.patch(
+            entity=GlossaryTerm,
+            source=updated_term,
+            destination=updated_glossary_term_1,
+            override_metadata=True,
+        )
+        assert patched_term is not None
+        assert patched_term.description.root == "Updated description via patch"
+
+        # Note: create_or_update with existing glossary term may not override
+        # the description due to server-side business rules. Use patch methods above instead.
