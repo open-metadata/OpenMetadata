@@ -216,7 +216,6 @@
     "lint-staged": "^10.3.0",
     "organize-imports-cli": "^0.10.0",
     "pinst": "^3.0.0",
-    "playwright": "1.54.2",
     "postcss": "8.4.31",
     "postcss-loader": "^6.1.0",
     "prettier": "^2.1.2",
