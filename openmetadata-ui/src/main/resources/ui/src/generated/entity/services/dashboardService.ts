@@ -209,6 +209,8 @@ export interface DashboardConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  */
 export interface Connection {
     /**
@@ -274,6 +276,8 @@ export interface Connection {
      * Sigma API url.
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
+     *
+     * URL to the Grafana instance.
      */
     hostPort?: string;
     /**
@@ -346,6 +350,11 @@ export interface Connection {
      * API key of the redash instance to access.
      *
      * The personal access token you can generate in the Lightdash app under the user settings
+     *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
      */
     apiKey?: string;
     /**
@@ -382,7 +391,10 @@ export interface Connection {
      */
     siteName?:  string;
     sslConfig?: CertificatesSSLConfig;
-    verifySSL?: VerifySSL;
+    /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     */
+    verifySSL?: boolean | VerifySSL;
     /**
      * Access Token for Mode Dashboard
      *
@@ -489,6 +501,10 @@ export interface Connection {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
 }
 
 /**
@@ -1297,6 +1313,8 @@ export enum SpaceType {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Type of dashboard service such as Looker or Superset...
  *
  * Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode,
@@ -1305,6 +1323,7 @@ export enum SpaceType {
 export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
+    Grafana = "Grafana",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",

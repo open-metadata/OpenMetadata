@@ -59,6 +59,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GRAFANA,
   GREENPLUM,
   HIVE,
   IBMDB2,
@@ -609,6 +610,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.MicroStrategy:
         return MICROSTRATEGY;
+
+      case this.DashboardServiceTypeSmallCase.Grafana:
+        return GRAFANA;
 
       default: {
         let logo;
