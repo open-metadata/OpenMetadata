@@ -154,7 +154,7 @@
     "@babel/preset-env": "^7.11.0",
     "@babel/preset-react": "^7.10.4",
     "@estruyf/github-actions-reporter": "^1.7.0",
-    "@playwright/test": "1.48.2",
+    "@playwright/test": "1.54.2",
     "@svgr/webpack": "^6.5.0",
     "@testing-library/jest-dom": "^5.11.10",
     "@testing-library/react": "^14.2.1",
