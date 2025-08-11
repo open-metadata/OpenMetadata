@@ -16,9 +16,6 @@ Utils module of BigQuery
 from copy import deepcopy
 from typing import TYPE_CHECKING, List, Optional
 
-if TYPE_CHECKING:
-    from google.cloud import bigquery
-
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -34,6 +31,9 @@ from metadata.utils.credentials import (
     get_gcp_default_credentials,
     get_gcp_impersonate_credentials,
 )
+
+if TYPE_CHECKING:
+    from google.cloud import bigquery
 
 
 def get_bigquery_client(
@@ -66,7 +66,7 @@ def get_bigquery_client(
             scopes=scopes,
             lifetime=lifetime,
         )
-    from google.cloud import bigquery
+    from google.cloud import bigquery  # pylint: disable=import-outside-toplevel
 
     return bigquery.Client(
         credentials=credentials, project=project_id, location=location
