@@ -19,6 +19,7 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { testConnection } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
 const apiServiceConfig = {
@@ -55,6 +56,7 @@ test.describe('API service', () => {
       .fill(apiServiceConfig.openAPISchemaURL);
 
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
+    await testConnection(page);
     await page.getByTestId('submit-btn').click();
 
     const autoPilotApplicationRequest = page.waitForRequest(
