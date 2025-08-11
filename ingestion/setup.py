@@ -83,7 +83,7 @@ COMMONS = {
         "cramjam~=2.7",
     },
     "hive": {
-        "pure-transport",
+        "pure-transport==0.2.0",
         "presto-types-parser>=0.0.2",
         VERSIONS["pyhive"],
     },
