@@ -482,9 +482,13 @@ class TableauUnitTest(TestCase):
             "http://mockTableauServer.com"
         )
         result = list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
+        # With proxyURL set, the host should be replaced with the proxy host
+        # Original: "http://tableauHost.com/#/site/hidarsite/views/Regional/Obesity"
+        # Expected: "http://mockTableauServer.com/#/site/hidarsite/views/Regional/Obesity"
+        expected_url = "http://mockTableauServer.com/#/site/hidarsite/views/Regional/Obesity"
         self.assertEqual(
             result[0].right.sourceUrl.root,
-            "http://mockTableauServer.com/#/site/hidarsite/workbooks/897790/views",
+            expected_url,
         )
 
     def _setup_ssl_config(self, verify_ssl_value="no-ssl", ssl_config=None):

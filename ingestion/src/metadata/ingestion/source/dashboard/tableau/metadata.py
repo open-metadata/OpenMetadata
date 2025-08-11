@@ -359,10 +359,23 @@ class TableauSource(DashboardServiceSource):
         """
         try:
             base_url = self.get_base_url()
-            dashboard_url = (
-                f"{clean_uri(str(base_url))}"
-                f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
-            )
+            # For the new mapping, dashboard_details.webpageUrl already points to the specific dashboard view
+            # but we still need to handle proxyURL configuration by replacing the host
+            if self.service_connection.proxyURL:
+                # Replace the host in the webpageUrl with the proxy URL
+                from urllib.parse import urlunparse
+                original_parsed = urlparse(dashboard_details.webpageUrl)
+                proxy_parsed = urlparse(str(base_url))
+                dashboard_url = urlunparse((
+                    proxy_parsed.scheme,
+                    proxy_parsed.netloc,
+                    original_parsed.path,
+                    original_parsed.params,
+                    original_parsed.query,
+                    original_parsed.fragment
+                ))
+            else:
+                dashboard_url = dashboard_details.webpageUrl
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,
