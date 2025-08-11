@@ -106,4 +106,21 @@ After the migration is finished, you can revert this changes.
 ## 1.9.0
 
 ### Strong validation of test case parameters
-`parameterValues` name of a testCase will be strongly validated against the name of the `parameterDefinition` in the testDefinition. If both parameter names do not match an error will be thrown on testCase creation
+
+`parameterValues` name of a testCase will be strongly validated against the name of the `parameterDefinition` in the testDefinition. 
+If both parameter names do not match an error will be thrown on testCase creation
+
+### Multi-domain Support
+
+**All entities now support multi-domains**. Their `domain` field is now renamed to `domains` and modelled as a list of domains instead of a single domain.
+
+If you're using the API or the SDK, you will need to update your code to use the new `domains` field instead of `domain`.
+We have also updated the `patch_domain` implementation, which now has a new signature to support the new `domains` field.
+
+{% note %}
+
+While the schema and APIs are all updated, the Multi-domain support is not enabled by default.
+
+If you want to allow your assets to belong to multiple domains, you need to go to Settings > Preferences > Data Asset Rules and disable the `Multiple Domains are not allowed` rule.
+
+{% /note %}
