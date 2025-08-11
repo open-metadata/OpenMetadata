@@ -176,11 +176,12 @@ export const rawSearchQuery = <
 
   const queryWithSlash = getQueryWithSlash(query || '');
 
-  const apiQuery = query
-    ? filters
-      ? `${queryWithSlash} AND `
-      : queryWithSlash
-    : '';
+  const apiQuery =
+    query && query !== '**'
+      ? filters
+        ? `${queryWithSlash} AND `
+        : queryWithSlash
+      : '';
 
   const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
 
