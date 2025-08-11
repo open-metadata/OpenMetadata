@@ -39,7 +39,6 @@ import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
@@ -181,15 +180,9 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
-    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
-
     const items = [
       {
-        label: (
-          <div data-testid="overview">
-            {tabLabelMap[EntityTabs.OVERVIEW] ?? t('label.overview')}
-          </div>
-        ),
+        label: <div data-testid="overview">{t('label.overview')}</div>,
         key: EntityTabs.OVERVIEW,
         children: <GenericTab type={PageType.GlossaryTerm} />,
       },
@@ -198,8 +191,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="terms">
-                  {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
-                    t('label.glossary-term-plural')}
+                  {t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
                       childGlossaryTerms.length,
@@ -220,7 +212,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="assets">
-                  {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
+                  {t('label.asset-plural')}
                   <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
@@ -246,10 +238,7 @@ const GlossaryTermsV1 = ({
                   count={feedCount.totalCount}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                  name={
-                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
-                    t('label.activity-feed-and-task-plural')
-                  }
+                  name={t('label.activity-feed-and-task-plural')}
                 />
               ),
               key: EntityTabs.ACTIVITY_FEED,
@@ -269,10 +258,7 @@ const GlossaryTermsV1 = ({
               label: (
                 <TabsLabel
                   id={EntityTabs.CUSTOM_PROPERTIES}
-                  name={
-                    tabLabelMap[EntityTabs.CUSTOM_PROPERTIES] ??
-                    t('label.custom-property-plural')
-                  }
+                  name={t('label.custom-property-plural')}
                 />
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
@@ -322,6 +308,20 @@ const GlossaryTermsV1 = ({
       getEntityFeedCount();
     }
   }, [glossaryFqn, isVersionView]);
+
+  useEffect(() => {
+    if (!activeTab && !isVersionView) {
+      navigate(
+        {
+          pathname: getGlossaryTermDetailsPath(
+            glossaryFqn,
+            EntityTabs.OVERVIEW
+          ),
+        },
+        { replace: true }
+      );
+    }
+  }, [activeTab, isVersionView, glossaryFqn, navigate]);
 
   const updatedGlossaryTerm = useMemo(() => {
     const name = isVersionView

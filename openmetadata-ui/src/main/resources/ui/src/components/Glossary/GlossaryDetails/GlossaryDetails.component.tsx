@@ -25,7 +25,6 @@ import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
-  getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -80,15 +79,13 @@ const GlossaryDetails = ({
   };
 
   const tabs = useMemo(() => {
-    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
-
     const items = [
       {
         label: (
           <TabsLabel
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
-            name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
+            name={t('label.term-plural')}
           />
         ),
         key: EntityTabs.TERMS,
@@ -102,10 +99,7 @@ const GlossaryDetails = ({
                   count={feedCount.totalCount}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                  name={
-                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
-                    t('label.activity-feed-and-task-plural')
-                  }
+                  name={t('label.activity-feed-and-task-plural')}
                 />
               ),
               key: EntityTabs.ACTIVITY_FEED,
