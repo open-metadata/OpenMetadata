@@ -313,6 +313,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
   processingEngine: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'ui:order': [
+    'rootProcessingEngine',
     'name',
     'displayName',
     ...SERVICE_FILTER_PATTERN_FIELDS,
