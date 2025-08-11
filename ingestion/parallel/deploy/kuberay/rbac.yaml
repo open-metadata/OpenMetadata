@@ -1,0 +1,199 @@
+# RBAC configuration for OpenMetadata parallel ingestion with KubeRay
+---
+# ServiceAccount for Argo workflows
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: om-argo-sa
+  namespace: openmetadata
+---
+# ServiceAccount for Ray clusters
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ray-sa
+  namespace: openmetadata
+---
+# Role for Argo to manage Ray clusters
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argo-ray-manager
+  namespace: openmetadata
+rules:
+# Ray cluster management
+- apiGroups: ["ray.io"]
+  resources: ["rayclusters", "rayjobs", "rayservices"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Pod management
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "pods/exec"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Service management
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# ConfigMap and Secret access
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+# PVC management
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Event creation
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+# RoleBinding for Argo
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argo-ray-manager-binding
+  namespace: openmetadata
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argo-ray-manager
+subjects:
+- kind: ServiceAccount
+  name: om-argo-sa
+  namespace: openmetadata
+---
+# Role for Ray head/worker pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ray-node
+  namespace: openmetadata
+rules:
+# Pod management (for autoscaling)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+# Service discovery
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+# ConfigMap for Ray configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+# Event creation
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+---
+# RoleBinding for Ray pods
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ray-node-binding
+  namespace: openmetadata
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ray-node
+subjects:
+- kind: ServiceAccount
+  name: ray-sa
+  namespace: openmetadata
+---
+# NetworkPolicy to secure Ray cluster communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ray-cluster-network
+  namespace: openmetadata
+spec:
+  podSelector:
+    matchLabels:
+      app: ray-head
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow Ray workers to connect
+  - from:
+    - podSelector:
+        matchLabels:
+          app: ray-worker
+    ports:
+    - protocol: TCP
+      port: 6379  # GCS server
+    - protocol: TCP
+      port: 10001 # Ray client
+  # Allow Argo pods to connect
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: openmetadata
+    ports:
+    - protocol: TCP
+      port: 10001 # Ray client
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow communication with OpenMetadata
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: openmetadata
+    ports:
+    - protocol: TCP
+      port: 8585
+  # Allow outbound to object storage (S3/GCS/Azure)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+    ports:
+    - protocol: TCP
+      port: 443
+---
+# ResourceQuota for controlling resource usage
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: om-parallel-quota
+  namespace: openmetadata
+spec:
+  hard:
+    requests.cpu: "100"
+    requests.memory: "200Gi"
+    persistentvolumeclaims: "10"
+    pods: "100"
+---
+# Secret for OpenMetadata API access
+apiVersion: v1
+kind: Secret
+metadata:
+  name: om-secrets
+  namespace: openmetadata
+type: Opaque
+stringData:
+  api-key: "YOUR_OPENMETADATA_API_KEY_HERE"
+---
+# ConfigMap for common configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: om-parallel-config
+  namespace: openmetadata
+data:
+  openmetadata.host: "http://openmetadata.default.svc.cluster.local:8585"
+  microbatch.size: "1000"
+  max.retries: "3"
+  dlq.enabled: "true"
+  metrics.enabled: "true"
