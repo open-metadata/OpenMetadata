@@ -689,6 +689,90 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_hasDomain_edgeCases_realFQNFormat() {
+    // Test edge cases for domain hierarchy matching using proper OpenMetadata FQN format
+
+    // Edge Case 1: Domains with dots in names (quoted format)
+    Domain corpDomain = createDomain("Corp.Domain", "\"Corp.Domain\"");
+    Domain corpSubDomain = createDomain("Sub.Division", "\"Corp.Domain\".\"Sub.Division\"");
+    Domain corpDifferent = createDomain("Other.Division", "\"Corp.Domain\".\"Other.Division\"");
+
+    user.setDomains(List.of(corpDomain.getEntityReference()));
+    table.setDomains(List.of(corpSubDomain.getEntityReference()));
+    assertTrue(
+        evaluateExpression("hasDomain()"),
+        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Sub.Division\"' resources");
+
+    user.setDomains(List.of(corpDomain.getEntityReference()));
+    table.setDomains(List.of(corpDifferent.getEntityReference()));
+    assertTrue(
+        evaluateExpression("hasDomain()"),
+        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Other.Division\"' resources");
+
+    // Edge Case 2: Similar but different root domains
+    Domain engineering = createDomain("Engineering", "Engineering");
+    Domain engineeringOps = createDomain("EngineeringOps", "EngineeringOps");
+
+    user.setDomains(List.of(engineering.getEntityReference()));
+    table.setDomains(List.of(engineeringOps.getEntityReference()));
+    assertFalse(
+        evaluateExpression("hasDomain()"),
+        "User with 'Engineering' domain should NOT have access to 'EngineeringOps' resources");
+
+    // Edge Case 3: Multi-level hierarchy with quoted names
+    Domain rootWithDots = createDomain("AI.ML", "\"AI.ML\"");
+    Domain level2 = createDomain("Models.Production", "\"AI.ML\".\"Models.Production\"");
+    Domain level3 = createDomain("Team.Alpha", "\"AI.ML\".\"Models.Production\".\"Team.Alpha\"");
+
+    // Test root can access deep levels
+    user.setDomains(List.of(rootWithDots.getEntityReference()));
+    table.setDomains(List.of(level3.getEntityReference()));
+    assertTrue(
+        evaluateExpression("hasDomain()"),
+        "User with root domain should have access to deep hierarchy");
+
+    // Test middle level can access child but not parent
+    user.setDomains(List.of(level2.getEntityReference()));
+    table.setDomains(List.of(level3.getEntityReference()));
+    assertTrue(
+        evaluateExpression("hasDomain()"), "User with middle level should have access to child");
+
+    user.setDomains(List.of(level2.getEntityReference()));
+    table.setDomains(List.of(rootWithDots.getEntityReference()));
+    assertFalse(
+        evaluateExpression("hasDomain()"),
+        "User with middle level should NOT have access to parent");
+
+    // Edge Case 4: Empty/null domains
+    user.setDomains(null);
+    table.setDomains(List.of(engineering.getEntityReference()));
+    assertFalse(evaluateExpression("hasDomain()"), "User with null domains should not have access");
+
+    user.setDomains(List.of(engineering.getEntityReference()));
+    table.setDomains(null);
+    assertTrue(
+        evaluateExpression("hasDomain()"),
+        "Resource with null domains should allow access to any user");
+
+    // Edge Case 5: Mixed quoted and unquoted
+    Domain simpleRoot = createDomain("SimpleRoot", "SimpleRoot");
+    Domain quotedChild = createDomain("Child.With.Dots", "SimpleRoot.\"Child.With.Dots\"");
+
+    user.setDomains(List.of(simpleRoot.getEntityReference()));
+    table.setDomains(List.of(quotedChild.getEntityReference()));
+    assertTrue(
+        evaluateExpression("hasDomain()"),
+        "User with simple root should have access to child with quoted segments");
+  }
+
+  private Domain createDomain(String name, String fqn) {
+    Domain domain =
+        new Domain().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.DOMAIN, domain.getId()), domain);
+    return domain;
+  }
+
+  @Test
   void test_hasDomain_hierarchicalAccess_parentDomainUsersCanAccessSubDomainResources() {
     // This test explicitly demonstrates that hasDomain() includes hierarchical access
     // where users with parent domain access can access resources in sub-domains
