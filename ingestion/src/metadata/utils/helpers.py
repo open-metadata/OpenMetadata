@@ -105,6 +105,11 @@ om_chart_type_dict = {
     "pie": ChartType.Pie,
     "text": ChartType.Text,
     "scatter": ChartType.Scatter,
+    "gauge": ChartType.Gauge,
+    "map": ChartType.Map,
+    "graph": ChartType.Graph,
+    "heatmap": ChartType.Heatmap,
+    "timeline": ChartType.Timeline,
 }
 
 
@@ -183,7 +188,7 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
