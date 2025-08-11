@@ -12,6 +12,7 @@
  */
 
 import { Col, Row } from 'antd';
+import { compare } from 'fast-json-patch';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -38,7 +39,7 @@ const CustomizableDomainPage = ({
   onSaveLayout,
 }: CustomizeMyDataProps) => {
   const { t } = useTranslation();
-  const { currentPage, currentPageType } = useCustomizeStore();
+  const { currentPage, currentPageType, getPage } = useCustomizeStore();
 
   const handleReset = useCallback(async () => {
     await onSaveLayout();
@@ -78,6 +79,26 @@ const CustomizableDomainPage = ({
     ];
   }, [entityDummyData.fullyQualifiedName]);
 
+  const disableSave = useMemo(() => {
+    if (!currentPageType) {
+      return true;
+    }
+
+    const originalPage =
+      getPage(currentPageType as string) ??
+      ({
+        pageType: currentPageType,
+      } as Page);
+    const editedPage = (currentPage ??
+      ({
+        pageType: currentPageType,
+      } as Page)) as Page;
+
+    const jsonPatch = compare(originalPage, editedPage);
+
+    return jsonPatch.length === 0;
+  }, [currentPage, currentPageType, getPage]);
+
   return (
     <PageLayoutV1
       className="bg-grey"
@@ -87,6 +108,7 @@ const CustomizableDomainPage = ({
       <Row className="customize-details-page" gutter={[0, 20]}>
         <Col span={24}>
           <CustomizablePageHeader
+            disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
             onReset={handleReset}
             onSave={handleSave}

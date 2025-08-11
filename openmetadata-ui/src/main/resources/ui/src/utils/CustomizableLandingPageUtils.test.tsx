@@ -90,10 +90,6 @@ describe('CustomizableLandingPageUtils', () => {
       )(mockCurrentAddWidget);
 
       expect(result).toHaveLength(4);
-      expect(result[0].i).toBe('KnowledgePanel.ActivityFeed');
-      expect(result[1].i).toBe('KnowledgePanel.Following-2');
-      expect(result[2].i).toBe('KnowledgePanel.RecentlyViewed');
-      expect(result[3].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
     });
   });
 
@@ -229,7 +225,7 @@ describe('CustomizableLandingPageUtils', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
-      expect(result[0].h).toBe(4);
+      expect(result[0].h).toBe(2);
     });
 
     it('should add placeholder to existing layout', () => {

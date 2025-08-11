@@ -248,6 +248,8 @@ export interface SourceConfig {
  *
  * StorageService Metadata Pipeline Configuration.
  *
+ * DriveService Metadata Pipeline Configuration.
+ *
  * SearchService Metadata Pipeline Configuration.
  *
  * TestSuite Pipeline Configuration.
@@ -369,15 +371,20 @@ export interface Pipeline {
      * Number of Threads to use in order to parallelize Table ingestion.
      *
      * Number of Threads to use in order to parallelize lineage ingestion.
+     *
+     * Number of Threads to use in order to parallelize Drive ingestion.
      */
     threads?: number;
     /**
      * Pipeline type
      */
-    type?: ConfigType;
+    type?: FluffyType;
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
+     *
+     * Regex will be applied on fully qualified name (e.g service_name.directory_name.file_name)
+     * instead of raw name (e.g. file_name)
      */
     useFqnForFiltering?: boolean;
     /**
@@ -613,6 +620,62 @@ export interface Pipeline {
     markDeletedContainers?:       boolean;
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration to turn off fetching metadata for directories.
+     */
+    includeDirectories?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for files.
+     */
+    includeFiles?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for spreadsheets.
+     */
+    includeSpreadsheets?: boolean;
+    /**
+     * Optional configuration to turn off fetching metadata for worksheets.
+     */
+    includeWorksheets?: boolean;
+    /**
+     * Optional configuration to soft delete directories in OpenMetadata if the source
+     * directories are deleted. Also, if the directory is deleted, all the associated entities
+     * like files, spreadsheets, worksheets, lineage, etc., with that directory will be deleted
+     */
+    markDeletedDirectories?: boolean;
+    /**
+     * Optional configuration to soft delete files in OpenMetadata if the source files are
+     * deleted. Also, if the file is deleted, all the associated entities like lineage, etc.,
+     * with that file will be deleted
+     */
+    markDeletedFiles?: boolean;
+    /**
+     * Optional configuration to soft delete spreadsheets in OpenMetadata if the source
+     * spreadsheets are deleted. Also, if the spreadsheet is deleted, all the associated
+     * entities like worksheets, lineage, etc., with that spreadsheet will be deleted
+     */
+    markDeletedSpreadsheets?: boolean;
+    /**
+     * Optional configuration to soft delete worksheets in OpenMetadata if the source worksheets
+     * are deleted. Also, if the worksheet is deleted, all the associated entities like lineage,
+     * etc., with that worksheet will be deleted
+     */
+    markDeletedWorksheets?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+    /**
      * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
      */
     includeIndexTemplate?: boolean;
@@ -779,9 +842,21 @@ export interface Pipeline {
  *
  * Regex to only fetch containers that matches the pattern.
  *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ *
  * Regex to only fetch search indexes that matches the pattern.
  *
  * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  *
  * Regex to only fetch tags that matches the pattern.
  */
@@ -1146,7 +1221,7 @@ export interface PropagationStopConfig {
  */
 export enum MetadataAttribute {
     Description = "description",
-    Domain = "domain",
+    Domains = "domains",
     GlossaryTerms = "glossaryTerms",
     Owner = "owner",
     Tags = "tags",
@@ -1744,6 +1819,8 @@ export interface DBTPrefixConfig {
  * GCP credentials configs.
  *
  * GCP Credentials
+ *
+ * GCP Credentials for Google Drive API
  */
 export interface DbtSecurityConfigClass {
     /**
@@ -2049,15 +2126,24 @@ export interface ProcessingEngine {
     /**
      * The type of the engine configuration
      */
-    type: ProcessingEngineType;
-    /**
-     * Additional Spark configuration properties as key-value pairs.
-     */
-    config?: { [key: string]: any };
+    type:    ProcessingEngineType;
+    config?: Config;
     /**
      * Spark Connect Remote URL.
      */
     remote?: string;
+}
+
+export interface Config {
+    /**
+     * Additional Spark configuration properties as key-value pairs.
+     */
+    extraConfig?: { [key: string]: any };
+    /**
+     * Temporary path to store the data.
+     */
+    tempPath?: string;
+    [property: string]: any;
 }
 
 /**
@@ -2115,6 +2201,10 @@ export interface ServiceConnections {
  * Storage Connection.
  *
  * search Connection.
+ *
+ * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface ServiceConnection {
     config?: ConfigClass;
@@ -2251,6 +2341,8 @@ export interface ServiceConnection {
  *
  * SSAS Metadata Database Connection Config
  *
+ * Epic FHIR Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -2337,6 +2429,14 @@ export interface ServiceConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigClass {
     /**
@@ -2392,7 +2492,7 @@ export interface ConfigClass {
      *
      * Custom search service type
      */
-    type?: RESTType;
+    type?: PurpleType;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -2407,6 +2507,8 @@ export interface ConfigClass {
      * client_id for Sigma.
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -2417,6 +2519,8 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      *
      * Azure Application client secret for service principal authentication.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
@@ -2541,6 +2645,8 @@ export interface ConfigClass {
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Apache Ranger Admin URL.
      */
     hostPort?: string;
     /**
@@ -2743,6 +2849,8 @@ export interface ConfigClass {
      * Tenant ID for PowerBI.
      *
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -2804,6 +2912,8 @@ export interface ConfigClass {
      * Choose Auth Config Type.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
     /**
@@ -2821,6 +2931,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -2964,6 +3076,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -2973,6 +3087,8 @@ export interface ConfigClass {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -3000,6 +3116,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -3018,6 +3136,9 @@ export interface ConfigClass {
     usageLocation?: string;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
     databaseName?: string;
@@ -3370,6 +3491,14 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -3758,6 +3887,28 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
 }
 
 /**
@@ -3849,6 +4000,10 @@ export enum AuthProvider {
  * SSL Certificates By Path
  *
  * AWS credentials configs.
+ *
+ * Authentication type to connect to Apache Ranger.
+ *
+ * Configuration for connecting to Ranger Basic Auth.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -3857,12 +4012,16 @@ export interface AuthenticationTypeForTableau {
      * Password to connect to source.
      *
      * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
      */
     password?: string;
     /**
      * Username to access the service.
      *
      * Elastic Search Username for Login
+     *
+     * Ranger user to authenticate to the API.
      */
     username?: string;
     /**
@@ -4839,6 +4998,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP Credentials for Google Drive API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -4974,6 +5135,15 @@ export interface ElasticsSearch {
      * Type of sink component ex: metadata
      */
     type: string;
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -5621,8 +5791,16 @@ export enum TransactionMode {
  * OpenSearch service type
  *
  * Custom search service type
+ *
+ * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
-export enum RESTType {
+export enum PurpleType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5640,6 +5818,7 @@ export enum RESTType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -5660,12 +5839,14 @@ export enum RESTType {
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
+    Epic = "Epic",
     Exasol = "Exasol",
     Fivetran = "Fivetran",
     Flink = "Flink",
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
@@ -5700,6 +5881,7 @@ export enum RESTType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     REST = "Rest",
+    Ranger = "Ranger",
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
@@ -5710,6 +5892,7 @@ export enum RESTType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
@@ -5791,6 +5974,8 @@ export interface StorageMetadataBucketDetails {
  *
  * Object Store Source Config Metadata Pipeline type
  *
+ * Drive Source Config Metadata Pipeline type
+ *
  * Search Source Config Metadata Pipeline type
  *
  * DBT Config Pipeline type
@@ -5801,7 +5986,7 @@ export interface StorageMetadataBucketDetails {
  *
  * Reverse Ingestion Config Pipeline type
  */
-export enum ConfigType {
+export enum FluffyType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
     AutoClassification = "AutoClassification",
@@ -5811,6 +5996,7 @@ export enum ConfigType {
     DatabaseMetadata = "DatabaseMetadata",
     DatabaseUsage = "DatabaseUsage",
     Dbt = "DBT",
+    DriveMetadata = "DriveMetadata",
     MessagingMetadata = "MessagingMetadata",
     MetadataToElasticSearch = "MetadataToElasticSearch",
     MlModelMetadata = "MlModelMetadata",

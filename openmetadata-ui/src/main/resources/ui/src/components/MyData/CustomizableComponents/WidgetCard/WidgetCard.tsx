@@ -67,7 +67,7 @@ const WidgetCard = ({
       className={`widget-card h-full d-flex flex-col ${
         isSelected ? 'selected' : ''
       }`}
-      data-testid="widget-card"
+      data-testid={widget.fullyQualifiedName}
       onClick={handleClick}>
       <div className="widget-card-content d-flex justify-between items-center flex-1">
         <img

@@ -1,5 +1,6 @@
 ---
-title: Managing Credentials
+title: Managing Credentials Securely | Collate Ingestion Best Practices
+description: Learn secure ways to manage credentials in Collate ingestion workflows using environment variables, Airflow connections, GitHub secrets, and existing services.
 slug: /getting-started/day-1/hybrid-saas/credentials
 collate: true
 ---

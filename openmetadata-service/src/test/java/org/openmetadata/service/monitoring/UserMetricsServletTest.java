@@ -27,10 +27,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -41,7 +40,7 @@ class UserMetricsServletTest {
 
   @Mock private UserRepository userRepository;
   @Mock private SearchRepository searchRepository;
-  @Mock private EntityDAO<User> userDAO;
+  @Mock private CollectionDAO.UserDAO userDAO;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
   @Mock private Response searchResponse;
@@ -94,18 +93,9 @@ class UserMetricsServletTest {
               any()))
           .thenReturn(searchResponse);
 
-      // Setup last activity
+      // Setup last activity using the new DAO method
       long lastActivityTime = System.currentTimeMillis() - 3600000; // 1 hour ago
-      User activeUser = new User();
-      activeUser.setName("testuser");
-      activeUser.setIsBot(false);
-      activeUser.setLastActivityTime(lastActivityTime);
-
-      ResultList<User> userResults = new ResultList<>();
-      userResults.setData(Collections.singletonList(activeUser));
-
-      when(userRepository.listAfter(any(), any(), any(ListFilter.class), anyInt(), any()))
-          .thenReturn(userResults);
+      when(userDAO.getMaxLastActivityTime()).thenReturn(lastActivityTime);
       servlet.doGet(request, response);
       verify(response).setStatus(HttpServletResponse.SC_OK);
       verify(response).setContentType("application/json; charset=utf-8");
@@ -147,10 +137,7 @@ class UserMetricsServletTest {
           .thenReturn(searchResponse);
 
       // No users with activity
-      ResultList<User> emptyResults = new ResultList<>();
-      emptyResults.setData(Collections.emptyList());
-      when(userRepository.listAfter(any(), any(), any(ListFilter.class), anyInt(), any()))
-          .thenReturn(emptyResults);
+      when(userDAO.getMaxLastActivityTime()).thenReturn(null);
 
       servlet.doGet(request, response);
 
@@ -221,26 +208,9 @@ class UserMetricsServletTest {
 
       // Setup users with different activity times
       long now = System.currentTimeMillis();
-      User user1 = new User();
-      user1.setName("user1");
-      user1.setIsBot(false);
-      user1.setLastActivityTime(now - 7200000); // 2 hours ago
-
-      User user2 = new User();
-      user2.setName("user2");
-      user2.setIsBot(false);
-      user2.setLastActivityTime(now - 3600000); // 1 hour ago (most recent)
-
-      User botUser = new User();
-      botUser.setName("bot");
-      botUser.setIsBot(true);
-      botUser.setLastActivityTime(now); // Should be ignored
-
-      ResultList<User> userResults = new ResultList<>();
-      userResults.setData(Arrays.asList(user1, user2));
-
-      when(userRepository.listAfter(any(), any(), any(ListFilter.class), anyInt(), any()))
-          .thenReturn(userResults);
+      // The DAO method should return the max activity time from non-bot users only
+      // In this case, user2 has the most recent activity (1 hour ago)
+      when(userDAO.getMaxLastActivityTime()).thenReturn(now - 3600000);
 
       servlet.doGet(request, response);
 
@@ -251,7 +221,9 @@ class UserMetricsServletTest {
       assertEquals(15, metrics.get("total_users"));
       assertEquals(5, metrics.get("bot_users"));
       assertEquals(7, metrics.get("daily_active_users")); // Should use the latest value
-      assertEquals(Instant.ofEpochMilli(now - 3600000).toString(), metrics.get("last_activity"));
+      assertEquals(
+          Instant.ofEpochMilli(now - 3600000).toString(),
+          metrics.get("last_activity")); // Most recent non-bot activity
     }
   }
 }

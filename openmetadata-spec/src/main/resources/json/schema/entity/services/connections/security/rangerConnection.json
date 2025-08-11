@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/security/rangerConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RangerConnection",
+  "description": "Apache Ranger Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.security.RangerConnection",
+  "definitions": {
+    "rangerType": {
+      "title": "Ranger Type",
+      "description": "Apache Ranger service type",
+      "type": "string",
+      "enum": [
+        "Ranger"
+      ],
+      "default": "Ranger"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/rangerType",
+      "default": "Ranger"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Apache Ranger Admin URL.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Authentication type to connect to Apache Ranger.",
+      "oneOf": [
+        {
+          "$ref": "ranger/basicAuth.json"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "authType"
+  ]
+}

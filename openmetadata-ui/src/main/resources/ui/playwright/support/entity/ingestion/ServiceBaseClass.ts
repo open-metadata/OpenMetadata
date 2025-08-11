@@ -26,7 +26,6 @@ import {
   getApiContext,
   INVALID_NAMES,
   NAME_VALIDATION_ERROR,
-  redirectToExplorePage,
   toastNotification,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
@@ -47,7 +46,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
-  protected shouldAddDefaultFilters: boolean;
+  public shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
@@ -556,7 +555,6 @@ class ServiceBaseClass {
     const description = `${this.entityName} description`;
 
     // Navigate to ingested table
-    await redirectToExplorePage(page);
     await visitEntityPage({
       page,
       searchTerm: this.entityFQN ?? this.entityName,
@@ -612,7 +610,6 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
 
     // Navigate to table name
-    await redirectToExplorePage(page);
     await visitEntityPage({
       page,
       searchTerm: this.entityFQN ?? this.entityName,

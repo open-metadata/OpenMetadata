@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable no-console */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,28 +11,35 @@
  *  limitations under the License.
  */
 
-import { CodeOutlined, EditOutlined, TableOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Divider,
-  Form,
-  Radio,
-  RadioChangeEvent,
-  Tabs,
-  Typography,
-} from 'antd';
-import { FormProviderProps } from 'antd/lib/form/context';
+import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
+import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
+import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
+import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
+import {
+  DataContractMode,
+  EDataContractTab,
+} from '../../../constants/DataContract.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  ContractStatus,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
+import { createContract, updateContract } from '../../../rest/contractAPI';
+import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
-import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
-import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -46,115 +51,157 @@ export interface FormStepProps {
   isPrevVisible?: boolean;
 }
 
-const TABS = ['contract-detail', 'schema', 'semantics', 'security', 'quality'];
-
-const AddDataContract: React.FC = () => {
+const AddDataContract: React.FC<{
+  onCancel: () => void;
+  onSave: () => void;
+  contract?: DataContract;
+}> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<'YAML' | 'UI'>('YAML');
+  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
-  const [formValues, setFormValues] = useState<Record<string, any>>({});
-  const [activeTab, setActiveTab] = useState(TABS[0]);
+  const [activeTab, setActiveTab] = useState(
+    EDataContractTab.CONTRACT_DETAIL.toString()
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: table } = useGenericContext<Table>();
 
-  const handleFormChange: FormProviderProps['onFormFinish'] = (
-    name: string,
-    { forms, values }: { forms: Record<string, any>; values: any }
-  ) => {
-    console.log(name, forms, values);
-    setFormValues(values);
-  };
+  const [formValues, setFormValues] = useState<DataContract>(
+    contract || ({} as DataContract)
+  );
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
   }, []);
 
-  const isNextVisible = useMemo(() => {
-    return activeTab !== TABS[TABS.length - 1];
-  }, [activeTab]);
+  const handleSave = useCallback(async () => {
+    setIsSubmitting(true);
 
-  const isPrevVisible = useMemo(() => {
-    return activeTab !== TABS[0];
-  }, [activeTab]);
+    const validSemantics = formValues.semantics?.filter(
+      (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
+    );
 
-  const onNext = useCallback(() => {
-    setActiveTab(TABS[TABS.indexOf(activeTab) + 1]);
-  }, [activeTab]);
+    try {
+      await (contract
+        ? updateContract({
+            ...getUpdatedContractDetails(contract, formValues),
+            semantics: validSemantics,
+          })
+        : createContract({
+            ...formValues,
+            entity: {
+              id: table.id,
+              type: EntityType.TABLE,
+            },
+            semantics: validSemantics,
+            status: ContractStatus.Active,
+          }));
+
+      showSuccessToast(t('message.data-contract-saved-successfully'));
+      onSave();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [contract, formValues, table.id]);
+
+  const onFormChange = useCallback(
+    (data: Partial<DataContract>) => {
+      setFormValues((prev) => ({ ...prev, ...data }));
+    },
+    [setFormValues]
+  );
+
+  const onNext = useCallback(async () => {
+    setActiveTab((prev) => (Number(prev) + 1).toString());
+  }, [setActiveTab]);
 
   const onPrev = useCallback(() => {
-    setActiveTab(TABS[TABS.indexOf(activeTab) - 1]);
-  }, [activeTab]);
-
-  const nextLabel = useMemo(() => {
-    return TABS[TABS.indexOf(activeTab) + 1];
-  }, [activeTab]);
-
-  const prevLabel = useMemo(() => {
-    return TABS[TABS.indexOf(activeTab) - 1];
-  }, [activeTab]);
+    setActiveTab((prev) => (Number(prev) - 1).toString());
+  }, [setActiveTab]);
 
   const items = useMemo(
     () => [
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <ContractIcon className="contract-tab-icon" />
             <span>{t('label.contract-detail-plural')}</span>
           </div>
         ),
-        key: 'contract-detail',
-        children: <ContractDetailFormTab />,
+        key: EDataContractTab.CONTRACT_DETAIL.toString(),
+        children: (
+          <ContractDetailFormTab
+            initialValues={contract}
+            nextLabel={t('label.schema')}
+            onChange={onFormChange}
+            onNext={onNext}
+          />
+        ),
       },
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <TableIcon className="contract-tab-icon" />
             <span>{t('label.schema')}</span>
           </div>
         ),
-        key: 'schema',
-        children: <ContractSchemaFormTab />,
+        key: EDataContractTab.SCHEMA.toString(),
+        children: (
+          <ContractSchemaFormTab
+            nextLabel={t('label.semantic-plural')}
+            prevLabel={t('label.contract-detail-plural')}
+            selectedSchema={
+              contract?.schema?.map((column) => column.name) || []
+            }
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
       },
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <SemanticsIcon className="contract-tab-icon" />
             <span>{t('label.semantic-plural')}</span>
           </div>
         ),
-        key: 'semantics',
-        children: <ContractSemanticFormTab />,
-      },
-      {
-        label: (
-          <div className="d-flex items-center">
-            <TableOutlined />
-            <span>{t('label.security')}</span>
-          </div>
+        key: EDataContractTab.SEMANTICS.toString(),
+        children: (
+          <ContractSemanticFormTab
+            initialValues={contract}
+            nextLabel={t('label.quality')}
+            prevLabel={t('label.schema')}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
         ),
-        key: 'security',
-        children: <ContractSecurityFormTab />,
       },
       {
         label: (
           <div className="d-flex items-center">
-            <TableOutlined />
+            <QualityIcon className="contract-tab-icon" />
             <span>{t('label.quality')}</span>
           </div>
         ),
-        key: 'quality',
-        children: <ContractQualityFormTab />,
-      },
-      {
-        label: (
-          <div className="d-flex items-center">
-            <TableOutlined />
-            <span>{t('label.sla')}</span>
-          </div>
+        key: EDataContractTab.QUALITY.toString(),
+        children: (
+          <ContractQualityFormTab
+            prevLabel={t('label.semantic-plural')}
+            selectedQuality={
+              contract?.qualityExpectations?.map(
+                (quality) => quality.id ?? ''
+              ) ?? []
+            }
+            onChange={onFormChange}
+            onPrev={onPrev}
+          />
         ),
-        key: 'sla',
-        children: <ContractSLAFormTab />,
       },
     ],
-    [t]
+    [contract, onFormChange, onNext, onPrev]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
@@ -163,41 +210,37 @@ const AddDataContract: React.FC = () => {
 
   const cardTitle = useMemo(() => {
     return (
-      <div className="d-flex items-center justify-between">
-        <div className="d-flex item-center justify-between flex-1">
-          <div>
-            <Typography.Title className="m-0" level={5}>
-              {t('label.add-contract-detail-plural')}
-            </Typography.Title>
-            <Typography.Paragraph className="m-0 text-sm" type="secondary">
-              {t('message.add-contract-detail-description')}
-            </Typography.Paragraph>
-          </div>
-          <div className="d-flex items-center">
-            <Radio.Group
-              optionType="button"
-              options={[
-                { label: <CodeOutlined />, value: 'YAML' },
-                { label: <EditOutlined />, value: 'UI' },
-              ]}
-              value={mode}
-              onChange={handleModeChange}
-            />
-            <Divider type="vertical" />
-          </div>
+      <div className="add-contract-card-header d-flex items-center justify-between">
+        <div>
+          <Typography.Text className="add-contract-card-title">
+            {t('label.add-contract-detail-plural')}
+          </Typography.Text>
+          <Typography.Paragraph className="add-contract-card-description">
+            {t('message.add-contract-detail-description')}
+          </Typography.Paragraph>
         </div>
         <div>
-          <Button type="default">{t('label.cancel')}</Button>
-          <Button className="m-l-sm" type="primary">
+          <Button
+            className="add-contract-cancel-button"
+            type="default"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            className="add-contract-save-button"
+            data-testid="save-contract-btn"
+            loading={isSubmitting}
+            type="primary"
+            onClick={handleSave}>
             {t('label.save')}
           </Button>
         </div>
       </div>
     );
-  }, [mode, t, handleModeChange]);
+  }, [mode, handleModeChange, onCancel, handleSave, isSubmitting]);
 
   const cardContent = useMemo(() => {
-    if (mode === 'YAML') {
+    if (mode === DataContractMode.YAML) {
       return (
         <Card>
           <SchemaEditor
@@ -210,39 +253,22 @@ const AddDataContract: React.FC = () => {
     }
 
     return (
-      <Form.Provider onFormFinish={handleFormChange}>
-        <Tabs
-          activeKey={activeTab}
-          className="contract-tabs"
-          items={items}
-          tabPosition="left"
-          onChange={handleTabChange}
-        />
-      </Form.Provider>
+      <Tabs
+        activeKey={activeTab.toString()}
+        className="contract-tabs"
+        items={items}
+        tabPosition="left"
+        onChange={handleTabChange}
+      />
     );
-  }, [mode, items, t, handleFormChange]);
+  }, [mode, items, handleTabChange, activeTab, yaml]);
 
   return (
-    <Card className="h-full" title={cardTitle}>
+    <Card
+      className="add-contract-card"
+      data-testid="add-contract-card"
+      title={cardTitle}>
       {cardContent}
-
-      <SchemaEditor
-        mode={{ name: CSMode.JAVASCRIPT }}
-        value={JSON.stringify(formValues, null, 2)}
-      />
-
-      <div className="d-flex justify-end">
-        {isPrevVisible ? (
-          <Button type="default" onClick={onPrev}>
-            {prevLabel ?? t('label.prev')}
-          </Button>
-        ) : null}
-        {isNextVisible ? (
-          <Button type="primary" onClick={onNext}>
-            {nextLabel ?? t('label.next')}
-          </Button>
-        ) : null}
-      </div>
     </Card>
   );
 };

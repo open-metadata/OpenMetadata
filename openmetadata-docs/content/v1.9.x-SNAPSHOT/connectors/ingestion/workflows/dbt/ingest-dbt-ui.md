@@ -1,6 +1,6 @@
 ---
 title: Configure dbt workflow from OpenMetadata UI
-description: Learn to configure dbt workflows in OpenMetadata's UI with our step-by-step guide. Streamline data lineage, documentation, and metadata management effortlessly.
+description: Learn to configure dbt workflows in OpenMetadata'sUI with our step-by-step guide. Streamline data lineage, documentation, and metadata management effortlessly.
 slug: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
 ---
 
