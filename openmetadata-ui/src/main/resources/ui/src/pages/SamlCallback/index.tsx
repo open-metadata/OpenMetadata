@@ -12,7 +12,7 @@
  */
 
 import { CookieStorage } from 'cookie-storage';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
@@ -28,45 +28,48 @@ const SamlCallback = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
 
-  useEffect(() => {
+  const processLogin = useCallback(async () => {
     // get #id_token from hash params in the URL
     const params = new URLSearchParams(location.search);
     const idToken = params.get('id_token');
     const name = params.get('name');
     const email = params.get('email');
-    if (idToken) {
-      const processLogin = async () => {
-        try {
-          await setOidcToken(idToken);
 
-          const oidcUser: OidcUser = {
-            id_token: idToken,
-            scope: '',
-            profile: {
-              email: email || '',
-              name: name || '',
-              picture: '',
-              locale: '',
-              sub: '',
-            },
-          };
+    if (!idToken) {
+      return;
+    }
 
-          const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
-          if (refreshToken) {
-            await setRefreshToken(refreshToken);
-            // Remove refresh token from cookie storage, don't want to keep it in the browser
-            cookieStorage.removeItem(REFRESH_TOKEN_KEY);
-          }
+    try {
+      await setOidcToken(idToken);
 
-          await handleSuccessfulLogin(oidcUser);
-        } catch {
-          // Error handling is already done in handleSuccessfulLogin
-        }
+      const oidcUser: OidcUser = {
+        id_token: idToken,
+        scope: '',
+        profile: {
+          email: email || '',
+          name: name || '',
+          picture: '',
+          locale: '',
+          sub: '',
+        },
       };
 
-      processLogin();
+      const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        await setRefreshToken(refreshToken);
+        // Remove refresh token from cookie storage, don't want to keep it in the browser
+        cookieStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+
+      await handleSuccessfulLogin(oidcUser);
+    } catch {
+      // Error handling is already done in handleSuccessfulLogin
     }
   }, [location, handleSuccessfulLogin]);
+
+  useEffect(() => {
+    processLogin();
+  }, [processLogin]);
 
   return (
     <>
