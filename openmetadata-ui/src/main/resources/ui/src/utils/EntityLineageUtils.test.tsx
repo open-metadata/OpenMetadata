@@ -31,6 +31,7 @@ import {
   getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getEntityChildrenAndLabel,
+  getLineageColumnsAndDataSourceFromCSV,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -44,7 +45,10 @@ jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
 
+import { render } from '@testing-library/react';
 import { get, isEqual, uniqWith } from 'lodash';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS } from '../constants/Lineage.constants';
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
@@ -1490,5 +1494,378 @@ describe('parseLineageData', () => {
 
       expect(mockUniqWith).toHaveBeenCalled();
     });
+  });
+});
+
+describe('getLineageColumnsAndDataSourceFromCSV', () => {
+  it('should return empty arrays for empty CSV data', () => {
+    const result = getLineageColumnsAndDataSourceFromCSV([]);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should return empty arrays for null CSV data', () => {
+    const result = getLineageColumnsAndDataSourceFromCSV(null as any);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should return empty arrays for CSV data with only headers', () => {
+    const result = getLineageColumnsAndDataSourceFromCSV([['Name', 'Type']]);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should return empty arrays for CSV data with less than 1 rows', () => {
+    const result = getLineageColumnsAndDataSourceFromCSV([['Name']]);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should process valid CSV data correctly', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
+      ['test.fqn.1', 'test.fqn.2', 'Test Pipeline'],
+      ['test.fqn.3', 'test.fqn.4', 'Another Pipeline'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.columns).toHaveLength(3);
+    expect(result.dataSource).toHaveLength(2);
+
+    // Check column structure with localization keys
+    expect(result.columns[0]).toMatchObject({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS['fromEntityFQN'],
+      dataIndex: 'fromEntityFQN',
+      key: 'fromEntityFQN',
+      width: 200,
+      ellipsis: { showTitle: false },
+    });
+
+    expect(result.columns[1]).toMatchObject({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS['toEntityFQN'],
+      dataIndex: 'toEntityFQN',
+      key: 'toEntityFQN',
+      width: 200,
+      ellipsis: { showTitle: false },
+    });
+
+    expect(result.columns[2]).toMatchObject({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS['pipelineName'],
+      dataIndex: 'pipelineName',
+      key: 'pipelineName',
+      width: 200,
+      ellipsis: { showTitle: false },
+    });
+
+    // Check data source
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: 'test.fqn.2',
+      pipelineName: 'Test Pipeline',
+      key: '0',
+    });
+
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: 'test.fqn.3',
+      toEntityFQN: 'test.fqn.4',
+      pipelineName: 'Another Pipeline',
+      key: '1',
+    });
+  });
+
+  it('should handle missing values in CSV data and show NO_DATA_PLACEHOLDER', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
+      ['test.fqn.1', '', 'Test Pipeline'],
+      ['', 'test.fqn.4', ''],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: '',
+      pipelineName: 'Test Pipeline',
+      key: '0',
+    });
+
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: '',
+      toEntityFQN: 'test.fqn.4',
+      pipelineName: '',
+      key: '1',
+    });
+
+    // Test that render function shows NO_DATA_PLACEHOLDER for empty values
+    const renderResult = result.columns[1].render?.(
+      '',
+      { toEntityFQN: '' } as any,
+      0
+    );
+    const { getByText } = render(<div>{renderResult as React.ReactNode}</div>);
+
+    expect(getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+  });
+
+  it('should handle CSV data with different column counts', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN'],
+      ['test.fqn.1', 'test.fqn.2', 'extra-column'],
+      ['test.fqn.3'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.columns).toHaveLength(2);
+    expect(result.dataSource).toHaveLength(2);
+
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: 'test.fqn.2',
+      key: '0',
+    });
+
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: 'test.fqn.3',
+      toEntityFQN: '',
+      key: '1',
+    });
+  });
+
+  it('should include render function in columns that handles empty values', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN'],
+      ['test.fqn.1', 'test.fqn.2'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.columns[0]).toHaveProperty('render');
+    expect(typeof result.columns[0].render).toBe('function');
+
+    // Test the render function with non-empty value
+    const renderResult1 = result.columns[0].render?.(
+      'test.fqn.1',
+      { fromEntityFQN: 'test.fqn.1' } as any,
+      0
+    );
+    const { getByText: getByText1 } = render(
+      <div>{renderResult1 as React.ReactNode}</div>
+    );
+
+    expect(getByText1('test.fqn.1')).toBeInTheDocument();
+
+    // Test the render function with empty value
+    const renderResult2 = result.columns[0].render?.(
+      '',
+      { fromEntityFQN: '' } as any,
+      0
+    );
+    const { getByText: getByText2 } = render(
+      <div>{renderResult2 as React.ReactNode}</div>
+    );
+
+    expect(getByText2(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+  });
+
+  it('should handle single row of data', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
+      ['test.fqn.1', 'test.fqn.2', 'Test Pipeline'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.columns).toHaveLength(3);
+    expect(result.dataSource).toHaveLength(1);
+
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: 'test.fqn.2',
+      pipelineName: 'Test Pipeline',
+      key: '0',
+    });
+  });
+
+  it('should handle CSV data with all lineage column types', () => {
+    const csvData = [
+      [
+        'fromEntityFQN',
+        'fromServiceName',
+        'fromServiceType',
+        'fromOwners',
+        'fromDomain',
+        'toEntityFQN',
+        'toServiceName',
+        'toServiceType',
+        'toOwners',
+        'toDomain',
+        'fromChildEntityFQN',
+        'toChildEntityFQN',
+        'pipelineName',
+        'pipelineDisplayName',
+        'pipelineType',
+        'pipelineDescription',
+        'pipelineOwners',
+        'pipelineDomain',
+        'pipelineServiceName',
+        'pipelineServiceType',
+        'relationshipType',
+        'description',
+      ],
+      [
+        'test.from.fqn',
+        'Test Service',
+        'Database',
+        'John Doe',
+        'Finance',
+        'test.to.fqn',
+        'Target Service',
+        'API',
+        'Jane Smith',
+        'Marketing',
+        'test.child.from.fqn',
+        'test.child.to.fqn',
+        'Test Pipeline',
+        'Test Pipeline Display',
+        'Airflow',
+        'Test pipeline description',
+        'Pipeline Owner',
+        'Pipeline Domain',
+        'Pipeline Service',
+        'Pipeline Service Type',
+        'MANUAL',
+        'Test description',
+      ],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.columns).toHaveLength(22);
+    expect(result.dataSource).toHaveLength(1);
+
+    // Verify all column titles use localization keys
+    result.columns.forEach((column, index) => {
+      const headerKey = Object.keys(LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS)[
+        index
+      ];
+
+      expect(column.title).toBe(
+        LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS[headerKey]
+      );
+    });
+
+    // Verify data source contains all values
+    const expectedData = {
+      fromEntityFQN: 'test.from.fqn',
+      fromServiceName: 'Test Service',
+      fromServiceType: 'Database',
+      fromOwners: 'John Doe',
+      fromDomain: 'Finance',
+      toEntityFQN: 'test.to.fqn',
+      toServiceName: 'Target Service',
+      toServiceType: 'API',
+      toOwners: 'Jane Smith',
+      toDomain: 'Marketing',
+      fromChildEntityFQN: 'test.child.from.fqn',
+      toChildEntityFQN: 'test.child.to.fqn',
+      pipelineName: 'Test Pipeline',
+      pipelineDisplayName: 'Test Pipeline Display',
+      pipelineType: 'Airflow',
+      pipelineDescription: 'Test pipeline description',
+      pipelineOwners: 'Pipeline Owner',
+      pipelineDomain: 'Pipeline Domain',
+      pipelineServiceName: 'Pipeline Service',
+      pipelineServiceType: 'Pipeline Service Type',
+      relationshipType: 'MANUAL',
+      description: 'Test description',
+      key: '0',
+    };
+
+    expect(result.dataSource[0]).toEqual(expectedData);
+  });
+
+  it('should handle CSV data with unknown column headers gracefully', () => {
+    const csvData = [
+      ['unknownColumn', 'fromEntityFQN'],
+      ['unknown value', 'test.fqn.1'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.columns).toHaveLength(2);
+    expect(result.dataSource).toHaveLength(1);
+
+    // Unknown column should have undefined title
+    expect(result.columns[0].title).toBeUndefined();
+    expect(result.columns[1].title).toBe(
+      LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS['fromEntityFQN']
+    );
+
+    expect(result.dataSource[0]).toEqual({
+      unknownColumn: 'unknown value',
+      fromEntityFQN: 'test.fqn.1',
+      key: '0',
+    });
+  });
+
+  it('should handle empty rows in CSV data', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN'],
+      ['test.fqn.1', 'test.fqn.2'],
+      ['', ''],
+      ['test.fqn.3', 'test.fqn.4'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.dataSource).toHaveLength(3);
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: '',
+      toEntityFQN: '',
+      key: '1',
+    });
+  });
+
+  it('should handle CSV data with mixed empty and non-empty values', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
+      ['test.fqn.1', '', 'Test Pipeline'],
+      ['', 'test.fqn.2', ''],
+      ['test.fqn.3', 'test.fqn.4', 'Another Pipeline'],
+    ];
+
+    const result = getLineageColumnsAndDataSourceFromCSV(csvData);
+
+    expect(result.dataSource).toHaveLength(3);
+
+    // Test render function for mixed values
+    const renderResult1 = result.columns[1].render?.(
+      '',
+      { toEntityFQN: '' } as any,
+      0
+    );
+    const { getByText: getByText1 } = render(
+      <div>{renderResult1 as React.ReactNode}</div>
+    );
+
+    expect(getByText1(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+
+    const renderResult2 = result.columns[1].render?.(
+      'test.fqn.2',
+      { toEntityFQN: 'test.fqn.2' } as any,
+      1
+    );
+    const { getByText: getByText2 } = render(
+      <div>{renderResult2 as React.ReactNode}</div>
+    );
+
+    expect(getByText2('test.fqn.2')).toBeInTheDocument();
   });
 });

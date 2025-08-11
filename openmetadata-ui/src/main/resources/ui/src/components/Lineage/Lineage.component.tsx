@@ -10,13 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
+import { Card, RadioChangeEvent } from 'antd';
 import Qs from 'qs';
-import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
 import {
+  LINEAGE_TAB_VIEW,
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
@@ -39,6 +47,7 @@ import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
+import LineageTable from './LineageTable/LineageTable.component';
 
 const Lineage = ({
   deleted,
@@ -49,6 +58,9 @@ const Lineage = ({
 }: LineageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [activeViewTab, setActiveViewTab] = useState<LINEAGE_TAB_VIEW>(
+    LINEAGE_TAB_VIEW.DIAGRAM_VIEW
+  );
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const location = useCustomLocation();
@@ -66,6 +78,7 @@ const Lineage = ({
     onConnect,
     onInitReactFlow,
     updateEntityData,
+    onCloseDrawer,
   } = useLineageProvider();
 
   const queryParams = new URLSearchParams(location.search);
@@ -81,6 +94,11 @@ const Lineage = ({
     navigate({
       search: '',
     });
+  }, []);
+
+  const handleActiveViewTabChange = useCallback((event: RadioChangeEvent) => {
+    setActiveViewTab(event.target.value);
+    onCloseDrawer();
   }, []);
 
   const onDragOver = useCallback((event: DragEvent) => {
@@ -145,74 +163,93 @@ const Lineage = ({
       {isFullScreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
-      <div
-        className="h-full relative lineage-container"
-        data-testid="lineage-container"
-        id="lineage-container" // ID is required for export PNG functionality
-        ref={reactFlowWrapper}>
-        {init ? (
-          <>
-            {isPlatformLineage ? null : (
-              <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
-            )}
-            <LineageControlButtons
-              deleted={deleted}
-              entityType={entityType}
-              handleFullScreenViewClick={
-                !isFullScreen ? onFullScreenClick : undefined
-              }
-              hasEditAccess={hasEditAccess}
-              onExitFullScreenViewClick={
-                isFullScreen ? onExitFullScreenViewClick : undefined
-              }
-            />
-            <ReactFlow
-              elevateEdgesOnSelect
-              className="custom-react-flow"
-              data-testid="react-flow-component"
-              deleteKeyCode={null}
-              edgeTypes={customEdges}
-              edges={edges}
-              fitViewOptions={{
-                padding: 48,
-              }}
-              maxZoom={MAX_ZOOM_VALUE}
-              minZoom={MIN_ZOOM_VALUE}
-              nodeDragThreshold={1}
-              nodeTypes={nodeTypes}
-              nodes={nodes}
-              nodesConnectable={isEditMode}
-              selectNodesOnDrag={false}
-              onConnect={onConnect}
-              onDragOver={onDragOver}
-              onDrop={handleNodeDrop}
-              onEdgeClick={handleEdgeClick}
-              onEdgesChange={onEdgesChange}
-              onInit={onInitReactFlow}
-              onNodeClick={handleNodeClick}
-              onNodeContextMenu={onNodeContextMenu}
-              onNodeDrag={dragHandle}
-              onNodeDragStart={dragHandle}
-              onNodeDragStop={dragHandle}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onNodeMouseMove={onNodeMouseMove}
-              onNodesChange={onNodesChange}
-              onPaneClick={onPaneClick}>
-              <Background gap={12} size={1} />
-              <MiniMap pannable zoomable position="bottom-right" />
 
-              <Panel position="bottom-left">
-                <LineageLayers entity={entity} entityType={entityType} />
-              </Panel>
-            </ReactFlow>
-          </>
-        ) : (
-          <div className="loading-card">
-            <Loader />
-          </div>
-        )}
-      </div>
+      {activeViewTab === LINEAGE_TAB_VIEW.DIAGRAM_VIEW ? (
+        <div
+          className="h-full relative lineage-container"
+          data-testid="lineage-container"
+          id="lineage-container" // ID is required for export PNG functionality
+          ref={reactFlowWrapper}>
+          {init ? (
+            <>
+              {isPlatformLineage ? null : (
+                <CustomControlsComponent
+                  activeViewTab={activeViewTab}
+                  className="absolute top-1 right-1 p-xs"
+                  handleActiveViewTabChange={handleActiveViewTabChange}
+                />
+              )}
+              <LineageControlButtons
+                deleted={deleted}
+                entityType={entityType}
+                handleFullScreenViewClick={
+                  !isFullScreen ? onFullScreenClick : undefined
+                }
+                hasEditAccess={hasEditAccess}
+                onExitFullScreenViewClick={
+                  isFullScreen ? onExitFullScreenViewClick : undefined
+                }
+              />
+              <ReactFlow
+                elevateEdgesOnSelect
+                className="custom-react-flow"
+                data-testid="react-flow-component"
+                deleteKeyCode={null}
+                edgeTypes={customEdges}
+                edges={edges}
+                fitViewOptions={{
+                  padding: 48,
+                }}
+                maxZoom={MAX_ZOOM_VALUE}
+                minZoom={MIN_ZOOM_VALUE}
+                nodeDragThreshold={1}
+                nodeTypes={nodeTypes}
+                nodes={nodes}
+                nodesConnectable={isEditMode}
+                selectNodesOnDrag={false}
+                onConnect={onConnect}
+                onDragOver={onDragOver}
+                onDrop={handleNodeDrop}
+                onEdgeClick={handleEdgeClick}
+                onEdgesChange={onEdgesChange}
+                onInit={onInitReactFlow}
+                onNodeClick={handleNodeClick}
+                onNodeContextMenu={onNodeContextMenu}
+                onNodeDrag={dragHandle}
+                onNodeDragStart={dragHandle}
+                onNodeDragStop={dragHandle}
+                onNodeMouseEnter={onNodeMouseEnter}
+                onNodeMouseLeave={onNodeMouseLeave}
+                onNodeMouseMove={onNodeMouseMove}
+                onNodesChange={onNodesChange}
+                onPaneClick={onPaneClick}>
+                <Background gap={12} size={1} />
+                <MiniMap pannable zoomable position="bottom-right" />
+
+                <Panel position="bottom-left">
+                  <LineageLayers entity={entity} entityType={entityType} />
+                </Panel>
+              </ReactFlow>
+            </>
+          ) : (
+            <div className="loading-card">
+              <Loader />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div
+          className="h-full relative lineage-container overflow-auto"
+          data-testid="lineage-table-container">
+          <CustomControlsComponent
+            onlyShowTabSwitch
+            activeViewTab={activeViewTab}
+            className="absolute top-1 right-1 p-xs"
+            handleActiveViewTabChange={handleActiveViewTabChange}
+          />
+          <LineageTable />
+        </div>
+      )}
     </Card>
   );
 };

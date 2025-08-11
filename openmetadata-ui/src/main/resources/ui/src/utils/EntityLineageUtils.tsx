@@ -13,6 +13,8 @@
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
+import { Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import {
@@ -63,8 +65,10 @@ import {
   NodeData,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
   LINEAGE_EXPORT_HEADERS,
+  LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS,
   NODE_HEIGHT,
   NODE_WIDTH,
   ZOOM_TRANSITION_DURATION,
@@ -1884,4 +1888,53 @@ export const getAllDownstreamEdges = (
 
   // Combine direct and nested downstream edges
   return [...directDownstreamEdges, ...nestedDownstreamEdges];
+};
+
+export const getLineageColumnsAndDataSourceFromCSV = (
+  csvData: string[][]
+): {
+  columns: ColumnsType<string>;
+  dataSource: Record<string, string>[];
+} => {
+  if (!csvData || csvData.length < 2) {
+    return {
+      columns: [],
+      dataSource: [],
+    };
+  }
+
+  const [headers, ...rows] = csvData;
+
+  const columns: ColumnsType<string> = headers.map((header) => ({
+    title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS[header],
+    dataIndex: header,
+    key: header,
+    width: 200,
+    ellipsis: {
+      showTitle: false,
+    },
+    render: (text: string) => (
+      <Typography.Text
+        data-testid={`lineage-column-${header}-${text}`}
+        ellipsis={{ tooltip: true }}>
+        {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
+      </Typography.Text>
+    ),
+  }));
+
+  // Create data source
+  const dataSource = rows.map((row, index) => {
+    const rowData: Record<string, string> = {};
+    headers.forEach((header, headerIndex) => {
+      rowData[header] = row[headerIndex] || '';
+    });
+    rowData.key = index.toString();
+
+    return rowData;
+  });
+
+  return {
+    columns,
+    dataSource,
+  };
 };

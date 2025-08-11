@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space } from 'antd';
+import Icon, { RightOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Radio, Row, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
+import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-inherited-link.svg';
+import { ReactComponent as TableViewIcon } from '../../../assets/svg/table-grey.svg';
+import { ICON_DIMENSION } from '../../../constants/constants';
+import {
+  LINEAGE_DEFAULT_QUICK_FILTERS,
+  LINEAGE_TAB_VIEW,
+} from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
@@ -25,13 +31,16 @@ import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { ControlProps } from './EntityLineage.interface';
+import { ExtendedLineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
-const CustomControls: FC<ControlProps> = ({
+const CustomControls: FC<ExtendedLineageControlProps> = ({
+  onlyShowTabSwitch,
+  activeViewTab,
+  handleActiveViewTabChange,
   style,
   className,
-}: ControlProps) => {
+}: ExtendedLineageControlProps) => {
   const { t } = useTranslation();
   const { onQueryFilterUpdate, nodes } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
@@ -140,28 +149,58 @@ const CustomControls: FC<ControlProps> = ({
       gutter={[8, 8]}
       style={style}>
       <Col flex="auto">
-        <LineageSearchSelect />
-        <Space className="m-l-xs" size={16}>
-          <Dropdown
-            menu={{
-              items: filterMenu,
-              selectedKeys: selectedFilter,
-            }}
-            trigger={['click']}>
-            <Button ghost className="expand-btn" type="primary">
-              {t('label.advanced')}
-              <RightOutlined />
-            </Button>
-          </Dropdown>
-          <ExploreQuickFilters
-            independent
-            aggregations={{}}
-            defaultQueryFilter={queryFilter}
-            fields={selectedQuickFilters}
-            index={SearchIndex.ALL}
-            showDeleted={false}
-            onFieldValueSelect={handleQuickFiltersValueSelect}
+        <Space
+          className={classNames('z-10 justify-start w-full', className)}
+          size={16}>
+          <Radio.Group
+            buttonStyle="outline"
+            data-testid="er-diagram-view-switch"
+            optionType="button"
+            options={[
+              {
+                label: (
+                  <Icon component={DiagramViewIcon} style={ICON_DIMENSION} />
+                ),
+                value: LINEAGE_TAB_VIEW.DIAGRAM_VIEW,
+              },
+              {
+                label: (
+                  <Icon component={TableViewIcon} style={ICON_DIMENSION} />
+                ),
+                value: LINEAGE_TAB_VIEW.TABLE_VIEW,
+              },
+            ]}
+            value={activeViewTab}
+            onChange={handleActiveViewTabChange}
           />
+
+          {!onlyShowTabSwitch && (
+            <>
+              <LineageSearchSelect />
+              <Space className="m-l-xs" size={16}>
+                <Dropdown
+                  menu={{
+                    items: filterMenu,
+                    selectedKeys: selectedFilter,
+                  }}
+                  trigger={['click']}>
+                  <Button ghost className="expand-btn" type="primary">
+                    {t('label.advanced')}
+                    <RightOutlined />
+                  </Button>
+                </Dropdown>
+                <ExploreQuickFilters
+                  independent
+                  aggregations={{}}
+                  defaultQueryFilter={queryFilter}
+                  fields={selectedQuickFilters}
+                  index={SearchIndex.ALL}
+                  showDeleted={false}
+                  onFieldValueSelect={handleQuickFiltersValueSelect}
+                />
+              </Space>
+            </>
+          )}
         </Space>
       </Col>
     </Row>
