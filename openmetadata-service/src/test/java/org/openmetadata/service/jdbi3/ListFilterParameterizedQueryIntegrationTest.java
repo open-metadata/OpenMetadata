@@ -71,7 +71,7 @@ class ListFilterParameterizedQueryIntegrationTest {
               return invocation.getArgument(0);
             });
     when(handle.createQuery(anyString())).thenReturn(query);
-    when(query.bind(anyString(), any())).thenReturn(query);
+    when(query.bind(anyString(), (Object) any())).thenReturn(query);
     when(query.getContext()).thenReturn(statementContext);
   }
 
@@ -95,7 +95,7 @@ class ListFilterParameterizedQueryIntegrationTest {
       assertEquals("test_user@company.com", boundParameters.get("assignee"));
 
       // And: Should be bindable to PreparedStatement (simulated)
-      when(statementContext.getBinding()).thenReturn(query);
+      // Binding verification through query mock
       query.bind("assignee", boundParameters.get("assignee"));
 
       // Verify binding was called with correct parameters
@@ -349,7 +349,7 @@ class ListFilterParameterizedQueryIntegrationTest {
       assertEquals(blindInjection, filter.getQueryParam("directory"));
 
       // When bound to prepared statement, these will be treated as literal strings
-      Map<String, Object> params = filter.getQueryParams();
+      Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       params.forEach(
           (key, value) -> {
             query.bind(key, value);
@@ -386,7 +386,7 @@ class ListFilterParameterizedQueryIntegrationTest {
       assertTrue(condition.contains("workflowDefinitionId = :workflowDefinitionId"));
 
       // And: Parameters should be ready for database binding
-      Map<String, Object> params = filter.getQueryParams();
+      Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       assertEquals(4, params.size());
       assertTrue(params.containsKey("assignee"));
       assertTrue(params.containsKey("fileType"));
@@ -418,7 +418,7 @@ class ListFilterParameterizedQueryIntegrationTest {
         assertTrue(condition.contains("assignee = :assignee"));
 
         // And: Should be ready for MySQL parameter binding
-        Map<String, Object> params = filter.getQueryParams();
+        Map<String, Object> params = new HashMap<>(filter.getQueryParams());
         assertEquals("slack", params.get("alertType"));
         assertEquals("data-quality-monitor", params.get("agentType"));
         assertEquals("acknowledged", params.get("testCaseResolutionStatusType"));
@@ -481,7 +481,7 @@ class ListFilterParameterizedQueryIntegrationTest {
       assertEquals("finance-analyst@company.com", filter.getQueryParam("assignee"));
 
       // All parameters should be bindable despite containing special characters
-      Map<String, Object> params = filter.getQueryParams();
+      Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       params.forEach(
           (key, value) -> {
             query.bind(key, value);
