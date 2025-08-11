@@ -67,6 +67,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
+    fieldFetchers.put("allAssets", this::fetchAndSetAllAssets);
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
@@ -74,6 +75,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+    entity.withAllAssets(fields.contains("allAssets") ? getAllAssets(entity) : null);
     entity.withParent(getParent(entity));
   }
 
@@ -104,6 +106,14 @@ public class DomainRepository extends EntityRepository<Domain> {
       return;
     }
     setFieldFromMap(true, domains, batchFetchExperts(domains), Domain::setExperts);
+  }
+
+  private void fetchAndSetAllAssets(List<Domain> domains, Fields fields) {
+    if (!fields.contains("allAssets") || domains == null || domains.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, domains, batchFetchAssetsFromDomainAndSubDomains(domains), Domain::setAllAssets);
   }
 
   @Override
@@ -148,6 +158,10 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   private List<EntityReference> getAssets(Domain entity) {
     return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+  }
+
+  private List<EntityReference> getAllAssets(Domain entity) {
+    return getAssetsFromDomainAndSubDomains(entity);
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
@@ -425,5 +439,86 @@ public class DomainRepository extends EntityRepository<Domain> {
         });
 
     return expertsMap;
+  }
+
+  private List<EntityReference> getAssetsFromDomainAndSubDomains(Domain domain) {
+    var allDomainIds = new java.util.HashSet<UUID>();
+    collectSubDomainHierarchy(domain.getId(), allDomainIds);
+
+    // Get all assets for this domain and all its sub-domains
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(
+                allDomainIds.stream().map(UUID::toString).collect(Collectors.toList()),
+                Relationship.HAS.ordinal(),
+                Include.ALL);
+
+    // Collect unique assets
+    var uniqueAssets = new java.util.LinkedHashSet<EntityReference>();
+    records.forEach(
+        record -> {
+          var assetRef =
+              getEntityReferenceById(
+                  record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
+          uniqueAssets.add(assetRef);
+        });
+
+    return new ArrayList<>(uniqueAssets);
+  }
+
+  private void collectSubDomainHierarchy(UUID domainId, java.util.Set<UUID> allDomainIds) {
+    if (allDomainIds.contains(domainId)) {
+      return; // Avoid infinite loops
+    }
+
+    allDomainIds.add(domainId);
+
+    // Get all child domains (sub-domains)
+    var childRecords =
+        daoCollection.relationshipDAO().findTo(domainId, DOMAIN, Relationship.CONTAINS.ordinal());
+
+    childRecords.forEach(
+        record -> {
+          collectSubDomainHierarchy(record.getId(), allDomainIds);
+        });
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchAssetsFromDomainAndSubDomains(
+      List<Domain> domains) {
+    var allAssetsMap = new HashMap<UUID, List<EntityReference>>();
+    if (domains == null || domains.isEmpty()) {
+      return allAssetsMap;
+    }
+
+    // For each domain, collect assets from the domain and all its sub-domains
+    domains.forEach(
+        domain -> {
+          var allDomainIds = new java.util.HashSet<UUID>();
+          collectSubDomainHierarchy(domain.getId(), allDomainIds);
+
+          // Get all assets for this domain hierarchy
+          var records =
+              daoCollection
+                  .relationshipDAO()
+                  .findToBatchAllTypes(
+                      allDomainIds.stream().map(UUID::toString).collect(Collectors.toList()),
+                      Relationship.HAS.ordinal(),
+                      Include.ALL);
+
+          // Collect unique assets
+          var uniqueAssets = new java.util.LinkedHashSet<EntityReference>();
+          records.forEach(
+              record -> {
+                var assetRef =
+                    getEntityReferenceById(
+                        record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
+                uniqueAssets.add(assetRef);
+              });
+
+          allAssetsMap.put(domain.getId(), new ArrayList<>(uniqueAssets));
+        });
+
+    return allAssetsMap;
   }
 }
