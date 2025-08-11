@@ -582,6 +582,12 @@ test.describe('Persona customization', () => {
       expect(
         userPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
+      expect(
+        userPage.getByTestId('create-error-placeholder-Glossary Term')
+      ).toBeVisible();
+
+      await userPage.getByRole('tab', { name: 'Overview' }).click();
+
       expect(userPage.getByTestId('asset-description-container')).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
