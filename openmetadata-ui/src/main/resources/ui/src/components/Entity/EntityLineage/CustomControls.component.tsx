@@ -12,14 +12,14 @@
  */
 
 import Icon, { RightOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Radio, Row, Space } from 'antd';
+import { Button, Dropdown, Radio, Space } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-inherited-link.svg';
-import { ReactComponent as TableViewIcon } from '../../../assets/svg/table-grey.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
+import { ReactComponent as TableViewIcon } from '../../../assets/svg/ic-column.svg';
+import { ReactComponent as DiagramViewIcon } from '../../../assets/svg/ic-diagram.svg';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import {
   LINEAGE_DEFAULT_QUICK_FILTERS,
   LINEAGE_TAB_VIEW,
@@ -144,66 +144,71 @@ const CustomControls: FC<ExtendedLineageControlProps> = ({
   }, [selectedFilter, selectedQuickFilters, filters]);
 
   return (
-    <Row
-      className={classNames('z-10 w-full', className)}
-      gutter={[8, 8]}
-      style={style}>
-      <Col flex="auto">
-        <Space
-          className={classNames('z-10 justify-start w-full', className)}
-          size={16}>
-          <Radio.Group
-            buttonStyle="outline"
-            data-testid="er-diagram-view-switch"
-            optionType="button"
-            options={[
-              {
-                label: (
-                  <Icon component={DiagramViewIcon} style={ICON_DIMENSION} />
-                ),
-                value: LINEAGE_TAB_VIEW.DIAGRAM_VIEW,
-              },
-              {
-                label: (
-                  <Icon component={TableViewIcon} style={ICON_DIMENSION} />
-                ),
-                value: LINEAGE_TAB_VIEW.TABLE_VIEW,
-              },
-            ]}
-            value={activeViewTab}
-            onChange={handleActiveViewTabChange}
-          />
+    <div
+      className={classNames(
+        'd-flex w-full',
+        onlyShowTabSwitch ? 'justify-end' : 'justify-between'
+      )}>
+      {!onlyShowTabSwitch && (
+        <div className="d-flex items-center gap-4">
+          <LineageSearchSelect />
+          <Space className="m-l-xs" size={16}>
+            <Dropdown
+              menu={{
+                items: filterMenu,
+                selectedKeys: selectedFilter,
+              }}
+              trigger={['click']}>
+              <Button ghost className="expand-btn" type="primary">
+                {t('label.advanced')}
+                <RightOutlined />
+              </Button>
+            </Dropdown>
+            <ExploreQuickFilters
+              independent
+              aggregations={{}}
+              defaultQueryFilter={queryFilter}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </Space>
+        </div>
+      )}
 
-          {!onlyShowTabSwitch && (
-            <>
-              <LineageSearchSelect />
-              <Space className="m-l-xs" size={16}>
-                <Dropdown
-                  menu={{
-                    items: filterMenu,
-                    selectedKeys: selectedFilter,
-                  }}
-                  trigger={['click']}>
-                  <Button ghost className="expand-btn" type="primary">
-                    {t('label.advanced')}
-                    <RightOutlined />
-                  </Button>
-                </Dropdown>
-                <ExploreQuickFilters
-                  independent
-                  aggregations={{}}
-                  defaultQueryFilter={queryFilter}
-                  fields={selectedQuickFilters}
-                  index={SearchIndex.ALL}
-                  showDeleted={false}
-                  onFieldValueSelect={handleQuickFiltersValueSelect}
-                />
-              </Space>
-            </>
-          )}
-        </Space>
-      </Col>
-    </Row>
+      <Radio.Group
+        className="new-radio-group"
+        data-testid="lineage-view-switch"
+        optionType="button"
+        options={[
+          {
+            label: (
+              <Icon
+                className="align-middle"
+                component={TableViewIcon}
+                data-testid="lineage-table-view-icon"
+                style={DATA_ASSET_ICON_DIMENSION}
+              />
+            ),
+            value: LINEAGE_TAB_VIEW.TABLE_VIEW,
+          },
+          {
+            label: (
+              <Icon
+                className="align-middle"
+                component={DiagramViewIcon}
+                data-testid="lineage-diagram-view-icon"
+                style={DATA_ASSET_ICON_DIMENSION}
+              />
+            ),
+            value: LINEAGE_TAB_VIEW.DIAGRAM_VIEW,
+          },
+        ]}
+        value={activeViewTab}
+        onChange={handleActiveViewTabChange}
+      />
+    </div>
   );
 };
 

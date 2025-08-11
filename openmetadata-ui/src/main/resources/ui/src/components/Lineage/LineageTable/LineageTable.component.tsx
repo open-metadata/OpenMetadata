@@ -27,9 +27,11 @@ const LineageTable = () => {
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
   const [tableConfig, setTableConfig] = useState<{
+    isLoading: boolean;
     columns: ColumnsType<any>;
     dataSource: Record<string, string>[];
   }>({
+    isLoading: true,
     columns: [],
     dataSource: [],
   });
@@ -40,12 +42,19 @@ const LineageTable = () => {
     );
 
     setTableConfig({
+      isLoading: false,
       columns,
       dataSource,
     });
   }, []);
 
   useEffect(() => {
+    setTableConfig({
+      isLoading: true,
+      columns: [],
+      dataSource: [],
+    });
+
     triggerExportForBulkEdit({
       name: fqn,
       onExport: exportLineageData,
@@ -72,10 +81,9 @@ const LineageTable = () => {
 
   return (
     <Table
-      columns={tableConfig.columns}
+      {...tableConfig}
       containerClassName="m-x-sm m-y-md align-table-filter-left"
       data-testid="lineage-table"
-      dataSource={tableConfig.dataSource}
       pagination={false}
       rowKey="fullyQualifiedName"
       scroll={TABLE_SCROLL_VALUE}

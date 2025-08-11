@@ -50,6 +50,7 @@ import { ContractExecutionStatus } from '../../../generated/entity/data/dataCont
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -130,6 +131,7 @@ export const DataAssetsHeader = ({
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
+  const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
@@ -141,6 +143,12 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+  const [isPropertyVisible, setIsPropertyVisible] = useState(true);
+
+  const isActiveLineageTab = useMemo(
+    () => location.pathname.includes(EntityTabs.LINEAGE),
+    [location.pathname]
+  );
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -365,6 +373,11 @@ export const DataAssetsHeader = ({
     () => setIsAnnouncementDrawerOpen(false),
     []
   );
+
+  const handlePropertyToggle = useCallback(() => {
+    setIsPropertyVisible((prev) => !prev);
+  }, [setIsPropertyVisible]);
+
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -518,6 +531,12 @@ export const DataAssetsHeader = ({
     triggerTheAutoPilotApplication,
   ]);
 
+  useEffect(() => {
+    if (isActiveLineageTab) {
+      setIsPropertyVisible(false);
+    }
+  }, [isActiveLineageTab]);
+
   return (
     <>
       <Row
@@ -650,176 +669,189 @@ export const DataAssetsHeader = ({
           </Row>
         </Col>
 
-        <Col span={24}>
-          <div
-            className={classNames('data-asset-header-metadata ', {
-              'data-asset-header-less-items': showCompressedExtraInfoItems,
-            })}>
-            {showDomain && (
-              <>
-                <DomainLabel
-                  headerLayout
-                  multiple
-                  afterDomainUpdateAction={afterDomainUpdateAction}
-                  domains={(dataAsset as EntitiesWithDomainField).domains}
-                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
-                  entityId={dataAsset.id ?? ''}
-                  entityType={entityType}
-                  hasPermission={editDomainPermission}
-                  textClassName="render-domain-lebel-style"
-                />
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-              </>
-            )}
-            <OwnerLabel
-              hasPermission={editOwnerPermission}
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={dataAsset?.owners}
-              onUpdate={onOwnerUpdate}
-            />
-            <Divider className="self-center vertical-divider" type="vertical" />
-            {tierSuggestionRender ?? (
-              <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                <Space
-                  className="d-flex tier-container align-start"
-                  data-testid="header-tier-container">
-                  {tier ? (
-                    <div className="d-flex flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier ">
-                          {t('label.tier')}
-                        </span>
-
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-
-                      <TagsV1
-                        startWith={TAG_START_WITH.SOURCE_ICON}
-                        tag={tier}
-                        tagProps={{
-                          'data-testid': 'Tier',
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier">
-                          {t('label.tier')}
-                        </span>
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-                      <span
-                        className="font-medium no-tier-text text-sm"
-                        data-testid="Tier">
-                        {t('label.no-entity', {
-                          entity: t('label.tier'),
-                        })}
-                      </span>
-                    </div>
-                  )}
-                </Space>
-              </TierCard>
-            )}
-
-            {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <RetentionPeriod
-                  hasPermission={permissions.EditAll && !dataAsset.deleted}
-                  retentionPeriod={(dataAsset as Table).retentionPeriod}
-                  onUpdate={onUpdateRetentionPeriod}
-                />
-              </>
-            )}
-
-            {entityType === EntityType.METRIC && onMetricUpdate && (
-              <MetricHeaderInfo
-                metricDetails={dataAsset}
-                metricPermissions={permissions}
-                onUpdateMetricDetails={onMetricUpdate}
+        <Col className="relative" span={24}>
+          <Button
+            className="data-asset-property-toggle-button"
+            type="link"
+            onClick={handlePropertyToggle}>
+            {t(`label.${isPropertyVisible ? 'hide' : 'view'}-property-plural`)}
+          </Button>
+          {isPropertyVisible && (
+            <div
+              className={classNames('data-asset-header-metadata ', {
+                'data-asset-header-less-items': showCompressedExtraInfoItems,
+              })}>
+              {showDomain && (
+                <>
+                  <DomainLabel
+                    headerLayout
+                    multiple
+                    afterDomainUpdateAction={afterDomainUpdateAction}
+                    domains={(dataAsset as EntitiesWithDomainField).domains}
+                    entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                    entityId={dataAsset.id ?? ''}
+                    entityType={entityType}
+                    hasPermission={editDomainPermission}
+                    textClassName="render-domain-lebel-style"
+                  />
+                  <Divider
+                    className="self-center vertical-divider"
+                    type="vertical"
+                  />
+                </>
+              )}
+              <OwnerLabel
+                hasPermission={editOwnerPermission}
+                isCompactView={false}
+                maxVisibleOwners={4}
+                owners={dataAsset?.owners}
+                onUpdate={onOwnerUpdate}
               />
-            )}
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              {tierSuggestionRender ?? (
+                <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
+                  <Space
+                    className="d-flex tier-container align-start"
+                    data-testid="header-tier-container">
+                    {tier ? (
+                      <div className="d-flex flex-col gap-2">
+                        <div className="tier-heading-container d-flex items-center gap-1">
+                          <span className="entity-no-tier ">
+                            {t('label.tier')}
+                          </span>
 
-            {isUndefined(serviceCategory) && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <Certification
-                  currentCertificate={
-                    'certification' in dataAsset
-                      ? dataAsset.certification?.tagLabel?.tagFQN
-                      : undefined
-                  }
-                  permission={false}
-                  onCertificationUpdate={onCertificationUpdate}>
-                  <div className="d-flex align-start extra-info-container">
-                    <Typography.Text
-                      className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-                      data-testid="certification-label">
-                      <div className="flex gap-2">
-                        <span className="extra-info-label-heading">
-                          {t('label.certification')}
+                          {editTierPermission && (
+                            <EditIconButton
+                              newLook
+                              data-testid="edit-tier"
+                              size="small"
+                              title={t('label.edit-entity', {
+                                entity: t('label.tier'),
+                              })}
+                            />
+                          )}
+                        </div>
+
+                        <TagsV1
+                          startWith={TAG_START_WITH.SOURCE_ICON}
+                          tag={tier}
+                          tagProps={{
+                            'data-testid': 'Tier',
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center flex-col gap-2">
+                        <div className="tier-heading-container d-flex items-center gap-1">
+                          <span className="entity-no-tier">
+                            {t('label.tier')}
+                          </span>
+                          {editTierPermission && (
+                            <EditIconButton
+                              newLook
+                              data-testid="edit-tier"
+                              size="small"
+                              title={t('label.edit-entity', {
+                                entity: t('label.tier'),
+                              })}
+                            />
+                          )}
+                        </div>
+                        <span
+                          className="font-medium no-tier-text text-sm"
+                          data-testid="Tier">
+                          {t('label.no-entity', {
+                            entity: t('label.tier'),
+                          })}
                         </span>
+                      </div>
+                    )}
+                  </Space>
+                </TierCard>
+              )}
 
-                        {editCertificationPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-certification"
-                            size="small"
-                            title={t('label.edit-entity', {
+              {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
+                <>
+                  <Divider
+                    className="self-center vertical-divider"
+                    type="vertical"
+                  />
+                  <RetentionPeriod
+                    hasPermission={permissions.EditAll && !dataAsset.deleted}
+                    retentionPeriod={(dataAsset as Table).retentionPeriod}
+                    onUpdate={onUpdateRetentionPeriod}
+                  />
+                </>
+              )}
+
+              {entityType === EntityType.METRIC && onMetricUpdate && (
+                <MetricHeaderInfo
+                  metricDetails={dataAsset}
+                  metricPermissions={permissions}
+                  onUpdateMetricDetails={onMetricUpdate}
+                />
+              )}
+
+              {isUndefined(serviceCategory) && (
+                <>
+                  <Divider
+                    className="self-center vertical-divider"
+                    type="vertical"
+                  />
+                  <Certification
+                    currentCertificate={
+                      'certification' in dataAsset
+                        ? dataAsset.certification?.tagLabel?.tagFQN
+                        : undefined
+                    }
+                    permission={false}
+                    onCertificationUpdate={onCertificationUpdate}>
+                    <div className="d-flex align-start extra-info-container">
+                      <Typography.Text
+                        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+                        data-testid="certification-label">
+                        <div className="flex gap-2">
+                          <span className="extra-info-label-heading">
+                            {t('label.certification')}
+                          </span>
+
+                          {editCertificationPermission && (
+                            <EditIconButton
+                              newLook
+                              data-testid="edit-certification"
+                              size="small"
+                              title={t('label.edit-entity', {
+                                entity: t('label.certification'),
+                              })}
+                            />
+                          )}
+                        </div>
+                        <div className="font-medium certification-value">
+                          {(dataAsset as Table).certification ? (
+                            <CertificationTag
+                              showName
+                              certification={
+                                (dataAsset as Table).certification!
+                              }
+                            />
+                          ) : (
+                            t('label.no-entity', {
                               entity: t('label.certification'),
-                            })}
-                          />
-                        )}
-                      </div>
-                      <div className="font-medium certification-value">
-                        {(dataAsset as Table).certification ? (
-                          <CertificationTag
-                            showName
-                            certification={(dataAsset as Table).certification!}
-                          />
-                        ) : (
-                          t('label.no-entity', {
-                            entity: t('label.certification'),
-                          })
-                        )}
-                      </div>
-                    </Typography.Text>
-                  </div>
-                </Certification>
-              </>
-            )}
+                            })
+                          )}
+                        </div>
+                      </Typography.Text>
+                    </div>
+                  </Certification>
+                </>
+              )}
 
-            {extraInfo}
-          </div>
+              {extraInfo}
+            </div>
+          )}
         </Col>
       </Row>
 

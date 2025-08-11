@@ -158,8 +158,17 @@ const Lineage = ({
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className="lineage-card card-body-full w-auto border-none card-padding-0"
-      data-testid="lineage-details">
+      className="lineage-card border-none card-padding-0"
+      data-testid="lineage-details"
+      title={
+        isPlatformLineage ? null : (
+          <CustomControlsComponent
+            activeViewTab={activeViewTab}
+            handleActiveViewTabChange={handleActiveViewTabChange}
+            onlyShowTabSwitch={activeViewTab === LINEAGE_TAB_VIEW.TABLE_VIEW}
+          />
+        )
+      }>
       {isFullScreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
@@ -172,13 +181,6 @@ const Lineage = ({
           ref={reactFlowWrapper}>
           {init ? (
             <>
-              {isPlatformLineage ? null : (
-                <CustomControlsComponent
-                  activeViewTab={activeViewTab}
-                  className="absolute top-1 right-1 p-xs"
-                  handleActiveViewTabChange={handleActiveViewTabChange}
-                />
-              )}
               <LineageControlButtons
                 deleted={deleted}
                 entityType={entityType}
@@ -238,17 +240,7 @@ const Lineage = ({
           )}
         </div>
       ) : (
-        <div
-          className="h-full relative lineage-container overflow-auto"
-          data-testid="lineage-table-container">
-          <CustomControlsComponent
-            onlyShowTabSwitch
-            activeViewTab={activeViewTab}
-            className="absolute top-1 right-1 p-xs"
-            handleActiveViewTabChange={handleActiveViewTabChange}
-          />
-          <LineageTable />
-        </div>
+        <LineageTable />
       )}
     </Card>
   );
