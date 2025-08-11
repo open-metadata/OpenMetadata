@@ -72,19 +72,6 @@ public class MetricRepository extends EntityRepository<Metric> {
         throw new IllegalArgumentException(
             "customUnitOfMeasurement is required when unitOfMeasurement is OTHER");
       }
-
-      // Validate custom unit format
-      if (customUnit.length() > 50) {
-        throw new IllegalArgumentException(
-            "customUnitOfMeasurement cannot be longer than 50 characters");
-      }
-
-      // Allow alphanumeric, spaces, common symbols
-      if (!customUnit.matches("^[a-zA-Z0-9\\s\\-_/%()\\[\\]€$£¥]+$")) {
-        throw new IllegalArgumentException(
-            "customUnitOfMeasurement contains invalid characters. Only letters, numbers, spaces, and common symbols are allowed");
-      }
-
       // Trim and normalize
       metric.setCustomUnitOfMeasurement(customUnit.trim());
     } else {

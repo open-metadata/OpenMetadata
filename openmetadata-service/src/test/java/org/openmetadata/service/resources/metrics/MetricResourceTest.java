@@ -246,37 +246,36 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   }
 
   @Test
-  void test_createMetricWithCustomUnitTooLong() throws IOException {
-    String longUnit = "A".repeat(51); // 51 characters - exceeds limit
+  void test_createMetricWithLongCustomUnit() throws IOException {
+    // Test that very long custom units are accepted (no artificial limits)
+    String longUnit =
+        "Very Long Custom Unit Name That Could Be Used In Real World Scenarios Like Monthly Active Users Excluding Internal Test Accounts And Bots From Analytics Dashboard";
     CreateMetric createMetric =
         createRequest("test_long_custom_unit")
             .withMetricType(MetricType.COUNT)
             .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
             .withCustomUnitOfMeasurement(longUnit);
 
-    assertResponse(
-        () -> createEntity(createMetric, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "customUnitOfMeasurement cannot be longer than 50 characters");
+    Metric metric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals(longUnit, metric.getCustomUnitOfMeasurement());
   }
 
   @Test
-  void test_createMetricWithCustomUnitInvalidCharacters() throws IOException {
+  void test_createMetricWithSpecialCharacters() throws IOException {
+    // Test that all kinds of characters are accepted (no artificial restrictions)
     CreateMetric createMetric =
-        createRequest("test_invalid_custom_unit")
+        createRequest("test_special_custom_unit")
             .withMetricType(MetricType.COUNT)
             .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
-            .withCustomUnitOfMeasurement("INVALID@#$UNIT");
+            .withCustomUnitOfMeasurement("Special@#$%^&*()Characters用户数");
 
-    assertResponse(
-        () -> createEntity(createMetric, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "customUnitOfMeasurement contains invalid characters. Only letters, numbers, spaces, and common symbols are allowed");
+    Metric metric = createAndCheckEntity(createMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals("Special@#$%^&*()Characters用户数", metric.getCustomUnitOfMeasurement());
   }
 
   @Test
   void test_createMetricWithValidCustomUnits() throws IOException {
-    // Test various valid custom units
+    // Test various valid custom units including symbols, Unicode, punctuation
     String[] validUnits = {
       "EURO",
       "Minutes",
@@ -289,7 +288,15 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
       "€",
       "$",
       "£",
-      "¥"
+      "¥",
+      "₹",
+      "¢",
+      "API calls > 500ms",
+      "用户数", // Chinese characters
+      "Memory @ peak",
+      "Items #tagged",
+      "Rate: 95th percentile",
+      "Temperature °C"
     };
 
     for (int i = 0; i < validUnits.length; i++) {
