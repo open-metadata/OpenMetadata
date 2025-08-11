@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { EntityReference } from '../../../../generated/entity/type';
+import type { AppPlugin } from '../plugins/AppPlugin';
 
 export type ApplicationsContextType = {
   applications: EntityReference[];
+  plugins: AppPlugin[];
 };

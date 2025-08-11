@@ -41,6 +41,10 @@ jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
 }));
 
+jest.mock('../ApplicationsProvider/ApplicationsProvider', () => ({
+  useApplicationsProvider: () => ({ applications: [], plugins: [] }),
+}));
+
 const mockConfigureApp = jest.fn();
 const mockDeployApp = jest.fn();
 const mockRestoreApp = jest.fn();
