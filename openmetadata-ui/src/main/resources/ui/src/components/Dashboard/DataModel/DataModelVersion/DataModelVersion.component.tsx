@@ -52,7 +52,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedDataModelName,
@@ -81,9 +81,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {
@@ -167,7 +167,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />

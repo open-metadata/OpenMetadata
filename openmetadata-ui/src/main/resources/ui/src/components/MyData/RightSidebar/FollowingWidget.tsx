@@ -16,10 +16,14 @@ import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
-import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   applySortToData,
   FOLLOWING_WIDGET_FILTER_OPTIONS,
@@ -27,7 +31,6 @@ import {
   getSortOrder,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -46,6 +49,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
@@ -61,6 +65,7 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
@@ -78,7 +83,7 @@ function FollowingWidget({
       const sortOrder = getSortOrder(selectedEntityFilter);
 
       const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
+        pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
         query: '*',
         filters: `followers:${currentUser.id}`,
@@ -118,11 +123,11 @@ function FollowingWidget({
   const getEntityExtraInfo = (item: SourceType): ExtraInfo[] => {
     const extraInfo: ExtraInfo[] = [];
     // Add domain info
-    if (item.domain) {
+    if (item.domains) {
       extraInfo.push({
         key: 'Domain',
-        value: getDomainPath(item.domain.fullyQualifiedName),
-        placeholderText: getEntityName(item.domain),
+        value: getDomainPath(item.domains[0]?.fullyQualifiedName ?? ''),
+        placeholderText: getEntityName(item.domains[0] ?? {}),
         isLink: true,
         openInNewTab: false,
       });
@@ -179,11 +184,17 @@ function FollowingWidget({
     ),
     []
   );
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > PAGE_SIZE_BASE,
+    [followedData, isLoadingOwnedData]
+  );
+
   const followingContent = useMemo(() => {
     return (
       <div className="entity-list-body">
         <div className="cards-scroll-container flex-1 overflow-y-auto">
-          {followedData.map((item) => {
+          {followedData.slice(0, PAGE_SIZE_BASE).map((item) => {
             const extraInfo = getEntityExtraInfo(item);
 
             return (
@@ -206,16 +217,16 @@ function FollowingWidget({
                         </div>
                       }
                       type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column gap-1">
+                      <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography.Text
-                            className="text-left text-sm font-regular"
+                            className="text-left text-sm font-regular text-grey-600"
                             ellipsis={{ tooltip: true }}>
                             {item.serviceType}
                           </Typography.Text>
                         )}
                         <Typography.Text
-                          className="text-left text-sm font-semibold"
+                          className="text-left text-sm font-regular text-grey-800"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -243,39 +254,54 @@ function FollowingWidget({
         </div>
       </div>
     );
-  }, [followedData, emptyState]);
+  }, [followedData, emptyState, isExpanded]);
+
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={<FollowingAssetsIcon height={22} width={22} />}
+        isEditView={isEditView}
+        selectedSortBy={selectedEntityFilter}
+        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        title={t('label.following-assets')}
+        widgetKey={widgetKey}
+        widgetWidth={widgetData?.w}
+        onSortChange={(key) => handleEntityFilterChange({ key })}
+        onTitleClick={() =>
+          navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
+        }
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedEntityFilter,
+      t,
+      widgetKey,
+      widgetData?.w,
+      handleEntityFilterChange,
+    ]
+  );
 
   const WidgetContent = useMemo(() => {
     return (
       <div
         className="following-widget-container"
         data-testId="following-widget">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={<FollowingAssetsIcon height={24} width={24} />}
-          isEditView={isEditView}
-          selectedSortBy={selectedEntityFilter}
-          sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
-          title={t('label.following-assets')}
-          widgetKey={widgetKey}
-          widgetWidth={widgetData?.w}
-          onSortChange={(key) => handleEntityFilterChange({ key })}
-        />
         <div className="widget-content flex-1">
           {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter
             moreButtonLink={getUserPath(
               currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
+              UserPageTabs.FOLLOWING
             )}
-            moreButtonText={t('label.view-more-count', {
-              count: String(followedData.length > 0 ? followedData.length : ''),
-            })}
-            showMoreButton={
-              Boolean(!isLoadingOwnedData) && !isEmpty(followedData)
-            }
+            moreButtonText={t('label.view-more')}
+            showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
       </div>
@@ -283,20 +309,16 @@ function FollowingWidget({
   }, [
     followedData,
     emptyState,
-    isExpanded,
-    isLoadingOwnedData,
-    currentUser,
-    currentLayout,
-    handleLayoutUpdate,
-    handleRemoveWidget,
-    widgetKey,
-    widgetData,
-    isEditView,
+    followingContent,
+    currentUser?.name,
+    showWidgetFooterMoreButton,
+    t,
   ]);
 
   return (
     <WidgetWrapper
-      dataLength={followedData.length !== 0 ? followedData.length : 10}
+      dataTestId="KnowledgePanel.Following"
+      header={widgetHeader}
       loading={isLoadingOwnedData}>
       {WidgetContent}
     </WidgetWrapper>

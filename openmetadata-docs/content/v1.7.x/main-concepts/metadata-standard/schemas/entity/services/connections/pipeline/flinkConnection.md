@@ -1,5 +1,6 @@
 ---
 title: Flink Connection | OpenMetadata Apache Flink Connection
+description: Define Flink pipeline connection schema to support metadata ingestion for stream-based pipeline executions.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/flinkconnection
 ---
 

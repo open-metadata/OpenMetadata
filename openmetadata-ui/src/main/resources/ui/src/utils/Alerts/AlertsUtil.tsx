@@ -63,6 +63,7 @@ import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/T
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import {
+  DATA_CONTRACT_STATUS_OPTIONS,
   DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
@@ -431,7 +432,10 @@ export const getDestinationConfigField = (
               />
             </Form.Item>
           </Col>
-          {type === SubscriptionType.Webhook && (
+          {(type === SubscriptionType.Webhook ||
+            type === SubscriptionType.Slack ||
+            type === SubscriptionType.MSTeams ||
+            type === SubscriptionType.GChat) && (
             <Col span={24}>
               <Collapse
                 className="webhook-config-collapse"
@@ -536,6 +540,96 @@ export const getDestinationConfigField = (
                                           ]}>
                                           <Input
                                             data-testid={`header-value-input-${name}`}
+                                            placeholder={t('label.value')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                    </Row>
+                                  </div>
+
+                                  <Button
+                                    icon={<CloseOutlined />}
+                                    onClick={() => remove(name)}
+                                  />
+                                </div>
+                              </Col>
+                            ))}
+
+                            <Col span={24}>
+                              <Form.ErrorList errors={errors} />
+                            </Col>
+                          </Row>
+                        )}
+                      </Form.List>
+                    </Col>
+                    <Col span={24}>
+                      <Form.List name={[fieldName, 'config', 'queryParams']}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <Row
+                            data-testid={`webhook-${fieldName}-query-params-list`}
+                            gutter={[8, 8]}
+                            key="queryParams">
+                            <Col span={24}>
+                              <Row align="middle" justify="space-between">
+                                <Col>
+                                  <Typography.Text>
+                                    {`${t('label.query-parameter-plural')}:`}
+                                  </Typography.Text>
+                                </Col>
+                                <Col>
+                                  <Col>
+                                    <Button
+                                      icon={<PlusOutlined />}
+                                      type="primary"
+                                      onClick={() => add({})}
+                                    />
+                                  </Col>
+                                </Col>
+                              </Row>
+                            </Col>
+                            {fields.map(({ key, name }) => (
+                              <Col key={key} span={24}>
+                                <div className="flex gap-4">
+                                  <div className="flex-1 w-min-0">
+                                    <Row gutter={[8, 8]}>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'key']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.key'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`query-param-key-input-${name}`}
+                                            placeholder={t('label.key')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'value']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.value'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`query-param-value-input-${name}`}
                                             placeholder={t('label.value')}
                                           />
                                         </Form.Item>
@@ -683,6 +777,14 @@ export const getMessageFromArgumentName = (argumentName: string) => {
           }),
         }),
       });
+    case 'entityNameList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.entity-name', {
+            entity: t('label.entity'),
+          }),
+        }),
+      });
     case 'ownerNameList':
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
@@ -733,6 +835,12 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
           entity: t('label.test-case-result'),
+        }),
+      });
+    case 'contractStatusList':
+      return t('message.field-text-is-required', {
+        fieldText: t('label.entity-list', {
+          entity: t('label.data-contract-status'),
         }),
       });
     case 'testSuiteList':
@@ -810,6 +918,23 @@ export const getFieldByArgumentType = (
           optionFilterProp="label"
           placeholder={t('label.search-by-type', {
             type: t('label.table-lowercase'),
+          })}
+        />
+      );
+
+      break;
+
+    case 'entityNameList':
+      field = (
+        <AsyncSelect
+          api={getTableSuggestions}
+          className="w-full"
+          data-testid="entity-name-select"
+          maxTagTextLength={45}
+          mode="tags"
+          optionFilterProp="label"
+          placeholder={t('label.search-by-type', {
+            type: t('label.entity-lowercase'),
           })}
         />
       );
@@ -943,6 +1068,21 @@ export const getFieldByArgumentType = (
 
       break;
 
+    case 'contractStatusList':
+      field = (
+        <Select
+          className="w-full"
+          data-testid="contract-status-select"
+          mode="multiple"
+          options={DATA_CONTRACT_STATUS_OPTIONS}
+          placeholder={t('label.select-field', {
+            field: t('label.data-contract-status'),
+          })}
+        />
+      );
+
+      break;
+
     case 'testSuiteList':
       field = (
         <AsyncSelect
@@ -1049,6 +1189,36 @@ export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
         value,
       }));
 
+/**
+ * @description Function to get query params webhook config converted from an array
+ */
+export const getConfigQueryParamsObjectFromArray = (
+  queryParams?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  queryParams?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get query params webhook config converted from an object
+ */
+export const getConfigQueryParamsArrayFromObject = (
+  queryParams?: Webhook['queryParams']
+) =>
+  isUndefined(queryParams)
+    ? queryParams
+    : Object.entries(queryParams).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
@@ -1056,12 +1226,16 @@ export const getFormattedDestinations = (
     const { destinationType, config, ...otherData } = destination;
 
     const headers = getConfigHeaderObjectFromArray(config?.headers);
+    const queryParams = getConfigQueryParamsObjectFromArray(
+      config?.queryParams
+    );
 
     return {
       ...otherData,
       config: {
         ...config,
         headers: isEmpty(headers) ? undefined : headers,
+        queryParams: isEmpty(queryParams) ? undefined : queryParams,
       },
     };
   });
@@ -1102,6 +1276,9 @@ export const handleAlertSave = async ({
         config: {
           ...d.config,
           headers: getConfigHeaderObjectFromArray(d.config?.headers),
+          queryParams: getConfigQueryParamsObjectFromArray(
+            d.config?.queryParams
+          ),
         },
         category: d.category,
         timeout: data.timeout,
@@ -1445,6 +1622,9 @@ export const getModifiedAlertDataForForm = (
         config: {
           ...destination.config,
           headers: getConfigHeaderArrayFromObject(destination.config?.headers),
+          queryParams: getConfigQueryParamsArrayFromObject(
+            destination.config?.queryParams
+          ),
         },
       };
     }),

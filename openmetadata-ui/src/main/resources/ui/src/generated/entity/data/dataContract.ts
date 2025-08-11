@@ -77,15 +77,11 @@ export interface DataContract {
     /**
      * Quality expectations defined in the data contract.
      */
-    qualityExpectations?: QualityExpectation[];
+    qualityExpectations?: EntityReference[];
     /**
      * User references of the reviewers for this data contract.
      */
     reviewers?: EntityReference[];
-    /**
-     * Configuration for scheduling data contract validation checks.
-     */
-    scheduleConfig?: ScheduleConfig;
     /**
      * Schema definition for the data contract.
      */
@@ -99,6 +95,10 @@ export interface DataContract {
      */
     sourceUrl?: string;
     status?:    ContractStatus;
+    /**
+     * Reference to the test suite that contains tests related to this data contract.
+     */
+    testSuite?: EntityReference;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -218,7 +218,7 @@ export interface ContractUpdate {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Reference to a test case that enforces this quality expectation.
+ * Reference to the test suite that contains tests related to this data contract.
  */
 export interface EntityReference {
     /**
@@ -269,76 +269,20 @@ export interface EntityReference {
 export interface LatestResult {
     message?:   string;
     resultId?:  string;
-    status?:    Status;
+    status?:    ContractExecutionStatus;
     timestamp?: number;
 }
 
-export enum Status {
+/**
+ * Status of the data contract execution.
+ */
+export enum ContractExecutionStatus {
     Aborted = "Aborted",
     Failed = "Failed",
     PartialSuccess = "PartialSuccess",
     Queued = "Queued",
+    Running = "Running",
     Success = "Success",
-}
-
-/**
- * Quality expectation defined in the data contract.
- */
-export interface QualityExpectation {
-    /**
-     * Definition of the quality expectation.
-     */
-    definition: string;
-    /**
-     * Description of the quality expectation.
-     */
-    description?: string;
-    /**
-     * Name of the quality expectation.
-     */
-    name: string;
-    /**
-     * Reference to a test case that enforces this quality expectation.
-     */
-    testCase?: EntityReference;
-}
-
-/**
- * Configuration for scheduling data contract validation checks.
- */
-export interface ScheduleConfig {
-    /**
-     * Whether the scheduled validation is enabled.
-     */
-    enabled?: boolean;
-    /**
-     * End date for the scheduled validation.
-     */
-    endDate?: Date;
-    /**
-     * Number of retries on validation failure.
-     */
-    retries?: number;
-    /**
-     * Delay between retries in seconds.
-     */
-    retryDelay?: number;
-    /**
-     * Schedule interval for validation checks in cron format (e.g., '0 0 * * *' for daily).
-     */
-    scheduleInterval: string;
-    /**
-     * Start date for the scheduled validation.
-     */
-    startDate?: Date;
-    /**
-     * Timeout for validation execution in seconds.
-     */
-    timeout?: number;
-    /**
-     * Timezone for the scheduled validation.
-     */
-    timezone?: string;
 }
 
 /**
@@ -810,13 +754,38 @@ export interface SemanticsRule {
      */
     description: string;
     /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
      * Name of the semantics rule.
      */
-    name: string;
+    name:      string;
+    provider?: ProviderType;
     /**
      * Definition of the semantics rule.
      */
     rule: string;
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }
 
 /**

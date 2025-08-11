@@ -13,7 +13,14 @@
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  uniq,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
 import {
@@ -210,6 +217,21 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
 
+  // Add state for entityFqn that can be updated independently of URL params
+  const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
+
+  // Update entityFqn when decodedFqn changes (for backward compatibility)
+  useEffect(() => {
+    if (decodedFqn) {
+      setEntityFqn(decodedFqn);
+    }
+  }, [decodedFqn]);
+
+  // Function to update entityFqn
+  const updateEntityFqn = useCallback((fqn: string) => {
+    setEntityFqn(fqn);
+  }, []);
+
   const lineageLayer = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -269,7 +291,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       } = createEdgesAndEdgeMaps(
         allNodes,
         lineageData.edges ?? [],
-        decodedFqn,
+        entityFqn,
         activeLayer.includes(LineageLayer.ColumnLevelLineage),
         isFirstTime ? true : undefined
       );
@@ -277,7 +299,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const initialNodes = createNodes(
         allNodes,
         lineageData.edges ?? [],
-        decodedFqn,
+        entityFqn,
         incomingMap,
         outgoingMap,
         activeLayer.includes(LineageLayer.ColumnLevelLineage),
@@ -327,7 +349,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setColumnsHavingLineage(columnsHavingLineage);
     },
     [
-      decodedFqn,
+      entityFqn,
       activeLayer,
       isEditMode,
       reactFlowInstance,
@@ -372,7 +394,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         setLineageData(res);
 
-        const { nodes, edges, entity } = parseLineageData(res, '', decodedFqn);
+        const { nodes, edges, entity } = parseLineageData(res, '', entityFqn);
         const updatedEntityLineage = {
           nodes,
           edges,
@@ -392,7 +414,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    []
+    [entityFqn]
   );
 
   const fetchLineageData = useCallback(
@@ -416,7 +438,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
         setLineageData(res);
 
-        const { nodes, edges, entity } = parseLineageData(res, fqn, decodedFqn);
+        const { nodes, edges, entity } = parseLineageData(res, fqn, entityFqn);
         const updatedEntityLineage = {
           nodes,
           edges,
@@ -436,7 +458,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [queryFilter, decodedFqn]
+    [queryFilter, entityFqn]
   );
 
   const onPlatformViewChange = useCallback(
@@ -466,17 +488,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const exportLineageData = useCallback(
     async (_: string) => {
       return exportLineageAsync(
-        decodedFqn,
+        entityFqn,
         entityType,
         lineageConfig,
         queryFilter
       );
     },
-    [entityType, decodedFqn, lineageConfig, queryFilter]
+    [entityType, entityFqn, lineageConfig, queryFilter]
   );
 
   const onExportClick = useCallback(() => {
-    if (decodedFqn || isPlatformLineagePage) {
+    if (entityFqn || isPlatformLineagePage) {
       showModal({
         ...(isPlatformLineagePage
           ? {
@@ -484,7 +506,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               exportTypes: [ExportTypes.PNG],
             }
           : {
-              name: decodedFqn,
+              name: entityFqn,
               exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
             }),
         title: t('label.lineage'),
@@ -495,7 +517,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [
     entityType,
-    decodedFqn,
+    entityFqn,
     lineageConfig,
     queryFilter,
     nodes,
@@ -545,7 +567,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         const { nodes: newNodes, edges: newEdges } = parseLineageData(
           concatenatedLineageData,
           node.fullyQualifiedName ?? '',
-          decodedFqn
+          entityFqn
         );
 
         const uniqueNodes = [...(entityLineage.nodes ?? [])];
@@ -618,7 +640,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
       }
     },
-    [nodes, edges, lineageConfig, entityLineage, setEntityLineage, queryFilter]
+    [
+      nodes,
+      edges,
+      lineageConfig,
+      entityLineage,
+      setEntityLineage,
+      queryFilter,
+      entityFqn,
+    ]
   );
 
   const handleLineageTracing = useCallback(
@@ -679,6 +709,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       isPlatformLineage?: boolean
     ) => {
       setEntity(entity);
+      setEntityFqn(entity?.fullyQualifiedName ?? '');
       setEntityType(entityType);
       setIsPlatformLineage(isPlatformLineage ?? false);
       if (isPlatformLineage && !entity) {
@@ -951,7 +982,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const { nodes: newNodes, edges: newEdges } = parseLineageData(
         concatenatedLineageData,
         parentNode.data.node.fullyQualifiedName,
-        decodedFqn
+        entityFqn
       );
 
       updateLineageData(
@@ -1167,7 +1198,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               createEdgesAndEdgeMaps(
                 allNodes,
                 allEdges,
-                decodedFqn,
+                entityFqn,
                 activeLayer.includes(LineageLayer.ColumnLevelLineage)
               );
             setEdges(createdEdges);
@@ -1184,7 +1215,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           });
       }
     },
-    [entityLineage, nodes, decodedFqn]
+    [entityLineage, nodes, entityFqn]
   );
 
   const onAddPipelineClick = useCallback(() => {
@@ -1492,7 +1523,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [entityLineage, redrawLineage]);
 
   const onPlatformViewUpdate = useCallback(() => {
-    if (entity && decodedFqn && entityType) {
+    if (entity && entityFqn && entityType) {
       if (platformView === LineagePlatformView.Service && entity?.service) {
         fetchLineageData(
           entity?.service.fullyQualifiedName ?? '',
@@ -1501,11 +1532,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
       } else if (
         platformView === LineagePlatformView.Domain &&
-        entity?.domain
+        !isEmpty(entity?.domains)
       ) {
         fetchLineageData(
-          entity?.domain.fullyQualifiedName ?? '',
-          entity?.domain.type,
+          entity?.domains?.[0]?.fullyQualifiedName ?? '',
+          entity?.domains?.[0]?.type ?? '',
           lineageConfig
         );
       } else if (
@@ -1518,7 +1549,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           lineageConfig
         );
       } else if (platformView === LineagePlatformView.None) {
-        fetchLineageData(decodedFqn, entityType, lineageConfig);
+        fetchLineageData(entityFqn, entityType, lineageConfig);
       } else if (isPlatformLineage) {
         fetchPlatformLineage(
           getEntityTypeFromPlatformView(platformView),
@@ -1534,7 +1565,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [
     entity,
     entityType,
-    decodedFqn,
+    entityFqn,
     lineageConfig,
     platformView,
     queryFilter,
@@ -1564,7 +1595,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         getUpstreamDownstreamNodesEdges(
           updatedEntityLineage.edges ?? [],
           updatedEntityLineage.nodes ?? [],
-          decodedFqn
+          entityFqn
         );
 
       const updatedNodes =
@@ -1581,7 +1612,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         nodes: updatedNodes as EntityReference[],
       });
     }
-  }, [isEditMode, updatedEntityLineage, decodedFqn]);
+  }, [isEditMode, updatedEntityLineage, entityFqn]);
 
   useEffect(() => {
     if (isEditMode) {
@@ -1651,6 +1682,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       expandAllColumns,
       platformView,
       isPlatformLineage,
+      entityFqn,
+      updateEntityFqn,
       toggleColumnView,
       onInitReactFlow,
       onPaneClick,
@@ -1701,6 +1734,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     columnsHavingLineage,
     expandAllColumns,
     isPlatformLineage,
+    entityFqn,
+    updateEntityFqn,
     toggleColumnView,
     onInitReactFlow,
     onPaneClick,
@@ -1748,9 +1783,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     if (activeLayer.includes(LineageLayer.DataObservability)) {
-      fetchDataQualityLineage(decodedFqn, lineageConfig);
+      fetchDataQualityLineage(entityFqn, lineageConfig);
     }
-  }, [activeLayer, decodedFqn, lineageConfig]);
+  }, [activeLayer, entityFqn, lineageConfig]);
 
   useEffect(() => {
     if (
@@ -1792,11 +1827,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               onEdgeDetailsUpdate={onEdgeDetailsUpdate}
             />
           ) : (
-            <EntityInfoDrawer
-              selectedNode={selectedNode}
-              show={isDrawerOpen}
-              onCancel={() => setIsDrawerOpen(false)}
-            />
+            !isEmpty(selectedNode) && (
+              <EntityInfoDrawer
+                selectedNode={selectedNode}
+                show={isDrawerOpen}
+                onCancel={() => setIsDrawerOpen(false)}
+              />
+            )
           ))}
 
         {showDeleteModal && (

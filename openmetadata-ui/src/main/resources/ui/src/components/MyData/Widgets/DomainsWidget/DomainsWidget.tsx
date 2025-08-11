@@ -10,23 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
-import { isEmpty, orderBy, toLower } from 'lodash';
+import { Button, Typography } from 'antd';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
-} from '../../../../enums/common.enum';
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../../constants/constants';
+import {
+  applySortToData,
+  getSortField,
+  getSortOrder,
+} from '../../../../constants/Widgets.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getDomainList } from '../../../../rest/domainAPI';
+import { searchData } from '../../../../rest/miscAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
+import { getDomainDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -47,24 +59,47 @@ const DomainsWidget = ({
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const [domains, setDomains] = useState<Domain[]>([]);
+  const navigate = useNavigate();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     DOMAIN_SORT_BY_KEYS.LATEST
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDomains = async () => {
+  const fetchDomains = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getDomainList({ limit: 100, fields: ['assets'] });
-      setDomains(res.data || []);
+      const sortField = getSortField(selectedSortBy);
+      const sortOrder = getSortOrder(selectedSortBy);
+
+      const res = await searchData(
+        '',
+        INITIAL_PAGING_VALUE,
+        PAGE_SIZE_MEDIUM,
+        '',
+        sortField,
+        sortOrder,
+        SearchIndex.DOMAIN
+      );
+
+      const domains = res?.data?.hits?.hits.map((hit) => hit._source);
+      const sortedDomains = applySortToData(domains, selectedSortBy);
+      setDomains(sortedDomains as Domain[]);
     } catch {
       setError(t('message.fetch-domain-list-error'));
+      setDomains([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
+
+  const handleDomainClick = useCallback(
+    (domain: Domain) => {
+      navigate(getDomainDetailsPath(domain.fullyQualifiedName ?? ''));
+    },
+    [navigate]
+  );
 
   const domainsWidget = useMemo(() => {
     const widget = currentLayout?.find(
@@ -80,37 +115,21 @@ const DomainsWidget = ({
 
   useEffect(() => {
     fetchDomains();
-  }, []);
-
-  const sortedDomains = useMemo(() => {
-    if (selectedSortBy === DOMAIN_SORT_BY_KEYS.LATEST) {
-      return orderBy(domains, [(item) => item.updatedAt], [SORT_ORDER.DESC]);
-    } else if (selectedSortBy === DOMAIN_SORT_BY_KEYS.A_TO_Z) {
-      return orderBy(
-        domains,
-        [(item) => toLower(item.displayName || item.name)],
-        [SORT_ORDER.ASC]
-      );
-    } else if (selectedSortBy === DOMAIN_SORT_BY_KEYS.Z_TO_A) {
-      return orderBy(
-        domains,
-        [(item) => toLower(item.displayName || item.name)],
-        [SORT_ORDER.DESC]
-      );
-    }
-
-    return domains;
-  }, [domains, selectedSortBy]);
+  }, [fetchDomains]);
 
   const handleSortByClick = useCallback((key: string) => {
     setSelectedSortBy(key);
   }, []);
 
+  const handleTitleClick = useCallback(() => {
+    navigate(ROUTES.DOMAIN);
+  }, [navigate]);
+
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink="/domain"
-        actionButtonText="Explore Domain"
+        actionButtonLink={ROUTES.DOMAIN}
+        actionButtonText={t('label.explore-domain')}
         description={t('message.domains-no-data-message')}
         icon={<DomainNoDataPlaceholder />}
         title={t('label.no-domains-yet')}
@@ -123,12 +142,16 @@ const DomainsWidget = ({
     () => (
       <div className="entity-list-body">
         <div className="domains-widget-grid">
-          {sortedDomains.map((domain) => (
-            <div
-              className={`domain-card${isFullSize ? ' domain-card-full' : ''}`}
-              key={domain.id}>
+          {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
+            <Button
+              className={classNames('domain-card', {
+                'domain-card-full': isFullSize,
+                'p-0': !isFullSize,
+              })}
+              key={domain.id}
+              onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
-                <>
+                <div className="d-flex gap-2">
                   <div
                     className="domain-card-full-icon"
                     style={{ background: domain.style?.color }}>
@@ -137,11 +160,10 @@ const DomainsWidget = ({
                   <div className="domain-card-full-content">
                     <div className="domain-card-full-title-row">
                       <Typography.Text
-                        className="text-md"
+                        className="font-semibold"
                         ellipsis={{
                           tooltip: true,
-                        }}
-                        style={{ fontWeight: 600 }}>
+                        }}>
                         {domain.displayName || domain.name}
                       </Typography.Text>
                       <span className="domain-card-full-count">
@@ -149,78 +171,90 @@ const DomainsWidget = ({
                       </span>
                     </div>
                   </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <div
-                    className="domain-card-bar"
-                    style={{ background: domain.style?.color }}
-                  />
+                <div
+                  className="d-flex domain-card-bar"
+                  style={{ borderLeftColor: domain.style?.color }}>
                   <div className="domain-card-content">
                     <span className="domain-card-title">
                       <div className="domain-card-icon">
                         {getDomainIcon(domain.style?.iconURL)}
                       </div>
-                      <span className="domain-card-name">
-                        <Typography.Paragraph
-                          ellipsis={{ tooltip: true }}
-                          style={{ marginBottom: 0 }}>
-                          {domain.displayName || domain.name}
-                        </Typography.Paragraph>
-                      </span>
+                      <Typography.Text
+                        className="domain-card-name"
+                        ellipsis={{ tooltip: true }}>
+                        {domain.displayName || domain.name}
+                      </Typography.Text>
                     </span>
                     <span className="domain-card-count">
                       {domain.assets?.length || 0}
                     </span>
                   </div>
-                </>
+                </div>
               )}
-            </div>
+            </Button>
           ))}
         </div>
       </div>
     ),
-    [sortedDomains, isFullSize]
+    [domains, isFullSize]
+  );
+
+  const showWidgetFooterMoreButton = useMemo(
+    () => Boolean(!loading) && domains.length > PAGE_SIZE_BASE,
+    [domains, loading]
   );
 
   const footer = useMemo(
     () => (
       <WidgetFooter
         moreButtonLink="/domain"
-        moreButtonText={t('label.view-more-count', {
-          count:
-            sortedDomains.length > 10 ? sortedDomains.length - 10 : undefined,
-        })}
-        showMoreButton={Boolean(!loading)}
+        moreButtonText={t('label.view-more')}
+        showMoreButton={showWidgetFooterMoreButton}
       />
     ),
-    [t, sortedDomains.length, loading]
+    [t, showWidgetFooterMoreButton]
+  );
+
+  const widgetHeader = useMemo(
+    () => (
+      <WidgetHeader
+        currentLayout={currentLayout}
+        handleLayoutUpdate={handleLayoutUpdate}
+        handleRemoveWidget={handleRemoveWidget}
+        icon={
+          <DomainIcon className="domains-widget-globe" height={22} width={22} />
+        }
+        isEditView={isEditView}
+        selectedSortBy={selectedSortBy}
+        sortOptions={DOMAIN_SORT_BY_OPTIONS}
+        title={t('label.domain-plural')}
+        widgetKey={widgetKey}
+        widgetWidth={2}
+        onSortChange={handleSortByClick}
+        onTitleClick={handleTitleClick}
+      />
+    ),
+    [
+      currentLayout,
+      handleLayoutUpdate,
+      handleRemoveWidget,
+      isEditView,
+      selectedSortBy,
+      t,
+      widgetKey,
+      handleSortByClick,
+      handleTitleClick,
+    ]
   );
 
   return (
     <WidgetWrapper
-      dataLength={domains.length !== 0 ? domains.length : 10}
+      dataTestId="KnowledgePanel.Domains"
+      header={widgetHeader}
       loading={loading}>
       <div className="domains-widget-container">
-        <WidgetHeader
-          currentLayout={currentLayout}
-          handleLayoutUpdate={handleLayoutUpdate}
-          handleRemoveWidget={handleRemoveWidget}
-          icon={
-            <DomainIcon
-              className="domains-widget-globe"
-              height={24}
-              width={24}
-            />
-          }
-          isEditView={isEditView}
-          selectedSortBy={selectedSortBy}
-          sortOptions={DOMAIN_SORT_BY_OPTIONS}
-          title={t('label.domain-plural')}
-          widgetKey={widgetKey}
-          widgetWidth={2}
-          onSortChange={handleSortByClick}
-        />
         <div className="widget-content flex-1">
           {error ? (
             <ErrorPlaceHolder
@@ -228,13 +262,13 @@ const DomainsWidget = ({
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               {error}
             </ErrorPlaceHolder>
-          ) : isEmpty(sortedDomains) ? (
+          ) : isEmpty(domains) ? (
             emptyState
           ) : (
             domainsList
           )}
         </div>
-        {!isEmpty(sortedDomains) && footer}
+        {!isEmpty(domains) && footer}
       </div>
     </WidgetWrapper>
   );

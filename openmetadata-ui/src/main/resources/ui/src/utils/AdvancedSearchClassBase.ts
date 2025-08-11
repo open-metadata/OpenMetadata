@@ -702,15 +702,15 @@ class AdvancedSearchClassBase {
         },
       },
 
-      [EntityFields.DOMAIN]: {
-        label: t('label.domain'),
+      [EntityFields.DOMAINS]: {
+        label: t('label.domain-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
 
         fieldSettings: {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
-            entityField: EntityFields.DOMAIN,
+            entityField: EntityFields.DOMAINS,
           }),
           useAsyncSearch: true,
         },
@@ -800,6 +800,27 @@ class AdvancedSearchClassBase {
         valueSources: ['value'],
         fieldSettings: {
           listValues: TAG_LABEL_TYPE_LIST_VALUES,
+        },
+      },
+      [EntityFields.TIER_LABEL_TYPE]: {
+        label: t('label.tier-label-type'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: TAG_LABEL_TYPE_LIST_VALUES,
+        },
+      },
+      [EntityFields.CREATED_BY]: {
+        label: t('label.created-by'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.USER],
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
         },
       },
     };

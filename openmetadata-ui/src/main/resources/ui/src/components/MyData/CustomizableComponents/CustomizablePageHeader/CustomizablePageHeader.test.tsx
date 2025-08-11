@@ -179,9 +179,7 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    expect(translation).toHaveBeenCalledWith('label.customize-entity', {
-      entity: 'label.landing-page',
-    });
+    expect(translation).toHaveBeenCalledWith('label.home-page');
   });
 
   it('should handle navigation link to persona details', () => {

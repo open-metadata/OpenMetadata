@@ -15,6 +15,7 @@ import { MoreOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
+import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';
 import './widget-more-options.less';
 
 export interface MoreOption {
@@ -28,20 +29,20 @@ export interface WidgetMoreOptionsProps {
   menuItems: MoreOption[];
   onMenuClick: (e: MenuInfo) => void;
   className?: string;
-  dataTestId?: string;
 }
 
 const WidgetMoreOptions = ({
   menuItems,
   onMenuClick,
   className = '',
-  dataTestId = 'widget-more-options',
 }: WidgetMoreOptionsProps) => {
   return (
     <div className="widget-more-options-container">
       <Dropdown
+        destroyPopupOnHide
         className={`widget-more-options ${className}`}
-        data-testid={dataTestId}
+        data-testid="widget-more-options"
+        getPopupContainer={getVisiblePopupContainer}
         menu={{
           items: menuItems,
           selectable: false,

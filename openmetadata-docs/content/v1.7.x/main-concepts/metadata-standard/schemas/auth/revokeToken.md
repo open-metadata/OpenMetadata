@@ -1,5 +1,6 @@
 ---
 title: Revoke Token API | OpenMetadata Token Revocation
+description: Revoke issued tokens manually using this revocation schema.
 slug: /main-concepts/metadata-standard/schemas/auth/revoketoken
 ---
 

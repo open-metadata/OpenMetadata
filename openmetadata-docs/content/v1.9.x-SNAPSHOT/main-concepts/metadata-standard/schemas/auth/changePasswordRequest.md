@@ -1,5 +1,6 @@
 ---
-title: changePasswordRequest
+title: changePasswordRequest | Official Documentation
+description: Request to change the current password of an authenticated user.
 slug: /main-concepts/metadata-standard/schemas/auth/changepasswordrequest
 ---
 

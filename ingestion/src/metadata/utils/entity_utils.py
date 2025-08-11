@@ -44,6 +44,10 @@ from metadata.generated.schema.entity.services.searchService import (
     SearchService,
     SearchServiceType,
 )
+from metadata.generated.schema.entity.services.securityService import (
+    SecurityService,
+    SecurityServiceType,
+)
 from metadata.generated.schema.entity.services.storageService import (
     StorageService,
     StorageServiceType,
@@ -62,6 +66,7 @@ class ServiceClass(Enum):
     ML_MODEL = MlModelService
     SEARCH = SearchService
     STORAGE = StorageService
+    SECURITY = SecurityService
 
 
 SERVICE_TYPE_MAP = {
@@ -74,6 +79,7 @@ SERVICE_TYPE_MAP = {
     MlModelService: MlModelServiceType,
     SearchService: SearchServiceType,
     StorageService: StorageServiceType,
+    SecurityService: SecurityServiceType,
 }
 
 

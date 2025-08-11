@@ -1,5 +1,6 @@
 ---
 title: Page View Event Schema | OpenMetadata Page View Analytics
+description: Connect Pageviewevent to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/analytics/webanalyticeventtype/pageviewevent
 ---
 

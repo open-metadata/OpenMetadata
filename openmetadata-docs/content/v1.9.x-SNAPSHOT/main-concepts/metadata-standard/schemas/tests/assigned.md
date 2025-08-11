@@ -1,5 +1,6 @@
 ---
 title: Test Assigned | OpenMetadata Test Assigned Details
+description: Connect Assigned to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/tests/assigned
 ---
 

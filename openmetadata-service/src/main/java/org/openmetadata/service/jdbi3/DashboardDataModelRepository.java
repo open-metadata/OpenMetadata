@@ -17,9 +17,12 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -181,12 +184,26 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (!fields.contains(FIELD_TAGS) || dataModels == null || dataModels.isEmpty()) {
       return;
     }
-    // Use bulk tag fetching to avoid N+1 queries
-    bulkPopulateEntityFieldTags(
-        dataModels,
-        entityType,
-        DashboardDataModel::getColumns,
-        DashboardDataModel::getFullyQualifiedName);
+
+    // First, fetch entity-level tags (important for search indexing)
+    List<String> entityFQNs =
+        dataModels.stream().map(DashboardDataModel::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (DashboardDataModel dataModel : dataModels) {
+      dataModel.setTags(
+          addDerivedTags(
+              tagsMap.getOrDefault(dataModel.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if columns field is requested, also fetch column-level tags
+    if (fields.contains("columns")) {
+      // Use bulk tag fetching to avoid N+1 queries
+      bulkPopulateEntityFieldTags(
+          dataModels,
+          entityType,
+          DashboardDataModel::getColumns,
+          DashboardDataModel::getFullyQualifiedName);
+    }
   }
 
   @Override
@@ -202,6 +219,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     for (DashboardDataModel dataModel : dataModels) {
       setDefaultFields(dataModel);
     }
+
+    fetchAndSetFields(dataModels, fields);
+    setInheritedFields(dataModels, fields);
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);

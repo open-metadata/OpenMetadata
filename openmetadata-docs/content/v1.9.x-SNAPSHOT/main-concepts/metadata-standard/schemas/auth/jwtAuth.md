@@ -1,5 +1,6 @@
 ---
 title: JWT Auth Schema | OpenMetadata JWT Authentication
+description: Authenticate via JWT (JSON Web Token) using this secure schema.
 slug: /main-concepts/metadata-standard/schemas/auth/jwtauth
 ---
 

@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -43,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -396,12 +398,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // When domain is not set for a topic, carry it forward from the messaging service
     MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
     CreateMessagingService createService =
-        serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        serviceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a topic without domain and ensure it inherits domain from the parent
     CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
   @Test
@@ -563,7 +565,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
               : JsonUtils.readObjects(expected.toString(), EntityReference.class);
       List<EntityReference> actualOwners =
           JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
+      assertReferenceList(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -620,5 +622,118 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
     // Check the nested columns
     assertFields(expectedField.getChildren(), actualField.getChildren());
+  }
+
+  @Test
+  void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
+    // Use existing tags that are already set up in the test environment
+    TagLabel topicTagLabel = USER_ADDRESS_TAG_LABEL;
+    TagLabel fieldTagLabel = PERSONAL_DATA_TAG_LABEL;
+
+    // Create multiple topics with tags at both topic and field levels
+    List<Topic> createdTopics = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      List<Field> schemaFields =
+          Arrays.asList(
+              getField("field1_" + i, FieldDataType.STRING, fieldTagLabel),
+              getField("field2_" + i, FieldDataType.STRING, null));
+
+      MessageSchema messageSchema =
+          new MessageSchema().withSchemaType(SchemaType.Avro).withSchemaFields(schemaFields);
+
+      CreateTopic createTopic =
+          createRequest(test.getDisplayName() + "_pagination_" + i)
+              .withMessageSchema(messageSchema)
+              .withTags(List.of(topicTagLabel));
+
+      Topic topic = createEntity(createTopic, ADMIN_AUTH_HEADERS);
+      createdTopics.add(topic);
+    }
+
+    // Test pagination with fields=tags (should fetch topic-level tags only)
+    WebTarget target = getResource("topics").queryParam("fields", "tags").queryParam("limit", "10");
+
+    TopicList topicList = TestUtils.get(target, TopicList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(topicList.getData());
+
+    // Verify at least one of our created topics is in the response
+    List<Topic> ourTopics =
+        topicList.getData().stream()
+            .filter(t -> createdTopics.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTopics.isEmpty(), "Should find at least one of our created topics in pagination");
+
+    // Verify topic-level tags are fetched
+    for (Topic topic : ourTopics) {
+      assertNotNull(
+          topic.getTags(), "Topic-level tags should not be null when fields=tags in pagination");
+      assertEquals(1, topic.getTags().size(), "Should have exactly one topic-level tag");
+      assertEquals(topicTagLabel.getTagFQN(), topic.getTags().get(0).getTagFQN());
+
+      // Fields should not have tags when only fields=tags is specified
+      if (topic.getMessageSchema() != null && topic.getMessageSchema().getSchemaFields() != null) {
+        for (Field field : topic.getMessageSchema().getSchemaFields()) {
+          assertTrue(
+              field.getTags() == null || field.getTags().isEmpty(),
+              "Field tags should not be populated when only fields=tags is specified in pagination");
+        }
+      }
+    }
+
+    // Test pagination with fields=messageSchema,tags (should fetch both topic and field tags)
+    target =
+        getResource("topics").queryParam("fields", "messageSchema,tags").queryParam("limit", "10");
+
+    topicList = TestUtils.get(target, TopicList.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(topicList.getData());
+
+    // Verify at least one of our created topics is in the response
+    ourTopics =
+        topicList.getData().stream()
+            .filter(t -> createdTopics.stream().anyMatch(ct -> ct.getId().equals(t.getId())))
+            .collect(Collectors.toList());
+
+    assertFalse(
+        ourTopics.isEmpty(), "Should find at least one of our created topics in pagination");
+
+    // Verify both topic-level and field-level tags are fetched
+    for (Topic topic : ourTopics) {
+      // Verify topic-level tags
+      assertNotNull(
+          topic.getTags(),
+          "Topic-level tags should not be null in pagination with messageSchema,tags");
+      assertEquals(1, topic.getTags().size(), "Should have exactly one topic-level tag");
+      assertEquals(topicTagLabel.getTagFQN(), topic.getTags().get(0).getTagFQN());
+
+      // Verify field-level tags
+      assertNotNull(
+          topic.getMessageSchema(),
+          "MessageSchema should not be null when fields includes messageSchema");
+      assertNotNull(topic.getMessageSchema().getSchemaFields(), "Schema fields should not be null");
+
+      Field field1 =
+          topic.getMessageSchema().getSchemaFields().stream()
+              .filter(f -> f.getName().startsWith("field1_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find field1 field"));
+
+      assertNotNull(
+          field1.getTags(),
+          "Field tags should not be null when fields=messageSchema,tags in pagination");
+      assertEquals(1, field1.getTags().size(), "Field should have exactly one tag");
+      assertEquals(fieldTagLabel.getTagFQN(), field1.getTags().get(0).getTagFQN());
+
+      // field2 should not have tags
+      Field field2 =
+          topic.getMessageSchema().getSchemaFields().stream()
+              .filter(f -> f.getName().startsWith("field2_"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Should find field2 field"));
+
+      assertTrue(
+          field2.getTags() == null || field2.getTags().isEmpty(), "field2 should not have tags");
+    }
   }
 }

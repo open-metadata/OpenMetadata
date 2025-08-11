@@ -120,7 +120,7 @@ describe('CustomiseSearchBar', () => {
   it('should render the search input', () => {
     render(<CustomiseSearchBar />);
 
-    expect(screen.getByTestId('customise-searchbox')).toBeInTheDocument();
+    expect(screen.getByTestId('searchBox')).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText('label.search-for-type')
     ).toBeInTheDocument();
@@ -185,7 +185,7 @@ describe('CustomiseSearchBar', () => {
   it('should handle search input change', () => {
     render(<CustomiseSearchBar />);
 
-    const searchInput = screen.getByTestId('customise-searchbox');
+    const searchInput = screen.getByTestId('searchBox');
     fireEvent.change(searchInput, { target: { value: 'test search' } });
 
     expect(searchInput).toHaveValue('test search');
@@ -194,7 +194,7 @@ describe('CustomiseSearchBar', () => {
   it('should handle Enter key press for search', () => {
     render(<CustomiseSearchBar />);
 
-    const searchInput = screen.getByTestId('customise-searchbox');
+    const searchInput = screen.getByTestId('searchBox');
     fireEvent.change(searchInput, { target: { value: 'test search' } });
     fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
 
@@ -213,7 +213,7 @@ describe('CustomiseSearchBar', () => {
 
     render(<CustomiseSearchBar />);
 
-    const searchInput = screen.getByTestId('customise-searchbox');
+    const searchInput = screen.getByTestId('searchBox');
 
     expect(searchInput).toHaveValue('initial search');
   });

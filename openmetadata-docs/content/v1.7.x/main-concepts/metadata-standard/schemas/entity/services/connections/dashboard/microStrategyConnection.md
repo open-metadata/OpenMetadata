@@ -1,5 +1,6 @@
 ---
-title: microStrategyConnection
+title: microStrategyConnection | Official Documentation
+description: Configure MicroStrategy dashboard connections with supported schema for structured ingestion and detailed visualization metadata tracking.
 slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashboard/microstrategyconnection
 ---
 
