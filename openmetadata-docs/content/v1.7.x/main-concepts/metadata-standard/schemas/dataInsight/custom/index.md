@@ -1,5 +1,5 @@
 ---
-title: Custom Data Insight Schemas | `brandName` Data Insight Custom
+title: Custom Data Insight Schemas | OpenMetadata Data Insight Custom
 description: Connect Custom to enable streamlined access, monitoring, or search of enterprise data using secure and scalable integrations.
 slug: /main-concepts/metadata-standard/schemas/datainsight/custom
 ---

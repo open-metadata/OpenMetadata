@@ -1,5 +1,5 @@
 ---
-title: AWS Glue Connector | `brandName` Data Integration Guide
+title: AWS Glue Connector | OpenMetadata Data Integration Guide
 description: Learn how to integrate AWS Glue with OpenMetadata using our comprehensive database connector guide. Step-by-step setup, configuration, and metadata extraction.
 slug: /connectors/database/glue
 ---

@@ -1,5 +1,5 @@
 ---
-title: Create Search Service | `brandName` Search Service
+title: Create Search Service | OpenMetadata Search Service
 description: Register a new search service to catalog and search metadata assets with configuration and indexing options.
 slug: /main-concepts/metadata-standard/schemas/api/services/createsearchservice
 ---

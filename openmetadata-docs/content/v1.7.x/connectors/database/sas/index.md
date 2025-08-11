@@ -1,6 +1,6 @@
 ---
 title: SAS Connector | OpenMetadata Analytics Integration Guide
-description: Connect SAS databases to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+description: Connect SAS databases to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/sas
 ---
 
