@@ -1,5 +1,5 @@
 ---
-title: API Schemas Index | `brandName` API Schema Overview
+title: API Schemas Index | OpenMetadata API Schema Overview
 description: API metadata schema for defining REST endpoints, schemas, documentation, and request/response types.
 slug: /main-concepts/metadata-standard/schemas/api
 ---

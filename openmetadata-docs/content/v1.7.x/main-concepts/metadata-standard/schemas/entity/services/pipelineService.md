@@ -1,5 +1,5 @@
 ---
-title: Pipeline Service | `brandName` Pipeline Service
+title: Pipeline Service | OpenMetadata Pipeline Service
 description: Model pipeline service metadata with configurations and ingestion support for orchestration tools.
 slug: /main-concepts/metadata-standard/schemas/entity/services/pipelineservice
 ---

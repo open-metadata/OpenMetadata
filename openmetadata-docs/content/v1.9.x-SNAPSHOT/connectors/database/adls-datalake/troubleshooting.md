@@ -1,6 +1,6 @@
 ---
 title: ADLS Datalake Connector Troubleshooting
-description: Resolve ADLS Data Lake connector issues in `brandName` with expert troubleshooting guides, common fixes, and step-by-step solutions for seamless integration.
+description: Resolve ADLS Data Lake connector issues in OpenMetadata with expert troubleshooting guides, common fixes, and step-by-step solutions for seamless integration.
 slug: /connectors/database/adls-datalake/troubleshooting
 ---
 

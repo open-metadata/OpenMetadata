@@ -1,6 +1,6 @@
 ---
-title: Lightdash Troubleshooting Guide | `brandName` Support
-description: Solve Lightdash connector issues in `brandName` with our comprehensive troubleshooting guide. Fix common problems, debug errors, and optimize your setup.
+title: Lightdash Troubleshooting Guide | OpenMetadata Support
+description: Solve Lightdash connector issues in OpenMetadata with our comprehensive troubleshooting guide. Fix common problems, debug errors, and optimize your setup.
 slug: /connectors/dashboard/lightdash/troubleshooting
 ---
 

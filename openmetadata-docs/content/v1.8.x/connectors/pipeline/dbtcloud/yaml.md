@@ -1,6 +1,6 @@
 ---
 title: Run the dbt Cloud Connector Externally
-description: Learn how to Configure `brandName`'sdbt Cloud connector using YAML. Step-by-step setup guide for seamless data pipeline integration and metadata extraction.
+description: Learn how to Configure OpenMetadata'sdbt Cloud connector using YAML. Step-by-step setup guide for seamless data pipeline integration and metadata extraction.
 slug: /connectors/pipeline/dbtcloud/yaml
 ---
 

@@ -1,6 +1,6 @@
 ---
-title: Elasticsearch Connector | `brandName` Search Services
-description: Connect Elasticsearch to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and integration instructions for seamless search.
+title: Elasticsearch Connector | OpenMetadata Search Services
+description: Connect Elasticsearch to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and integration instructions for seamless search.
 slug: /connectors/search/elasticsearch
 ---
 

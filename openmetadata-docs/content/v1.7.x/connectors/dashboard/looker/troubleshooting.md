@@ -1,6 +1,6 @@
 ---
-title: Looker Troubleshooting Guide | `brandName` Support
-description: Solve Looker connector issues in `brandName` with expert troubleshooting guides. Fix authentication, API errors, and data sync problems quickly.
+title: Looker Troubleshooting Guide | OpenMetadata Support
+description: Solve Looker connector issues in OpenMetadata with expert troubleshooting guides. Fix authentication, API errors, and data sync problems quickly.
 slug: /connectors/dashboard/looker/troubleshooting
 ---
 

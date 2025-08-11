@@ -1,5 +1,5 @@
 ---
-title: Pipeline Services | `brandName` Data Pipeline Guide
+title: Pipeline Services | OpenMetadata Data Pipeline Guide
 description: Browse pipeline connectors including Airflow, Flink, NiFi, and more to ingest lineage metadata.
 slug: /connectors/pipeline
 ---

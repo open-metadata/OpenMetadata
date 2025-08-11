@@ -1,6 +1,6 @@
 ---
 title: SAP HANA Connector | OpenMetadata High-Performance DB
-description: Connect SAP HANA to `brandName` effortlessly with our comprehensive database connector guide. Setup instructions, configuration steps, and troubleshoot...
+description: Connect SAP HANA to OpenMetadata effortlessly with our comprehensive database connector guide. Setup instructions, configuration steps, and troubleshoot...
 slug: /connectors/database/sap-hana
 ---
 
