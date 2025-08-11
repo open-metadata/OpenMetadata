@@ -113,14 +113,21 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 }));
 
 describe('Test Glossary-term component', () => {
-  it('Should make first tab active when activeTab is undefined', async () => {
+  it('Should render overview tab when activeTab is undefined', async () => {
     render(<GlossaryTerms {...mockProps} />);
 
-    const tabs = await screen.findAllByRole('tab');
-    const overviewTab = tabs[0];
+    expect(screen.getByTestId('glossary-term')).toBeInTheDocument();
 
-    expect(overviewTab).toBeInTheDocument();
-    expect(overviewTab.textContent).toBe('label.overview');
+    const tabs = await screen.findAllByRole('tab');
+
+    expect(tabs).toHaveLength(5);
+    expect(tabs[0].textContent).toBe('label.overview');
+
+    tabs
+      .filter((tab) => tab.textContent !== 'label.overview')
+      .forEach((tab) => {
+        expect(tab).not.toHaveAttribute('aria-selected', 'true');
+      });
 
     expect(mockPush).not.toHaveBeenCalled();
   });
