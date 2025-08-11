@@ -100,6 +100,26 @@ const SubDomainsTable = ({
     [handlePageChange]
   );
 
+  const customPaginationProps = useMemo(
+    () => ({
+      currentPage,
+      pageSize,
+      paging,
+      pagingHandler: handlePagingClick,
+      showPagination,
+      isNumberBased: true,
+      isLoading,
+    }),
+    [
+      currentPage,
+      pageSize,
+      paging,
+      handlePagingClick,
+      showPagination,
+      isLoading,
+    ]
+  );
+
   useEffect(() => {
     if (domainFqn) {
       fetchSubDomains();
@@ -171,15 +191,7 @@ const SubDomainsTable = ({
     <Table
       columns={columns}
       containerClassName="m-md"
-      customPaginationProps={{
-        currentPage,
-        pageSize,
-        paging,
-        pagingHandler: handlePagingClick,
-        showPagination,
-        isNumberBased: true,
-        isLoading,
-      }}
+      customPaginationProps={customPaginationProps}
       dataSource={subDomains}
       pagination={false}
       rowKey="fullyQualifiedName"
