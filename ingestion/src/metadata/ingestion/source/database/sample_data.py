@@ -2506,8 +2506,10 @@ class SampleDataSource(
                                     [EntityReference(id=owner.id, type="user")]
                                 ),
                                 None,
-                            ] 
-                        ) if owner else None,
+                            ]
+                        )
+                        if owner
+                        else None,
                     )
                 )
                 yield table_request
