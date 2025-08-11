@@ -40,6 +40,7 @@ import fivetran from '../assets/img/service-icon-fivetran.png';
 import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
+import grafana from '../assets/img/service-icon-grafana.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
@@ -209,6 +210,7 @@ export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
 export const COCKROACH = cockroach;
+export const GRAFANA = grafana;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -431,6 +433,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Ssis,
   DatabaseServiceType.Ssas,
   DashboardServiceType.ThoughtSpot,
+  DashboardServiceType.Grafana,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

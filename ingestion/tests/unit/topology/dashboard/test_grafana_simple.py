@@ -52,8 +52,8 @@ class TestGrafanaComponents(TestCase):
 
         for panel_type, expected_chart_type in test_cases.items():
             result = source._map_panel_type_to_chart_type(panel_type)
-            # The method returns an enum value, so compare the string value
-            self.assertEqual(str(result.value), expected_chart_type)
+            # The method returns an enum value, compare its value
+            self.assertEqual(result.value, expected_chart_type)
 
     def test_extract_datasource_name(self):
         """Test datasource name extraction"""

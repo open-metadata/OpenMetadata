@@ -21,9 +21,11 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.grafanaConnection import (
     GrafanaConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -39,8 +41,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
@@ -54,9 +56,10 @@ from metadata.ingestion.source.dashboard.grafana.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.tag_utils import get_tag_labels
 
 logger = ingestion_logger()
 
@@ -97,61 +100,30 @@ class GrafanaSource(DashboardServiceSource):
 
     def prepare(self):
         """Fetch the list of folders, dashboards, and datasources"""
-        try:
-            # Fetch all folders
-            logger.info("Fetching Grafana folders...")
-            self.folders = self.client.get_folders()
-            logger.info(f"Found {len(self.folders)} folders")
-
-            # Fetch all dashboards
-            logger.info("Fetching Grafana dashboards...")
-            self.dashboards = self.client.search_dashboards()
-            logger.info(f"Found {len(self.dashboards)} dashboards")
-
-            # Fetch all datasources
-            logger.info("Fetching Grafana datasources...")
-            datasources = self.client.get_datasources()
-            # Key by both UID and name for flexibility
-            self.datasources = {}
-            for ds in datasources:
-                self.datasources[ds.uid] = ds
-                self.datasources[ds.name] = ds
-            logger.info(f"Found {len(datasources)} datasources")
-
-            # Collect tags if enabled
-            if self.source_config.includeTags:
-                for dashboard in self.dashboards:
-                    if dashboard.tags:
-                        self.tags.update(dashboard.tags)
-
-        except Exception as exc:
-            logger.error(f"Error during preparation: {exc}")
-            logger.debug(traceback.format_exc())
-
-    def yield_bulk_tags(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Fetch Dashboard Tags"""
-        yield from get_ometa_tag_and_classification(
-            tags=list(self.tags),
-            classification_name=GRAFANA_TAG_CATEGORY,
-            tag_description="Grafana Tag",
-            classification_description="Tags associated with Grafana entities",
-            include_tags=self.source_config.includeTags,
-        )
+        # Fetch all datasources
+        datasources = self.client.get_datasources()
+        # Key by both UID and name for flexibility
+        self.datasources = {}
+        for ds in datasources:
+            self.datasources[ds.uid] = ds
+            self.datasources[ds.name] = ds
+        logger.info(f"Found {len(datasources)} datasources")
 
     def get_dashboards_list(self) -> Optional[List[dict]]:
         """Get list of dashboards"""
-        return [dash.dict() for dash in self.dashboards]
+        dashboards_list = self.client.search_dashboards()
+        return dashboards_list
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """Get dashboard name"""
-        return dashboard["uid"]
+        return dashboard.uid
 
     def get_dashboard_details(
         self, dashboard: dict
     ) -> Optional[GrafanaDashboardResponse]:
         """Get detailed dashboard information"""
         try:
-            return self.client.get_dashboard(dashboard["uid"])
+            return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
             logger.warning(
                 f"Failed to get dashboard details for {dashboard['uid']}: {exc}"
@@ -181,8 +153,6 @@ class GrafanaSource(DashboardServiceSource):
 
             # Build folder hierarchy display name
             display_name = dashboard_details.dashboard.title
-            if dashboard_details.meta.folderTitle:
-                display_name = f"{dashboard_details.meta.folderTitle}/{display_name}"
 
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.dashboard.uid),
@@ -239,13 +209,16 @@ class GrafanaSource(DashboardServiceSource):
                 if panel.type in ["row", "text"]:
                     continue
 
+                # We use the combination of dashboard UID and panel ID as the chart name,
+                # to ensure uniqueness across all dashboards and panels,
+                # since panel IDs are only unique within a dashboard, but not globally in Grafana.
                 chart_name = f"{dashboard_details.dashboard.uid}_{panel.id}"
                 chart_display_name = panel.title or f"Panel {panel.id}"
 
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart_display_name
                 ):
-                    self.status.filter(chart_display_name, "Chart Pattern not allowed")
+                    self.status.filter(chart_display_name, "Chart filtered out")
                     continue
 
                 # Map Grafana panel types to standard chart types
@@ -348,61 +321,134 @@ class GrafanaSource(DashboardServiceSource):
             if not sql_query:
                 return
 
-            # Search for tables in the query
-            table_entities = search_table_entities(
-                metadata=self.metadata,
-                query=sql_query,
-                service_prefix=db_service_prefix,
-                database_name=datasource.database,
-            )
+            # Parse db service prefix into components
+            (
+                prefix_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
 
-            for table_entity in table_entities:
-                lineage_request = DashboardServiceSource._get_add_lineage_request(
-                    to_entity=to_entity,
-                    from_entity=table_entity,
+            # Determine dialect. Prefer service type when service name is provided, else fallback to ANSI
+            dialect = Dialect.ANSI
+            try:
+                if prefix_service_name:
+                    db_service_entity = self.metadata.get_by_name(
+                        entity=DatabaseService, fqn=prefix_service_name
+                    )
+                    if db_service_entity and db_service_entity.serviceType:
+                        dialect = ConnectionTypeDialectMapper.dialect_of(
+                            db_service_entity.serviceType.value
+                        )
+            except Exception:
+                pass
+
+            # Extract table references from the SQL
+            parser = LineageParser(sql_query, dialect)
+            database_name_hint = getattr(datasource, "database", None)
+
+            for table in parser.source_tables or []:
+                table_name_str = str(table)
+                db_sch_table = fqn.split_table_name(table_name_str)
+                database_name = db_sch_table.get("database") or database_name_hint
+                schema_name = self.check_database_schema_name(
+                    db_sch_table.get("database_schema")
                 )
-                if lineage_request:
-                    yield lineage_request
+                base_table_name = db_sch_table.get("table")
+
+                # Apply prefix filters when provided
+                if (
+                    prefix_database_name
+                    and database_name
+                    and prefix_database_name.lower() != str(database_name).lower()
+                ):
+                    continue
+                if (
+                    prefix_schema_name
+                    and schema_name
+                    and prefix_schema_name.lower() != str(schema_name).lower()
+                ):
+                    continue
+                if (
+                    prefix_table_name
+                    and base_table_name
+                    and prefix_table_name.lower() != str(base_table_name).lower()
+                ):
+                    continue
+
+                # Build ES FQN search string and fetch matching table entities
+                fqn_search_string = build_es_fqn_search_string(
+                    database_name=prefix_database_name or database_name,
+                    schema_name=prefix_schema_name or schema_name,
+                    service_name=prefix_service_name or "*",
+                    table_name=prefix_table_name or base_table_name,
+                )
+
+                from_entities = self.metadata.search_in_any_service(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                    fetch_multiple_entities=True,
+                )
+
+                for table_entity in from_entities or []:
+                    lineage_request = DashboardServiceSource._get_add_lineage_request(
+                        to_entity=to_entity,
+                        from_entity=table_entity,
+                        sql=sql_query,
+                    )
+                    if lineage_request:
+                        yield lineage_request
 
         except Exception as exc:
             logger.debug(f"Error processing panel lineage: {exc}")
+            logger.error(traceback.format_exc())
 
     def _extract_datasource_name(
         self, target: GrafanaTarget, panel: GrafanaPanel
     ) -> Optional[str]:
         """Extract datasource name from target or panel"""
-        # Try target datasource first
-        if target.datasource:
-            if isinstance(target.datasource, str):
-                return target.datasource
-            elif isinstance(target.datasource, dict):
-                return target.datasource.get("uid") or target.datasource.get("type")
+        try:
+            # Try target datasource first
+            if target.datasource:
+                if isinstance(target.datasource, str):
+                    return target.datasource
+                elif isinstance(target.datasource, dict):
+                    return target.datasource.get("uid") or target.datasource.get("type")
 
-        # Fall back to panel datasource
-        if panel.datasource:
-            if isinstance(panel.datasource, str):
-                return panel.datasource
-            elif isinstance(panel.datasource, dict):
-                return panel.datasource.get("uid") or panel.datasource.get("type")
+            # Fall back to panel datasource
+            if panel.datasource:
+                if isinstance(panel.datasource, str):
+                    return panel.datasource
+                elif isinstance(panel.datasource, dict):
+                    return panel.datasource.get("uid") or panel.datasource.get("type")
 
-        return None
+            return None
+        except Exception as exc:
+            logger.debug(f"Error extracting datasource name: {exc}")
+            return None
 
     def _extract_sql_query(
         self, target: GrafanaTarget, datasource: GrafanaDatasource
     ) -> Optional[str]:
         """Extract SQL query from target based on datasource type"""
-        # Handle different datasource types
-        if datasource.type in ["mysql", "postgres", "mssql", "clickhouse"]:
-            return target.rawSql or target.query
-        elif datasource.type == "prometheus":
-            # Prometheus queries aren't SQL
+        try:
+            # Handle different datasource types
+            if datasource.type in [
+                "mysql",
+                "grafana-postgresql-datasource",
+                "mssql",
+                "clickhouse",
+            ]:
+                return target.rawSql or target.query
+            elif datasource.type in ["prometheus", "elasticsearch"]:
+                # Prometheus and Elasticsearch queries aren't SQL
+                return None
+            else:
+                # Try generic query field
+                return target.query
+        except Exception as exc:
+            logger.debug(f"Error extracting SQL query: {exc}")
             return None
-        elif datasource.type == "elasticsearch":
-            # Elasticsearch queries aren't SQL
-            return None
-        else:
-            # Try generic query field
-            return target.query
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:
         """Map Grafana panel types to OpenMetadata chart types"""

@@ -41,7 +41,7 @@ class GrafanaApiClient:
         verify_ssl: bool = True,
         page_size: int = 100,
     ):
-        self.host_port = host_port.rstrip("/")
+        self.host_port = str(host_port).rstrip("/")
         self.api_key = api_key
         self.verify_ssl = verify_ssl
         self.page_size = page_size
@@ -97,100 +97,115 @@ class GrafanaApiClient:
 
     def get_folders(self) -> List[GrafanaFolder]:
         """Get all folders with pagination"""
-        folders = []
-        page = 1
 
-        while True:
-            response = self._make_request(
-                "GET", "/folders", params={"page": page, "limit": self.page_size}
-            )
+        try:
+            folders = []
+            page = 1
+            while True:
+                response = self._make_request(
+                    "GET", "/folders", params={"page": page, "limit": self.page_size}
+                )
 
-            if not response:
-                break
+                if not response:
+                    break
 
-            page_data = response.json()
-            if not page_data:
-                break
+                page_data = response.json()
+                if not page_data:
+                    break
 
-            folders.extend([GrafanaFolder(**folder) for folder in page_data])
+                folders.extend([GrafanaFolder(**folder) for folder in page_data])
 
-            # Check if we need to fetch more pages
-            if len(page_data) < self.page_size:
-                break
+                # Check if we need to fetch more pages
+                if len(page_data) < self.page_size:
+                    break
 
-            page += 1
+                page += 1
+            return folders
 
-        return folders
+        except Exception as err:
+            logger.error(f"Error fetching folders from Grafana: {err}")
 
     def search_dashboards(
         self, folder_id: Optional[int] = None
     ) -> List[GrafanaSearchResult]:
         """Search for dashboards with optional folder filter"""
-        dashboards = []
-        page = 1
+        try:
+            dashboards = []
+            page = 1
 
-        while True:
-            params = {
-                "type": "dash-db",
-                "page": page,
-                "limit": self.page_size,
-            }
+            while True:
+                params = {
+                    "type": "dash-db",
+                    "page": page,
+                    "limit": self.page_size,
+                }
 
-            if folder_id is not None:
-                params["folderIds"] = folder_id
+                if folder_id is not None:
+                    params["folderIds"] = folder_id
 
-            response = self._make_request("GET", "/search", params=params)
+                response = self._make_request("GET", "/search", params=params)
 
-            if not response:
-                break
+                if not response:
+                    break
 
-            page_data = response.json()
-            if not page_data:
-                break
+                page_data = response.json()
+                if not page_data:
+                    break
 
-            dashboards.extend([GrafanaSearchResult(**dash) for dash in page_data])
+                dashboards.extend([GrafanaSearchResult(**dash) for dash in page_data])
 
-            # Check if we need to fetch more pages
-            if len(page_data) < self.page_size:
-                break
+                # Check if we need to fetch more pages
+                if len(page_data) < self.page_size:
+                    break
 
-            page += 1
+                page += 1
 
-        return dashboards
+            return dashboards
+        except Exception as err:
+            logger.error(f"Error fetching dashboards from Grafana: {err}")
 
     def get_dashboard(self, uid: str) -> Optional[GrafanaDashboardResponse]:
         """Get detailed dashboard information by UID"""
-        response = self._make_request("GET", f"/dashboards/uid/{uid}")
-
-        if response:
-            return GrafanaDashboardResponse(**response.json())
-
-        return None
+        try:
+            response = self._make_request("GET", f"/dashboards/uid/{uid}")
+            if response:
+                return GrafanaDashboardResponse(**response.json())
+            return None
+        except Exception as err:
+            logger.error(f"Error fetching dashboard details from Grafana: {err}")
+            return None
 
     def get_datasources(self) -> List[GrafanaDatasource]:
         """Get all datasources"""
-        response = self._make_request("GET", "/datasources")
-
-        if response:
-            return [GrafanaDatasource(**ds) for ds in response.json()]
-
-        return []
+        try:
+            response = self._make_request("GET", "/datasources")
+            if response:
+                return [GrafanaDatasource(**ds) for ds in response.json()]
+            return []
+        except Exception as err:
+            logger.error(f"Error fetching datasources from Grafana: {err}")
+            return []
 
     def get_datasource(
         self, datasource_id: Union[int, str]
     ) -> Optional[GrafanaDatasource]:
         """Get datasource by ID or UID"""
-        # Try by ID first if it's numeric
-        if isinstance(datasource_id, int) or datasource_id.isdigit():
-            response = self._make_request("GET", f"/datasources/{datasource_id}")
-        else:
-            # Try by UID
-            response = self._make_request("GET", f"/datasources/uid/{datasource_id}")
+        try:
+            # Try by ID first if it's numeric
+            if isinstance(datasource_id, int) or datasource_id.isdigit():
+                response = self._make_request("GET", f"/datasources/{datasource_id}")
+            else:
+                # Try by UID
+                response = self._make_request(
+                    "GET", f"/datasources/uid/{datasource_id}"
+                )
 
-        if response:
-            return GrafanaDatasource(**response.json())
+            if response:
+                return GrafanaDatasource(**response.json())
 
-        return None
+        except Exception as err:
+            logger.error(f"Error fetching datasource from Grafana: {err}")
+            return None
 
     def test_connection(self) -> bool:
         """Test connection to Grafana API"""

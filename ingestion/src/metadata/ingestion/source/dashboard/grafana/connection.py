@@ -19,6 +19,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.grafanaConnection import (
     GrafanaConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
@@ -43,17 +46,18 @@ def test_connection(
     service_connection: GrafanaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
-) -> None:
+) -> TestConnectionResult:
     """
     Test connection to Grafana instance
     """
 
     def custom_executor():
-        client.test_connection()
+        if not client.test_connection():
+            raise Exception("Failed to connect to Grafana")
 
     test_fn = {"GetDashboards": custom_executor}
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,

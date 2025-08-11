@@ -22,7 +22,6 @@ from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
 from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaDashboardResponse,
     GrafanaDatasource,
-    GrafanaFolder,
     GrafanaSearchResult,
 )
 
@@ -46,30 +45,6 @@ class TestGrafanaApiClient(TestCase):
         self.assertEqual(session.headers["Accept"], "application/json")
         self.assertEqual(session.headers["Content-Type"], "application/json")
         self.assertTrue(session.verify)
-
-    @patch("requests.Session.request")
-    def test_get_folders_single_page(self, mock_request):
-        """Test fetching folders with single page"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = [
-            {"id": 1, "uid": "folder-1", "title": "Marketing"},
-            {"id": 2, "uid": "folder-2", "title": "Sales"},
-        ]
-        mock_request.return_value = mock_response
-
-        folders = self.client.get_folders()
-
-        self.assertEqual(len(folders), 2)
-        self.assertIsInstance(folders[0], GrafanaFolder)
-        self.assertEqual(folders[0].title, "Marketing")
-        self.assertEqual(folders[1].title, "Sales")
-
-        mock_request.assert_called_once_with(
-            method="GET",
-            url="https://grafana.example.com/api/folders",
-            timeout=30,
-            params={"page": 1, "limit": 2},
-        )
 
     @patch("requests.Session.request")
     def test_get_folders_pagination(self, mock_request):

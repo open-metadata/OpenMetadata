@@ -22,6 +22,14 @@ export interface GrafanaConnection {
      */
     apiKey: string;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
      * URL to the Grafana instance.
      */
     hostPort: string;
@@ -38,6 +46,24 @@ export interface GrafanaConnection {
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      */
     verifySSL?: boolean;
+}
+
+/**
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

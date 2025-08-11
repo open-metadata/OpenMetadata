@@ -11,17 +11,7 @@
 """
 Grafana Service Specification
 """
-from metadata.generated.schema.entity.services.connections.dashboard.grafanaConnection import (
-    GrafanaConnection,
-)
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
+from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
+from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = {
-    "type": DashboardServiceType.Grafana,
-    "spec": {
-        "class": "metadata.ingestion.source.dashboard.grafana.metadata.GrafanaSource",
-        "connection": GrafanaConnection,
-    },
-}
+ServiceSpec = BaseSpec(metadata_source_class=GrafanaSource)
