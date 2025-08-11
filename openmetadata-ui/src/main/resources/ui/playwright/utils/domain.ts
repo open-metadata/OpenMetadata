@@ -386,7 +386,7 @@ export const addAssetsToDomain = async (
     return (
       response
         .url()
-        .includes('/api/v1/search/query?q=**&index=all&from=0&size=15') &&
+        .includes('/api/v1/search/query?q=&index=all&from=0&size=15') &&
       queryFilter !== null &&
       queryFilter !== ''
     );
