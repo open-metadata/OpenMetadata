@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import { first, isEmpty, last, round, sortBy, toLower } from 'lodash';
+import {
+  first,
+  isEmpty,
+  isUndefined,
+  last,
+  round,
+  sortBy,
+  toLower,
+} from 'lodash';
 import { ServiceTypes } from 'Models';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
@@ -22,7 +30,6 @@ import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-saf
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ChartsResults } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { SERVICE_AUTOPILOT_AGENT_TYPES } from '../constants/Services.constant';
-import { totalDataAssetsWidgetColors } from '../constants/TotalDataAssetsWidget.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -173,12 +180,24 @@ export const getPlatformInsightsChartDataFormattingMethod =
   };
 
 export const getFormattedTotalAssetsDataFromSocketData = (
-  socketData: DataInsightCustomChartResult
+  socketData: DataInsightCustomChartResult,
+  serviceCategory: ServiceTypes
 ) => {
-  const entityCountsArray = socketData.results.map((result, index) => ({
+  const assets = getAssetsByServiceType(serviceCategory);
+
+  const buckets = assets.reduce((acc, curr) => {
+    const bucket = socketData.results.find((bucket) => bucket.group === curr);
+
+    if (!isUndefined(bucket)) {
+      return [...acc, bucket];
+    }
+
+    return acc;
+  }, [] as DataInsightCustomChartResult['results']);
+
+  const entityCountsArray = buckets.map((result) => ({
     name: getEntityNameLabel(result.group),
     value: result.count ?? 0,
-    fill: totalDataAssetsWidgetColors[index],
     icon: getEntityIcon(result.group, '', { height: 16, width: 16 }) ?? <></>,
   }));
 

@@ -1,6 +1,6 @@
 ---
 title: Run the SAS Connector Externally
-description: Configure SAS database connections in OpenMetadata with YAML. Step-by-step setup guide, authentication options, and connector configuration examples.
+description: Configure SAS database connections in `brandName` with YAML. Step-by-step setup guide, authentication options, and connector configuration examples.
 slug: /connectors/database/sas/yaml
 ---
 

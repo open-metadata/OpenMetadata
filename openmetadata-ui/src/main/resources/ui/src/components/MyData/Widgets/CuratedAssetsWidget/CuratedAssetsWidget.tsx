@@ -55,6 +55,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
@@ -356,11 +357,12 @@ const CuratedAssetsWidget = ({
                 {title}
               </Typography.Text>
               {description && (
-                <Typography.Paragraph
-                  className="entity-list-item-description"
-                  ellipsis={{ rows: 2 }}>
-                  {description}
-                </Typography.Paragraph>
+                <RichTextEditorPreviewerV1
+                  className="max-two-lines entity-list-item-description"
+                  enableSeeMoreVariant={false}
+                  markdown={description}
+                  showReadMoreBtn={false}
+                />
               )}
             </div>
           </div>

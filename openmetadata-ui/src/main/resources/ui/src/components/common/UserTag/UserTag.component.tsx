@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
@@ -48,8 +48,7 @@ export const UserTag = ({
   };
 
   return (
-    <Space
-      align="center"
+    <div
       className={classNames(
         {
           bordered: bordered,
@@ -58,8 +57,7 @@ export const UserTag = ({
         UserTagSize[size],
         className
       )}
-      data-testid="user-tag"
-      size={8}>
+      data-testid="user-tag">
       <ProfilePicture
         avatarType={avatarType}
         isTeam={isTeam}
@@ -75,6 +73,6 @@ export const UserTag = ({
           onClick={onRemove}
         />
       )}
-    </Space>
+    </div>
   );
 };
