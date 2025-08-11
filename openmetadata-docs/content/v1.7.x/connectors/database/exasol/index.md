@@ -1,6 +1,6 @@
 ---
 title: Exasol Connector | OpenMetadata High-Performance Database
-description: Connect Exasol database to `brandName` with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
+description: Connect Exasol database to OpenMetadata with our comprehensive connector guide. Step-by-step setup, configuration, and metadata extraction instructions.
 slug: /connectors/database/exasol
 ---
 

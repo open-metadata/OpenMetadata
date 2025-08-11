@@ -1,6 +1,6 @@
 ---
 title: SQLite Connector | OpenMetadata Lightweight DB Integration
-description: Learn to Configure `brandName`'sSQLite database connector for seamless data cataloging. Step-by-step setup guide with examples and troubleshooting tips.
+description: Learn to Configure OpenMetadata'sSQLite database connector for seamless data cataloging. Step-by-step setup guide with examples and troubleshooting tips.
 slug: /connectors/database/sqlite
 ---
 
